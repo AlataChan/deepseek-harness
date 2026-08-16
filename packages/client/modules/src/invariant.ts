@@ -16,20 +16,21 @@ export const inject = ['invariants']
 
 /**
  * Owned relation: the node half's boot entry graph must stay self-consistent
- * — every row must resolve a clientPath under the same id (the
- * /plugins/<id>/client.js URL it advertises would otherwise 404 on a browser
- * that just received the graph). Checked on every scan trigger (cordis
- * 'internal/plugin'): graph() and clientPath() read the same table object,
- * so the relation holds at any instant — no need to wait out the node half's
- * own microtask-debounced flush.
+ * — every row must have a bundle record under the same id and revision, or a
+ * surface receiving the graph cannot locate the artifact it advertises.
+ * Checked on every scan trigger (cordis 'internal/plugin'): graph() and
+ * bundleRecords() read the same table object, so the relation holds at any
+ * instant — no need to wait out the node half's own microtask-debounced flush.
  */
 const install: InvariantInstaller = (ctx, fail) => {
   ctx.on('internal/plugin', () => {
     const host = ctx.get('clientModules')
     if (host === undefined) return // browser side / host without the node half: nothing to audit
+    const records = new Map(host.bundleRecords().map(record => [record.entry.id, record]))
     for (const row of host.graph().entries) {
-      if (host.clientPath(row.id) === undefined) {
-        fail(`web plugin graph row "${row.id}" advertises ${row.url} but resolves no client bundle path — the served __DSH_BOOT__ would 404 on fetch`)
+      const record = records.get(row.id)
+      if (record === undefined || record.entry.rev !== row.rev) {
+        fail(`client graph row "${row.id}" at revision ${row.rev} has no matching bundle record`)
       }
     }
   }, { global: true })

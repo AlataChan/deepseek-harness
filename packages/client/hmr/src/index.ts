@@ -2,7 +2,7 @@
  * HMR plugin, node half: the host end of the dev reload chain. One interval
  * stat-polls every graph row's client bundle (polling by design: network
  * mounts deliver no inotify events), reports content changes through
- * `clientModuleHost.rebuilt(id)`, and serves the `/plugins/events` SSE channel
+ * `clientModules.rebuilt(id)`, and serves the `/plugins/events` SSE channel
  * broadcasting graph/rebuilt frames to the browser half (src/client/).
  * The web bundle mounts this row unconditionally: without a rebuild
  * watcher rewriting client bundles, the poll observes no changes and the
@@ -12,7 +12,7 @@ import { statSync } from 'node:fs'
 import type { ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-// Empty type imports carry the clientModuleHost/webServer Context merges.
+// Empty type imports carry the clientModules/webServer Context merges.
 import type {} from '@deepseek-ai/dsh-client-modules'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { PluginsEventFrame } from './events.ts'
@@ -24,7 +24,7 @@ export { EVENTS_ENDPOINT } from './events.ts'
 /** Cordis plugin name. */
 export const name = 'client-hmr'
 
-/** Required services: the web plugin table and the route registry. */
+/** Required services: the Client Plugin table and the Web route registry. */
 export const inject = ['clientModules', 'webServer']
 
 /** Plugin config, validated by the same-named schemastery schema. */
@@ -51,7 +51,7 @@ interface WatchedBundle {
 
 /**
  * Mount the dev chain: bundle watches, rebuilt reporting, and the SSE channel.
- * @param ctx - host plugin context carrying clientModuleHost and webServer.
+ * @param ctx - host plugin context carrying clientModules and webServer.
  * @param config - validated {@link Config}.
  */
 export function apply(ctx: Context, config: Config): void {
@@ -63,7 +63,7 @@ export function apply(ctx: Context, config: Config): void {
 
   const rehash = (id: string, watch: WatchedBundle, current: { mtimeMs: number; size: number }): void => {
     try {
-      // rebuilt() re-hashes; an unchanged hash stays silent (clientModuleHost
+      // rebuilt() re-hashes; an unchanged hash stays silent (clientModules
       // fires onRebuilt only on a real rev change).
       ctx.clientModules.rebuilt(id)
     } catch (error) {
@@ -117,9 +117,8 @@ export function apply(ctx: Context, config: Config): void {
   // rows (or rows whose bundle path moved), add watches for new rows.
   const syncWatches = (): void => {
     const rows = new Map<string, string>()
-    for (const row of ctx.clientModules.graph().entries) {
-      const path = ctx.clientModules.clientPath(row.id)
-      if (path !== undefined) rows.set(row.id, path)
+    for (const record of ctx.clientModules.bundleRecords()) {
+      rows.set(record.entry.id, record.clientPath)
     }
     for (const [id, watch] of watched) {
       if (rows.get(id) === watch.path) continue

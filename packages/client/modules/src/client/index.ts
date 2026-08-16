@@ -23,7 +23,7 @@ export type {
   BootManifest, BootModuleRow, BootPluginRow, ClientBootstrapModule, ClientBundleRegistration,
   ClientModuleCreateOptions, ClientModuleLoader, ClientModuleLoaderTarget, ClientModuleRecord,
   ClientModuleSystemOptions, DshWindow,
-  WebBootEntry, WebBootGraph,
+  ClientBootEntry, ClientBootGraph,
 } from './manifest.ts'
 
 let moduleSystem: ClientModuleSystem | undefined

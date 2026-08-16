@@ -1,13 +1,13 @@
 /**
  * Node half of the HMR plugin: bundle watches follow the graph, stat changes
- * report through clientModuleHost.rebuilt, and everything dies with the fiber.
+ * report through clientModules.rebuilt, and everything dies with the fiber.
  */
 import { mkdtempSync, rmSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { WebBootGraph, ClientModuleRegistry } from '@deepseek-ai/dsh-client-modules'
+import type { ClientBootGraph, ClientModuleRegistry } from '@deepseek-ai/dsh-client-modules'
 import type { WebRoute, WebServer } from '@deepseek-ai/dsh-host-webserver'
 import { apply, Config, EVENTS_ENDPOINT, inject } from '../src/index.ts'
 
@@ -19,30 +19,35 @@ beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'dsh-hmr-')) })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
 /**
- * Controllable clientModuleHost fake over a mutable id → bundle-path table.
+ * Controllable clientModules fake over a mutable id → bundle-path table.
  * Structural (Pick+cast): the plugin only touches the read/notify surface;
  * the service class carries private scan state a literal need not reproduce.
  */
 type FakeHost = ClientModuleRegistry & { rebuiltCalls: string[]; fireGraphChanged(): void }
 interface FakeHostOptions {
-  beforeGraphRead?: () => void
+  beforeBundleRead?: () => void
   rebuilt?: (id: string) => string | undefined
 }
 
 function fakeClientModuleHost(rows: Map<string, string>, options: FakeHostOptions = {}): FakeHost {
   const graphListeners = new Set<() => void>()
   const rebuiltCalls: string[] = []
-  const fake: Pick<FakeHost, 'graph' | 'clientPath' | 'rebuilt' | 'onRebuilt' | 'onGraphChanged' | 'rebuiltCalls' | 'fireGraphChanged'> = {
+  const fake: Pick<FakeHost, 'graph' | 'bundleRecords' | 'rebuilt' | 'onRebuilt' | 'onGraphChanged' | 'rebuiltCalls' | 'fireGraphChanged'> = {
     rebuiltCalls,
     fireGraphChanged: () => { for (const l of graphListeners) l() },
-    graph: (): WebBootGraph => {
-      options.beforeGraphRead?.()
+    graph: (): ClientBootGraph => {
       return {
         rev: 'r',
         entries: [...rows.keys()].map(id => ({ id, url: `/plugins/${id}/client.js?rev=r`, rev: 'r' })),
       }
     },
-    clientPath: id => rows.get(id),
+    bundleRecords: () => {
+      options.beforeBundleRead?.()
+      return [...rows].map(([id, clientPath]) => ({
+        entry: { id, url: `/plugins/${id}/client.js?rev=r`, rev: 'r' },
+        clientPath,
+      }))
+    },
     rebuilt: (id) => {
       rebuiltCalls.push(id)
       return options.rebuilt?.(id) ?? 'r2'
@@ -70,9 +75,9 @@ function fakeHttpServer(routes: WebRoute[]): WebServer {
   return fake as WebServer
 }
 
-async function mount(clientModuleHost: FakeHost, webServer: WebServer) {
+async function mount(clientModules: FakeHost, webServer: WebServer) {
   const ctx = new Context()
-  ctx.provide('clientModules', clientModuleHost)
+  ctx.provide('clientModules', clientModules)
   ctx.provide('webServer', webServer)
   const fiber = ctx.plugin(
     { inject: [...inject], Config, apply },
@@ -86,27 +91,27 @@ describe('hmr node half', () => {
   it('watches graph bundles, reports stat changes, and unwatches on dispose', async () => {
     const bundle = join(dir, 'a.js')
     writeFileSync(bundle, 'v1')
-    const clientModuleHost = fakeClientModuleHost(new Map([['pkg-a', bundle]]))
+    const clientModules = fakeClientModuleHost(new Map([['pkg-a', bundle]]))
     const routes: WebRoute[] = []
-    const fiber = await mount(clientModuleHost, fakeHttpServer(routes))
+    const fiber = await mount(clientModules, fakeHttpServer(routes))
 
     expect(routes).toHaveLength(1)
     expect(routes[0]).toMatchObject({ kind: 'exact', path: EVENTS_ENDPOINT })
-    expect(clientModuleHost.rebuiltCalls).toEqual(['pkg-a'])
-    clientModuleHost.rebuiltCalls.length = 0
+    expect(clientModules.rebuiltCalls).toEqual(['pkg-a'])
+    clientModules.rebuiltCalls.length = 0
 
     // Nudge mtime past stat granularity so the poller sees a content signal.
     await new Promise(resolve => setTimeout(resolve, POLL_MS * 2))
     writeFileSync(bundle, 'v2-longer')
-    await vi.waitFor(() => { expect(clientModuleHost.rebuiltCalls).toContain('pkg-a') }, { timeout: 3_000 })
+    await vi.waitFor(() => { expect(clientModules.rebuiltCalls).toContain('pkg-a') }, { timeout: 3_000 })
 
     await fiber.dispose()
     expect(routes).toHaveLength(0)
     // Watcher gone: further file changes report nothing.
-    clientModuleHost.rebuiltCalls.length = 0
+    clientModules.rebuiltCalls.length = 0
     writeFileSync(bundle, 'v3-even-longer')
     await new Promise(resolve => setTimeout(resolve, POLL_MS * 4))
-    expect(clientModuleHost.rebuiltCalls).toHaveLength(0)
+    expect(clientModules.rebuiltCalls).toHaveLength(0)
   })
 
   it('follows graph changes: rows added after activation get watched', async () => {
@@ -114,26 +119,26 @@ describe('hmr node half', () => {
     const late = join(dir, 'late.js')
     writeFileSync(early, 'v1')
     const rows = new Map([['pkg-early', early]])
-    const clientModuleHost = fakeClientModuleHost(rows)
-    const fiber = await mount(clientModuleHost, fakeHttpServer([]))
-    clientModuleHost.rebuiltCalls.length = 0
+    const clientModules = fakeClientModuleHost(rows)
+    const fiber = await mount(clientModules, fakeHttpServer([]))
+    clientModules.rebuiltCalls.length = 0
 
     writeFileSync(late, 'v1')
     rows.set('pkg-late', late)
-    clientModuleHost.fireGraphChanged()
-    expect(clientModuleHost.rebuiltCalls).toEqual(['pkg-late'])
-    clientModuleHost.rebuiltCalls.length = 0
+    clientModules.fireGraphChanged()
+    expect(clientModules.rebuiltCalls).toEqual(['pkg-late'])
+    clientModules.rebuiltCalls.length = 0
 
     await new Promise(resolve => setTimeout(resolve, POLL_MS * 2))
     writeFileSync(late, 'v2-longer')
-    await vi.waitFor(() => { expect(clientModuleHost.rebuiltCalls).toContain('pkg-late') }, { timeout: 3_000 })
+    await vi.waitFor(() => { expect(clientModules.rebuiltCalls).toContain('pkg-late') }, { timeout: 3_000 })
 
     rows.delete('pkg-late')
-    clientModuleHost.fireGraphChanged()
-    clientModuleHost.rebuiltCalls.length = 0
+    clientModules.fireGraphChanged()
+    clientModules.rebuiltCalls.length = 0
     writeFileSync(late, 'v3-even-longer')
     await new Promise(resolve => setTimeout(resolve, POLL_MS * 3))
-    expect(clientModuleHost.rebuiltCalls).toHaveLength(0)
+    expect(clientModules.rebuiltCalls).toHaveLength(0)
     await fiber.dispose()
   })
 
@@ -141,8 +146,8 @@ describe('hmr node half', () => {
     const bundle = join(dir, 'construction.js')
     writeFileSync(bundle, 'v1')
     let rewrite = true
-    const clientModuleHost = fakeClientModuleHost(new Map([['pkg-a', bundle]]), {
-      beforeGraphRead: () => {
+    const clientModules = fakeClientModuleHost(new Map([['pkg-a', bundle]]), {
+      beforeBundleRead: () => {
         if (!rewrite) return
         rewrite = false
         // The graph carries the hash from before this write. The old
@@ -152,12 +157,12 @@ describe('hmr node half', () => {
       },
     })
 
-    const fiber = await mount(clientModuleHost, fakeHttpServer([]))
+    const fiber = await mount(clientModules, fakeHttpServer([]))
 
-    expect(clientModuleHost.rebuiltCalls).toEqual(['pkg-a'])
-    clientModuleHost.rebuiltCalls.length = 0
+    expect(clientModules.rebuiltCalls).toEqual(['pkg-a'])
+    clientModules.rebuiltCalls.length = 0
     await new Promise(resolve => setTimeout(resolve, POLL_MS * 3))
-    expect(clientModuleHost.rebuiltCalls).toHaveLength(0)
+    expect(clientModules.rebuiltCalls).toHaveLength(0)
     await fiber.dispose()
   })
 
@@ -167,9 +172,9 @@ describe('hmr node half', () => {
     const fixedTime = new Date(1_600_000_000_000)
     utimesSync(bundle, fixedTime, fixedTime)
     const baseline = statSync(bundle)
-    const clientModuleHost = fakeClientModuleHost(new Map([['pkg-a', bundle]]))
-    const fiber = await mount(clientModuleHost, fakeHttpServer([]))
-    clientModuleHost.rebuiltCalls.length = 0
+    const clientModules = fakeClientModuleHost(new Map([['pkg-a', bundle]]))
+    const fiber = await mount(clientModules, fakeHttpServer([]))
+    clientModules.rebuiltCalls.length = 0
 
     unlinkSync(bundle)
     await new Promise(resolve => setTimeout(resolve, POLL_MS * 2))
@@ -180,7 +185,7 @@ describe('hmr node half', () => {
       mtimeMs: baseline.mtimeMs,
       size: baseline.size,
     })
-    await vi.waitFor(() => { expect(clientModuleHost.rebuiltCalls).toEqual(['pkg-a']) }, { timeout: 3_000 })
+    await vi.waitFor(() => { expect(clientModules.rebuiltCalls).toEqual(['pkg-a']) }, { timeout: 3_000 })
     await fiber.dispose()
   })
 
@@ -188,7 +193,7 @@ describe('hmr node half', () => {
     const bundle = join(dir, 'rename.js')
     writeFileSync(bundle, 'v1')
     let first = true
-    const clientModuleHost = fakeClientModuleHost(new Map([['pkg-a', bundle]]), {
+    const clientModules = fakeClientModuleHost(new Map([['pkg-a', bundle]]), {
       rebuilt: () => {
         if (!first) return 'r2'
         first = false
@@ -196,9 +201,9 @@ describe('hmr node half', () => {
       },
     })
 
-    const fiber = await mount(clientModuleHost, fakeHttpServer([]))
+    const fiber = await mount(clientModules, fakeHttpServer([]))
 
-    await vi.waitFor(() => { expect(clientModuleHost.rebuiltCalls).toEqual(['pkg-a', 'pkg-a']) }, { timeout: 3_000 })
+    await vi.waitFor(() => { expect(clientModules.rebuiltCalls).toEqual(['pkg-a', 'pkg-a']) }, { timeout: 3_000 })
     await fiber.dispose()
   })
 })

@@ -1,14 +1,14 @@
-# client/ — web GUI 浏览器端
+# client/ — 交互式客户端运行时
 
 [English](README.md) | 中文
 
-dsh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 UI 服务和功能插件。编写规则见 [AGENTS.md](AGENTS.md)；宿主半侧是 [`host/`](../host/README.md)。除 `test-runtime` 外，均为名为 `@deepseek-ai/dsh-client-<name>` 的**产品**包。
+dsh 交互式客户端中与浏览器兼容的一侧：shell 启动、surface 与宿主通信、共享 UI 服务，以及由 Web 应用和嵌入式 Webview 复用的功能插件。编写规则见 [AGENTS.md](AGENTS.md)；宿主半侧是 [`host/`](../host/README.md)。除 `test-runtime` 外，均为名为 `@deepseek-ai/dsh-client-<name>` 的**产品**包。
 
 | 包 | 目的 |
 |---|---|
 | [`web/`](web/README.md) | 从客户端条目图启动浏览器 shell。 |
 | [`ui-renderer/`](ui-renderer/README.md) | 将 slot 数据绑定到 React，并在客户端启动稳定后挂载组装完成的应用。 |
-| [`modules/`](modules/README.md) | 加载浏览器侧客户端模块。 |
+| [`modules/`](modules/README.md) | 发现 Client Plugin bundle，并把它们加载到与浏览器兼容的 shell 中。 |
 | [`connection/`](connection/README.md) | 维护浏览器与宿主之间的 RPC 通信和事件传递。 |
 | [`runtime/`](runtime/README.md) | 为会话、工作区和 UI 组合提供共享客户端服务。 |
 | [`hmr/`](hmr/README.md) | 在开发期间刷新客户端插件。 |

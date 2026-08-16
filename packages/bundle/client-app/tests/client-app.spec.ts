@@ -19,7 +19,10 @@ function insertedIds(patches: readonly PatchOptions[]): string[] {
 
 function canonicalFingerprint(patches: readonly PatchOptions[][]): string {
   const rows = composeEntries(patches)
-    .filter(row => row.disabled !== true)
+    // Task 3 replaces the modules row's former internal Web registrations
+    // with one explicit adapter row. Excluding that ownership-only split keeps
+    // this Task 2 fingerprint anchored to the pre-extraction row/config set.
+    .filter(row => row.disabled !== true && row.id !== 'client-modules-web')
     .toSorted((left, right) => (left.id ?? '').localeCompare(right.id ?? ''))
   return createHash('sha256').update(JSON.stringify(rows)).digest('hex')
 }
@@ -47,6 +50,7 @@ describe('client-app composition', () => {
       'directory-picker',
       'web-startup',
       'webserver',
+      'client-modules-web',
       'web-runtime',
       'client-hmr',
       'connection',

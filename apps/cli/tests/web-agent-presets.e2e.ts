@@ -84,6 +84,7 @@ async function bootWeb(
     // skills test below proves it reaches preset-composed agents.
     { id: 'skill-badge', disabled: false },
     { id: 'modules', disabled: true },
+    { id: 'client-modules-web', disabled: true },
     { id: 'connection', disabled: true },
     // The always-on reload chain waits for the browser roster and bound port
     // disabled above.

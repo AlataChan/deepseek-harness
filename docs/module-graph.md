@@ -114,6 +114,7 @@ flowchart TD
   end
   subgraph group_bundle["packages/bundle"]
     pkg_base["base"]
+    pkg_client_app["client-app"]
     pkg_headless["headless"]
     pkg_web_app["web-app"]
   end
@@ -212,6 +213,7 @@ flowchart TD
   end
   subgraph group_host["packages/host"]
     pkg_host_apiproxy["host-apiproxy"]
+    pkg_host_client_modules_web["host-client-modules-web"]
     pkg_host_directory_picker["host-directory-picker"]
     pkg_host_directory_picker_auto["host-directory-picker-auto"]
     pkg_host_directory_picker_browse["host-directory-picker-browse"]
@@ -343,6 +345,8 @@ flowchart TD
   pkg_scope --> pkg_invariants
   pkg_cmdline --> pkg_invariants
   pkg_base --> pkg_invariants
+  pkg_client_app --> pkg_invariants
+  pkg_client_modules --> pkg_invariants
   pkg_client_ui_primitives --> pkg_invariants
   pkg_client_ui_slots --> pkg_invariants
   pkg_client_web --> pkg_invariants
@@ -363,14 +367,18 @@ flowchart TD
   pkg_typert_registry --> pkg_invariants
   pkg_attachment --> pkg_brand
   pkg_attachment --> pkg_invariants
-  pkg_client_modules --> pkg_host_webserver
-  pkg_client_modules --> pkg_invariants
+  pkg_client_hmr --> pkg_client_modules
+  pkg_client_hmr --> pkg_host_webserver
+  pkg_client_hmr --> pkg_invariants
   pkg_credentials --> pkg_brand
   pkg_credentials --> pkg_invariants
   pkg_subprocess_e2b --> pkg_e2b
   pkg_subprocess_e2b --> pkg_invariants
   pkg_subprocess_e2b --> pkg_subprocess
   pkg_subprocess_e2b --> pkg_timeout
+  pkg_host_client_modules_web --> pkg_client_modules
+  pkg_host_client_modules_web --> pkg_host_webserver
+  pkg_host_client_modules_web --> pkg_invariants
   pkg_host_frontend_static --> pkg_host_webserver
   pkg_host_frontend_static --> pkg_invariants
   pkg_host_plugin_inventory --> pkg_brand
@@ -399,9 +407,6 @@ flowchart TD
   pkg_attachment_local --> pkg_attachment
   pkg_attachment_local --> pkg_home_paths
   pkg_attachment_local --> pkg_invariants
-  pkg_client_hmr --> pkg_client_modules
-  pkg_client_hmr --> pkg_host_webserver
-  pkg_client_hmr --> pkg_invariants
   pkg_credentials_local --> pkg_atomic_write
   pkg_credentials_local --> pkg_credentials
   pkg_credentials_local --> pkg_home_paths
@@ -1465,6 +1470,8 @@ flowchart TD
 | [`scope`](../packages/core/scope) | `core` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`cmdline`](../packages/boot/cmdline) | `boot` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`base`](../packages/bundle/base) | `bundle` | [`invariants`](../packages/runtime-diagnostics/invariants) |
+| [`client-app`](../packages/bundle/client-app) | `bundle` | [`invariants`](../packages/runtime-diagnostics/invariants) |
+| [`client-modules`](../packages/client/modules) | `client` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`client-ui-primitives`](../packages/client/ui-primitives) | `client` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`client-ui-slots`](../packages/client/ui-slots) | `client` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`client-web`](../packages/client/web) | `client` | [`invariants`](../packages/runtime-diagnostics/invariants) |
@@ -1484,9 +1491,10 @@ flowchart TD
 | [`typert-protocol`](../packages/typert/protocol) | `typert` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`typert-registry`](../packages/typert/registry) | `typert` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`attachment`](../packages/attachment/attachment) | `attachment` | [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`client-modules`](../packages/client/modules) | `client` | [`host-webserver`](../packages/host/webserver), [`invariants`](../packages/runtime-diagnostics/invariants) |
+| [`client-hmr`](../packages/client/hmr) | `client` | [`client-modules`](../packages/client/modules), [`host-webserver`](../packages/host/webserver), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`credentials`](../packages/credentials/credentials) | `credentials` | [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`subprocess-e2b`](../packages/e2b/subprocess-e2b) | `e2b` | [`e2b`](../packages/e2b/e2b), [`invariants`](../packages/runtime-diagnostics/invariants), [`subprocess`](../packages/subprocess/subprocess), [`timeout`](../packages/util/timeout) |
+| [`host-client-modules-web`](../packages/host/client-modules-web) | `host` | [`client-modules`](../packages/client/modules), [`host-webserver`](../packages/host/webserver), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`host-frontend-static`](../packages/host/frontend-static) | `host` | [`host-webserver`](../packages/host/webserver), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`host-plugin-inventory`](../packages/host/plugin-inventory) | `host` | [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`typert-protocol`](../packages/typert/protocol) |
 | [`anonymous-user-id`](../packages/identity/anonymous-user-id) | `identity` | [`brand`](../packages/util/brand), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants) |
@@ -1498,7 +1506,6 @@ flowchart TD
 | [`typert-loader`](../packages/typert/loader) | `typert` | [`invariants`](../packages/runtime-diagnostics/invariants), [`typert-registry`](../packages/typert/registry) |
 | [`llm`](../packages/llm/llm) | `llm` | [`attachment`](../packages/attachment/attachment), [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`timeout`](../packages/util/timeout) |
 | [`attachment-local`](../packages/attachment/attachment-local) | `attachment` | [`attachment`](../packages/attachment/attachment), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`client-hmr`](../packages/client/hmr) | `client` | [`client-modules`](../packages/client/modules), [`host-webserver`](../packages/host/webserver), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`credentials-local`](../packages/credentials/credentials-local) | `credentials` | [`atomic-write`](../packages/util/atomic-write), [`credentials`](../packages/credentials/credentials), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`launch-environment`](../packages/util/launch-environment) |
 | [`settings-file`](../packages/settings/settings-file) | `settings` | [`atomic-write`](../packages/util/atomic-write), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`settings`](../packages/settings/settings) |
 | [`llm-deepseek`](../packages/llm/llm-deepseek) | `llm` | [`anonymous-user-id`](../packages/identity/anonymous-user-id), [`attachment`](../packages/attachment/attachment), [`credentials`](../packages/credentials/credentials), [`invariants`](../packages/runtime-diagnostics/invariants), [`launch-environment`](../packages/util/launch-environment), [`llm`](../packages/llm/llm), [`settings`](../packages/settings/settings), [`timeout`](../packages/util/timeout) |

@@ -1,14 +1,14 @@
-# client/ — web-GUI browser half
+# client/ — interactive-client runtime
 
 English | [中文](README.zh.md)
 
-The browser side of the dsh web GUI: shell boot, browser-host communication, shared UI services, and feature plugins. Authoring rules live in [AGENTS.md](AGENTS.md); the host half is [`host/`](../host/README.md). All except `test-runtime` are **product** packages named `@deepseek-ai/dsh-client-<name>`.
+The browser-compatible side of interactive dsh clients: shell boot, surface-to-host communication, shared UI services, and feature plugins reused by the Web app and embedded Webviews. Authoring rules live in [AGENTS.md](AGENTS.md); the host half is [`host/`](../host/README.md). All except `test-runtime` are **product** packages named `@deepseek-ai/dsh-client-<name>`.
 
 | Package | Purpose |
 |---|---|
 | [`web/`](web/README.md) | Boots the browser shell from the client entry graph. |
 | [`ui-renderer/`](ui-renderer/README.md) | Binds slot data to React and mounts the assembled application after client boot settles. |
-| [`modules/`](modules/README.md) | Loads browser-side client modules. |
+| [`modules/`](modules/README.md) | Discovers Client Plugin bundles and loads them into a browser-compatible shell. |
 | [`connection/`](connection/README.md) | Maintains browser-host RPC communication and event delivery. |
 | [`runtime/`](runtime/README.md) | Provides shared client services for sessions, workspaces, and UI composition. |
 | [`hmr/`](hmr/README.md) | Refreshes client plugins during development. |

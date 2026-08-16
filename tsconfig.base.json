@@ -174,6 +174,7 @@
       "@deepseek-ai/dsh-host-directory-picker-auto/*": ["./packages/host/directory-picker-auto/src/*"],
       "@deepseek-ai/dsh-host-apiproxy/client": ["./packages/host/apiproxy/src/fetch/client.ts"],
       "@deepseek-ai/dsh-host-apiproxy/*": ["./packages/host/apiproxy/src/*"],
+      "@deepseek-ai/dsh-host-client-modules-web": ["./packages/host/client-modules-web/src"],
       "@deepseek-ai/dsh-host-webserver": ["./packages/host/webserver/src"],
       "@deepseek-ai/dsh-host-frontend-static": ["./packages/host/frontend-static/src"],
       "@deepseek-ai/dsh-host-plugin-inventory": ["./packages/host/plugin-inventory/src"],

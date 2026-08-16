@@ -459,20 +459,20 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   },
   {
     key: 'clientModules',
-    summary: 'The web plugin table service: incremental `dsh.client` scan + wire composition + bundle route + index tap.',
-    description: 'The web plugin table service: incremental `dsh.client` scan + wire composition + bundle route + index tap. Construction runs the activation scan synchronously — a malformed declaration or missing bundle among the already-loaded entries aggregates into one loud throw (FAILED fiber; the boot activation audit reports it).',
+    summary: 'The Client Plugin table service: incremental `dsh.client` scan, wire composition, and bundle-path resolution.',
+    description: 'The Client Plugin table service: incremental `dsh.client` scan, wire composition, and bundle-path resolution. Construction runs the activation scan synchronously — a malformed declaration or missing bundle among the already-loaded entries aggregates into one loud throw (FAILED fiber; the boot activation audit reports it).',
     methods: [
       {
-        signature: 'graph(): WebBootGraph',
+        signature: 'graph(): ClientBootGraph',
         description: 'Current composed entry graph (stable object between changes).',
         parameters: [],
-        returns: 'the graph served as `window.__DSH_BOOT__`.',
+        returns: 'the graph published to a client shell by its surface adapter.',
       },
       {
-        signature: 'clientPath(id: string): string | undefined',
-        description: 'Absolute path of an entry\'s client bundle.',
-        parameters: [{ name: 'id', description: 'entry id (package name).' }],
-        returns: 'the path, or undefined for an unknown id.',
+        signature: 'bundleRecords(): readonly ClientBundleRecord[]',
+        description: 'Snapshot of the discovered bundle records in graph order.',
+        parameters: [],
+        returns: 'a read-only array whose records cannot mutate registry ownership.',
       },
       {
         signature: 'rebuilt(id: string): string | undefined',
@@ -2849,6 +2849,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CancelOptions {\n    keepInbox?: boolean | undefined;\n}',
   },
   {
+    name: 'ClientBootEntry',
+    declaration: 'export interface ClientBootEntry {\n    id: string;\n    url: string;\n    rev: string;\n    inject?: string[];\n    immediately?: boolean;\n    external?: string[];\n}',
+  },
+  {
+    name: 'ClientBootGraph',
+    declaration: 'export interface ClientBootGraph {\n    rev: string;\n    entries: ClientBootEntry[];\n}',
+  },
+  {
+    name: 'ClientBundleRecord',
+    declaration: 'export interface ClientBundleRecord {\n    readonly entry: ClientBootEntry;\n    readonly clientPath: string;\n}',
+  },
+  {
     name: 'ClientResponse',
     declaration: 'export interface ClientResponse {\n    type: \'client-response\';\n    rpcId: RpcId;\n    result: RpcResult<unknown>;\n}',
   },
@@ -4715,14 +4727,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'UserQuestionProvider',
     declaration: 'export interface UserQuestionProvider {\n    ask(request: AskUserQuestionRequest): Promise<AskUserQuestionAnswer>;\n}',
-  },
-  {
-    name: 'WebBootEntry',
-    declaration: 'export interface WebBootEntry {\n    id: string;\n    url: string;\n    rev: string;\n    inject?: string[];\n    immediately?: boolean;\n    external?: string[];\n}',
-  },
-  {
-    name: 'WebBootGraph',
-    declaration: 'export interface WebBootGraph {\n    rev: string;\n    entries: WebBootEntry[];\n}',
   },
   {
     name: 'WebFetchBody',

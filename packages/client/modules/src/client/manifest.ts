@@ -46,12 +46,12 @@ declare module '@deepseek-ai/cordis' {
  * metadata (the authoritative edges live in each package's `dsh.client`
  * declaration and reach fibers through entry creation). `external` carries
  * module-graph edges: unlike `inject`, they constrain code arrival because
- * `require` is synchronous (see {@link WebBootGraph.entries}).
+ * `require` is synchronous (see {@link ClientBootGraph.entries}).
  */
-export interface WebBootEntry {
+export interface ClientBootEntry {
   /** Entry name == package name. */
   id: string
-  /** Bundle endpoint, '/plugins/<id>/client.js?rev=<rev>'. */
+  /** Surface-resolved bundle URL; the Web adapter uses `/plugins/<id>/client.js?rev=<rev>`. */
   url: string
   /** Bundle content hash (cache-busting consistency anchor). */
   rev: string
@@ -63,8 +63,8 @@ export interface WebBootEntry {
   external?: string[]
 }
 
-/** The composed client entry graph the host injects as `window.__DSH_BOOT__`. */
-export interface WebBootGraph {
+/** The composed client entry graph a surface adapter publishes to its shell. */
+export interface ClientBootGraph {
   /** Consistency anchor over the whole graph (content + bundle hashes). */
   rev: string
   /**
@@ -72,14 +72,14 @@ export interface WebBootGraph {
    * rows whose `external` requests that package. Cordis activation order is
    * unrelated and remains owned by fiber service waiting.
    */
-  entries: WebBootEntry[]
+  entries: ClientBootEntry[]
 }
 
 /** The npm-package view of one boot row: what the module table needs to fetch the bundle. */
 export interface BootModuleRow {
   /** Entry name == package name (module-table key). */
   id: string
-  /** Bundle endpoint, '/plugins/<id>/client.js?rev=<rev>'. */
+  /** Surface-resolved bundle URL used by the active shell. */
   url: string
   /** Bundle content hash. */
   rev: string

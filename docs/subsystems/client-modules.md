@@ -2,13 +2,13 @@
 
 English | [中文](client-modules.zh.md)
 
-The web plugin table: the Node half of the client module system in [dsh-client-modules](../../packages/client/modules), provided as `ctx.clientModules` (`ClientModuleRegistry`). It scans the host Loader's entries for packages declaring `dsh.client`, composes the `window.__DSH_BOOT__` entry graph, serves each bundle at `/plugins/<id>/client.js`, and taps the index render to inject the boot manifest — the four faces of one service. It is an optional capability of the web GUI stack, not part of the agent-loop spine, and it is a consumer of [dsh-host-webserver](../../packages/host/webserver): the carrier described in [web-server.md](web-server.md) supplies the prefix route and index tap this service registers. The same package's browser half (`ctx.modules`, the lazy-CJS module table that fetches and materializes these bundles) is kernel machinery documented in the [package README](../../packages/client/modules/README.md), not here.
+The Client Plugin registry is the Node half of [dsh-client-modules](../../packages/client/modules), provided as `ctx.clientModules` (`ClientModuleRegistry`). It scans the host Loader's entries for packages declaring `dsh.client`, resolves and hashes their built bundles, and composes `ClientBootGraph` without requiring a physical transport. Surface adapters consume its graph and read-only bundle records. The Web surface mounts [dsh-host-client-modules-web](../../packages/host/client-modules-web), which consumes both this registry and [dsh-host-webserver](../../packages/host/webserver) to serve `/plugins` and inject `window.__DSH_BOOT__`. The same client-modules package's browser half (`ctx.modules`, the lazy-CJS module table that fetches and materializes these bundles) is kernel machinery documented in the [package README](../../packages/client/modules/README.md), not here.
 
 Source: [`packages/client/modules/src/client/manifest.ts`](../../packages/client/modules/src/client/manifest.ts)
 
 ## The wire
 
-The graph is the wire single source between the Node and browser halves: the host composes `WebBootEntry` rows from scanned packages, injects the graph as the first script in `<head>` (`window.__DSH_BOOT__`, with `<` escaped so plugin-controlled strings cannot break out of the script element), and the shell parses it before booting anything. A page without a valid manifest cannot boot — the browser-side parser throws loud on a missing or malformed graph.
+The graph is the wire single source between Host discovery and client shells: the registry composes `ClientBootEntry` rows from scanned packages, and each surface publishes those rows through its own bundle loader. The Web adapter injects the graph as the first script in `<head>` (`window.__DSH_BOOT__`, with `<` escaped so plugin-controlled strings cannot break out of the script element), and the shell parses it before booting anything. A page without a valid manifest cannot boot — the browser-side parser throws loud on a missing or malformed graph.
 
 ```ts type-equiv
 /**
@@ -20,10 +20,10 @@ The graph is the wire single source between the Node and browser halves: the hos
  * module-graph edges: unlike `inject`, they constrain code arrival because
  * `require` is synchronous (see {@link WebBootGraph.entries}).
  */
-interface WebBootEntry {
+interface ClientBootEntry {
   /** Entry name == package name. */
   id: string
-  /** Bundle endpoint, '/plugins/<id>/client.js?rev=<rev>'. */
+  /** Surface-resolved bundle URL; the Web adapter uses `/plugins/<id>/client.js?rev=<rev>`. */
   url: string
   /** Bundle content hash (cache-busting consistency anchor). */
   rev: string
@@ -37,8 +37,8 @@ interface WebBootEntry {
 ```
 
 ```ts type-equiv
-/** The composed client entry graph the host injects as `window.__DSH_BOOT__`. */
-interface WebBootGraph {
+/** The composed client entry graph a surface adapter publishes to its shell. */
+interface ClientBootGraph {
   /** Consistency anchor over the whole graph (content + bundle hashes). */
   rev: string
   /**
@@ -46,7 +46,17 @@ interface WebBootGraph {
    * rows whose `external` requests that package. Cordis activation order is
    * unrelated and remains owned by fiber service waiting.
    */
-  entries: WebBootEntry[]
+  entries: ClientBootEntry[]
+}
+```
+
+```ts type-equiv
+/** One discovered Client Plugin bundle and its composed graph entry. */
+interface ClientBundleRecord {
+  /** Graph row advertised to the client shell. */
+  readonly entry: ClientBootEntry
+  /** Absolute path of the built client artifact. */
+  readonly clientPath: string
 }
 ```
 
@@ -60,15 +70,15 @@ Scanning is incremental per package; there is no full-rescan code path. Every co
 
 Package metadata — including the negative "not a client package" verdict — is cached per name and never expires: plugin-set changes take effect on restart. A fiber restart reuses its row and rev untouched; bundle content changes reach the graph only through `rebuilt()`.
 
-## The bundle route and index tap
+## The Web adapter
 
-`GET`/`HEAD /plugins/<id>/client.js` serves the registered bundle from disk with `no-cache` (the rev query, not HTTP caching, anchors consistency); other methods are 405. An unknown id — or a registered row whose bundle is unreadable because it has not been built yet — answers a loud 404 rather than letting the carrier's SPA fallback ship HTML as JavaScript. The index tap injects the current graph on every index render, so a reload always boots against the live composition.
+[dsh-host-client-modules-web](../../packages/host/client-modules-web) owns the browser-specific registrations. `GET`/`HEAD /plugins/<id>/client.js` serves the registered bundle from disk with `no-cache` (the rev query, not HTTP caching, anchors consistency); other methods are 405. An unknown id — or a registered row whose bundle is unreadable because it has not been built yet — answers a loud 404 rather than letting the carrier's SPA fallback ship HTML as JavaScript. The index tap injects the current graph on every index render, so a reload always boots against the live composition. Disposing the adapter removes both registrations without stopping discovery.
 
 ## The service
 
-`ClientModuleRegistry` (`ctx.clientModules`, defined in [`packages/client/modules/src/index.ts`](../../packages/client/modules/src/index.ts)) exposes reads and the rebuild face; signatures are in the generated [service catalog](#ctxclientmodules--clientmoduleregistry). `graph()` returns the current composed graph (a stable object between changes) and `clientPath(id)` the bundle's absolute path. `rebuilt(id)` is the only entry point through which bundle content reaches the graph: it re-hashes the file, and only a real rev change recomposes the graph and notifies. `onRebuilt` fires per changed bundle with the new rev; `onGraphChanged` fires after any flush that recomposed the graph (row added or removed, or a rebuilt rev change) and is pull-model — listeners re-read `graph()`. Both notification paths contain listener exceptions so one throwing subscriber cannot skip later subscribers or kill whatever triggered the flush.
+`ClientModuleRegistry` (`ctx.clientModules`, defined in [`packages/client/modules/src/index.ts`](../../packages/client/modules/src/index.ts)) exposes reads and the rebuild face; signatures are in the generated [service catalog](#ctxclientmodules--clientmoduleregistry). `graph()` returns the current composed graph (a stable object between changes), while `bundleRecords()` returns a read-only array pairing each entry with its absolute artifact path. `rebuilt(id)` is the only entry point through which bundle content reaches the graph: it re-hashes the file, and only a real rev change recomposes the graph and notifies. `onRebuilt` fires per changed bundle with the new rev; `onGraphChanged` fires after any flush that recomposed the graph (row added or removed, or a rebuilt rev change) and is pull-model — listeners re-read `graph()`. Both notification paths contain listener exceptions so one throwing subscriber cannot skip later subscribers or kill whatever triggered the flush.
 
-In development, [dsh-client-hmr](../../packages/client/hmr/README.md) is the registry's watch driver: its node half stat-polls every graph row's bundle from a synchronously captured baseline, calls `rebuilt(id)` on change, resyncs its watch set through `onGraphChanged`, and broadcasts rev changes to the browser half over SSE. Production graphs omit the HMR row entirely; the module host itself never watches files.
+In development, [dsh-client-hmr](../../packages/client/hmr/README.md) is the registry's watch driver: its Node half stat-polls every bundle record from a synchronously captured baseline, calls `rebuilt(id)` on change, resyncs its watch set through `onGraphChanged`, and broadcasts rev changes to the browser half over SSE. Production graphs omit the HMR row entirely; the module host itself never watches files.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -82,21 +92,20 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.clientModules` — `ClientModuleRegistry`
 
-The web plugin table service: incremental `dsh.client` scan + wire composition + bundle route + index tap. Construction runs the activation scan synchronously — a malformed declaration or missing bundle among the already-loaded entries aggregates into one loud throw (FAILED fiber; the boot activation audit reports it).
+The Client Plugin table service: incremental `dsh.client` scan, wire composition, and bundle-path resolution. Construction runs the activation scan synchronously — a malformed declaration or missing bundle among the already-loaded entries aggregates into one loud throw (FAILED fiber; the boot activation audit reports it).
 
 ```ts cordis-catalog
 /**
  * Current composed entry graph (stable object between changes).
- * @returns the graph served as `window.__DSH_BOOT__`.
+ * @returns the graph published to a client shell by its surface adapter.
  */
-graph(): WebBootGraph
+graph(): ClientBootGraph
 
 /**
- * Absolute path of an entry's client bundle.
- * @param id - entry id (package name).
- * @returns the path, or undefined for an unknown id.
+ * Snapshot of the discovered bundle records in graph order.
+ * @returns a read-only array whose records cannot mutate registry ownership.
  */
-clientPath(id: string): string | undefined
+bundleRecords(): readonly ClientBundleRecord[]
 
 /**
  * Re-hash one bundle (the HMR watch's registration hook — the only entry
@@ -122,5 +131,5 @@ onRebuilt(listener: (id: string, rev: string) => void): () => void
 onGraphChanged(listener: () => void): () => void
 ```
 
-Source: [`packages/client/modules/src/index.ts:295`](../../packages/client/modules/src/index.ts)
+Source: [`packages/client/modules/src/index.ts:226`](../../packages/client/modules/src/index.ts)
 <!-- END GENERATED cordis-surface -->

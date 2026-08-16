@@ -13,11 +13,12 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
-import { injectBootManifest, orderByModuleGraph } from '@deepseek-ai/dsh-client-modules'
-import type { ClientModuleLoaderTarget, WebBootEntry } from '@deepseek-ai/dsh-client-modules/client'
+import { orderByModuleGraph } from '@deepseek-ai/dsh-client-modules'
+import type { ClientBootEntry, ClientModuleLoaderTarget } from '@deepseek-ai/dsh-client-modules/client'
 import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
+import { injectBootManifest } from '@deepseek-ai/dsh-host-client-modules-web'
 
-interface AssembledPlugin extends WebBootEntry {
+interface AssembledPlugin extends ClientBootEntry {
   /** Absolute path to the built client artifact declared by this package. */
   bundlePath: string
 }
@@ -52,12 +53,16 @@ const BUNDLE_LAYERS = [
     patch: join(REPO_ROOT, 'packages/bundle/base/cordis.patch.yml'),
   },
   {
+    manifest: join(REPO_ROOT, 'packages/bundle/client-app/package.json'),
+    patch: join(REPO_ROOT, 'packages/bundle/client-app/cordis.patch.yml'),
+  },
+  {
     manifest: join(REPO_ROOT, 'packages/bundle/web-app/package.json'),
     patch: join(REPO_ROOT, 'packages/bundle/web-app/cordis.patch.yml'),
   },
 ] as const
 const bundleResolvers = BUNDLE_LAYERS.map(layer => createRequire(layer.manifest))
-const webBundleResolver = bundleResolvers[1]
+const webBundleResolver = bundleResolvers[2]
 if (webBundleResolver === undefined) throw new Error('assembled boot: web bundle resolver missing')
 const appBoot = await import(pathToFileURL(webBundleResolver.resolve('@deepseek-ai/dsh-app-boot')).href) as unknown as BootComposition
 
@@ -122,7 +127,7 @@ const bundles = new Map(PLUGINS.map(plugin => [
 ]))
 
 interface FixtureWindow extends Window {
-  __DSH_BOOT__?: { rev: string; entries: WebBootEntry[] }
+  __DSH_BOOT__?: { rev: string; entries: ClientBootEntry[] }
   __ModuleLoader__?: ClientModuleLoaderTarget
 }
 

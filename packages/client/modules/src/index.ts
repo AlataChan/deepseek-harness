@@ -1,12 +1,10 @@
 /**
  * Node half of the client module system (`dsh.client` dual-face package): scans
  * the host Loader's entries for packages declaring `dsh.client`, composes the
- * `window.__DSH_BOOT__` entry graph (wire single source: {@link WebBootEntry}
- * in `./client/manifest.ts`) in module-graph order, serves
- * `/plugins/<id>/client.js` and its source map, taps the index render to
- * inject the boot manifest plus the parser-blocking bootstrap preloads, and
- * provides the `clientModuleHost` service (the HMR node half's
- * registration/notification face).
+ * client entry graph (wire single source: {@link ClientBootEntry} in
+ * `./client/manifest.ts`) in module-graph order, resolves the built bundle
+ * behind each entry, and
+ * provides the `clientModules` service used by surface adapters and HMR.
  *
  * Scanning is incremental per package — there is no full-rescan code path.
  * Every cordis `internal/plugin` emission (fiber construction/disposal) marks
@@ -23,25 +21,22 @@
 
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
-import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
-import type {} from '@deepseek-ai/dsh-host-webserver'
 import { optionalStringArray, stripClientSuffix } from './client/manifest.ts'
-import type { WebBootEntry, WebBootGraph } from './client/manifest.ts'
+import type { ClientBootEntry, ClientBootGraph } from './client/manifest.ts'
 
 export { stripClientSuffix } from './client/manifest.ts'
 export type {
-  BootManifest, BootModuleRow, BootPluginRow, WebBootEntry, WebBootGraph,
+  BootManifest, BootModuleRow, BootPluginRow, ClientBootEntry, ClientBootGraph,
 } from './client/manifest.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    /** The web plugin table (provided by the client-modules node half). */
+    /** The discovered Client Plugin table. */
     clientModules: ClientModuleRegistry
   }
 }
@@ -63,7 +58,7 @@ interface DshClientDeclaration {
 }
 
 /** The declared fields a graph row carries, normalized (absent array declarations become empty). */
-interface WebBootRowFields {
+interface ClientBootRowFields {
   inject?: string[]
   /** Module specifiers the package requests from the module table. */
   external: string[]
@@ -71,7 +66,7 @@ interface WebBootRowFields {
 }
 
 /** Resolved package metadata for one `dsh.client` package (cached per name, never expires). */
-interface PkgMeta extends WebBootRowFields {
+interface PkgMeta extends ClientBootRowFields {
   clientPath: string
 }
 
@@ -116,10 +111,12 @@ class ClientPackageCompositionError extends AggregateError {
   }
 }
 
-/** One composed table row: the wire entry plus the resolved package metadata behind it. */
-interface WebPluginRecord {
-  entry: WebBootEntry
-  meta: PkgMeta
+/** One discovered Client Plugin bundle and its composed graph entry. */
+export interface ClientBundleRecord {
+  /** Graph row advertised to the client shell. */
+  readonly entry: ClientBootEntry
+  /** Absolute path of the built client artifact. */
+  readonly clientPath: string
 }
 
 /** Narrow an unknown parsed JSON value to the `dsh.client` declaration, throwing on malformed fields. */
@@ -164,7 +161,7 @@ function shortHash(input: string | Buffer): string {
 }
 
 /** Graph row for one bundle rev (url carries the rev as its cache-busting query). */
-function graphRow(id: string, rev: string, fields: WebBootRowFields): WebBootEntry {
+function graphRow(id: string, rev: string, fields: ClientBootRowFields): ClientBootEntry {
   return {
     id,
     url: `/plugins/${id}/client.js?rev=${rev}`,
@@ -185,13 +182,13 @@ function graphRow(id: string, rev: string, fields: WebBootRowFields): WebBootEnt
  * @throws {Error} when a row requests itself or when the module graph has a
  * cycle; the message lists the packages on it.
  */
-export function orderByModuleGraph(entries: readonly WebBootEntry[]): WebBootEntry[] {
-  const rowsById = new Map<string, WebBootEntry>()
+export function orderByModuleGraph(entries: readonly ClientBootEntry[]): ClientBootEntry[] {
+  const rowsById = new Map<string, ClientBootEntry>()
   for (const entry of entries) rowsById.set(entry.id, entry)
-  const ordered: WebBootEntry[] = []
+  const ordered: ClientBootEntry[] = []
   const placed = new Set<string>()
   const open: string[] = []
-  const visit = (entry: WebBootEntry): void => {
+  const visit = (entry: ClientBootEntry): void => {
     if (placed.has(entry.id)) return
     const cycleStart = open.indexOf(entry.id)
     if (cycleStart !== -1) {
@@ -219,83 +216,17 @@ export function orderByModuleGraph(entries: readonly WebBootEntry[]): WebBootEnt
   return ordered
 }
 
-/** Bootstrap package whose ordinary client bundle supplies the module-system implementation. */
-const CLIENT_MODULES_ID = '@deepseek-ai/dsh-client-modules'
-
-/** Dynamic package whose ordinary client bundle must be registered before plugin boot starts. */
-const CLIENT_RUNTIME_ID = '@deepseek-ai/dsh-client-runtime'
-
-/** Ordinary dynamic bundles the HTML parser executes before the Vite shell. */
-const PARSER_PRELOAD_IDS = [CLIENT_MODULES_ID, CLIENT_RUNTIME_ID] as const
-
-/** Escape a graph URL before placing it in a quoted HTML attribute. */
-function escapeHtmlAttribute(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-}
-
 /**
- * Inject the boot protocol into index.html. The inline registration queue precedes
- * blocking classic scripts for modules' and runtime's ordinary
- * `lib/client.js` artifacts. Its `create()` method materializes the modules
- * bundle, delegates construction to that bundle, and leaves the same facade
- * in live-registration mode. The graph script follows before the shell reads
- * it. `<` is escaped in JSON so a plugin-controlled string cannot break out
- * of the script element.
- * @param html - the index.html source.
- * @param graph - the composed entry graph.
- * @returns the html with the graph script injected.
- */
-export function injectBootManifest(html: string, graph: WebBootGraph): string {
-  const json = JSON.stringify(graph).replaceAll('<', '\\u003c')
-  const bootstrapId = JSON.stringify(CLIENT_MODULES_ID)
-  const queue = `<script>(()=>{
-const pendingQueue=[]
-window.__ModuleLoader__={
-  mode:"queue",
-  pendingQueue,
-  load(registration){pendingQueue.push(registration)},
-  create(options){
-    if(this.mode!=="queue")throw new Error("client-modules: window.__ModuleLoader__.create called after module-system boot")
-    const index=pendingQueue.findIndex(registration=>registration.id===${bootstrapId})
-    const registration=pendingQueue[index]
-    if(registration===undefined)throw new Error("client-modules: HTML did not preload ${CLIENT_MODULES_ID}/client.js")
-    pendingQueue.splice(index,1)
-    const exports=registration.factory(specifier=>{
-      throw new Error('client-modules: ${CLIENT_MODULES_ID}/client.js requested external "'+specifier+'" before the module system existed')
-    })
-    if(typeof exports!=="object"||exports===null||typeof exports.createClientModuleSystem!=="function"||typeof exports.apply!=="function"){
-      throw new Error("client-modules: ${CLIENT_MODULES_ID}/client.js did not export the bootstrap module face")
-    }
-    return exports.createClientModuleSystem(this,{id:registration.id,exports},options)
-  }
-}
-})()</script>`
-  const preload = PARSER_PRELOAD_IDS.map(id => graph.entries.find(entry => entry.id === id))
-    .filter((entry): entry is WebBootEntry => entry !== undefined)
-    .map(entry => `<script src="${escapeHtmlAttribute(entry.url)}"></script>`)
-    .join('')
-  const script = `${queue}${preload}<script>window.__DSH_BOOT__ = ${json}</script>`
-  const head = html.indexOf('<head>')
-  if (head !== -1) return `${html.slice(0, head + 6)}${script}${html.slice(head + 6)}`
-  // Headless fixture pages may lack <head>; prepending keeps the read-before-shell ordering.
-  return `${script}${html}`
-}
-
-/**
- * The web plugin table service: incremental `dsh.client` scan + wire composition
- * + bundle route + index tap. Construction runs the activation scan
- * synchronously — a malformed declaration or missing bundle among the
+ * The Client Plugin table service: incremental `dsh.client` scan, wire
+ * composition, and bundle-path resolution. Construction runs the activation
+ * scan synchronously — a malformed declaration or missing bundle among the
  * already-loaded entries aggregates into one loud throw (FAILED fiber; the
  * boot activation audit reports it).
  */
 export class ClientModuleRegistry extends Service {
-  static inject = ['webServer', 'loader']
+  static inject = ['loader']
 
-  private readonly table = new Map<string, WebPluginRecord>()
+  private readonly table = new Map<string, ClientBundleRecord>()
   // Negative verdicts (unresolvable specifier — builtins like cordis:include,
   // subpath rows — or a package without a web `dsh.client` declaration) are
   // cached as null and never expire: plugin-set changes take effect on restart.
@@ -305,11 +236,11 @@ export class ClientModuleRegistry extends Service {
   private readonly dirty = new Set<string>()
   private readonly resolvePkgJson: (spec: string) => string
   private flushQueued = false
-  private composed: WebBootGraph
+  private composed: ClientBootGraph
 
   /**
    * Build the service: subscribe, seed, and run the activation flush.
-   * @param ctx - plugin context carrying webServer and loader.
+   * @param ctx - plugin context carrying Loader.
    */
   constructor(ctx: Context) {
     super(ctx, 'clientModules')
@@ -348,32 +279,22 @@ export class ClientModuleRegistry extends Service {
     if (failures.length > 0) {
       throw new ClientPackageCompositionError(failures)
     }
-
-    ctx.effect(
-      () => ctx.webServer.register({ kind: 'prefix', path: '/plugins', handler: this.serveBundle }),
-      'client-modules: bundle route',
-    )
-    ctx.effect(
-      () => ctx.webServer.tapIndex(html => injectBootManifest(html, this.composed)),
-      'client-modules: boot manifest injection',
-    )
   }
 
   /**
    * Current composed entry graph (stable object between changes).
-   * @returns the graph served as `window.__DSH_BOOT__`.
+   * @returns the graph published to a client shell by its surface adapter.
    */
-  graph(): WebBootGraph {
+  graph(): ClientBootGraph {
     return this.composed
   }
 
   /**
-   * Absolute path of an entry's client bundle.
-   * @param id - entry id (package name).
-   * @returns the path, or undefined for an unknown id.
+   * Snapshot of the discovered bundle records in graph order.
+   * @returns a read-only array whose records cannot mutate registry ownership.
    */
-  clientPath(id: string): string | undefined {
-    return this.table.get(id)?.meta.clientPath
+  bundleRecords(): readonly ClientBundleRecord[] {
+    return [...this.table.values()]
   }
 
   /**
@@ -385,9 +306,16 @@ export class ClientModuleRegistry extends Service {
   rebuilt(id: string): string | undefined {
     const record = this.table.get(id)
     if (record === undefined) return undefined
-    const rev = shortHash(readFileSync(record.meta.clientPath))
+    const rev = shortHash(readFileSync(record.clientPath))
     if (rev === record.entry.rev) return rev
-    record.entry = graphRow(id, rev, record.meta)
+    this.table.set(id, {
+      entry: graphRow(id, rev, {
+        ...(record.entry.inject === undefined ? {} : { inject: record.entry.inject }),
+        external: record.entry.external ?? [],
+        immediately: record.entry.immediately === true,
+      }),
+      clientPath: record.clientPath,
+    })
     this.composed = this.compose()
     for (const notify of this.rebuildListeners) {
       // Containment: rebuilt() runs inside the HMR watch callback — a
@@ -423,7 +351,7 @@ export class ClientModuleRegistry extends Service {
     return () => { this.graphListeners.delete(listener) }
   }
 
-  private compose(): WebBootGraph {
+  private compose(): ClientBootGraph {
     const entries = orderByModuleGraph([...this.table.values()].map(record => record.entry))
     return { rev: shortHash(JSON.stringify(entries)), entries }
   }
@@ -508,7 +436,7 @@ export class ClientModuleRegistry extends Service {
     // The rev rides the row from here on: a fiber restart reuses the row (and
     // its rev) untouched; only rebuilt() re-reads the bundle.
     const rev = this.initialBundleRevision(entryName, meta.clientPath)
-    this.table.set(entryName, { entry: graphRow(entryName, rev, meta), meta })
+    this.table.set(entryName, { entry: graphRow(entryName, rev, meta), clientPath: meta.clientPath })
     return true
   }
 
@@ -525,7 +453,7 @@ export class ClientModuleRegistry extends Service {
       }
     }
     if (!changed) return
-    let composed: WebBootGraph
+    let composed: ClientBootGraph
     try {
       composed = this.compose()
     } catch (error) {
@@ -538,44 +466,6 @@ export class ClientModuleRegistry extends Service {
     }
     this.composed = composed
     this.notifyGraphChanged()
-  }
-
-  private readonly serveBundle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      res.writeHead(405)
-      res.end()
-      return
-    }
-    /* v8 ignore next -- `?? '/'` arm: node:http always sets url on server requests. */
-    const pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname)
-    // The id may contain a scope slash. Anything else under /plugins (including
-    // /plugins/events when the HMR row is absent) is an unknown resource.
-    const prefix = '/plugins/'
-    const mapSuffix = '/client.js.map'
-    const bundleSuffix = '/client.js'
-    const isSourceMap = pathname.startsWith(prefix) && pathname.endsWith(mapSuffix)
-    const suffix = isSourceMap ? mapSuffix : bundleSuffix
-    const clientPath = pathname.startsWith(prefix) && pathname.endsWith(suffix)
-      ? this.clientPath(pathname.slice(prefix.length, -suffix.length))
-      : undefined
-    const path = clientPath === undefined ? undefined : `${clientPath}${isSourceMap ? '.map' : ''}`
-    if (path === undefined) {
-      res.writeHead(404)
-      res.end()
-      return
-    }
-    try {
-      const body = await readFile(path)
-      res.writeHead(200, {
-        'content-type': isSourceMap ? 'application/json; charset=utf-8' : 'text/javascript; charset=utf-8',
-        'cache-control': 'no-cache',
-      })
-      res.end(body)
-    } catch {
-      // Registered but unreadable (bundle not built yet): loud 404 beats a silent SPA-fallback HTML page.
-      res.writeHead(404)
-      res.end()
-    }
   }
 }
 
