@@ -1,8 +1,8 @@
-# host/ — web-GUI host half
+# host/ — interactive-client host half
 
 English | [中文](README.zh.md)
 
-The host side of the dsh web GUI: the API gateway every client shape shares, and the plain HTTP server it rides on. The browser side lives in [`client/`](../client/README.md); the composed application is [`apps/cli`](../../apps/cli/README.md) booting the [`dsh-base` bundle](../bundle/base/cordis.patch.yml) serving [`apps/web`](../../apps/web/). All **product** packages.
+The host side of interactive dsh clients: the transport-neutral API gateway plus surface adapters such as the plain HTTP server. The Client Plugin side lives in [`client/`](../client/README.md); the Web application is [`apps/cli`](../../apps/cli/README.md) booting [`dsh-base`](../bundle/base/README.md), [`dsh-client-app`](../bundle/client-app/README.md), and [`dsh-web-app`](../bundle/web-app/README.md) to serve [`apps/web`](../../apps/web/). All **product** packages.
 
 | Package | Role | ctx key |
 |---|---|---|

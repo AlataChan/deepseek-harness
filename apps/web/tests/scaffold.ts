@@ -1,6 +1,6 @@
 // Shared scaffold for the keyless browser e2e lane (Agent Note:
 // .agents/notes/implemented/testing/2026-07-24-web-gui-browser-e2e-lane.md).
-// Boots the REAL web composition — the dsh-base and dsh-web-app bundle
+// Boots the REAL Web composition — the base, shared client, and browser bundle
 // patches over the empty profile root through the vendored Loader (the same
 // layer stack the profile boot composes), patched the
 // snapshot way — so a real chromium exercises the real HTTP uplink/WebSocket
@@ -96,8 +96,9 @@ export function webSnapshotMode(): WebSnapshotMode {
   throw new Error(`DSH_SNAPSHOT must be replay, record, or refresh; got ${JSON.stringify(value)}`)
 }
 
-/** The shipped composition under test: the dsh-base and dsh-web-app bundle patches over the empty profile root. */
+/** The shipped composition under test: base, shared client, and browser bundles over the empty profile root. */
 const BASE_PATCH_PATH = join(REPO_ROOT, 'packages/bundle/base/cordis.patch.yml')
+const CLIENT_PATCH_PATH = join(REPO_ROOT, 'packages/bundle/client-app/cordis.patch.yml')
 const WEB_PATCH_PATH = join(REPO_ROOT, 'packages/bundle/web-app/cordis.patch.yml')
 /** The installation anchor whose dependency surface the profile module fallback mirrors. */
 const INSTALL_ANCHOR = join(REPO_ROOT, 'apps/cli/package.json')
@@ -382,17 +383,19 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
   // patch id that stops matching a row fails the boot sweep loudly instead of
   // drifting).
   const basePatches = loadOverlayPatches('web e2e scaffold', BASE_PATCH_PATH)
+  const clientPatches = loadOverlayPatches('web e2e scaffold', CLIENT_PATCH_PATH)
   const surfacePatches = loadOverlayPatches('web e2e scaffold', WEB_PATCH_PATH)
   const extraOverlayPatches = options.extraOverlayPath === undefined
     ? []
     : loadOverlayPatches('web e2e scaffold', options.extraOverlayPath)
-  const composedRows = composeEntries([basePatches, surfacePatches, extraOverlayPatches])
+  const composedRows = composeEntries([basePatches, clientPatches, surfacePatches, extraOverlayPatches])
   const webRuntimeConfig = composedRows.find(row => row.id === 'web-runtime')?.config as {
     surfaceContext?: boolean
   } | undefined
   const surfaceContext = webRuntimeConfig?.surfaceContext !== false
   const patches: PatchOptions[] = [
     ...basePatches,
+    ...clientPatches,
     ...surfacePatches,
     ...extraOverlayPatches,
     // The roster's `roots` is an assembly fact AppCLIEntry resolves and patches

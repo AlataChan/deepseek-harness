@@ -135,18 +135,20 @@ function validateClientHalvesDeclared(): string[] {
  */
 function validatePresetPlaneSeparation(): string[] {
   const problems: string[] = []
-  // The shipped Web surface is two bundle patch layers over an empty root.
-  const hostFile = 'packages/bundle/base/cordis.patch.yml'
-  const overlayFile = 'packages/bundle/web-app/cordis.patch.yml'
-  const hostRows = rowIds(hostFile)
-  const overlay = loadEntries(overlayFile)
+  // The shipped Web surface is three bundle patch layers over an empty root.
+  const layerFiles = [
+    'packages/bundle/base/cordis.patch.yml',
+    'packages/bundle/client-app/cordis.patch.yml',
+    'packages/bundle/web-app/cordis.patch.yml',
+  ]
   const disabled = new Set<string>()
-  for (const entry of overlay) {
-    if (!isRecord(entry)) continue
-    if (entry.disabled === true && typeof entry.id === 'string') disabled.add(entry.id)
+  for (const file of layerFiles) {
+    for (const entry of loadEntries(file)) {
+      if (!isRecord(entry)) continue
+      if (entry.disabled === true && typeof entry.id === 'string') disabled.add(entry.id)
+    }
   }
-  // The overlay's own inserts are host-plane too; its disables take them back out.
-  const active = new Set([...hostRows, ...rowIds(overlayFile)].filter(id => !disabled.has(id)))
+  const active = new Set(layerFiles.flatMap(file => [...rowIds(file)]).filter(id => !disabled.has(id)))
   for (const file of globSync('apps/cli/config/agent-presets/*/agent.cordis.yml', { cwd: root })) {
     for (const id of rowIds(file)) {
       if (!active.has(id)) continue
