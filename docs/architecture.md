@@ -95,6 +95,8 @@ The session log is the source of the context the model sees. `deriveMessages()` 
 
 **Model-visible means logged.** Anything that reaches a model request must be reconstructable from the log, and a runtime invariant asserts it. This is why a new model-visible input requires a new session event: extend `SessionEventMap` and render from the log.
 
+Interactive clients consume ApiProxy for operations and render durable state from `session/event`. Browser and editor surfaces add only their physical carrier and host-owned integrations; they do not reimplement session or agent behavior.
+
 ## Capability seams
 
 A **seam** is a swappable capability with three roles: a **Service Definition** declaring the interface, a **Service Provider** implementing it, and a **Consumer** using it, commonly a model-facing tool. A package may combine roles, but one role alone is not a seam; adding a capability means designing all three ([capability graph](capability-seams.md)).
@@ -120,7 +122,7 @@ New behavior attaches to a documented extension point. Changing the loop itself 
 | Confine spawned processes | use a `ctx.sandbox` backend; consumers wrap argv before spawning |
 | Intercept a request, tool, or turn | use its `agent/*` or `tools/*` event; `agent/turn-stopping` stops a turn |
 | Add model-facing context | call `agent.inject()`; it lands in the next admitted request |
-| Add UI or editor integration | drive `ctx.agents` and render from `session/event` |
+| Add UI or editor integration | consume ApiProxy, render from `session/event`, and keep host-specific operations in a surface adapter |
 | Add a Web Client Chat node | register a `ConversationNodeDefinition` + keyed renderer |
 | Add durable session state | extend `SessionEventMap`; render and replay from the log |
 | Generate session titles | register the sole `ctx.sessionTitle` provider |
