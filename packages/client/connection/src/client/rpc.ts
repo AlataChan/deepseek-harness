@@ -19,7 +19,7 @@ const ENDPOINT_SEGMENT_PATTERN = /^[A-Za-z0-9_$.-]+$/
 export function createWebConnectionRpc(): ClientConnectionRpc {
   return {
     async call(channel, endpoint, payload, signal) {
-      assertTarget(channel, endpoint)
+      assertConnectionRpcTarget(channel, endpoint)
       const rpcId = RpcId(randomUuid())
       const message: ClientRequest = {
         type: 'client-request',
@@ -53,7 +53,12 @@ function resolveBase(): string {
   return location?.origin !== undefined && location.origin !== 'null' ? location.origin : INTERNAL_BASE
 }
 
-function assertTarget(channel: string, endpoint: string): void {
+/**
+ * Reject malformed logical channel targets before any transport sees them.
+ * @param channel - absolute logical channel.
+ * @param endpoint - channel-relative endpoint.
+ */
+export function assertConnectionRpcTarget(channel: string, endpoint: string): void {
   const segments = endpoint.split('/')
   if (!CHANNEL_PATTERN.test(channel)
     || segments.some(segment =>

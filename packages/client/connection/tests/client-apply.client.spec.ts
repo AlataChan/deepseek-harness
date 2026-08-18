@@ -9,6 +9,7 @@ import type { RpcMessage } from '../src/client/api.ts'
 import { RpcId } from '../src/client/api.ts'
 import { FixtureApiClient } from '../src/client/fixture.ts'
 import { WebApiClient } from '../src/client/web-api-client.ts'
+import { connectionHandleBehavior } from './connection-handle.behavior.client.ts'
 
 type Win = { location?: { hostname: string; search: string; origin?: string } }
 type WebSocketGlobal = { WebSocket?: typeof WebSocket }
@@ -61,6 +62,11 @@ async function mount(): Promise<ConnectionHandle> {
   if (handle === undefined) throw new Error('ctx.connection not provided')
   return handle
 }
+
+connectionHandleBehavior('Web', async () => {
+  ;(globalThis as Win).location = { hostname: 'localhost', search: '?fixture' }
+  return mount()
+})
 
 describe('connection client apply', () => {
   it('mounts ctx.connection with the real client when no ?fixture switch is present', async () => {

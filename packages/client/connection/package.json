@@ -26,6 +26,10 @@
       "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"
     },
+    "./client-shared": {
+      "types": "./lib/types/client/shared.d.ts",
+      "default": "./lib/types/client/shared.js"
+    },
     "./body-capacity": {
       "types": "./lib/types/body-capacity.d.ts",
       "default": "./lib/types/body-capacity.js"

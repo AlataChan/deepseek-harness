@@ -1,6 +1,6 @@
-import { clientLibrary } from '../tsdown.client.ts'
+import { clientBundle } from '../tsdown.client.ts'
 
-export default clientLibrary('@deepseek-ai/dsh-client-connection-vscode', [
+export default clientBundle('@deepseek-ai/dsh-client-connection-vscode', [
   'lib/types/index.js',
   'lib/types/invariant.js',
 ])

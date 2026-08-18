@@ -6,6 +6,9 @@
     "tsBuildInfoFile": "lib/tsconfig.client.tsbuildinfo"
   },
   "files": [
+    "src/client/api-client.ts",
+    "src/client/bridge-port.ts",
+    "src/client/index.ts",
     "src/codec.ts",
     "src/protocol.ts"
   ],

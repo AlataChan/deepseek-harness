@@ -60,6 +60,12 @@ function styleInjectionModule(
  */
 export const INLINE_SAFE = /^@deepseek-ai\/dsh-(host-apiproxy|file-reference|session|llm|tools|brand)(\/|$)/
 
+/** Browser-safe Connection helpers intentionally inlined by alternate carrier plugins. */
+const INLINE_CONNECTION_IMPORTS = new Set([
+  '@deepseek-ai/dsh-client-connection/body-capacity',
+  '@deepseek-ai/dsh-client-connection/client-shared',
+])
+
 /**
  * Vendored framework libraries: rescoped into @deepseek-ai, so the gate below
  * would read them as plugin packages. They carry no cross-plugin runtime
@@ -488,7 +494,7 @@ function clientConfig(id: string, entry: string): UserConfig {
         if (!source.startsWith('@deepseek-ai/')) return null
         if (isRequested(source)) return null // requested module-table row: external wins
         if (VENDORED_LIBRARY.test(source)) return null // vendored library: inline, no shared identity
-        if (INLINE_SAFE.test(source) || GENERATED_REMOTE.test(source)) return null // wire contribution: inline is the point
+        if (INLINE_SAFE.test(source) || INLINE_CONNECTION_IMPORTS.has(source) || GENERATED_REMOTE.test(source)) return null // browser-safe shared implementation: inline is the point
         throw new Error(
           `client bundle purity: "${source}" is not in the default client externals or ${id}'s dsh.client.external, an inline-safe wire layer, or a generated /remote contribution — `
           + 'cross-plugin value imports are forbidden; declare a non-default module request or collaborate through cordis services '

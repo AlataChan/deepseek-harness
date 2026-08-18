@@ -95,6 +95,8 @@ describe('client bundle purity gate', () => {
 
   it('throws on cross-plugin value imports — bare plugin names and /client subpaths alike', () => {
     expect(() => resolveId('@deepseek-ai/dsh-client-connection')).toThrow(/purity/)
+    expect(resolveId('@deepseek-ai/dsh-client-connection/body-capacity')).toBeNull()
+    expect(resolveId('@deepseek-ai/dsh-client-connection/client-shared')).toBeNull()
     expect(() => resolveId('@deepseek-ai/dsh-client-runtime')).toThrow(/purity/)
     expect(() => resolveId('@deepseek-ai/dsh-client-ui-layout/client')).toThrow(/purity/)
   })
