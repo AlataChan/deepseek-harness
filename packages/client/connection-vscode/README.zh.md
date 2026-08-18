@@ -1,0 +1,20 @@
+# @deepseek-ai/dsh-client-connection-vscode
+
+[English](README.md) | 中文
+
+由 dsh companion 进程、VS Code extension host 与嵌入式 Webview 共用的有界载体。该协议让 API Proxy RPC 校验保持权威，保留既有 `events.mux` 恢复 payload，并将 host stream 限制为无字段的打开 payload。其 wire codec 只序列化每个逻辑 frame 一次，通过顺序发送物理记录提供背压，每个方向只接纳一条分块消息，在解析前核对声明长度与 SHA-256，并在任何违规后关闭 decoder。物理记录默认上限为 256 KiB；控制消息默认上限为 1 MiB；RPC 与 stream 数据 frame 复用浏览器 connection 包的 160 MiB 请求容量，使默认 100 MiB 图片总量限额仍然可用。
+
+该包暴露与浏览器兼容的 `protocol` 和 `codec` 入口。根插件、Node IPC adapter、Webview port 与客户端 controller 由后续 VS Code 运行时任务添加；codec 本身不持有进程或 Webview 生命周期。
+
+## 模型体验
+
+无。VS Code 载体只运输既有消息，不贡献任何模型上下文。
+
+#### KV Cache 影响
+
+无；该包既不组装也不发送提供方请求。
+
+## 已知限制与暂缓事项
+
+- **每个方向只允许一条分块消息**：第二个 start 或 inline frame 会关闭该 decoder，而不会排队积累无界工作。
+- **完整 frame 的内存有界但仍非流式**：分块消息会在接收 chunk 前按声明字节数预留空间；附件与其他 RPC 共用逻辑上限，没有单独的流式路由。

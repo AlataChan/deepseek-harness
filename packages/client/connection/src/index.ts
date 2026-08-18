@@ -6,7 +6,8 @@ import type {} from '@deepseek-ai/dsh-attachment'
 import type { WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
 import { toFetchHandler } from '@deepseek-ai/dsh-host-apiproxy'
 import { API_PATH, HOST_EVENTS_PATH, MUX_EVENTS_PATH } from './api-path.ts'
-import { bridge, DEFAULT_MAX_REQUEST_BODY_BYTES } from './http-bridge.ts'
+import { assertImageBodyCapacity, DEFAULT_MAX_REQUEST_BODY_BYTES } from './body-capacity.ts'
+import { bridge } from './http-bridge.ts'
 import { assertTrustedAuthority, isTrustedApiRequest } from './api-request-trust.ts'
 import { HostConnectionService } from './rpc-host.ts'
 import { rejectWebSocketUpgrade, WebSocketDownlinks } from './websocket-downlink.ts'
@@ -22,26 +23,10 @@ export type {
 export { HostConnectionService } from './rpc-host.ts'
 
 export { API_PATH, HOST_EVENTS_PATH, MUX_EVENTS_PATH } from './api-path.ts'
+export { assertImageBodyCapacity, DEFAULT_MAX_REQUEST_BODY_BYTES } from './body-capacity.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'client-connection'
-
-/** Headroom for RPC JSON fields around aggregate base64 image payloads. */
-const REQUEST_ENVELOPE_HEADROOM_BYTES = 1024 * 1024
-
-function assertImageBodyCapacity(ctx: Context, maxRequestBodyBytes: number): void {
-  const attachments = ctx.get('attachments')
-  if (attachments === undefined) return
-  const requiredImageBodyBytes = Math.ceil(
-    attachments.imageLimits.maxMessageImageBytes * 4 / 3,
-  ) + REQUEST_ENVELOPE_HEADROOM_BYTES
-  if (maxRequestBodyBytes < requiredImageBodyBytes) {
-    throw new Error(
-      `client-connection maxRequestBodyBytes (${String(maxRequestBodyBytes)}) must be at least `
-      + `${String(requiredImageBodyBytes)} for the configured aggregate image limit`,
-    )
-  }
-}
 
 /** Services required before providing Connection; API Proxy is an optional `/api` fallback. */
 export const inject = ['webServer']

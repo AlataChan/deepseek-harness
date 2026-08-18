@@ -1,0 +1,25 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "files": [
+    "src/codec.ts",
+    "src/index.ts",
+    "src/invariant.ts",
+    "src/protocol.ts"
+  ],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../connection/tsconfig.host.json" },
+    { "path": "../modules" },
+    { "path": "../../host/apiproxy" },
+    { "path": "../../runtime-diagnostics/invariants" },
+    { "path": "../../util/brand" }
+  ]
+}

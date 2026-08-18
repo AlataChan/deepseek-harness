@@ -43,6 +43,15 @@ export interface QueuedInboxItem {
   message: Message
 }
 
+/** Validated payload for opening the all-session event stream. */
+export interface MuxOpenPayload {
+  /** Optional per-session resume positions; accepted for forward-compatible reconnects. */
+  since?: Record<SessionId, number>
+}
+
+/** Validated payload for opening the Host event stream. */
+export type HostOpenPayload = Record<string, never>
+
 /** Streaming face of the contract: the two logical stream openers (mux + host). */
 export interface EventsApi {
   /**
@@ -53,13 +62,13 @@ export interface EventsApi {
    * since: resume hook, unimplemented in v1 (ignored if passed); reconnection = reopen the
    * stream + refetch history.
    */
-  mux(request: RpcRequest<{ since?: Record<SessionId, number> }>, signal: AbortSignal): AsyncIterable<RpcRequest<MuxFrame>>
+  mux(request: RpcRequest<MuxOpenPayload>, signal: AbortSignal): AsyncIterable<RpcRequest<MuxFrame>>
 
   /**
    * Host-level info stream: session create/destroy, running-status flips, and
    * agent failures with no turn position. Empty payload uses `{}`.
    */
-  host(request: RpcRequest<{}>, signal: AbortSignal): AsyncIterable<RpcRequest<HostFrame>>
+  host(request: RpcRequest<HostOpenPayload>, signal: AbortSignal): AsyncIterable<RpcRequest<HostFrame>>
 }
 
 /**

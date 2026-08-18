@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ApiProxy, HostFrame, MuxFrame } from '../src/api/index.ts'
 import type { ClientResponse, RpcMessage, RpcReceipt, RpcRequest } from '../src/api/rpc.ts'
 import { RpcId } from '../src/api/rpc.ts'
-import { toFetchHandler } from '../src/fetch/handler.ts'
+import { hostOpenPayloadSchema, muxOpenPayloadSchema } from '../src/api/events.schema.ts'
+import { toFetchHandler, toServerRequest } from '../src/fetch/handler.ts'
 import { AbstractApiClient, InProcessApiClient } from '../src/fetch/client.ts'
 
 /** Minimal in-memory ApiProxy: echoes rpcIds, scripts one frame per stream. */
@@ -306,6 +307,23 @@ async function collect<F>(stream: AsyncIterable<RpcRequest<F>>): Promise<RpcRequ
   for await (const envelope of stream) out.push(envelope)
   return out
 }
+
+describe('transport-neutral stream helpers', () => {
+  it('validates open payloads and completes a narrow frame once for every carrier', () => {
+    expect(muxOpenPayloadSchema.parse({ since: { session: 4 } })).toEqual({ since: { session: 4 } })
+    expect(hostOpenPayloadSchema.parse({})).toEqual({})
+    expect(() => hostOpenPayloadSchema.parse({ extra: true })).toThrow()
+    expect(toServerRequest({
+      rpcId: RpcId('frame-1'),
+      payload: { type: 'host/session-removed', sessionId: 'session-1' as never },
+    })).toEqual({
+      type: 'server-request',
+      rpcId: 'frame-1',
+      method: 'host/session-removed',
+      payload: { type: 'host/session-removed', sessionId: 'session-1' },
+    })
+  })
+})
 
 describe('unary round trip (handler ⇄ client, no network)', () => {
   it('carries a success result and echoes the minted rpcId', async () => {

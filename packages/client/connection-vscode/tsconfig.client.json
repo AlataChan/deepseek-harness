@@ -1,0 +1,19 @@
+{
+  "extends": "../../../tsconfig.base.client.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.client.tsbuildinfo"
+  },
+  "files": [
+    "src/codec.ts",
+    "src/protocol.ts"
+  ],
+  "references": [
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../connection/tsconfig.client.json" },
+    { "path": "../modules" },
+    { "path": "../../host/apiproxy" },
+    { "path": "../../util/brand" }
+  ]
+}

@@ -16,6 +16,14 @@ import {
 import { taskViewSchema } from './jobs.schema.ts'
 import { workspaceIdSchema, workspaceViewSchema } from './workspace.schema.ts'
 
+/** Mux stream-open payload; `since` remains accepted while resume is deferred. */
+export const muxOpenPayloadSchema = z.object({
+  since: z.record(sessionIdSchema, z.number().int()).optional(),
+}).strict()
+
+/** Host stream-open payload; no fields are currently declared. */
+export const hostOpenPayloadSchema = z.object({}).strict()
+
 /** Question fields validated strictly against core dsh-user-questions. */
 export const askUserQuestionItemSchema = z.object({
   id: z.string(),

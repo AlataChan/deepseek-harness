@@ -3,6 +3,26 @@ import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { describe, expect, it } from 'vitest'
 import { bridge } from '../src/http-bridge.ts'
+import {
+  DEFAULT_MAX_REQUEST_BODY_BYTES,
+  assertImageBodyCapacity,
+} from '../src/body-capacity.ts'
+
+describe('request body capacity', () => {
+  it('admits the default 100 MiB aggregate image limit without allocating an image', () => {
+    const source = {
+      get(name: string) {
+        return name === 'attachments'
+          ? { imageLimits: { maxMessageImageBytes: 100 * 1024 * 1024 } }
+          : undefined
+      },
+    }
+
+    expect(() => assertImageBodyCapacity(source, DEFAULT_MAX_REQUEST_BODY_BYTES)).not.toThrow()
+    expect(() => assertImageBodyCapacity(source, 100 * 1024 * 1024)).toThrow(/must be at least/)
+    expect(() => assertImageBodyCapacity({ get: () => undefined }, 1)).not.toThrow()
+  })
+})
 
 describe('HTTP bridge abort', () => {
   it('destroys a declared-oversize request instead of draining it', async () => {

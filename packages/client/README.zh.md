@@ -10,6 +10,7 @@ dsh 交互式客户端中与浏览器兼容的一侧：shell 启动、surface �
 | [`ui-renderer/`](ui-renderer/README.md) | 将 slot 数据绑定到 React，并在客户端启动稳定后挂载组装完成的应用。 |
 | [`modules/`](modules/README.md) | 发现 Client Plugin bundle，并把它们加载到与浏览器兼容的 shell 中。 |
 | [`connection/`](connection/README.md) | 维护浏览器与宿主之间的 RPC 通信和事件传递。 |
+| [`connection-vscode/`](connection-vscode/README.md) | 定义 VS Code 客户端使用的有界 Node IPC 与 Webview 载体。 |
 | [`runtime/`](runtime/README.md) | 为会话、工作区和 UI 组合提供共享客户端服务。 |
 | [`hmr/`](hmr/README.md) | 在开发期间刷新客户端插件。 |
 | [`locale/`](locale/README.md) | 提供本地化偏好与消息词典。 |

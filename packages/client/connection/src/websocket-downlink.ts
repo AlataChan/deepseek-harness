@@ -5,20 +5,12 @@ import type { IncomingMessage } from 'node:http'
 import type { Duplex } from 'node:stream'
 import WebSocket, { WebSocketServer } from 'ws'
 import type {
-  ApiProxy, HostFrame, MuxFrame, RpcRequest, ServerRequest,
+  ApiProxy, HostFrame, MuxFrame, RpcRequest,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
+import { toServerRequest } from '@deepseek-ai/dsh-host-apiproxy'
 
 type Frame = MuxFrame | HostFrame
-
-function serverRequest(frame: RpcRequest<Frame>): ServerRequest {
-  return {
-    type: 'server-request',
-    rpcId: frame.rpcId,
-    method: frame.payload.type,
-    payload: frame.payload,
-  }
-}
 
 function send(socket: WebSocket, frame: RpcRequest<Frame>): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -26,7 +18,7 @@ function send(socket: WebSocket, frame: RpcRequest<Frame>): Promise<void> {
       reject(new Error('websocket downlink closed before frame delivery'))
       return
     }
-    socket.send(JSON.stringify(serverRequest(frame)), (error) => {
+    socket.send(JSON.stringify(toServerRequest(frame)), (error) => {
       if (error) reject(error)
       else resolve()
     })

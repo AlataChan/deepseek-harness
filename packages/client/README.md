@@ -10,6 +10,7 @@ The browser-compatible side of interactive dsh clients: shell boot, surface-to-h
 | [`ui-renderer/`](ui-renderer/README.md) | Binds slot data to React and mounts the assembled application after client boot settles. |
 | [`modules/`](modules/README.md) | Discovers Client Plugin bundles and loads them into a browser-compatible shell. |
 | [`connection/`](connection/README.md) | Maintains browser-host RPC communication and event delivery. |
+| [`connection-vscode/`](connection-vscode/README.md) | Defines the bounded Node IPC and Webview carrier used by the VS Code client. |
 | [`runtime/`](runtime/README.md) | Provides shared client services for sessions, workspaces, and UI composition. |
 | [`hmr/`](hmr/README.md) | Refreshes client plugins during development. |
 | [`locale/`](locale/README.md) | Provides localization preferences and message dictionaries. |

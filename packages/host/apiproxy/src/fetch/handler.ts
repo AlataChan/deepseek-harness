@@ -191,8 +191,12 @@ async function handleUnary<K extends keyof RpcMethodMap>(
   }
 }
 
-/** SSE frame: complete the narrow RpcRequest<frame> into a ServerRequest full form (method = frame type). */
-function fullFrame(narrow: RpcRequest<MuxFrame | HostFrame>): ServerRequest {
+/**
+ * Complete a narrow event-stream frame into its ServerRequest wire form.
+ * @param narrow - ApiProxy stream item whose payload type becomes the method.
+ * @returns the server-initiated full-form message shared by every carrier.
+ */
+export function toServerRequest(narrow: RpcRequest<MuxFrame | HostFrame>): ServerRequest {
   return { type: 'server-request', rpcId: narrow.rpcId, method: narrow.payload.type, payload: narrow.payload }
 }
 
@@ -210,7 +214,7 @@ function sseResponse(frames: AsyncIterable<RpcRequest<MuxFrame | HostFrame>>): R
         // a comment line is not a frame, so client frame parsing skips it naturally).
         controller.enqueue(encoder.encode(': connected\n\n'))
         for await (const narrow of frames) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(fullFrame(narrow))}\n\n`))
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(toServerRequest(narrow))}\n\n`))
         }
       } catch (error: unknown) {
         // Mid-stream impl failure → one stream/error frame, then close: the client must see
@@ -218,7 +222,7 @@ function sseResponse(frames: AsyncIterable<RpcRequest<MuxFrame | HostFrame>>): R
         // rpcId is minted — this is a server-initiated push like any other frame.
         const failure: MuxFrame | HostFrame = { type: 'stream/error', error: { code: 'internal', message: String(error), details: {} } }
         try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(fullFrame({ rpcId: RpcId(randomUUID()), payload: failure }))}\n\n`))
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(toServerRequest({ rpcId: RpcId(randomUUID()), payload: failure }))}\n\n`))
         } catch {
           // Consumer already cancelled the stream: enqueue-after-cancel is the
           // only reachable error, and there is no one left to tell.
