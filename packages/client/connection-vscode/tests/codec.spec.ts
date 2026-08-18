@@ -292,7 +292,7 @@ describe('VS Code wire reassembly failures', () => {
     await decoder.accept(records[0])
     expect(timeout).toBeTypeOf('function')
     timeout?.()
-    expect(violation).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringMatching(/timed out/) }))
+    expect((violation.mock.calls[0]?.[0] as Error).message).toMatch(/timed out/)
     await expect(decoder.accept(records[1])).rejects.toThrow(/decoder is closed/)
 
     const disposable = new VsCodeWireDecoder({

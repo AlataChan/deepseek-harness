@@ -9,6 +9,8 @@
   },
   "files": [
     "src/codec.ts",
+    "src/host-gateway.ts",
+    "src/ipc-channel.ts",
     "src/index.ts",
     "src/invariant.ts",
     "src/protocol.ts"
@@ -19,6 +21,7 @@
     { "path": "../connection/tsconfig.host.json" },
     { "path": "../modules" },
     { "path": "../../host/apiproxy" },
+    { "path": "../../attachment/attachment" },
     { "path": "../../runtime-diagnostics/invariants" },
     { "path": "../../util/brand" }
   ]

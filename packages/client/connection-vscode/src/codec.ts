@@ -108,12 +108,16 @@ function resolveOptions(options: WireCodecOptions): ResolvedWireCodecOptions {
 function jsonByteLength(value: unknown): number {
   let encoded: string | undefined
   try {
-    encoded = JSON.stringify(value)
+    encoded = stringifyJson(value)
   } catch (error) {
     throw new VsCodeWireError(`wire record is not JSON-serializable: ${String(error)}`)
   }
   if (encoded === undefined) throw new VsCodeWireError('wire record is not JSON-serializable')
   return textEncoder.encode(encoded).byteLength
+}
+
+function stringifyJson(value: unknown): string | undefined {
+  return JSON.stringify(value)
 }
 
 function logicalLimit(frame: VsCodeCarrierFrame, options: ResolvedWireCodecOptions): number {

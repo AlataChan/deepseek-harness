@@ -414,6 +414,22 @@ export interface ConnectionConfig {
 
 Source: [`packages/client/connection/src/index.ts:35`](../packages/client/connection/src/index.ts)
 
+<a id="deepseek-aidsh-client-connection-vscode"></a>
+
+## `@deepseek-ai/dsh-client-connection-vscode`
+
+Requires: `apiProxy` · `clientModules`
+
+```ts config-catalog
+/** Companion carrier configuration. */
+export interface Config {
+  /** Maximum logical bytes accepted for RPC and stream-data frames. */
+  maxLogicalRpcBytes?: number
+}
+```
+
+Source: [`packages/client/connection-vscode/src/index.ts:29`](../packages/client/connection-vscode/src/index.ts)
+
 <a id="deepseek-aidsh-client-hmr"></a>
 
 ## `@deepseek-ai/dsh-client-hmr`
@@ -3292,7 +3308,6 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-base` ([`packages/bundle/base/src/index.ts`](../packages/bundle/base/src/index.ts))
 - `@deepseek-ai/dsh-brand` ([`packages/util/brand/src/index.ts`](../packages/util/brand/src/index.ts))
 - `@deepseek-ai/dsh-client-app` ([`packages/bundle/client-app/src/index.ts`](../packages/bundle/client-app/src/index.ts))
-- `@deepseek-ai/dsh-client-connection-vscode` ([`packages/client/connection-vscode/src/index.ts`](../packages/client/connection-vscode/src/index.ts))
 - `@deepseek-ai/dsh-client-schema-form` ([`packages/client/schema-form/src/index.ts`](../packages/client/schema-form/src/index.ts))
 - `@deepseek-ai/dsh-client-test-runtime` ([`packages/test-support/client-runtime/src/index.ts`](../packages/test-support/client-runtime/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-primitives` ([`packages/client/ui-primitives/src/index.ts`](../packages/client/ui-primitives/src/index.ts))

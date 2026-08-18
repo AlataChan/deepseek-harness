@@ -18,9 +18,9 @@ describe('request body capacity', () => {
       },
     }
 
-    expect(() => assertImageBodyCapacity(source, DEFAULT_MAX_REQUEST_BODY_BYTES)).not.toThrow()
-    expect(() => assertImageBodyCapacity(source, 100 * 1024 * 1024)).toThrow(/must be at least/)
-    expect(() => assertImageBodyCapacity({ get: () => undefined }, 1)).not.toThrow()
+    expect(() => { assertImageBodyCapacity(source, DEFAULT_MAX_REQUEST_BODY_BYTES) }).not.toThrow()
+    expect(() => { assertImageBodyCapacity(source, 100 * 1024 * 1024) }).toThrow(/must be at least/)
+    expect(() => { assertImageBodyCapacity({ get: () => undefined }, 1) }).not.toThrow()
   })
 })
 
