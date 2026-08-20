@@ -1,6 +1,6 @@
 # Agent Note: VS Code client surface
 
-Status: proposed
+Status: implemented
 
 English | [中文](2026-08-15-vscode-client.zh.md)
 
@@ -8,23 +8,23 @@ English | [中文](2026-08-15-vscode-client.zh.md)
 
 DeepSeek Harness has a complete interactive Web client, but editor users must leave their working context to use it. A VS Code client should reuse the existing session, agent, approval, question, tool, and Client Plugin behavior while adding editor-owned context capture and file navigation. Building a second conversation UI or routing the product through Agent Client Protocol (ACP) would duplicate product behavior and give an automation protocol responsibilities it does not own.
 
-The current Web composition also combines transport-neutral client behavior with HTTP, WebSocket, static-file, and browser features. Reusing that bundle inside VS Code would start an unnecessary browser server and would make the editor surface inherit Web-only assumptions. The client module registry similarly combines plugin discovery and graph construction with Web routes. Those responsibilities must separate before another interactive surface can consume them cleanly.
+Before this change, the Web composition combined transport-neutral client behavior with HTTP, WebSocket, static-file, and browser features. Reusing that bundle inside VS Code would have started an unnecessary browser server and made the editor surface inherit Web-only assumptions. The client module registry similarly combined plugin discovery and graph construction with Web routes. The implementation separates those responsibilities so another interactive surface can consume them cleanly.
 
 The editor extension introduces two additional trust boundaries. VS Code Webview messages are untrusted values, and the extension must launch an installed Harness runtime on POSIX and Windows without executing package-manager shell shims. Large attachment requests must continue to fit even though each physical IPC message stays tightly bounded. Multiple VS Code windows must not open the same non-multiprocess-safe Harness home concurrently.
 
-## Proposal
+## Decision
 
 ### Composition and shared client behavior
 
-Split the interactive composition into three bundles. `@deepseek-ai/dsh-client-app` owns ApiProxy, persistence and workspace support, the client module registry, the Client runtime, the shared `ui-*` roster, and per-session agent-preset composition. It owns no physical connection provider. `@deepseek-ai/dsh-web-app` becomes a thin Web surface containing HTTP, WebSocket, static frontend, browser export, adaptive Web directory selection, Web startup, and the Web client-module adapter. `@deepseek-ai/dsh-vscode-app` contains Node IPC, remote-safe directory selection, VS Code context UI, and VS Code startup behavior.
+The interactive composition uses three bundles. `@deepseek-ai/dsh-client-app` owns ApiProxy, persistence and workspace support, the client module registry, the Client runtime, the shared `ui-*` roster, and per-session agent-preset composition. It owns no physical connection provider. `@deepseek-ai/dsh-web-app` is a thin Web surface containing HTTP, WebSocket, static frontend, browser export, adaptive Web directory selection, Web startup, and the Web client-module adapter. `@deepseek-ai/dsh-vscode-app` contains Node IPC, remote-safe directory selection, VS Code context UI, and VS Code startup behavior.
 
-The shipped compositions become `web = base + client-app + web-app`, `vscode = base + client-app + vscode-app`, and `headless = base + headless`. The extraction must preserve the Web profile's ordered enabled rows and resolved configurations before VS Code feature work proceeds.
+The shipped compositions are `web = base + client-app + web-app`, `vscode = base + client-app + vscode-app`, and `headless = base + headless`. A profile-equivalence test preserves the Web profile's ordered enabled rows and resolved configurations.
 
-Make `@deepseek-ai/dsh-client-modules` transport-neutral. Its Node face discovers `dsh.client` packages incrementally, resolves metadata and bundle paths, hashes bundles, constructs `ClientBootGraph`, and publishes graph and rebuild changes. A new `@deepseek-ai/dsh-host-client-modules-web` adapter owns `/plugins` serving and HTML manifest injection. `WebBootEntry` and `WebBootGraph` become `ClientBootEntry` and `ClientBootGraph` without compatibility aliases.
+`@deepseek-ai/dsh-client-modules` is transport-neutral. Its Node face discovers `dsh.client` packages incrementally, resolves metadata and bundle paths, hashes bundles, constructs `ClientBootGraph`, and publishes graph and rebuild changes. `@deepseek-ai/dsh-host-client-modules-web` owns `/plugins` serving and HTML manifest injection. `ClientBootEntry` and `ClientBootGraph` replace the former Web-specific names without compatibility aliases.
 
 ### Process and installed runtime
 
-The VS Code extension runs as a workspace extension and owns one retained Webview plus one companion for the selected workspace folder. It resolves a real Node executable and a compatible installed `@deepseek-ai/dsh` package on the workspace extension host. `deepseekHarness.nodePath` and `deepseekHarness.runtimePath` are explicit overrides. A `dsh` candidate on `PATH`, including npm or pnpm `.cmd` and `.ps1` files, is only a discovery clue.
+The VS Code extension runs as a workspace extension and owns one retained Webview plus one companion for the selected workspace folder. It resolves a real Node executable and a compatible installed `@deepseek-ai/dsh` package on the workspace extension host. `harnessClient.nodePath` and `harnessClient.runtimePath` are explicit overrides. A `dsh` candidate on `PATH`, including npm or pnpm `.cmd` and `.ps1` files, is only a discovery clue.
 
 The resolver canonicalizes recognized links and package-manager shims, verifies the package name, reads the declared `dsh.companions.vscode` module, and rejects unknown shim formats. It launches that JavaScript entry with `child_process.fork` and the resolved Node executable, `shell: false`, separated arguments, and the built-in IPC channel. It never executes a `dsh`, `.cmd`, or `.ps1` shim and never uses numbered child file descriptors. A versioned handshake reports actionable errors for missing or incompatible Node, runtime, companion entry, or carrier versions. Windows is a version-one supported platform with an automated local-extension integration lane.
 
@@ -58,7 +58,7 @@ Before boot, the companion acquires an exclusive lease for the resolved `DSH_HOM
 
 VS Code manifest copy uses `package.nls.json` for English and `package.nls.zh-cn.json` for Chinese. Runtime extension strings use the VS Code localization API. Client Plugin copy keeps the repository's Chinese source dictionary and a key-complete English dictionary. The extension passes the normalized VS Code language through the handshake and Webview boot so the Client locale is selected before plugins mount unless a durable user preference overrides it.
 
-The repository package remains `@deepseek-ai/dsh-vscode`, but release packaging generates a separate staged Marketplace manifest and VSIX. The staged artifact must not contain source maps, tests, workspace manifests, credentials, the Harness runtime, or unrelated packages. Publisher id, extension name and display name, icon, and release channel require an explicit project-owner decision; release verification fails while placeholders remain. This avoids claiming an identity that the contributor does not own.
+The repository package remains `@deepseek-ai/dsh-vscode`, but release packaging generates a separate staged Marketplace manifest and VSIX. The staged artifact must not contain source maps, tests, workspace manifests, credentials, the Harness runtime, or unrelated packages. The Marketplace artifact uses extension name `harness-client`, display name **Harness Client for VS Code**, the neutral terminal-chat icon, and the pre-release channel. Publisher id remains `__PUBLISHER_ID__` until an authorized owner registers a neutral identity; release verification fails while that placeholder remains. This avoids claiming an identity that the contributor does not own.
 
 ## Alternatives considered
 
@@ -86,19 +86,15 @@ A control-sized cap would reject attachments, while an attachment-sized physical
 
 Passing arbitrary VS Code command identifiers would grant plugin code an open-ended authority channel. A closed, schema-owned editor method map keeps the extension surface reviewable.
 
-## Acceptance criteria
+## Verification
 
-- The Web profile is behaviorally unchanged after the composition and client-module extraction.
-- A trusted local workspace on Linux, macOS, or Windows launches a resolved JavaScript companion with a real Node executable, no shell shim, no TCP listener, and a successful version handshake.
-- The retained Webview boots the existing Client Plugin graph and preserves a draft and context chips across hide and reveal.
-- Session operations, streaming, approvals, questions, tools, plan, goals, skills, and subagents continue through ApiProxy and session events; the extension executes no Harness tool itself.
-- An explicitly captured editor snapshot is immutable, bounded, previewable, removable, and logged as the exact submitted user message; untrusted or missing context is refused.
-- Tool locations inside the selected workspace open through VS Code, and outside-workspace paths are refused.
-- Payloads larger than one physical record reassemble under verified bounds, and the configured aggregate image capacity remains valid.
-- A second companion for the same Harness home receives `home-busy` before durable providers open, and extension shutdown leaves no orphan child.
-- Chinese and English installations resolve all manifest, extension, and Client Plugin strings.
-- The reproducible VSIX contains only declared extension artifacts and cannot pass release verification with an unresolved Marketplace identity.
+- The profile-equivalence test compares the Web profile's ordered rows and resolved configurations before and after the composition extraction.
+- Resolver, process, carrier, Webview, editor-context, path-opening, trust, lease, localization, and teardown tests cover the owned lifecycle and security rules.
+- The keyless `vscode-agent` assembled snapshot boots the companion, fragments an image prompt with editor context, streams through ApiProxy, persists the exact text, and rejects a second home owner.
+- The local Electron integration boots the staged extension, captures editor state, opens an in-workspace location, reconnects the runtime, and releases the companion lease.
+- The VS Code workflow defines native local-extension lanes for Linux, macOS, and Windows; SSH Remote and Dev Container remain manual release checks.
+- The packaging tests and VSIX verifier enforce the artifact allowlist, localization completeness, external companion declaration, 128-pixel PNG icon, pre-release metadata, and resolved publisher identity.
 
-## Risks
+## Consequences
 
 The installed runtime and extension can drift, so bridge and runtime compatibility must fail before the client graph boots. Retaining a Webview consumes memory while hidden, but it avoids losing unsent work; serialized drafts can replace this tradeoff later without changing the carrier. The bundle cache and fragmented-message assembler handle untrusted metadata and therefore require exact identifiers, hashes, destinations, ordering, and teardown tests. Remote filesystems and Windows shims differ from local POSIX development, so platform integration evidence is part of release readiness rather than an afterthought.

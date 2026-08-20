@@ -14,6 +14,8 @@ The companion handshake announces the Client Plugin graph and bundle hashes. The
 
 Workspace Trust blocks runtime discovery and execution. The executable-path settings are restricted in untrusted workspaces. Process output passes through bounded credential redaction; carrier records and editor snapshots have no logging API. The companion owns the exclusive Harness-home lease and reports `home-busy` when another process may be using the same durable store.
 
+The [VS Code user guide](../../docs/user/guide/vscode.md) covers source installation, remote placement, context privacy, recovery, and current limitations.
+
 ## Configuration
 
 - `harnessClient.runtimePath` overrides runtime discovery with an installed package location or recognized discovery clue.
@@ -23,7 +25,9 @@ Workspace Trust blocks runtime discovery and execution. The executable-path sett
 - `harnessClient.context.maxDiagnostics` bounds diagnostic records captured by **Add Problems**; diagnostics come from the active file only.
 - `harnessClient.runtime.restartAttempts` and `harnessClient.runtime.shutdownTimeoutMs` bound automatic recovery and forced shutdown.
 
-Run `pnpm --filter @deepseek-ai/dsh-vscode run build` to emit `dist/extension.js` and the Webview assets. [`manifest.vscode.json`](manifest.vscode.json) is the source manifest for staged extension packaging; its publisher remains an explicit placeholder, so it is not a publishable Marketplace identity.
+Run `pnpm --filter @deepseek-ai/dsh-vscode run build` to emit `dist/extension.js` and the Webview assets. [`manifest.vscode.json`](manifest.vscode.json) is the source manifest for staged extension packaging. It fixes the extension name as `harness-client`, display name as **Harness Client for VS Code**, icon as [`media/icon.png`](media/icon.png), and channel as pre-release; only the Marketplace publisher remains an explicit placeholder.
+
+An authorized release owner creates a neutral publisher through the [official Marketplace flow](https://code.visualstudio.com/api/working-with-extensions/publishing-extension), then stages and verifies the VSIX with `DSH_VSCODE_PUBLISHER=<publisher-id> pnpm run package:vscode` and `pnpm run verify:vscode`. The verifier rejects the placeholder, bundled Harness or Node code, source maps, tests, credentials, missing locale resources, and undeclared files. Do not use a DeepSeek AI publisher identity without authorization.
 
 ## Model Experience
 

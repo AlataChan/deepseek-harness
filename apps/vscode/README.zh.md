@@ -14,6 +14,8 @@ companion 握手会公布 Client Plugin（客户端插件）图与 bundle（包�
 
 Workspace Trust（工作区信任）会阻止 runtime 发现与执行。可执行文件路径设置在不可信 workspace 中受限。进程输出经过有界凭据遮盖；carrier record 与编辑器快照没有日志 API。companion 负责 Harness home 的独占 lease（租约），当另一进程可能正在使用同一个持久存储时报告 `home-busy`。
 
+[VS Code 用户指南](../../docs/user/guide/vscode.md)介绍源码安装、远程放置、上下文隐私、恢复和当前限制。
+
 ## 配置
 
 - `harnessClient.runtimePath` 使用已安装包的位置或已识别的发现线索覆盖 runtime 发现。
@@ -23,7 +25,9 @@ Workspace Trust（工作区信任）会阻止 runtime 发现与执行。可执�
 - `harnessClient.context.maxDiagnostics` 限制“将问题加入提示词”捕获的诊断记录数；诊断仅来自当前文件。
 - `harnessClient.runtime.restartAttempts` 与 `harnessClient.runtime.shutdownTimeoutMs` 限制自动恢复与强制关闭。
 
-运行 `pnpm --filter @deepseek-ai/dsh-vscode run build` 可生成 `dist/extension.js` 与 Webview 产物。[`manifest.vscode.json`](manifest.vscode.json) 是扩展暂存打包的源 manifest；其 publisher 仍为显式占位符，因此不构成可发布的 Marketplace 身份。
+运行 `pnpm --filter @deepseek-ai/dsh-vscode run build` 可生成 `dist/extension.js` 与 Webview 产物。[`manifest.vscode.json`](manifest.vscode.json) 是扩展暂存打包的源 manifest。它把扩展名固定为 `harness-client`、显示名称固定为 **Harness Client for VS Code**、图标固定为 [`media/icon.png`](media/icon.png)，并使用 pre-release 渠道；只有 Marketplace publisher 仍是显式占位符。
+
+获得授权的发布负责人应通过 [Marketplace 官方流程](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)创建中性 publisher，然后运行 `DSH_VSCODE_PUBLISHER=<publisher-id> pnpm run package:vscode` 与 `pnpm run verify:vscode` 暂存并验证 VSIX。验证器会拒绝占位符、打包进去的 Harness 或 Node 代码、source map、测试、凭据、缺失的 locale 资源和未声明文件。未经授权不得使用 DeepSeek AI publisher 身份。
 
 ## 模型体验
 

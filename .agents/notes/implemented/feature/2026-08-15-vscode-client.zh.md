@@ -1,6 +1,6 @@
 # Agent Note: VS Code 客户端界面
 
-Status: proposed
+Status: implemented
 
 [English](2026-08-15-vscode-client.md) | 中文
 
@@ -8,23 +8,23 @@ Status: proposed
 
 DeepSeek Harness 已有完整的交互式 Web 客户端，但编辑器用户必须离开当前工作上下文才能使用它。VS Code 客户端应复用现有的会话、agent（智能体）、审批、提问、工具和 Client Plugin（客户端插件）行为，同时增加由编辑器负责的上下文捕获与文件导航。另建一套对话 UI，或让产品经 Agent Client Protocol（ACP，智能体客户端协议）路由，都会重复产品行为，并让自动化协议承担其并不拥有的职责。
 
-当前 Web 组装还把传输无关的客户端行为与 HTTP、WebSocket、静态文件及浏览器功能合在一起。在 VS Code 内复用该组合包会启动不必要的浏览器服务器，也会让编辑器界面继承仅适用于 Web 的假设。客户端模块注册表同样把插件发现和启动图构建与 Web 路由合在一起。另一个交互界面要清晰消费这些能力，必须先拆开上述职责。
+本次变更之前，Web 组装把传输无关的客户端行为与 HTTP、WebSocket、静态文件及浏览器功能合在一起。在 VS Code 内复用该组合包会启动不必要的浏览器服务器，也会让编辑器界面继承仅适用于 Web 的假设。客户端模块注册表同样把插件发现和启动图构建与 Web 路由合在一起。本实现拆开这些职责，使另一个交互界面能够清晰消费它们。
 
 编辑器扩展还引入了两条信任边界。VS Code Webview 消息属于不可信值；扩展必须在 POSIX 和 Windows 上启动已安装的 Harness runtime（运行时），且不得执行包管理器 shell shim（垫片）。即使每条物理 IPC 消息都保持严格上限，大型附件请求也必须继续可用。多个 VS Code 窗口不得并发打开同一个不支持多进程的 Harness home。
 
-## 提案
+## 决策
 
 ### 组合与共享客户端行为
 
-把交互式组装拆成三个组合包。`@deepseek-ai/dsh-client-app` 负责 ApiProxy、持久化与工作区支持、客户端模块注册表、Client runtime、共享 `ui-*` 名册，以及按会话划分的 agent preset（智能体预设）组装。它不负责物理连接提供方。`@deepseek-ai/dsh-web-app` 变为轻量 Web 界面，只包含 HTTP、WebSocket、静态前端、浏览器导出、自适应 Web 目录选择、Web 启动和 Web 客户端模块适配器。`@deepseek-ai/dsh-vscode-app` 包含 Node IPC、远程安全的目录选择、VS Code 上下文 UI 和 VS Code 启动行为。
+交互式组装使用三个组合包。`@deepseek-ai/dsh-client-app` 负责 ApiProxy、持久化与工作区支持、客户端模块注册表、Client runtime、共享 `ui-*` 名册，以及按会话划分的 agent preset（智能体预设）组装。它不负责物理连接提供方。`@deepseek-ai/dsh-web-app` 是轻量 Web 界面，只包含 HTTP、WebSocket、静态前端、浏览器导出、自适应 Web 目录选择、Web 启动和 Web 客户端模块适配器。`@deepseek-ai/dsh-vscode-app` 包含 Node IPC、远程安全的目录选择、VS Code 上下文 UI 和 VS Code 启动行为。
 
-随发行版交付的组装变为 `web = base + client-app + web-app`、`vscode = base + client-app + vscode-app` 和 `headless = base + headless`。继续开发 VS Code 功能前，拆分必须保持 Web profile 的已启用配置项顺序和解析后配置不变。
+随发行版交付的组装是 `web = base + client-app + web-app`、`vscode = base + client-app + vscode-app` 和 `headless = base + headless`。profile 等价性测试保持 Web profile 的已启用配置项顺序和解析后配置不变。
 
-让 `@deepseek-ai/dsh-client-modules` 与传输无关。其 Node 侧增量发现 `dsh.client` 包、解析元数据与 bundle（包）路径、计算 bundle 哈希、构建 `ClientBootGraph`，并发布图与重建变更。新增 `@deepseek-ai/dsh-host-client-modules-web` 适配器负责 `/plugins` 服务与 HTML manifest（元数据清单）注入。`WebBootEntry` 和 `WebBootGraph` 改名为 `ClientBootEntry` 和 `ClientBootGraph`，不保留兼容别名。
+`@deepseek-ai/dsh-client-modules` 与传输无关。其 Node 侧增量发现 `dsh.client` 包、解析元数据与 bundle（包）路径、计算 bundle 哈希、构建 `ClientBootGraph`，并发布图与重建变更。`@deepseek-ai/dsh-host-client-modules-web` 适配器负责 `/plugins` 服务与 HTML manifest（元数据清单）注入。`ClientBootEntry` 和 `ClientBootGraph` 取代原来的 Web 专用名称，且不保留兼容别名。
 
 ### 进程与已安装运行时
 
-VS Code 扩展作为 workspace extension（工作区扩展）运行，并为所选工作区文件夹持有一个保留型 Webview 和一个 companion（伴随进程）。它在工作区扩展宿主中解析真实 Node 可执行文件和兼容的已安装 `@deepseek-ai/dsh` 包。`deepseekHarness.nodePath` 与 `deepseekHarness.runtimePath` 是显式覆盖项。`PATH` 上的 `dsh` 候选项，包括 npm 或 pnpm 的 `.cmd` 与 `.ps1` 文件，只作为发现线索。
+VS Code 扩展作为 workspace extension（工作区扩展）运行，并为所选工作区文件夹持有一个保留型 Webview 和一个 companion（伴随进程）。它在工作区扩展宿主中解析真实 Node 可执行文件和兼容的已安装 `@deepseek-ai/dsh` 包。`harnessClient.nodePath` 与 `harnessClient.runtimePath` 是显式覆盖项。`PATH` 上的 `dsh` 候选项，包括 npm 或 pnpm 的 `.cmd` 与 `.ps1` 文件，只作为发现线索。
 
 解析器规范化已识别的链接与包管理器 shim，校验包名，读取声明的 `dsh.companions.vscode` 模块，并拒绝未知 shim 格式。它使用 `child_process.fork`、解析后的 Node 可执行文件、`shell: false`、分离参数和内置 IPC 通道启动该 JavaScript 入口。它绝不执行 `dsh`、`.cmd` 或 `.ps1` shim，也不使用带编号的子进程文件描述符。版本化握手针对 Node、runtime、companion 入口或载体版本缺失及不兼容给出可操作错误。Windows 属于版本一支持平台，并设自动化本地扩展集成任务。
 
@@ -58,7 +58,7 @@ companion、扩展宿主和 Webview 共享一个浏览器安全的协议包。�
 
 VS Code manifest 文案使用 `package.nls.json` 提供英文，使用 `package.nls.zh-cn.json` 提供中文。扩展 runtime 字符串使用 VS Code 本地化 API。Client Plugin 文案沿用仓库的中文源字典与 key 完整的英文字典。扩展通过握手和 Webview 启动传递规范化后的 VS Code 语言，使 Client locale（语言区域）在插件挂载前完成选择，除非持久用户偏好有意覆盖它。
 
-仓库包仍名为 `@deepseek-ai/dsh-vscode`，但发布打包会生成独立的暂存 Marketplace manifest 与 VSIX。暂存产物不得包含 source map（源映射）、测试、工作区 manifest、凭据、Harness runtime 或无关包。publisher id（发布者标识）、扩展名称与显示名称、图标和发布渠道必须由项目属主显式决定；占位符未消除时，发布验证失败。这样不会冒用贡献者并不拥有的身份。
+仓库包仍名为 `@deepseek-ai/dsh-vscode`，但发布打包会生成独立的暂存 Marketplace manifest 与 VSIX。暂存产物不得包含 source map（源映射）、测试、工作区 manifest、凭据、Harness runtime 或无关包。Marketplace 产物使用扩展名 `harness-client`、显示名称 **Harness Client for VS Code**、中性的终端对话图标和 pre-release（预发布）渠道。publisher id（发布者标识）在获得授权的属主注册中性身份前保持为 `__PUBLISHER_ID__`；占位符未消除时，发布验证失败。这样不会冒用贡献者并不拥有的身份。
 
 ## 曾考虑的替代方案
 
@@ -86,19 +86,15 @@ ACP 仅用于自动化，不负责完整交互式 Host API、Client Plugin 图�
 
 传递任意 VS Code 命令标识会向插件代码授予开放式权限通道。封闭且由 schema 所有的编辑器方法映射让扩展界面可审阅。
 
-## 验收标准
+## 验证
 
-- 拆分组合与客户端模块后，Web profile 行为保持不变。
-- Linux、macOS 或 Windows 上受信任的本地工作区使用真实 Node 可执行文件启动已解析的 JavaScript companion；不执行 shell shim、不开放 TCP listener（监听器），并完成版本握手。
-- 保留型 Webview 启动现有 Client Plugin 图，并在隐藏和再次显示之间保留草稿与上下文 chip。
-- 会话操作、流式输出、审批、提问、工具、plan（计划）、goal（目标）、skill（技能）与 subagent（子智能体）继续通过 ApiProxy 和会话事件工作；扩展本身不执行 Harness 工具。
-- 经显式操作捕获的编辑器快照不可变、有界、可预览、可移除，并作为精确提交的用户消息记入日志；不可信或缺失的上下文会被拒绝。
-- 所选工作区内的工具位置通过 VS Code 打开，工作区外路径被拒绝。
-- 大于单条物理记录的载荷在校验后的限制内重组，配置的聚合图片容量仍然有效。
-- 同一 Harness home 的第二个 companion 在持久化提供方打开前收到 `home-busy`，扩展关闭后不遗留孤儿子进程。
-- 中文和英文安装均能解析所有 manifest、扩展及 Client Plugin 字符串。
-- 可复现 VSIX 只包含声明的扩展产物，且 Marketplace 身份未决定时无法通过发布验证。
+- profile 等价性测试会比较组装拆分前后 Web profile 的配置项顺序和解析后配置。
+- resolver（解析器）、进程、载体、Webview、编辑器上下文、路径打开、信任、lease、本地化和资源释放测试覆盖各自负责的生命周期与安全规则。
+- 无密钥的 `vscode-agent` 组装快照会启动 companion、对包含编辑器上下文的图片提示词进行分片、通过 ApiProxy 产生流式输出、持久化精确文本，并拒绝第二个 home 属主。
+- 本地 Electron 集成会启动暂存扩展、捕获编辑器状态、打开 workspace 内位置、重新连接 runtime，并释放 companion lease。
+- VS Code workflow 为 Linux、macOS 与 Windows 定义原生本地扩展任务；SSH Remote 与 Dev Container 仍是人工发布检查项。
+- 打包测试与 VSIX 验证器会强制执行产物允许清单、本地化完整性、外部 companion 声明、128 像素 PNG 图标、pre-release 元数据和已解析的 publisher 身份。
 
-## 风险
+## 后果
 
 已安装 runtime 与扩展可能发生版本漂移，因此载体与 runtime 兼容性必须在客户端图启动前失败。保留 Webview 会在隐藏期间占用内存，但能避免丢失未发送工作；后续可用草稿序列化替换该取舍，而无需改动载体。bundle 缓存与分片消息组装器处理不可信元数据，因此必须对标识、哈希、目标位置、顺序和资源释放进行精确测试。远程文件系统与 Windows shim 不同于本地 POSIX 开发环境，因此平台集成证据属于发布就绪条件，而不是事后补充。
