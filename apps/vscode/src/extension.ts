@@ -1,13 +1,14 @@
 /** Harness Client VS Code workspace-extension activation. */
 
 import { randomUUID } from 'node:crypto'
+import type { EditorContextSnapshot } from '@deepseek-ai/dsh-client-connection-vscode/protocol'
 import * as vscode from 'vscode'
 import { validateContextLimits } from './bridge-router.ts'
 import { EditorContextCapture, type EditorCaptureKind } from './editor-context.ts'
 import { HostRpcInterceptor } from './host-rpc-interceptor.ts'
 import { launchIpcChild } from './ipc-child.ts'
 import { RuntimeOutput } from './output.ts'
-import { RuntimeManager } from './runtime-manager.ts'
+import { RuntimeManager, type RuntimeManagerState } from './runtime-manager.ts'
 import { resolveInstalledRuntime } from './runtime-resolver.ts'
 import {
   HarnessWebviewProvider,
@@ -22,6 +23,20 @@ interface ActiveExtension {
 }
 
 let activeExtension: ActiveExtension | undefined
+
+/** Narrow activation result used by extension-host integration and lifecycle owners. */
+export interface HarnessExtensionApi {
+  /** @returns current companion lifecycle state. */
+  runtimeState(): RuntimeManagerState
+  /** @returns most recent companion startup failure, when available. */
+  runtimeFailure(): string | undefined
+  /** @returns whether the retained view has an active bridge. */
+  webviewReady(): boolean
+  /** @returns absolute selected workspace root. */
+  selectedWorkspaceRoot(): string
+  /** Drain the extension-owned companion without disposing VS Code registrations. */
+  shutdown(): Promise<void>
+}
 
 function configuredString(configuration: vscode.WorkspaceConfiguration, key: string): string | undefined {
   const value = configuration.get<string>(key, '').trim()
@@ -42,8 +57,36 @@ async function showCommandError(output: RuntimeOutput, reason: unknown): Promise
   await vscode.window.showErrorMessage(message)
 }
 
+/**
+ * Create the production VS Code implementation of the allowlisted Host RPC methods.
+ * @param workspaceRoot - current selected-root URI reader.
+ * @returns workspace-restricted Host RPC interceptor.
+ */
+export function createVsCodeHostRpc(workspaceRoot: () => vscode.Uri): HostRpcInterceptor {
+  return new HostRpcInterceptor({
+    workspaceRoot,
+    parseUri: value => vscode.Uri.parse(value, true),
+    fileUri: path => vscode.Uri.file(path),
+    joinUri: (base, path) => vscode.Uri.joinPath(base as vscode.Uri, path),
+    stat: async (uri) => {
+      const stat = await vscode.workspace.fs.stat(uri as vscode.Uri)
+      if ((stat.type & vscode.FileType.SymbolicLink) !== 0) return 'symbolic-link'
+      if ((stat.type & vscode.FileType.Directory) !== 0) return 'directory'
+      if ((stat.type & vscode.FileType.File) !== 0) return 'file'
+      throw new Error('path is neither a file nor a directory')
+    },
+    openTextDocument: async uri => await vscode.workspace.openTextDocument(uri as vscode.Uri),
+    showTextDocument: async (document, options) => await vscode.window.showTextDocument(
+      document as vscode.TextDocument,
+      options as vscode.TextDocumentShowOptions,
+    ),
+    pointRange: (line, column) => new vscode.Range(line, column, line, column),
+    revealInExplorer: async uri => await vscode.commands.executeCommand('revealInExplorer', uri),
+  })
+}
+
 /** Activate commands and the retained provider without starting a companion. */
-export function activate(context: vscode.ExtensionContext): void {
+export function activate(context: vscode.ExtensionContext): HarnessExtensionApi {
   const channel = vscode.window.createOutputChannel(vscode.l10n.t('Harness runtime logs'))
   const output = new RuntimeOutput(channel)
   const configuration = vscode.workspace.getConfiguration('harnessClient')
@@ -118,29 +161,10 @@ export function activate(context: vscode.ExtensionContext): void {
     fileUri: path => vscode.Uri.file(path),
     joinUri: (base, ...segments) => vscode.Uri.joinPath(base, ...segments),
     showError: async message => await vscode.window.showErrorMessage(message),
-    createHostRpc: () => new HostRpcInterceptor({
-      workspaceRoot: () => {
-        const root = provider.selectedWorkspaceRoot()
-        return vscode.workspace.workspaceFolders?.find(folder => folder.uri.fsPath === root)?.uri
-          ?? vscode.Uri.file(root)
-      },
-      parseUri: value => vscode.Uri.parse(value, true),
-      fileUri: path => vscode.Uri.file(path),
-      joinUri: (base, path) => vscode.Uri.joinPath(base as vscode.Uri, path),
-      stat: async (uri) => {
-        const stat = await vscode.workspace.fs.stat(uri as vscode.Uri)
-        if ((stat.type & vscode.FileType.SymbolicLink) !== 0) return 'symbolic-link'
-        if ((stat.type & vscode.FileType.Directory) !== 0) return 'directory'
-        if ((stat.type & vscode.FileType.File) !== 0) return 'file'
-        throw new Error('path is neither a file nor a directory')
-      },
-      openTextDocument: async uri => await vscode.workspace.openTextDocument(uri as vscode.Uri),
-      showTextDocument: async (document, options) => await vscode.window.showTextDocument(
-        document as vscode.TextDocument,
-        options as vscode.TextDocumentShowOptions,
-      ),
-      pointRange: (line, column) => new vscode.Range(line, column, line, column),
-      revealInExplorer: async uri => await vscode.commands.executeCommand('revealInExplorer', uri),
+    createHostRpc: () => createVsCodeHostRpc(() => {
+      const root = provider.selectedWorkspaceRoot()
+      return vscode.workspace.workspaceFolders?.find(folder => folder.uri.fsPath === root)?.uri
+        ?? vscode.Uri.file(root)
     }),
     ideHandlers: {
       'workspace.getSelectedRoot': (): { workspaceRoot: string } => ({
@@ -153,7 +177,7 @@ export function activate(context: vscode.ExtensionContext): void {
       'logs.show': () => { output.show(); return {} },
     },
   })
-  const addEditorContext = async (kind: EditorCaptureKind): Promise<void> => {
+  const addEditorContext = async (kind: EditorCaptureKind): Promise<EditorContextSnapshot | null> => {
     const root = provider.selectedWorkspaceRoot()
     const snapshot = kind === 'selection'
       ? editorContext.selection(root)
@@ -162,9 +186,10 @@ export function activate(context: vscode.ExtensionContext): void {
         : editorContext.diagnostics(root)
     if (snapshot === null) {
       await vscode.window.showInformationMessage(vscode.l10n.t('No editor context is available to add.'))
-      return
+      return null
     }
     await provider.addEditorContext(snapshot)
+    return snapshot
   }
   const commands: [string, () => unknown][] = [
     ['harnessClient.focus', () => vscode.commands.executeCommand(`${VIEW_ID}.focus`)],
@@ -190,13 +215,24 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand(id, () => {
       try {
         const result = command()
-        if (result instanceof Promise) void result.catch((reason: unknown) => showCommandError(output, reason))
+        if (result instanceof Promise) {
+          return result.catch(async (reason: unknown) => { await showCommandError(output, reason) })
+        }
+        return result
       } catch (reason) {
         void showCommandError(output, reason)
+        return undefined
       }
     }))
   }
   activeExtension = { provider, output }
+  return Object.freeze({
+    runtimeState: () => manager.state,
+    runtimeFailure: () => manager.failureMessage,
+    webviewReady: () => provider.isReady(),
+    selectedWorkspaceRoot: () => provider.selectedWorkspaceRoot(),
+    shutdown: async () => { await provider.shutdown() },
+  })
 }
 
 /** Drain extension-owned resources during deactivation. */

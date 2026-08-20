@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ApiProxy, ClientResponse, MuxFrame, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { ClientBootGraph } from '@deepseek-ai/dsh-client-modules/client'
+import { DEFAULT_MAX_REQUEST_BODY_BYTES } from '@deepseek-ai/dsh-client-connection/body-capacity'
 import { Context } from '@deepseek-ai/cordis'
 import {
   VSCODE_CARRIER_PROTOCOL_VERSION,
@@ -373,6 +374,12 @@ describe('VS Code companion handshake and RPC', () => {
   })
 
   it('fails load when the RPC capacity cannot carry configured aggregate images', () => {
+    expect(() => createHarness({
+      maxLogicalRpcBytes: DEFAULT_MAX_REQUEST_BODY_BYTES,
+      imageCapacitySource: {
+        get: () => ({ imageLimits: { maxMessageImageBytes: 100 * 1024 * 1024 } }),
+      },
+    })).not.toThrow()
     expect(() => createHarness({
       maxLogicalRpcBytes: 100,
       imageCapacitySource: {

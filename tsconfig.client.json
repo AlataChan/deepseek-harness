@@ -19,6 +19,9 @@
     "packages/client/*/src/css-modules.d.ts",
     "packages/client/*/tests/**/*.ts",
     "packages/client/*/tests/**/*.tsx",
+    // The assembled VS Code snapshot drives the browser-safe carrier client
+    // while spawning the companion as an external process.
+    "examples/vscode-agent/tests/**/*.ts",
     "packages/*/*/tests/**/*.client.spec.ts",
     "packages/*/*/tests/**/*.client.spec.tsx",
     "packages/*/*/tests/**/*.client.tsx",
@@ -63,6 +66,8 @@
     { "path": "./packages/extensions/cordis-client-runner" },
     { "path": "./packages/extensions/ui-cordis" },
     { "path": "./packages/test-support/client-runtime" },
+    { "path": "./packages/test-support/acp-snapshot" },
+    { "path": "./packages/test-support/loader-smoke" },
     { "path": "./packages/client/ui-layout" },
     { "path": "./packages/client/ui-sidebar" },
     { "path": "./packages/client/ui-brand-official" },

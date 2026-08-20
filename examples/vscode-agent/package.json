@@ -1,0 +1,7 @@
+{
+  "name": "vscode-agent-example",
+  "description": "Keyless assembled VS Code companion scenario",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module"
+}

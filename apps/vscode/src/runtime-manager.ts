@@ -109,9 +109,13 @@ export class RuntimeManager {
   private generation = 0
   private stopping: Promise<void> | undefined
   private _state: RuntimeManagerState = 'idle'
+  private _failureMessage: string | undefined
 
   /** @returns current lifecycle state. */
   get state(): RuntimeManagerState { return this._state }
+
+  /** @returns most recent startup failure message, or undefined after a successful start. */
+  get failureMessage(): string | undefined { return this._failureMessage }
 
   /** @param options - injectable runtime resolution, launch, version, and limits. */
   constructor(options: RuntimeManagerOptions) {
@@ -190,6 +194,7 @@ export class RuntimeManager {
     const options = this.startOptions
     if (options === undefined) throw new Error('Harness runtime has no selected workspace')
     this.publishState(restarting ? 'restarting' : 'starting')
+    this._failureMessage = undefined
     const generation = ++this.generation
     let child: RuntimeChild | undefined
     try {
@@ -204,7 +209,10 @@ export class RuntimeManager {
     } catch (error) {
       if (child?.connected === true) child.forceKill()
       this.clearCurrent(child)
-      if (generation === this.generation && this._state !== 'stopping') this.publishState('failed')
+      if (generation === this.generation && this._state !== 'stopping') {
+        this._failureMessage = error instanceof Error ? error.message : String(error)
+        this.publishState('failed')
+      }
       throw error
     }
   }

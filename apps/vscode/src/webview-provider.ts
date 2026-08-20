@@ -145,6 +145,9 @@ export class HarnessWebviewProvider implements vscode.WebviewViewProvider, vscod
     return this.workspaceRoot
   }
 
+  /** @returns whether this provider has mounted its active bridge. */
+  isReady(): boolean { return this.router !== undefined }
+
   /**
    * Deliver one extension-command capture to the active Webview session.
    * @param snapshot - immutable extension-host editor snapshot.

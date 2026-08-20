@@ -130,6 +130,7 @@ describe('VS Code runtime manager', () => {
     await expect(busy.start({ workspaceRoot: '/workspace', locale: 'en' }))
       .rejects.toThrow(/home-busy.*another owner/i)
     expect(busy.state).toBe('failed')
+    expect(busy.failureMessage).toMatch(/home-busy.*another owner/i)
   })
 
   it('forwards records queued immediately behind the ready handshake', async () => {

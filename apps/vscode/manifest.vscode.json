@@ -4,6 +4,7 @@
   "description": "Use an installed Harness runtime from a retained VS Code workspace panel.",
   "publisher": "__PUBLISHER_ID__",
   "version": "0.1.0-rc.5",
+  "type": "module",
   "license": "MIT",
   "engines": {
     "vscode": "^1.96.0"
