@@ -14,6 +14,11 @@
   "bin": {
     "dsh": "lib/bin.js"
   },
+  "dsh": {
+    "companions": {
+      "vscode": "./lib/vscode-companion.js"
+    }
+  },
   "files": [
     "lib/*.js",
     "config"
@@ -28,6 +33,7 @@
     "@deepseek-ai/dsh-app-boot": "workspace:^",
     "@deepseek-ai/dsh-base": "workspace:^",
     "@deepseek-ai/dsh-client-app": "workspace:^",
+    "@deepseek-ai/dsh-client-connection-vscode": "workspace:^",
     "@deepseek-ai/dsh-cordis-client-runner": "workspace:^",
     "@deepseek-ai/dsh-client-ui-agent-preset": "workspace:^",
     "@deepseek-ai/dsh-client-ui-cordis": "workspace:^",
@@ -77,6 +83,7 @@
     "@deepseek-ai/dsh-tool-web": "workspace:^",
     "@deepseek-ai/dsh-tool-workflow": "workspace:^",
     "@deepseek-ai/dsh-web-app": "workspace:^",
+    "@deepseek-ai/dsh-vscode-app": "workspace:^",
     "@deepseek-ai/dsh-workflow-worker-thread": "workspace:^",
     "@deepseek-ai/dsh-agent-instructions": "workspace:^",
     "commander": "^15.0.0",

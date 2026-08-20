@@ -148,13 +148,18 @@ describe('loadProfile', () => {
     const home = tmp()
     expect(() => loadProfile('t', 'custom', anchor, home))
       .toThrow('profile "custom" does not exist')
-    // The web template auto-initializes on first load. Bundle resolution
+    // Shipped templates auto-initialize on first load. Bundle resolution
     // cannot be asserted to fail here: the source-plane test runner resolves
     // @deepseek-ai/* through tsconfig paths regardless of the staged anchor.
     expect(PROFILE_TEMPLATES.web).toEqual([
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-client-app',
       '@deepseek-ai/dsh-web-app',
+    ])
+    expect(PROFILE_TEMPLATES.vscode).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-client-app',
+      '@deepseek-ai/dsh-vscode-app',
     ])
     try {
       loadProfile('t', 'web', anchor, home)
@@ -163,6 +168,13 @@ describe('loadProfile', () => {
     }
     expect(readProfileManifest('t', resolveProfileDir('web', home)).dsh?.profile?.bundles)
       .toEqual([...PROFILE_TEMPLATES.web ?? []])
+    try {
+      loadProfile('t', 'vscode', anchor, home)
+    } catch {
+      // Resolution failure is the plain-Node outcome for this empty anchor.
+    }
+    expect(readProfileManifest('t', resolveProfileDir('vscode', home)).dsh?.profile?.bundles)
+      .toEqual([...PROFILE_TEMPLATES.vscode ?? []])
   })
 
   it('normalizes only exact installation-owned bundle tuples', () => {

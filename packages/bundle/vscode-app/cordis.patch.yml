@@ -1,0 +1,39 @@
+# The dsh-vscode-app bundle patch: VS Code-owned rows over dsh-client-app.
+# Applied after dsh-base and dsh-client-app, with the profile's own
+# cordis.patch.yml and any --patch overlays still to come.
+
+# A VS Code companion has no Host desktop visible to the user. Path opening is
+# intercepted by the extension, so the shared gateway must not advertise the
+# native Host opener.
+- id: api-gateway
+  config:
+    nativeOpen: false
+
+- insert:
+    # Remote-safe workspace selection: the Host supplies filesystem browsing
+    # primitives and the shared client roster supplies the in-Webview dialog.
+    - id: directory-picker-browse
+      name: '@deepseek-ai/dsh-host-directory-picker-browse'
+
+    - id: ui-directory-picker-browse
+      name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'
+
+    # Parse the one extension-owned startup fact before runtime and carrier
+    # rows read it. Help or invalid arguments leave those consumers pending.
+    - id: vscode-startup
+      name: '@deepseek-ai/dsh-vscode-app/startup'
+
+    - id: vscode-runtime
+      name: '@deepseek-ai/dsh-vscode-app'
+      inject: [vscodeStartup]
+      config:
+        workspaceRoot: !!js ctx.vscodeStartup.workspaceRoot
+        surfaceContext: true
+
+    # Dual-face carrier: the Node half mounts the companion gateway; the
+    # client half boots first in the Webview and owns the matching API client.
+    - id: connection-vscode
+      name: '@deepseek-ai/dsh-client-connection-vscode'
+      inject: [vscodeStartup]
+      config:
+        workspaceRoot: !!js ctx.vscodeStartup.workspaceRoot

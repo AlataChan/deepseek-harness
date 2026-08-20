@@ -29,11 +29,14 @@ export const inject = ['apiProxy', 'clientModules']
 export interface Config {
   /** Maximum logical bytes accepted for RPC and stream-data frames. */
   maxLogicalRpcBytes?: number
+  /** Workspace root the extension handshake must repeat exactly after path normalization. */
+  workspaceRoot?: string
 }
 
 /** Validated companion carrier configuration. */
 export const Config: z<Config> = z.object({
   maxLogicalRpcBytes: z.natural().min(1).default(DEFAULT_MAX_REQUEST_BODY_BYTES),
+  workspaceRoot: z.string(),
 })
 
 function packageVersion(): string {
@@ -49,7 +52,7 @@ function packageVersion(): string {
 export interface CompanionRuntimePorts {
   /** Connected Node IPC port; absent selects the current process channel. */
   port?: NodeIpcPort
-  /** Workspace selected by the launcher; absent selects `process.cwd()`. */
+  /** Workspace selected by the launcher; absent uses configured root, then `process.cwd()`. */
   workspaceRoot?: string
   /** Installed runtime version; absent reads this package's manifest. */
   runtimeVersion?: string
@@ -70,7 +73,7 @@ export function apply(ctx: Context, config: Config, runtime: CompanionRuntimePor
     apiProxy: ctx.apiProxy,
     clientModules: ctx.clientModules,
     imageCapacitySource: ctx,
-    expectedWorkspaceRoot: runtime.workspaceRoot ?? process.cwd(),
+    expectedWorkspaceRoot: runtime.workspaceRoot ?? config.workspaceRoot ?? process.cwd(),
     runtimeVersion: runtime.runtimeVersion ?? packageVersion(),
     maxLogicalRpcBytes,
     send: frame => channelReady.promise.then(channel => channel.send(frame)),

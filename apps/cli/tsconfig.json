@@ -33,6 +33,12 @@
       "path": "../../packages/bundle/web-app"
     },
     {
+      "path": "../../packages/bundle/vscode-app"
+    },
+    {
+      "path": "../../packages/client/connection-vscode/tsconfig.host.json"
+    },
+    {
       "path": "../../packages/host/apiproxy"
     },
     {

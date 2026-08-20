@@ -180,10 +180,10 @@ describe('VS Code companion handshake and RPC', () => {
       Config: pluginConfig,
       apply(child: Parameters<typeof applyPlugin>[0], config: Parameters<typeof applyPlugin>[1]) {
         applyPlugin(child, config, {
-          port, workspaceRoot: '/workspace', runtimeVersion: '0.1.0-rc.5',
+          port, runtimeVersion: '0.1.0-rc.5',
         })
       },
-    }, { maxLogicalRpcBytes: 4096 })
+    }, { maxLogicalRpcBytes: 4096, workspaceRoot: '/workspace' })
     await fiber.await()
     port.emit(hello())
     await vi.waitFor(() => { expect(port.sent.length).toBeGreaterThan(0) })
