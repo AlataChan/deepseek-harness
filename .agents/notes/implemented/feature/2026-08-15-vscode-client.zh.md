@@ -89,7 +89,7 @@ ACP 仅用于自动化，不负责完整交互式 Host API、Client Plugin 图�
 ## 验证
 
 - profile 等价性测试会比较组装拆分前后 Web profile 的配置项顺序和解析后配置。
-- resolver（解析器）、进程、载体、Webview、编辑器上下文、路径打开、信任、lease、本地化和资源释放测试覆盖各自负责的生命周期与安全规则。
+- resolver（解析器）、进程、载体、runtime generation（运行时代际）竞态、Webview、编辑器上下文、路径打开、信任、lease、本地化和资源释放测试覆盖各自负责的生命周期与安全规则。
 - 无密钥的 `vscode-agent` 组装快照会启动 companion、对包含编辑器上下文的图片提示词进行分片、通过 ApiProxy 产生流式输出、持久化精确文本，并拒绝第二个 home 属主。
 - 本地 Electron 集成会启动暂存扩展、捕获编辑器状态、打开 workspace 内位置、重新连接 runtime，并释放 companion lease。
 - VS Code workflow 为 Linux、macOS 与 Windows 定义原生本地扩展任务；SSH Remote 与 Dev Container 仍是人工发布检查项。

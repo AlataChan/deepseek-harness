@@ -237,7 +237,9 @@ export class VsCodeApiClient extends AbstractApiClient {
         if (pending === undefined) return
         this.pending.delete(message.rpcId)
         pending.detachAbort()
-        pending.reject(error instanceof Error ? error : new Error(String(error)))
+        // A current-generation non-Error send failure terminates and clears this
+        // entry before this observer; surviving rejections are internal Errors.
+        pending.reject(error as Error)
       })
     })
   }
@@ -291,13 +293,18 @@ export class VsCodeApiClient extends AbstractApiClient {
     const generation = this.generation
     const decoder = this.decoder
     const operation = this.inboundTail.then(async () => {
-      if (this.closed !== undefined || generation !== this.generation) return
+      if (!this.acceptsInboundGeneration(generation)) return
       const frame = await decoder.accept(value)
+      if (!this.acceptsInboundGeneration(generation)) return
       if (frame !== undefined) this.acceptFrame(frame)
     })
     this.inboundTail = operation.catch((error: unknown) => {
       if (generation === this.generation) this.terminate(error)
     })
+  }
+
+  private acceptsInboundGeneration(generation: number): boolean {
+    return this.closed === undefined && generation === this.generation
   }
 
   private acceptIdeEvent(event: IdeEvent): void {
@@ -312,7 +319,6 @@ export class VsCodeApiClient extends AbstractApiClient {
   }
 
   private resetGeneration(state: 'stopping' | 'restarting' | 'failed'): void {
-    if (this.closed !== undefined) return
     this.generation++
     this.runtimeReady = false
     this.runtimeUnavailable = new RuntimeGenerationUnavailableError(`VS Code runtime generation ${state}`)

@@ -1,9 +1,16 @@
 /** VS Code Webview API client correlation, stream, and lifecycle behavior. */
 
+import { Binary } from '@deepseek-ai/cosmokit'
 import { describe, expect, it, vi } from 'vitest'
 import { RpcId, type ClientRequest, type ClientResponse } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { VsCodeApiClient, type VsCodeApiClientOptions } from '../src/client/api-client.ts'
-import { VsCodeStreamId, type VsCodeCarrierFrame } from '../src/protocol.ts'
+import {
+  VsCodeStreamId,
+  WireMessageId,
+  type IdeEvent,
+  type VsCodeCarrierFrame,
+  type VsCodeWireRecord,
+} from '../src/protocol.ts'
 import { BridgeHarness } from './bridge-harness.client.ts'
 
 const DESCRIPTION = {
@@ -35,6 +42,37 @@ class StickyBridgeHarness extends BridgeHarness {
   override subscribe(listener: (value: unknown) => void): () => void {
     super.subscribe(listener)
     return () => {}
+  }
+}
+
+class IdeHarness {
+  private readonly listeners = new Set<(event: IdeEvent) => void>()
+
+  /** Subscribe to runtime and editor events. */
+  subscribeEvents(listener: (event: IdeEvent) => void): () => void {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+
+  /** Deliver one parsed IDE event. */
+  emit(event: IdeEvent): void {
+    for (const listener of this.listeners) listener(event)
+  }
+}
+
+class GatedBridgeHarness extends BridgeHarness {
+  readonly started = Promise.withResolvers<undefined>()
+  readonly release = Promise.withResolvers<undefined>()
+  private first = true
+
+  /** Hold the first physical send so a queued frame can cross a runtime generation. */
+  override async send(record: VsCodeWireRecord): Promise<void> {
+    if (this.first) {
+      this.first = false
+      this.started.resolve(undefined)
+      await this.release.promise
+    }
+    await super.send(record)
   }
 }
 
@@ -298,6 +336,105 @@ describe('VsCodeApiClient', () => {
     })
     const already = AbortSignal.abort(new Error('already aborted'))
     await expect(client.host.describe({}, already)).rejects.toThrow(/already aborted/)
+    client.dispose()
+  })
+
+  it('resets pending work for runtime lifecycle events and validates the replacement decoder', async () => {
+    const port = new BridgeHarness()
+    const ide = new IdeHarness()
+    const client = new VsCodeApiClient(port, { responseTimeoutMs: 500 }, ide)
+    ide.emit({ type: 'ide/event', event: 'workspace.selected', payload: { workspaceRoot: '/workspace' } })
+    ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'idle' } })
+    ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'starting' } })
+
+    const pending = client.host.describe({})
+    await vi.waitFor(() => { expect(port.sent).toHaveLength(1) })
+    ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'restarting' } })
+    await expect(pending).rejects.toThrow(/generation restarting/)
+    await expect(client.host.describe({})).rejects.toThrow(/generation restarting/)
+
+    ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'ready' } })
+    port.emitRaw({ type: 'not-wire' })
+    await vi.waitFor(async () => {
+      await expect(client.host.describe({})).rejects.toThrow()
+    })
+    client.dispose()
+    ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'failed' } })
+  })
+
+  it('ignores stale fragmented frames and decode failures after runtime generation changes', async () => {
+    const digestGates = [Promise.withResolvers<ArrayBuffer>(), Promise.withResolvers<ArrayBuffer>()]
+    let digestIndex = 0
+    const digest = vi.spyOn(globalThis.crypto.subtle, 'digest').mockImplementation(
+      async () => await digestGates[digestIndex++]!.promise,
+    )
+    try {
+      const port = new BridgeHarness()
+      const ide = new IdeHarness()
+      const client = new VsCodeApiClient(port, { responseTimeoutMs: 100 }, ide)
+      port.onFrame = async (frame) => {
+        const request = requestOf(frame)
+        if (request?.type !== 'client-request') return
+        await port.receive({
+          type: 'rpc/message',
+          message: { type: 'server-response', rpcId: request.rpcId, result: { ok: true, value: DESCRIPTION } },
+        })
+      }
+      const encoded = JSON.stringify({ type: 'control/shutdown' })
+      const bytes = new TextEncoder().encode(encoded)
+      let messageId = WireMessageId('stale-frame')
+      port.emitRaw({
+        type: 'wire/chunk-start', messageId, totalBytes: bytes.byteLength, sha256: '0'.repeat(64),
+      })
+      port.emitRaw({ type: 'wire/chunk', messageId, index: 0, data: Binary.toBase64(bytes) })
+      port.emitRaw({ type: 'wire/chunk-end', messageId, chunks: 1 })
+      await vi.waitFor(() => { expect(digest).toHaveBeenCalledOnce() })
+      ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'restarting' } })
+      digestGates[0]!.resolve(new Uint8Array(32).buffer)
+      ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'ready' } })
+      await expect(client.host.describe({})).resolves.toMatchObject({ result: { ok: true } })
+
+      messageId = WireMessageId('stale-error')
+      port.emitRaw({
+        type: 'wire/chunk-start', messageId, totalBytes: bytes.byteLength, sha256: '0'.repeat(64),
+      })
+      port.emitRaw({ type: 'wire/chunk', messageId, index: 0, data: Binary.toBase64(bytes) })
+      port.emitRaw({ type: 'wire/chunk-end', messageId, chunks: 1 })
+      await vi.waitFor(() => { expect(digest).toHaveBeenCalledTimes(2) })
+      ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'restarting' } })
+      digestGates[1]!.resolve(new Uint8Array(32).fill(1).buffer)
+      ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'ready' } })
+      await expect(client.host.describe({})).resolves.toMatchObject({ result: { ok: true } })
+      client.dispose()
+    } finally {
+      digest.mockRestore()
+    }
+  })
+
+  it('rejects an outbound frame queued across a runtime generation change', async () => {
+    const port = new GatedBridgeHarness()
+    const ide = new IdeHarness()
+    const client = new VsCodeApiClient(port, { responseTimeoutMs: 500 }, ide)
+    const first = client.host.describe({})
+    await port.started.promise
+    const second = client.host.describe({})
+    ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'restarting' } })
+    await expect(first).rejects.toThrow(/generation restarting/)
+    await expect(second).rejects.toThrow(/generation restarting/)
+    port.release.resolve(undefined)
+    await vi.waitFor(() => { expect(port.sent).toHaveLength(1) })
+
+    ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'ready' } })
+    port.onFrame = async (frame) => {
+      const request = requestOf(frame)
+      if (request?.type !== 'client-request') return
+      await port.receive({
+        type: 'rpc/message',
+        message: { type: 'server-response', rpcId: request.rpcId, result: { ok: true, value: DESCRIPTION } },
+      })
+    }
+    await expect(client.host.describe({})).resolves.toMatchObject({ result: { ok: true } })
+    expect(port.sent).toHaveLength(2)
     client.dispose()
   })
 

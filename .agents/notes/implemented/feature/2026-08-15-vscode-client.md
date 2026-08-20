@@ -89,7 +89,7 @@ Passing arbitrary VS Code command identifiers would grant plugin code an open-en
 ## Verification
 
 - The profile-equivalence test compares the Web profile's ordered rows and resolved configurations before and after the composition extraction.
-- Resolver, process, carrier, Webview, editor-context, path-opening, trust, lease, localization, and teardown tests cover the owned lifecycle and security rules.
+- Resolver, process, carrier, runtime-generation race, Webview, editor-context, path-opening, trust, lease, localization, and teardown tests cover the owned lifecycle and security rules.
 - The keyless `vscode-agent` assembled snapshot boots the companion, fragments an image prompt with editor context, streams through ApiProxy, persists the exact text, and rejects a second home owner.
 - The local Electron integration boots the staged extension, captures editor state, opens an in-workspace location, reconnects the runtime, and releases the companion lease.
 - The VS Code workflow defines native local-extension lanes for Linux, macOS, and Windows; SSH Remote and Dev Container remain manual release checks.
