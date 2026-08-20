@@ -1,7 +1,9 @@
 /** Harness Client VS Code workspace-extension activation. */
 
+import { randomUUID } from 'node:crypto'
 import * as vscode from 'vscode'
 import { validateContextLimits } from './bridge-router.ts'
+import { EditorContextCapture, type EditorCaptureKind } from './editor-context.ts'
 import { launchIpcChild } from './ipc-child.ts'
 import { RuntimeOutput } from './output.ts'
 import { RuntimeManager } from './runtime-manager.ts'
@@ -44,11 +46,35 @@ export function activate(context: vscode.ExtensionContext): void {
   const channel = vscode.window.createOutputChannel(vscode.l10n.t('Harness runtime logs'))
   const output = new RuntimeOutput(channel)
   const configuration = vscode.workspace.getConfiguration('harnessClient')
-  validateContextLimits({
+  const contextLimits = validateContextLimits({
     maxSelectionBytes: configuration.get<number>('context.maxSelectionBytes', 131_072),
     maxFileBytes: configuration.get<number>('context.maxFileBytes', 524_288),
     maxDiagnostics: configuration.get<number>('context.maxDiagnostics', 200),
   })
+  const editorContext = new EditorContextCapture({
+    activeEditor: () => {
+      const editor = vscode.window.activeTextEditor
+      if (editor === undefined) return undefined
+      return {
+        document: {
+          uri: editor.document.uri,
+          languageId: editor.document.languageId,
+          version: editor.document.version,
+          getText: range => editor.document.getText(range as vscode.Range | undefined),
+        },
+        selection: editor.selection,
+      }
+    },
+    diagnostics: uri => vscode.languages.getDiagnostics(uri as vscode.Uri).map(diagnostic => ({
+      range: diagnostic.range,
+      severity: diagnostic.severity,
+      message: diagnostic.message,
+      ...(diagnostic.source === undefined ? {} : { source: diagnostic.source }),
+      ...(diagnostic.code === undefined ? {} : { code: diagnostic.code }),
+    })),
+    randomId: randomUUID,
+    now: Date.now,
+  }, contextLimits)
   const manager = new RuntimeManager({
     extensionVersion: extensionVersion(context),
     restartAttempts: configuration.get<number>('runtime.restartAttempts', 2),
@@ -67,7 +93,7 @@ export function activate(context: vscode.ExtensionContext): void {
       onStderr: (chunk) => { output.appendProcessChunk('stderr', chunk) },
     }),
   })
-  const provider = new HarnessWebviewProvider(manager, output, {
+  const provider: HarnessWebviewProvider = new HarnessWebviewProvider(manager, output, {
     extensionUri: context.extensionUri,
     globalStorageUri: context.globalStorageUri,
     locale: vscode.env.language,
@@ -92,22 +118,35 @@ export function activate(context: vscode.ExtensionContext): void {
     joinUri: (base, ...segments) => vscode.Uri.joinPath(base, ...segments),
     showError: async message => await vscode.window.showErrorMessage(message),
     ideHandlers: {
+      'workspace.getSelectedRoot': (): { workspaceRoot: string } => ({
+        workspaceRoot: provider.selectedWorkspaceRoot(),
+      }),
+      'editor.captureSelection': () => editorContext.selection(provider.selectedWorkspaceRoot()),
+      'editor.captureFile': () => editorContext.file(provider.selectedWorkspaceRoot()),
+      'editor.captureDiagnostics': () => editorContext.diagnostics(provider.selectedWorkspaceRoot()),
       'runtime.restart': async () => { await provider.restartRuntime(); return { accepted: true } },
       'logs.show': () => { output.show(); return {} },
     },
   })
+  const addEditorContext = async (kind: EditorCaptureKind): Promise<void> => {
+    const root = provider.selectedWorkspaceRoot()
+    const snapshot = kind === 'selection'
+      ? editorContext.selection(root)
+      : kind === 'file'
+        ? editorContext.file(root)
+        : editorContext.diagnostics(root)
+    if (snapshot === null) {
+      await vscode.window.showInformationMessage(vscode.l10n.t('No editor context is available to add.'))
+      return
+    }
+    await provider.addEditorContext(snapshot)
+  }
   const commands: [string, () => unknown][] = [
     ['harnessClient.focus', () => vscode.commands.executeCommand(`${VIEW_ID}.focus`)],
     ['harnessClient.newSession', () => provider.newSession()],
-    ['harnessClient.addSelection', () => vscode.window.showInformationMessage(
-      vscode.l10n.t('Editor context is not available until the VS Code context plugin loads.'),
-    )],
-    ['harnessClient.addFile', () => vscode.window.showInformationMessage(
-      vscode.l10n.t('Editor context is not available until the VS Code context plugin loads.'),
-    )],
-    ['harnessClient.addProblems', () => vscode.window.showInformationMessage(
-      vscode.l10n.t('Editor context is not available until the VS Code context plugin loads.'),
-    )],
+    ['harnessClient.addSelection', () => addEditorContext('selection')],
+    ['harnessClient.addFile', () => addEditorContext('file')],
+    ['harnessClient.addProblems', () => addEditorContext('diagnostics')],
     ['harnessClient.selectWorkspace', () => provider.selectWorkspace()],
     ['harnessClient.restartRuntime', () => provider.restartRuntime()],
     ['harnessClient.showLogs', () => { output.show() }],

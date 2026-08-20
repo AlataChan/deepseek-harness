@@ -2,6 +2,7 @@
 
 import { join } from 'node:path'
 import type * as vscode from 'vscode'
+import type { EditorContextSnapshot } from '@deepseek-ai/dsh-client-connection-vscode/protocol'
 import type { IdeHandlers } from './bridge-router.ts'
 import { BridgeRouter, cacheVerifiedBundles } from './bridge-router.ts'
 import type { RuntimeOutput } from './output.ts'
@@ -130,6 +131,26 @@ export class HarnessWebviewProvider implements vscode.WebviewViewProvider, vscod
   async newSession(): Promise<void> {
     if (this.router === undefined) throw new Error('Harness Webview is not ready')
     await this.router.requestWebview('webview.newSession', {})
+  }
+
+  /**
+   * Read the root selected for the current companion generation.
+   * @returns selected absolute workspace root.
+   */
+  selectedWorkspaceRoot(): string {
+    if (this.workspaceRoot === undefined) throw new Error('Harness Webview has no selected workspace')
+    return this.workspaceRoot
+  }
+
+  /**
+   * Deliver one extension-command capture to the active Webview session.
+   * @param snapshot - immutable extension-host editor snapshot.
+   */
+  addEditorContext(snapshot: EditorContextSnapshot): Promise<void> {
+    if (this.router === undefined) return Promise.reject(new Error('Harness Webview is not ready'))
+    return this.router.sendEvent({
+      type: 'ide/event', event: 'editor.contextCaptured', payload: { snapshot },
+    })
   }
 
   /** Re-resolve the current inert view after VS Code grants Workspace Trust. */

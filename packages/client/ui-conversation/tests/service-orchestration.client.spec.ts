@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { AttachmentId } from '@deepseek-ai/dsh-attachment'
 import { makeTranslate, SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
 import type { QueuedMessage, SessionFace } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ReferenceInsert } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import { ComposerBlockRegistry } from '../src/client/input/blocks.ts'
 import { InputHub } from '../src/client/input/hub.ts'
 import { ConversationController, UnsupportedImageMediaTypeError } from '../src/client/service.ts'
@@ -38,6 +39,25 @@ async function bench(readAttachment?: SessionFace['readAttachment']) {
 }
 
 describe('ConversationController', () => {
+  it('appends one reference to the scoped draft with one separating space', async () => {
+    const b = await bench()
+    const reference: ReferenceInsert = {
+      source: 'ide-context', ref: 'capture-1', label: 'src/main.ts:2-4', clipboardText: '@src/main.ts:2-4',
+    }
+    b.shell.setDraft('explain this')
+    expect(b.scoped.appendReference(reference)).toBe(true)
+    expect(b.shell.snapshot.draft).toBe('explain this ￼ ')
+    expect(b.shell.snapshot.occurrences).toEqual([{
+      occurrenceId: 1,
+      source: 'ide-context',
+      ref: 'capture-1',
+      offset: 13,
+      label: 'src/main.ts:2-4',
+      clipboardText: '@src/main.ts:2-4',
+    }])
+    await b.runtime.dispose()
+  })
+
   it('routes operations through the public Session binding', async () => {
     const b = await bench()
     await b.scoped.send('hello')

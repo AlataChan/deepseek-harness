@@ -14,7 +14,7 @@
   "config.runtimePath.description": "Installed Harness package root, manifest, JavaScript bin, or recognized package-manager shim.",
   "config.nodePath.description": "Real Node executable used to fork the Harness companion.",
   "config.maxSelectionBytes.description": "Maximum bytes captured by Add Selection.",
-  "config.maxFileBytes.description": "Maximum bytes captured by Add Active File.",
+  "config.maxFileBytes.description": "Maximum bytes captured by Add Active File or the serialized Add Problems payload.",
   "config.maxDiagnostics.description": "Maximum diagnostics captured by Add Problems.",
   "config.restartAttempts.description": "Maximum automatic companion restart attempts after an unexpected exit.",
   "config.shutdownTimeoutMs.description": "Graceful companion shutdown deadline in milliseconds."

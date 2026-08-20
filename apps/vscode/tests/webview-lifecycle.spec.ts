@@ -45,6 +45,8 @@ describe('VS Code Webview lifecycle', () => {
       joinUri: base => base,
       showError,
     })
+    expect(() => provider.selectedWorkspaceRoot()).toThrow('no selected workspace')
+    await expect(provider.addEditorContext({} as never)).rejects.toThrow('Webview is not ready')
     const webview = { options: {}, html: '' }
     const view = {
       webview,

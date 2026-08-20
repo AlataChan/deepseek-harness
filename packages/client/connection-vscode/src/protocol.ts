@@ -100,7 +100,7 @@ export interface EditorContextRange {
   startLine: number
   /** Zero-based start column. */
   startColumn: number
-  /** Zero-based inclusive end line. */
+  /** Zero-based line containing the exclusive end position. */
   endLine: number
   /** Zero-based exclusive end column. */
   endColumn: number
@@ -154,6 +154,8 @@ export interface IdeMethodMap {
   'webview.getTurnState': { payload: Record<string, never>; result: { running: boolean } }
   /** Create and select a new session through the existing Client runtime. */
   'webview.newSession': { payload: Record<string, never>; result: Record<string, never> }
+  /** Read the extension-selected root after the Client Plugin subscribes to later changes. */
+  'workspace.getSelectedRoot': { payload: Record<string, never>; result: { workspaceRoot: string } }
   /** Capture the active editor selection explicitly. */
   'editor.captureSelection': { payload: Record<string, never>; result: EditorContextSnapshot | null }
   /** Capture the active file explicitly. */
@@ -220,6 +222,10 @@ const ideMethodSchemas = {
     result: z.object({ running: z.boolean() }).strict(),
   },
   'webview.newSession': { payload: emptyPayloadSchema, result: emptyPayloadSchema },
+  'workspace.getSelectedRoot': {
+    payload: emptyPayloadSchema,
+    result: z.object({ workspaceRoot: z.string().min(1).max(32_768) }).strict(),
+  },
   'editor.captureSelection': { payload: emptyPayloadSchema, result: editorContextSnapshotSchema.nullable() },
   'editor.captureFile': { payload: emptyPayloadSchema, result: editorContextSnapshotSchema.nullable() },
   'editor.captureDiagnostics': { payload: emptyPayloadSchema, result: editorContextSnapshotSchema.nullable() },

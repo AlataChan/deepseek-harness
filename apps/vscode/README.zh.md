@@ -4,6 +4,8 @@
 
 Harness 客户端的 workspace extension（工作区扩展）外壳。活动栏 `WebviewView` 仅在受信任的视图完成解析后才启动 companion（伴随进程），从当前 VS Code 窗口选择一个文件夹，并在隐藏期间保留存活的 Client 树。视图销毁和扩展停用会排空 companion；更换所选根目录会重启 companion，并在中断运行中的轮次前请求确认。
 
+composer 菜单和对应的扩展命令可以显式附加当前非空选区、包含未保存修改的当前文档，或当前文档的诊断。每次捕获都限制在所选根目录内，并形成不可变引用 chip；扩展绝不会隐式添加编辑器内容。
+
 扩展使用 workspace extension host（工作区扩展宿主）上已安装的 `@deepseek-ai/dsh` runtime（运行时）。发现过程接受包根目录、包 manifest（元数据清单）、已发布 JavaScript bin 或已识别的 npm/pnpm shim（垫片）作为线索，随后解析包声明的 VS Code companion 和真实 Node 可执行文件。启动过程直接调用带 IPC channel 的 `child_process.fork`，绝不执行 shell shim。这样，Local、SSH Remote 与 Dev Container 进程都与其 workspace 文件共置。Web extension host 不受支持。
 
 companion 握手会公布 Client Plugin（客户端插件）图与 bundle（包）哈希。扩展把校验后的字节复制到按修订号划分的全局存储中，只向 Webview 授予该缓存与固定扩展媒体的访问权，并通过严格的 content security policy（内容安全策略）启动既有 Client 外壳。唯一一次 `acquireVsCodeApi()` 调用始终封装在经过校验的载体端口与 IDE 端口之后，不向外暴露。companion 代际变化会结束活跃 Client stream，但不会永久关闭 Webview API 客户端，因此共享 connection controller 可以重新连接持久会话。
@@ -14,7 +16,9 @@ Workspace Trust（工作区信任）会阻止 runtime 发现与执行。可执�
 
 - `harnessClient.runtimePath` 使用已安装包的位置或已识别的发现线索覆盖 runtime 发现。
 - `harnessClient.nodePath` 选择用于直接 fork 的真实 Node 可执行文件。
-- `harnessClient.context.*` 限制显式编辑器捕获；编辑器集成由 VS Code Client Plugin 提供。
+- `harnessClient.context.maxSelectionBytes` 限制“将选区加入提示词”捕获的 UTF-8 文本字节数。
+- `harnessClient.context.maxFileBytes` 限制“将当前文件加入提示词”捕获的 UTF-8 文本字节数，以及序列化后的“将问题加入提示词”载荷字节数。
+- `harnessClient.context.maxDiagnostics` 限制“将问题加入提示词”捕获的诊断记录数；诊断仅来自当前文件。
 - `harnessClient.runtime.restartAttempts` 与 `harnessClient.runtime.shutdownTimeoutMs` 限制自动恢复与强制关闭。
 
 运行 `pnpm --filter @deepseek-ai/dsh-vscode run build` 可生成 `dist/extension.js` 与 Webview 产物。[`manifest.vscode.json`](manifest.vscode.json) 是扩展暂存打包的源 manifest；其 publisher 仍为显式占位符，因此不构成可发布的 Marketplace 身份。

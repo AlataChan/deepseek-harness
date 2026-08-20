@@ -37,3 +37,8 @@
       inject: [vscodeStartup]
       config:
         workspaceRoot: !!js ctx.vscodeStartup.workspaceRoot
+
+    # Surface-private editor integration: explicit context chips, Webview
+    # lifecycle methods, and selected-root projection into Workspace/Session.
+    - id: ui-vscode
+      name: '@deepseek-ai/dsh-client-ui-vscode'

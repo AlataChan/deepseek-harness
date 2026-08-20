@@ -9,7 +9,9 @@
  * real host entity, so the sink is one unconditional prompt path.
  */
 import type { ClientContext, ISessions, SessionBinding, SessionFace, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { InputTriggerController, SubmitImageAttachment, SubmitOutcome } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+import type {
+  InputTriggerController, ReferenceInsert, SubmitImageAttachment, SubmitOutcome,
+} from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import { queueReadFaceOf } from '../queue/store.ts'
 import type { ComposerKeyboard, DraftAttachmentId, SessionInputResolver, SessionInput } from './contract.ts'
@@ -143,6 +145,23 @@ export class InputHub implements SessionInputResolver {
    */
   keyboard(id: SessionId): ComposerKeyboard {
     return this.shell(id)
+  }
+
+  /**
+   * Append one reference through a fresh end-of-draft revision snapshot.
+   * @param id - addressed session id.
+   * @param reference - owner reference to retain as one occurrence.
+   * @returns whether the input phase accepted the insertion.
+   */
+  appendReference(id: SessionId, reference: ReferenceInsert): boolean {
+    const shell = this.shell(id)
+    const snapshot = shell.snapshot
+    const offset = snapshot.draft.length
+    return shell.insertReference(reference, {
+      start: offset,
+      end: offset,
+      draftRev: snapshot.draftRev,
+    })
   }
 
   /**

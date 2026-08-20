@@ -28,6 +28,7 @@ describe('VS Code bundle composition', () => {
     expect(rows.get('vscode-startup')).toMatchObject({ name: '@deepseek-ai/dsh-vscode-app/startup' })
     expect(rows.get('vscode-runtime')).toMatchObject({ name: '@deepseek-ai/dsh-vscode-app' })
     expect(rows.get('connection-vscode')).toMatchObject({ name: '@deepseek-ai/dsh-client-connection-vscode' })
+    expect(rows.get('ui-vscode')).toMatchObject({ name: '@deepseek-ai/dsh-client-ui-vscode' })
 
     for (const absent of [
       'session-log-download',

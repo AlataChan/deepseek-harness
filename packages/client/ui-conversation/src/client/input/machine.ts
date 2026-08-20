@@ -307,20 +307,22 @@ export class InputMachine {
 
   /**
    * Shared reference-insertion transaction: replace [span) with one inline
-   * occurrence (insert-ref and paste-upgrade both land here). A separating
-   * space follows the reference unless one is already next.
-   * @returns the inserted length (display text plus optional gap).
+   * occurrence (insert-ref and paste-upgrade both land here). Separating
+   * spaces surround the reference where adjacent prose would otherwise touch it.
+   * @returns the inserted length, including any separating spaces.
    */
   private replaceSpanWithChip(reference: ReferenceInsert, span: TokenSpan): number {
     this.pushTxn()
     this.typingRun = undefined
+    const head = this.draft.slice(0, span.start)
+    const leadingGap = head.length > 0 && !/\s$/.test(head) ? ' ' : ''
     const tail = this.draft.slice(span.end)
     const gap = tail.length === 0 || tail[0] !== ' ' ? ' ' : ''
     const displayText = referenceDraftText(reference)
-    const inserted = displayText + gap
+    const inserted = leadingGap + displayText + gap
     this.reconcile({ start: span.start, end: span.end, insertedLength: inserted.length })
-    this.withMinted([this.mint(reference, span.start, displayText.length)])
-    this.adopt(this.draft.slice(0, span.start) + inserted + tail)
+    this.withMinted([this.mint(reference, span.start + leadingGap.length, displayText.length)])
+    this.adopt(head + inserted + tail)
     this.watchClaim()
     return inserted.length
   }

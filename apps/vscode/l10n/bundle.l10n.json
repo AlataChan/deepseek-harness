@@ -8,5 +8,5 @@
   "Restart": "Restart",
   "Cancel": "Cancel",
   "Harness runtime logs": "Harness runtime logs",
-  "Editor context is not available until the VS Code context plugin loads.": "Editor context is not available until the VS Code context plugin loads."
+  "No editor context is available to add.": "No editor context is available to add."
 }

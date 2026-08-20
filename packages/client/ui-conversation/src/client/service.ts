@@ -15,6 +15,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { ISessions, SessionFace, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SubmitImageAttachment, SubmitOutcome } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
+import type { ReferenceInsert } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { ComposerAttachment } from './contract/slots.ts'
 import type { QueueAction, QueueItemId } from './contract/queue.ts'
 import type { ComposerBlocks } from './input/blocks.ts'
@@ -34,6 +35,12 @@ export interface IConversation {
    * cannot import makes a session's input inert with its own reason.
    */
   readonly blocks: ComposerBlocks
+  /**
+   * Append one reference chip to the caller scope's draft.
+   * @param reference - immutable owner reference and its user-facing projections.
+   * @returns whether the input machine accepted the insertion.
+   */
+  appendReference(reference: ReferenceInsert): boolean
   /**
    * Send a prompt into the caller scope's session (queued turn).
    * @param text - prompt text, sent verbatim as one text block.
@@ -57,6 +64,11 @@ export interface IConversation {
    * @returns completion of the page pull.
    */
   loadOlder(): Promise<void>
+}
+
+/** Package-private append face implemented by the resident input hub. */
+interface ConversationInputHub extends SessionInputResolver {
+  appendReference(sessionId: SessionId, reference: ReferenceInsert): boolean
 }
 
 /** Create one browser-only draft descriptor; only its id enters input state. */
@@ -94,6 +106,7 @@ export class ConversationController extends Service implements IConversation {
   readonly input: SessionInputResolver
   /** The per-session composer-block registry. */
   readonly blocks: ComposerBlocks
+  private readonly inputHub: ConversationInputHub
   private readonly draftAttachments = new Map<DraftAttachmentId, ComposerAttachment>()
   private readonly imageUrls = new Map<string, ImageUrlEntry>()
   private readonly imageGenerations = new Map<SessionId, number>()
@@ -107,9 +120,10 @@ export class ConversationController extends Service implements IConversation {
    * constructed by the plugin apply (the same instances the slot inject
    * factories close over).
    */
-  constructor(ctx: Context, config: { input: SessionInputResolver; blocks: ComposerBlocks }) {
+  constructor(ctx: Context, config: { input: ConversationInputHub; blocks: ComposerBlocks }) {
     super(ctx, 'conversation')
     this.input = config.input
+    this.inputHub = config.input
     this.blocks = config.blocks
     ctx.effect(() => () => {
       this.disposed = true
@@ -131,6 +145,11 @@ export class ConversationController extends Service implements IConversation {
     const session = this.scopedSession('send')
     const result = await session.prompt([{ type: 'text', text }], 'queue')
     if (!result.ok) throw new Error(`conversation.send failed: ${result.error.code}: ${result.error.message}`)
+  }
+
+  /** @inheritdoc */
+  appendReference(reference: ReferenceInsert): boolean {
+    return this.inputHub.appendReference(this.scopeId('appendReference'), reference)
   }
 
   /**

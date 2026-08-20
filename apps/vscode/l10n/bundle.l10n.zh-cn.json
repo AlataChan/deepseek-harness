@@ -8,5 +8,5 @@
   "Restart": "重启",
   "Cancel": "取消",
   "Harness runtime logs": "Harness 运行时日志",
-  "Editor context is not available until the VS Code context plugin loads.": "VS Code 上下文插件加载完成前，编辑器上下文功能不可用。"
+  "No editor context is available to add.": "没有可添加的编辑器上下文。"
 }

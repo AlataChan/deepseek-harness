@@ -156,6 +156,7 @@ describe('VS Code Webview IDE schema', () => {
     const requests: IdeRequest[] = [
       { type: 'ide/request', requestId, method: 'webview.getTurnState', payload: {} },
       { type: 'ide/request', requestId, method: 'webview.newSession', payload: {} },
+      { type: 'ide/request', requestId, method: 'workspace.getSelectedRoot', payload: {} },
       { type: 'ide/request', requestId, method: 'editor.captureSelection', payload: {} },
       { type: 'ide/request', requestId, method: 'editor.captureFile', payload: {} },
       { type: 'ide/request', requestId, method: 'editor.captureDiagnostics', payload: {} },
@@ -165,6 +166,10 @@ describe('VS Code Webview IDE schema', () => {
     const responses: IdeResponse[] = [
       { type: 'ide/response', requestId, method: 'webview.getTurnState', ok: true, result: { running: true } },
       { type: 'ide/response', requestId, method: 'webview.newSession', ok: true, result: {} },
+      {
+        type: 'ide/response', requestId, method: 'workspace.getSelectedRoot', ok: true,
+        result: { workspaceRoot: '/workspace' },
+      },
       { type: 'ide/response', requestId, method: 'editor.captureSelection', ok: true, result: snapshot },
       { type: 'ide/response', requestId, method: 'editor.captureFile', ok: true, result: null },
       { type: 'ide/response', requestId, method: 'editor.captureDiagnostics', ok: true, result: snapshot },
