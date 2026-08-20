@@ -156,6 +156,7 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   slots: 'client-side interface-typed browser service — packages/client/runtime/README.md owns the API',
   theme: 'client-side interface-typed browser service — packages/client/ui-theme/README.md owns the API',
   vscodeBridge: 'client-side surface-private record port supplied before Client Plugin boot — packages/client/connection-vscode/README.md owns the API',
+  vscodeIde: 'client-side surface-private typed IDE port supplied before Client Plugin boot — packages/client/connection-vscode/README.md owns the API',
   workspaces: 'client-side interface-typed browser service — packages/client/runtime/README.md owns the API',
 }
 

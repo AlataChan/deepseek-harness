@@ -8,7 +8,7 @@ The boot page uses plain DOM and local CSS, so client-bundle and plugin-activati
 
 `PLATFORM_MODULES` (src/platform.ts) is the single source of truth for shell-seeded shared modules. Together with `PRELOADED_CLIENT_EXTERNALS`, it defines the implicit external baseline for every dynamic bundle; `dsh.client.external` adds only exact non-baseline requests.
 
-The optional override parameter `seams` forwards the module system's `loadBundle` transport override (`BootSeams`) for environments where external `<script>` execution cannot reach the page context; ordinary browser callers omit it.
+The optional `BootSeams` parameter forwards a module-system `loadBundle` transport override and may provide narrow surface services on the fresh Client context before graph entries mount. The ordinary browser caller omits it; the VS Code Webview uses both hooks for verified cached bundles and its private bridge ports.
 
 ## Model Experience
 

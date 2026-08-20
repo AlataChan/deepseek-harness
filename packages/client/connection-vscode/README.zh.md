@@ -4,7 +4,7 @@
 
 由 dsh companion 进程、VS Code extension host 与嵌入式 Webview 共用的有界载体。该协议让 API Proxy RPC 校验保持权威，保留既有 `events.mux` 恢复 payload，并将 host stream 限制为无字段的打开 payload。其 wire codec 只序列化每个逻辑 frame 一次，通过顺序发送物理记录提供背压，每个方向只接纳一条分块消息，在解析前核对声明长度与 SHA-256，并在任何违规后关闭 decoder。物理记录默认上限为 256 KiB；控制消息默认上限为 1 MiB；RPC 与 stream 数据 frame 复用浏览器 connection 包的 160 MiB 请求容量，使默认 100 MiB 图片总量限额仍然可用。
 
-与浏览器兼容的 `protocol` 和 `codec` 入口保持独立于 Node。Host 根插件消费进程 IPC channel，依据配置的 `workspaceRoot` 校验启动握手（未配置的嵌入场景使用 `process.cwd()`），公布经过验证的 Client Plugin 产物，路由既有 ApiProxy envelope，并通过其 Cordis fiber 排空 stream pump。`client` 入口消费由 shell 私下提供的 record port、扩展既有 `AbstractApiClient`，并公布标准 `ctx.connection` handle。它关联有界 unary 调用与 receipt，只向上游打开 `mux` 和 Host 生命周期 frame，所有 stream 数据只从下行接收，就绪与重连仍由共享 `ConnectionController` 负责。
+与浏览器兼容的 `protocol` 和 `codec` 入口保持独立于 Node。Host 根插件消费进程 IPC channel，依据配置的 `workspaceRoot` 校验启动握手（未配置的嵌入场景使用 `process.cwd()`），公布经过验证的 Client Plugin 产物，路由既有 ApiProxy envelope，并通过其 Cordis fiber 排空 stream pump。`client` 入口消费由 shell 私下提供的 record port 与 IDE event port、扩展既有 `AbstractApiClient`，并公布标准 `ctx.connection` handle。它关联有界 unary 调用与 receipt，只向上游打开 `mux` 和 Host 生命周期 frame，所有 stream 数据只从下行接收。runtime 代际进入 stopping、restarting 或 failed 状态时，它会拒绝待处理的 unary 调用并结束 stream，但不会永久关闭 API 客户端；共享 `ConnectionController` 负责针对下一代 ready runtime 重新打开两条 stream。
 
 ## 模型体验
 

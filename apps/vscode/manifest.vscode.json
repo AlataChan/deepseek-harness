@@ -1,0 +1,128 @@
+{
+  "name": "harness-client",
+  "displayName": "Harness Client for VS Code",
+  "description": "Use an installed Harness runtime from a retained VS Code workspace panel.",
+  "publisher": "__PUBLISHER_ID__",
+  "version": "0.1.0-rc.5",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Other"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./dist/extension.js",
+  "l10n": "./l10n",
+  "activationEvents": [
+    "onView:harnessClient.panel",
+    "onCommand:harnessClient.focus",
+    "onCommand:harnessClient.newSession",
+    "onCommand:harnessClient.addSelection",
+    "onCommand:harnessClient.addFile",
+    "onCommand:harnessClient.addProblems",
+    "onCommand:harnessClient.selectWorkspace",
+    "onCommand:harnessClient.restartRuntime",
+    "onCommand:harnessClient.showLogs"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%capabilities.untrustedWorkspaces.description%",
+      "restrictedConfigurations": [
+        "harnessClient.runtimePath",
+        "harnessClient.nodePath"
+      ]
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "harnessClient",
+          "title": "%view.container.title%",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "harnessClient": [
+        {
+          "type": "webview",
+          "id": "harnessClient.panel",
+          "name": "%view.title%"
+        }
+      ]
+    },
+    "commands": [
+      { "command": "harnessClient.focus", "title": "%command.focus%" },
+      { "command": "harnessClient.newSession", "title": "%command.newSession%" },
+      { "command": "harnessClient.addSelection", "title": "%command.addSelection%" },
+      { "command": "harnessClient.addFile", "title": "%command.addFile%" },
+      { "command": "harnessClient.addProblems", "title": "%command.addProblems%" },
+      { "command": "harnessClient.selectWorkspace", "title": "%command.selectWorkspace%" },
+      { "command": "harnessClient.restartRuntime", "title": "%command.restartRuntime%" },
+      { "command": "harnessClient.showLogs", "title": "%command.showLogs%" }
+    ],
+    "configuration": {
+      "title": "%config.title%",
+      "properties": {
+        "harnessClient.runtimePath": {
+          "type": "string",
+          "default": "",
+          "description": "%config.runtimePath.description%",
+          "scope": "window"
+        },
+        "harnessClient.nodePath": {
+          "type": "string",
+          "default": "",
+          "description": "%config.nodePath.description%",
+          "scope": "window"
+        },
+        "harnessClient.context.maxSelectionBytes": {
+          "type": "integer",
+          "default": 131072,
+          "minimum": 1,
+          "maximum": 983040,
+          "description": "%config.maxSelectionBytes.description%",
+          "scope": "window"
+        },
+        "harnessClient.context.maxFileBytes": {
+          "type": "integer",
+          "default": 524288,
+          "minimum": 1,
+          "maximum": 983040,
+          "description": "%config.maxFileBytes.description%",
+          "scope": "window"
+        },
+        "harnessClient.context.maxDiagnostics": {
+          "type": "integer",
+          "default": 200,
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "%config.maxDiagnostics.description%",
+          "scope": "window"
+        },
+        "harnessClient.runtime.restartAttempts": {
+          "type": "integer",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 10,
+          "description": "%config.restartAttempts.description%",
+          "scope": "window"
+        },
+        "harnessClient.runtime.shutdownTimeoutMs": {
+          "type": "integer",
+          "default": 5000,
+          "minimum": 100,
+          "maximum": 30000,
+          "description": "%config.shutdownTimeoutMs.description%",
+          "scope": "window"
+        }
+      }
+    }
+  }
+}

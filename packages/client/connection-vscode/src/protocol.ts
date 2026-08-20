@@ -65,6 +65,18 @@ export function EditorContextId(value: string): EditorContextId {
   return value as EditorContextId
 }
 
+/** Opaque correlation identifier for one Webview IDE request. */
+export type IdeRequestId = Branded<'IdeRequestId'>
+
+/**
+ * Construct an IDE request id after the Webview chooses a non-empty opaque value.
+ * @param value - non-empty correlation identifier.
+ * @returns the branded request id.
+ */
+export function IdeRequestId(value: string): IdeRequestId {
+  return value as IdeRequestId
+}
+
 const opaqueIdSchema = z.string().min(1).max(128)
 
 /** Stream-id parser and brand cast point. */
@@ -75,6 +87,207 @@ export const wireMessageIdSchema = opaqueIdSchema as unknown as z.ZodType<WireMe
 
 /** Editor-context-id parser and brand cast point. */
 export const editorContextIdSchema = opaqueIdSchema as unknown as z.ZodType<EditorContextId>
+
+/** IDE-request-id parser and brand cast point. */
+export const ideRequestIdSchema = opaqueIdSchema as unknown as z.ZodType<IdeRequestId>
+
+/** Maximum serialized size of one IDE request, response, or event. */
+export const MAX_IDE_MESSAGE_BYTES = MAX_CONTROL_MESSAGE_BYTES
+
+/** Immutable editor range captured with a context snapshot. */
+export interface EditorContextRange {
+  /** Zero-based start line. */
+  startLine: number
+  /** Zero-based start column. */
+  startColumn: number
+  /** Zero-based inclusive end line. */
+  endLine: number
+  /** Zero-based exclusive end column. */
+  endColumn: number
+}
+
+/** Immutable explicit editor snapshot returned to the Client context UI. */
+export interface EditorContextSnapshot {
+  /** Snapshot identity retained by the Webview. */
+  id: EditorContextId
+  /** Explicit capture action that produced this value. */
+  kind: 'selection' | 'file' | 'diagnostics'
+  /** Source document URI. */
+  uri: string
+  /** Workspace-relative path when the URI belongs to the selected root. */
+  workspacePath?: string
+  /** VS Code language id when a text document supplied the snapshot. */
+  languageId?: string
+  /** Source document version at capture time. */
+  version?: number
+  /** Captured selection or diagnostic range. */
+  range?: EditorContextRange
+  /** Immutable captured text or deterministic diagnostic serialization. */
+  text: string
+  /** Epoch milliseconds recorded by the extension host. */
+  capturedAt: number
+}
+
+const editorContextRangeSchema = z.object({
+  startLine: z.number().int().nonnegative(),
+  startColumn: z.number().int().nonnegative(),
+  endLine: z.number().int().nonnegative(),
+  endColumn: z.number().int().nonnegative(),
+}).strict()
+
+/** Authoritative parser for immutable captured editor context. */
+export const editorContextSnapshotSchema = z.object({
+  id: editorContextIdSchema,
+  kind: z.enum(['selection', 'file', 'diagnostics']),
+  uri: z.string().min(1).max(32_768),
+  workspacePath: z.string().max(32_768).optional(),
+  languageId: z.string().min(1).max(256).optional(),
+  version: z.number().int().nonnegative().optional(),
+  range: editorContextRangeSchema.optional(),
+  text: z.string(),
+  capturedAt: z.number().int().nonnegative(),
+}).strict() as unknown as z.ZodType<EditorContextSnapshot>
+
+/** Request and result ownership for every operation available to Webview code. */
+export interface IdeMethodMap {
+  /** Read whether replacing the selected root would interrupt an active turn. */
+  'webview.getTurnState': { payload: Record<string, never>; result: { running: boolean } }
+  /** Create and select a new session through the existing Client runtime. */
+  'webview.newSession': { payload: Record<string, never>; result: Record<string, never> }
+  /** Capture the active editor selection explicitly. */
+  'editor.captureSelection': { payload: Record<string, never>; result: EditorContextSnapshot | null }
+  /** Capture the active file explicitly. */
+  'editor.captureFile': { payload: Record<string, never>; result: EditorContextSnapshot | null }
+  /** Capture bounded diagnostics explicitly. */
+  'editor.captureDiagnostics': { payload: Record<string, never>; result: EditorContextSnapshot | null }
+  /** Ask the extension-owned runtime manager to restart. */
+  'runtime.restart': { payload: Record<string, never>; result: { accepted: boolean } }
+  /** Reveal the extension-owned redacted Output channel. */
+  'logs.show': { payload: Record<string, never>; result: Record<string, never> }
+}
+
+/** Typed IDE request union derived from {@link IdeMethodMap}. */
+export type IdeRequest = {
+  [K in keyof IdeMethodMap]: {
+    type: 'ide/request'
+    requestId: IdeRequestId
+    method: K
+    payload: IdeMethodMap[K]['payload']
+  }
+}[keyof IdeMethodMap]
+
+/** Typed IDE response union preserving the exact requested method. */
+export type IdeResponse = {
+  [K in keyof IdeMethodMap]:
+    | {
+      type: 'ide/response'
+      requestId: IdeRequestId
+      method: K
+      ok: true
+      result: IdeMethodMap[K]['result']
+    }
+    | {
+      type: 'ide/response'
+      requestId: IdeRequestId
+      method: K
+      ok: false
+      error: string
+    }
+}[keyof IdeMethodMap]
+
+/** Event payload ownership for extension-initiated Webview notifications. */
+export interface IdeEventMap {
+  /** Companion lifecycle status for in-panel presentation. */
+  'runtime.state': {
+    state: 'idle' | 'starting' | 'ready' | 'restarting' | 'stopping' | 'failed'
+    message?: string
+  }
+  /** Newly selected extension companion root. */
+  'workspace.selected': { workspaceRoot: string }
+  /** Context captured through an extension command rather than an in-panel control. */
+  'editor.contextCaptured': { snapshot: EditorContextSnapshot }
+}
+
+/** Typed IDE event union derived from {@link IdeEventMap}. */
+export type IdeEvent = {
+  [K in keyof IdeEventMap]: { type: 'ide/event'; event: K; payload: IdeEventMap[K] }
+}[keyof IdeEventMap]
+
+const emptyPayloadSchema = z.object({}).strict()
+const ideMethodSchemas = {
+  'webview.getTurnState': {
+    payload: emptyPayloadSchema,
+    result: z.object({ running: z.boolean() }).strict(),
+  },
+  'webview.newSession': { payload: emptyPayloadSchema, result: emptyPayloadSchema },
+  'editor.captureSelection': { payload: emptyPayloadSchema, result: editorContextSnapshotSchema.nullable() },
+  'editor.captureFile': { payload: emptyPayloadSchema, result: editorContextSnapshotSchema.nullable() },
+  'editor.captureDiagnostics': { payload: emptyPayloadSchema, result: editorContextSnapshotSchema.nullable() },
+  'runtime.restart': {
+    payload: emptyPayloadSchema,
+    result: z.object({ accepted: z.boolean() }).strict(),
+  },
+  'logs.show': { payload: emptyPayloadSchema, result: emptyPayloadSchema },
+} as const
+
+const ideRequestSchemas = Object.entries(ideMethodSchemas).map(([method, schemas]) => z.object({
+  type: z.literal('ide/request'),
+  requestId: ideRequestIdSchema,
+  method: z.literal(method),
+  payload: schemas.payload,
+}).strict())
+
+const ideResponseSchemas = Object.entries(ideMethodSchemas).flatMap(([method, schemas]) => [
+  z.object({
+    type: z.literal('ide/response'),
+    requestId: ideRequestIdSchema,
+    method: z.literal(method),
+    ok: z.literal(true),
+    result: schemas.result,
+  }).strict(),
+  z.object({
+    type: z.literal('ide/response'),
+    requestId: ideRequestIdSchema,
+    method: z.literal(method),
+    ok: z.literal(false),
+    error: z.string(),
+  }).strict(),
+])
+
+/** Authoritative parser for Webview-to-extension IDE requests. */
+export const ideRequestSchema = z.union(ideRequestSchemas as [
+  (typeof ideRequestSchemas)[number],
+  (typeof ideRequestSchemas)[number],
+  ...(typeof ideRequestSchemas)[number][],
+]) as unknown as z.ZodType<IdeRequest>
+
+/** Authoritative parser for extension-to-Webview IDE responses. */
+export const ideResponseSchema = z.union(ideResponseSchemas as [
+  (typeof ideResponseSchemas)[number],
+  (typeof ideResponseSchemas)[number],
+  ...(typeof ideResponseSchemas)[number][],
+]) as unknown as z.ZodType<IdeResponse>
+
+const ideEventSchema = z.union([
+  z.object({
+    type: z.literal('ide/event'),
+    event: z.literal('runtime.state'),
+    payload: z.object({
+      state: z.enum(['idle', 'starting', 'ready', 'restarting', 'stopping', 'failed']),
+      message: z.string().optional(),
+    }).strict(),
+  }).strict(),
+  z.object({
+    type: z.literal('ide/event'),
+    event: z.literal('workspace.selected'),
+    payload: z.object({ workspaceRoot: z.string().min(1).max(32_768) }).strict(),
+  }).strict(),
+  z.object({
+    type: z.literal('ide/event'),
+    event: z.literal('editor.contextCaptured'),
+    payload: z.object({ snapshot: editorContextSnapshotSchema }).strict(),
+  }).strict(),
+]) as unknown as z.ZodType<IdeEvent>
 
 /** One companion bundle location announced beside the Client boot graph. */
 export interface ClientBundleLocation {
@@ -220,3 +433,18 @@ export const vsCodeWireRecordSchema = z.discriminatedUnion('type', [
     chunks: z.number().int().positive(),
   }).strict(),
 ]) as unknown as z.ZodType<VsCodeWireRecord>
+
+/** Messages crossing `webview.postMessage`; no member carries a command id. */
+export type WebviewBridgeMessage =
+  | { type: 'carrier'; record: VsCodeWireRecord }
+  | IdeRequest
+  | IdeResponse
+  | IdeEvent
+
+/** Authoritative parser for every extension-host/Webview message. */
+export const webviewBridgeMessageSchema = z.union([
+  z.object({ type: z.literal('carrier'), record: vsCodeWireRecordSchema }).strict(),
+  ideRequestSchema,
+  ideResponseSchema,
+  ideEventSchema,
+]) as unknown as z.ZodType<WebviewBridgeMessage>

@@ -22,11 +22,12 @@ import {
 } from '@deepseek-ai/dsh-client-connection/client-shared'
 import { sendVsCodeFrame, VsCodeWireDecoder } from '../codec.ts'
 import {
+  type IdeEvent,
   VsCodeStreamId,
   type VsCodeCarrierFrame,
   type VsCodeStreamId as VsCodeStreamIdType,
 } from '../protocol.ts'
-import type { VsCodeBridgePort } from './bridge-port.ts'
+import type { VsCodeBridgePort, VsCodeIdePort } from './bridge-port.ts'
 
 /** Default bounded unary deadline inherited by surface configuration. */
 export const DEFAULT_VSCODE_RESPONSE_TIMEOUT_MS = 30_000
@@ -68,6 +69,8 @@ interface StreamParser {
   parse(value: unknown): MuxFrame | HostFrame
 }
 
+class RuntimeGenerationUnavailableError extends Error {}
+
 interface ActiveStream {
   readonly id: VsCodeStreamIdType
   readonly parser: StreamParser
@@ -101,7 +104,7 @@ function isAborted(signal: AbortSignal): boolean {
 
 /** Webview carrier implementing the existing ApiProxy client interface and logical RPC channel. */
 export class VsCodeApiClient extends AbstractApiClient {
-  private readonly decoder: VsCodeWireDecoder
+  private decoder: VsCodeWireDecoder
   private readonly maxPendingRequests: number
   private readonly maxOpenStreams: number
   private readonly createStreamId: () => VsCodeStreamIdType
@@ -111,6 +114,10 @@ export class VsCodeApiClient extends AbstractApiClient {
   private inboundTail: Promise<void> = Promise.resolve()
   private outboundTail: Promise<void> = Promise.resolve()
   private unsubscribe!: () => void
+  private readonly unsubscribeRuntime: () => void
+  private generation = 0
+  private runtimeReady = true
+  private runtimeUnavailable = new RuntimeGenerationUnavailableError('VS Code runtime generation is not ready')
   private closed: Error | undefined
 
   /** Generic `/api` RPC channel over the same correlation table. */
@@ -129,8 +136,13 @@ export class VsCodeApiClient extends AbstractApiClient {
    * Attach one client to a shell-owned bridge port.
    * @param port - physical record delivery and subscription port.
    * @param options - bounded correlation, stream, timeout, and id settings.
+   * @param ide - shell lifecycle events used to reset transient runtime generations.
    */
-  constructor(private readonly port: VsCodeBridgePort, options: VsCodeApiClientOptions = {}) {
+  constructor(
+    private readonly port: VsCodeBridgePort,
+    options: VsCodeApiClientOptions = {},
+    ide?: Pick<VsCodeIdePort, 'subscribeEvents'>,
+  ) {
     super(positiveInteger(options.responseTimeoutMs ?? DEFAULT_VSCODE_RESPONSE_TIMEOUT_MS, 'responseTimeoutMs'))
     this.maxPendingRequests = positiveInteger(
       options.maxPendingRequests ?? DEFAULT_VSCODE_MAX_PENDING_REQUESTS,
@@ -144,6 +156,7 @@ export class VsCodeApiClient extends AbstractApiClient {
       onViolation: (error) => { this.terminate(error) },
     })
     this.unsubscribe = port.subscribe((value) => { this.receive(value) })
+    this.unsubscribeRuntime = ide?.subscribeEvents((event) => { this.acceptIdeEvent(event) }) ?? (() => {})
   }
 
   /** Permanently stop this Client instance and reject every owned operation. */
@@ -219,7 +232,13 @@ export class VsCodeApiClient extends AbstractApiClient {
       const detachAbort = (): void => { signal?.removeEventListener('abort', onAbort) }
       this.pending.set(message.rpcId, { kind, resolve, reject, detachAbort })
       signal?.addEventListener('abort', onAbort, { once: true })
-      void this.sendFrame({ type: 'rpc/message', message }).catch(() => {})
+      void this.sendFrame({ type: 'rpc/message', message }).catch((error: unknown) => {
+        const pending = this.pending.get(message.rpcId)
+        if (pending === undefined) return
+        this.pending.delete(message.rpcId)
+        pending.detachAbort()
+        pending.reject(error instanceof Error ? error : new Error(String(error)))
+      })
     })
   }
 
@@ -244,7 +263,13 @@ export class VsCodeApiClient extends AbstractApiClient {
     const onAbort = (): void => { this.closeLocalStream(active) }
     signal.addEventListener('abort', onAbort, { once: true })
     try {
-      await this.sendFrame(createOpenFrame(id))
+      try {
+        await this.sendFrame(createOpenFrame(id))
+      } catch (error) {
+        active.terminal = true
+        this.streams.delete(id)
+        throw error
+      }
       if (isAborted(signal)) this.closeLocalStream(active)
       while (true) {
         while (active.inbox.length > 0) {
@@ -263,12 +288,51 @@ export class VsCodeApiClient extends AbstractApiClient {
 
   private receive(value: unknown): void {
     if (this.closed !== undefined) return
+    const generation = this.generation
+    const decoder = this.decoder
     const operation = this.inboundTail.then(async () => {
-      if (this.closed !== undefined) return
-      const frame = await this.decoder.accept(value)
+      if (this.closed !== undefined || generation !== this.generation) return
+      const frame = await decoder.accept(value)
       if (frame !== undefined) this.acceptFrame(frame)
     })
-    this.inboundTail = operation.catch((error: unknown) => { this.terminate(error) })
+    this.inboundTail = operation.catch((error: unknown) => {
+      if (generation === this.generation) this.terminate(error)
+    })
+  }
+
+  private acceptIdeEvent(event: IdeEvent): void {
+    if (event.event !== 'runtime.state') return
+    if (event.payload.state === 'ready') {
+      this.runtimeReady = true
+      return
+    }
+    if (event.payload.state === 'stopping' || event.payload.state === 'restarting' || event.payload.state === 'failed') {
+      this.resetGeneration(event.payload.state)
+    }
+  }
+
+  private resetGeneration(state: 'stopping' | 'restarting' | 'failed'): void {
+    if (this.closed !== undefined) return
+    this.generation++
+    this.runtimeReady = false
+    this.runtimeUnavailable = new RuntimeGenerationUnavailableError(`VS Code runtime generation ${state}`)
+    this.decoder.dispose()
+    this.decoder = new VsCodeWireDecoder({
+      maxLogicalRpcBytes: this.port.maxLogicalRpcBytes,
+      onViolation: (error) => { this.terminate(error) },
+    })
+    const error = new Error(`VS Code runtime generation ${state}`)
+    for (const pending of this.pending.values()) {
+      pending.detachAbort()
+      pending.reject(error)
+    }
+    this.pending.clear()
+    this.cancelled.clear()
+    for (const active of this.streams.values()) {
+      active.terminal = true
+      this.enqueue(active, { kind: 'end' })
+    }
+    this.streams.clear()
   }
 
   private acceptFrame(frame: VsCodeCarrierFrame): void {
@@ -378,13 +442,20 @@ export class VsCodeApiClient extends AbstractApiClient {
   }
 
   private sendFrame(frame: VsCodeCarrierFrame): Promise<void> {
+    const generation = this.generation
     const operation = this.outboundTail.then(async () => {
       if (this.closed !== undefined) throw this.closed
+      if (generation !== this.generation) throw new Error('VS Code runtime generation changed before send')
+      if (!this.runtimeReady) throw this.runtimeUnavailable
       await sendVsCodeFrame(frame, record => this.port.send(record), {
         maxLogicalRpcBytes: this.port.maxLogicalRpcBytes,
       })
     })
-    this.outboundTail = operation.catch((error: unknown) => { this.terminate(error) })
+    this.outboundTail = operation.catch((error: unknown) => {
+      if (generation === this.generation && !(error instanceof RuntimeGenerationUnavailableError)) {
+        this.terminate(error)
+      }
+    })
     return operation
   }
 
@@ -402,6 +473,7 @@ export class VsCodeApiClient extends AbstractApiClient {
     this.closed = error
     this.decoder.dispose()
     this.unsubscribe()
+    this.unsubscribeRuntime()
     for (const pending of this.pending.values()) {
       pending.detachAbort()
       pending.reject(error)

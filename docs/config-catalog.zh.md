@@ -427,6 +427,8 @@ export interface ConnectionConfig {
 export interface Config {
   /** Maximum logical bytes accepted for RPC and stream-data frames. */
   maxLogicalRpcBytes?: number
+  /** Workspace root the extension handshake must repeat exactly after path normalization. */
+  workspaceRoot?: string
 }
 ```
 
@@ -3021,6 +3023,22 @@ export type ApprovalPolicy = 'ask' | 'never'
 ```
 
 来源：[`packages/interaction/user-approval/src/index.ts:177`](../packages/interaction/user-approval/src/index.ts)
+
+<a id="deepseek-aidsh-vscode-app"></a>
+
+## `@deepseek-ai/dsh-vscode-app`
+
+```ts config-catalog
+/** VS Code runtime configuration derived from the startup provider. */
+export interface Config {
+  /** Absolute workspace root selected by the extension. */
+  workspaceRoot: string
+  /** Whether to register model-visible VS Code surface orientation. */
+  surfaceContext: boolean
+}
+```
+
+来源：[`packages/bundle/vscode-app/src/index.ts:20`](../packages/bundle/vscode-app/src/index.ts)
 
 <a id="deepseek-aidsh-web"></a>
 

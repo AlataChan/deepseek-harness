@@ -1,0 +1,12 @@
+{
+  "Harness Client": "Harness 客户端",
+  "Harness runtime is unavailable.": "Harness 运行时不可用。",
+  "Trust this workspace before starting Harness Client.": "请先信任此工作区，再启动 Harness 客户端。",
+  "Select a workspace folder to start Harness Client.": "请选择工作区文件夹以启动 Harness 客户端。",
+  "Select a workspace folder": "选择工作区文件夹",
+  "A turn is running. Restart the runtime and interrupt it?": "当前有任务正在运行。是否中断任务并重启运行时？",
+  "Restart": "重启",
+  "Cancel": "取消",
+  "Harness runtime logs": "Harness 运行时日志",
+  "Editor context is not available until the VS Code context plugin loads.": "VS Code 上下文插件加载完成前，编辑器上下文功能不可用。"
+}

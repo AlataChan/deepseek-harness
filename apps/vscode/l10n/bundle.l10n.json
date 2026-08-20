@@ -1,0 +1,12 @@
+{
+  "Harness Client": "Harness Client",
+  "Harness runtime is unavailable.": "Harness runtime is unavailable.",
+  "Trust this workspace before starting Harness Client.": "Trust this workspace before starting Harness Client.",
+  "Select a workspace folder to start Harness Client.": "Select a workspace folder to start Harness Client.",
+  "Select a workspace folder": "Select a workspace folder",
+  "A turn is running. Restart the runtime and interrupt it?": "A turn is running. Restart the runtime and interrupt it?",
+  "Restart": "Restart",
+  "Cancel": "Cancel",
+  "Harness runtime logs": "Harness runtime logs",
+  "Editor context is not available until the VS Code context plugin loads.": "Editor context is not available until the VS Code context plugin loads."
+}

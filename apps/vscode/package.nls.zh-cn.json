@@ -1,0 +1,21 @@
+{
+  "view.container.title": "Harness 客户端",
+  "view.title": "Harness",
+  "capabilities.untrustedWorkspaces.description": "工作区获得信任前面板保持未启用，且不会读取运行时路径和 Node 路径设置。",
+  "command.focus": "聚焦 Harness 客户端",
+  "command.newSession": "Harness 客户端：新建会话",
+  "command.addSelection": "Harness 客户端：将选区加入提示词",
+  "command.addFile": "Harness 客户端：将当前文件加入提示词",
+  "command.addProblems": "Harness 客户端：将问题加入提示词",
+  "command.selectWorkspace": "Harness 客户端：选择工作区文件夹",
+  "command.restartRuntime": "Harness 客户端：重启运行时",
+  "command.showLogs": "Harness 客户端：显示运行时日志",
+  "config.title": "Harness 客户端",
+  "config.runtimePath.description": "已安装的 Harness 包根目录、manifest、JavaScript bin 或可识别的包管理器 shim。",
+  "config.nodePath.description": "用于 fork Harness companion 的真实 Node 可执行文件。",
+  "config.maxSelectionBytes.description": "“将选区加入提示词”可捕获的最大字节数。",
+  "config.maxFileBytes.description": "“将当前文件加入提示词”可捕获的最大字节数。",
+  "config.maxDiagnostics.description": "“将问题加入提示词”可捕获的最大诊断数量。",
+  "config.restartAttempts.description": "companion 意外退出后的最大自动重启次数。",
+  "config.shutdownTimeoutMs.description": "companion 优雅关闭的超时时间（毫秒）。"
+}

@@ -13,8 +13,8 @@ import {
 export * from './api-client.ts'
 export * from './bridge-port.ts'
 
-/** Private shell service required before the connection plugin activates. */
-export const inject = ['vscodeBridge']
+/** Private shell services required before the connection plugin activates. */
+export const inject = ['vscodeBridge', 'vscodeIde']
 
 /** Webview connection tunables. */
 export interface Config {
@@ -41,7 +41,9 @@ export const Config: z<Config> = z.object({
 export function apply(ctx: Context, config: Config): void {
   const port = ctx.get('vscodeBridge')
   if (port === undefined) throw new Error('client-connection-vscode: vscodeBridge service is missing')
-  const api = new VsCodeApiClient(port, config)
+  const ide = ctx.get('vscodeIde')
+  if (ide === undefined) throw new Error('client-connection-vscode: vscodeIde service is missing')
+  const api = new VsCodeApiClient(port, config, ide)
   ctx.provide('connection', createConnectionHandle({
     api,
     rpc: api.rpc,

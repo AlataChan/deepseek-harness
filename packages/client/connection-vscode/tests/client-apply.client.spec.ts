@@ -6,7 +6,12 @@ import { RpcId, type ClientRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import { connectionHandleBehavior } from '../../connection/tests/connection-handle.behavior.client.ts'
 import { Config, VsCodeApiClient, apply, inject } from '../src/client/index.ts'
-import { type VsCodeCarrierFrame } from '../src/protocol.ts'
+import type { VsCodeIdePort } from '../src/client/bridge-port.ts'
+import {
+  type IdeEvent,
+  type IdeMethodMap,
+  type VsCodeCarrierFrame,
+} from '../src/protocol.ts'
 import { BridgeHarness } from './bridge-harness.client.ts'
 
 const DESCRIPTION = {
@@ -34,13 +39,47 @@ function respondingPort(): BridgeHarness {
   return port
 }
 
-async function mount(port = respondingPort()): Promise<{ ctx: Context; handle: ConnectionHandle; port: BridgeHarness }> {
+class IdeHarness implements VsCodeIdePort {
+  private readonly listeners = new Set<(event: IdeEvent) => void>()
+
+  request<K extends keyof IdeMethodMap>(
+    _method: K,
+    _payload: IdeMethodMap[K]['payload'],
+  ): Promise<IdeMethodMap[K]['result']> {
+    return Promise.reject(new Error('not implemented by the test harness'))
+  }
+
+  handle<K extends keyof IdeMethodMap>(
+    _method: K,
+    _handler: (payload: IdeMethodMap[K]['payload']) => IdeMethodMap[K]['result'] | Promise<IdeMethodMap[K]['result']>,
+  ): () => void {
+    return () => {}
+  }
+
+  subscribeEvents(listener: (event: IdeEvent) => void): () => void {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+
+  emit(event: IdeEvent): void {
+    for (const listener of this.listeners) listener(event)
+  }
+}
+
+async function mount(port = respondingPort()): Promise<{
+  ctx: Context
+  handle: ConnectionHandle
+  ide: IdeHarness
+  port: BridgeHarness
+}> {
   const ctx = new Context()
+  const ide = new IdeHarness()
   ctx.reflect.provide('vscodeBridge', port)
+  ctx.reflect.provide('vscodeIde', ide)
   await ctx.plugin({ apply, inject, Config }, { responseTimeoutMs: 100 })
   const handle = ctx.get('connection') as ConnectionHandle | undefined
   if (handle === undefined) throw new Error('ctx.connection not provided')
-  return { ctx, handle, port }
+  return { ctx, handle, ide, port }
 }
 
 connectionHandleBehavior('VS Code', async () => (await mount()).handle)
@@ -55,8 +94,8 @@ describe('VS Code client apply', () => {
     await expect(handle.api.host.describe({})).rejects.toThrow(/closed/)
   })
 
-  it('reconnects both streams with fresh ids after a downlink generation ends', async () => {
-    const { ctx, handle, port } = await mount()
+  it('reconnects both streams with fresh ids after a runtime generation restarts', async () => {
+    const { ctx, handle, ide, port } = await mount()
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const states: string[] = []
     const loop = handle.start({ onStateChange: (state) => { states.push(state) } }, {
@@ -67,10 +106,10 @@ describe('VS Code client apply', () => {
         expect(port.sent.filter(frame => frame.type === 'stream/open')).toHaveLength(2)
         expect(states).toEqual(['connected'])
       })
-      const first = port.sent.filter(
-        (frame): frame is Extract<VsCodeCarrierFrame, { type: 'stream/open' }> => frame.type === 'stream/open',
-      )
-      await port.receive({ type: 'stream/end', streamId: first[0]!.streamId })
+      ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'restarting' } })
+      await vi.waitFor(() => { expect(states).toContain('reconnecting') })
+      expect(port.sent.filter(frame => frame.type === 'stream/open')).toHaveLength(2)
+      ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'ready' } })
       await vi.waitFor(() => {
         expect(port.sent.filter(frame => frame.type === 'stream/open')).toHaveLength(4)
         expect(states).toEqual(['connected', 'reconnecting', 'connected'])
@@ -86,8 +125,24 @@ describe('VS Code client apply', () => {
     }
   })
 
+  it('rejects unary work locally while a replacement runtime is not ready', async () => {
+    const { ctx, handle, ide, port } = await mount()
+    ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'failed' } })
+    await expect(handle.api.host.describe({})).rejects.toThrow(/runtime generation failed/i)
+    expect(port.sent).toHaveLength(0)
+    ide.emit({ type: 'ide/event', event: 'runtime.state', payload: { state: 'ready' } })
+    await expect(handle.api.host.describe({})).resolves.toMatchObject({ result: { ok: true, value: DESCRIPTION } })
+    await ctx.fiber.dispose()
+  })
+
   it('fails loud when the shell did not provide the private bridge service', () => {
     expect(() => { apply(new Context(), { responseTimeoutMs: 100 }) }).toThrow(/vscodeBridge/)
+  })
+
+  it('fails loud when the shell did not provide the private IDE event service', () => {
+    const ctx = new Context()
+    ctx.reflect.provide('vscodeBridge', respondingPort())
+    expect(() => { apply(ctx, { responseTimeoutMs: 100 }) }).toThrow(/vscodeIde/)
   })
 
   it('rejects a mismatched response id during mounted operation', async () => {
