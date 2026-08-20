@@ -50,6 +50,6 @@ export default defineConfig({
   define: {
     'process.versions.node': '"0.0.0"',
     'process.execArgv': '[]',
-    'process.env.CORDIS_SHARED': 'undefined',
+    'process.env': '{"NODE_ENV":"production"}',
   },
 })

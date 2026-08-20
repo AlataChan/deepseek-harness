@@ -42,7 +42,7 @@ companion、扩展宿主和 Webview 共享一个浏览器安全的协议包。�
 
 现有 Client Cordis 树在 Webview 内运行。`AppWebEntry` 接收自定义 bundle loader（包加载器）：扩展校验 companion 公布的标识与哈希后，把 bundle 复制到按图修订号划分的缓存，再通过 `webview.asWebviewUri` 只暴露该缓存与固定扩展媒体资源。Webview 会安装共享模块 registration facade，并在构造 `AppWebEntry` 前从该缓存执行模块系统与 runtime 行；其 `configureContext` seam 会在任何图 entry 激活前提供窄粒度 carrier 与 IDE port。只有 bootstrap（引导程序）调用一次 `acquireVsCodeApi()`，并把所得对象保存在这些端口之后，不对外暴露。
 
-Client 图配置以 JSON 形式进入 Webview，不能携带 Loader JavaScript 表达式。VS Code Vite 构建会把 vendored Loader 求值器替换为显式拒绝实现，VSIX 验证器则拒绝每个 Webview JavaScript 产物中的 Function 构造器与直接 `eval`。这样既保持无 `eval` 的内容安全策略，也不会削弱普通 Loader 激活行为。
+Client 图配置以 JSON 形式进入 Webview，不能携带 Loader JavaScript 表达式。VS Code Vite 构建会把 vendored Loader 求值器替换为显式拒绝实现，VSIX 验证器则拒绝每个 Webview JavaScript 产物中的 Function 构造器与直接 `eval`。VS Code Webview 不提供 Node `process` 全局变量，因此构建会用仅含生产环境标记的编译期对象替换 `process.env`，验证器也会拒绝所有残留的 `process` 访问。这些检查既保持无 `eval` 的内容安全策略和仅限浏览器的模块初始化，也不会削弱普通 Loader 激活行为。
 
 从 Webview 到扩展的消息是一个白名单 union（联合类型），只含载体记录以及有类型约束的编辑器请求、响应和事件。具名 `IdeMethodMap` 负责每个编辑器载荷与结果的 schema。Webview 不能发送任意 VS Code 命令。扩展只拦截 `host.openPath` 和 `host.describe` 中的 VS Code 可用性字段；其他 Host 请求原样传给 companion。文件打开限制在所选工作区内，范围外路径一律拒绝。
 
@@ -95,7 +95,7 @@ ACP 仅用于自动化，不负责完整交互式 Host API、Client Plugin 图�
 - 无密钥的 `vscode-agent` 组装快照会针对同一份图快照分别从源码和构建产物启动 companion、对包含编辑器上下文的图片提示词进行分片、通过 ApiProxy 产生流式输出、持久化精确文本，并拒绝第二个 home 属主。
 - 本地 Electron 集成会启动暂存扩展、捕获编辑器状态、打开 workspace 内位置、重新连接 runtime，并释放 companion lease。
 - VS Code workflow 为 Linux、macOS 与 Windows 定义原生本地扩展任务；SSH Remote 与 Dev Container 仍是人工发布检查项。
-- 打包测试与 VSIX 验证器会强制执行产物允许清单、本地化完整性、外部 companion 声明、128 像素 PNG 图标、pre-release 元数据、已解析的 publisher 身份和无 `eval` 的 Webview 脚本。
+- 打包测试与 VSIX 验证器会强制执行产物允许清单、本地化完整性、外部 companion 声明、128 像素 PNG 图标、pre-release 元数据、已解析的 publisher 身份，以及不含动态代码或 Node `process` 访问的 Webview 脚本。
 
 ## 后果
 

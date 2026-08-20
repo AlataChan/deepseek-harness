@@ -187,6 +187,9 @@ async function verifyWebviewScripts(
     if (/\bnew\s+Function\s*\(/.test(source) || /\beval\s*\(/.test(source)) {
       errors.push(`${file}: Webview script contains CSP-forbidden dynamic code`)
     }
+    if (/\bprocess\s*(?:\.|\[)/.test(source)) {
+      errors.push(`${file}: Webview script contains the Node process global`)
+    }
   }
   return errors
 }

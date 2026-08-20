@@ -12,7 +12,7 @@ Harness 文件位置操作继续使用既有 `host.openPath` RPC。扩展会通�
 
 companion 握手会公布 Client Plugin（客户端插件）图与 bundle（包）哈希。扩展把校验后的字节复制到按修订号划分的全局存储中，只向 Webview 授予该缓存与固定扩展媒体的访问权，并通过严格的 content security policy（内容安全策略）启动既有 Client 外壳。外壳启动前，Webview 会安装共享 registration facade，并从已验证缓存依次执行图中的模块系统与 runtime bootstrap 行；随后它会在任何图 entry 激活前，把私有 carrier 与 IDE port 提供到新建的 Client context。唯一一次 `acquireVsCodeApi()` 调用始终封装在这些经过校验的端口之后，不向外暴露。companion 代际变化会结束活跃 Client stream，但不会永久关闭 Webview API 客户端，因此共享 connection controller 可以重新连接持久会话。
 
-Client 图配置以 JSON 形式进入 Webview。VS Code 构建会把 vendored Loader 的 JavaScript 表达式求值器替换成拒绝实现，因此严格的内容安全策略无需动态执行代码。VSIX 验证会扫描每个 Webview JavaScript 产物，并拒绝 Function 构造器或直接 `eval`。
+Client 图配置以 JSON 形式进入 Webview。VS Code 构建会把 vendored Loader 的 JavaScript 表达式求值器替换成拒绝实现，因此严格的内容安全策略无需动态执行代码。因为 Webview 不提供 Node `process` 全局变量，构建还会用仅含生产环境标记的编译期对象替换 `process.env`。VSIX 验证会扫描每个 Webview JavaScript 产物，并拒绝 Function 构造器、直接 `eval` 或任何残留的 `process` 访问。
 
 Workspace Trust（工作区信任）会阻止 runtime 发现与执行。可执行文件路径设置在不可信 workspace 中受限。进程输出经过有界凭据遮盖；carrier record 与编辑器快照没有日志 API。companion 负责 Harness home 的独占 lease（租约），当另一进程可能正在使用同一个持久存储时报告 `home-busy`。
 

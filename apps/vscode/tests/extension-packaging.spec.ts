@@ -88,6 +88,12 @@ describe('VS Code extension packaging', () => {
     await expect(verifyExtensionDirectory(root)).rejects.toThrow(/webview.*dynamic code/i)
   })
 
+  it('rejects the Node process global in a Webview chunk', async () => {
+    const root = await createValidExtension()
+    await writeFile(join(root, 'dist', 'webview', 'chunk.js'), 'process.env.NODE_ENV\n')
+    await expect(verifyExtensionDirectory(root)).rejects.toThrow(/webview.*Node process global/i)
+  })
+
   it.each([
     ['publisher', /publisher.*placeholder/i, (manifest: typeof validManifest) => { manifest.publisher = '__PUBLISHER_ID__' }],
     ['display name', /displayName.*placeholder/i, (manifest: typeof validManifest) => { manifest.displayName = '__DISPLAY_NAME__' }],
