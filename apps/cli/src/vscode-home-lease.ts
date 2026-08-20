@@ -15,7 +15,7 @@ import {
 import { dirname, join, resolve } from 'node:path'
 
 /** Current on-disk owner-record version. */
-export const VSCODE_HOME_LEASE_VERSION = 1
+const VSCODE_HOME_LEASE_VERSION = 1
 
 /** Lease location relative to the resolved Harness home. */
 export const VSCODE_HOME_LEASE_RELATIVE_PATH = join('.locks', 'vscode-companion.lock')
@@ -35,7 +35,7 @@ export interface VsCodeHomeLeaseRecord {
 }
 
 /** Result of probing an existing owner without assuming permission failures mean death. */
-export type ProcessLiveness = 'alive' | 'dead' | 'indeterminate'
+type ProcessLiveness = 'alive' | 'dead' | 'indeterminate'
 
 /** Injectable process facts for deterministic lease tests. */
 export interface VsCodeHomeLeaseOptions {

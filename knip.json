@@ -79,6 +79,48 @@
         "@deepseek-ai/.+"
       ]
     },
+    "apps/vscode": {
+      "entry": [
+        "scripts/*.ts",
+        "src/extension.ts",
+        "src/test/runTest.ts",
+        "src/test/suite/index.ts",
+        "src/test/fixtures/workspace/**/*.ts",
+        "src/webview/main.tsx",
+        "src/webview/node-module-stub.ts",
+        "src/webview/vscode-port.ts",
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "scripts/**/*.ts",
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/cordis-plugin-group",
+        "@deepseek-ai/dsh",
+        "@deepseek-ai/dsh-client-schema-form",
+        "@deepseek-ai/dsh-client-ui-attachment",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-web-react",
+        "@types/react",
+        "@types/react-dom",
+        "react",
+        "react-dom",
+        "vscode"
+      ]
+    },
+    "packages/bundle/client-app": {
+      "ignoreDependencies": [
+        "@deepseek-ai/.+"
+      ]
+    },
+    "packages/bundle/vscode-app": {
+      "ignoreDependencies": [
+        "@deepseek-ai/.+"
+      ]
+    },
     "packages/util/home": {
       "entry": [
         "tests/**/*.spec.ts"

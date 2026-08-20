@@ -12,19 +12,19 @@ import type { ContextLimits } from './bridge-router.ts'
 export type EditorCaptureKind = 'selection' | 'file' | 'diagnostics'
 
 /** Structural VS Code position used by the testable capture core. */
-export interface EditorPositionPort {
+interface EditorPositionPort {
   line: number
   character: number
 }
 
 /** Structural VS Code range used by selections and diagnostics. */
-export interface EditorRangePort {
+interface EditorRangePort {
   start: EditorPositionPort
   end: EditorPositionPort
 }
 
 /** Structural URI facts needed for selected-root enforcement and serialization. */
-export interface EditorUriPort {
+interface EditorUriPort {
   fsPath: string
   scheme: string
   toString(skipEncoding?: boolean): string
@@ -39,13 +39,13 @@ export interface EditorDocumentPort {
 }
 
 /** Active editor read face. */
-export interface ActiveEditorPort {
+interface ActiveEditorPort {
   document: EditorDocumentPort
   selection: EditorRangePort
 }
 
 /** Diagnostic value read from the VS Code language service. */
-export interface EditorDiagnosticPort {
+interface EditorDiagnosticPort {
   range: EditorRangePort
   severity: 0 | 1 | 2 | 3
   message: string

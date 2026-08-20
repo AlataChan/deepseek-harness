@@ -88,6 +88,22 @@ describe('release families', () => {
     expect(() => { dsh.verifyVersions([members[0]!]) }).not.toThrow()
   })
 
+  it('excludes the private Marketplace source package from npm publication', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-release-family-'))
+    roots.push(root)
+    write(join(root, 'apps/cli/package.json'), JSON.stringify({
+      name: '@deepseek-ai/dsh',
+      version: '0.1.0',
+    }))
+    write(join(root, 'apps/vscode/package.json'), JSON.stringify({
+      name: '@deepseek-ai/dsh-vscode',
+      version: '0.0.0',
+      private: true,
+    }))
+
+    expect(releaseFamily('dsh').members(root).map(entry => entry.name)).toEqual(['@deepseek-ai/dsh'])
+  })
+
   it('accepts independent vendored versions and rejects an unpublishable one', () => {
     const vendor = releaseFamily('vendor')
     const members = [

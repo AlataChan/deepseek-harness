@@ -1,0 +1,105 @@
+name: VS Code extension
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/vscode.yml'
+      - 'apps/vscode/**'
+      - 'examples/vscode-agent/**'
+      - 'packages/bundle/vscode-app/**'
+      - 'packages/client/**'
+      - 'packages/host/apiproxy/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.client.json'
+      - 'tsconfig.host.json'
+  pull_request:
+    paths:
+      - '.github/workflows/vscode.yml'
+      - 'apps/vscode/**'
+      - 'examples/vscode-agent/**'
+      - 'packages/bundle/vscode-app/**'
+      - 'packages/client/**'
+      - 'packages/host/apiproxy/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.client.json'
+      - 'tsconfig.host.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DSH_TELEMETRY_DISABLED: '1'
+  NODE_VERSION: '24'
+
+jobs:
+  integration:
+    name: extension host / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14, windows-2025]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Windows shim discovery and extension host
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $shim = Join-Path $PWD 'apps\vscode\node_modules\.bin\dsh.cmd'
+          if (-not (Test-Path $shim)) { throw "dsh.cmd was not installed at $shim" }
+          $env:DSH_VSCODE_TEST_RUNTIME = $shim
+          pnpm --filter @deepseek-ai/dsh-vscode run test:integration
+
+      - name: Run Linux extension host
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm --filter @deepseek-ai/dsh-vscode run test:integration
+
+      - name: Run macOS extension host
+        if: runner.os == 'macOS'
+        run: pnpm --filter @deepseek-ai/dsh-vscode run test:integration
+
+      - name: Package and verify VSIX
+        if: runner.os == 'Linux'
+        env:
+          DSH_VSCODE_PUBLISHER: harness-client-ci
+        run: pnpm --filter @deepseek-ai/dsh-vscode run package:vsix
+
+  coverage:
+    name: extension coverage gate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run exhaustive coverage
+        run: pnpm run test:coverage

@@ -316,10 +316,16 @@ export abstract class ReleaseFamily {
   abstract readonly installedEntry: InstalledEntry | undefined
 }
 
-/** Release packages and apps: one shared version across the whole family. */
+/** npm-published Harness packages and applications: one shared version across the whole family. */
 class DshFamily extends ReleaseFamily {
   readonly id = 'dsh'
-  readonly patterns = ['packages/!(experimental)/*/package.json', 'apps/*/package.json'] as const
+  // apps/vscode is a private source package whose Marketplace staging manifest
+  // takes the root version; it must never enter npm pack, verify, or publish.
+  readonly patterns = [
+    'packages/!(experimental)/*/package.json',
+    'apps/cli/package.json',
+    'apps/web/package.json',
+  ] as const
   readonly tagPrefix = 'dsh-v'
 
   /** Require current artifacts from a complete official client build. */

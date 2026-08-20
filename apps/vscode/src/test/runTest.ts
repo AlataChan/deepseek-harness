@@ -1,37 +1,17 @@
 /** Local VS Code Electron integration-test launcher. */
 
 import { existsSync } from 'node:fs'
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { downloadAndUnzipVSCode, runTests } from '@vscode/test-electron'
+import { stageExtension } from '../../scripts/stage-extension.ts'
 
 const appRoot = fileURLToPath(new URL('../../../../', import.meta.url))
 const repoRoot = join(appRoot, '..', '..')
 const TEST_PUBLISHER = 'harness-client-tests'
 const TEST_EXTENSION_ID = `${TEST_PUBLISHER}.harness-client`
-
-async function stageExtension(target: string): Promise<void> {
-  const manifest = JSON.parse(
-    await readFile(join(appRoot, 'manifest.vscode.json'), 'utf8'),
-  ) as Record<string, unknown>
-  if (manifest.publisher !== '__PUBLISHER_ID__') {
-    throw new Error('integration staging expects the unpublished publisher placeholder')
-  }
-  await mkdir(target, { recursive: true })
-  await writeFile(
-    join(target, 'package.json'),
-    `${JSON.stringify({ ...manifest, publisher: TEST_PUBLISHER }, null, 2)}\n`,
-  )
-  await Promise.all([
-    cp(join(appRoot, 'dist'), join(target, 'dist'), { recursive: true }),
-    cp(join(appRoot, 'media'), join(target, 'media'), { recursive: true }),
-    cp(join(appRoot, 'l10n'), join(target, 'l10n'), { recursive: true }),
-    cp(join(appRoot, 'package.nls.json'), join(target, 'package.nls.json')),
-    cp(join(appRoot, 'package.nls.zh-cn.json'), join(target, 'package.nls.zh-cn.json')),
-  ])
-}
 
 function resolvedExecutable(reported: string): string {
   if (existsSync(reported)) return reported
@@ -50,7 +30,7 @@ async function main(): Promise<void> {
   const dshHome = join(temporaryRoot, 'dsh-home')
   const agentsHome = join(temporaryRoot, 'agents')
   try {
-    await stageExtension(extensionRoot)
+    await stageExtension(extensionRoot, { publisher: TEST_PUBLISHER })
     await cp(join(appRoot, 'src', 'test', 'fixtures', 'workspace'), workspaceRoot, { recursive: true })
     await mkdir(dshHome, { recursive: true })
     await cp(
@@ -63,6 +43,12 @@ async function main(): Promise<void> {
       ? await downloadAndUnzipVSCode({ version: requestedVersion, extensionDevelopmentPath: extensionRoot })
       : configuredExecutable
     const executable = resolvedExecutable(downloadedExecutable)
+    const configuredRuntime = process.env.DSH_VSCODE_TEST_RUNTIME
+    const runtimeClue = configuredRuntime === undefined || configuredRuntime === ''
+      ? process.platform === 'win32'
+        ? join(appRoot, 'node_modules', '.bin', 'dsh.cmd')
+        : join(repoRoot, 'apps', 'cli')
+      : configuredRuntime
     const exitCode = await runTests({
       extensionDevelopmentPath: extensionRoot,
       extensionTestsPath: join(appRoot, 'lib', 'types', 'src', 'test', 'suite', 'index.js'),
@@ -78,7 +64,7 @@ async function main(): Promise<void> {
       ],
       extensionTestsEnv: {
         DSH_VSCODE_TEST_EXTENSION_ID: TEST_EXTENSION_ID,
-        DSH_VSCODE_TEST_RUNTIME: join(repoRoot, 'apps', 'cli'),
+        DSH_VSCODE_TEST_RUNTIME: runtimeClue,
         DSH_VSCODE_TEST_NODE: process.execPath,
         DSH_VSCODE_TEST_HOME: dshHome,
         DSH_HOME: dshHome,

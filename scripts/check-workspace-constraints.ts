@@ -62,6 +62,8 @@ const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
   // what the payload policy forbids, so the bundle ships without them.
   '@deepseek-ai/dsh-web-frontend': ['dist', '!dist/**/*.map'],
 }
+/** Private source packages whose release artifact is not an npm tarball. */
+const nonNpmAppPackages = new Set(['@deepseek-ai/dsh-vscode'])
 
 /** The subset of package.json fields this constraint check cares about. */
 export interface PackageManifest {
@@ -275,6 +277,19 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
       || manifest.repository.directory !== expectedDirectory) {
       errors.push(`${label}: published Landlock package repository must use ${repositoryUrl} with directory ${expectedDirectory} for trusted publishing`)
     }
+  } else if (manifest.name !== undefined && nonNpmAppPackages.has(manifest.name)) {
+    if (dir !== 'apps/vscode') {
+      errors.push(`${label}: non-npm application must live at apps/vscode`)
+    }
+    if (manifest.private !== true) {
+      errors.push(`${label}: non-npm application source package must set "private": true`)
+    }
+    if (manifest.version !== '0.0.0') {
+      errors.push(`${label}: non-npm application source package must use version 0.0.0`)
+    }
+    if (manifest.publishConfig !== undefined) {
+      errors.push(`${label}: non-npm application source package must not declare publishConfig`)
+    }
   } else if (releaseMemberDirectory.test(dir)) {
     // Release members state that they are publishable: npm refuses a private
     // package, and the repository field is how a consumer finds the source of
@@ -314,7 +329,9 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
     }
   }
 
-  if (dir.startsWith('apps/') && manifest.name?.startsWith('@deepseek-ai/')) {
+  if (dir.startsWith('apps/')
+    && manifest.name?.startsWith('@deepseek-ai/')
+    && !nonNpmAppPackages.has(manifest.name)) {
     const expectedFiles = appPackageFiles[manifest.name]
     if (expectedFiles === undefined) {
       errors.push(`${label}: app package has no publication files policy`)

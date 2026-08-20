@@ -3,9 +3,14 @@
   "displayName": "Harness Client for VS Code",
   "description": "Use an installed Harness runtime from a retained VS Code workspace panel.",
   "publisher": "__PUBLISHER_ID__",
-  "version": "0.1.0-rc.5",
+  "icon": "media/icon.png",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "apps/vscode"
+  },
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -37,6 +42,15 @@
         "harnessClient.runtimePath",
         "harnessClient.nodePath"
       ]
+    }
+  },
+  "harnessClient": {
+    "releaseChannel": "pre-release",
+    "companion": {
+      "required": true,
+      "package": "@deepseek-ai/dsh",
+      "profile": "vscode",
+      "bundled": false
     }
   },
   "contributes": {

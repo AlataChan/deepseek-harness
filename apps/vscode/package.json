@@ -1,13 +1,16 @@
 {
   "name": "@deepseek-ai/dsh-vscode",
   "description": "Workspace extension shell for the installed DeepSeek Harness runtime",
-  "version": "0.1.0-rc.5",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "tsc -b && tsdown && vite build",
     "build:integration-runtime": "pnpm --dir ../.. run build:lib:host",
-    "test:integration": "pnpm run build:integration-runtime && pnpm run build && node ./lib/types/src/test/runTest.js"
+    "package:vsix": "pnpm run build && tsx ./scripts/stage-extension.ts --package",
+    "stage:extension": "tsx ./scripts/stage-extension.ts",
+    "test:integration": "pnpm run build:integration-runtime && pnpm run build && node ./lib/types/src/test/runTest.js",
+    "verify:vsix": "tsx ./scripts/verify-extension-manifest.ts --vsix ../../.artifacts/vscode/harness-client.vsix"
   },
   "license": "MIT",
   "dependencies": {
@@ -24,12 +27,15 @@
     "@deepseek-ai/cordis-plugin-group": "workspace:^",
     "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
     "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
+    "@deepseek-ai/dsh": "workspace:^",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.0",
     "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.9.2",
     "@vscode/test-electron": "^2.5.2",
     "@vitejs/plugin-react": "^4.0.0",
+    "fflate": "^0.8.2",
     "typescript": "^6.0.3",
     "vite": "^6.0.0",
     "vitest": "^4.1.8"

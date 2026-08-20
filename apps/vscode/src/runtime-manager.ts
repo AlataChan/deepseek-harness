@@ -80,7 +80,7 @@ function isInlineShutdownComplete(record: VsCodeWireRecord): boolean {
 }
 
 /** Startup error preserving a carrier-provided stable code. */
-export class RuntimeStartupError extends Error {
+class RuntimeStartupError extends Error {
   /** @param code - stable companion or extension startup code. */
   constructor(readonly code: string, message: string) {
     super(`${code}: ${message}`)

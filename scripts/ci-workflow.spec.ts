@@ -211,6 +211,37 @@ describe('CI workflow', () => {
   })
 })
 
+describe('VS Code extension workflow', () => {
+  it('runs local extension hosts on every supported OS and keeps coverage exhaustive', () => {
+    const workflow = loadWorkflow('.github/workflows/vscode.yml')
+    const integration = workflowJob(workflow, 'integration')
+    const coverage = workflowJob(workflow, 'coverage')
+    if (!isRecord(integration.strategy)
+      || !isRecord(integration.strategy.matrix)
+      || !Array.isArray(integration.steps)
+      || !Array.isArray(coverage.steps)) {
+      throw new TypeError('VS Code workflow must define integration matrix and coverage steps')
+    }
+
+    expect(integration.strategy.matrix.os).toEqual(['ubuntu-24.04', 'macos-14', 'windows-2025'])
+    const steps = integration.steps.filter(isRecord)
+    const windows = steps.find(step => step.name === 'Verify Windows shim discovery and extension host')
+    const packaging = steps.find(step => step.name === 'Package and verify VSIX')
+    expect(windows).toMatchObject({ shell: 'pwsh' })
+    expect(windows?.run).toContain('dsh.cmd')
+    expect(windows?.run).toContain('DSH_VSCODE_TEST_RUNTIME')
+    expect(packaging).toMatchObject({
+      env: { DSH_VSCODE_PUBLISHER: 'harness-client-ci' },
+    })
+    expect(packaging?.run).toContain('package:vsix')
+
+    const coverageCommands = coverage.steps
+      .filter((step): step is Record<string, unknown> & { run: string } => isRecord(step) && typeof step.run === 'string')
+      .map(step => step.run)
+    expect(coverageCommands).toContain('pnpm run test:coverage')
+  })
+})
+
 describe('E2B e2e workflow', () => {
   it('is manual-only and fails loud before running the focused live suite', () => {
     const workflow = loadWorkflow('.github/workflows/e2b-e2e.yml')
