@@ -42,6 +42,8 @@ Control, stream-open, and editor messages have a 1 MiB logical limit. RPC and st
 
 The existing Client Cordis tree runs inside the Webview. `AppWebEntry` receives a custom bundle loader: the extension copies the companion-announced bundles into a graph-revision cache after verifying identifiers and hashes, then exposes only that cache and fixed extension media through `webview.asWebviewUri`. The Webview installs the shared module registration facade and executes the module-system and runtime rows from that cache before constructing `AppWebEntry`. Its `configureContext` seam publishes the narrow carrier and IDE ports before any graph entry activates. Only the bootstrap calls `acquireVsCodeApi()`, once, and keeps the resulting object private behind those ports.
 
+Client graph configs cross into the Webview as JSON and cannot carry Loader JavaScript expressions. The VS Code Vite build replaces the vendored Loader evaluator with an explicit refusal, while the VSIX verifier rejects Function constructors and direct `eval` in every Webview JavaScript asset. This preserves an eval-free content security policy without weakening ordinary Loader activation.
+
 Webview-to-extension messages are an allowlisted union of carrier records and typed editor requests, responses, and events. A named `IdeMethodMap` owns every editor payload and result schema. The Webview cannot send an arbitrary VS Code command. The extension intercepts only `host.openPath` and the VS Code availability fields of `host.describe`; every other Host request passes unchanged to the companion. File opening is restricted to the selected workspace, and outside paths are refused.
 
 Editor context uses the existing `@` reference pipeline. `IConversation.appendReference` provides one narrow insertion method without exposing draft revisions or compare-and-swap details. A VS Code Client Plugin explicitly captures an immutable active selection, file, or diagnostics snapshot, displays it as a removable reference chip, and serializes the exact bounded snapshot into ordinary `session.prompt` text. Capture requires a user-visible action; the extension never silently reads or attaches the repository. Missing snapshots and serialization failures block submission.
@@ -93,7 +95,7 @@ Passing arbitrary VS Code command identifiers would grant plugin code an open-en
 - The keyless `vscode-agent` assembled snapshot boots the companion from source and built artifacts against one graph snapshot, fragments an image prompt with editor context, streams through ApiProxy, persists the exact text, and rejects a second home owner.
 - The local Electron integration boots the staged extension, captures editor state, opens an in-workspace location, reconnects the runtime, and releases the companion lease.
 - The VS Code workflow defines native local-extension lanes for Linux, macOS, and Windows; SSH Remote and Dev Container remain manual release checks.
-- The packaging tests and VSIX verifier enforce the artifact allowlist, localization completeness, external companion declaration, 128-pixel PNG icon, pre-release metadata, and resolved publisher identity.
+- The packaging tests and VSIX verifier enforce the artifact allowlist, localization completeness, external companion declaration, 128-pixel PNG icon, pre-release metadata, resolved publisher identity, and eval-free Webview scripts.
 
 ## Consequences
 

@@ -12,6 +12,8 @@ The extension uses an installed `@deepseek-ai/dsh` runtime on the workspace exte
 
 The companion handshake announces the Client Plugin graph and bundle hashes. The extension copies verified bytes into revision-scoped global storage, grants the Webview access only to that cache and fixed extension media, and boots the existing Client shell with a strict content security policy. Before the shell starts, the Webview installs the shared registration facade and sequentially executes the graph's module-system and runtime bootstrap rows from the verified cache. It then publishes the private carrier and IDE ports on the fresh Client context before any graph entry activates. The only `acquireVsCodeApi()` call remains private behind those validated ports. Companion generation changes end active Client streams without permanently closing the Webview API client, so the shared connection controller can reconnect durable sessions.
 
+Client graph configs reach the Webview as JSON. The VS Code build replaces the vendored Loader's JavaScript-expression evaluator with a refusal so its strict content security policy never requires dynamic code execution. VSIX verification scans every Webview JavaScript asset and rejects Function constructors or direct `eval`.
+
 Workspace Trust blocks runtime discovery and execution. The executable-path settings are restricted in untrusted workspaces. Process output passes through bounded credential redaction; carrier records and editor snapshots have no logging API. The companion owns the exclusive Harness-home lease and reports `home-busy` when another process may be using the same durable store.
 
 The [VS Code user guide](../../docs/user/guide/vscode.md) covers source installation, remote placement, context privacy, recovery, and current limitations.
@@ -27,7 +29,7 @@ The [VS Code user guide](../../docs/user/guide/vscode.md) covers source installa
 
 Run `pnpm --filter @deepseek-ai/dsh-vscode run build` to emit `dist/extension.js` and the Webview assets. [`manifest.vscode.json`](manifest.vscode.json) is the source manifest for staged extension packaging. It fixes the extension name as `harness-client`, display name as **Harness Client for VS Code**, icon as [`media/icon.png`](media/icon.png), and channel as pre-release; only the Marketplace publisher remains an explicit placeholder.
 
-An authorized release owner creates a neutral publisher through the [official Marketplace flow](https://code.visualstudio.com/api/working-with-extensions/publishing-extension), then stages and verifies the VSIX with `DSH_VSCODE_PUBLISHER=<publisher-id> pnpm run package:vscode` and `pnpm run verify:vscode`. The verifier rejects the placeholder, bundled Harness or Node code, source maps, tests, credentials, missing locale resources, and undeclared files. Do not use a DeepSeek AI publisher identity without authorization.
+An authorized release owner creates a neutral publisher through the [official Marketplace flow](https://code.visualstudio.com/api/working-with-extensions/publishing-extension), then stages and verifies the VSIX with `DSH_VSCODE_PUBLISHER=<publisher-id> pnpm run package:vscode` and `pnpm run verify:vscode`. The verifier rejects the placeholder, bundled Harness or Node code, source maps, tests, credentials, missing locale resources, undeclared files, and CSP-forbidden Webview code. Do not use a DeepSeek AI publisher identity without authorization.
 
 ## Model Experience
 

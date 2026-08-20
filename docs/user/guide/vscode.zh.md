@@ -72,6 +72,8 @@ SSH Remote 与 Dev Container 会在远程环境中、workspace 文件旁运行 w
 
 可使用“Harness 客户端：显示运行时日志”查看已遮盖敏感内容的生命周期输出；修复路径或版本问题后，可使用“Harness 客户端：重启运行时”。版本或载体不匹配会在 Client 启动前失败。`home-busy` 表示另一个 VS Code companion 可能占用同一个 Harness home；请停止它，或配置独立的 `DSH_HOME`，然后重启。Web 与 CLI 进程不参与该 lease，因此 companion 使用同一个 home 前必须先停止它们。不支持多个写进程共享一个 home。
 
+面板为空且 Harness runtime 日志没有内容，表示 Webview bootstrap 未运行。请重新安装通过 `pnpm run verify:vscode` 的 VSIX，执行“开发人员: 重新加载窗口”，然后重试。如果面板仍为空，请执行“开发人员: 切换开发人员工具”并截取 Webview 控制台中的第一条错误。
+
 版本一只选择一个 workspace 根目录，不从编辑器导出 Session 归档，也不支持浏览器 extension host。需要下载 Session 时请使用 Web UI。
 
 ## Marketplace 发布身份

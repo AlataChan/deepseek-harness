@@ -80,6 +80,15 @@ describe('VS Code extension packaging', () => {
   })
 
   it.each([
+    ['Function constructor', 'new Function("return 1")()'],
+    ['direct eval', 'eval("1")'],
+  ])('rejects CSP-forbidden %s in a Webview chunk', async (_label, source) => {
+    const root = await createValidExtension()
+    await writeFile(join(root, 'dist', 'webview', 'chunk.js'), `${source}\n`)
+    await expect(verifyExtensionDirectory(root)).rejects.toThrow(/webview.*dynamic code/i)
+  })
+
+  it.each([
     ['publisher', /publisher.*placeholder/i, (manifest: typeof validManifest) => { manifest.publisher = '__PUBLISHER_ID__' }],
     ['display name', /displayName.*placeholder/i, (manifest: typeof validManifest) => { manifest.displayName = '__DISPLAY_NAME__' }],
     ['icon', /icon.*placeholder/i, (manifest: typeof validManifest) => { manifest.icon = '__ICON__' }],

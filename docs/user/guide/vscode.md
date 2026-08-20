@@ -72,6 +72,8 @@ Hiding the activity-bar view preserves its Client tree, unsent draft, context ch
 
 Use **Harness Client: Show Runtime Logs** for redacted lifecycle output and **Harness Client: Restart Runtime** after repairing a path or version problem. A version or carrier mismatch fails before the Client starts. `home-busy` means another VS Code companion may own the same Harness home; stop it or configure a separate `DSH_HOME`, then restart. Web and CLI processes do not participate in this lease, so stop them before a companion uses the same home. Concurrent writers sharing one home are unsupported.
 
+An empty panel with no Harness runtime log means the Webview bootstrap did not run. Reinstall a VSIX that passes `pnpm run verify:vscode`, run **Developer: Reload Window**, and retry. If the panel remains empty, run **Developer: Toggle Developer Tools** and capture the first Webview console error.
+
 Version one selects one workspace root, does not export session archives from the editor, and does not support browser extension hosts. Use the Web UI when session download is required.
 
 ## Marketplace release identity

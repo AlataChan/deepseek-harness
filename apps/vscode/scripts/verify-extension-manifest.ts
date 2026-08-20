@@ -177,6 +177,20 @@ async function verifyIcon(readPayloadFile: ReadPayloadFile): Promise<string[]> {
   }
 }
 
+async function verifyWebviewScripts(
+  files: readonly string[],
+  readPayloadFile: ReadPayloadFile,
+): Promise<string[]> {
+  const errors: string[] = []
+  for (const file of files.filter(file => /^dist\/webview\/[^/]+\.js$/.test(file))) {
+    const source = new TextDecoder().decode(await readPayloadFile(file))
+    if (/\bnew\s+Function\s*\(/.test(source) || /\beval\s*\(/.test(source)) {
+      errors.push(`${file}: Webview script contains CSP-forbidden dynamic code`)
+    }
+  }
+  return errors
+}
+
 async function verifyPayload(files: readonly string[], readPayloadFile: ReadPayloadFile): Promise<void> {
   const errors = verifyPayloadFiles(files)
   let manifest: Record<string, unknown> | undefined
@@ -190,6 +204,7 @@ async function verifyPayload(files: readonly string[], readPayloadFile: ReadPayl
     errors.push(...await verifyLocalization(manifest, readPayloadFile))
   }
   errors.push(...await verifyIcon(readPayloadFile))
+  errors.push(...await verifyWebviewScripts(files, readPayloadFile))
   if (errors.length > 0) throw new Error(`VS Code extension verification failed:\n${errors.map(error => `- ${error}`).join('\n')}`)
 }
 

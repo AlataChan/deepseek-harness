@@ -12,6 +12,8 @@ Harness 文件位置操作继续使用既有 `host.openPath` RPC。扩展会通�
 
 companion 握手会公布 Client Plugin（客户端插件）图与 bundle（包）哈希。扩展把校验后的字节复制到按修订号划分的全局存储中，只向 Webview 授予该缓存与固定扩展媒体的访问权，并通过严格的 content security policy（内容安全策略）启动既有 Client 外壳。外壳启动前，Webview 会安装共享 registration facade，并从已验证缓存依次执行图中的模块系统与 runtime bootstrap 行；随后它会在任何图 entry 激活前，把私有 carrier 与 IDE port 提供到新建的 Client context。唯一一次 `acquireVsCodeApi()` 调用始终封装在这些经过校验的端口之后，不向外暴露。companion 代际变化会结束活跃 Client stream，但不会永久关闭 Webview API 客户端，因此共享 connection controller 可以重新连接持久会话。
 
+Client 图配置以 JSON 形式进入 Webview。VS Code 构建会把 vendored Loader 的 JavaScript 表达式求值器替换成拒绝实现，因此严格的内容安全策略无需动态执行代码。VSIX 验证会扫描每个 Webview JavaScript 产物，并拒绝 Function 构造器或直接 `eval`。
+
 Workspace Trust（工作区信任）会阻止 runtime 发现与执行。可执行文件路径设置在不可信 workspace 中受限。进程输出经过有界凭据遮盖；carrier record 与编辑器快照没有日志 API。companion 负责 Harness home 的独占 lease（租约），当另一进程可能正在使用同一个持久存储时报告 `home-busy`。
 
 [VS Code 用户指南](../../docs/user/guide/vscode.md)介绍源码安装、远程放置、上下文隐私、恢复和当前限制。
@@ -27,7 +29,7 @@ Workspace Trust（工作区信任）会阻止 runtime 发现与执行。可执�
 
 运行 `pnpm --filter @deepseek-ai/dsh-vscode run build` 可生成 `dist/extension.js` 与 Webview 产物。[`manifest.vscode.json`](manifest.vscode.json) 是扩展暂存打包的源 manifest。它把扩展名固定为 `harness-client`、显示名称固定为 **Harness Client for VS Code**、图标固定为 [`media/icon.png`](media/icon.png)，并使用 pre-release 渠道；只有 Marketplace publisher 仍是显式占位符。
 
-获得授权的发布负责人应通过 [Marketplace 官方流程](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)创建中性 publisher，然后运行 `DSH_VSCODE_PUBLISHER=<publisher-id> pnpm run package:vscode` 与 `pnpm run verify:vscode` 暂存并验证 VSIX。验证器会拒绝占位符、打包进去的 Harness 或 Node 代码、source map、测试、凭据、缺失的 locale 资源和未声明文件。未经授权不得使用 DeepSeek AI publisher 身份。
+获得授权的发布负责人应通过 [Marketplace 官方流程](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)创建中性 publisher，然后运行 `DSH_VSCODE_PUBLISHER=<publisher-id> pnpm run package:vscode` 与 `pnpm run verify:vscode` 暂存并验证 VSIX。验证器会拒绝占位符、打包进去的 Harness 或 Node 代码、source map、测试、凭据、缺失的 locale 资源、未声明文件和 CSP 禁止的 Webview 代码。未经授权不得使用 DeepSeek AI publisher 身份。
 
 ## 模型体验
 

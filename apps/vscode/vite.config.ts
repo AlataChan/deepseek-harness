@@ -1,12 +1,36 @@
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 
 const src = (relative: string): string => fileURLToPath(new URL(relative, import.meta.url))
 
+function literalLoaderConfig(): Plugin {
+  const evaluator = [
+    'const evaluate = new Function("ctx", "expr", `',
+    '  with (ctx) {',
+    '    return eval(expr)',
+    '  }',
+    '`);',
+  ].join('\n')
+  const refusal = 'function evaluate() { throw new Error("VS Code Webview loader configs must not contain !!js expressions"); }'
+  return {
+    name: 'dsh-vscode-literal-loader-config',
+    enforce: 'pre',
+    transform(code, id) {
+      const normalizedId = id.split('?', 1)[0]?.replaceAll('\\', '/')
+      if (!normalizedId?.endsWith('/vendor/loader/lib/index.js')) return
+      const first = code.indexOf(evaluator)
+      if (first < 0 || code.indexOf(evaluator, first + evaluator.length) >= 0) {
+        throw new Error('VS Code Webview expected exactly one vendored Loader config evaluator')
+      }
+      return { code: code.replace(evaluator, refusal), map: null }
+    },
+  }
+}
+
 /** Build the retained Webview shell with fixed external-resource filenames. */
 export default defineConfig({
-  plugins: [react()],
+  plugins: [literalLoaderConfig(), react()],
   build: {
     outDir: 'dist/webview',
     emptyOutDir: false,
