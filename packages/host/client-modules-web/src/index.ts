@@ -10,6 +10,7 @@ import { readFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ClientBootEntry, ClientBootGraph } from '@deepseek-ai/dsh-client-modules'
+import { CLIENT_MODULES_ID, PARSER_PRELOAD_IDS } from '@deepseek-ai/dsh-client-modules/bootstrap-ids'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 
 /** Stable Cordis plugin name. */
@@ -17,15 +18,6 @@ export const name = 'client-modules-web'
 
 /** Services adapted onto the Web transport. */
 export const inject = ['clientModules', 'webServer']
-
-/** Bootstrap package whose ordinary client bundle supplies the module-system implementation. */
-const CLIENT_MODULES_ID = '@deepseek-ai/dsh-client-modules'
-
-/** Dynamic package whose ordinary client bundle must be registered before plugin boot starts. */
-const CLIENT_RUNTIME_ID = '@deepseek-ai/dsh-client-runtime'
-
-/** Ordinary dynamic bundles the HTML parser executes before the Vite shell. */
-const PARSER_PRELOAD_IDS = [CLIENT_MODULES_ID, CLIENT_RUNTIME_ID] as const
 
 /** Escape a graph URL before placing it in a quoted HTML attribute. */
 function escapeHtmlAttribute(value: string): string {

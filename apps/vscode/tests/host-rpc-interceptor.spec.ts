@@ -53,7 +53,7 @@ function description(id = 'describe-1', canOpenPath = false): ServerResponse {
     rpcId: RpcId(id),
     result: {
       ok: true,
-      value: { version: '1', cwd: '/workspace', attachedSessions: 0, canOpenPath },
+      value: { version: '1', cwd: '/workspace', attachedSessions: 0, home: '/home/test', canOpenPath },
     },
   }
 }

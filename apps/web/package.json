@@ -32,7 +32,6 @@
     "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
     "@deepseek-ai/dsh-client-web": "workspace:^",
     "@deepseek-ai/dsh-cmdline": "workspace:^",
-    "@deepseek-ai/dsh-host-client-modules-web": "workspace:^",
     "@deepseek-ai/dsh-pwsh-local": "workspace:^",
     "@types/node": "^22.0.0",
     "@types/react": "~18.3.1",

@@ -20,7 +20,7 @@ DeepSeek Harness 已有完整的交互式 Web 客户端，但编辑器用户必�
 
 随发行版交付的组装是 `web = base + client-app + web-app`、`vscode = base + client-app + vscode-app` 和 `headless = base + headless`。profile 等价性测试保持 Web profile 的已启用配置项顺序和解析后配置不变。
 
-`@deepseek-ai/dsh-client-modules` 与传输无关。其 Node 侧增量发现 `dsh.client` 包、解析元数据与 bundle（包）路径、计算 bundle 哈希、构建 `ClientBootGraph`，并发布图与重建变更。`@deepseek-ai/dsh-host-client-modules-web` 适配器负责 `/plugins` 服务与 HTML manifest（元数据清单）注入。`ClientBootEntry` 和 `ClientBootGraph` 取代原来的 Web 专用名称，且不保留兼容别名。
+`@deepseek-ai/dsh-client-modules` 与传输无关。其 Node 侧增量发现 `dsh.client` 包、解析元数据与 bundle（包）路径、计算 bundle 哈希、构建 `ClientBootGraph`，并发布图与重建变更。模块依赖约束图顺序，无关联平局及对应 bundle 记录则按 Loader entry 顺序排列；异步 fiber 激活不会改变表层握手。`@deepseek-ai/dsh-host-client-modules-web` 适配器负责 `/plugins` 服务与 HTML manifest（元数据清单）注入。`ClientBootEntry` 和 `ClientBootGraph` 取代原来的 Web 专用名称，且不保留兼容别名。
 
 ### 进程与已安装运行时
 
@@ -40,7 +40,7 @@ companion、扩展宿主和 Webview 共享一个浏览器安全的协议包。�
 
 ### Webview 与编辑器集成
 
-现有 Client Cordis 树在 Webview 内运行。`AppWebEntry` 接收自定义 bundle loader（包加载器）：扩展校验 companion 公布的标识与哈希后，把 bundle 复制到按图修订号划分的缓存，再通过 `webview.asWebviewUri` 只暴露该缓存与固定扩展媒体资源。只有 bootstrap（引导程序）调用一次 `acquireVsCodeApi()`，并把所得对象保存在窄化的内存端口之后，不对外暴露。
+现有 Client Cordis 树在 Webview 内运行。`AppWebEntry` 接收自定义 bundle loader（包加载器）：扩展校验 companion 公布的标识与哈希后，把 bundle 复制到按图修订号划分的缓存，再通过 `webview.asWebviewUri` 只暴露该缓存与固定扩展媒体资源。Webview 会安装共享模块 registration facade，并在构造 `AppWebEntry` 前从该缓存执行模块系统与 runtime 行；其 `configureContext` seam 会在任何图 entry 激活前提供窄粒度 carrier 与 IDE port。只有 bootstrap（引导程序）调用一次 `acquireVsCodeApi()`，并把所得对象保存在这些端口之后，不对外暴露。
 
 从 Webview 到扩展的消息是一个白名单 union（联合类型），只含载体记录以及有类型约束的编辑器请求、响应和事件。具名 `IdeMethodMap` 负责每个编辑器载荷与结果的 schema。Webview 不能发送任意 VS Code 命令。扩展只拦截 `host.openPath` 和 `host.describe` 中的 VS Code 可用性字段；其他 Host 请求原样传给 companion。文件打开限制在所选工作区内，范围外路径一律拒绝。
 
@@ -90,7 +90,7 @@ ACP 仅用于自动化，不负责完整交互式 Host API、Client Plugin 图�
 
 - profile 等价性测试会比较组装拆分前后 Web profile 的配置项顺序和解析后配置。
 - resolver（解析器）、进程、载体、runtime generation（运行时代际）竞态、Webview、编辑器上下文、路径打开、信任、lease、本地化和资源释放测试覆盖各自负责的生命周期与安全规则。
-- 无密钥的 `vscode-agent` 组装快照会启动 companion、对包含编辑器上下文的图片提示词进行分片、通过 ApiProxy 产生流式输出、持久化精确文本，并拒绝第二个 home 属主。
+- 无密钥的 `vscode-agent` 组装快照会针对同一份图快照分别从源码和构建产物启动 companion、对包含编辑器上下文的图片提示词进行分片、通过 ApiProxy 产生流式输出、持久化精确文本，并拒绝第二个 home 属主。
 - 本地 Electron 集成会启动暂存扩展、捕获编辑器状态、打开 workspace 内位置、重新连接 runtime，并释放 companion lease。
 - VS Code workflow 为 Linux、macOS 与 Windows 定义原生本地扩展任务；SSH Remote 与 Dev Container 仍是人工发布检查项。
 - 打包测试与 VSIX 验证器会强制执行产物允许清单、本地化完整性、外部 companion 声明、128 像素 PNG 图标、pre-release 元数据和已解析的 publisher 身份。

@@ -200,6 +200,32 @@ describe('module graph order', () => {
       .toEqual([dependencyName, consumerName])
   })
 
+  it('uses Loader scan order rather than fiber activation order to break graph ties', async () => {
+    const firstName = '@fixture/loader-first'
+    const secondName = '@fixture/loader-second'
+    writeBuiltPackage(firstName, {})
+    writeBuiltPackage(secondName, {})
+    const firstEntry = { options: { name: firstName }, fiber: undefined as object | undefined, disabled: false }
+    const secondEntry = { options: { name: secondName }, fiber: {}, disabled: false }
+    const ctx = new Context()
+    ctx.baseUrl = pathToFileURL(root!).href + '/'
+    ctx.provide('loader', {
+      *entries() {
+        yield firstEntry
+        yield secondEntry
+      },
+    })
+    const service = new ClientModuleRegistry(ctx)
+    expect(ids(service.graph().entries)).toEqual([secondName])
+
+    firstEntry.fiber = {}
+    ctx.emit('internal/plugin', { entry: firstEntry } as never)
+    await Promise.resolve()
+
+    expect(ids(service.graph().entries)).toEqual([firstName, secondName])
+    expect(service.bundleRecords().map(record => record.entry.id)).toEqual([firstName, secondName])
+  })
+
   it('fails activation loud when scanned packages form a module cycle', () => {
     writeBuiltPackage('@fixture/cycle-a', { external: ['@fixture/cycle-b'] })
     writeBuiltPackage('@fixture/cycle-b', { external: ['@fixture/cycle-a'] })

@@ -14,7 +14,7 @@ import {
 import { BridgeHarness } from './bridge-harness.client.ts'
 
 const DESCRIPTION = {
-  version: '0.1.0', cwd: '/workspace', attachedSessions: 0, canOpenPath: true,
+  version: '0.1.0', cwd: '/workspace', attachedSessions: 0, home: '/home/test', canOpenPath: true,
 }
 
 class ExposedClient extends VsCodeApiClient {
@@ -295,14 +295,14 @@ describe('VsCodeApiClient', () => {
     await expect(first).rejects.toThrow(/closed/)
 
     const receiptPort = new BridgeHarness()
-    const receiptClient = new ScriptedIdClient(receiptPort, { responseTimeoutMs: 100 }, [RpcId('response-kind')])
+    const receiptClient = new ScriptedIdClient(receiptPort, { responseTimeoutMs: 5_000 }, [RpcId('response-kind')])
     const responsePending = receiptClient.host.describe({})
     await vi.waitFor(() => { expect(receiptPort.sent).toHaveLength(1) })
     await receiptPort.receive({ type: 'rpc/receipt', rpcId: RpcId('response-kind'), receipt: { accepted: true } })
     await expect(responsePending).rejects.toThrow(/expected response, received receipt/)
 
     const responsePort = new BridgeHarness()
-    const responseClient = new VsCodeApiClient(responsePort, { responseTimeoutMs: 100 })
+    const responseClient = new VsCodeApiClient(responsePort, { responseTimeoutMs: 5_000 })
     const receiptPending = responseClient.respond({
       type: 'client-response', rpcId: RpcId('receipt-kind'), result: { ok: true, value: {} },
     })

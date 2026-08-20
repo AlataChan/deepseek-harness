@@ -18,7 +18,7 @@ Client Plugin 注册表是 [dsh-client-modules](../../packages/client/modules) �
  * metadata (the authoritative edges live in each package's `dsh.client`
  * declaration and reach fibers through entry creation). `external` carries
  * module-graph edges: unlike `inject`, they constrain code arrival because
- * `require` is synchronous (see {@link WebBootGraph.entries}).
+ * `require` is synchronous (see {@link ClientBootGraph.entries}).
  */
 interface ClientBootEntry {
   /** Entry name == package name. */
@@ -66,7 +66,7 @@ interface ClientBundleRecord {
 
 包加入这张表的方式，是在自己的 package.json 中声明 `dsh.client`（`platform: 'web'`、可选的 `inject` 边、可选的 `immediately`），并在 `exports["./client"]` 导出构建好的 bundle。包解析锚定在配置树的 `ctx.baseUrl`——即 cordis.yml 所在目录，该目录的包把每个被组合的插件声明为依赖——这一锚点未设置时，构造即抛错。
 
-扫描是单包增量的；不存在全量重扫代码路径。fiber 构造或 dispose（资源释放）时的每次 cordis `internal/plugin` 发射都把该 fiber 的 entry 名标脏，一次微任务 flush 把每个脏名与实时 loader entry 对账。激活趟以全部当前 entry 灌入同一个脏集合并同步 flush，因此初扫与稳态共享一条实现——但失败姿态相反。激活时，已加载 entry 中的畸形声明或缺失 bundle 会聚合为一个大声的 `AggregateError`，列出每个损坏的包：该 fiber 进入 FAILED，由启动的大声失败 sweep 上报。稳态下，损坏的包只记录一条警告，且不得殃及其他包。
+扫描是单包增量的；不存在全量重扫代码路径。fiber 构造或 dispose（资源释放）时的每次 cordis `internal/plugin` 发射都把该 fiber 的 entry 名标脏，一次微任务 flush 把每个脏名与实时 loader entry 对账。组合过程会先读取实时 Loader entry 顺序，再应用模块图依赖：动态提供方排在消费者之前，其余平局由 Loader 顺序打破，`bundleRecords()` 也采用这一顺序。因此 fiber 激活时序不会改变图修订号或表层握手。激活趟以全部当前 entry 灌入同一个脏集合并同步 flush，因此初扫与稳态共享一条实现——但失败姿态相反。激活时，已加载 entry 中的畸形声明或缺失 bundle 会聚合为一个大声的 `AggregateError`，列出每个损坏的包：该 fiber 进入 FAILED，由启动的大声失败 sweep 上报。稳态下，损坏的包只记录一条警告，且不得殃及其他包。
 
 包元数据——包括「非 client 包」这一否定结论——按名缓存且永不过期：插件集合的变更在重启后生效。fiber 重启原样复用其行与 rev；bundle 内容变更只经 `rebuilt()` 到达图。
 

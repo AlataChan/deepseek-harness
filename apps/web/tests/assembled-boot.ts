@@ -14,9 +14,9 @@ import { pathToFileURL } from 'node:url'
 import { act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
 import { orderByModuleGraph } from '@deepseek-ai/dsh-client-modules'
+import { createClientModuleLoaderFacade } from '@deepseek-ai/dsh-client-modules/bootstrap-ids'
 import type { ClientBootEntry, ClientModuleLoaderTarget } from '@deepseek-ai/dsh-client-modules/client'
 import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
-import { injectBootManifest } from '@deepseek-ai/dsh-host-client-modules-web'
 
 interface AssembledPlugin extends ClientBootEntry {
   /** Absolute path to the built client artifact declared by this package. */
@@ -199,10 +199,7 @@ export function mountAssembledApp(search = '?fixture'): void {
   root.id = 'root'
   document.body.appendChild(root)
   win.__DSH_BOOT__ = { rev: 'fx', entries: PLUGINS.map(({ bundlePath: _bundlePath, ...plugin }) => plugin) }
-  const html = injectBootManifest('<head></head>', win.__DSH_BOOT__)
-  const facadeSource = /<head><script>([\s\S]*?)<\/script>/.exec(html)?.[1]
-  if (facadeSource === undefined) throw new Error('missing injected ModuleLoader facade')
-  ;(0, eval)(facadeSource)
+  win.__ModuleLoader__ = createClientModuleLoaderFacade()
   // Mirror the blocking Host-injected scripts before the Vite entry calls create().
   for (const id of ['@deepseek-ai/dsh-client-modules', '@deepseek-ai/dsh-client-runtime']) {
     const plugin = PLUGINS.find(candidate => candidate.id === id)

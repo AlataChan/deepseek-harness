@@ -1,7 +1,15 @@
 /** Private Webview ports over the single acquired VS Code API object. */
 
 import { z } from 'zod'
-import type { ClientBootGraph, DshWindow } from '@deepseek-ai/dsh-client-modules/client'
+import type {
+  ClientBootGraph,
+  ClientModuleLoaderTarget,
+  DshWindow,
+} from '@deepseek-ai/dsh-client-modules/client'
+import {
+  createClientModuleLoaderFacade,
+  PARSER_PRELOAD_IDS,
+} from '@deepseek-ai/dsh-client-modules/bootstrap-ids'
 import type {
   VsCodeBridgePort,
   VsCodeIdePort,
@@ -46,6 +54,7 @@ const graphSchema = z.object({
     rev: z.string().min(1),
     inject: z.array(z.string()).optional(),
     immediately: z.boolean().optional(),
+    external: z.array(z.string()).optional(),
   }).strict()),
 }).strict() as unknown as z.ZodType<ClientBootGraph>
 
@@ -62,6 +71,33 @@ export function readWebviewBoot(document: Document): WebviewBoot {
   const binary = atob(encoded)
   const bytes = Uint8Array.from(binary, character => character.charCodeAt(0))
   return bootSchema.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as unknown)
+}
+
+/** Install the queue facade consumed by parser-style Client bundle registrations. */
+export function installWebviewModuleLoader(): ClientModuleLoaderTarget {
+  const win = globalThis as DshWindow
+  if (win.__ModuleLoader__ !== undefined) {
+    throw new Error('client-modules: window.__ModuleLoader__ bootstrap facade is already installed')
+  }
+  const target = createClientModuleLoaderFacade()
+  win.__ModuleLoader__ = target
+  return target
+}
+
+/**
+ * Execute the module-system and runtime bundle registrations before shell boot.
+ * @param graph - verified cache-backed Client graph.
+ * @param loadBundle - cache-restricted script loader.
+ */
+export async function preloadWebviewBootstrap(
+  graph: ClientBootGraph,
+  loadBundle: (url: string) => Promise<void>,
+): Promise<void> {
+  for (const id of PARSER_PRELOAD_IDS) {
+    const entry = graph.entries.find(candidate => candidate.id === id)
+    if (entry === undefined) throw new Error(`VS Code Webview boot graph is missing ${id}`)
+    await loadBundle(entry.url)
+  }
 }
 
 /** One private carrier port; the raw VS Code API object stays in this closure. */

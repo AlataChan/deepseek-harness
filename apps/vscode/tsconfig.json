@@ -3,6 +3,11 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "lib/types",
+    "typeRoots": [
+      "../../scripts/types",
+      "./node_modules/@types",
+      "../../node_modules/@types"
+    ],
     "types": [
       "node",
       "vscode"

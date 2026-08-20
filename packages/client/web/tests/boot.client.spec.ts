@@ -2,8 +2,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import * as modulesClient from '@deepseek-ai/dsh-client-modules/client'
 import type {
-  ClientBundleRegistration, ClientModuleCreateOptions, ClientModuleLoaderTarget, DshWindow,
-  WebBootEntry,
+  ClientBootEntry, ClientBundleRegistration, ClientModuleCreateOptions, ClientModuleLoaderTarget, DshWindow,
 } from '@deepseek-ai/dsh-client-modules/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppWebEntry } from '../src/boot.ts'
@@ -85,7 +84,7 @@ describe('plugin activation', () => {
     const container = document.createElement('div')
     document.body.append(container)
     const target = installFacade()
-    const entries: WebBootEntry[] = [
+    const entries: ClientBootEntry[] = [
       { id: 'consumer', url: '/consumer.js', rev: '1' },
       { id: MODULES_ID, url: '/modules.js', rev: '1' },
       { id: 'renderer', url: '/renderer.js', rev: '1' },
@@ -118,6 +117,7 @@ describe('plugin activation', () => {
       }],
     ])
     const entry = new AppWebEntry(container, {
+      configureContext: () => { events.push('configure') },
       loadBundle: async (url) => {
         const registration = registrations.get(url)
         if (registration === undefined) throw new Error(`missing fixture registration ${url}`)
@@ -128,7 +128,7 @@ describe('plugin activation', () => {
     await entry.run()
 
     expect(target.mode).toBe('live')
-    expect(events).toEqual(['consumer', 'mount'])
+    expect(events).toEqual(['configure', 'consumer', 'mount'])
     expect(container.textContent).toBe('mounted')
     await entry.dispose()
   })

@@ -39,19 +39,20 @@ async function bench(readAttachment?: SessionFace['readAttachment']) {
 }
 
 describe('ConversationController', () => {
-  it('appends one reference to the scoped draft with one separating space', async () => {
+  it('appends one visible reference to the scoped draft with separating spaces', async () => {
     const b = await bench()
     const reference: ReferenceInsert = {
       source: 'ide-context', ref: 'capture-1', label: 'src/main.ts:2-4', clipboardText: '@src/main.ts:2-4',
     }
     b.shell.setDraft('explain this')
     expect(b.scoped.appendReference(reference)).toBe(true)
-    expect(b.shell.snapshot.draft).toBe('explain this ￼ ')
+    expect(b.shell.snapshot.draft).toBe('explain this @src/main.ts:2-4 ')
     expect(b.shell.snapshot.occurrences).toEqual([{
       occurrenceId: 1,
       source: 'ide-context',
       ref: 'capture-1',
       offset: 13,
+      length: 16,
       label: 'src/main.ts:2-4',
       clipboardText: '@src/main.ts:2-4',
     }])

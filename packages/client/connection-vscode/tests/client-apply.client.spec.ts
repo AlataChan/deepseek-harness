@@ -15,7 +15,7 @@ import {
 import { BridgeHarness } from './bridge-harness.client.ts'
 
 const DESCRIPTION = {
-  version: '0.1.0', cwd: '/workspace', attachedSessions: 0, canOpenPath: true,
+  version: '0.1.0', cwd: '/workspace', attachedSessions: 0, home: '/home/test', canOpenPath: true,
 }
 
 function respondingPort(): BridgeHarness {

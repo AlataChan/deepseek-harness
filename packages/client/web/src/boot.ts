@@ -15,8 +15,14 @@ import { getStaticModules } from './seed.ts'
 import { STATE_LABELS } from './loader-status.ts'
 import './base.css'
 
-/** Module transport hook replaced by jsdom tests. */
-export type BootSeams = Pick<ClientModuleCreateOptions, 'loadBundle'>
+/** Surface hooks installed before dynamic Client entries activate. */
+export interface BootSeams extends Pick<ClientModuleCreateOptions, 'loadBundle'> {
+  /**
+   * Publish surface-private services on the fresh Client context.
+   * @param ctx - Client root before the Loader or any graph entry activates.
+   */
+  configureContext?: (ctx: Context) => void
+}
 
 /** Browser boot entry consumed by `apps/web`. */
 export class AppWebEntry {
@@ -60,6 +66,7 @@ export class AppWebEntry {
       const prefetching = this.prefetchImmediateTier()
       const ctx = new Context()
       this.ctx = ctx
+      this.seams?.configureContext?.(ctx)
       await this.runPluginBoot(ctx, prefetching)
       await this.mountApp(ctx)
     } catch (reason) {

@@ -20,7 +20,7 @@ The interactive composition uses three bundles. `@deepseek-ai/dsh-client-app` ow
 
 The shipped compositions are `web = base + client-app + web-app`, `vscode = base + client-app + vscode-app`, and `headless = base + headless`. A profile-equivalence test preserves the Web profile's ordered enabled rows and resolved configurations.
 
-`@deepseek-ai/dsh-client-modules` is transport-neutral. Its Node face discovers `dsh.client` packages incrementally, resolves metadata and bundle paths, hashes bundles, constructs `ClientBootGraph`, and publishes graph and rebuild changes. `@deepseek-ai/dsh-host-client-modules-web` owns `/plugins` serving and HTML manifest injection. `ClientBootEntry` and `ClientBootGraph` replace the former Web-specific names without compatibility aliases.
+`@deepseek-ai/dsh-client-modules` is transport-neutral. Its Node face discovers `dsh.client` packages incrementally, resolves metadata and bundle paths, hashes bundles, constructs `ClientBootGraph`, and publishes graph and rebuild changes. Module dependencies constrain graph order, while Loader entry order breaks unrelated ties and orders the matching bundle records; asynchronous fiber activation cannot change a surface handshake. `@deepseek-ai/dsh-host-client-modules-web` owns `/plugins` serving and HTML manifest injection. `ClientBootEntry` and `ClientBootGraph` replace the former Web-specific names without compatibility aliases.
 
 ### Process and installed runtime
 
@@ -40,7 +40,7 @@ Control, stream-open, and editor messages have a 1 MiB logical limit. RPC and st
 
 ### Webview and editor integration
 
-The existing Client Cordis tree runs inside the Webview. `AppWebEntry` receives a custom bundle loader: the extension copies the companion-announced bundles into a graph-revision cache after verifying identifiers and hashes, then exposes only that cache and fixed extension media through `webview.asWebviewUri`. Only the bootstrap calls `acquireVsCodeApi()`, once, and keeps the resulting object private behind a narrow in-memory port.
+The existing Client Cordis tree runs inside the Webview. `AppWebEntry` receives a custom bundle loader: the extension copies the companion-announced bundles into a graph-revision cache after verifying identifiers and hashes, then exposes only that cache and fixed extension media through `webview.asWebviewUri`. The Webview installs the shared module registration facade and executes the module-system and runtime rows from that cache before constructing `AppWebEntry`. Its `configureContext` seam publishes the narrow carrier and IDE ports before any graph entry activates. Only the bootstrap calls `acquireVsCodeApi()`, once, and keeps the resulting object private behind those ports.
 
 Webview-to-extension messages are an allowlisted union of carrier records and typed editor requests, responses, and events. A named `IdeMethodMap` owns every editor payload and result schema. The Webview cannot send an arbitrary VS Code command. The extension intercepts only `host.openPath` and the VS Code availability fields of `host.describe`; every other Host request passes unchanged to the companion. File opening is restricted to the selected workspace, and outside paths are refused.
 
@@ -90,7 +90,7 @@ Passing arbitrary VS Code command identifiers would grant plugin code an open-en
 
 - The profile-equivalence test compares the Web profile's ordered rows and resolved configurations before and after the composition extraction.
 - Resolver, process, carrier, runtime-generation race, Webview, editor-context, path-opening, trust, lease, localization, and teardown tests cover the owned lifecycle and security rules.
-- The keyless `vscode-agent` assembled snapshot boots the companion, fragments an image prompt with editor context, streams through ApiProxy, persists the exact text, and rejects a second home owner.
+- The keyless `vscode-agent` assembled snapshot boots the companion from source and built artifacts against one graph snapshot, fragments an image prompt with editor context, streams through ApiProxy, persists the exact text, and rejects a second home owner.
 - The local Electron integration boots the staged extension, captures editor state, opens an in-workspace location, reconnects the runtime, and releases the companion lease.
 - The VS Code workflow defines native local-extension lanes for Linux, macOS, and Windows; SSH Remote and Dev Container remain manual release checks.
 - The packaging tests and VSIX verifier enforce the artifact allowlist, localization completeness, external companion declaration, 128-pixel PNG icon, pre-release metadata, and resolved publisher identity.

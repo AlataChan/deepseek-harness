@@ -294,7 +294,13 @@ export class ClientModuleRegistry extends Service {
    * @returns a read-only array whose records cannot mutate registry ownership.
    */
   bundleRecords(): readonly ClientBundleRecord[] {
-    return [...this.table.values()]
+    return this.composed.entries.map((entry) => {
+      const record = this.table.get(entry.id)
+      if (record === undefined) {
+        throw new Error(`client-modules: composed graph row ${entry.id} has no bundle record`)
+      }
+      return record
+    })
   }
 
   /**
@@ -352,7 +358,15 @@ export class ClientModuleRegistry extends Service {
   }
 
   private compose(): ClientBootGraph {
-    const entries = orderByModuleGraph([...this.table.values()].map(record => record.entry))
+    const scanOrdered: ClientBootEntry[] = []
+    const remaining = new Map(this.table)
+    for (const loaderEntry of this.ctx.loader.entries()) {
+      const record = remaining.get(loaderEntry.options.name)
+      if (record === undefined) continue
+      scanOrdered.push(record.entry)
+      remaining.delete(loaderEntry.options.name)
+    }
+    const entries = orderByModuleGraph(scanOrdered)
     return { rev: shortHash(JSON.stringify(entries)), entries }
   }
 

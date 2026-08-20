@@ -2,7 +2,7 @@
 
 import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { copyFile, mkdir } from 'node:fs/promises'
+import { copyFile, mkdir, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { VsCodeApiClient, type VsCodeBridgePort } from '@deepseek-ai/dsh-client-connection-vscode/client'
@@ -13,11 +13,12 @@ import {
   type ControlReadyFrame,
   type VsCodeWireRecord,
 } from '@deepseek-ai/dsh-client-connection-vscode/protocol'
-import { resolveExampleLaunch } from '@deepseek-ai/dsh-loader-smoke'
+import { resolveExampleLaunch, resolveExampleMode } from '@deepseek-ai/dsh-loader-smoke'
 
 const companionSource = fileURLToPath(new URL('../../../../apps/cli/src/vscode-companion.ts', import.meta.url))
 const companionBuilt = fileURLToPath(new URL('../../../../apps/cli/lib/vscode-companion.js', import.meta.url))
 const repoTsconfig = fileURLToPath(new URL('../../../../tsconfig.json', import.meta.url))
+const replayPackageRoot = fileURLToPath(new URL('../../../../packages/test-support/llm-replay', import.meta.url))
 const STARTUP_TIMEOUT_MS = 30_000
 const SHUTDOWN_TIMEOUT_MS = 10_000
 
@@ -59,6 +60,20 @@ export interface LaunchedVsCodeIpc {
 
 function pathOf(value: string | URL): string {
   return value instanceof URL ? fileURLToPath(value) : value
+}
+
+/** Expose the test-only replay provider to the isolated installed profile. */
+async function stageLibReplayPackage(dshHome: string): Promise<void> {
+  if (resolveExampleMode() !== 'lib') return
+  const scopeDir = join(dshHome, 'profiles', 'vscode', 'node_modules', '@deepseek-ai')
+  await mkdir(scopeDir, { recursive: true })
+  const replayLink = join(scopeDir, 'dsh-llm-replay')
+  if (existsSync(replayLink)) return
+  await symlink(
+    replayPackageRoot,
+    replayLink,
+    process.platform === 'win32' ? 'junction' : 'dir',
+  )
 }
 
 function timeout(milliseconds: number, message: string): { promise: Promise<never>; cancel(): void } {
@@ -136,6 +151,7 @@ async function terminate(child: ChildProcess): Promise<void> {
  */
 export async function launchVsCodeIpc(options: VsCodeIpcLaunchOptions): Promise<LaunchedVsCodeIpc> {
   await mkdir(options.dshHome, { recursive: true })
+  await stageLibReplayPackage(options.dshHome)
   const homePatch = join(options.dshHome, 'cordis.patch.yml')
   if (!existsSync(homePatch)) await copyFile(options.patchFile, homePatch)
   const launch = resolveExampleLaunch({

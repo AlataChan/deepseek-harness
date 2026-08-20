@@ -119,7 +119,7 @@ describe('VS Code bridge router', () => {
         result: {
           ok: true,
           value: {
-            version: '1', cwd: '/workspace', attachedSessions: 0,
+            version: '1', cwd: '/workspace', attachedSessions: 0, home: '/home/test',
             canOpenPath: false, padding: 'x'.repeat(500),
           },
         },

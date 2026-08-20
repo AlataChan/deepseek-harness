@@ -101,7 +101,7 @@ describe('EditorContextSource', () => {
       text: '<ide_context kind="selection" uri="file:///workspace/src/main.ts" path="src/main.ts" language="typescript" version="4" range="5:2-6:9">\n'
         + 'const value = 1\n'
         + '</ide_context>',
-    }], 'queue')
+    }], 'queue', expect.any(AbortSignal))
     await runtime.dispose()
   })
 })
