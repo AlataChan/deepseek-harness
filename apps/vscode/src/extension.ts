@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import * as vscode from 'vscode'
 import { validateContextLimits } from './bridge-router.ts'
 import { EditorContextCapture, type EditorCaptureKind } from './editor-context.ts'
+import { HostRpcInterceptor } from './host-rpc-interceptor.ts'
 import { launchIpcChild } from './ipc-child.ts'
 import { RuntimeOutput } from './output.ts'
 import { RuntimeManager } from './runtime-manager.ts'
@@ -117,6 +118,30 @@ export function activate(context: vscode.ExtensionContext): void {
     fileUri: path => vscode.Uri.file(path),
     joinUri: (base, ...segments) => vscode.Uri.joinPath(base, ...segments),
     showError: async message => await vscode.window.showErrorMessage(message),
+    createHostRpc: () => new HostRpcInterceptor({
+      workspaceRoot: () => {
+        const root = provider.selectedWorkspaceRoot()
+        return vscode.workspace.workspaceFolders?.find(folder => folder.uri.fsPath === root)?.uri
+          ?? vscode.Uri.file(root)
+      },
+      parseUri: value => vscode.Uri.parse(value, true),
+      fileUri: path => vscode.Uri.file(path),
+      joinUri: (base, path) => vscode.Uri.joinPath(base as vscode.Uri, path),
+      stat: async (uri) => {
+        const stat = await vscode.workspace.fs.stat(uri as vscode.Uri)
+        if ((stat.type & vscode.FileType.SymbolicLink) !== 0) return 'symbolic-link'
+        if ((stat.type & vscode.FileType.Directory) !== 0) return 'directory'
+        if ((stat.type & vscode.FileType.File) !== 0) return 'file'
+        throw new Error('path is neither a file nor a directory')
+      },
+      openTextDocument: async uri => await vscode.workspace.openTextDocument(uri as vscode.Uri),
+      showTextDocument: async (document, options) => await vscode.window.showTextDocument(
+        document as vscode.TextDocument,
+        options as vscode.TextDocumentShowOptions,
+      ),
+      pointRange: (line, column) => new vscode.Range(line, column, line, column),
+      revealInExplorer: async uri => await vscode.commands.executeCommand('revealInExplorer', uri),
+    }),
     ideHandlers: {
       'workspace.getSelectedRoot': (): { workspaceRoot: string } => ({
         workspaceRoot: provider.selectedWorkspaceRoot(),

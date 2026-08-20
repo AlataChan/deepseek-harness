@@ -15,6 +15,7 @@
   "references": [
     { "path": "../../packages/client/connection-vscode/tsconfig.client.json" },
     { "path": "../../packages/client/modules" },
-    { "path": "../../packages/client/web" }
+    { "path": "../../packages/client/web" },
+    { "path": "../../packages/host/apiproxy" }
   ]
 }

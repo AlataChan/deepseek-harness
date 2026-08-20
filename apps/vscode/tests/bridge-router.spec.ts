@@ -5,12 +5,14 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import { RpcId, type ClientRequest, type ServerResponse } from '@deepseek-ai/dsh-host-apiproxy/api'
 import {
   EditorContextId,
   IdeRequestId,
   type WebviewBridgeMessage,
   type VsCodeWireRecord,
 } from '@deepseek-ai/dsh-client-connection-vscode/protocol'
+import { sendVsCodeFrame } from '@deepseek-ai/dsh-client-connection-vscode/codec'
 import {
   BridgeRouter,
   cacheVerifiedBundles,
@@ -18,6 +20,7 @@ import {
   type BridgeRecordPort,
   type BridgeWebviewPort,
 } from '../src/bridge-router.ts'
+import type { HostRpcRouting } from '../src/host-rpc-interceptor.ts'
 
 class RecordPort implements BridgeRecordPort {
   sent: VsCodeWireRecord[] = []
@@ -42,6 +45,96 @@ class WebviewPort implements BridgeWebviewPort {
 }
 
 describe('VS Code bridge router', () => {
+  it('intercepts logical Host RPC while forwarding every unowned carrier record unchanged', async () => {
+    const runtime = new RecordPort()
+    const webview = new WebviewPort()
+    const descriptions = new Set<string>()
+    const disposeHostRpc = vi.fn()
+    const hostRpc: HostRpcRouting = {
+      interceptRequest: vi.fn(async (request: ClientRequest): Promise<ServerResponse | undefined> => {
+        if (request.method === 'host.describe') descriptions.add(request.rpcId)
+        if (request.method !== 'host.openPath') return undefined
+        return {
+          type: 'server-response', rpcId: request.rpcId,
+          result: { ok: true, value: { opened: true } },
+        }
+      }),
+      interceptResponse: vi.fn((response: ServerResponse): ServerResponse => {
+        if (!descriptions.delete(response.rpcId) || !response.result.ok) return response
+        return {
+          ...response,
+          result: { ok: true, value: { ...(response.result.value as object), canOpenPath: true } },
+        }
+      }),
+      dispose: disposeHostRpc,
+    }
+    const router = new BridgeRouter({ runtime, webview, hostRpc })
+    const record = (message: ClientRequest | ServerResponse): VsCodeWireRecord => ({
+      type: 'wire/message', encoded: JSON.stringify({ type: 'rpc/message', message }),
+    })
+
+    const ordinary: ClientRequest = {
+      type: 'client-request', rpcId: RpcId('ordinary'), method: 'session.list', payload: { marker: true },
+    }
+    const ordinaryRecord = record(ordinary)
+    webview.receive({ type: 'carrier', record: ordinaryRecord })
+    await vi.waitFor(() => { expect(runtime.sent).toEqual([ordinaryRecord]) })
+
+    const fragmented: ClientRequest = {
+      type: 'client-request', rpcId: RpcId('fragmented'), method: 'session.list',
+      payload: { marker: 'x'.repeat(500) },
+    }
+    await sendVsCodeFrame(
+      { type: 'rpc/message', message: fragmented },
+      async (item) => { webview.receive({ type: 'carrier', record: item }) },
+      { maxWireRecordBytes: 180, maxLogicalRpcBytes: 4096 },
+    )
+    await vi.waitFor(() => { expect(runtime.sent).toHaveLength(2) })
+    expect(runtime.sent[1]).toMatchObject({ type: 'wire/message' })
+    if (runtime.sent[1]?.type !== 'wire/message') throw new Error('expected re-encoded logical frame')
+    expect(JSON.parse(runtime.sent[1].encoded)).toEqual({ type: 'rpc/message', message: fragmented })
+
+    const open: ClientRequest = {
+      type: 'client-request', rpcId: RpcId('open'), method: 'host.openPath', payload: { path: '/workspace/a.ts' },
+    }
+    webview.receive({ type: 'carrier', record: record(open) })
+    await vi.waitFor(() => {
+      expect(webview.sent.some((message) => {
+        if (message.type !== 'carrier' || message.record.type !== 'wire/message') return false
+        return message.record.encoded.includes('"rpcId":"open"')
+      })).toBe(true)
+    })
+    expect(runtime.sent).toHaveLength(2)
+
+    const describe: ClientRequest = {
+      type: 'client-request', rpcId: RpcId('describe'), method: 'host.describe', payload: {},
+    }
+    const describeRecord = record(describe)
+    webview.receive({ type: 'carrier', record: describeRecord })
+    await vi.waitFor(() => { expect(runtime.sent.at(-1)).toEqual(describeRecord) })
+    await sendVsCodeFrame({
+      type: 'rpc/message',
+      message: {
+        type: 'server-response', rpcId: RpcId('describe'),
+        result: {
+          ok: true,
+          value: {
+            version: '1', cwd: '/workspace', attachedSessions: 0,
+            canOpenPath: false, padding: 'x'.repeat(500),
+          },
+        },
+      },
+    }, async (item) => { runtime.receive(item) }, { maxWireRecordBytes: 180, maxLogicalRpcBytes: 4096 })
+    await vi.waitFor(() => {
+      expect(webview.sent.some((message) => {
+        if (message.type !== 'carrier' || message.record.type !== 'wire/message') return false
+        return message.record.encoded.includes('"canOpenPath":true')
+      })).toBe(true)
+    })
+    router.dispose()
+    expect(disposeHostRpc).toHaveBeenCalledOnce()
+  })
+
   it('relays parsed carrier records and dispatches only declared IDE methods', async () => {
     const runtime = new RecordPort()
     const webview = new WebviewPort()

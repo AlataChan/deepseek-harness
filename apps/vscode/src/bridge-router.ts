@@ -14,9 +14,16 @@ import {
   type IdeMethodMap,
   type IdeRequest,
   type IdeResponse,
+  type VsCodeCarrierFrame,
   type VsCodeWireRecord,
   type WebviewBridgeMessage,
 } from '@deepseek-ai/dsh-client-connection-vscode/protocol'
+import {
+  sendVsCodeFrame,
+  VsCodeWireDecoder,
+  type WireCodecOptions,
+} from '@deepseek-ai/dsh-client-connection-vscode/codec'
+import type { HostRpcRouting } from './host-rpc-interceptor.ts'
 
 const textEncoder = new TextEncoder()
 const IDE_ENVELOPE_HEADROOM_BYTES = 64 * 1024
@@ -153,6 +160,11 @@ export class BridgeRouter {
   private readonly handlers: IdeHandlers
   private readonly onViolation: (error: Error) => void
   private readonly maxPending: number
+  private readonly hostRpc: HostRpcRouting | undefined
+  private readonly codecOptions: WireCodecOptions
+  private readonly webviewDecoder: VsCodeWireDecoder | undefined
+  private readonly runtimeDecoder: VsCodeWireDecoder | undefined
+  private readonly lifecycle = new AbortController()
   private readonly pending = new Set<string>()
   private readonly webviewRequests = new Map<string, {
     method: keyof IdeMethodMap
@@ -163,6 +175,7 @@ export class BridgeRouter {
   private readonly disposers: (() => void)[]
   private webviewTail = Promise.resolve()
   private runtimeTail = Promise.resolve()
+  private downlinkTail = Promise.resolve()
   private closed = false
 
   /** @param options - stable runtime port, one Webview, typed handlers, and limits. */
@@ -170,12 +183,20 @@ export class BridgeRouter {
     runtime: BridgeRecordPort
     webview: BridgeWebviewPort
     ideHandlers?: IdeHandlers
+    hostRpc?: HostRpcRouting
+    maxLogicalRpcBytes?: number
     onViolation?: (error: Error) => void
     maxPendingIdeRequests?: number
   }) {
     this.runtime = options.runtime
     this.webview = options.webview
     this.handlers = options.ideHandlers ?? {}
+    this.hostRpc = options.hostRpc
+    this.codecOptions = options.maxLogicalRpcBytes === undefined
+      ? {}
+      : { maxLogicalRpcBytes: positiveSafeInteger(options.maxLogicalRpcBytes, 'maxLogicalRpcBytes') }
+    this.webviewDecoder = this.hostRpc === undefined ? undefined : new VsCodeWireDecoder(this.codecOptions)
+    this.runtimeDecoder = this.hostRpc === undefined ? undefined : new VsCodeWireDecoder(this.codecOptions)
     this.onViolation = options.onViolation ?? (() => {})
     this.maxPending = positiveSafeInteger(
       options.maxPendingIdeRequests ?? DEFAULT_MAX_PENDING_IDE_REQUESTS,
@@ -232,7 +253,11 @@ export class BridgeRouter {
   dispose(): void {
     if (this.closed) return
     this.closed = true
+    this.lifecycle.abort()
     for (const dispose of this.disposers.splice(0)) dispose()
+    this.webviewDecoder?.dispose()
+    this.runtimeDecoder?.dispose()
+    this.hostRpc?.dispose()
     this.pending.clear()
     for (const request of this.webviewRequests.values()) {
       clearTimeout(request.timer)
@@ -246,7 +271,12 @@ export class BridgeRouter {
     try {
       const record = vsCodeWireRecordSchema.parse(value)
       if (serializedBytes(record) > MAX_WIRE_RECORD_BYTES) throw new Error('companion physical record exceeds the fixed limit')
-      void this.enqueueWebview({ type: 'carrier', record })
+      if (this.hostRpc === undefined) {
+        void this.enqueueWebview({ type: 'carrier', record })
+        return
+      }
+      const operation = this.downlinkTail.then(() => this.routeRuntimeRecord(record))
+      this.downlinkTail = operation.catch((error: unknown) => { this.violate(error) })
     } catch (error) {
       this.violate(error)
     }
@@ -267,7 +297,9 @@ export class BridgeRouter {
         this.violate(new Error('Webview physical record exceeds the fixed limit'))
         return
       }
-      const operation = this.runtimeTail.then(() => this.runtime.send(message.record))
+      const operation = this.runtimeTail.then(() => this.hostRpc === undefined
+        ? this.runtime.send(message.record)
+        : this.routeWebviewRecord(message.record))
       this.runtimeTail = operation.catch((error: unknown) => { this.violate(error) })
       return
     }
@@ -328,6 +360,54 @@ export class BridgeRouter {
       type: 'ide/response', requestId: request.requestId, method: request.method, ok: false, error,
     })
     return this.enqueueWebview(response)
+  }
+
+  private async routeWebviewRecord(record: VsCodeWireRecord): Promise<void> {
+    const decoder = this.webviewDecoder
+    const hostRpc = this.hostRpc
+    if (decoder === undefined || hostRpc === undefined) throw new Error('Host RPC routing is unavailable')
+    const frame = await decoder.accept(record)
+    if (frame === undefined) return
+    if (frame.type === 'rpc/message' && frame.message.type === 'client-request') {
+      const response = await hostRpc.interceptRequest(frame.message, this.lifecycle.signal)
+      if (response !== undefined) {
+        await this.sendCarrierFrame({ type: 'rpc/message', message: response })
+        return
+      }
+    }
+    if (record.type === 'wire/message') {
+      await this.runtime.send(record)
+      return
+    }
+    await sendVsCodeFrame(frame, item => this.runtime.send(item), this.codecOptions)
+  }
+
+  private async routeRuntimeRecord(record: VsCodeWireRecord): Promise<void> {
+    const decoder = this.runtimeDecoder
+    const hostRpc = this.hostRpc
+    if (decoder === undefined || hostRpc === undefined) throw new Error('Host RPC routing is unavailable')
+    const frame = await decoder.accept(record)
+    if (frame === undefined) return
+    if (frame.type === 'rpc/message' && frame.message.type === 'server-response') {
+      const response = hostRpc.interceptResponse(frame.message)
+      if (response !== frame.message) {
+        await this.sendCarrierFrame({ type: 'rpc/message', message: response })
+        return
+      }
+    }
+    if (record.type === 'wire/message') {
+      await this.enqueueWebview({ type: 'carrier', record })
+      return
+    }
+    await this.sendCarrierFrame(frame)
+  }
+
+  private sendCarrierFrame(frame: VsCodeCarrierFrame): Promise<void> {
+    return sendVsCodeFrame(
+      frame,
+      record => this.enqueueWebview({ type: 'carrier', record }),
+      this.codecOptions,
+    )
   }
 
   private enqueueWebview(message: WebviewBridgeMessage): Promise<void> {

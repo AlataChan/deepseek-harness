@@ -46,6 +46,31 @@ function requestOf(frame: VsCodeCarrierFrame): ClientRequest | ClientResponse | 
 }
 
 describe('VsCodeApiClient', () => {
+  it('sends Host interception candidates as ordinary unchanged ClientRequest frames', async () => {
+    const port = new BridgeHarness()
+    port.onFrame = async (frame) => {
+      const request = requestOf(frame)
+      if (request?.type !== 'client-request') return
+      const value = request.method === 'host.describe' ? DESCRIPTION : { opened: true }
+      await port.receive({
+        type: 'rpc/message',
+        message: { type: 'server-response', rpcId: request.rpcId, result: { ok: true, value } },
+      })
+    }
+    const client = new VsCodeApiClient(port, { responseTimeoutMs: 100 })
+    await expect(client.host.describe({})).resolves.toMatchObject({ result: { ok: true } })
+    await expect(client.host.openPath({ path: '/workspace/a.ts:7:2' })).resolves.toMatchObject({
+      result: { ok: true, value: { opened: true } },
+    })
+    expect(port.sent.map(requestOf)).toEqual([
+      expect.objectContaining({ type: 'client-request', method: 'host.describe', payload: {} }),
+      expect.objectContaining({
+        type: 'client-request', method: 'host.openPath', payload: { path: '/workspace/a.ts:7:2' },
+      }),
+    ])
+    client.dispose()
+  })
+
   it('correlates unary responses and respond receipts through one bounded bridge', async () => {
     const port = new BridgeHarness()
     port.onFrame = async (frame) => {

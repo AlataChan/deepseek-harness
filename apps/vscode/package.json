@@ -13,6 +13,7 @@
     "@deepseek-ai/dsh-client-connection-vscode": "workspace:^",
     "@deepseek-ai/dsh-client-modules": "workspace:^",
     "@deepseek-ai/dsh-client-web": "workspace:^",
+    "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zod": "^4.4.3"

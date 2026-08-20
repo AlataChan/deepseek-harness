@@ -44,6 +44,11 @@ describe('VS Code Webview lifecycle', () => {
       fileUri: path => ({ fsPath: path }) as vscode.Uri,
       joinUri: base => base,
       showError,
+      createHostRpc: () => ({
+        interceptRequest: async () => undefined,
+        interceptResponse: response => response,
+        dispose: vi.fn(),
+      }),
     })
     expect(() => provider.selectedWorkspaceRoot()).toThrow('no selected workspace')
     await expect(provider.addEditorContext({} as never)).rejects.toThrow('Webview is not ready')

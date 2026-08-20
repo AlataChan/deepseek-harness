@@ -6,6 +6,8 @@ Harness 客户端的 workspace extension（工作区扩展）外壳。活动栏 
 
 composer 菜单和对应的扩展命令可以显式附加当前非空选区、包含未保存修改的当前文档，或当前文档的诊断。每次捕获都限制在所选根目录内，并形成不可变引用 chip；扩展绝不会隐式添加编辑器内容。
 
+Harness 文件位置操作继续使用既有 `host.openPath` RPC。扩展会通过 VS Code 打开文件、在 Explorer 中显示目录，并接受可选的 1-based `:line[:column]` 或 `#Lline[:column]` 后缀。文件系统路径和 URI 必须解析到所选根目录之内，并使用相同的 URI scheme 与 authority；符号链接、缺失目标和位于根目录之外的目标会返回普通 Host RPC 失败，绝不会回退到桌面打开程序。转发后的 `host.describe` 响应会通过 `canOpenPath` 报告这个 VS Code 打开能力。
+
 扩展使用 workspace extension host（工作区扩展宿主）上已安装的 `@deepseek-ai/dsh` runtime（运行时）。发现过程接受包根目录、包 manifest（元数据清单）、已发布 JavaScript bin 或已识别的 npm/pnpm shim（垫片）作为线索，随后解析包声明的 VS Code companion 和真实 Node 可执行文件。启动过程直接调用带 IPC channel 的 `child_process.fork`，绝不执行 shell shim。这样，Local、SSH Remote 与 Dev Container 进程都与其 workspace 文件共置。Web extension host 不受支持。
 
 companion 握手会公布 Client Plugin（客户端插件）图与 bundle（包）哈希。扩展把校验后的字节复制到按修订号划分的全局存储中，只向 Webview 授予该缓存与固定扩展媒体的访问权，并通过严格的 content security policy（内容安全策略）启动既有 Client 外壳。唯一一次 `acquireVsCodeApi()` 调用始终封装在经过校验的载体端口与 IDE 端口之后，不向外暴露。companion 代际变化会结束活跃 Client stream，但不会永久关闭 Webview API 客户端，因此共享 connection controller 可以重新连接持久会话。

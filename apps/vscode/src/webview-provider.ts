@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import type * as vscode from 'vscode'
 import type { EditorContextSnapshot } from '@deepseek-ai/dsh-client-connection-vscode/protocol'
 import type { IdeHandlers } from './bridge-router.ts'
+import type { HostRpcRouting } from './host-rpc-interceptor.ts'
 import { BridgeRouter, cacheVerifiedBundles } from './bridge-router.ts'
 import type { RuntimeOutput } from './output.ts'
 import type { RuntimeManager } from './runtime-manager.ts'
@@ -68,6 +69,8 @@ export interface HarnessWebviewProviderPorts {
   showError: (message: string) => Promise<unknown>
   /** Extension-owned IDE method handlers. */
   ideHandlers?: IdeHandlers
+  /** Create one Host RPC interceptor for each mounted bridge generation. */
+  createHostRpc(): HostRpcRouting
 }
 
 function errorDocument(message: string): string {
@@ -228,6 +231,8 @@ export class HarnessWebviewProvider implements vscode.WebviewViewProvider, vscod
     this.router = new BridgeRouter({
       runtime: this.runtime,
       webview: webviewPort,
+      hostRpc: this.ports.createHostRpc(),
+      maxLogicalRpcBytes: ready.maxLogicalRpcBytes,
       ...(this.ports.ideHandlers === undefined ? {} : { ideHandlers: this.ports.ideHandlers }),
       onViolation: (error) => {
         this.output.appendDiagnostic(`bridge closed: ${error.message}`)
