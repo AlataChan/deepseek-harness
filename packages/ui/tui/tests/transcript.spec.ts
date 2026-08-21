@@ -86,7 +86,8 @@ describe('session transcript projection', () => {
       }),
       expect.objectContaining({
         kind: 'tool-result', callId, name: 'bash', arguments: '{"command":"pwd"}',
-        text: '/workspace', isError: false, meta: { durationMs: 2 },
+        text: '/workspace', content: [{ type: 'text', text: '/workspace' }],
+        isError: false, meta: { durationMs: 2 },
       }),
     ])
   })

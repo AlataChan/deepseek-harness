@@ -27,6 +27,7 @@ export type ProjectedTranscriptRow =
     readonly kind: 'tool-result'
     readonly sourceSeq: number
     readonly text: DisplayText
+    readonly content: readonly ContentBlock[]
     readonly isError: boolean
     readonly error: { readonly name: string; readonly code: string } | undefined
     readonly meta: JsonValue | undefined
@@ -238,6 +239,7 @@ export function foldSessionEvent(
           sourceSeq: event.seq,
           ...call,
           text: displayText(contentText(block.content), budget),
+          content: block.content,
           isError: block.isError === true,
           error: event.data.error,
           meta: event.data.meta,

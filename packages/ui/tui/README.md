@@ -12,6 +12,8 @@ Finalized rows pass through one stable Ink `Static` list into ordinary shell scr
 
 Durable and live events pass through one pure projection. Every model-, tool-, command-, and log-supplied display field is made terminal-safe before rendering; tool arguments and result metadata remain structured for their dedicated cards.
 
+Tool cards resolve the definition visible to the active agent and call only its pure `presentCall` and `presentResult` methods. Generic, terminal, diff, read, search, and Web result intents have compact terminal views; missing, rejected, and unknown intents use safe structured fallbacks without executing content or reading files.
+
 The runtime controller waits for complete Loader settlement, then owns one fresh or resumed root Agent. Resume discovery reads a bounded newest-first session list and resolves all visible titles in one batch.
 
 ## Configuration

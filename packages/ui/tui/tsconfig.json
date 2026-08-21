@@ -43,6 +43,9 @@
       "path": "../../core/agent-default-model"
     },
     {
+      "path": "../../core/tools"
+    },
+    {
       "path": "../../session-query/session-query"
     },
     {
