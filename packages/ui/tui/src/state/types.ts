@@ -2,6 +2,7 @@
 
 import type { EditorState } from './editor.ts'
 import type { AskUserQuestionItem } from '@deepseek-ai/dsh-user-questions'
+import type { TranscriptProjection } from '../transcript/project.ts'
 
 declare const interactionIdBrand: unique symbol
 
@@ -73,6 +74,8 @@ export interface TuiState {
   readonly status: TuiStatus
   readonly dimensions: TerminalDimensions
   readonly editor: EditorState
+  /** Replay-equivalent durable transcript for the currently owned Session. */
+  readonly projection: TranscriptProjection | undefined
   readonly nextRowId: number
   readonly disposed: boolean
 }
@@ -99,6 +102,7 @@ export type TuiAction =
   | { readonly type: 'interaction/settled'; readonly id: InteractionId }
   | { readonly type: 'terminal/resize'; readonly columns: number; readonly rows?: number }
   | { readonly type: 'editor/update'; readonly editor: EditorState }
+  | { readonly type: 'transcript/sync'; readonly projection: TranscriptProjection }
   | { readonly type: 'runtime/running' }
   | { readonly type: 'runtime/idle' }
   | { readonly type: 'runtime/failed'; readonly message: string }

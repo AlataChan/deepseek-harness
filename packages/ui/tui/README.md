@@ -18,6 +18,14 @@ The controller registers one exact-agent approval answerer and the single user-q
 
 The runtime controller waits for complete Loader settlement, then owns one fresh or resumed root Agent. Resume discovery reads a bounded newest-first session list and resolves all visible titles in one batch.
 
+## Input and commands
+
+Enter submits the composer, while Ctrl+J inserts a newline. Ctrl+R opens the bounded resume selector, Escape closes the active overlay or rejects the current interaction, and approval prompts accept `y` or `n`. A question batch accepts one semicolon-separated answer per displayed question; commas select multiple labels for a multi-select question.
+
+`/help`, `/resume`, and `/exit` belong to the terminal client. Other slash commands resolve through the effective scoped `ctx.commands` registry and write their normal durable lifecycle events. An unknown slash line stays in the composer and reaches the model only after the user submits the identical line again; a command error also preserves the draft.
+
+Ctrl+C cancels active Agent work. A second Ctrl+C while cancellation drains requests shutdown; when idle, Ctrl+C first clears a non-empty draft and then exits from an empty composer. Shutdown rejects input, cancels pending interactions without granting them, drains and flushes the Agent, restores the terminal, disposes owned effects, and only then asks the launcher to exit. Launcher-owned fiber disposal performs the same cleanup without sending another exit request.
+
 ## Configuration
 
 - `terminalColumnsFallback` — positive integer width used when stdout exposes no usable column count; default `80`.
@@ -36,6 +44,6 @@ None; rendering and terminal input do not add or replace model request content.
 ## Known Limitations and Deferred Work
 
 - **Node terminal only** — browser, Electron, and Tauri application shells are outside this package.
-- **Focused keyboard interaction** — mouse input, image attachments, and alternate-screen mode are deferred.
+- **Focused keyboard interaction** — mouse input, image attachments, and alternate-screen mode are deferred; multi-question text input uses the semicolon/comma grammar documented above rather than an interactive option cursor.
 - **Markdown subset** — headings, paragraphs, lists, fenced code, inline code, and visible links are supported; raw HTML is displayed as text and terminal hyperlinks are not emitted.
 - **Interactive streams required** — stdin and stdout must both be TTYs; automation uses `dsh exec`.

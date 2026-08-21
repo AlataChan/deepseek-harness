@@ -16,6 +16,8 @@ export interface TuiProcess {
   onResize(listener: () => void): () => void
   /** Subscribe to stdin termination, which begins normal TUI shutdown. */
   onExit(listener: () => void): () => void
+  /** Leave stdin outside raw mode after the renderer stops. */
+  restoreInput(): void
 }
 
 /** Injectable process facts used by deterministic adapter tests. */
@@ -56,6 +58,10 @@ function createAdapter(options: TuiProcessTestOptions): TuiProcess {
     onExit(listener) {
       options.stdin.on('end', listener)
       return () => { options.stdin.off('end', listener) }
+    },
+    restoreInput() {
+      if (options.stdin.isRaw === true) options.stdin.setRawMode(false)
+      options.stdin.pause()
     },
   }
 }

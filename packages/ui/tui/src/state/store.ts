@@ -36,6 +36,10 @@ function freezeState(state: TuiState): TuiState {
   Object.freeze(state.dimensions)
   Object.freeze(state.editor.history)
   Object.freeze(state.editor)
+  if (state.projection !== undefined) {
+    Object.freeze(state.projection.rows)
+    Object.freeze(state.projection)
+  }
   return Object.freeze(state)
 }
 

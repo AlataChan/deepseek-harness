@@ -5,10 +5,16 @@ import type { ResumeRow } from '../driver/resume.ts'
 import type { TuiProcess } from '../process.ts'
 import type { TuiStore } from '../state/store.ts'
 import { TuiApp } from './app.tsx'
+import type { TuiInputDriver } from '../driver/input.ts'
+import type { ProjectedTranscriptRow } from '../transcript/project.ts'
+import type { ToolCardModel } from './tool-model.ts'
 
 /** Optional immutable values supplied by the runtime controller. */
 export interface StartTuiRenderOptions {
   readonly resumeRows?: readonly ResumeRow[]
+  readonly getResumeRows?: () => readonly ResumeRow[]
+  readonly input?: TuiInputDriver
+  readonly projectTool?: (row: Extract<ProjectedTranscriptRow, { kind: 'tool-call' | 'tool-result' }>) => ToolCardModel
 }
 
 /**
@@ -23,7 +29,12 @@ export function startTuiRender(
   process: TuiProcess,
   options: StartTuiRenderOptions = {},
 ): Instance {
-  return render(<TuiApp store={store} resumeRows={options.resumeRows ?? []} />, {
+  return render(<TuiApp
+    store={store} resumeRows={options.resumeRows ?? []}
+    {...options.getResumeRows === undefined ? {} : { getResumeRows: options.getResumeRows }}
+    {...options.input === undefined ? {} : { input: options.input }}
+    {...options.projectTool === undefined ? {} : { projectTool: options.projectTool }}
+  />, {
     stdin: process.stdin,
     stdout: process.stdout,
     stderr: process.stderr,

@@ -73,12 +73,20 @@ export function ownTuiSession(
   handle: AgentHandle,
   modelSelection: TuiModelSelectionRef,
   budget: DisplayTextBudget,
+  onProjection: (projection: TranscriptProjection) => void = () => {},
+  onStatus: (status: Agent['status']) => void = () => {},
 ): OwnedTuiSession {
   let transcript = projectSessionEvents(handle.agent.session.events, budget)
   let disposed = false
+  onProjection(transcript)
+  onStatus(handle.agent.status)
   const stopEvents = handle.agent.ctx.on('session/event', (session: Session, event) => {
     if (session !== handle.agent.session) return
     transcript = foldSessionEvent(transcript, event, budget)
+    onProjection(transcript)
+  })
+  const stopStatus = handle.agent.ctx.on('agent/status', ({ agent, status }) => {
+    if (agent === handle.agent) onStatus(status)
   })
   return {
     agent: handle.agent,
@@ -88,6 +96,7 @@ export function ownTuiSession(
       if (disposed) return
       disposed = true
       stopEvents()
+      stopStatus()
       await handle.dispose()
       transcript = createTranscriptProjection()
     },

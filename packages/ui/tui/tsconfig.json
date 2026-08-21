@@ -53,6 +53,9 @@
     },
     {
       "path": "../../interaction/user-questions"
+    },
+    {
+      "path": "../../boot/cmdline"
     }
   ]
 }

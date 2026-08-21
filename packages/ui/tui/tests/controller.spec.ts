@@ -112,6 +112,7 @@ describe('tui session controller', () => {
       cwd: '/workspace',
       displayBudget,
       sessionSelectorLimit: 50,
+      resumeTranscriptRows: 200,
       createSessionId: () => SessionId('fresh-session'),
       store: tuiStore(),
     })
@@ -154,6 +155,7 @@ describe('tui session controller', () => {
     const controller = await createTuiController(test.ctx, {
       startup: { kind: 'resume', sessionId: id },
       cwd: '/workspace', displayBudget, sessionSelectorLimit: 50,
+      resumeTranscriptRows: 200,
       store: tuiStore(),
     })
     expect(controller.modelSelection?.current).toEqual({
@@ -182,6 +184,7 @@ describe('tui session controller', () => {
     const controller = await createTuiController(test.ctx, {
       startup: { kind: 'fresh' }, cwd: '/workspace', displayBudget,
       sessionSelectorLimit: 50, createSessionId: () => SessionId('interaction-session'), store,
+      resumeTranscriptRows: 200,
     })
     const agent = controller.agent
     if (agent === undefined) throw new Error('fresh controller did not publish its Agent')

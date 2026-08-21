@@ -35,6 +35,7 @@ export function createInitialState(dimensions: { columns: number; rows?: number 
     status: { kind: 'idle' },
     dimensions: { columns: dimensions.columns, rows: dimensions.rows },
     editor: createEditorState(),
+    projection: undefined,
     nextRowId: 1,
     disposed: false,
   }
@@ -104,6 +105,8 @@ export function reduceTuiState(state: TuiState, action: TuiAction): TuiState {
       }
     case 'editor/update':
       return { ...state, editor: action.editor }
+    case 'transcript/sync':
+      return { ...state, projection: action.projection }
     case 'runtime/running':
       return { ...state, status: { kind: 'running' } }
     case 'runtime/idle':

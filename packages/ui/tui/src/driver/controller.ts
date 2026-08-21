@@ -9,7 +9,8 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionId as SessionIdType } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-query'
-import type { DisplayTextBudget } from '../transcript/display-text.ts'
+import { displayText, type DisplayTextBudget } from '../transcript/display-text.ts'
+import { retainTranscriptRows } from '../transcript/retention.ts'
 import type { TuiStore } from '../state/store.ts'
 import { createTranscriptProjection, type TranscriptProjection } from '../transcript/project.ts'
 import {
@@ -39,6 +40,7 @@ export interface TuiControllerOptions {
   readonly cwd: string
   readonly displayBudget: DisplayTextBudget
   readonly sessionSelectorLimit: number
+  readonly resumeTranscriptRows: number
   readonly store: TuiStore
   readonly createSessionId?: () => SessionIdType
 }
@@ -59,6 +61,16 @@ export interface TuiController {
   cancelSelection(): void
   /** Submit one ordinary user follow-up to the owned Agent. */
   submit(text: string): void
+  /** Load an immutable resume selector while the current Agent stays idle. */
+  openResumeSelector(): Promise<void>
+  /** Cancel active work with the stable user cause. */
+  cancelActive(): void
+  /** Settle any visible interaction without granting it. */
+  settleInteractions(): void
+  /** Await the current Agent's complete activity drain. */
+  whenIdle(): Promise<void>
+  /** Flush the current Session when one is owned. */
+  flush(): Promise<void>
   /** Dispose the exact owned Agent once. */
   dispose(): Promise<void>
 }
@@ -75,6 +87,8 @@ class Controller implements TuiController {
     private readonly ctx: Context,
     private readonly fallback: ModelSelection,
     private readonly budget: DisplayTextBudget,
+    private readonly selectorLimit: number,
+    private readonly resumeRowsLimit: number,
     rows: readonly ResumeRow[],
     readonly store: TuiStore,
   ) {
@@ -94,25 +108,67 @@ class Controller implements TuiController {
     this.owned = owned
   }
 
+  private publish(projection: TranscriptProjection): void {
+    this.store.dispatch({ type: 'transcript/sync', projection })
+    this.store.dispatch({ type: projection.turn.kind === 'running' ? 'runtime/running' : 'runtime/idle' })
+  }
+
+  /** Wrap one Agent handle with this controller's projection observers. */
+  ownHandle(
+    handle: Parameters<typeof ownTuiSession>[0],
+    selection: TuiModelSelectionRef,
+    resumed: boolean,
+  ): OwnedTuiSession {
+    return ownTuiSession(
+      handle,
+      selection,
+      this.budget,
+      (projection) => {
+        if (!resumed) {
+          this.publish(projection)
+          return
+        }
+        const rows = retainTranscriptRows(projection.rows, this.resumeRowsLimit).map(row => (
+          row.kind === 'omission'
+            ? { kind: 'status' as const, sourceSeq: -1, text: displayText(row.text, this.budget) }
+            : row
+        ))
+        this.publish({ ...projection, rows })
+      },
+      (status) => { this.store.dispatch({ type: status === 'running' ? 'runtime/running' : 'runtime/idle' }) },
+    )
+  }
+
   async selectSession(sessionId: SessionIdType): Promise<void> {
     if (this.disposed) throw new Error('tui controller is disposed')
-    if (this.owned !== undefined) throw new Error('tui controller already owns an Agent')
     const selected = chooseResumeSession(this.rows, sessionId)
     if (selected === undefined) return
+    if (this.owned?.agent.id === selected) {
+      this.rows = Object.freeze([])
+      this.store.dispatch({ type: 'overlay/close' })
+      return
+    }
     this.rows = Object.freeze([])
-    const owned = await resumeOwned(this.ctx, selected, this.fallback, this.budget)
+    const owned = await resumeOwned(
+      this.ctx, selected, this.fallback, this.budget,
+      (handle, selection) => this.ownHandle(handle, selection, true),
+    )
     // dispose() may run while the asynchronous persistence resume is pending.
     if (this.disposed) {
       await owned.dispose()
       return
     }
+    const previous = this.owned
     this.owned = owned
+    this.store.dispatch({ type: 'overlay/close' })
+    await previous?.dispose()
   }
 
   cancelSelection(): void {
-    if (this.owned !== undefined || this.disposed) return
+    if (this.disposed) return
     this.cancelled = true
     this.rows = Object.freeze([])
+    this.store.dispatch({ type: 'overlay/close' })
   }
 
   submit(text: string): void {
@@ -125,6 +181,36 @@ class Controller implements TuiController {
     }))
   }
 
+  async openResumeSelector(): Promise<void> {
+    if (this.disposed) throw new Error('tui controller is disposed')
+    if (this.agent?.status === 'running' || this.store.getSnapshot().interaction !== undefined) {
+      throw new Error('tui: cannot resume while a turn or interaction is active')
+    }
+    const query = this.ctx.get('sessionQuery')
+    if (query === undefined) throw new Error('tui: session-query service was disposed')
+    this.rows = await loadResumeRows(query, this.selectorLimit)
+    this.store.dispatch({ type: 'overlay/open', overlay: { kind: 'resume' } })
+  }
+
+  cancelActive(): void {
+    this.agent?.cancel({ kind: 'user' })
+  }
+
+  settleInteractions(): void {
+    const interaction = this.store.getSnapshot().interaction
+    if (interaction?.kind === 'approval') this.approval.cancel(interaction.id)
+    if (interaction?.kind === 'question') this.questions.cancel(interaction.id)
+  }
+
+  async whenIdle(): Promise<void> {
+    await this.agent?.whenIdle()
+  }
+
+  async flush(): Promise<void> {
+    const agent = this.agent
+    if (agent !== undefined) await this.ctx.sessions.flush(agent.session)
+  }
+
   async dispose(): Promise<void> {
     if (this.disposed) return
     this.disposed = true
@@ -133,6 +219,7 @@ class Controller implements TuiController {
     this.questions.dispose()
     await this.owned?.dispose()
     this.owned = undefined
+    this.store.dispatch({ type: 'runtime/dispose' })
   }
 }
 
@@ -141,6 +228,8 @@ async function resumeOwned(
   sessionId: SessionIdType,
   fallback: ModelSelection,
   budget: DisplayTextBudget,
+  own: (handle: Parameters<typeof ownTuiSession>[0], selection: TuiModelSelectionRef) => OwnedTuiSession =
+    (handle, selection) => ownTuiSession(handle, selection, budget),
 ): Promise<OwnedTuiSession> {
   let modelSelection: TuiModelSelectionRef | undefined
   const handle = await ctx.agents.resume({
@@ -151,7 +240,7 @@ async function resumeOwned(
     await handle.dispose()
     throw new Error('tui: resume setup did not install a model selection')
   }
-  return ownTuiSession(handle, modelSelection, budget)
+  return own(handle, modelSelection)
 }
 
 /**
@@ -174,16 +263,23 @@ export async function createTuiController(
   const fallback = defaultModel.currentSelection()
   if (options.startup.kind === 'resume-picker') {
     const rows = await loadResumeRows(query, options.sessionSelectorLimit)
-    return new Controller(ctx, fallback, options.displayBudget, rows, options.store)
+    return new Controller(
+      ctx, fallback, options.displayBudget, options.sessionSelectorLimit,
+      options.resumeTranscriptRows, rows, options.store,
+    )
   }
 
   const controller = new Controller(
-    ctx, fallback, options.displayBudget, Object.freeze([]), options.store,
+    ctx, fallback, options.displayBudget, options.sessionSelectorLimit,
+    options.resumeTranscriptRows, Object.freeze([]), options.store,
   )
   try {
     if (options.startup.kind === 'resume') {
       await requireResumeSession(query, options.startup.sessionId)
-      controller.setOwned(await resumeOwned(ctx, options.startup.sessionId, fallback, options.displayBudget))
+      controller.setOwned(await resumeOwned(
+        ctx, options.startup.sessionId, fallback, options.displayBudget,
+        (handle, selection) => controller.ownHandle(handle, selection, true),
+      ))
       return controller
     }
 
@@ -199,7 +295,7 @@ export async function createTuiController(
       await handle.dispose()
       throw new Error('tui: create setup did not install a model selection')
     }
-    controller.setOwned(ownTuiSession(handle, modelSelection, options.displayBudget))
+    controller.setOwned(controller.ownHandle(handle, modelSelection, false))
     if (options.startup.task !== undefined) controller.submit(options.startup.task)
     return controller
   } catch (error) {
