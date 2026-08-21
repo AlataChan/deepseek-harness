@@ -10,6 +10,8 @@ import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-attachment'
 import type {} from '@deepseek-ai/dsh-client-modules'
 import type {} from '@deepseek-ai/dsh-host-apiproxy'
+import { toFetchHandler } from '@deepseek-ai/dsh-host-apiproxy'
+import { HostConnectionService } from '@deepseek-ai/dsh-client-connection'
 import { DEFAULT_MAX_REQUEST_BODY_BYTES } from '@deepseek-ai/dsh-client-connection/body-capacity'
 import { VsCodeHostGateway } from './host-gateway.ts'
 import { ProcessIpcPort, VsCodeIpcChannel, type NodeIpcPort } from './ipc-channel.ts'
@@ -68,9 +70,11 @@ export function apply(ctx: Context, config: Config, runtime: CompanionRuntimePor
   const maxLogicalRpcBytes = config.maxLogicalRpcBytes as number
   const port = runtime.port ?? new ProcessIpcPort()
   if (!port.connected) throw new Error('vscode companion requires a connected Node IPC channel')
+  const connection = new HostConnectionService(ctx, [])
   const channelReady = Promise.withResolvers<VsCodeIpcChannel>()
   const gateway = new VsCodeHostGateway({
     apiProxy: ctx.apiProxy,
+    apiFetchHandler: connection.createSharedFetchHandler('/api', toFetchHandler(ctx.apiProxy)),
     clientModules: ctx.clientModules,
     imageCapacitySource: ctx,
     expectedWorkspaceRoot: runtime.workspaceRoot ?? config.workspaceRoot ?? process.cwd(),

@@ -32,7 +32,7 @@ Version one requires the installed runtime and does not bundle Node, native modu
 
 ### Bounded carrier
 
-The companion exposes the existing ApiProxy message and stream behavior over a versioned VS Code carrier. `ClientRequest` and `ClientResponse` still pass through `toFetchHandler(ctx.apiProxy)`, so ApiProxy remains the validation and routing authority. Mux and Host open payloads use ApiProxy-owned schemas. Server stream frames are downlink-only. The wrapper adds lifecycle and multiplexing but does not redefine Harness business methods.
+The companion exposes the existing ApiProxy and Typert Remote behavior over a versioned VS Code carrier. Its Host plugin publishes `ctx.connection` and routes `/api` requests through the shared Connection handler: the Typert gateway validates and dispatches claimed `namespace/method` endpoints before unclaimed requests and `ClientResponse` values fall back to `toFetchHandler(ctx.apiProxy)`. The carrier preserves endpoint path segments instead of encoding the slash into one segment. Mux and Host open payloads use ApiProxy-owned schemas. Server stream frames are downlink-only. The wrapper adds lifecycle and multiplexing but does not redefine Harness business methods.
 
 The companion, extension host, and Webview share a browser-safe protocol package. Every Node IPC and `webview.postMessage` value begins as `unknown` and is parsed before routing. Physical wire records are capped at 256 KiB after serialization. A logical frame larger than one record is UTF-8 encoded once and sent as ordered base64 chunks with an exact byte count and SHA-256 digest. Only one fragmented message may be in flight per direction; interleaving, overflow, timeout, wrong order, wrong length, or wrong digest closes the bridge.
 
@@ -91,7 +91,7 @@ Passing arbitrary VS Code command identifiers would grant plugin code an open-en
 ## Verification
 
 - The profile-equivalence test compares the Web profile's ordered rows and resolved configurations before and after the composition extraction.
-- Resolver, process, carrier, runtime-generation race, Webview, editor-context, path-opening, trust, lease, localization, and teardown tests cover the owned lifecycle and security rules.
+- Resolver, process, carrier, shared `/api` interception, runtime-generation race, Webview, editor-context, path-opening, trust, lease, localization, and teardown tests cover the owned lifecycle and security rules.
 - The keyless `vscode-agent` assembled snapshot boots the companion from source and built artifacts against one graph snapshot, fragments an image prompt with editor context, streams through ApiProxy, persists the exact text, and rejects a second home owner.
 - The local Electron integration boots the staged extension, captures editor state, opens an in-workspace location, reconnects the runtime, and releases the companion lease.
 - The VS Code workflow defines native local-extension lanes for Linux, macOS, and Windows; SSH Remote and Dev Container remain manual release checks.

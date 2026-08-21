@@ -32,7 +32,7 @@ VS Code 扩展作为 workspace extension（工作区扩展）运行，并为所�
 
 ### 有界载体
 
-companion 通过版本化 VS Code 载体暴露现有 ApiProxy 消息与流式行为。`ClientRequest` 和 `ClientResponse` 仍通过 `toFetchHandler(ctx.apiProxy)`，因此 ApiProxy 继续作为校验与路由权威。mux 与 Host 打开载荷使用 ApiProxy 所有的 schema。服务端流帧仅可下行。包装层只增加生命周期与多路复用，不重新定义 Harness 业务方法。
+companion 通过版本化 VS Code 载体暴露现有 ApiProxy 与 Typert Remote 行为。其 Host 插件发布 `ctx.connection`，并通过共享 Connection handler 路由 `/api` 请求：Typert 网关先校验并分发已认领的 `namespace/method` endpoint，未认领请求与 `ClientResponse` 值再回退到 `toFetchHandler(ctx.apiProxy)`。载体保留 endpoint 的路径分段，不会把斜杠编码进单个分段。mux 与 Host 打开载荷使用 ApiProxy 所有的 schema。服务端流帧仅可下行。包装层只增加生命周期与多路复用，不重新定义 Harness 业务方法。
 
 companion、扩展宿主和 Webview 共享一个浏览器安全的协议包。每个 Node IPC 与 `webview.postMessage` 值都以 `unknown` 开始，并在路由前解析。物理 wire record（线路记录）序列化后上限为 256 KiB。大于单条记录的逻辑帧只做一次 UTF-8 编码，再作为有序 base64 分片发送，并携带精确字节数和 SHA-256 摘要。每个方向同时最多传输一条分片消息；交错、溢出、超时、顺序错误、长度错误或摘要错误都会关闭 bridge（桥接器）。
 
@@ -91,7 +91,7 @@ ACP 仅用于自动化，不负责完整交互式 Host API、Client Plugin 图�
 ## 验证
 
 - profile 等价性测试会比较组装拆分前后 Web profile 的配置项顺序和解析后配置。
-- resolver（解析器）、进程、载体、runtime generation（运行时代际）竞态、Webview、编辑器上下文、路径打开、信任、lease、本地化和资源释放测试覆盖各自负责的生命周期与安全规则。
+- resolver（解析器）、进程、载体、共享 `/api` 拦截、runtime generation（运行时代际）竞态、Webview、编辑器上下文、路径打开、信任、lease、本地化和资源释放测试覆盖各自负责的生命周期与安全规则。
 - 无密钥的 `vscode-agent` 组装快照会针对同一份图快照分别从源码和构建产物启动 companion、对包含编辑器上下文的图片提示词进行分片、通过 ApiProxy 产生流式输出、持久化精确文本，并拒绝第二个 home 属主。
 - 本地 Electron 集成会启动暂存扩展、捕获编辑器状态、打开 workspace 内位置、重新连接 runtime，并释放 companion lease。
 - VS Code workflow 为 Linux、macOS 与 Windows 定义原生本地扩展任务；SSH Remote 与 Dev Container 仍是人工发布检查项。

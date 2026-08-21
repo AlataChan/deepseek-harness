@@ -50,6 +50,12 @@ describe('vscode assembled snapshot', () => {
     await writeFile(join(workspaceRoot, 'src', 'main.ts'), 'export const answer = 42\n')
     const launched = await launchVsCodeIpc({ workspaceRoot, dshHome, patchFile, fixtureFile })
     try {
+      const inspectSynced = await launched.api.rpc.call(
+        '/api',
+        'dynamicCordisRunner/syncInspectManifest',
+        { args: { providers: [] } },
+      )
+      if (!inspectSynced.ok) throw new Error(inspectSynced.error.message)
       const created = await launched.api.sessions.create({
         cwd: workspaceRoot,
         sessionId: SessionId('vscode-snapshot'),
@@ -120,7 +126,11 @@ describe('vscode assembled snapshot', () => {
           outboundFragmentStarts: launched.outboundRecords.filter(record => record.type === 'wire/chunk-start').length,
           outboundChunks: launched.outboundRecords.filter(record => record.type === 'wire/chunk').length,
         },
-        rpc: { sessionId: created.result.value.sessionId, promptAccepted: prompted.result.value.accepted },
+        rpc: {
+          inspectSynced: inspectSynced.value === null,
+          sessionId: created.result.value.sessionId,
+          promptAccepted: prompted.result.value.accepted,
+        },
         stream: frames,
         persistedUserText: userText,
       }, null, 2)}\n`

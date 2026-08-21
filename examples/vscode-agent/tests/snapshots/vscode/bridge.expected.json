@@ -412,6 +412,7 @@
     "outboundChunks": 3
   },
   "rpc": {
+    "inspectSynced": true,
     "sessionId": "vscode-snapshot",
     "promptAccepted": true
   },

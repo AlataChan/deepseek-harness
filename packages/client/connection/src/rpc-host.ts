@@ -1,4 +1,4 @@
-/** Host registry and HTTP adapter for generic Connection RPC channels. */
+/** Host registry for shared RPC interception and Web HTTP channel routes. */
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
@@ -44,7 +44,7 @@ export class HostConnectionService extends Service implements HostConnectionHand
   private readonly interceptors = new Map<string, ConnectionRpcInterceptor>()
 
   /**
-   * Provide the Host half over the active HTTP server.
+   * Provide the Host RPC registry; dedicated channels require the active Web server.
    * @param ctx - owning Connection plugin context.
    * @param trustedHosts - deployment authorities accepted by trusted-host channels.
    */

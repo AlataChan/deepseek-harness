@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 import type { ApiProxy, HostFrame, MuxFrame, RpcId, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { RpcId as createRpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { rpcReceiptSchema, serverResponseSchema } from '@deepseek-ai/dsh-host-apiproxy/api/rpc.schema'
-import { toFetchHandler, toServerRequest } from '@deepseek-ai/dsh-host-apiproxy'
+import { toServerRequest } from '@deepseek-ai/dsh-host-apiproxy'
 import type { ClientBootGraph } from '@deepseek-ai/dsh-client-modules/client'
 import type { ClientBundleRecord } from '@deepseek-ai/dsh-client-modules'
 import {
@@ -22,6 +22,10 @@ import {
 
 const INTERNAL_BASE = 'http://dsh.internal'
 
+interface ApiFetchHandler {
+  fetch(request: Request): Promise<Response>
+}
+
 /** Client-module view required by the VS Code surface adapter. */
 export interface HostClientModules {
   /** Return the current immutable boot graph. */
@@ -34,6 +38,8 @@ export interface HostClientModules {
 export interface HostGatewayOptions {
   /** Existing Host API implementation. */
   apiProxy: ApiProxy
+  /** Composed `/api` handler, including dynamic RPC interception before the ApiProxy fallback. */
+  apiFetchHandler: ApiFetchHandler
   /** Transport-neutral Client Plugin registry. */
   clientModules: HostClientModules
   /** Optional attachment configuration used by the shared capacity invariant. */
@@ -77,7 +83,7 @@ function defaultCreateRpcId(): RpcId {
 
 /** Companion-side owner for one extension connection and all event-stream pumps. */
 export class VsCodeHostGateway {
-  private readonly fetchHandler: ReturnType<typeof toFetchHandler>
+  private readonly fetchHandler: ApiFetchHandler
   private readonly streams = new Map<VsCodeStreamId, ActiveStream>()
   private readonly readBundle: NonNullable<HostGatewayOptions['readBundle']>
   private readonly sha256: NonNullable<HostGatewayOptions['sha256']>
@@ -88,7 +94,7 @@ export class VsCodeHostGateway {
   /** @param options - ApiProxy, client graph, capacities, and injected platform ports. */
   constructor(private readonly options: HostGatewayOptions) {
     assertImageBodyCapacity(options.imageCapacitySource, options.maxLogicalRpcBytes)
-    this.fetchHandler = toFetchHandler(options.apiProxy)
+    this.fetchHandler = options.apiFetchHandler
     this.readBundle = options.readBundle ?? defaultReadBundle
     this.sha256 = options.sha256 ?? defaultSha256
     this.mintRpcId = options.createRpcId ?? defaultCreateRpcId
@@ -198,21 +204,22 @@ export class VsCodeHostGateway {
   private async acceptRpc(message: Extract<VsCodeCarrierFrame, { type: 'rpc/message' }>['message']): Promise<void> {
     switch (message.type) {
       case 'client-request': {
-        const response = await this.fetchHandler.fetch(new URL(`/api/${encodeURIComponent(message.method)}`, INTERNAL_BASE), {
+        const endpoint = message.method.split('/').map(segment => encodeURIComponent(segment)).join('/')
+        const response = await this.fetchHandler.fetch(new Request(new URL(`/api/${endpoint}`, INTERNAL_BASE), {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(message),
-        })
+        }))
         if (!response.ok) throw new Error(`ApiProxy carrier returned HTTP ${String(response.status)} for ${message.method}`)
         await this.options.send({ type: 'rpc/message', message: serverResponseSchema.parse(await response.json()) })
         return
       }
       case 'client-response': {
-        const response = await this.fetchHandler.fetch(new URL('/api/respond', INTERNAL_BASE), {
+        const response = await this.fetchHandler.fetch(new Request(new URL('/api/respond', INTERNAL_BASE), {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(message),
-        })
+        }))
         await this.options.send({
           type: 'rpc/receipt', rpcId: message.rpcId, receipt: rpcReceiptSchema.parse(await response.json()),
         })

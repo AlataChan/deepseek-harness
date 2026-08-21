@@ -430,7 +430,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/client/connection-vscode/src/index.ts:29`](../packages/client/connection-vscode/src/index.ts)
+Source: [`packages/client/connection-vscode/src/index.ts:31`](../packages/client/connection-vscode/src/index.ts)
 
 <a id="deepseek-aidsh-client-hmr"></a>
 

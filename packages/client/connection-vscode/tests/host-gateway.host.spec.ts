@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import type { ApiProxy, ClientResponse, MuxFrame, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
+import { toFetchHandler } from '@deepseek-ai/dsh-host-apiproxy'
 import type { ClientBootGraph } from '@deepseek-ai/dsh-client-modules/client'
 import { DEFAULT_MAX_REQUEST_BODY_BYTES } from '@deepseek-ai/dsh-client-connection/body-capacity'
 import { Context } from '@deepseek-ai/cordis'
@@ -82,7 +83,8 @@ function scriptedApi(): ApiProxy {
 }
 
 function createHarness(overrides: Partial<HostGatewayOptions> = {}, productionPorts = false) {
-  const apiProxy = scriptedApi()
+  const apiProxy = overrides.apiProxy ?? scriptedApi()
+  const apiFetchHandler = overrides.apiFetchHandler ?? toFetchHandler(apiProxy)
   const sent: VsCodeCarrierFrame[] = []
   const close = vi.fn()
   const fixturePorts = productionPorts ? {} : {
@@ -92,6 +94,7 @@ function createHarness(overrides: Partial<HostGatewayOptions> = {}, productionPo
   }
   const gateway = new VsCodeHostGateway({
     apiProxy,
+    apiFetchHandler,
     clientModules: {
       graph: () => graph,
       bundleRecords: () => [{ entry: graph.entries[0]!, clientPath: '/artifacts/client.js' }],
@@ -211,6 +214,56 @@ describe('VS Code companion handshake and RPC', () => {
       await vi.waitFor(() => { expect(terminalPort.connected).toBe(false) })
       await terminalFiber.dispose()
     }
+  })
+
+  it('publishes Host Connection interceptors into companion RPC routing', async () => {
+    const port = new AutoPort()
+    const ctx = pluginContext()
+    const fiber = ctx.plugin({
+      inject: [...pluginInject],
+      apply(child) {
+        applyPlugin(child, { maxLogicalRpcBytes: 4096 }, {
+          port, workspaceRoot: '/workspace', runtimeVersion: 'v',
+        })
+      },
+    })
+    await fiber.await()
+    const connection = ctx.get('connection')
+    expect(connection).toBeDefined()
+    if (connection === undefined) throw new Error('VS Code Host Connection was not published')
+    const remove = connection.rpc.intercept(
+      '/api',
+      endpoint => endpoint === 'dynamicCordisRunner/syncInspectManifest',
+      async () => ({ ok: true, value: null }),
+      { authority: 'trusted-host' },
+    )
+    const decoder = new VsCodeWireDecoder()
+    port.emit(hello())
+    await vi.waitFor(() => { expect(port.sent.length).toBeGreaterThan(0) })
+    expect(await decoder.accept(port.sent[0])).toMatchObject({ type: 'control/ready' })
+    port.sent.splice(0)
+
+    port.emit({
+      type: 'rpc/message',
+      message: {
+        type: 'client-request',
+        rpcId: RpcId('dynamic-rpc'),
+        method: 'dynamicCordisRunner/syncInspectManifest',
+        payload: { args: { providers: [] } },
+      },
+    })
+    await vi.waitFor(() => { expect(port.sent.length).toBeGreaterThan(0) })
+    expect(await decoder.accept(port.sent[0])).toEqual({
+      type: 'rpc/message',
+      message: {
+        type: 'server-response',
+        rpcId: RpcId('dynamic-rpc'),
+        result: { ok: true, value: null },
+      },
+    })
+
+    await remove()
+    await fiber.dispose()
   })
 
   it('uses process defaults, rejects a disconnected injected port, and closes after shutdown', async () => {
