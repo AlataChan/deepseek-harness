@@ -1,5 +1,6 @@
 /** Terminal overlay presentation. @module @deepseek-ai/dsh-tui/render/overlays */
 
+import React from 'react'
 import { Box, Text } from 'ink'
 import type { ResumeRow } from '../driver/resume.ts'
 import type { PendingInteraction, TuiOverlay } from '../state/types.ts'

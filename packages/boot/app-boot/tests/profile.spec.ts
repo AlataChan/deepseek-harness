@@ -161,6 +161,10 @@ describe('loadProfile', () => {
       '@deepseek-ai/dsh-client-app',
       '@deepseek-ai/dsh-vscode-app',
     ])
+    expect(PROFILE_TEMPLATES.tui).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-tui-app',
+    ])
     try {
       loadProfile('t', 'web', anchor, home)
     } catch {
@@ -175,6 +179,13 @@ describe('loadProfile', () => {
     }
     expect(readProfileManifest('t', resolveProfileDir('vscode', home)).dsh?.profile?.bundles)
       .toEqual([...PROFILE_TEMPLATES.vscode ?? []])
+    try {
+      loadProfile('t', 'tui', anchor, home)
+    } catch {
+      // Resolution failure is the plain-Node outcome for this empty anchor.
+    }
+    expect(readProfileManifest('t', resolveProfileDir('tui', home)).dsh?.profile?.bundles)
+      .toEqual([...PROFILE_TEMPLATES.tui ?? []])
   })
 
   it('normalizes only exact installation-owned bundle tuples', () => {
@@ -183,6 +194,7 @@ describe('loadProfile', () => {
       '@deepseek-ai/dsh-client-app': { patch: '[]\n' },
       '@deepseek-ai/dsh-web-app': { patch: '[]\n' },
       '@deepseek-ai/dsh-headless': { patch: '[]\n' },
+      '@deepseek-ai/dsh-tui-app': { patch: '[]\n' },
       'custom-bundle': { patch: '[]\n' },
     })
     const webHome = tmp()
@@ -201,6 +213,20 @@ describe('loadProfile', () => {
     loadProfile('t', 'headless', anchor, home)
     expect(readProfileManifest('t', stock).dsh?.profile?.bundles)
       .toEqual(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless'])
+
+    const tuiHome = tmp()
+    const tui = resolveProfileDir('tui', tuiHome)
+    initProfile(tui, ['@deepseek-ai/dsh-base'])
+    loadProfile('t', 'tui', anchor, tuiHome)
+    expect(readProfileManifest('t', tui).dsh?.profile?.bundles)
+      .toEqual(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-tui-app'])
+
+    const editedTuiHome = tmp()
+    const editedTui = resolveProfileDir('tui', editedTuiHome)
+    initProfile(editedTui, ['@deepseek-ai/dsh-base', 'custom-bundle'])
+    loadProfile('t', 'tui', anchor, editedTuiHome)
+    expect(readProfileManifest('t', editedTui).dsh?.profile?.bundles)
+      .toEqual(['@deepseek-ai/dsh-base', 'custom-bundle'])
 
     const customHome = tmp()
     const custom = resolveProfileDir('headless', customHome)

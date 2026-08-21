@@ -1,5 +1,6 @@
 /** Runtime status presentation. @module @deepseek-ai/dsh-tui/render/status */
 
+import React from 'react'
 import { Text } from 'ink'
 import type { TuiStatus } from '../state/types.ts'
 

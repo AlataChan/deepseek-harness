@@ -1,5 +1,6 @@
 /** Terminal composer presentation. @module @deepseek-ai/dsh-tui/render/composer */
 
+import React from 'react'
 import { Box, Text, useInput } from 'ink'
 import type { TuiInputDriver } from '../driver/input.ts'
 import type { EditorState } from '../state/editor.ts'

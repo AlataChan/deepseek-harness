@@ -1,5 +1,6 @@
 /** Compact Ink components for tool-owned presentation intents. @module @deepseek-ai/dsh-tui/render/tool */
 
+import React from 'react'
 import { Box, Text } from 'ink'
 import type { ToolCardDetail, ToolCardModel, ToolDiffModel } from './tool-model.ts'
 

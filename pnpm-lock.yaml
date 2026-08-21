@@ -303,6 +303,12 @@ importers:
       '@deepseek-ai/dsh-tool-workflow':
         specifier: workspace:^
         version: link:../../packages/workflow/tool-workflow
+      '@deepseek-ai/dsh-tui':
+        specifier: workspace:^
+        version: link:../../packages/ui/tui
+      '@deepseek-ai/dsh-tui-app':
+        specifier: workspace:^
+        version: link:../../packages/bundle/tui-app
       '@deepseek-ai/dsh-vscode-app':
         specifier: workspace:^
         version: link:../../packages/bundle/vscode-app
@@ -1529,6 +1535,15 @@ importers:
       '@deepseek-ai/dsh-cmdline':
         specifier: workspace:^
         version: link:../../boot/cmdline
+      '@deepseek-ai/dsh-code-runtime-worker-thread':
+        specifier: workspace:^
+        version: link:../../code-runtime/code-runtime-worker-thread
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-tui':
+        specifier: workspace:^
+        version: link:../../ui/tui
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -1536,6 +1551,12 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:^
+        version: link:../../core/agent
+      '@deepseek-ai/dsh-app-boot':
+        specifier: workspace:^
+        version: link:../../boot/app-boot
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session

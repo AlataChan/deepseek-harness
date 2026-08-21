@@ -1,5 +1,6 @@
 /** Root inline Ink application. @module @deepseek-ai/dsh-tui/render/app */
 
+import React from 'react'
 import { Box, Text } from 'ink'
 import type { ResumeRow } from '../driver/resume.ts'
 import { selectCanSubmit } from '../state/selectors.ts'

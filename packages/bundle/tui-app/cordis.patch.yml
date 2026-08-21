@@ -1,0 +1,40 @@
+# The dsh-tui-app bundle patch: an in-process terminal UI directly over base.
+# It mounts no Host gateway, browser runtime, IPC carrier, or network listener.
+
+- id: system-prompt
+  config:
+    persona: >-
+      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}. You are interacting with the user through the dsh terminal client.
+
+- id: hmr
+  disabled: true
+
+- id: tools
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+
+- insert:
+    - id: code-runtime
+      name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+
+    - id: invariants
+      name: '@deepseek-ai/dsh-invariants'
+
+    - id: tui-startup
+      name: '@deepseek-ai/dsh-tui-app/startup'
+
+    - id: tui
+      name: '@deepseek-ai/dsh-tui'
+      inject: [tuiStartup]
+      config:
+        startup: !!js ctx.tuiStartup
+        terminalColumnsFallback: 80
+        resumeTranscriptRows: 200
+        sessionSelectorLimit: 50
+        toolOutputDisplayBudget: 32768
+
+    - id: tui-invariant
+      name: '@deepseek-ai/dsh-tui/invariant'
+
+    - id: tui-app-invariant
+      name: '@deepseek-ai/dsh-tui-app/invariant'

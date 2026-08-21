@@ -18,6 +18,13 @@ export type TuiStartupValues =
   | { kind: 'resume-picker' }
   | { kind: 'resume'; sessionId: SessionId }
 
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Startup value parsed from the TUI-owned command line. */
+    tuiStartup: TuiStartupValues
+  }
+}
+
 interface TuiOptions {
   resume?: true | string
 }

@@ -115,12 +115,14 @@ export const PROFILE_TEMPLATES: Record<string, readonly string[]> = {
   web: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-client-app', '@deepseek-ai/dsh-web-app'],
   vscode: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-client-app', '@deepseek-ai/dsh-vscode-app'],
   headless: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless'],
+  tui: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-tui-app'],
 }
 
 /** Installation-owned bundle tuples normalized to the shipped template. */
 const INSTALLATION_OWNED_PROFILE_TUPLES: Record<string, readonly string[]> = {
   web: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'],
   headless: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless'],
+  tui: ['@deepseek-ai/dsh-base'],
 }
 
 /** The bundle list a `dsh plugin` init uses for a name with no shipped template. */

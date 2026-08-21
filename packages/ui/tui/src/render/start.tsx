@@ -1,5 +1,6 @@
 /** Ink renderer startup over an explicit terminal process adapter. @module @deepseek-ai/dsh-tui/render/start */
 
+import React from 'react'
 import { render, type Instance } from 'ink'
 import type { ResumeRow } from '../driver/resume.ts'
 import type { TuiProcess } from '../process.ts'

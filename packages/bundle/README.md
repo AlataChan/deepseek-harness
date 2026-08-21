@@ -13,5 +13,6 @@ The manifest declaration, not this directory, defines Bundle identity. Domain pa
 | [`web-app/`](web-app/README.md) | Browser carrier, integrations, and runtime glue | mounts rows |
 | [`vscode-app/`](vscode-app/README.md) | VS Code process-IPC carrier, remote-safe integrations, and surface context | mounts rows |
 | [`headless/`](headless/README.md) | Direct one-shot task mode over base, with no Host or Web layer | mounts `headless-runner` |
+| [`tui-app/`](tui-app/README.md) | In-process Ink terminal client directly over base | mounts `tui-startup` and `tui` |
 
 In-box bundles resolve from the dsh installation; out-of-tree bundles install into a profile through `dsh plugin --profile <name> add <package>`.

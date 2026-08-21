@@ -16,6 +16,18 @@
     },
     {
       "path": "../../boot/cmdline"
+    },
+    {
+      "path": "../../boot/app-boot"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
+    },
+    {
+      "path": "../../ui/tui"
+    },
+    {
+      "path": "../../core/agent"
     }
   ]
 }

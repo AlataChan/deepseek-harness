@@ -1,5 +1,6 @@
 /** User-question batch panel. @module @deepseek-ai/dsh-tui/render/questions */
 
+import React from 'react'
 import { Box, Text } from 'ink'
 import type { PendingInteraction } from '../state/types.ts'
 

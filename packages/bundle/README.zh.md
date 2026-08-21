@@ -13,5 +13,6 @@ Bundle 身份由 manifest 声明决定，而不是由本目录决定。领域包
 | [`web-app/`](web-app/README.md) | 浏览器载体、集成与运行时粘合插件 | 挂载多条配置行 |
 | [`vscode-app/`](vscode-app/README.md) | VS Code 进程 IPC 载体、远程安全集成与界面上下文 | 挂载多条配置行 |
 | [`headless/`](headless/README.md) | 直接运行在 base 之上的一次性任务模式，不含 Host 或 Web 层 | 挂载 `headless-runner` |
+| [`tui-app/`](tui-app/README.md) | 直接运行在 base 之上的进程内 Ink 终端客户端 | 挂载 `tui-startup` 与 `tui` |
 
 内置组合包从 dsh 安装目录解析；树外（out-of-tree）组合包通过 `dsh plugin --profile <name> add <package>` 安装进 profile。

@@ -1,5 +1,6 @@
 /** Inline transcript presentation. @module @deepseek-ai/dsh-tui/render/transcript */
 
+import React from 'react'
 import { Box, Static, Text } from 'ink'
 import type { LiveAssistantRow, TranscriptRow } from '../state/types.ts'
 import { ToolCard } from './tool.tsx'
