@@ -72,7 +72,11 @@ export function reduceTuiState(state: TuiState, action: TuiAction): TuiState {
       return {
         ...state,
         overlay: { kind: 'approval', id: action.id },
-        interaction: { kind: 'approval', id: action.id, prompt: action.prompt },
+        interaction: {
+          kind: 'approval', id: action.id, toolName: action.toolName,
+          ...(action.callId === undefined ? {} : { callId: action.callId }),
+          ...(action.reason === undefined ? {} : { reason: action.reason }),
+        },
       }
     case 'interaction/question':
       return {
@@ -81,8 +85,13 @@ export function reduceTuiState(state: TuiState, action: TuiAction): TuiState {
         interaction: {
           kind: 'question',
           id: action.id,
-          prompt: action.prompt,
-          options: [...action.options],
+          questions: action.questions.map(question => ({
+            ...question,
+            ...(question.options === undefined
+              ? {}
+              : { options: question.options.map(option => ({ ...option })) }),
+            ...(question.intent === undefined ? {} : { intent: { ...question.intent } }),
+          })),
         },
       }
     case 'interaction/settled':

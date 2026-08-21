@@ -97,7 +97,7 @@ import { RpcId } from './api/rpc.ts'
 import type {
   AskUserQuestionAnswer, AskUserQuestionItem, AskUserQuestionRequest,
 } from '@deepseek-ai/dsh-user-questions'
-import { UserQuestionError } from '@deepseek-ai/dsh-user-questions'
+import { matchesQuestionAnswer, UserQuestionError } from '@deepseek-ai/dsh-user-questions'
 import { DirectoryPickerError } from '@deepseek-ai/dsh-host-directory-picker'
 import {
   ApiRemoteSessionNotFound as SessionNotFound,
@@ -660,21 +660,7 @@ interface PendingQuestion {
 /** Validate one answer batch against the exact question request it resolves. */
 function matchesQuestions(payload: QuestionResponsePayload, pending: PendingQuestion): boolean {
   if (payload.sessionId !== pending.sessionId) return false
-  const answers = payload.answer.answers
-  if (answers.length !== pending.questions.length) return false
-  return answers.every((answer, index) => {
-    const question = pending.questions[index] as AskUserQuestionItem
-    if (answer.id !== question.id) return false
-    if (new Set(answer.selected).size !== answer.selected.length) return false
-    const custom = answer.custom?.trim()
-    if (custom !== undefined && custom === '') return false
-    if (question.multiSelect !== true) {
-      if (custom !== undefined && answer.selected.length > 0) return false
-      if (answer.selected.length > 1) return false
-    }
-    const labels = new Set(question.options?.map(option => option.label) ?? [])
-    return answer.selected.every(label => labels.has(label))
-  })
+  return matchesQuestionAnswer(pending.questions, payload.answer)
 }
 
 /**

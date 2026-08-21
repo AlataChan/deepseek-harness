@@ -44,15 +44,18 @@ describe('tui state', () => {
     const questionId = mintInteractionId()
     let state = createInitialState({ columns: 80 })
     state = reduceTuiState(state, { type: 'overlay/open', overlay: { kind: 'help' } })
-    state = reduceTuiState(state, { type: 'interaction/approval', id: approvalId, prompt: 'Allow?' })
+    state = reduceTuiState(state, {
+      type: 'interaction/approval', id: approvalId, toolName: 'bash', reason: 'Allow?',
+    })
     expect(state.overlay).toEqual({ kind: 'approval', id: approvalId })
-    expect(state.interaction).toEqual({ kind: 'approval', id: approvalId, prompt: 'Allow?' })
+    expect(state.interaction).toEqual({
+      kind: 'approval', id: approvalId, toolName: 'bash', reason: 'Allow?',
+    })
 
     state = reduceTuiState(state, {
       type: 'interaction/question',
       id: questionId,
-      prompt: 'Which one?',
-      options: ['A', 'B'],
+      questions: [{ id: 'choice', question: 'Which one?', options: [{ label: 'A' }, { label: 'B' }] }],
     })
     expect(state.overlay).toEqual({ kind: 'question', id: questionId })
     expect(state.interaction?.id).toBe(questionId)

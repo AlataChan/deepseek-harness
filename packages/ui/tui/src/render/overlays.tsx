@@ -3,6 +3,8 @@
 import { Box, Text } from 'ink'
 import type { ResumeRow } from '../driver/resume.ts'
 import type { PendingInteraction, TuiOverlay } from '../state/types.ts'
+import { ApprovalPanel } from './approval.tsx'
+import { QuestionsPanel } from './questions.tsx'
 
 /** Properties for the exclusive terminal overlay. */
 export interface OverlaysProps {
@@ -35,7 +37,8 @@ export function Overlays({ overlay, interaction, resumeRows }: OverlaysProps): R
           </Text>)}
       </Box>
     case 'approval':
+      return interaction?.kind === 'approval' ? <ApprovalPanel interaction={interaction} /> : null
     case 'question':
-      return <Box borderStyle="round"><Text>{interaction?.prompt ?? 'Interaction pending'}</Text></Box>
+      return interaction?.kind === 'question' ? <QuestionsPanel interaction={interaction} /> : null
   }
 }

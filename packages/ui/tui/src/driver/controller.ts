@@ -10,6 +10,7 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionId as SessionIdType } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-query'
 import type { DisplayTextBudget } from '../transcript/display-text.ts'
+import type { TuiStore } from '../state/store.ts'
 import { createTranscriptProjection, type TranscriptProjection } from '../transcript/project.ts'
 import {
   installTuiModelSelection,
@@ -23,6 +24,8 @@ import {
   requireResumeSession,
   type ResumeRow,
 } from './resume.ts'
+import { installTuiApproval, type TuiApprovalController } from './approval.ts'
+import { installTuiQuestions, type TuiQuestionsController } from './questions.ts'
 
 /** Startup intent accepted from the TUI app bundle. */
 export type TuiControllerStartup =
@@ -36,6 +39,7 @@ export interface TuiControllerOptions {
   readonly cwd: string
   readonly displayBudget: DisplayTextBudget
   readonly sessionSelectorLimit: number
+  readonly store: TuiStore
   readonly createSessionId?: () => SessionIdType
 }
 
@@ -46,6 +50,9 @@ export interface TuiController {
   readonly transcript: TranscriptProjection
   readonly selectorRows: readonly ResumeRow[]
   readonly selectionCancelled: boolean
+  readonly store: TuiStore
+  readonly approval: TuiApprovalController
+  readonly questions: TuiQuestionsController
   /** Resume one id from the current closed selector snapshot. */
   selectSession(sessionId: SessionIdType): Promise<void>
   /** Close the selector without resuming a Session. */
@@ -61,14 +68,19 @@ class Controller implements TuiController {
   private rows: readonly ResumeRow[]
   private cancelled = false
   private disposed = false
+  readonly approval: TuiApprovalController
+  readonly questions: TuiQuestionsController
 
   constructor(
     private readonly ctx: Context,
     private readonly fallback: ModelSelection,
     private readonly budget: DisplayTextBudget,
     rows: readonly ResumeRow[],
+    readonly store: TuiStore,
   ) {
     this.rows = rows
+    this.approval = installTuiApproval(ctx, { owner: () => this.agent, store })
+    this.questions = installTuiQuestions(ctx, { owner: () => this.agent, store })
   }
 
   get agent(): Agent | undefined { return this.owned?.agent }
@@ -117,6 +129,8 @@ class Controller implements TuiController {
     if (this.disposed) return
     this.disposed = true
     this.rows = Object.freeze([])
+    this.approval.dispose()
+    this.questions.dispose()
     await this.owned?.dispose()
     this.owned = undefined
   }
@@ -160,29 +174,36 @@ export async function createTuiController(
   const fallback = defaultModel.currentSelection()
   if (options.startup.kind === 'resume-picker') {
     const rows = await loadResumeRows(query, options.sessionSelectorLimit)
-    return new Controller(ctx, fallback, options.displayBudget, rows)
+    return new Controller(ctx, fallback, options.displayBudget, rows, options.store)
   }
 
-  const controller = new Controller(ctx, fallback, options.displayBudget, Object.freeze([]))
-  if (options.startup.kind === 'resume') {
-    await requireResumeSession(query, options.startup.sessionId)
-    controller.setOwned(await resumeOwned(ctx, options.startup.sessionId, fallback, options.displayBudget))
+  const controller = new Controller(
+    ctx, fallback, options.displayBudget, Object.freeze([]), options.store,
+  )
+  try {
+    if (options.startup.kind === 'resume') {
+      await requireResumeSession(query, options.startup.sessionId)
+      controller.setOwned(await resumeOwned(ctx, options.startup.sessionId, fallback, options.displayBudget))
+      return controller
+    }
+
+    let modelSelection: TuiModelSelectionRef | undefined
+    const selection = fallback
+    const handle = await agents.create({
+      sessionId: options.createSessionId?.() ?? SessionId(`session-${randomUUID()}`),
+      meta: { cwd: options.cwd },
+      agentOptions: { provider: selection.provider, model: selection.model },
+      setup(agentCtx) { modelSelection = installTuiModelSelection(agentCtx, fallback) },
+    })
+    if (modelSelection === undefined) {
+      await handle.dispose()
+      throw new Error('tui: create setup did not install a model selection')
+    }
+    controller.setOwned(ownTuiSession(handle, modelSelection, options.displayBudget))
+    if (options.startup.task !== undefined) controller.submit(options.startup.task)
     return controller
+  } catch (error) {
+    await controller.dispose()
+    throw error
   }
-
-  let modelSelection: TuiModelSelectionRef | undefined
-  const selection = fallback
-  const handle = await agents.create({
-    sessionId: options.createSessionId?.() ?? SessionId(`session-${randomUUID()}`),
-    meta: { cwd: options.cwd },
-    agentOptions: { provider: selection.provider, model: selection.model },
-    setup(agentCtx) { modelSelection = installTuiModelSelection(agentCtx, fallback) },
-  })
-  if (modelSelection === undefined) {
-    await handle.dispose()
-    throw new Error('tui: create setup did not install a model selection')
-  }
-  controller.setOwned(ownTuiSession(handle, modelSelection, options.displayBudget))
-  if (options.startup.task !== undefined) controller.submit(options.startup.task)
-  return controller
 }

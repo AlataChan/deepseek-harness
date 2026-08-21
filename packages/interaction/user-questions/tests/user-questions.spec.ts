@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import UserQuestionService, {
+  matchesQuestionAnswer,
   UserQuestionError,
   type AskUserQuestionRequest,
   type UserQuestionProvider,
@@ -218,5 +219,45 @@ describe('UserQuestionService', () => {
 
     expect(result.answers).toEqual([{ id: 'plain', selected: ['Approve'] }])
     expect(p.seen[0]?.questions[1]?.intent).toEqual(intent)
+  })
+})
+
+describe('question answer validation', () => {
+  const questions = [
+    { id: 'target', question: 'Choose one', options: [{ label: 'Code' }, { label: 'Docs' }] },
+    { id: 'notes', question: 'Add notes' },
+  ]
+
+  it('accepts one complete answer in request order', () => {
+    expect(matchesQuestionAnswer(questions, {
+      answers: [
+        { id: 'target', selected: ['Code'] },
+        { id: 'notes', selected: [], custom: 'Ship today' },
+      ],
+    })).toBe(true)
+  })
+
+  it('rejects incomplete, reordered, duplicate, unknown, blank, and conflicting answers', () => {
+    expect(matchesQuestionAnswer(questions, { answers: [] })).toBe(false)
+    expect(matchesQuestionAnswer(questions, { answers: [
+      { id: 'notes', selected: [], custom: 'Ship' },
+      { id: 'target', selected: ['Code'] },
+    ] })).toBe(false)
+    expect(matchesQuestionAnswer(questions, { answers: [
+      { id: 'target', selected: ['Code', 'Code'] },
+      { id: 'notes', selected: [], custom: 'Ship' },
+    ] })).toBe(false)
+    expect(matchesQuestionAnswer(questions, { answers: [
+      { id: 'target', selected: ['Unknown'] },
+      { id: 'notes', selected: [], custom: 'Ship' },
+    ] })).toBe(false)
+    expect(matchesQuestionAnswer(questions, { answers: [
+      { id: 'target', selected: [] },
+      { id: 'notes', selected: [], custom: '   ' },
+    ] })).toBe(false)
+    expect(matchesQuestionAnswer(questions, { answers: [
+      { id: 'target', selected: ['Code'], custom: 'Other' },
+      { id: 'notes', selected: [], custom: 'Ship' },
+    ] })).toBe(false)
   })
 })

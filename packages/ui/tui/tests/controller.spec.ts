@@ -9,8 +9,14 @@ import type { SessionRecord, SessionTitleObservationResult } from '@deepseek-ai/
 import ApprovalService from '@deepseek-ai/dsh-user-approval'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import { createTuiController } from '../src/driver/controller.ts'
+import { createInitialState } from '../src/state/reducer.ts'
+import { createTuiStore } from '../src/state/store.ts'
 
 const displayBudget = { maxBytes: 32_768, maxColumns: 32_768 }
+
+function tuiStore() {
+  return createTuiStore(createInitialState({ columns: 80 }))
+}
 
 interface Bench {
   ctx: Context
@@ -107,6 +113,7 @@ describe('tui session controller', () => {
       displayBudget,
       sessionSelectorLimit: 50,
       createSessionId: () => SessionId('fresh-session'),
+      store: tuiStore(),
     })
     await Promise.resolve()
     expect(test.factoryCalls).toHaveLength(0)
@@ -147,6 +154,7 @@ describe('tui session controller', () => {
     const controller = await createTuiController(test.ctx, {
       startup: { kind: 'resume', sessionId: id },
       cwd: '/workspace', displayBudget, sessionSelectorLimit: 50,
+      store: tuiStore(),
     })
     expect(controller.modelSelection?.current).toEqual({
       provider: 'logged-provider', model: 'logged-model',
@@ -165,6 +173,26 @@ describe('tui session controller', () => {
     expect(controller.transcript.rows.at(-1)).toEqual(expect.objectContaining({ text: 'owned' }))
     await controller.dispose()
     expect(test.disposeCalls).toEqual([id])
+    await test.ctx.fiber.dispose()
+  })
+
+  it('owns the interaction providers and settles them during controller disposal', async () => {
+    const test = await bench()
+    const store = tuiStore()
+    const controller = await createTuiController(test.ctx, {
+      startup: { kind: 'fresh' }, cwd: '/workspace', displayBudget,
+      sessionSelectorLimit: 50, createSessionId: () => SessionId('interaction-session'), store,
+    })
+    const pending = test.ctx.userQuestions.ask({
+      agent: controller.agent,
+      questions: [{ id: 'confirm', question: 'Proceed?' }],
+    })
+    await Promise.resolve()
+    expect(store.getSnapshot().interaction?.kind).toBe('question')
+
+    await controller.dispose()
+    await expect(pending).rejects.toMatchObject({ code: 'ASK_ABORTED' })
+    expect(store.getSnapshot().interaction).toBeUndefined()
     await test.ctx.fiber.dispose()
   })
 })

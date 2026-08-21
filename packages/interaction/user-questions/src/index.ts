@@ -24,6 +24,33 @@ export type {
   AskUserQuestionOption,
 } from './types.ts'
 
+/**
+ * Validate one complete answer batch against the exact questions it resolves.
+ * @param questions - ordered request questions.
+ * @param answer - candidate provider answer.
+ * @returns whether every question has one non-empty, locally valid answer in request order.
+ */
+export function matchesQuestionAnswer(
+  questions: readonly AskUserQuestionItem[],
+  answer: AskUserQuestionAnswer,
+): boolean {
+  if (answer.answers.length !== questions.length) return false
+  return answer.answers.every((item, index) => {
+    const question = questions[index]
+    if (question === undefined || item.id !== question.id) return false
+    if (new Set(item.selected).size !== item.selected.length) return false
+    const custom = item.custom?.trim()
+    if (custom !== undefined && custom === '') return false
+    if (item.selected.length === 0 && custom === undefined) return false
+    if (question.multiSelect !== true) {
+      if (custom !== undefined && item.selected.length > 0) return false
+      if (item.selected.length > 1) return false
+    }
+    const labels = new Set(question.options?.map(option => option.label) ?? [])
+    return item.selected.every(label => labels.has(label))
+  })
+}
+
 /** Request for a human answer. */
 export interface AskUserQuestionRequest {
   /** Questions to display. */

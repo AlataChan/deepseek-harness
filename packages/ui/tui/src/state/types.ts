@@ -1,6 +1,7 @@
 /** Framework-free terminal application state. @module @deepseek-ai/dsh-tui/state/types */
 
 import type { EditorState } from './editor.ts'
+import type { AskUserQuestionItem } from '@deepseek-ai/dsh-user-questions'
 
 declare const interactionIdBrand: unique symbol
 
@@ -47,13 +48,14 @@ export type PendingInteraction =
   | {
     readonly kind: 'approval'
     readonly id: InteractionId
-    readonly prompt: string
+    readonly toolName: string
+    readonly callId?: string
+    readonly reason?: string
   }
   | {
     readonly kind: 'question'
     readonly id: InteractionId
-    readonly prompt: string
-    readonly options: readonly string[]
+    readonly questions: readonly AskUserQuestionItem[]
   }
 
 /** Runtime status shown below the transcript. */
@@ -85,13 +87,14 @@ export type TuiAction =
   | {
     readonly type: 'interaction/approval'
     readonly id: InteractionId
-    readonly prompt: string
+    readonly toolName: string
+    readonly callId?: string
+    readonly reason?: string
   }
   | {
     readonly type: 'interaction/question'
     readonly id: InteractionId
-    readonly prompt: string
-    readonly options: readonly string[]
+    readonly questions: readonly AskUserQuestionItem[]
   }
   | { readonly type: 'interaction/settled'; readonly id: InteractionId }
   | { readonly type: 'terminal/resize'; readonly columns: number; readonly rows?: number }

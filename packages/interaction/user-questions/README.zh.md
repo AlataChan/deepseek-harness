@@ -10,6 +10,7 @@
 
 - `ctx.userQuestions.registerProvider(provider): () => void` 注册 UI 侧提供方。同一上下文中只能有一个活跃提供方；dispose（资源释放）会将其注销。
 - `ctx.userQuestions.ask(request): Promise<AskUserQuestionAnswer>` 向活跃提供方提问并等待回答。
+- `matchesQuestionAnswer(questions, answer): boolean` 按原请求问题精确验证一个完整且有序的回答批次。
 
 ### 关键类型
 
@@ -20,7 +21,7 @@
 - `UserQuestionProvider`：包含 `ask(request)` 的 UI 实现。
 - `UserQuestionError`：`HarnessError` 的子类，包含 `EMPTY_QUESTIONS`、`BAD_INTENT`、`NO_PROVIDER`、`DUPLICATE_PROVIDER`、`ASK_ABORTED`、`CALLER_NOT_LIVE` 和 `DELEGATED_CALLER` 等代码。
 
-对于单选题，`custom` 会覆盖选中的选项，且 `selected` 为空。对于多选题，`custom` 可以补充 `selected` 中的标签。UI 可以把跳过的条目保留为 `{ id, selected: [] }`，既维持现有回答形态，也保留该批次中的其他回答。
+对于单选题，`custom` 会替代选中的选项，且 `selected` 为空。对于多选题，`custom` 可以补充 `selected` 中的标签。`matchesQuestionAnswer()` 要求按请求顺序为每个问题提供一个非空回答，并拒绝重复或未知标签、空白自定义文本与单选冲突。
 
 请求包含 agent 时，`ask()` 会通过当前 `AgentRegistry` 验证该 agent 与注册表中的存活实例是同一对象，并且只允许运行时根调用。持久谱系不构成权限依据：带有历史委托深度的会话恢复为新的运行时根后可以提问；归属于另一个 agent 的存活子级即使持久化记录的委托深度为零也会被拒绝。不含 agent 的程序化请求继续沿用现有提供方路径。
 

@@ -10,6 +10,7 @@ User-interaction Service Definition. It owns `ctx.userQuestions`, the service a 
 
 - `ctx.userQuestions.registerProvider(provider): () => void` Register the UI-side provider. Only one provider may be active in a context; disposal unregisters it.
 - `ctx.userQuestions.ask(request): Promise<AskUserQuestionAnswer>` Ask the active provider and wait for the answer.
+- `matchesQuestionAnswer(questions, answer): boolean` Validate one complete ordered answer batch against the exact requested questions.
 
 ### Key Types
 
@@ -20,7 +21,7 @@ User-interaction Service Definition. It owns `ctx.userQuestions`, the service a 
 - `UserQuestionProvider` — UI implementation with `ask(request)`.
 - `UserQuestionError` — `HarnessError` subclass with codes such as `EMPTY_QUESTIONS`, `BAD_INTENT`, `NO_PROVIDER`, `DUPLICATE_PROVIDER`, `ASK_ABORTED`, `CALLER_NOT_LIVE`, and `DELEGATED_CALLER`.
 
-For a single-select question, `custom` overrides the selected choice and `selected` is empty. For a multi-select question, `custom` may supplement the labels in `selected`. A UI may preserve a skipped item as `{ id, selected: [] }`, keeping the existing answer shape while retaining other answers in the batch.
+For a single-select question, `custom` replaces the selected choice and `selected` is empty. For a multi-select question, `custom` may supplement the labels in `selected`. `matchesQuestionAnswer()` requires one non-empty answer per question in request order and rejects duplicate or unknown labels, blank custom text, and single-select conflicts.
 
 When a request carries an agent, `ask()` authenticates its exact identity through the live `AgentRegistry` and admits only a runtime root. Durable lineage is not authority: a session with historical delegation depth may ask after it is resumed as a new runtime root, while a live child owned by another agent is rejected even if its durable depth is zero. Agentless programmatic requests retain the existing provider path.
 

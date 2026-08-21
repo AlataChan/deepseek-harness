@@ -19,7 +19,17 @@ function freezeState(state: TuiState): TuiState {
   if (state.liveAssistant !== undefined) Object.freeze(state.liveAssistant)
   Object.freeze(state.overlay)
   if (state.interaction !== undefined) {
-    if (state.interaction.kind === 'question') Object.freeze(state.interaction.options)
+    if (state.interaction.kind === 'question') {
+      for (const question of state.interaction.questions) {
+        if (question.options !== undefined) {
+          for (const option of question.options) Object.freeze(option)
+          Object.freeze(question.options)
+        }
+        if (question.intent !== undefined) Object.freeze(question.intent)
+        Object.freeze(question)
+      }
+      Object.freeze(state.interaction.questions)
+    }
     Object.freeze(state.interaction)
   }
   Object.freeze(state.status)

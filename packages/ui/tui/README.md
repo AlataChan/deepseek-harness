@@ -14,6 +14,8 @@ Durable and live events pass through one pure projection. Every model-, tool-, c
 
 Tool cards resolve the definition visible to the active agent and call only its pure `presentCall` and `presentResult` methods. Generic, terminal, diff, read, search, and Web result intents have compact terminal views; missing, rejected, and unknown intents use safe structured fallbacks without executing content or reading files.
 
+The controller registers one exact-agent approval answerer and the single user-question provider. Approval grants require an explicit allow-once action; abort and disposal cancel without granting. Question batches show every option and review detail and settle atomically only after the shared Service Definition validator accepts every required answer.
+
 The runtime controller waits for complete Loader settlement, then owns one fresh or resumed root Agent. Resume discovery reads a bounded newest-first session list and resolves all visible titles in one batch.
 
 ## Configuration
