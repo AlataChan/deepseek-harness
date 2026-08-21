@@ -16,13 +16,13 @@
 
 运行中的 `dsh` 是一棵插件树，由启动时按序叠加的各层组合而成。
 
-**profile** 是存放在 Harness home 中的具名组装。它列出自己叠放的组合包，存放自己安装的树外插件，并保存用户自己的 `cordis.patch.yml`。`web`、`vscode` 和 `headless` 作为模板随发行版交付。
+**profile** 是存放在 Harness home 中的具名组装。它列出自己叠放的组合包，存放自己安装的树外插件，并保存用户自己的 `cordis.patch.yml`。`tui`、`web`、`vscode` 和 `headless` 作为模板随发行版交付。
 
 **组合包**是 Cordis 配置项及其挂载代码的分发格式，因此它插入的内容始终可被其上各层 patch。
 
 两者都在各自的 `package.json` 中通过 `dsh` 字段声明自己：`dsh.profile` 列出一个 profile 的组合包，`dsh.bundle` 指向一个组合包的 patch 文件。
 
-[`dsh-base`](../packages/bundle/base/README.md) 是每个 profile 的第一层：模型适配器、工具、持久化、沙箱与审批策略、设置、凭据、遥测。[`dsh-client-app`](../packages/bundle/client-app/README.md) 增加传输无关的交互式 Host 服务与 Client Plugin。[`dsh-web-app`](../packages/bundle/web-app/README.md) 增加浏览器载体与集成，[`dsh-vscode-app`](../packages/bundle/vscode-app/README.md) 则增加 [VS Code 客户端](user/guide/vscode.md)使用的有界进程载体与编辑器集成。[`dsh-headless`](../packages/bundle/headless/README.md) 增加一次性运行器，且完全不带服务器。
+[`dsh-base`](../packages/bundle/base/README.md) 是每个 profile 的第一层：模型适配器、工具、持久化、沙箱与审批策略、设置、凭据、遥测。[`dsh-tui-app`](../packages/bundle/tui-app/README.md) 增加仅限 Node 的终端呈现与直接进程内交互路径。[`dsh-client-app`](../packages/bundle/client-app/README.md) 增加传输无关的交互式 Host 服务与 Client Plugin；[`dsh-web-app`](../packages/bundle/web-app/README.md) 与 [`dsh-vscode-app`](../packages/bundle/vscode-app/README.md) 再分别增加浏览器或有界进程 carrier 及 host 集成。[`dsh-headless`](../packages/bundle/headless/README.md) 增加一次性运行器，且完全不带服务器。
 
 各层按此顺序应用在空条目列表之上：先按 profile 列出的顺序应用每个组合包，然后是 profile 的 `cordis.patch.yml`，然后是 home 级的那份，最后是任意 `--patch` overlay。一条 patch 按 id 定位某个条目并替换其整个 config，或插入新条目。
 
@@ -99,7 +99,7 @@ turn/end
 
 **模型可见即已记录。** 抵达模型请求的一切都必须能从日志重建，并由一项运行时不变量断言这一点。因此，新增一项模型可见输入就需要新增一个会话事件：扩展 `SessionEventMap` 并从日志渲染。
 
-交互式客户端通过 ApiProxy 执行操作，并从 `session/event` 渲染持久状态。浏览器与编辑器界面只增加各自的物理载体和 host（宿主）负责的集成，不重新实现会话或 agent 行为。
+Node 终端客户端通过进程内 Cordis 服务创建或恢复 Agent，并从 `session/event` 渲染持久状态；它不会打开网络 carrier。浏览器与编辑器客户端通过 ApiProxy 执行操作，只增加各自的物理 carrier 和 host（宿主）负责的集成。三者都不会重新实现会话或 agent 行为。
 
 ## 能力 seam
 
@@ -126,7 +126,7 @@ seam 正是替换一个提供方就能改变整个产品的原因。文件系统
 | 限制所启动的进程 | 使用 `ctx.sandbox` 后端；消费方在启动进程前包装 argv |
 | 拦截请求、工具或轮次 | 使用相应的 `agent/*` 或 `tools/*` 事件；`agent/turn-stopping` 会停止轮次 |
 | 添加模型可见上下文 | 调用 `agent.inject()`；它会落到下一次获准的请求中 |
-| 添加 UI 或编辑器集成 | 消费 ApiProxy、从 `session/event` 渲染，并把 host 专属操作留在界面适配器中 |
+| 添加交互式产品面 | 使用进程内服务或 ApiProxy、从 `session/event` 渲染，并把 host 专属操作留在界面适配器中 |
 | 添加 Web Client Chat 节点 | 注册 `ConversationNodeDefinition` + keyed renderer |
 | 添加持久会话状态 | 扩展 `SessionEventMap`；从日志渲染和回放 |
 | 生成会话标题 | 注册唯一的 `ctx.sessionTitle` 提供方 |

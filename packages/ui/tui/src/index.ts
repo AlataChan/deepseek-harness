@@ -68,9 +68,17 @@ export interface TuiControllerLifecycle {
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
-    /** A TUI controller and its interaction providers became live. @mode emit @param lifecycle - exact published relation. */
+    /**
+     * A TUI controller and its interaction providers became live.
+     * @mode emit
+     * @param lifecycle - exact published relation.
+     */
     'tui/controller-mounted'(lifecycle: TuiControllerLifecycle): void
-    /** The same TUI-owned relation completed disposal. @mode emit @param lifecycle - exact disposed relation. */
+    /**
+     * The same TUI-owned relation completed disposal.
+     * @mode emit
+     * @param lifecycle - exact disposed relation.
+     */
     'tui/controller-disposed'(lifecycle: TuiControllerLifecycle): void
   }
 }
@@ -157,7 +165,6 @@ export async function launchTuiRuntime(
       ...(process.rows === undefined ? {} : { rows: process.rows }),
     })
   })
-  let stopExit = (): void => {}
   const relation: TuiControllerLifecycle = {
     controller, agent: controller.agent, providersPublished: true,
   }
@@ -175,7 +182,7 @@ export async function launchTuiRuntime(
     },
     requestExit: (code) => { process.requestExit(code) },
   })
-  stopExit = process.onExit(() => { void shutdown.shutdown('user') })
+  const stopExit = process.onExit(() => { void shutdown.shutdown('user') })
   ctx.emit('tui/controller-mounted', relation)
   return { controller, process, shutdown }
 }

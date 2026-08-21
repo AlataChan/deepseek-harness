@@ -13,6 +13,5 @@ export function useTuiStore(store: TuiStore): TuiState {
   return useSyncExternalStore(
     listener => store.subscribe(listener),
     () => store.getSnapshot(),
-    () => store.getSnapshot(),
   )
 }

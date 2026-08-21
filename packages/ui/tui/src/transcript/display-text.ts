@@ -39,7 +39,8 @@ function sanitize(input: string): string {
   let output = ''
   for (const character of input.toWellFormed()) {
     const codePoint = character.codePointAt(0)
-    if (codePoint === undefined) continue
+    /* v8 ignore next -- string iteration never yields an empty character. */
+    if (codePoint === undefined) throw new Error('tui display character has no code point')
     if (character === '\t') {
       output += '    '
     } else if (character === '\r') {
@@ -70,10 +71,6 @@ function truncate(value: string, budget: DisplayTextBudget): string {
   for (const { segment } of segmenter.segment(value)) {
     if (!fits(output + segment + ellipsis, budget)) break
     output += segment
-  }
-  while (output !== '' && !fits(output + ellipsis, budget)) {
-    const parts = [...segmenter.segment(output)]
-    output = parts.slice(0, -1).map(part => part.segment).join('')
   }
   return fits(output + ellipsis, budget) ? output + ellipsis : ''
 }

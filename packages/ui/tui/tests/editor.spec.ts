@@ -68,4 +68,25 @@ describe('tui editor', () => {
     expect(reduceEditor(createEditorState(), { type: 'ctrl-c', turnActive: false }).effect)
       .toEqual({ kind: 'request-exit' })
   })
+
+  it('keeps no-op cursor, deletion, and history operations stable', () => {
+    const empty = createEditorState()
+    expect(reduceEditor(empty, { type: 'move/left' }).state.cursor).toBe(0)
+    expect(reduceEditor(empty, { type: 'move/right' }).state.cursor).toBe(0)
+    expect(reduceEditor(empty, { type: 'delete/backward' }).state).toBe(empty)
+    expect(reduceEditor(empty, { type: 'delete/forward' }).state).toBe(empty)
+    expect(reduceEditor(empty, { type: 'history/previous' }).state).toBe(empty)
+    expect(reduceEditor(empty, { type: 'history/next' }).state).toBe(empty)
+  })
+
+  it('clamps history navigation and rejects unknown actions', () => {
+    let state = createEditorState('one')
+    state = reduceEditor(state, { type: 'submit' }).state
+    state = reduceEditor(state, { type: 'insert', text: 'two' }).state
+    state = reduceEditor(state, { type: 'submit' }).state
+    state = reduceEditor(state, { type: 'history/previous' }).state
+    state = reduceEditor(state, { type: 'history/previous' }).state
+    expect(reduceEditor(state, { type: 'history/previous' }).state.text).toBe('one')
+    expect(() => reduceEditor(state, { type: 'unknown' } as never)).toThrow(/unsupported action/)
+  })
 })

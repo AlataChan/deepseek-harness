@@ -135,6 +135,60 @@ describe('session transcript projection', () => {
     expect(live).toEqual(projectSessionEvents(events, budget))
     expect(live.liveAssistant).toBe('live')
   })
+
+  it('projects nested content, unmatched tools, optional command fields, and terminal reasons', () => {
+    const missing = CallId('missing')
+    const projection = projectSessionEvents([
+      event('user/message', createUserMessage({ source: { kind: 'user' }, content: [
+        { type: 'tool-result', toolCallId: missing, content: [
+          { type: 'text', text: 'nested' }, { type: 'image' } as never,
+          { type: 'reasoning', text: 'hidden' },
+          { type: 'tool-call', id: CallId('inner'), name: 'bash', arguments: '{}' },
+          { type: 'future' } as never,
+        ], isError: false },
+      ] })),
+      event('tool/result', {
+        turn: 1, step: 1,
+        message: createToolResultMessage({ callId: missing, content: [], isError: true }),
+      }),
+      event('command/run', { commandId: CommandId('empty-command'), name: 'empty', source: { kind: 'user' } }),
+      event('command/done', { commandId: CommandId('empty-command'), kind: 'error' }),
+      event('turn/end', { turn: 1, reason: { kind: 'blocked' } }),
+      event('turn/end', { turn: 2, reason: { kind: 'max-tokens' } }),
+      event('turn/end', { turn: 3, reason: { kind: 'interrupted' } }),
+      event('step/start', { turn: 1, step: 1 }),
+      event('step/end', { turn: 1, step: 1 }),
+    ] as SessionEvent[], budget)
+    expect(projection.rows.map(row => row.kind)).toEqual([
+      'message', 'tool-result', 'command', 'command', 'status', 'status', 'status',
+    ])
+    expect(projection.rows[0]).toEqual(expect.objectContaining({ text: 'nested\n[image]' }))
+  })
+
+  it('ignores empty and non-display assistant blocks and unsupported chunks', () => {
+    const state = createTranscriptProjection()
+    expect(foldSessionEvent(state, event('user/message', createUserMessage({
+      source: { kind: 'user' }, content: [],
+    })), budget)).toBe(state)
+    const assistant = createAssistantMessage({ source: { provider: 'test', model: 'model' }, content: [
+      { type: 'reasoning', text: '' }, { type: 'text', text: '' },
+      { type: 'image' } as never,
+    ] })
+    expect(projectSessionEvents([event('assistant/message', { turn: 1, step: 1, message: assistant })], budget).rows)
+      .toEqual([])
+    const unknownBlock = createAssistantMessage({
+      source: { provider: 'test', model: 'model' }, content: [{ type: 'future' } as never],
+    })
+    expect(projectSessionEvents([event('assistant/message', {
+      turn: 1, step: 1, message: unknownBlock,
+    })], budget).rows).toEqual([])
+    expect(foldSessionEvent(state, event('assistant/chunk', {
+      turn: 1, step: 1, chunk: { type: 'future' } as never,
+    }), budget)).toBe(state)
+    expect(foldSessionEvent(state, event('turn/end', {
+      turn: 1, reason: { kind: 'future' } as never,
+    }), budget).turn).toEqual({ kind: 'idle' })
+  })
 })
 
 describe('resume transcript retention', () => {
@@ -150,5 +204,8 @@ describe('resume transcript retention', () => {
       rows[2],
     ])
     expect(retainTranscriptRows(rows, 3)).toEqual(rows)
+    expect(retainTranscriptRows(rows, 1)[0]).toEqual({
+      kind: 'omission', omitted: 2, text: '2 earlier transcript rows omitted',
+    })
   })
 })

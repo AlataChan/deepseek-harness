@@ -18,10 +18,17 @@ export type TuiStartupValues =
   | { kind: 'resume-picker' }
   | { kind: 'resume'; sessionId: SessionId }
 
+/** Service fields published for the TUI row after application arguments parse. */
+export interface TuiStartupService {
+  readonly kind: TuiStartupValues['kind']
+  readonly task?: string
+  readonly sessionId?: SessionId
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /** Startup value parsed from the TUI-owned command line. */
-    tuiStartup: TuiStartupValues
+    tuiStartup: TuiStartupService
   }
 }
 

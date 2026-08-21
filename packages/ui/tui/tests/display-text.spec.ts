@@ -36,5 +36,15 @@ describe('terminal display text', () => {
   it('rejects non-positive byte and column budgets', () => {
     expect(() => displayText('x', { maxBytes: 0, maxColumns: 1 })).toThrow(/maxBytes/)
     expect(() => displayText('x', { maxBytes: 1, maxColumns: 0 })).toThrow(/maxColumns/)
+    expect(() => displayText('x', { maxBytes: Number.NaN, maxColumns: 1 })).toThrow(/maxBytes/)
+  })
+
+  it('normalizes delete and every bidirectional-control family', () => {
+    expect(raw(displayText('\u007F\u061C\u200E\u200F\u202A\u202E\u2066\u2069', generous)))
+      .toBe('␡⟦U+061C⟧⟦U+200E⟧⟦U+200F⟧⟦U+202A⟧⟦U+202E⟧⟦U+2066⟧⟦U+2069⟧')
+  })
+
+  it('returns empty text when even an ellipsis exceeds the budget', () => {
+    expect(raw(displayText('wide', { maxBytes: 1, maxColumns: 1 }))).toBe('')
   })
 })

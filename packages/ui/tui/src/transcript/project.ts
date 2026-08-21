@@ -65,7 +65,10 @@ export interface TranscriptProjection {
   readonly commands: ReadonlyMap<string, DisplayText>
 }
 
-/** Create an empty transcript projection. */
+/**
+ * Create an empty transcript projection.
+ * @returns an idle projection with no rows or tracked calls.
+ */
 export function createTranscriptProjection(): TranscriptProjection {
   return {
     rows: [],

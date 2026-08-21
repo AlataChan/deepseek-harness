@@ -134,11 +134,15 @@ Run the repository build separately before using these source-checkout demos:
 pnpm run build
 ```
 
-The one-shot Headless coding agent needs `DEEPSEEK_API_KEY` in the environment or repo-root `.env`:
+The interactive terminal client needs `DEEPSEEK_API_KEY` in the environment or repo-root `.env` for model turns:
 
 ```sh
-pnpm dsh --profile headless "summarize this workspace"
+pnpm dsh
+pnpm dsh "summarize this workspace"
+pnpm dsh --resume
 ```
+
+`pnpm dsh tui` is the explicit terminal alias. Use `pnpm dsh exec "summarize this workspace"` for one-shot non-TTY automation. Terminal configuration and keyboard behavior are in the [`dsh-tui` reference](../packages/ui/tui/README.md).
 
 The self-referential cordis demo can inspect and modify its live plugin runtime and needs the same credentials (`web` by default, or `acp`):
 

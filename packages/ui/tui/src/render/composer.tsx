@@ -20,14 +20,23 @@ export interface ComposerProps {
  * @returns one inline composer row.
  */
 export function Composer({ editor, enabled, compact, input, onInputError }: ComposerProps): React.JSX.Element {
-  useInput((value, key) => {
-    if (input === undefined) return
-    const name = key.return ? 'return' : key.escape ? 'escape' : value
-    void input.handle(value, { ...key, name }).catch((error: unknown) => { onInputError?.(error) })
-  }, { isActive: input !== undefined })
   const prefix = compact ? '›' : 'You ›'
   const placeholder = enabled ? 'Type a message' : 'Waiting…'
-  return <Box>
+  const content = <Box>
     <Text dimColor={!enabled}>{prefix} {editor.text === '' ? placeholder : editor.text}</Text>
   </Box>
+  return input === undefined ? content : <InteractiveComposer input={input} onInputError={onInputError}>
+    {content}
+  </InteractiveComposer>
+}
+
+function InteractiveComposer({ input, onInputError, children }: {
+  readonly input: TuiInputDriver
+  readonly onInputError: ComposerProps['onInputError']
+  readonly children: React.JSX.Element
+}): React.JSX.Element {
+  useInput((value, key) => {
+    void input.handle(value, key).catch((error: unknown) => { onInputError?.(error) })
+  })
+  return children
 }

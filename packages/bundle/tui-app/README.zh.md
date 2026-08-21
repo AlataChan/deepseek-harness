@@ -12,13 +12,27 @@
 
 ## 模型体验
 
-本组合包提供终端部署 persona：编码 agent 会收到其模型、工作目录，以及用户正在通过 `dsh` 终端客户端交互这一事实。工具 schema 与其他模型可见内容来自 `dsh-base` 和选定的工具展示模式。
+### 终端部署 system prompt
+
+#### 模型看到的内容
+
+编码 agent 会收到其模型、工作目录，以及用户正在通过 `dsh` 终端客户端交互这一事实。工具 schema 与其他模型可见内容来自 `dsh-base` 和选定的工具展示模式。
+
+##### 终端 persona
+
+```markdown
+You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}. You are interacting with the user through the dsh terminal client.
+```
+
+#### Token 影响
+
+每个请求包含一个简短的部署句子；该句子在 profile 内保持不变。
 
 #### KV Cache 影响
 
 终端 persona 在稳定的首个提示位置替换 base 包的空 persona。本组合包不添加传输专用的模型请求层。
 
-## 限制
+## 已知限制与延后工作
 
 - 该 profile 要求 stdin 和 stdout 都可交互；自动化场景应通过 `dsh exec` 使用 headless profile。
 - 本组合包只负责 Node 终端组合。未来的桌面壳层是复用共享应用状态的独立载体，不属于该 profile。

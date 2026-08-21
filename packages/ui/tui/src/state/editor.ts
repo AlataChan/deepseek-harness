@@ -137,7 +137,7 @@ export function reduceEditor(state: EditorState, action: EditorAction): EditorTr
       const index = state.historyIndex === undefined
         ? state.history.length - 1
         : Math.max(0, state.historyIndex - 1)
-      const text = state.history[index] ?? ''
+      const text = historyEntry(state.history, index)
       return transition(state, {
         text,
         cursor: text.length,
@@ -155,7 +155,7 @@ export function reduceEditor(state: EditorState, action: EditorAction): EditorTr
           historyIndex: undefined,
         })
       }
-      const text = state.history[index] ?? ''
+      const text = historyEntry(state.history, index)
       return transition(state, { text, cursor: text.length, historyIndex: index })
     }
     case 'ctrl-c':
@@ -170,4 +170,11 @@ export function reduceEditor(state: EditorState, action: EditorAction): EditorTr
     default:
       return assertNever(action)
   }
+}
+
+function historyEntry(history: readonly string[], index: number): string {
+  const entry = history[index]
+  /* v8 ignore next -- reducer transitions establish the history index range. */
+  if (entry === undefined) throw new Error('tui editor history index is out of range')
+  return entry
 }

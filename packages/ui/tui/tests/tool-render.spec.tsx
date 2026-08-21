@@ -1,3 +1,4 @@
+import React from 'react'
 import { renderToString } from 'ink'
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
@@ -10,6 +11,8 @@ import ToolRuntime, {
   type ToolResultView,
 } from '@deepseek-ai/dsh-tools'
 import { ToolCard } from '../src/render/tool.tsx'
+
+void React
 import { projectToolCard } from '../src/render/tool-model.ts'
 import type { ProjectedTranscriptRow } from '../src/transcript/project.ts'
 
@@ -159,6 +162,103 @@ describe('tool result card projection', () => {
     expect(rendered).not.toContain('\u001B')
     expect(rendered).toContain('…')
     expect(rendered).toContain('exit 0')
+    await test.ctx.fiber.dispose()
+  })
+
+  it('covers optional fields, nested content, singular/plural summaries, and presenter failures', async () => {
+    const test = await bench()
+    const nested: ContentBlock[] = [
+      { type: 'reasoning', text: 'reasoning' },
+      { type: 'image' } as never,
+      { type: 'tool-call', id: 'inner' as never, name: 'inner', arguments: '{}' },
+      { type: 'tool-result', toolCallId: 'inner' as never, content: [{ type: 'text', text: 'nested' }] },
+    ]
+    test.ctx.tools.register(definition('generic-content', test.execute, () => ({
+      card: 'generic', kind: 'search', title: 'Content', content: nested,
+    })))
+    test.ctx.tools.register(definition('generic-string', test.execute, () => ({
+      card: 'generic', kind: 'search', rawInput: 'raw string', title: 42,
+    } as unknown as ToolCallView)))
+    test.ctx.tools.register(definition('generic-throw-json', test.execute, () => ({
+      card: 'generic', kind: 'search', title: 'BigInt', rawInput: 1n,
+    } as unknown as ToolCallView)))
+    test.ctx.tools.register(definition('generic-undefined-json', test.execute, () => ({
+      card: 'generic', kind: 'search', title: 'Undefined JSON', rawInput: () => {},
+    })))
+    test.ctx.tools.register(definition('terminal-minimal', test.execute, () => ({
+      card: 'terminal', title: 'echo',
+    }), () => ({ card: 'terminal', signal: 'TERM' })))
+    test.ctx.tools.register(definition('terminal-full', test.execute, () => ({
+      card: 'terminal', title: 'pwd', description: 'Print cwd', cwd: '/workspace',
+    }), () => ({ card: 'terminal', output: 'ok' })))
+    test.ctx.tools.register(definition('terminal-result-only', test.execute, undefined, () => ({
+      card: 'terminal',
+    })))
+    test.ctx.tools.register(definition('null-diff', test.execute, () => ({
+      card: 'diff', title: 'Create', diffs: [{ path: 'new.ts', oldText: null, newText: 'new' }],
+    })))
+    test.ctx.tools.register(definition('generic-raw-result', test.execute, undefined, () => ({
+      card: 'generic',
+    })))
+    test.ctx.tools.register(definition('read-plain', test.execute, undefined, () => ({
+      card: 'read', path: 'a.txt', offset: 0, lines: [], totalLines: 0,
+    })))
+    test.ctx.tools.register(definition('matches-many', test.execute, undefined, () => ({
+      card: 'search', shape: 'matches', files: [], truncated: true, total: 2,
+    })))
+    test.ctx.tools.register(definition('paths-one', test.execute, undefined, () => ({
+      card: 'search', shape: 'paths', paths: ['one'], truncated: false, total: 1,
+    })))
+    test.ctx.tools.register(definition('web-many', test.execute, undefined, () => ({
+      card: 'web', kind: 'search', sources: [
+        { url: 'https://one.test' }, { title: 'Two', url: 'https://two.test' },
+      ], truncated: true,
+    })))
+    test.ctx.tools.register(definition('web-one', test.execute, undefined, () => ({
+      card: 'web', kind: 'search', sources: [{ url: 'https://one.test' }], truncated: false,
+    })))
+    test.ctx.tools.register(definition('web-fetch-plain', test.execute, undefined, () => ({
+      card: 'web', kind: 'fetch', url: 'https://plain.test', statusCode: 204, truncated: false,
+    })))
+    test.ctx.tools.register(definition('result-absent', test.execute, () => ({
+      card: 'generic', title: 'Absent result', kind: 'search',
+    }), () => undefined))
+    test.ctx.tools.register(definition('call-throws', test.execute, () => { throw new Error('call presenter') }))
+    test.ctx.tools.register({
+      ...definition('result-throws', test.execute, () => ({ card: 'generic', title: 'result' })),
+      presentResult: () => { throw new Error('result presenter') },
+    })
+    test.ctx.tools.register(definition('future-call', test.execute, () => (
+      { card: 'chart', title: 'future' } as unknown as ToolCallView
+    )))
+
+    expect(output(projectToolCard(test.ctx, agent, callRow('generic-content'), budget))).toContain('[image]')
+    expect(output(projectToolCard(test.ctx, agent, callRow('generic-string', '"value"'), budget))).toContain('raw string')
+    expect(output(projectToolCard(test.ctx, agent, callRow('generic-throw-json'), budget))).toContain('1')
+    expect(output(projectToolCard(test.ctx, agent, callRow('generic-undefined-json'), budget))).toContain('() => {}')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('terminal-minimal'), budget))).toContain('signal TERM')
+    expect(output(projectToolCard(test.ctx, agent, callRow('terminal-minimal'), budget))).toContain('$ echo')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('terminal-full'), budget))).toContain('/workspace')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('terminal-result-only'), budget))).toContain('terminal-result-only')
+    expect(output(projectToolCard(test.ctx, agent, callRow('null-diff'), budget))).toContain('/dev/null')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('generic-raw-result'), budget))).toContain('raw result')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('read-plain'), budget))).toContain('0 of 0 lines')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('matches-many'), budget))).toContain('2 matches · truncated')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('paths-one'), budget))).toContain('1 of 1 paths')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('web-many'), budget))).toContain('2 web sources · truncated')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('web-one'), budget))).toContain('1 web source')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('web-fetch-plain'), budget))).toContain('HTTP 204')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('result-absent'), budget))).toContain('raw result')
+    expect(output(projectToolCard(test.ctx, agent, callRow('call-throws'), budget))).toContain('{}')
+    expect(output(projectToolCard(test.ctx, agent, resultRow('result-throws'), budget))).toContain('raw result')
+    expect(output(projectToolCard(test.ctx, agent, callRow('future-call'), budget))).toContain('{}')
+
+    const error = resultRow('missing') as Extract<ToolRow, { kind: 'tool-result' }>
+    const withMeta = { ...error, name: 'generic-raw-result', isError: true, meta: { key: 'value' } }
+    const errorModel = projectToolCard(test.ctx, agent, withMeta, budget)
+    expect(output(errorModel)).toContain('generic-raw-result · failed')
+    expect(output(projectToolCard(test.ctx, agent, { ...error, name: '', isError: true }, budget)))
+      .toContain('Unknown tool · failed')
     await test.ctx.fiber.dispose()
   })
 })

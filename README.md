@@ -17,10 +17,12 @@ DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. *
 Install `Node.js`, then run:
 
 ```sh
-npx @deepseek-ai/dsh web
+npx @deepseek-ai/dsh
 ```
 
-The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See [Web UI guide](docs/user/guide/index.md).
+The command starts the interactive terminal client in a fresh Session. Use `dsh --resume` to choose a recent Session, `dsh --resume <session-id>` to resume one directly, or `dsh "task"` to submit an initial task. stdin and stdout must be TTYs; use `dsh exec "task"` for non-interactive automation. Enter submits, Ctrl+J inserts a newline, Ctrl+R opens resume, and Ctrl+C cancels active work or exits from an empty idle composer. Configuration and deferred model switching, image attachments, mouse input, alternate-screen mode, and Tauri desktop work are documented in the [TUI package reference](packages/ui/tui/README.md).
+
+Run `npx @deepseek-ai/dsh web` for the Web UI. It listens at `http://127.0.0.1:3080` by default and opens the local browser; an SSH launch only prints the host URL. See the [Web UI guide](docs/user/guide/index.md).
 
 The developer-preview [VS Code client](docs/user/guide/vscode.md) reuses the interactive UI inside a workspace panel and requires an installed Harness runtime.
 
@@ -33,10 +35,10 @@ git clone https://github.com/deepseek-ai/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build
-pnpm dsh web
+pnpm dsh
 ```
 
-`pnpm run build` prepares the repository artifacts. `pnpm dsh web` uses those built artifacts without rebuilding.
+`pnpm run build` prepares the repository artifacts. `pnpm dsh` uses those built artifacts without rebuilding.
 
 ## Community and support
 

@@ -235,6 +235,12 @@ describe('question answer validation', () => {
         { id: 'notes', selected: [], custom: 'Ship today' },
       ],
     })).toBe(true)
+    expect(matchesQuestionAnswer([{
+      id: 'target', question: 'Choose any', multiSelect: true,
+      options: [{ label: 'Code' }, { label: 'Docs' }],
+    }], {
+      answers: [{ id: 'target', selected: ['Code', 'Docs'] }],
+    })).toBe(true)
   })
 
   it('rejects incomplete, reordered, duplicate, unknown, blank, and conflicting answers', () => {
@@ -257,6 +263,14 @@ describe('question answer validation', () => {
     ] })).toBe(false)
     expect(matchesQuestionAnswer(questions, { answers: [
       { id: 'target', selected: ['Code'], custom: 'Other' },
+      { id: 'notes', selected: [], custom: 'Ship' },
+    ] })).toBe(false)
+    expect(matchesQuestionAnswer(questions, { answers: [
+      { id: 'target', selected: ['Code'] },
+      { id: 'notes', selected: [], custom: '   ' },
+    ] })).toBe(false)
+    expect(matchesQuestionAnswer(questions, { answers: [
+      { id: 'target', selected: ['Code', 'Docs'] },
       { id: 'notes', selected: [], custom: 'Ship' },
     ] })).toBe(false)
   })

@@ -56,4 +56,13 @@ describe('tui ordered shutdown', () => {
     await expect(shutdown.shutdown('user')).rejects.toThrow('settle failed')
     expect(order).toEqual(['reject', 'settle', 'cancel', 'idle', 'flush', 'unmount', 'raw', 'dispose', 'exit:1'])
   })
+
+  it('wraps a non-Error cleanup rejection without discarding its cause', async () => {
+    const test = bench()
+    test.rejectInput.mockImplementationOnce(() => { throw 'input closed' })
+    await expect(test.shutdown.shutdown('owner')).rejects.toMatchObject({
+      message: 'tui shutdown failed',
+      cause: 'input closed',
+    })
+  })
 })

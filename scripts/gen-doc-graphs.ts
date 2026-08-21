@@ -98,6 +98,14 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'tuiStartup',
+    pkg: 'tui-app',
+    title: 'Terminal startup intent',
+    mode: 'bundle',
+    consumers: ['tui'],
+    note: 'The TUI profile parses application arguments once and supplies the selected fresh or resume startup intent to the terminal runtime.',
+  },
+  {
     key: 'attachments',
     pkg: 'attachment',
     title: 'Durable binary attachment storage',

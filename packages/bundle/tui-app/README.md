@@ -12,13 +12,27 @@ This bundle deliberately excludes `dsh-client-app`: Ink consumes Agent, Session,
 
 ## Model Experience
 
-The bundle supplies the terminal deployment persona: the coding agent receives its model, working directory, and the fact that the user is interacting through the `dsh` terminal client. Tool schemas and all other model-visible content come from `dsh-base` and the selected tool-presentation mode.
+### Terminal deployment system prompt
+
+#### What the model sees
+
+The coding agent receives its model, working directory, and the fact that the user is interacting through the `dsh` terminal client. Tool schemas and all other model-visible content come from `dsh-base` and the selected tool-presentation mode.
+
+##### Terminal persona
+
+```markdown
+You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}. You are interacting with the user through the dsh terminal client.
+```
+
+#### Token effect
+
+One short deployment sentence per request; constant for the profile.
 
 #### KV Cache effect
 
 The terminal persona replaces the base package's empty persona at the stable first prompt position. The bundle does not add a transport-specific model request layer.
 
-## Limitations
+## Known Limitations and Deferred Work
 
 - The profile requires interactive stdin and stdout; use the headless profile through `dsh exec` for automation.
 - The bundle owns Node terminal composition only. A future desktop shell is a separate carrier over shared application state, not part of this profile.

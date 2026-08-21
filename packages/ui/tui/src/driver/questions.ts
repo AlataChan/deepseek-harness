@@ -69,6 +69,7 @@ export function installTuiQuestions(
 
   const unregister = ctx.userQuestions.registerProvider({
     ask(request): Promise<AskUserQuestionAnswer> {
+      /* v8 ignore next -- unregister prevents new calls; this guards a captured in-flight provider */
       if (disposed) return Promise.reject(aborted('tui user-question provider was disposed'))
       if (request.agent !== options.owner()) {
         return Promise.reject(new UserQuestionError(
@@ -86,6 +87,7 @@ export function installTuiQuestions(
         pending = { id, request, resolve, reject, onAbort }
         options.store.dispatch({ type: 'interaction/question', id, questions: request.questions })
         request.signal?.addEventListener('abort', onAbort, { once: true })
+        /* v8 ignore next -- closes the AbortSignal check-to-listener race */
         if (request.signal?.aborted === true) onAbort()
       })
     },

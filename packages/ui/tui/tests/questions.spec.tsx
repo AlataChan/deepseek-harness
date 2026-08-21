@@ -1,3 +1,4 @@
+import React from 'react'
 import { renderToString } from 'ink'
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it } from 'vitest'
@@ -8,6 +9,8 @@ import { installTuiQuestions } from '../src/driver/questions.ts'
 import { QuestionsPanel } from '../src/render/questions.tsx'
 import { createInitialState } from '../src/state/reducer.ts'
 import { createTuiStore } from '../src/state/store.ts'
+
+void React
 
 async function bench() {
   const ctx = new Context()
@@ -114,5 +117,38 @@ describe('tui user-question provider', () => {
     expect(() => installTuiQuestions(ctx, { owner: () => undefined, store }))
       .toThrow(/already registered/)
     await ctx.fiber.dispose()
+  })
+
+  it('rejects foreign, busy, stale, cancelled, and already-aborted requests', async () => {
+    const test = await bench()
+    const foreignSession = test.ctx.sessions.create(SessionId('foreign'))
+    const foreign = { id: foreignSession.id, session: foreignSession } as Agent
+    test.ctx.agents.enter(foreign, undefined)
+    await expect(test.ctx.userQuestions.ask({
+      agent: foreign, questions: [{ id: 'one', question: 'One?' }],
+    })).rejects.toMatchObject({ code: 'ASK_NOT_OWNED' })
+
+    const pending = test.ctx.userQuestions.ask({
+      agent: test.agent, questions: [{ id: 'one', question: 'One?' }],
+    })
+    await Promise.resolve()
+    const interaction = test.store.getSnapshot().interaction
+    if (interaction?.kind !== 'question') throw new Error('question interaction was not published')
+    await expect(test.ctx.userQuestions.ask({
+      agent: test.agent, questions: [{ id: 'two', question: 'Two?' }],
+    })).rejects.toMatchObject({ code: 'INTERACTION_BUSY' })
+    expect(test.questions.answer(999 as never, { answers: [] })).toBe(false)
+    expect(test.questions.cancel(interaction.id)).toBe(true)
+    expect(test.questions.cancel(interaction.id)).toBe(false)
+    await expect(pending).rejects.toMatchObject({ code: 'ASK_ABORTED' })
+
+    const abort = new AbortController()
+    abort.abort()
+    await expect(test.ctx.userQuestions.ask({
+      agent: test.agent, signal: abort.signal, questions: [{ id: 'three', question: 'Three?' }],
+    })).rejects.toMatchObject({ code: 'ASK_ABORTED' })
+    test.questions.dispose()
+    test.questions.dispose()
+    await test.ctx.fiber.dispose()
   })
 })

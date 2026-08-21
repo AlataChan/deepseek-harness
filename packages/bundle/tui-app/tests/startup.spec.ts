@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { parseTuiStartupArgs } from '../src/startup.ts'
+import { Context } from '@deepseek-ai/cordis'
+import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
+import { describe, expect, it, vi } from 'vitest'
+import { apply, parseTuiStartupArgs } from '../src/startup.ts'
 
 function parseError(args: string[]): { exitCode: number } {
   try {
@@ -29,5 +31,12 @@ describe('tui startup arguments', () => {
     expect(parseError(['--help']).exitCode).toBe(0)
     expect(parseError(['--unknown']).exitCode).toBe(1)
     expect(parseError(['--resume', 'session-id', 'task']).exitCode).toBe(1)
+  })
+
+  it('publishes parsed startup through the launcher command-line service', () => {
+    const ctx = new Context()
+    provideCmdline(ctx, { args: ['start', 'now'], exit: vi.fn() })
+    apply(ctx)
+    expect(ctx.get('tuiStartup')).toEqual({ kind: 'fresh', task: 'start now' })
   })
 })

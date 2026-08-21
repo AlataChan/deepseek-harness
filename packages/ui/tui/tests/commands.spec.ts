@@ -31,6 +31,16 @@ async function bench(status: 'idle' | 'running' = 'idle') {
 }
 
 describe('tui command routing', () => {
+  it('preserves input when no Agent is owned', async () => {
+    const test = await bench()
+    const router = createTuiCommandRouter(test.ctx, {
+      agent: () => undefined, store: test.store,
+      submitModel: test.submitModel, openResume: test.openResume, requestShutdown: test.requestShutdown,
+    })
+    await expect(router.route('hello', new AbortController().signal)).resolves.toBe('preserve')
+    expect(test.store.getSnapshot().finalizedRows.at(-1)).toMatchObject({ kind: 'error' })
+    await test.ctx.fiber.dispose()
+  })
   it('executes a registered command with the exact Agent and abort signal and logs its result', async () => {
     const test = await bench()
     const handler = vi.fn(async (invocation: { agent: Agent; signal: AbortSignal }) => {
@@ -62,6 +72,13 @@ describe('tui command routing', () => {
     await test.router.route('/exit', new AbortController().signal)
     expect(test.requestShutdown).toHaveBeenCalledOnce()
     expect(test.session.events).toHaveLength(0)
+    const noHint = await bench()
+    noHint.ctx.commands.register({
+      name: 'plain', description: 'No input', handler: () => ({ kind: 'success' }),
+    })
+    await noHint.router.route('/help', new AbortController().signal)
+    expect(noHint.store.getSnapshot().finalizedRows.at(-1)?.text).toContain('/plain — No input')
+    await noHint.ctx.fiber.dispose()
     await test.ctx.fiber.dispose()
   })
 
@@ -90,6 +107,8 @@ describe('tui command routing', () => {
 
     await expect(test.router.route('/future value', signal)).resolves.toBe('accepted')
     expect(test.submitModel).toHaveBeenCalledWith('/future value')
+    await expect(test.router.route('ordinary', signal)).resolves.toBe('accepted')
+    expect(test.submitModel).toHaveBeenCalledWith('ordinary')
     await test.ctx.fiber.dispose()
   })
 
@@ -100,6 +119,20 @@ describe('tui command routing', () => {
     })
     await expect(test.router.route('/fail', new AbortController().signal)).resolves.toBe('preserve')
     expect(test.store.getSnapshot().finalizedRows.at(-1)).toMatchObject({ kind: 'error', text: 'command failed' })
+    await test.ctx.fiber.dispose()
+  })
+
+  it('preserves explicit command errors and non-Error throws', async () => {
+    const test = await bench()
+    test.ctx.commands.register({
+      name: 'reported', description: 'Report', handler: () => ({ kind: 'error', text: 'reported' }),
+    })
+    test.ctx.commands.register({
+      name: 'string', description: 'Throw string', handler: () => { throw 'string failure' },
+    })
+    await expect(test.router.route('/reported', new AbortController().signal)).resolves.toBe('preserve')
+    await expect(test.router.route('/string', new AbortController().signal)).resolves.toBe('preserve')
+    expect(test.store.getSnapshot().finalizedRows.at(-1)?.text).toBe('string failure')
     await test.ctx.fiber.dispose()
   })
 })

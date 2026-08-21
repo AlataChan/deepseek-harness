@@ -20,6 +20,8 @@ export interface TuiInputKey {
   readonly downArrow?: boolean
   readonly backspace?: boolean
   readonly delete?: boolean
+  readonly home?: boolean
+  readonly end?: boolean
   readonly escape?: boolean
   readonly return?: boolean
 }
@@ -53,8 +55,8 @@ function editorAction(key: TuiInputKey): EditorAction | undefined {
   if (key.downArrow === true) return { type: 'history/next' }
   if (key.backspace === true) return { type: 'delete/backward' }
   if (key.delete === true) return { type: 'delete/forward' }
-  if (key.name === 'home') return { type: 'move/home' }
-  if (key.name === 'end') return { type: 'move/end' }
+  if (key.home === true || key.name === 'home') return { type: 'move/home' }
+  if (key.end === true || key.name === 'end') return { type: 'move/end' }
   return undefined
 }
 
@@ -66,7 +68,9 @@ function questionAnswer(
   if (parts.length !== questions.questions.length || parts.some(value => value === '')) return undefined
   return {
     answers: questions.questions.map((question, index) => {
-      const value = parts[index] ?? ''
+      const value = parts[index]
+      /* v8 ignore next -- equal question and answer counts are checked above. */
+      if (value === undefined) throw new Error('tui question answer index is out of range')
       const labels = new Set(question.options?.map(option => option.label) ?? [])
       const selected = question.multiSelect === true
         ? value.split(',').map(label => label.trim()).filter(label => labels.has(label))
@@ -105,6 +109,7 @@ export function createTuiInputDriver(options: TuiInputOptions): TuiInputDriver {
       const interaction = state.interaction
       const isEscape = key.escape === true || key.name === 'escape'
       const isReturn = key.return === true || key.name === 'return'
+      const control = input === '' ? key.name : input.toLowerCase()
 
       if (interaction?.kind === 'approval') {
         if (input.toLowerCase() === 'y') options.approval.allow(interaction.id)
@@ -125,7 +130,7 @@ export function createTuiInputDriver(options: TuiInputOptions): TuiInputDriver {
         }
       }
 
-      if (key.ctrl === true && key.name === 'c') {
+      if (key.ctrl === true && control === 'c') {
         if (cancelling && options.isTurnActive()) {
           await options.requestShutdown()
           return
@@ -143,11 +148,11 @@ export function createTuiInputDriver(options: TuiInputOptions): TuiInputDriver {
       }
       if (!options.isTurnActive()) cancelling = false
       if (options.isTurnActive()) return
-      if (key.ctrl === true && key.name === 'j') {
+      if (key.ctrl === true && control === 'j') {
         updateEditor({ type: 'newline' })
         return
       }
-      if (key.ctrl === true && key.name === 'r') {
+      if (key.ctrl === true && control === 'r') {
         await options.openResume()
         return
       }

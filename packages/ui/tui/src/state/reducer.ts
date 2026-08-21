@@ -16,7 +16,10 @@ function assertNever(value: never): never {
   throw new Error(`tui state: unsupported action ${JSON.stringify(value)}`)
 }
 
-/** Mint one process-local interaction identity. */
+/**
+ * Mint one process-local interaction identity.
+ * @returns the next identity for an approval or question overlay.
+ */
 export function mintInteractionId(): InteractionId {
   return nextInteractionId++ as InteractionId
 }

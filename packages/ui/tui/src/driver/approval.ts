@@ -73,6 +73,7 @@ export function installTuiApproval(
         ...(request.reason === undefined ? {} : { reason: request.reason }),
       })
       request.signal?.addEventListener('abort', onAbort, { once: true })
+      /* v8 ignore next -- closes the AbortSignal check-to-listener race */
       if (request.signal?.aborted === true) onAbort()
     })
   })

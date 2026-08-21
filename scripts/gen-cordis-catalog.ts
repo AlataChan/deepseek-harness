@@ -102,6 +102,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   tokenMeter: 'token-meter.md',
   toolResultPruner: 'compaction.md',
   tools: 'tools.md',
+  tuiStartup: 'tui.md',
   typert: 'typert.md',
   typertGateway: 'typert.md',
   userQuestions: 'user-questions.md',
@@ -186,6 +187,7 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
   'system-prompt': 'system-prompt.md',
   'session-telemetry': 'session-telemetry.md',
   'tools': 'tools.md',
+  'tui': 'tui.md',
   'workflow': 'workflow.md',
 }
 
@@ -458,6 +460,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   ToolRuntime: 'tools.md',
   ToolRestriction: 'tools.md',
   ToolSchema: 'tools.md',
+  TuiControllerLifecycle: 'tui.md',
   SettingsNamespace: 'settings.md',
   SettingsRegisterOptions: 'settings.md',
   SettingsScope: 'settings.md',

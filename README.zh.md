@@ -17,10 +17,12 @@ DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**
 安装 `Node.js`，然后运行：
 
 ```sh
-npx @deepseek-ai/dsh web
+npx @deepseek-ai/dsh
 ```
 
-该命令默认会在 `http://127.0.0.1:3080` 启动 Web UI，本机启动时还会用默认浏览器打开页面。通过 SSH 启动时只打印宿主机 URL，因为本地转发地址由 SSH 客户端或编辑器持有。传入 `--no-open` 可仅运行服务器而不打开浏览器。详见 [Web UI 指南](docs/user/guide/index.md)。
+该命令会在新 Session 中启动交互式终端客户端。使用 `dsh --resume` 选择最近的 Session，使用 `dsh --resume <session-id>` 直接恢复指定 Session，或使用 `dsh "task"` 提交初始任务。stdin 与 stdout 必须都是 TTY；非交互式自动化请使用 `dsh exec "task"`。Enter 提交，Ctrl+J 插入换行，Ctrl+R 打开恢复选择器，Ctrl+C 取消活跃工作，或从空闲且草稿为空的 composer 退出。配置项以及延期的模型切换、图片附件、鼠标输入、alternate-screen 模式与 Tauri 桌面工作见 [TUI 包参考](packages/ui/tui/README.md)。
+
+使用 `npx @deepseek-ai/dsh web` 启动 Web UI。它默认监听 `http://127.0.0.1:3080` 并打开本机浏览器；通过 SSH 启动时只打印宿主机 URL。详见 [Web UI 指南](docs/user/guide/index.md)。
 
 开发者预览阶段的 [VS Code 客户端](docs/user/guide/vscode.md)会在 workspace 面板中复用交互式 UI，并要求安装 Harness runtime。
 
@@ -33,10 +35,10 @@ git clone https://github.com/deepseek-ai/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build
-pnpm dsh web
+pnpm dsh
 ```
 
-`pnpm run build` 会准备仓库产物。`pnpm dsh web` 会直接使用这些已构建产物，不会重新构建。
+`pnpm run build` 会准备仓库产物。`pnpm dsh` 会直接使用这些已构建产物，不会重新构建。
 
 ## 社区与支持
 

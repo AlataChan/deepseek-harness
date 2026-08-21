@@ -2051,6 +2051,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'tuiStartup',
+    summary: 'Service fields published for the TUI row after application arguments parse.',
+    description: 'Service fields published for the TUI row after application arguments parse.',
+    methods: [],
+  },
+  {
     key: 'typert',
     summary: 'Registry of generated schemas, package reflection, invocations, and Remote dependency providers.',
     description: 'Registry of generated schemas, package reflection, invocations, and Remote dependency providers.',
@@ -2669,6 +2675,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'exec', description: 'the execution object that traversed the pipeline.' }, { name: 'result', description: 'a deep-frozen snapshot of the final returned result.' }],
   },
   {
+    name: 'tui/controller-disposed',
+    mode: 'emit',
+    signature: '\'tui/controller-disposed\'(lifecycle: TuiControllerLifecycle): void',
+    summary: 'The same TUI-owned relation completed disposal.',
+    description: 'The same TUI-owned relation completed disposal.',
+    parameters: [{ name: 'lifecycle', description: 'exact disposed relation.' }],
+  },
+  {
+    name: 'tui/controller-mounted',
+    mode: 'emit',
+    signature: '\'tui/controller-mounted\'(lifecycle: TuiControllerLifecycle): void',
+    summary: 'A TUI controller and its interaction providers became live.',
+    description: 'A TUI controller and its interaction providers became live.',
+    parameters: [{ name: 'lifecycle', description: 'exact published relation.' }],
+  },
+  {
     name: 'workflow/agent-end',
     mode: 'emit',
     signature: '\'workflow/agent-end\'(info: WorkflowRunInfo, agent: WorkflowAgentEndInfo): void',
@@ -3077,6 +3099,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface DirectoryRegistrationHandle {\n    (): void;\n    replace(entries: readonly LlmConfigurableProvider[]): void;\n}',
   },
   {
+    name: 'DisplayText',
+    declaration: 'export type DisplayText = string & {\n    readonly [displayTextBrand]: never;\n};',
+  },
+  {
     name: 'Domain',
     declaration: 'export interface Domain<S extends DomainSpec> {\n    readonly name: string;\n    readonly global: DomainGlobalHandleOf<S>;\n    table<N extends keyof S[\'tables\'] & string>(name: N): KvTable<TableKeyOf<S, N>, TableValueOf<S, N>>;\n    close(): Promise<void>;\n}',
   },
@@ -3151,6 +3177,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'EditGoalRequest',
     declaration: 'export interface EditGoalRequest {\n    readonly objective?: string;\n    readonly maxGoalRounds?: number;\n}',
+  },
+  {
+    name: 'EditorState',
+    declaration: 'export interface EditorState {\n    readonly text: string;\n    readonly cursor: number;\n    readonly history: readonly string[];\n    readonly historyIndex: number | undefined;\n    readonly historyDraft: string;\n}',
   },
   {
     name: 'EncodedImageAttachment',
@@ -3293,6 +3323,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type InboxTarget = \'next-turn\' | \'next-step\';',
   },
   {
+    name: 'InteractionId',
+    declaration: 'export type InteractionId = number & {\n    readonly [interactionIdBrand]: never;\n};',
+  },
+  {
     name: 'InvariantFailure',
     declaration: 'export type InvariantFailure = (message: string) => never;',
   },
@@ -3395,6 +3429,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'KvUnitDescriptor',
     declaration: 'export interface KvUnitDescriptor {\n    readonly name: string;\n    readonly version: number;\n    readonly tables: readonly string[];\n    readonly hasGlobal: boolean;\n}',
+  },
+  {
+    name: 'LiveAssistantRow',
+    declaration: 'export interface LiveAssistantRow {\n    readonly id: number;\n    readonly text: string;\n}',
   },
   {
     name: 'LlmAdapter',
@@ -3601,6 +3639,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ModelModalityMap {\n    text: \'text\';\n    image: \'image\';\n}',
   },
   {
+    name: 'ModelSelectionRef',
+    declaration: 'export interface ModelSelectionRef {\n    current: ModelSelection | undefined;\n    assembled: ModelSelection | undefined;\n}',
+  },
+  {
+    name: 'NavigationOverlay',
+    declaration: 'export type NavigationOverlay = Extract<TuiOverlay, {\n    kind: \'help\' | \'resume\';\n}>;',
+  },
+  {
     name: 'ObjectJsonSchema',
     declaration: 'export type ObjectJsonSchema = JsonSchemaNode & {\n    type: \'object\';\n};',
   },
@@ -3647,6 +3693,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PreToolDecision',
     declaration: 'export type PreToolDecision = {\n    kind: \'allow\';\n} | {\n    kind: \'deny\';\n    reason: string;\n} | {\n    kind: \'ask\';\n    reason?: string;\n};',
+  },
+  {
+    name: 'ProjectedTranscriptRow',
+    declaration: 'export type ProjectedTranscriptRow = {\n    readonly kind: \'message\';\n    readonly sourceSeq: number;\n    readonly role: \'user\' | \'assistant\';\n    readonly text: DisplayText;\n} | {\n    readonly kind: \'reasoning\';\n    readonly sourceSeq: number;\n    readonly text: DisplayText;\n} | ({\n    readonly kind: \'tool-call\';\n    readonly sourceSeq: number;\n} & TranscriptToolCall) | ({\n    readonly kind: \'tool-result\';\n    readonly sourceSeq: number;\n    readonly text: DisplayText;\n    readonly content: readonly ContentBlock[];\n    readonly isError: boolean;\n    readonly error: {\n        readonly name: string;\n        readonly code: string;\n    } | undefined;\n    readonly meta: JsonValue | undefined;\n} & TranscriptToolCall) | {\n    readonly kind: \'command\';\n    readonly sourceSeq: number;\n    readonly commandId: string;\n    readonly phase: \'running\' | \'success\' | \'error\';\n    readonly name: DisplayText | undefined;\n    readonly text: DisplayText | undefined;\n} | {\n    readonly kind: \'retry\';\n    readonly sourceSeq: number;\n    readonly phase: \'waiting\' | \'started\';\n    readonly retry: number;\n    readonly text: DisplayText;\n} | {\n    readonly kind: \'status\';\n    readonly sourceSeq: number;\n    readonly text: DisplayText;\n} | {\n    readonly kind: \'error\';\n    readonly sourceSeq: number;\n    readonly text: DisplayText;\n    readonly code?: string;\n};',
   },
   {
     name: 'ProjectionChangeListener',
@@ -3763,6 +3813,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ResumeAgentOptions',
     declaration: 'export interface ResumeAgentOptions {\n    readonly resumeSessionId: SessionId;\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
+  },
+  {
+    name: 'ResumeRow',
+    declaration: 'export interface ResumeRow {\n    readonly sessionId: SessionId;\n    readonly title: string;\n    readonly createdAt: number;\n    readonly cwd: string | undefined;\n}',
   },
   {
     name: 'RpcError',
@@ -4453,6 +4507,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface TerminalCallView {\n    card: \'terminal\';\n    title: string;\n    description?: string;\n    cwd?: string;\n}',
   },
   {
+    name: 'TerminalDimensions',
+    declaration: 'export interface TerminalDimensions {\n    readonly columns: number;\n    readonly rows: number | undefined;\n}',
+  },
+  {
     name: 'TerminalReadRequest',
     declaration: 'export interface TerminalReadRequest {\n    offset?: number;\n    count?: number;\n}',
   },
@@ -4643,6 +4701,66 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ToolSchema',
     declaration: 'export interface ToolSchema {\n    name: string;\n    description: string;\n    parameters: Record<string, unknown>;\n}',
+  },
+  {
+    name: 'TranscriptProjection',
+    declaration: 'export interface TranscriptProjection {\n    readonly rows: readonly ProjectedTranscriptRow[];\n    readonly liveAssistant: DisplayText | undefined;\n    readonly liveReasoning: DisplayText | undefined;\n    readonly turn: TranscriptTurn;\n    readonly toolCalls: ReadonlyMap<string, TranscriptToolCall>;\n    readonly commands: ReadonlyMap<string, DisplayText>;\n}',
+  },
+  {
+    name: 'TranscriptRow',
+    declaration: 'export interface TranscriptRow extends TranscriptRowInput {\n    readonly id: number;\n}',
+  },
+  {
+    name: 'TranscriptRowInput',
+    declaration: 'export interface TranscriptRowInput {\n    readonly kind: \'message\' | \'system\' | \'error\';\n    readonly role?: \'user\' | \'assistant\';\n    readonly text: string;\n}',
+  },
+  {
+    name: 'TranscriptToolCall',
+    declaration: 'export interface TranscriptToolCall {\n    readonly callId: string;\n    readonly name: string;\n    readonly arguments: string;\n}',
+  },
+  {
+    name: 'TranscriptTurn',
+    declaration: 'export type TranscriptTurn = {\n    readonly kind: \'idle\';\n} | {\n    readonly kind: \'running\';\n    readonly turn: number;\n};',
+  },
+  {
+    name: 'TuiAction',
+    declaration: 'export type TuiAction = {\n    readonly type: \'transcript/finalize\';\n    readonly row: TranscriptRowInput;\n} | {\n    readonly type: \'assistant/live\';\n    readonly text: string;\n} | {\n    readonly type: \'assistant/finalize\';\n    readonly row: TranscriptRowInput;\n} | {\n    readonly type: \'overlay/open\';\n    readonly overlay: NavigationOverlay;\n} | {\n    readonly type: \'overlay/close\';\n} | {\n    readonly type: \'interaction/approval\';\n    readonly id: InteractionId;\n    readonly toolName: string;\n    readonly callId?: string;\n    readonly reason?: string;\n} | {\n    readonly type: \'interaction/question\';\n    readonly id: InteractionId;\n    readonly questions: readonly AskUserQuestionItem[];\n} | {\n    readonly type: \'interaction/settled\';\n    readonly id: InteractionId;\n} | {\n    readonly type: \'terminal/resize\';\n    readonly columns: number;\n    readonly rows?: number;\n} | {\n    readonly type: \'editor/update\';\n    readonly editor: EditorState;\n} | {\n    readonly type: \'transcript/sync\';\n    readonly projection: TranscriptProjection;\n} | {\n    readonly type: \'runtime/running\';\n} | {\n    readonly type: \'runtime/idle\';\n} | {\n    readonly type: \'runtime/failed\';\n    readonly message: string;\n} | {\n    readonly type: \'runtime/dispose\';\n};',
+  },
+  {
+    name: 'TuiApprovalController',
+    declaration: 'export interface TuiApprovalController {\n    allow(id: InteractionId): boolean;\n    reject(id: InteractionId): boolean;\n    cancel(id: InteractionId): boolean;\n    dispose(): void;\n}',
+  },
+  {
+    name: 'TuiController',
+    declaration: 'export interface TuiController {\n    readonly agent: Agent | undefined;\n    readonly modelSelection: TuiModelSelectionRef | undefined;\n    readonly transcript: TranscriptProjection;\n    readonly selectorRows: readonly ResumeRow[];\n    readonly selectionCancelled: boolean;\n    readonly store: TuiStore;\n    readonly approval: TuiApprovalController;\n    readonly questions: TuiQuestionsController;\n    selectSession(sessionId: SessionIdType): Promise<void>;\n    cancelSelection(): void;\n    submit(text: string): void;\n    openResumeSelector(): Promise<void>;\n    cancelActive(): void;\n    settleInteractions(): void;\n    whenIdle(): Promise<void>;\n    flush(): Promise<void>;\n    dispose(): Promise<void>;\n}',
+  },
+  {
+    name: 'TuiControllerLifecycle',
+    declaration: 'export interface TuiControllerLifecycle {\n    readonly controller: TuiController;\n    readonly agent: TuiController[\'agent\'];\n    readonly providersPublished: boolean;\n}',
+  },
+  {
+    name: 'TuiModelSelectionRef',
+    declaration: 'export interface TuiModelSelectionRef extends ModelSelectionRef {\n    current: ModelSelection;\n}',
+  },
+  {
+    name: 'TuiOverlay',
+    declaration: 'export type TuiOverlay = {\n    readonly kind: \'none\';\n} | {\n    readonly kind: \'help\';\n} | {\n    readonly kind: \'resume\';\n} | {\n    readonly kind: \'approval\';\n    readonly id: InteractionId;\n} | {\n    readonly kind: \'question\';\n    readonly id: InteractionId;\n};',
+  },
+  {
+    name: 'TuiQuestionsController',
+    declaration: 'export interface TuiQuestionsController {\n    answer(id: InteractionId, answer: AskUserQuestionAnswer): boolean;\n    cancel(id: InteractionId): boolean;\n    dispose(): void;\n}',
+  },
+  {
+    name: 'TuiState',
+    declaration: 'export interface TuiState {\n    readonly finalizedRows: readonly TranscriptRow[];\n    readonly liveAssistant: LiveAssistantRow | undefined;\n    readonly overlay: TuiOverlay;\n    readonly interaction: PendingInteraction | undefined;\n    readonly status: TuiStatus;\n    readonly dimensions: TerminalDimensions;\n    readonly editor: EditorState;\n    readonly projection: TranscriptProjection | undefined;\n    readonly nextRowId: number;\n    readonly disposed: boolean;\n}',
+  },
+  {
+    name: 'TuiStatus',
+    declaration: 'export type TuiStatus = {\n    readonly kind: \'idle\';\n} | {\n    readonly kind: \'running\';\n} | {\n    readonly kind: \'failed\';\n    readonly message: string;\n};',
+  },
+  {
+    name: 'TuiStore',
+    declaration: 'export interface TuiStore {\n    getSnapshot(): TuiState;\n    subscribe(listener: () => void): () => void;\n    dispatch(action: TuiAction): void;\n}',
   },
   {
     name: 'TurnEndCancelCause',

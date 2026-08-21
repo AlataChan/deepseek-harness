@@ -45,4 +45,21 @@ const value = 1
     }])
     expect(JSON.stringify(blocks)).not.toContain('\u001b')
   })
+
+  it('handles empty fences, unterminated fences, paragraph stops, and all list markers', () => {
+    expect(parseMarkdown('`code`', budget)).toEqual([
+      { kind: 'paragraph', content: [{ kind: 'code', text: 'code' }] },
+    ])
+    expect(parseMarkdown('```\nbody', budget)).toEqual([
+      { kind: 'code', language: undefined, text: 'body' },
+    ])
+    expect(parseMarkdown('one\ntwo\n## next\n* star\n+ plus\n\n', budget)).toEqual([
+      { kind: 'paragraph', content: [{ kind: 'text', text: 'one two' }] },
+      { kind: 'heading', level: 2, content: [{ kind: 'text', text: 'next' }] },
+      { kind: 'list', items: [
+        [{ kind: 'text', text: 'star' }],
+        [{ kind: 'text', text: 'plus' }],
+      ] },
+    ])
+  })
 })

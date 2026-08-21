@@ -2981,8 +2981,10 @@ export type ToolPresentationMode = 'native' | 'code' | 'both'
 
 ## `@deepseek-ai/dsh-tui`
 
+需要：`agentDefaultModel` · `agents` · `approval` · `commands` · `sessionQuery` · `sessions` · `tools` · `userQuestions`
+
 ```ts config-catalog
-/** Validated terminal presentation limits. */
+/** Validated terminal presentation limits and startup intent. */
 export interface Config {
   /** Width used when stdout exposes no positive integer column count. */
   terminalColumnsFallback?: number
@@ -2992,10 +2994,33 @@ export interface Config {
   sessionSelectorLimit?: number
   /** Maximum bytes retained for one rendered tool output. */
   toolOutputDisplayBudget?: number
+  /** Startup value injected by the TUI application bundle. */
+  startup?: TuiControllerStartup
 }
+
+/** Startup intent accepted from the TUI app bundle. */
+export type TuiControllerStartup =
+  | {
+    /** Create a new Session. */
+    readonly kind: 'fresh'
+    /** Optional first user task submitted after publication. */
+    readonly task?: string
+  }
+  | {
+    /** Open the saved-session selector without creating a Session. */
+    readonly kind: 'resume-picker'
+  }
+  | {
+    /** Resume one explicitly named Session. */
+    readonly kind: 'resume'
+    /** Durable Session identity to resume. */
+    readonly sessionId: SessionIdType
+  }
 ```
 
-来源：[`packages/ui/tui/src/index.ts:10`](../packages/ui/tui/src/index.ts)
+依赖：[`SessionIdType`](subsystems/core.md)
+
+来源：[`packages/ui/tui/src/index.ts:34`](../packages/ui/tui/src/index.ts)
 
 <a id="deepseek-aidsh-typert-loader"></a>
 

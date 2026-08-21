@@ -1,8 +1,11 @@
 import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
-import { createTuiProcessForTest } from '../src/process.ts'
+import { createTuiProcess, createTuiProcessForTest } from '../src/process.ts'
 
 class FakeInput extends EventEmitter {
+  isRaw = false
+  readonly setRawMode = vi.fn((value: boolean) => { this.isRaw = value })
+  readonly pause = vi.fn()
   constructor(readonly isTTY: boolean) { super() }
 }
 
@@ -19,11 +22,17 @@ class FakeOutput extends EventEmitter {
   }
 }
 
-function createTestProcess(options: { stdinIsTTY?: boolean; stdoutIsTTY?: boolean; columns?: number } = {}) {
+function createTestProcess(options: {
+  stdinIsTTY?: boolean
+  stdoutIsTTY?: boolean
+  columns?: number
+  rows?: number
+} = {}) {
   const stdin = new FakeInput(options.stdinIsTTY ?? true)
   const stdout = new FakeOutput(options.stdoutIsTTY ?? true)
   const stderr = new FakeOutput(true)
   if (options.columns !== undefined) stdout.columns = options.columns
+  if (options.rows !== undefined) stdout.rows = options.rows
   const requestExit = vi.fn()
   const terminal = createTuiProcessForTest({
     stdin: stdin as never,
@@ -73,5 +82,24 @@ describe('tui process adapter', () => {
     stdin.emit('end')
     expect(resized).toHaveBeenCalledOnce()
     expect(exited).toHaveBeenCalledOnce()
+  })
+
+  it('validates dimensions and restores raw input mode', () => {
+    const measured = createTestProcess({ columns: -1, rows: 40 })
+    expect(measured.terminal.columns).toBe(80)
+    expect(measured.terminal.rows).toBe(40)
+    measured.stdin.isRaw = true
+    measured.terminal.restoreInput()
+    expect(measured.stdin.setRawMode).toHaveBeenCalledWith(false)
+    expect(measured.stdin.pause).toHaveBeenCalledOnce()
+
+    const idle = createTestProcess({ rows: 0 })
+    idle.terminal.restoreInput()
+    expect(idle.stdin.setRawMode).not.toHaveBeenCalled()
+    expect(idle.terminal.rows).toBeUndefined()
+  })
+
+  it('constructs the production adapter from the current process streams', () => {
+    expect(() => createTuiProcess(80, vi.fn())).toThrow(/requires interactive stdin and stdout/)
   })
 })

@@ -60,7 +60,7 @@ function createAdapter(options: TuiProcessTestOptions): TuiProcess {
       return () => { options.stdin.off('end', listener) }
     },
     restoreInput() {
-      if (options.stdin.isRaw === true) options.stdin.setRawMode(false)
+      if (options.stdin.isRaw) options.stdin.setRawMode(false)
       options.stdin.pause()
     },
   }

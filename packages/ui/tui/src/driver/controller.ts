@@ -30,9 +30,22 @@ import { installTuiQuestions, type TuiQuestionsController } from './questions.ts
 
 /** Startup intent accepted from the TUI app bundle. */
 export type TuiControllerStartup =
-  | { readonly kind: 'fresh'; readonly task?: string }
-  | { readonly kind: 'resume-picker' }
-  | { readonly kind: 'resume'; readonly sessionId: SessionIdType }
+  | {
+    /** Create a new Session. */
+    readonly kind: 'fresh'
+    /** Optional first user task submitted after publication. */
+    readonly task?: string
+  }
+  | {
+    /** Open the saved-session selector without creating a Session. */
+    readonly kind: 'resume-picker'
+  }
+  | {
+    /** Resume one explicitly named Session. */
+    readonly kind: 'resume'
+    /** Durable Session identity to resume. */
+    readonly sessionId: SessionIdType
+  }
 
 /** Explicit environment and validated limits for one controller. */
 export interface TuiControllerOptions {
@@ -103,6 +116,8 @@ class Controller implements TuiController {
   get selectorRows(): readonly ResumeRow[] { return this.rows }
   get selectionCancelled(): boolean { return this.cancelled }
 
+  private disposedAfterAwait(): boolean { return this.disposed }
+
   /** Adopt one newly created or resumed handle. */
   setOwned(owned: OwnedTuiSession): void {
     this.owned = owned
@@ -150,11 +165,10 @@ class Controller implements TuiController {
     }
     this.rows = Object.freeze([])
     const owned = await resumeOwned(
-      this.ctx, selected, this.fallback, this.budget,
+      this.ctx, selected, this.fallback,
       (handle, selection) => this.ownHandle(handle, selection, true),
     )
-    // dispose() may run while the asynchronous persistence resume is pending.
-    if (this.disposed) {
+    if (this.disposedAfterAwait()) {
       await owned.dispose()
       return
     }
@@ -227,9 +241,7 @@ async function resumeOwned(
   ctx: Context,
   sessionId: SessionIdType,
   fallback: ModelSelection,
-  budget: DisplayTextBudget,
-  own: (handle: Parameters<typeof ownTuiSession>[0], selection: TuiModelSelectionRef) => OwnedTuiSession =
-    (handle, selection) => ownTuiSession(handle, selection, budget),
+  own: (handle: Parameters<typeof ownTuiSession>[0], selection: TuiModelSelectionRef) => OwnedTuiSession,
 ): Promise<OwnedTuiSession> {
   let modelSelection: TuiModelSelectionRef | undefined
   const handle = await ctx.agents.resume({
@@ -277,7 +289,7 @@ export async function createTuiController(
     if (options.startup.kind === 'resume') {
       await requireResumeSession(query, options.startup.sessionId)
       controller.setOwned(await resumeOwned(
-        ctx, options.startup.sessionId, fallback, options.displayBudget,
+        ctx, options.startup.sessionId, fallback,
         (handle, selection) => controller.ownHandle(handle, selection, true),
       ))
       return controller

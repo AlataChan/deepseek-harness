@@ -17,6 +17,12 @@ export type MarkdownBlock =
 
 const inlinePattern = /`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)/gu
 
+function required(value: string | undefined, subject: string): string {
+  /* v8 ignore next -- the matching regular expression or index guard requires this value. */
+  if (value === undefined) throw new Error(`tui markdown parser lost ${subject}`)
+  return value
+}
+
 function inline(value: string, budget: DisplayTextBudget): MarkdownInline[] {
   const result: MarkdownInline[] = []
   let cursor = 0
@@ -30,11 +36,11 @@ function inline(value: string, budget: DisplayTextBudget): MarkdownInline[] {
     const url = match[3]
     if (code !== undefined) {
       result.push({ kind: 'code', text: displayText(code, budget) })
-    } else if (label !== undefined && url !== undefined) {
+    } else {
       result.push({
         kind: 'link',
-        label: displayText(label, budget),
-        url: displayText(url, budget),
+        label: displayText(required(label, 'link label'), budget),
+        url: displayText(required(url, 'link URL'), budget),
       })
     }
     cursor = index + match[0].length
@@ -56,7 +62,7 @@ export function parseMarkdown(input: string, budget: DisplayTextBudget): readonl
   const blocks: MarkdownBlock[] = []
   let index = 0
   while (index < lines.length) {
-    const line = lines[index] ?? ''
+    const line = required(lines[index], 'current line')
     if (line.trim() === '') {
       index += 1
       continue
@@ -67,11 +73,11 @@ export function parseMarkdown(input: string, budget: DisplayTextBudget): readonl
       const code: string[] = []
       index += 1
       while (index < lines.length && lines[index] !== '```') {
-        code.push(lines[index] ?? '')
+        code.push(required(lines[index], 'fenced code line'))
         index += 1
       }
       if (index < lines.length) index += 1
-      const language = fence[1]?.trim() ?? ''
+      const language = required(fence[1], 'fence language').trim()
       blocks.push({
         kind: 'code',
         language: language === '' ? undefined : displayText(language, budget),
@@ -84,8 +90,8 @@ export function parseMarkdown(input: string, budget: DisplayTextBudget): readonl
     if (heading !== null) {
       blocks.push({
         kind: 'heading',
-        level: heading[1]?.length ?? 1,
-        content: inline(heading[2] ?? '', budget),
+        level: required(heading[1], 'heading marker').length,
+        content: inline(required(heading[2], 'heading content'), budget),
       })
       index += 1
       continue
@@ -94,9 +100,9 @@ export function parseMarkdown(input: string, budget: DisplayTextBudget): readonl
     if (/^[-*+]\s+/u.test(line)) {
       const items: MarkdownInline[][] = []
       while (index < lines.length) {
-        const item = /^[-*+]\s+(.+)$/u.exec(lines[index] ?? '')
+        const item = /^[-*+]\s+(.+)$/u.exec(required(lines[index], 'list item line'))
         if (item === null) break
-        items.push(inline(item[1] ?? '', budget))
+        items.push(inline(required(item[1], 'list item content'), budget))
         index += 1
       }
       blocks.push({ kind: 'list', items })
@@ -106,7 +112,7 @@ export function parseMarkdown(input: string, budget: DisplayTextBudget): readonl
     const paragraph = [line]
     index += 1
     while (index < lines.length) {
-      const next = lines[index] ?? ''
+      const next = required(lines[index], 'paragraph line')
       if (next.trim() === '' || /^```/u.test(next) || /^(#{1,6})\s+/u.test(next) || /^[-*+]\s+/u.test(next)) break
       paragraph.push(next)
       index += 1

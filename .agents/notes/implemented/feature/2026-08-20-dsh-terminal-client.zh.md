@@ -1,6 +1,6 @@
 # Agent Note：先建设 dsh 第一方终端客户端，再建设 Tauri 桌面壳
 
-Status: proposed
+Status: implemented
 
 [English](2026-08-20-dsh-terminal-client.md) | 中文
 
@@ -12,15 +12,15 @@ Status: proposed
 
 接下来的产品顺序是先终端、后桌面。终端产品面必须仍然是普通 CLI，在 Cordis 同一进程中运行，保留 shell 滚动历史，通过不依赖 shell shim 或额外文件描述符协议的方式支持 Windows，并真正提供审批与用户提问能力，不能让 Agent 因为没有回答器而 fail-closed。之后的桌面应用使用 Tauri 而不是 Electron，但桌面需求不能扭曲终端设计。
 
-## 提案
+## 决策
 
 新增第一方 `tui` profile，由 `@deepseek-ai/dsh-base` 和新的 `@deepseek-ai/dsh-tui-app` bundle 组成。该 bundle 挂载 `@deepseek-ai/dsh-tui`，这是一个仅 Node 使用的交互插件，通过现有进程内 Cordis 服务创建或恢复一个顶层 Agent。
 
-TUI 使用 Ink 7 作为终端渲染器，并把 React 19.2 或更高版本作为 Ink 的包内渲染依赖。Ink 7 要求 Node 22 与 React 19.2，前者符合仓库的 Node 最低版本，后者要求 TUI 包与浏览器 Client aggregate 的 React 依赖保持隔离。TUI 不组合 `dsh-client-app`、Host RPC、HTTP 服务、WebSocket 或浏览器运行时。
+TUI 使用 Ink 7 作为终端渲染器，并把 React 19.2 或更高版本作为 Ink 的包内渲染依赖。Ink 7 要求 Node 22 与 React 19.2，前者符合仓库的 Node 最低版本，后者要求 TUI 包与浏览器 Client aggregate 的 React 依赖保持隔离。根测试运行器把 React、React DOM 及其类型锁定到 Client aggregate 使用的 React 18 版本，防止 testing-library 的 peer 解析把浏览器测试绑定到 TUI renderer。TUI 不组合 `dsh-client-app`、Host RPC、HTTP 服务、WebSocket 或浏览器运行时。
 
 TUI 的权威应用状态是一个不依赖框架的 TypeScript store。纯 reducer 和 selector 消费自有 action 与 Session event；Cordis adapter 产生这些 action；Ink 通过狭窄的 React adapter 订阅。React 组件不会在 store 之外单独持有 Session、审批、问题、命令或草稿真相。
 
-TUI 验收标准通过之后，可以通过单独的 Agent Note 与实施计划，在现有 React client 与 Node Harness companion 外增加 Tauri 2 桌面壳。该桌面壳可以复用 Web 和 VS Code 已经建立的交互 Host API 与 carrier 工作，但不会复用 Ink 组件，也不会把 TUI state store 变成跨产品面的协议。
+可以通过单独的 Agent Note 与实施计划，在现有 React client 与 Node Harness companion 外增加 Tauri 2 桌面壳。该桌面壳可以复用 Web 和 VS Code 已经建立的交互 Host API 与 carrier 工作，但不会复用 Ink 组件，也不会把 TUI state store 变成跨产品面的协议。
 
 ## 产品命令约定
 
@@ -68,7 +68,7 @@ store 暴露 `getSnapshot()`、`subscribe()` 与 `dispatch()`。Ink 使用 `useS
 
 ## 转录与渲染
 
-UI 以转录为中心，默认不进入终端 alternate screen。已完成转录行通过 Ink `Static` 组件渲染，成为普通 shell scrollback。只有当前流式 assistant 行、状态行、composer 与活跃 overlay 留在 Ink 重绘区域。
+UI 以转录为中心，默认不进入终端 alternate screen。权威持久投影保留在 Ink 的有界重绘区域，因为 replay 快速提交成批事件时，`Static` 会丢失新行。客户端本地完成的行使用 `Static`；稳定后的终端仍是普通 shell 输出，实时 assistant 输出、状态、composer 与 overlay 原地更新。
 
 恢复会话时，controller 为正确性折叠完整持久化日志，但只把配置指定的最近转录行窗口写入终端 scrollback。若存在更早行，则打印明确的历史省略标记。该上限、选择器上限和工具输出显示预算都是经过校验的 TUI 配置字段；协议规则与终端安全规则保持固定 invariant。
 
@@ -132,12 +132,12 @@ TUI example 包含 production `cordis.yml`。它的 keyless smoke 在 pseudo-ter
 
 拒绝。它会重复打包 Tauri 系统 WebView 已经提供的 Chromium 能力，也不符合轻量分发目标。
 
-## 验收标准
+## 结果
 
 - `dsh`、`dsh "task"`、`dsh --resume`、`dsh --resume <id>`、`dsh tui` 与 `dsh exec "task"` 实现产品命令约定，现有 profile、Web、plugin 与 config dump 路径行为不变。
 - 已发布 `tui` profile 精确等于 `dsh-base + dsh-tui-app`；它不打开网络监听器，也不组合 Host RPC 或浏览器 Client runtime。
 - 一个不依赖框架的 store 拥有草稿、转录状态、overlay、审批与问题；Ink 只是 renderer subscriber。
-- 已完成行进入普通 scrollback，活跃输出原地更新，恢复历史以明确省略标记有界显示，所有不可信显示文本都满足终端安全要求。
+- 稳定后的 transcript 保持普通 shell 输出，活跃输出原地更新且不会丢失快速到达的持久事件批次，恢复历史以明确省略标记有界显示，所有不可信显示文本都满足终端安全要求。
 - 新建与恢复会话都能完成多轮对话、运行并呈现工具、执行已注册斜杠命令、取消工作、回答审批、回答用户问题、flush，并且退出后不残留 raw mode。
 - 单元、Loader composition、CLI integration、真实 config 的 keyless 与 with-key example smoke、聚焦 keyless 组装转录快照，以及 Windows 可注入终端测试在仓库支持的 Node 版本上通过；每个新源码文件继续满足逐文件覆盖率 gate。
 - Root agent instruction、package README、group index、CLI help、用户文档、module graph、依赖 lockfile、invariant 与本 Agent Note 保持同步。
@@ -145,9 +145,9 @@ TUI example 包含 production `cordis.yml`。它的 keyless smoke 在 pseudo-ter
 
 ## 风险
 
-Ink 7 要求 React 19.2，而浏览器 Client package 当前使用 React 18。让 TUI 留在 Host aggregate，并只在 TUI 包中声明 React，可以避免共享 renderer graph，但 workspace 依赖去重和类型解析仍必须显式测试。
+Ink 7 要求 React 19.2，而浏览器 Client package 当前使用 React 18。让 TUI 留在 Host aggregate，并只在 TUI 包中声明 React 19，可以避免共享 renderer graph。根开发依赖把浏览器测试运行器锁定到 React 18；依赖图检查必须持续证明 TUI 包独立解析到 React 19。
 
-Ink `Static` 在近期 7.x 版本中修复过 identity change 与 remount 问题。实现必须锁定经过验证的 7.x 版本，在一个 controller 内保持已完成行 key 单调，并测试 remount 与 shutdown，不能依赖 renderer 内部行为。
+即使 key 单调，Ink `Static` 仍会在快速 replay 中丢失新追加的投影行。实现锁定 Ink 7.1.1，把权威有界投影保留在重绘区域，只让客户端本地完成的行使用 `Static`，并通过真实伪终端流测试，不能依赖 renderer 内部行为。
 
 即使终端输出有界，恢复长日志时 Agent resume 仍需加载完整日志。显示上限只控制终端洪泛，不控制 persistence 内存或 resume 延迟。
 

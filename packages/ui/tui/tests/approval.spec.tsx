@@ -1,3 +1,4 @@
+import React from 'react'
 import { renderToString } from 'ink'
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it } from 'vitest'
@@ -9,6 +10,8 @@ import { installTuiApproval } from '../src/driver/approval.ts'
 import { ApprovalPanel } from '../src/render/approval.tsx'
 import { createInitialState } from '../src/state/reducer.ts'
 import { createTuiStore } from '../src/state/store.ts'
+
+void React
 
 async function bench() {
   const ctx = new Context()
@@ -87,8 +90,50 @@ describe('tui approval answerer', () => {
     if (interaction?.kind !== 'approval') throw new Error('approval interaction was not published')
 
     test.approval.dispose()
+    test.approval.dispose()
     expect(test.approval.allow(interaction.id)).toBe(false)
     await expect(pending).resolves.toBe('cancelled')
     await test.ctx.fiber.dispose()
+  })
+
+  it('returns unavailable while another interaction is visible and handles direct cancellation', async () => {
+    const test = await bench()
+    test.store.dispatch({ type: 'overlay/open', overlay: { kind: 'help' } })
+    test.store.dispatch({ type: 'interaction/question', id: 1 as never, questions: [] })
+    await expect(test.ctx.approval.request({ agent: test.agent, toolName: 'bash' }))
+      .resolves.toBe('unavailable')
+    test.store.dispatch({ type: 'interaction/settled', id: 1 as never })
+    const pending = test.ctx.approval.request({ agent: test.agent, toolName: 'bash' })
+    await Promise.resolve()
+    const interaction = test.store.getSnapshot().interaction
+    if (interaction?.kind !== 'approval') throw new Error('approval interaction was not published')
+    expect(test.approval.cancel(interaction.id)).toBe(true)
+    await expect(pending).resolves.toBe('cancelled')
+    await test.ctx.fiber.dispose()
+  })
+
+  it('cancels requests that are already aborted or abort while their listener is installed', async () => {
+    const immediate = await bench()
+    const aborted = new AbortController()
+    aborted.abort()
+    await expect(immediate.ctx.approval.request({
+      agent: immediate.agent, toolName: 'bash', signal: aborted.signal,
+    })).resolves.toBe('cancelled')
+    immediate.approval.dispose()
+    await immediate.ctx.fiber.dispose()
+
+    const raced = await bench()
+    let reads = 0
+    const listeners = new Set<() => void>()
+    const signal = {
+      get aborted() { reads += 1; return reads > 1 },
+      addEventListener: (_name: string, listener: () => void) => { listeners.add(listener) },
+      removeEventListener: (_name: string, listener: () => void) => { listeners.delete(listener) },
+    } as unknown as AbortSignal
+    await expect(raced.ctx.approval.request({
+      agent: raced.agent, toolName: 'bash', signal,
+    })).resolves.toBe('cancelled')
+    expect(listeners.size).toBe(0)
+    await raced.ctx.fiber.dispose()
   })
 })

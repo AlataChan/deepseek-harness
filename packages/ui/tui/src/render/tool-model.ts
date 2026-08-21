@@ -100,7 +100,8 @@ function safeContent(content: readonly ContentBlock[], budget: DisplayTextBudget
 function safeJson(value: unknown): string {
   if (typeof value === 'string') return value
   try {
-    return JSON.stringify(value, null, 2) ?? String(value)
+    const serialized: unknown = JSON.stringify(value, null, 2)
+    return typeof serialized === 'string' ? serialized : String(value)
   } catch {
     return String(value)
   }
@@ -117,7 +118,7 @@ function safeDiffs(diffs: readonly FileDiff[], budget: DisplayTextBudget): ToolD
 function fallback(
   row: ToolRow,
   budget: DisplayTextBudget,
-  parsedArguments: unknown | undefined,
+  parsedArguments: unknown,
 ): ToolCardModel {
   const content = row.kind === 'tool-call'
     ? [text(parsedArguments === undefined ? row.arguments : safeJson(parsedArguments), budget)]

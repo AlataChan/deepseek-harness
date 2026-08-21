@@ -1,6 +1,6 @@
 # Agent Note: First-party dsh terminal client before the Tauri desktop shell
 
-Status: proposed
+Status: implemented
 
 English | [中文](2026-08-20-dsh-terminal-client.zh.md)
 
@@ -12,15 +12,15 @@ The repository removed its earlier TUI because it had no named deployment, no ma
 
 The next product sequence is terminal first and desktop second. The terminal surface must remain a normal CLI, run in the same process as Cordis, preserve shell scrollback, support Windows without shell shims or extra file-descriptor protocols, and provide approvals and user questions rather than leaving the agent fail-closed. The later desktop application must use Tauri rather than Electron, but it must not distort the terminal design.
 
-## Proposal
+## Decision
 
 Add a first-party `tui` profile composed from `@deepseek-ai/dsh-base` and a new `@deepseek-ai/dsh-tui-app` bundle. The bundle mounts `@deepseek-ai/dsh-tui`, a Node-only interactive plugin that creates or resumes one top-level Agent through the existing in-process Cordis services.
 
-The TUI uses Ink 7 as its terminal renderer and React 19.2 or newer as Ink's package-local renderer dependency. Ink 7 requires Node 22 and React 19.2, which matches the repository's Node floor while requiring the TUI package to keep its React dependency separate from the browser Client aggregate. The TUI does not compose `dsh-client-app`, Host RPC, an HTTP server, WebSocket, or a browser runtime.
+The TUI uses Ink 7 as its terminal renderer and React 19.2 or newer as Ink's package-local renderer dependency. Ink 7 requires Node 22 and React 19.2, which matches the repository's Node floor while requiring the TUI package to keep its React dependency separate from the browser Client aggregate. The root test runner pins React, React DOM, and their types to the Client aggregate's React 18 versions so its testing-library peer resolution cannot bind browser tests to the TUI renderer. The TUI does not compose `dsh-client-app`, Host RPC, an HTTP server, WebSocket, or a browser runtime.
 
 The TUI's authoritative application state is a framework-free TypeScript store. Pure reducers and selectors consume owned actions and session events; Cordis adapters produce those actions; Ink subscribes through a narrow React adapter. React components never own session, approval, question, command, or draft truth independently of the store.
 
-After the TUI acceptance criteria pass, a separate Agent Note and implementation plan may add a Tauri 2 desktop shell around the existing React client and a Node Harness companion. That shell may reuse the interactive Host APIs and carrier work established by Web and VS Code. It does not reuse Ink components or turn the TUI state store into a cross-surface protocol.
+A separate Agent Note and implementation plan may add a Tauri 2 desktop shell around the existing React client and a Node Harness companion. That shell may reuse the interactive Host APIs and carrier work established by Web and VS Code. It does not reuse Ink components or turn the TUI state store into a cross-surface protocol.
 
 ## Product command contract
 
@@ -68,7 +68,7 @@ The store exposes `getSnapshot()`, `subscribe()`, and `dispatch()`. Ink uses `us
 
 ## Transcript and rendering
 
-The UI is transcript-first and does not enter the terminal's alternate screen. Finalized transcript rows render through Ink's `Static` component so they become ordinary shell scrollback. Only the current streaming assistant row, status line, composer, and active overlay remain in Ink's redraw region.
+The UI is transcript-first and does not enter the terminal's alternate screen. The authoritative durable projection remains in Ink's bounded redraw region because `Static` dropped rows when replay delivered fast committed-event batches. Locally finalized client rows use `Static`; the settled terminal remains ordinary shell output, and live assistant output, status, composer, and overlays update in place.
 
 On resume, the controller folds the complete durable log for correctness but emits only the configured most-recent transcript-row window into terminal scrollback. It prints an explicit omitted-history marker when earlier rows exist. The cap, selector limit, and tool-output display budget are validated TUI configuration fields; protocol and terminal-safety rules remain fixed invariants.
 
@@ -132,12 +132,12 @@ Deferred. The existing Web and VS Code surfaces already cover graphical use. The
 
 Rejected. It duplicates a Chromium runtime already available through Tauri's system WebView and does not match the desired lightweight distribution.
 
-## Acceptance criteria
+## Consequences
 
 - `dsh`, `dsh "task"`, `dsh --resume`, `dsh --resume <id>`, `dsh tui`, and `dsh exec "task"` implement the product command contract, while existing profile, Web, plugin, and config-dump paths retain their behavior.
 - The shipped `tui` profile is exactly `dsh-base + dsh-tui-app`; it opens no network listener and composes no Host RPC or browser Client runtime.
 - One framework-free store owns drafts, transcript state, overlays, approvals, and questions; Ink is a renderer subscriber.
-- Finalized rows become ordinary scrollback, active output updates in place, resumed history is bounded with an explicit omission marker, and all untrusted display text is terminal-safe.
+- The settled transcript remains ordinary shell output, active output updates in place without losing fast durable-event batches, resumed history is bounded with an explicit omission marker, and all untrusted display text is terminal-safe.
 - Fresh and resumed sessions can complete multiple turns, run and render tools, execute registered slash commands, cancel work, answer approvals, answer user questions, flush, and exit without leaving raw mode enabled.
 - Unit, Loader composition, CLI integration, real-config keyless and with-key example smokes, focused keyless assembled transcript snapshots, and Windows injectable-terminal tests pass under the repository's supported Node versions; every new source file remains inside the per-file coverage gate.
 - Root agent instructions, package READMEs, group indexes, CLI help, user documentation, module graph, dependency lockfile, invariants, and this Agent Note remain synchronized.
@@ -145,9 +145,9 @@ Rejected. It duplicates a Chromium runtime already available through Tauri's sys
 
 ## Risks
 
-Ink 7 requires React 19.2 while the browser Client packages currently use React 18. Keeping the TUI on the Host aggregate and declaring React only in the TUI package avoids a shared renderer graph, but workspace dependency deduplication and type resolution must be tested explicitly.
+Ink 7 requires React 19.2 while the browser Client packages currently use React 18. Keeping the TUI on the Host aggregate and declaring React 19 only in the TUI package avoids a shared renderer graph. The root development dependencies pin the browser test runner to React 18, and dependency-graph checks must continue proving that the TUI package resolves React 19 independently.
 
-Ink `Static` has had recent 7.x fixes for identity changes and remounts. The implementation must pin a verified 7.x release, keep finalized-row keys monotonic within one controller, and test remount and shutdown rather than relying on renderer internals.
+Ink `Static` dropped newly appended projection rows under fast replay even with monotonic keys. The implementation pins Ink 7.1.1, keeps the authoritative bounded projection in the redraw region, limits `Static` to locally finalized rows, and tests the real pseudo-terminal stream rather than relying on renderer internals.
 
 A long resumed log still has to be loaded by Agent resume even when terminal output is bounded. The display cap controls terminal flooding, not persistence memory or resume latency.
 

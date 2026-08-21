@@ -50,7 +50,9 @@ export function createTuiShutdown(options: TuiShutdownOptions): TuiShutdown {
         await attempt(options.restoreRawMode)
         await attempt(options.disposeOwned)
         if (origin === 'user') options.requestExit(failure === undefined ? 0 : 1)
-        if (failure !== undefined) throw failure
+        if (failure !== undefined) {
+          throw failure instanceof Error ? failure : new Error('tui shutdown failed', { cause: failure })
+        }
       })()
       return running
     },

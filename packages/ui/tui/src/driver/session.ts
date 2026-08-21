@@ -67,6 +67,8 @@ export interface OwnedTuiSession {
  * @param handle - capability returned by AgentRegistry create or resume.
  * @param modelSelection - reference installed during unpublished setup.
  * @param budget - visible transcript limits.
+ * @param onProjection - observer receiving the replayed and live transcript.
+ * @param onStatus - observer receiving the initial and subsequent Agent status.
  * @returns owned lifecycle with an initially replayed transcript.
  */
 export function ownTuiSession(

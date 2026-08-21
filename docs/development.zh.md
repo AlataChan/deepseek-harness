@@ -134,11 +134,15 @@ keyless [CI 工作流](../.github/workflows/ci.yml) 将独立门禁分组到若�
 pnpm run build
 ```
 
-单次运行的 Headless coding agent 需要环境变量或仓库根目录 `.env` 中的 `DEEPSEEK_API_KEY`：
+交互式终端客户端执行模型轮次时，需要环境变量或仓库根目录 `.env` 中的 `DEEPSEEK_API_KEY`：
 
 ```sh
-pnpm dsh --profile headless "summarize this workspace"
+pnpm dsh
+pnpm dsh "summarize this workspace"
+pnpm dsh --resume
 ```
+
+`pnpm dsh tui` 是显式终端别名。单次运行的非 TTY 自动化请使用 `pnpm dsh exec "summarize this workspace"`。终端配置与键盘行为见 [`dsh-tui` 参考](../packages/ui/tui/README.md)。
 
 自指的 cordis 演示可以检查并修改其实时插件运行时，并需要相同的凭证（默认 `web`，也可用 `acp`）：
 

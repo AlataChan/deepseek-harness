@@ -316,7 +316,6 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     ownerPropsReferences: [
       'ConversationSnapshot',
-      'PendingInteraction',
     ],
     standardProps: [
       'useSessions: SnapshotSelectorHook<SessionListState>',
