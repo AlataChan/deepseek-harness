@@ -104,7 +104,9 @@ Pure state, editor, sanitizer, transcript projection, tool-card projection, and 
 
 Loader composition tests boot the actual `base + tui-app` patch list and prove the startup service, TUI row, interaction providers, Agent lifecycle, and invariant companion. CLI parser tests cover aliases, reserved positional escape, app-argument forwarding, config dumps, and non-TTY guidance. The Windows CI lane runs the parser and injectable-terminal integration tests without `.cmd` or shell invocation.
 
-Three focused keyless assembled snapshots under a real runnable TUI example drive the mounted Ink application with deterministic TTY streams and independent LLM replay fixtures. The transcript scenario covers initial prompt submission, streamed assistant text, and a terminal tool card; the interaction scenario covers approval, user questions, commands, and balanced persistence; the lifecycle scenario covers cancellation, clean exit, and terminal restoration. Each fixture replays on macOS and Linux; the Windows lane runs equivalent assertions without owning golden ANSI transcripts.
+The TUI example includes a production `cordis.yml`. Its keyless smoke boots that file through the real profile Loader in a pseudo-terminal, exercises a local command, and exits cleanly; its with-key smoke verifies a real-model file edit outside the Agent. Hand-mounted package tests do not substitute for either assembled example path.
+
+Three focused keyless assembled snapshots launch the example's replay overlay through the same Loader and pseudo-terminal driver with independent LLM replay fixtures and scripted terminal inputs. The transcript scenario covers initial prompt submission, streamed assistant text, and a terminal tool card; the interaction scenario covers approval, user questions, commands, and balanced persistence; the lifecycle scenario covers cancellation, clean exit, and terminal restoration. Each fixture replays on macOS and Linux; the Windows lane runs equivalent assertions without owning golden ANSI transcripts.
 
 The first release gate is the interactive terminal product, not the desktop shell. After it passes, desktop design starts with Tauri 2, the existing React client, and a Node companion; signing, updater channel, installer identity, sidecar packaging, WebView compatibility, and marketplace-independent distribution receive their own decision record and acceptance suite.
 
@@ -137,7 +139,7 @@ Rejected. It duplicates a Chromium runtime already available through Tauri's sys
 - One framework-free store owns drafts, transcript state, overlays, approvals, and questions; Ink is a renderer subscriber.
 - Finalized rows become ordinary scrollback, active output updates in place, resumed history is bounded with an explicit omission marker, and all untrusted display text is terminal-safe.
 - Fresh and resumed sessions can complete multiple turns, run and render tools, execute registered slash commands, cancel work, answer approvals, answer user questions, flush, and exit without leaving raw mode enabled.
-- Unit, Loader composition, CLI integration, focused keyless assembled transcript snapshots, and Windows injectable-terminal tests pass under the repository's supported Node versions; every new source file remains inside the per-file coverage gate.
+- Unit, Loader composition, CLI integration, real-config keyless and with-key example smokes, focused keyless assembled transcript snapshots, and Windows injectable-terminal tests pass under the repository's supported Node versions; every new source file remains inside the per-file coverage gate.
 - Root agent instructions, package READMEs, group indexes, CLI help, user documentation, module graph, dependency lockfile, invariants, and this Agent Note remain synchronized.
 - No Tauri or desktop packaging code lands in the TUI implementation stack; desktop work starts only through a separate approved plan.
 

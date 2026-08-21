@@ -91,6 +91,8 @@ git commit -m "feat(cli): make tui the default dsh surface"
 - Modify: `tsconfig.host.json`
 - Modify: `package.json`
 - Modify: `pnpm-lock.yaml`
+- Modify: `scripts/client-tsconfig.spec.ts`
+- Modify: `scripts/doc-budgets.manifest.json` if the required package-group entry cannot fit after local condensation
 - Modify: `scripts/verify-package-readme-model-experience.ts`
 - Modify: `scripts/verify-package-readme-limitations.ts` only if the package cannot satisfy the normal section directly
 
@@ -106,9 +108,13 @@ Expected: FAIL because the package does not exist.
 
 Declare `@deepseek-ai/dsh-tui` as ESM with root and `./invariant` exports. Add runtime dependencies on a pinned Ink 7.x, compatible React 19.2, `@deepseek-ai/cordis`, and only the Service Definition packages actually imported by `src`. Add `@types/react` compatible with React 19 to dev dependencies.
 
-Do not put TUI source in `tsconfig.client.json`. Add its project reference to `tsconfig.host.json`. The current `tsconfig.base.json` invariant path is an explicit per-group list and has no `ui` entry, so add exactly `packages/ui/*/src/invariant.ts`; do not add it if the base changes to a wildcard that already covers the path before execution. Add JSX compiler settings only to the TUI package project.
+Do not put TUI source in `tsconfig.client.json`. Add its project reference to `tsconfig.host.json`. The current `tsconfig.base.json` has separate explicit per-group lists for `@deepseek-ai/dsh-*/invariant` and `@deepseek-ai/dsh-*`, and neither contains `ui`; add exactly `./packages/ui/*/src/invariant.ts` to the first and `./packages/ui/*/src` to the second. Do not add either entry if the base changes to a wildcard that already covers it before execution.
+
+Add `packages/ui/*/tests/**/*.tsx` to the Host aggregate's include list and set `jsx: react-jsx` on that aggregate so the TUI's Host-owned TSX tests participate in `pnpm run typecheck`. Keep the Client aggregate unchanged. Add a regression in `scripts/client-tsconfig.spec.ts` that pins the narrow Host TSX include, the Host JSX mode, and the absence of that path from the Client aggregate. Keep package source JSX settings local to the TUI package project.
 
 The group README defines `ui/` as Node-native presentation packages and lists `tui/` with no global `ctx` key. Update the root package hierarchy in both languages. Give the package README a `Model Experience` section and a `Known Limitations and Deferred Work` section.
+
+The current `packages/README.md` budget has little headroom. Keep the new group row concise and remove only redundant prose owned by that index; if the required row still exceeds its ceiling, raise the exact `packages/README.md` value in `scripts/doc-budgets.manifest.json` with justification rather than trimming unrelated package entries.
 
 Run `pnpm install` to update the lockfile; do not edit the lockfile manually.
 
@@ -116,7 +122,7 @@ Run `pnpm install` to update the lockfile; do not edit the lockfile manually.
 
 Export `name = 'tui'`, a placeholder `apply()` with no behavior, and the standard package invariant identity. Do not render or create an Agent yet.
 
-Run: `pnpm vitest run packages/ui/tui/tests/invariant.spec.ts`
+Run: `pnpm vitest run packages/ui/tui/tests/invariant.spec.ts scripts/client-tsconfig.spec.ts`
 
 Expected: PASS.
 
@@ -129,7 +135,7 @@ Expected: the TUI resolves React 19.2+ for Ink; browser Client packages retain R
 **Step 5: Commit**
 
 ```sh
-git add packages/ui packages/README.md packages/README.zh.md packages/README.i18n.yaml tsconfig.base.json tsconfig.host.json package.json pnpm-lock.yaml scripts
+git add packages/ui packages/README.md packages/README.zh.md packages/README.i18n.yaml tsconfig.base.json tsconfig.host.json package.json pnpm-lock.yaml scripts/client-tsconfig.spec.ts scripts/doc-budgets.manifest.json scripts/verify-package-readme-model-experience.ts scripts/verify-package-readme-limitations.ts
 git commit -m "feat(tui): scaffold the node terminal package"
 ```
 
@@ -168,7 +174,7 @@ Expected: FAIL because the startup provider is absent.
 
 **Step 2: Implement the startup provider**
 
-Follow `packages/bundle/headless/src/startup.ts`: parse only from `ctx.cmdlineArgs`, publish `TUI_STARTUP_SERVICE`, and let Commander own app help and usage errors. Do not read `process.argv` directly.
+Declare `@deepseek-ai/dsh-tui-app` as ESM with its initial `./startup` export, add its project reference to `tsconfig.host.json`, and add the explicit `@deepseek-ai/dsh-tui-app/startup` source path to `tsconfig.base.json`; the existing bundle-group wildcard already covers the package root. Follow `packages/bundle/headless/src/startup.ts`: parse only from `ctx.cmdlineArgs`, publish `TUI_STARTUP_SERVICE`, and let Commander own app help and usage errors. Do not read `process.argv` directly.
 
 **Step 3: Write failing process-adapter tests**
 
@@ -517,6 +523,7 @@ git commit -m "feat(tui): complete interactive input and shutdown"
 - Create: `packages/bundle/tui-app/README.zh.md`
 - Create: `packages/bundle/tui-app/README.i18n.yaml`
 - Create: `packages/bundle/tui-app/cordis.patch.yml`
+- Modify: `packages/bundle/tui-app/package.json`
 - Create: `packages/bundle/tui-app/src/index.ts`
 - Create: `packages/bundle/tui-app/src/invariant.ts`
 - Create: `packages/bundle/tui-app/tests/tui-app.spec.ts`
@@ -526,8 +533,6 @@ git commit -m "feat(tui): complete interactive input and shutdown"
 - Modify: `packages/boot/app-boot/src/profile.ts`
 - Modify: `packages/boot/app-boot/tests/profile.spec.ts`
 - Modify: `apps/cli/package.json`
-- Modify: `tsconfig.base.json`
-- Modify: `tsconfig.host.json`
 - Modify: `pnpm-lock.yaml`
 
 **Step 1: Write a failing composition equivalence test**
@@ -548,7 +553,7 @@ Expected: FAIL.
 
 **Step 2: Implement the bundle patch and registration**
 
-Make startup values flow through lazy row config; do not read global argv in the TUI row. Add the package to CLI dependencies, both aggregate/path registrations, bundle indexes, and the shipped template. Add `tui: ['@deepseek-ai/dsh-base']` to `INSTALLATION_OWNED_PROFILE_TUPLES` so a profile created before the shipped TUI existed upgrades exactly once, while any user-modified tuple remains user-owned. Run `pnpm install` for the lockfile.
+Make startup values flow through lazy row config; do not read global argv in the TUI row. Extend the package manifest with root and `./invariant` exports plus its TUI runtime dependency; Task 3 already owns the aggregate and startup-path registration, while the existing bundle wildcards cover these two exports. Add the package to CLI dependencies, bundle indexes, and the shipped template. Add `tui: ['@deepseek-ai/dsh-base']` to `INSTALLATION_OWNED_PROFILE_TUPLES` so a profile created before the shipped TUI existed upgrades exactly once, while any user-modified tuple remains user-owned. Run `pnpm install` for the lockfile.
 
 **Step 3: Add package docs and invariant**
 
@@ -561,7 +566,7 @@ Run: `pnpm vitest run packages/boot/app-boot/tests/profile.spec.ts packages/bund
 Expected: PASS.
 
 ```sh
-git add packages/bundle/tui-app packages/bundle/README.md packages/bundle/README.zh.md packages/bundle/README.i18n.yaml packages/boot/app-boot apps/cli/package.json tsconfig.base.json tsconfig.host.json pnpm-lock.yaml
+git add packages/bundle/tui-app packages/bundle/README.md packages/bundle/README.zh.md packages/bundle/README.i18n.yaml packages/boot/app-boot apps/cli/package.json pnpm-lock.yaml
 git commit -m "feat(tui): ship the in-process tui profile"
 ```
 
@@ -573,44 +578,62 @@ git commit -m "feat(tui): ship the in-process tui profile"
 - Create: `examples/tui-agent/README.md`
 - Create: `examples/tui-agent/README.zh.md`
 - Create: `examples/tui-agent/README.i18n.yaml`
+- Create: `examples/tui-agent/cordis.yml`
 - Create: `examples/tui-agent/cordis.snapshot.yml`
 - Create: `examples/tui-agent/tests/fixtures/terminal-driver.ts`
+- Create: `examples/tui-agent/tests/terminal-driver.spec.ts`
+- Create: `examples/tui-agent/tests/keyless-smoke.e2e.ts`
+- Create: `examples/tui-agent/tests/real-model.e2e.ts`
 - Create: `examples/tui-agent/tests/tui.snapshot.ts`
+- Create: `examples/tui-agent/tests/snapshots/tui-transcript/input.json`
 - Create: `examples/tui-agent/tests/snapshots/tui-transcript/session.jsonl`
-- Create: `examples/tui-agent/tests/snapshots/tui-transcript/transcript.expected.txt`
+- Create: `examples/tui-agent/tests/snapshots/tui-transcript/session.expected.jsonl`
+- Create: `examples/tui-agent/tests/snapshots/tui-transcript/terminal.expected.txt`
+- Create: `examples/tui-agent/tests/snapshots/tui-interactions/input.json`
 - Create: `examples/tui-agent/tests/snapshots/tui-interactions/session.jsonl`
-- Create: `examples/tui-agent/tests/snapshots/tui-interactions/transcript.expected.txt`
+- Create: `examples/tui-agent/tests/snapshots/tui-interactions/session.expected.jsonl`
+- Create: `examples/tui-agent/tests/snapshots/tui-interactions/terminal.expected.txt`
+- Create: `examples/tui-agent/tests/snapshots/tui-lifecycle/input.json`
 - Create: `examples/tui-agent/tests/snapshots/tui-lifecycle/session.jsonl`
-- Create: `examples/tui-agent/tests/snapshots/tui-lifecycle/transcript.expected.txt`
+- Create: `examples/tui-agent/tests/snapshots/tui-lifecycle/replay.override.json`
+- Create: `examples/tui-agent/tests/snapshots/tui-lifecycle/session.expected.jsonl`
+- Create: `examples/tui-agent/tests/snapshots/tui-lifecycle/terminal.expected.txt`
 - Modify: `examples/README.md`
 - Modify: `examples/README.zh.md`
 - Modify: `examples/README.i18n.yaml`
 - Modify: `examples/package.json`
-- Modify: `tsconfig.host.json`
 - Modify: `apps/cli/tests/windows-shell.spec.ts`
 - Modify: `vitest.snapshot.config.ts` only if its existing globs do not discover the new test
 
-**Step 1: Build the deterministic terminal driver**
+**Step 1: Build the runnable leaf and deterministic terminal driver**
 
-Provide TTY-capable in-memory streams, fixed columns, semantic key injection, resize, frame capture, ANSI normalization, and a completion Promise. The driver imports and mounts the real TUI package and bundle composition; it does not copy the controller or reducer.
+Make `cordis.yml` the runnable production overlay for the shipped `tui` profile and `cordis.snapshot.yml` its replay-provider overlay. Declare every bare plugin named by those configs in `examples/package.json` and verify the new TUI package references added in Tasks 2 and 11 cover them from the root Host aggregate. The terminal driver resolves the source or built `apps/cli` entry through the existing example-launch helper, starts `dsh --profile tui --patch <config>` through a pseudo-terminal, and drives the resulting Loader composition. It must never import and hand-mount the TUI package. Follow the repository's existing Python `pty.fork()` subprocess pattern for macOS/Linux snapshots; keep Windows on the injectable-stream lane from Step 4 rather than introducing a native PTY dependency. Provide fixed columns, semantic key injection, resize, frame capture, ANSI normalization, a completion Promise, and idempotent process cleanup.
 
-Write a focused driver test first and observe failure before implementing it.
+Write `terminal-driver.spec.ts` first and prove source/built launch selection, argument construction, input sequencing, resize, timeout cleanup, and terminal restoration before implementing the driver.
 
-**Step 2: Add three focused LLM replay scenarios**
+**Step 2: Add the mandatory example smokes**
 
-Use three independently selectable tests, each mounting the real application through the same driver:
+The keyless smoke boots the real `cordis.yml` through the Loader, waits for the composer, enters `/help`, asserts visible output, sends idle empty-draft Ctrl+C, and proves clean exit and terminal restoration without making a model call. The with-key smoke self-skips without `DEEPSEEK_API_KEY`, submits a task that modifies a temporary sentinel file through the real model and tools, waits for idle, exits, and verifies the file outside the Agent. Both smokes use the same pseudo-terminal driver and real profile path.
+
+Run: `pnpm vitest run examples/tui-agent/tests/terminal-driver.spec.ts examples/tui-agent/tests/keyless-smoke.e2e.ts examples/tui-agent/tests/real-model.e2e.ts`
+
+Expected: the driver and keyless smoke pass; the with-key smoke passes when a key is present and otherwise reports skipped.
+
+**Step 3: Add three focused LLM replay scenarios**
+
+Use three independently selectable tests, each launching the real snapshot overlay through the Loader and the same pseudo-terminal driver:
 
 - `tui assembled transcript` covers initial positional prompt submission, assistant streaming followed by a settled message, and one terminal tool call and result.
 - `tui assembled interactions` covers one explicit allow-once approval, one multi-item user question, one registered command result, and persisted balanced Session output.
 - `tui assembled lifecycle` covers one cancelled follow-up turn, normal empty-draft Ctrl+C exit, raw-mode restoration, and balanced shutdown output.
 
-Normalize only nondeterministic ids, timestamps, absolute temp paths, and renderer cursor movement. Do not normalize missing or duplicated user-visible rows. Keep replay inputs and expected transcripts independent so a change to one behavior does not require re-recording the other scenarios.
+Follow the existing snapshot artifact contract in every scenario directory: `input.json` scripts terminal input, `session.jsonl` supplies LLM replay, `session.expected.jsonl` pins normalized persistence, and `terminal.expected.txt` pins normalized terminal output. The lifecycle scenario adds `replay.override.json` for its deterministic hanging turn. Normalize only nondeterministic ids, timestamps, absolute temp paths, and renderer cursor movement. Do not normalize missing or duplicated user-visible rows. Keep replay inputs and expected artifacts independent so a change to one behavior does not require re-recording the other scenarios.
 
-Run: `pnpm run build && pnpm run test:snapshot -- -t "tui assembled"`
+Record model fixtures with `pnpm run test:snapshot:record -- -t "tui assembled"`, refresh expected artifacts keylessly with `pnpm run test:snapshot:refresh -- -t "tui assembled"`, then run `pnpm run test:snapshot -- -t "tui assembled"`.
 
-Expected before recording expected output: FAIL with a missing snapshot or intentional mismatch. Record through the repository snapshot workflow, then rerun keyless and expect PASS.
+Expected before the first record/refresh: FAIL with missing replay or expected artifacts. Expected after refresh: all three scenarios pass keylessly.
 
-**Step 3: Extend Windows acceptance**
+**Step 4: Extend Windows acceptance**
 
 Add assertions that the installed launcher resolves the TUI package's real JS entry, never a `.cmd` or `.ps1` shim, and uses only stdin/stdout/stderr. Run the deterministic terminal integration under the Windows test lane without Unix signals or extra fds.
 
@@ -618,10 +641,10 @@ Run on the available host: `pnpm vitest run apps/cli/tests/windows-shell.spec.ts
 
 Expected: PASS. Do not run `check:windows-wine` unless diagnosing a known Wine failure; CI owns the platform signal.
 
-**Step 4: Commit**
+**Step 5: Commit**
 
 ```sh
-git add examples/tui-agent examples/README.md examples/README.zh.md examples/README.i18n.yaml examples/package.json tsconfig.host.json apps/cli/tests/windows-shell.spec.ts vitest.snapshot.config.ts
+git add examples/tui-agent examples/README.md examples/README.zh.md examples/README.i18n.yaml examples/package.json apps/cli/tests/windows-shell.spec.ts vitest.snapshot.config.ts
 git commit -m "test(tui): add assembled terminal acceptance"
 ```
 
@@ -642,6 +665,7 @@ git commit -m "test(tui): add assembled terminal acceptance"
 - Modify: `docs/testing.md` if the deterministic TTY harness adds a new test class
 - Modify: `docs/testing.zh.md` if needed
 - Modify: `docs/testing.i18n.yaml` if needed
+- Modify: `scripts/doc-budgets.manifest.json` if the required root instruction cannot fit after local condensation
 - Move and update: `.agents/notes/proposed/feature/2026-08-20-dsh-terminal-client.{md,zh.md,i18n.yaml}` to `.agents/notes/implemented/feature/`
 - Modify generated catalogs and module graph only through their generators
 
@@ -650,6 +674,8 @@ git commit -m "test(tui): add assembled terminal acceptance"
 Document the new default command, explicit aliases, non-TTY guidance, resume behavior, shortcuts, configuration fields, and known limitations. Update the root `AGENTS.md` repository-layout tree with the new `ui/` group and update its command examples if they still describe profile-only startup. Update architecture with the Node terminal presentation package and direct in-process interaction path. Do not paste this implementation plan into product docs.
 
 Use the actual implemented config field names and defaults. Include the current limitation that model switching, image attachments, mouse input, alternate-screen mode, and Tauri desktop are deferred.
+
+The current root `AGENTS.md` ceiling has little headroom. Keep its new layout and command entries concise and condense only text owned by those entries; if the required current-state instruction still exceeds the ceiling, raise the exact `AGENTS.md` value in `scripts/doc-budgets.manifest.json` with justification rather than deleting unrelated standing orders.
 
 **Step 2: Complete per-file coverage intentionally**
 
@@ -702,7 +728,7 @@ git diff --check
 Confirm no unrelated untracked user files are staged.
 
 ```sh
-git add AGENTS.md README.md README.zh.md README.i18n.yaml docs packages examples apps/cli tsconfig.base.json tsconfig.host.json package.json pnpm-lock.yaml .agents/notes
+git add AGENTS.md README.md README.zh.md README.i18n.yaml docs packages examples apps/cli tsconfig.base.json tsconfig.host.json package.json pnpm-lock.yaml scripts/doc-budgets.manifest.json .agents/notes
 git commit -m "docs(tui): publish the terminal client contract"
 ```
 

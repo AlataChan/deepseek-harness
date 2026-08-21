@@ -104,7 +104,9 @@ TUI 通过可注入 process adapter 接收 stdin、stdout、stderr、环境事�
 
 Loader composition 测试启动真实 `base + tui-app` patch list，证明 startup service、TUI row、交互 provider、Agent 生命周期与 invariant companion。CLI parser 测试覆盖别名、保留位置参数逃逸、应用参数转发、config dump 与非 TTY 提示。Windows CI lane 不通过 `.cmd` 或 shell 调用，直接运行 parser 与可注入终端集成测试。
 
-真实可运行 TUI example 下的三个聚焦 keyless 组装快照，使用确定性 TTY stream 与相互独立的 LLM replay fixture 驱动已挂载 Ink 应用。Transcript scenario 覆盖初始任务提交、流式 assistant 文本与 terminal 工具卡；interaction scenario 覆盖审批、用户问题、命令与 balanced persistence；lifecycle scenario 覆盖取消、干净退出与终端恢复。每个 fixture 都可在 macOS 与 Linux 回放；Windows lane 运行等价断言，但不拥有 golden ANSI 转录。
+TUI example 包含 production `cordis.yml`。它的 keyless smoke 在 pseudo-terminal 中通过真实 profile Loader 启动该文件，执行本地命令并干净退出；with-key smoke 在 Agent 外验证真实 model 完成的文件编辑。手工挂载 package 的测试不能替代这两条组装 example 路径。
+
+三个聚焦 keyless 组装快照通过同一个 Loader 与 pseudo-terminal driver 启动 example 的 replay overlay，并使用相互独立的 LLM replay fixture 与脚本化 terminal input。Transcript scenario 覆盖初始任务提交、流式 assistant 文本与 terminal 工具卡；interaction scenario 覆盖审批、用户问题、命令与 balanced persistence；lifecycle scenario 覆盖取消、干净退出与终端恢复。每个 fixture 都可在 macOS 与 Linux 回放；Windows lane 运行等价断言，但不拥有 golden ANSI 转录。
 
 第一版 gate 是交互式终端产品，而不是桌面壳。通过后，桌面设计从 Tauri 2、现有 React client 和 Node companion 开始；签名、updater channel、安装包身份、sidecar 打包、WebView 兼容性与不依赖 marketplace 的分发都需要自己的决策记录与验收套件。
 
@@ -137,7 +139,7 @@ Loader composition 测试启动真实 `base + tui-app` patch list，证明 start
 - 一个不依赖框架的 store 拥有草稿、转录状态、overlay、审批与问题；Ink 只是 renderer subscriber。
 - 已完成行进入普通 scrollback，活跃输出原地更新，恢复历史以明确省略标记有界显示，所有不可信显示文本都满足终端安全要求。
 - 新建与恢复会话都能完成多轮对话、运行并呈现工具、执行已注册斜杠命令、取消工作、回答审批、回答用户问题、flush，并且退出后不残留 raw mode。
-- 单元、Loader composition、CLI integration、聚焦 keyless 组装转录快照与 Windows 可注入终端测试在仓库支持的 Node 版本上通过；每个新源码文件继续满足逐文件覆盖率 gate。
+- 单元、Loader composition、CLI integration、真实 config 的 keyless 与 with-key example smoke、聚焦 keyless 组装转录快照，以及 Windows 可注入终端测试在仓库支持的 Node 版本上通过；每个新源码文件继续满足逐文件覆盖率 gate。
 - Root agent instruction、package README、group index、CLI help、用户文档、module graph、依赖 lockfile、invariant 与本 Agent Note 保持同步。
 - TUI 实施 stack 不落入 Tauri 或桌面打包代码；桌面工作只能从单独批准的计划开始。
 

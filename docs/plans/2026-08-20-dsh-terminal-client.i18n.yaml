@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/plans/2026-08-20-dsh-terminal-client.md
-2026-08-20-dsh-terminal-client.md: ae4bf695ec069ee958e07db3a9bd8cfdc9f5ddc7
-2026-08-20-dsh-terminal-client.zh.md: b98e4a9eb7a1a1a1396fa02739fa54e4e5ab43d6
+2026-08-20-dsh-terminal-client.md: 63375d663ed44fec97dd8fc8b35bf21f9bb1c3e6
+2026-08-20-dsh-terminal-client.zh.md: 093105c1c7d34131ec8126e7e54b0c106323b10a
