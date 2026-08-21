@@ -35,4 +35,16 @@ describe('client TypeScript aggregate', () => {
       .sort()
     expect(loaded).toEqual(clientCssDeclarations())
   })
+
+  it('keeps node-only ui tsx tests in the Host aggregate', () => {
+    const host = ts.readConfigFile(resolve(root, 'tsconfig.host.json'), file => ts.sys.readFile(file))
+    const client = ts.readConfigFile(resolve(root, 'tsconfig.client.json'), file => ts.sys.readFile(file))
+    if (host.error !== undefined || client.error !== undefined) {
+      throw new Error('failed to read a TypeScript aggregate')
+    }
+
+    expect(host.config.compilerOptions?.jsx).toBe('react-jsx')
+    expect(host.config.include).toContain('packages/ui/*/tests/**/*.tsx')
+    expect(client.config.include).not.toContain('packages/ui/*/tests/**/*.tsx')
+  })
 })

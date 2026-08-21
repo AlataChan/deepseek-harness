@@ -5,7 +5,8 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "rewriteRelativeImportExtensions": false
+    "rewriteRelativeImportExtensions": false,
+    "jsx": "react-jsx"
   },
   "include": [
     "apps/web/tests/scaffold.ts",
@@ -92,6 +93,7 @@
     "examples/*/start.ts",
     "examples/*/tests/**/*.ts",
     "packages/*/*/tests/**/*.ts",
+    "packages/ui/*/tests/**/*.tsx",
     "scripts/**/*.ts",
     "website/**/*.ts",
     "website/.vitepress/**/*.ts"
@@ -130,6 +132,7 @@
     { "path": "./packages/util/timeout" },
     { "path": "./packages/util/output-retention" },
     { "path": "./packages/util/atomic-write" },
+    { "path": "./packages/ui/tui" },
     { "path": "./packages/attachment/attachment" },
     { "path": "./packages/attachment/attachment-local" },
     { "path": "./packages/llm/llm" },
