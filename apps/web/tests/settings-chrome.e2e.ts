@@ -23,6 +23,7 @@ import { ZH_BROWSER_LOCALE, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./snapshots/settings-chrome', import.meta.url))
 const DIALOG_EXPECTED = join(SNAPSHOT_DIR, 'dialog.expected.md')
+const NARROW_EXPECTED = join(SNAPSHOT_DIR, 'narrow.expected.md')
 const PLUGINS_EXPECTED = join(SNAPSHOT_DIR, 'plugins.expected.md')
 // The English fallback surface: a browser naming no shipped language.
 const DIALOG_EN_EXPECTED = join(SNAPSHOT_DIR, 'dialog-en.expected.md')
@@ -129,6 +130,83 @@ describe('web e2e: settings modal and General preferences', () => {
     await page.getByRole('dialog', { name: '设置' }).getByRole('button', { name: '关闭' }).click()
     await expect.poll(() => page.getByRole('dialog', { name: '设置' }).count(), { timeout: 5_000 }).toBe(0)
     expect(tripwire.pageErrors).toEqual([])
+  }, 60_000)
+
+  it('keeps the settings dialog readable and keyboard-owned at Activity Bar width', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-settings-narrow'))
+    await page.setViewportSize({ width: 360, height: 800 })
+    try {
+      const trigger = page.getByRole('button', { name: '设置', exact: true })
+      await trigger.click()
+      const dialog = page.getByRole('dialog', { name: '设置' })
+      await dialog.waitFor({ timeout: 10_000 })
+      await dialog.getByRole('button', { name: 'Workspace Write' }).waitFor({ timeout: 10_000 })
+      const close = dialog.getByRole('button', { name: '关闭' })
+      await expect.poll(() => close.evaluate(element => document.activeElement === element), { timeout: 5_000 })
+        .toBe(true)
+
+      const focusable = dialog.locator([
+        'a[href]',
+        'button:not([disabled])',
+        'input:not([disabled])',
+        'select:not([disabled])',
+        'textarea:not([disabled])',
+        '[contenteditable="true"]',
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(','))
+      const first = focusable.first()
+      const last = focusable.last()
+      await last.focus()
+      await page.keyboard.press('Tab')
+      expect(await first.evaluate(element => document.activeElement === element)).toBe(true)
+      await page.keyboard.press('Shift+Tab')
+      expect(await last.evaluate(element => document.activeElement === element)).toBe(true)
+
+      const geometry = await dialog.evaluate((element) => {
+        const nav = element.querySelector('nav')
+        const navList = nav?.lastElementChild
+        const content = nav?.nextElementSibling
+        if (!(nav instanceof HTMLElement) || !(navList instanceof HTMLElement) || !(content instanceof HTMLElement)) {
+          throw new Error('settings dialog is missing nav or content columns')
+        }
+        const panelRect = element.getBoundingClientRect()
+        const navRect = nav.getBoundingClientRect()
+        const contentRect = content.getBoundingClientRect()
+        return {
+          contentBelowNav: contentRect.top >= navRect.bottom,
+          contentMatchesPanel: Math.round(contentRect.width) === Math.round(panelRect.width),
+          navListDirection: getComputedStyle(navList).flexDirection,
+          navListOverflow: getComputedStyle(navList).overflowX,
+          panelDirection: getComputedStyle(element).flexDirection,
+          panelHasHorizontalOverflow: element.scrollWidth > element.clientWidth,
+          panelLeft: Math.round(panelRect.left),
+          panelRight: Math.round(panelRect.right),
+          panelWidth: Math.round(panelRect.width),
+          viewportWidth: window.innerWidth,
+        }
+      })
+      const snapshot = [
+        '# Settings dialog at Activity Bar width',
+        '',
+        `- Viewport width: ${String(geometry.viewportWidth)}px`,
+        `- Panel bounds: ${String(geometry.panelLeft)}px–${String(geometry.panelRight)}px (${String(geometry.panelWidth)}px wide)`,
+        `- Panel flex direction: ${geometry.panelDirection}`,
+        `- Navigation list flex direction: ${geometry.navListDirection}`,
+        `- Navigation list horizontal overflow: ${geometry.navListOverflow}`,
+        `- Content begins below navigation: ${String(geometry.contentBelowNav)}`,
+        `- Content width matches panel: ${String(geometry.contentMatchesPanel)}`,
+        `- Panel has horizontal overflow: ${String(geometry.panelHasHorizontalOverflow)}`,
+      ].join('\n')
+      await compareOrRefreshGolden(NARROW_EXPECTED, snapshot, MODE)
+
+      await close.click()
+      await expect.poll(() => trigger.evaluate(element => document.activeElement === element), { timeout: 5_000 })
+        .toBe(true)
+      expect(tripwire.pageErrors).toEqual([])
+    } finally {
+      await page.keyboard.press('Escape')
+      await page.setViewportSize({ width: 1680, height: 1000 })
+    }
   }, 60_000)
 
   it('stores Permission as the default for future sessions without changing an existing session', async () => {
@@ -524,6 +602,11 @@ describe('web e2e: settings modal and General preferences', () => {
 
   it.skipIf(MODE === 'record')('keeps the fixture inventory closed', async () => {
     expect(tripwire.warnings).toEqual([])
-    await assertFixtureInventory(SNAPSHOT_DIR, ['dialog-en.expected.md', 'dialog.expected.md', 'plugins.expected.md'])
+    await assertFixtureInventory(SNAPSHOT_DIR, [
+      'dialog-en.expected.md',
+      'dialog.expected.md',
+      'narrow.expected.md',
+      'plugins.expected.md',
+    ])
   })
 })

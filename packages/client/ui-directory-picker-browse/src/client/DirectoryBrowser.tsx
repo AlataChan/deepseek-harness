@@ -365,8 +365,8 @@ export function DirectoryBrowser({ open, listDirectory, createDirectory, onOpen,
 
   /**
    * A landed preview replaced the pane a keyboard operator may have Tabbed
-   * onto, so the focus it drops is re-parked on the still-open editor (the
-   * Modal has no focus trap). Consumed by the refocus effect below.
+   * onto, so the focus it drops is re-parked on the still-open editor rather
+   * than waiting on another Tab cycle. Consumed by the refocus effect below.
    */
   const refocusPathInput = useRef(false)
 
@@ -701,8 +701,8 @@ export function DirectoryBrowser({ open, listDirectory, createDirectory, onOpen,
     if (row !== null && childPath !== undefined) row.scrollLeft = row.scrollWidth
   }, [childPath])
   // Every editor exit that would drop focus to body re-parks it after
-  // commit, so keyboard traversal stays inside the dialog (the Modal has no
-  // focus trap): a pick lands on the selection's row — aria-current in the
+  // commit, so the operator keeps a useful position without another Tab: a
+  // pick lands on the selection's row — aria-current in the
   // freshly rendered left pane, which survives even a right-pane advance
   // replacing the picked button's column — while Enter and an input-focused
   // Escape land on the crumb edit zone that replaces the input.
@@ -740,9 +740,9 @@ export function DirectoryBrowser({ open, listDirectory, createDirectory, onOpen,
 
   if (!open) return null
   const twoPane = selected !== null
-  // The nested create dialog owns the interaction while open: Modal has no
-  // focus trap, so every parent control goes inert (Shift-Tab or AT must not
-  // close, adopt, or retarget underneath the child).
+  // The nested create dialog owns the interaction while open. The topmost
+  // Modal owns Tab and Escape; inert also keeps pointer and AT interaction
+  // from closing, adopting, or retargeting underneath the child.
   const parentInert = busy || folderDraft !== null
   // An uncommitted path draft makes targetPath stale relative to the header:
   // committing actions must not act on the previous selection/listing while

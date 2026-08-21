@@ -928,8 +928,8 @@ describe('DirectoryBrowser', () => {
     // lives in (a landing that re-lists the same level reuses its rows).
     fireEvent.change(input, { target: { value: `${HARNESS}/` } })
     // The keyboard path: focus Tabbed onto a row of the level about to be
-    // replaced. Without a re-park it would fall to body, outside a Modal that
-    // has no focus trap.
+    // replaced. Without a re-park it would fall to body until the next Tab
+    // cycle lets the Modal restore a useful keyboard position.
     rowButton(screen.getByRole('listitem')).focus()
     await waitFor(() => { expect(within(columns()[0]!).getByText('harness')).toBeTruthy() })
     expect(document.activeElement).toBe(screen.getByLabelText('browser.editPath'))
@@ -1079,8 +1079,8 @@ describe('DirectoryBrowser', () => {
     fireEvent.mouseDown(row)
     fireEvent.click(row)
     expect(screen.queryByLabelText('browser.editPath', { selector: 'input' })).toBeNull()
-    // Focus parks on the picked row (the editor's input just unmounted and
-    // the Modal has no focus trap to catch a fall to body).
+    // Focus parks immediately on the picked row when the editor input
+    // unmounts; the operator need not press Tab to recover from body.
     expect(document.activeElement).toBe(row)
     await waitFor(() => { expect(columns()).toHaveLength(2) })
     expect(screen.getByRole('button', { name: 'browser.home' })).toBeTruthy()

@@ -3,12 +3,93 @@
 // cannot leave sticky page controls above the mask. This is still an in-page
 // WebUI dialog; it never creates or targets another browser/native window.
 
-import { useEffect } from 'react'
-import type { ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import { IconCloseOutline16 } from './icons/index.tsx'
 import css from './Modal.module.css'
+
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[contenteditable="true"]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
+/**
+ * Own keyboard focus for one modal dialog while it is mounted.
+ *
+ * The returned ref belongs on the element carrying `role="dialog"` and
+ * `aria-modal="true"`. Document order selects the topmost mounted dialog, so
+ * nested body portals have one Escape and Tab owner. Cleanup restores the
+ * element focused before this dialog opened when that element still exists.
+ * @param open - whether this dialog currently owns a mounted modal layer.
+ * @param onClose - close request for Escape.
+ * @param initialFocus - optional preferred entry target inside the dialog.
+ * @returns the ref to attach to the modal dialog element.
+ */
+export function useModalFocus<T extends HTMLElement>(
+  open: boolean,
+  onClose: () => void,
+  initialFocus?: RefObject<HTMLElement>,
+): RefObject<T> {
+  const dialogRef = useRef<T>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  useEffect(() => {
+    if (!open) return
+    const dialog = dialogRef.current
+    /* v8 ignore next -- the open Modal and settings panel attach this ref in the same committed render. */
+    if (dialog === null) return
+    const previousFocus = document.activeElement as HTMLElement | null
+    const focusableElements = () => [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)]
+    const isTopmost = () => [...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')].at(-1) === dialog
+
+    if (!dialog.contains(document.activeElement)) {
+      const target = initialFocus?.current ?? focusableElements()[0] ?? dialog
+      target.focus()
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isTopmost()) return
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = focusableElements()
+      if (focusable.length === 0) {
+        event.preventDefault()
+        dialog.focus()
+        return
+      }
+      const first = focusable[0] as HTMLElement
+      const last = focusable[focusable.length - 1] as HTMLElement
+      const active = document.activeElement
+      if (event.shiftKey && (!dialog.contains(active) || active === first)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (!dialog.contains(active) || active === last)) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previousFocus?.isConnected === true) previousFocus.focus()
+    }
+  }, [initialFocus, open])
+
+  return dialogRef
+}
 
 /**
  * Render a centered modal over a blurred page mask.
@@ -41,14 +122,7 @@ export function Modal({
   contentClassName?: string
   headless?: boolean
 }) {
-  useEffect(() => {
-    if (!open) return
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => { document.removeEventListener('keydown', onKeyDown) }
-  }, [open, onClose])
+  const dialogRef = useModalFocus<HTMLDivElement>(open, onClose)
 
   if (!open) return null
 
@@ -56,10 +130,12 @@ export function Modal({
     <div className={css.root} role="presentation">
       <div className={css.mask} aria-hidden="true" onClick={onClose} />
       <div
+        ref={dialogRef}
         className={clsx(css.dialog, className)}
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
       >
         {headless
           ? children

@@ -159,6 +159,28 @@ describe('SettingsPanel close paths', () => {
     openPanel()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
   })
+
+  it('wraps keyboard focus within the settings dialog', () => {
+    mount()
+    openPanel()
+    const close = screen.getByRole('button', { name: 'Close' })
+    const first = screen.getByRole('button', { name: 'General' })
+
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(document.activeElement).toBe(first)
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(close)
+  })
+
+  it('returns focus to the settings trigger after close', () => {
+    mount()
+    const trigger = screen.getByRole('button', { name: 'Settings' })
+    // fireEvent.click does not apply the browser's pointer-focus default.
+    trigger.focus()
+    openPanel()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(document.activeElement).toBe(trigger)
+  })
 })
 
 describe('SettingsPanel navigation', () => {

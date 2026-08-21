@@ -224,3 +224,53 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* VS Code Activity Bar webviews commonly provide only 300–400 CSS pixels.
+   Give feature settings the full card width there; the compact nav remains
+   one scrollable row instead of competing with content for a second column. */
+@media (max-width: 640px) {
+  .panel {
+    flex-direction: column;
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+    max-width: none;
+    border-radius: 16px;
+  }
+
+  .nav {
+    width: 100%;
+    gap: 10px;
+    padding: 14px 12px 0;
+    border-bottom: 1px solid var(--dsw-alias-border-l2);
+  }
+
+  .navTitle {
+    padding: 0 4px;
+  }
+
+  .navList {
+    flex-direction: row;
+    gap: 4px;
+    padding-bottom: 10px;
+    overflow-x: auto;
+  }
+
+  .navCell {
+    flex: none;
+    height: 36px;
+    padding: 7px 12px 7px 10px;
+  }
+
+  .content {
+    min-height: 0;
+  }
+
+  .header {
+    height: 48px;
+    padding: 12px 12px 8px;
+  }
+
+  .options {
+    padding: 0 16px 16px;
+  }
+}

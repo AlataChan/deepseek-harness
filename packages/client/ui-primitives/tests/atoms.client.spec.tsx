@@ -406,6 +406,101 @@ describe('Modal', () => {
     fireEvent.click(mask)
     expect(onClose).toHaveBeenCalledTimes(2)
   })
+
+  it('moves focus inside on open and restores the opener on close', () => {
+    const opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    const { rerender } = render(
+      <Modal open onClose={() => {}} title="Dialog"><input aria-label="Field" /></Modal>)
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
+    rerender(<Modal open={false} onClose={() => {}} title="Dialog" />)
+    expect(document.activeElement).toBe(opener)
+    opener.remove()
+  })
+
+  it('wraps Tab in both directions inside the topmost dialog', () => {
+    render(
+      <Modal
+        open
+        onClose={() => {}}
+        title="Dialog"
+        footer={<button type="button">Last action</button>}
+      >
+        <input aria-label="Middle field" />
+      </Modal>)
+    const first = screen.getByRole('button', { name: 'Close' })
+    const last = screen.getByRole('button', { name: 'Last action' })
+
+    last.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(document.activeElement).toBe(first)
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(last)
+  })
+
+  it('leaves ordinary Tab movement to the browser between the endpoints', () => {
+    render(
+      <Modal
+        open
+        onClose={() => {}}
+        title="Dialog"
+        footer={<button type="button">Last action</button>}
+      >
+        <input aria-label="Middle field" />
+      </Modal>)
+    const middle = screen.getByRole('textbox', { name: 'Middle field' })
+    middle.focus()
+    const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+
+    document.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(false)
+    expect(document.activeElement).toBe(middle)
+  })
+
+  it('uses the dialog itself when a headless modal has no focusable content', () => {
+    render(<Modal open headless onClose={() => {}} title="Headless"><span>Body</span></Modal>)
+    const dialog = screen.getByRole('dialog', { name: 'Headless' })
+    expect(document.activeElement).toBe(dialog)
+
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(document.activeElement).toBe(dialog)
+  })
+
+  it('preserves an autofocus target that already owns focus inside the dialog', () => {
+    render(
+      <Modal open onClose={() => {}} title="Dialog">
+        <input autoFocus aria-label="Preferred field" />
+      </Modal>)
+
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Preferred field' }))
+  })
+
+  it('does not restore an opener removed before the dialog closes', () => {
+    const opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    const { rerender } = render(<Modal open onClose={() => {}} title="Dialog">Body</Modal>)
+    opener.remove()
+
+    rerender(<Modal open={false} onClose={() => {}} title="Dialog" />)
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it('routes Escape only to the topmost nested dialog', () => {
+    const closeParent = vi.fn()
+    const closeChild = vi.fn()
+    render(
+      <>
+        <Modal open onClose={closeParent} title="Parent">parent</Modal>
+        <Modal open onClose={closeChild} title="Child">child</Modal>
+      </>)
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(closeParent).not.toHaveBeenCalled()
+    expect(closeChild).toHaveBeenCalledOnce()
+  })
 })
 
 describe('ConnectionBanner', () => {
