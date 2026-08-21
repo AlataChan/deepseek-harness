@@ -20,7 +20,7 @@ type ToolRow = Extract<ProjectedTranscriptRow, { kind: 'tool-call' | 'tool-resul
 
 function definition(
   name: string,
-  execute: ReturnType<typeof vi.fn>,
+  execute: ToolDefinition['execute'],
   presentCall?: (args: unknown) => ToolCallView | undefined,
   presentResult?: (args: unknown) => ToolResultView | undefined,
 ): ToolDefinition {

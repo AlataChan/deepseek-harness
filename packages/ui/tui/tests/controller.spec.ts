@@ -183,8 +183,10 @@ describe('tui session controller', () => {
       startup: { kind: 'fresh' }, cwd: '/workspace', displayBudget,
       sessionSelectorLimit: 50, createSessionId: () => SessionId('interaction-session'), store,
     })
+    const agent = controller.agent
+    if (agent === undefined) throw new Error('fresh controller did not publish its Agent')
     const pending = test.ctx.userQuestions.ask({
-      agent: controller.agent,
+      agent,
       questions: [{ id: 'confirm', question: 'Proceed?' }],
     })
     await Promise.resolve()
