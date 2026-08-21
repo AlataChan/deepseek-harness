@@ -8,6 +8,8 @@ English | [中文](README.zh.md)
 
 The package owns terminal presentation and input lifecycle for one root agent. Product state remains independent of Ink so reducers, transcript projection, and interaction ownership can be tested without a renderer.
 
+Durable and live events pass through one pure projection. Every model-, tool-, command-, and log-supplied display field is made terminal-safe before rendering; tool arguments and result metadata remain structured for their dedicated cards.
+
 ## Configuration
 
 - `terminalColumnsFallback` — positive integer width used when stdout exposes no usable column count; default `80`.
@@ -27,4 +29,5 @@ None; rendering and terminal input do not add or replace model request content.
 
 - **Node terminal only** — browser, Electron, and Tauri application shells are outside this package.
 - **Focused keyboard interaction** — mouse input, image attachments, and alternate-screen mode are deferred.
+- **Markdown subset** — headings, paragraphs, lists, fenced code, inline code, and visible links are supported; raw HTML is displayed as text and terminal hyperlinks are not emitted.
 - **Interactive streams required** — stdin and stdout must both be TTYs; automation uses `dsh exec`.
