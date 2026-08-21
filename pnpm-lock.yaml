@@ -1524,6 +1524,22 @@ importers:
         specifier: workspace:^
         version: link:../../core/session
 
+  packages/bundle/tui-app:
+    dependencies:
+      '@deepseek-ai/dsh-cmdline':
+        specifier: workspace:^
+        version: link:../../boot/cmdline
+      commander:
+        specifier: ^15.0.0
+        version: 15.0.0
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:^
+        version: link:../../core/session
+
   packages/bundle/vscode-app:
     dependencies:
       '@deepseek-ai/dsh-app-boot':
@@ -8474,6 +8490,9 @@ importers:
 
   packages/ui/tui:
     dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
       ink:
         specifier: 7.1.1
         version: 7.1.1(@types/react@19.2.18)(react-devtools-core@7.0.1)(react@19.2.8)
