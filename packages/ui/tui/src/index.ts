@@ -6,6 +6,17 @@ import z from '@deepseek-ai/schemastery'
 /** Cordis plugin name. */
 export const name = 'tui'
 
+/** Services required before the terminal controller can start. */
+export const inject = [
+  'agentDefaultModel',
+  'agents',
+  'approval',
+  'commands',
+  'sessionQuery',
+  'sessions',
+  'userQuestions',
+]
+
 /** Validated terminal presentation limits. */
 export interface Config {
   /** Width used when stdout exposes no positive integer column count. */

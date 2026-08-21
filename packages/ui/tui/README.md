@@ -10,6 +10,8 @@ The package owns terminal presentation and input lifecycle for one root agent. P
 
 Durable and live events pass through one pure projection. Every model-, tool-, command-, and log-supplied display field is made terminal-safe before rendering; tool arguments and result metadata remain structured for their dedicated cards.
 
+The runtime controller waits for complete Loader settlement, then owns one fresh or resumed root Agent. Resume discovery reads a bounded newest-first session list and resolves all visible titles in one batch.
+
 ## Configuration
 
 - `terminalColumnsFallback` — positive integer width used when stdout exposes no usable column count; default `80`.
