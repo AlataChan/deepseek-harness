@@ -89,6 +89,7 @@ class Controller implements TuiController {
     if (selected === undefined) return
     this.rows = Object.freeze([])
     const owned = await resumeOwned(this.ctx, selected, this.fallback, this.budget)
+    // dispose() may run while the asynchronous persistence resume is pending.
     if (this.disposed) {
       await owned.dispose()
       return

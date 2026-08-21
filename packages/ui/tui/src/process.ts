@@ -29,13 +29,13 @@ export interface TuiProcessTestOptions {
 }
 
 function positiveInteger(value: number | undefined): number | undefined {
-  return Number.isSafeInteger(value) && value !== undefined && value > 0 ? value : undefined
+  return value !== undefined && Number.isSafeInteger(value) && value > 0 ? value : undefined
 }
 
 /** Construct one validated adapter from explicit process facts. */
 function createAdapter(options: TuiProcessTestOptions): TuiProcess {
-  const stdinIsTTY = options.stdin.isTTY === true
-  const stdoutIsTTY = options.stdout.isTTY === true
+  const stdinIsTTY = options.stdin.isTTY
+  const stdoutIsTTY = options.stdout.isTTY
   if (!stdinIsTTY || !stdoutIsTTY) {
     throw new Error('dsh tui requires interactive stdin and stdout; use dsh exec for non-interactive runs')
   }
@@ -48,7 +48,7 @@ function createAdapter(options: TuiProcessTestOptions): TuiProcess {
     get columns() { return positiveInteger(options.stdout.columns) ?? options.terminalColumnsFallback },
     get rows() { return positiveInteger(options.stdout.rows) },
     cwd: options.cwd,
-    requestExit: options.requestExit,
+    requestExit: (code) => { options.requestExit(code) },
     onResize(listener) {
       options.stdout.on('resize', listener)
       return () => { options.stdout.off('resize', listener) }

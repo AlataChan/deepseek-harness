@@ -4,7 +4,7 @@ import { displayText, type DisplayText } from '../src/transcript/display-text.ts
 const generous = { maxBytes: 10_000, maxColumns: 10_000 }
 
 function raw(value: DisplayText): string {
-  return value as string
+  return value
 }
 
 describe('terminal display text', () => {

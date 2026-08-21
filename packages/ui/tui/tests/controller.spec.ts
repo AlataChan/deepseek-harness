@@ -113,12 +113,13 @@ describe('tui session controller', () => {
     settled.resolve(undefined)
     const controller = await pending
 
-    expect(test.factoryCalls[0]).toMatchObject({
+    const created = test.factoryCalls[0]
+    expect(created).toMatchObject({
       sessionId: 'fresh-session',
       meta: { cwd: '/workspace' },
       agentOptions: { provider: 'default-provider', model: 'default-model' },
-      setup: expect.any(Function),
     })
+    expect(typeof created?.setup).toBe('function')
     expect(controller.modelSelection?.current).toEqual({
       provider: 'default-provider', model: 'default-model',
     })

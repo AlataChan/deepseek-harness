@@ -5,8 +5,9 @@ function parseError(args: string[]): { exitCode: number } {
   try {
     parseTuiStartupArgs(args)
   } catch (error) {
-    expect(error).toMatchObject({ exitCode: expect.any(Number) })
-    return error as { exitCode: number }
+    if (typeof error === 'object' && error !== null && 'exitCode' in error
+      && typeof error.exitCode === 'number') return { exitCode: error.exitCode }
+    throw error
   }
   throw new Error(`expected ${JSON.stringify(args)} to fail`)
 }

@@ -42,9 +42,14 @@ describe('client TypeScript aggregate', () => {
     if (host.error !== undefined || client.error !== undefined) {
       throw new Error('failed to read a TypeScript aggregate')
     }
+    const hostConfig = host.config as unknown as {
+      compilerOptions?: { jsx?: unknown }
+      include?: unknown[]
+    }
+    const clientConfig = client.config as unknown as { include?: unknown[] }
 
-    expect(host.config.compilerOptions?.jsx).toBe('react-jsx')
-    expect(host.config.include).toContain('packages/ui/*/tests/**/*.tsx')
-    expect(client.config.include).not.toContain('packages/ui/*/tests/**/*.tsx')
+    expect(hostConfig.compilerOptions?.jsx).toBe('react-jsx')
+    expect(hostConfig.include).toContain('packages/ui/*/tests/**/*.tsx')
+    expect(clientConfig.include).not.toContain('packages/ui/*/tests/**/*.tsx')
   })
 })
