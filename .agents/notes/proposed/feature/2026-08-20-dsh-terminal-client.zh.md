@@ -36,13 +36,15 @@ TUI 验收标准通过之后，可以通过单独的 Agent Note 与实施计划�
 
 launcher 继续只拥有 profile 选择、patch、dump 与别名。`tui-app` startup 插件拥有 `--resume`、可选任务位置参数、应用帮助与校验，沿用现有 `cmdlineArgs` provider 模式。
 
+只有完全由 `dsh -h` 或 `dsh --help` 组成的调用才打印 launcher help。一旦存在任务或应用 token，help token 就属于所选应用，即使它位于位置任务之前。Launcher version flag 继续由 launcher 拥有，config dump 拒绝应用参数。
+
 ## 包与组合边界
 
 新增 `packages/ui/tui` 作为 Node 终端呈现组，并在包层级中记录新的 `ui/` group。该包拥有终端输入、终端安全渲染、state store、单 Agent controller，以及审批与用户问题 adapter。它只依赖 Service Definition 与呈现类型，不依赖具体 LLM、持久化、shell、文件系统或沙箱 provider。
 
 新增 `packages/bundle/tui-app` 作为 profile patch carrier 与启动参数 provider。它的 patch 在 `dsh-base` 上应用 TUI 专属 persona 与工具呈现值；在 TUI remount 行为得到证明之前关闭共享 HMR；在已配置工具模式需要时挂载 worker-thread code runtime；并挂载 startup provider 与 TUI 插件。
 
-在已发布 profile template 中增加 `tui: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-tui-app']`。CLI 安装包依赖这两个新包，确保已安装 profile 的解析不依赖仅 workspace 可用的路径别名。
+在已发布 profile template 中增加 `tui: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-tui-app']`。把精确的 base-only `tui` tuple 视为 installation-owned，使 TUI 发布前初始化的 profile 规范化为当前 template；任何带用户新增 bundle 的 tuple 都保持不变。CLI 安装包依赖这两个新包，确保已安装 profile 的解析不依赖仅 workspace 可用的路径别名。
 
 每个新包都提供 `./invariant` companion。TUI invariant 只检查包自有的运行关系，例如一个已挂载 TUI controller 至多拥有一个根 Agent 和一个活跃交互 provider；它不会断言固定组件输出，也不会重复断言 injection 已经保证存在的服务。
 
@@ -102,7 +104,7 @@ TUI 通过可注入 process adapter 接收 stdin、stdout、stderr、环境事�
 
 Loader composition 测试启动真实 `base + tui-app` patch list，证明 startup service、TUI row、交互 provider、Agent 生命周期与 invariant companion。CLI parser 测试覆盖别名、保留位置参数逃逸、应用参数转发、config dump 与非 TTY 提示。Windows CI lane 不通过 `.cmd` 或 shell 调用，直接运行 parser 与可注入终端集成测试。
 
-一个位于真实可运行 TUI example 下的 keyless 组装快照，使用确定性 TTY stream 与 LLM replay fixture 驱动已挂载 Ink 应用。规范化转录覆盖初始任务提交、流式 assistant 文本、terminal 工具卡、审批、用户问题、命令结果、取消与干净退出。同一 fixture 可在 macOS 与 Linux 回放；Windows lane 运行等价断言，但不拥有 golden ANSI 转录。
+真实可运行 TUI example 下的三个聚焦 keyless 组装快照，使用确定性 TTY stream 与相互独立的 LLM replay fixture 驱动已挂载 Ink 应用。Transcript scenario 覆盖初始任务提交、流式 assistant 文本与 terminal 工具卡；interaction scenario 覆盖审批、用户问题、命令与 balanced persistence；lifecycle scenario 覆盖取消、干净退出与终端恢复。每个 fixture 都可在 macOS 与 Linux 回放；Windows lane 运行等价断言，但不拥有 golden ANSI 转录。
 
 第一版 gate 是交互式终端产品，而不是桌面壳。通过后，桌面设计从 Tauri 2、现有 React client 和 Node companion 开始；签名、updater channel、安装包身份、sidecar 打包、WebView 兼容性与不依赖 marketplace 的分发都需要自己的决策记录与验收套件。
 
@@ -135,8 +137,8 @@ Loader composition 测试启动真实 `base + tui-app` patch list，证明 start
 - 一个不依赖框架的 store 拥有草稿、转录状态、overlay、审批与问题；Ink 只是 renderer subscriber。
 - 已完成行进入普通 scrollback，活跃输出原地更新，恢复历史以明确省略标记有界显示，所有不可信显示文本都满足终端安全要求。
 - 新建与恢复会话都能完成多轮对话、运行并呈现工具、执行已注册斜杠命令、取消工作、回答审批、回答用户问题、flush，并且退出后不残留 raw mode。
-- 单元、Loader composition、CLI integration、keyless 组装转录快照与 Windows 可注入终端测试在仓库支持的 Node 版本上通过；每个新源码文件继续满足逐文件覆盖率 gate。
-- Package README、group index、CLI help、用户文档、module graph、依赖 lockfile、invariant 与本 Agent Note 保持同步。
+- 单元、Loader composition、CLI integration、聚焦 keyless 组装转录快照与 Windows 可注入终端测试在仓库支持的 Node 版本上通过；每个新源码文件继续满足逐文件覆盖率 gate。
+- Root agent instruction、package README、group index、CLI help、用户文档、module graph、依赖 lockfile、invariant 与本 Agent Note 保持同步。
 - TUI 实施 stack 不落入 Tauri 或桌面打包代码；桌面工作只能从单独批准的计划开始。
 
 ## 风险

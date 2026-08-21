@@ -36,13 +36,15 @@ Bare `dsh` and `dsh tui` require interactive stdin and stdout. A non-TTY invocat
 
 The launcher continues to own only profile selection, patches, dumps, and aliases. The `tui-app` startup plugin owns `--resume`, the optional task positional, app help, and validation, following the existing `cmdlineArgs` provider pattern.
 
+An invocation consisting only of `dsh -h` or `dsh --help` prints launcher help. Once any task or app token is present, help tokens belong to the selected app even when they precede the positional task. Launcher version flags remain launcher-owned, and config dumps reject app arguments.
+
 ## Package and composition boundaries
 
 Create `packages/ui/tui` as the Node terminal-presentation group and document the new `ui/` group in the package hierarchy. The package owns terminal input, terminal-safe rendering, the state store, the single-agent controller, and the approval and user-question adapters. It depends only on Service Definitions and presentation types, never concrete LLM, persistence, shell, filesystem, or sandbox providers.
 
 Create `packages/bundle/tui-app` as the profile patch carrier and startup-argument provider. Its patch applies TUI-specific persona and tool-presentation values over `dsh-base`, disables shared HMR until TUI remount behavior is proven, mounts the worker-thread code runtime when the configured tool mode needs it, mounts the startup provider, and mounts the TUI plugin.
 
-Add `tui: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-tui-app']` to the shipped profile templates. The CLI installation depends on both new packages so installed profile resolution never relies on a workspace-only path alias.
+Add `tui: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-tui-app']` to the shipped profile templates. Treat the exact base-only `tui` tuple as installation-owned so a profile initialized before the TUI shipped normalizes to the current template; any tuple with a user-added bundle remains untouched. The CLI installation depends on both new packages so installed profile resolution never relies on a workspace-only path alias.
 
 Every new package ships an `./invariant` companion. The TUI invariant checks only package-owned live relationships, such as one mounted TUI controller owning at most one root Agent and one active interaction provider; it does not assert fixed component output or the presence of services already guaranteed by injection.
 
@@ -102,7 +104,7 @@ Pure state, editor, sanitizer, transcript projection, tool-card projection, and 
 
 Loader composition tests boot the actual `base + tui-app` patch list and prove the startup service, TUI row, interaction providers, Agent lifecycle, and invariant companion. CLI parser tests cover aliases, reserved positional escape, app-argument forwarding, config dumps, and non-TTY guidance. The Windows CI lane runs the parser and injectable-terminal integration tests without `.cmd` or shell invocation.
 
-A keyless assembled snapshot under a real runnable TUI example drives the mounted Ink application with deterministic TTY streams and an LLM replay fixture. Its normalized transcript covers initial prompt submission, streamed assistant text, a terminal tool card, an approval, a user question, a command result, cancellation, and clean exit. The same fixture replays on macOS and Linux; the Windows lane runs equivalent assertions without owning the golden ANSI transcript.
+Three focused keyless assembled snapshots under a real runnable TUI example drive the mounted Ink application with deterministic TTY streams and independent LLM replay fixtures. The transcript scenario covers initial prompt submission, streamed assistant text, and a terminal tool card; the interaction scenario covers approval, user questions, commands, and balanced persistence; the lifecycle scenario covers cancellation, clean exit, and terminal restoration. Each fixture replays on macOS and Linux; the Windows lane runs equivalent assertions without owning golden ANSI transcripts.
 
 The first release gate is the interactive terminal product, not the desktop shell. After it passes, desktop design starts with Tauri 2, the existing React client, and a Node companion; signing, updater channel, installer identity, sidecar packaging, WebView compatibility, and marketplace-independent distribution receive their own decision record and acceptance suite.
 
@@ -135,8 +137,8 @@ Rejected. It duplicates a Chromium runtime already available through Tauri's sys
 - One framework-free store owns drafts, transcript state, overlays, approvals, and questions; Ink is a renderer subscriber.
 - Finalized rows become ordinary scrollback, active output updates in place, resumed history is bounded with an explicit omission marker, and all untrusted display text is terminal-safe.
 - Fresh and resumed sessions can complete multiple turns, run and render tools, execute registered slash commands, cancel work, answer approvals, answer user questions, flush, and exit without leaving raw mode enabled.
-- Unit, Loader composition, CLI integration, keyless assembled transcript snapshot, and Windows injectable-terminal tests pass under the repository's supported Node versions; every new source file remains inside the per-file coverage gate.
-- Package READMEs, group indexes, CLI help, user documentation, module graph, dependency lockfile, invariants, and this Agent Note remain synchronized.
+- Unit, Loader composition, CLI integration, focused keyless assembled transcript snapshots, and Windows injectable-terminal tests pass under the repository's supported Node versions; every new source file remains inside the per-file coverage gate.
+- Root agent instructions, package READMEs, group indexes, CLI help, user documentation, module graph, dependency lockfile, invariants, and this Agent Note remain synchronized.
 - No Tauri or desktop packaging code lands in the TUI implementation stack; desktop work starts only through a separate approved plan.
 
 ## Risks

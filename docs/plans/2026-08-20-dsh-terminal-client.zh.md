@@ -18,6 +18,10 @@
 
 按照用户要求，在可见 feature branch 或当前工作分支执行，不在隐藏 worktree 中实施。保留无关用户文件。每个行为任务都使用测试驱动开发：增加一个失败的聚焦测试，运行并观察预期失败，实现最小行为，重新运行聚焦测试，然后提交该任务。
 
+这 13 个任务 commit 设计为通过一个 PR 或一个经过评审的 stack 落地，其最终 diff 包含 Agent Note。如果工作拆成独立合并的多个 PR，每个非平凡 PR 都必须新增或更新一个适用的 Agent Note；不能把全部决策文档推迟到任务 13。本 contributor 执行计划继续接受双语 `docs/**` 检查，但不是产品约定的权威来源。
+
+计划中命名的 `superpowers:*` skill 是执行辅助，不是代码库的先决条件。缺少这些 skill 的执行者仍须逐任务工作，在声称完成前根据新鲜证据验证，并请求最终评审；凡明确命名的 `dsh-pre-push-checks` 等仓库自有 workflow 仍然是强制要求。
+
 本计划不增加 Tauri 代码。桌面阶段只能在任务 13 通过后开始，并且需要自己的 Agent Note，覆盖应用身份、签名、updater channel、sidecar 打包与 WebView 支持。
 
 Ink 7 当前要求 Node 22 与 React 19.2+。锁定一个已验证的当前 7.x 版本，而不是宽泛 major range；在 `packages/ui/tui` 中使用兼容的精确 React 19.2 版本；本改动不升级浏览器 Client package 的 React 18。
@@ -28,7 +32,6 @@ Ink 7 当前要求 Node 22 与 React 19.2+。锁定一个已验证的当前 7.x 
 
 - 修改：`apps/cli/src/args.ts`
 - 修改：`apps/cli/tests/args.spec.ts`
-- 修改：`apps/cli/package.json`
 
 **步骤 1：增加失败的 parser 测试**
 
@@ -41,7 +44,9 @@ Ink 7 当前要求 Node 22 与 React 19.2+。锁定一个已验证的当前 7.x 
 - `['exec', 'write', 'the', 'tests']` 是 headless 别名。
 - `['--', 'web']` 把 `web` 当作 TUI 任务，而 `['web']` 仍然是 Web 别名。
 - `--profile`、`--patch`、两个 config dump、`web` 与 `plugin` 保持现有所有权规则。
-- 裸 `-h` 打印 launcher 帮助；`tui --help` 与 `exec --help` 把帮助传给应用。
+- 只有完全由 `-h` 或 `--help` 组成的调用才打印 launcher 帮助。
+- 一旦存在任务或应用 token，`-h` 与 `--help` 无论顺序如何都向内传递：覆盖 `['write', 'tests', '-h']`、`['-h', 'write', 'tests']`、`['--resume', '--help']`、`['tui', '--help']` 与 `['exec', '--help']`。
+- `-V` 与 `--version` 继续由 launcher 拥有，config dump 继续拒绝包括帮助 token 在内的应用参数。
 
 运行：`pnpm vitest run apps/cli/tests/args.spec.ts`
 
@@ -49,7 +54,7 @@ Ink 7 当前要求 Node 22 与 React 19.2+。锁定一个已验证的当前 7.x 
 
 **步骤 2：实现 launcher grammar**
 
-让 root action 默认选择 `tui` profile。增加小型共享 alias builder，使 `web`、`tui` 与 `exec` 复用 patch/dump 行为且不复制命令定义。把 `exec` 映射到 `headless`。launcher flag 保持位于 inner argument 之前，应用帮助仍由启动后的应用拥有。
+让 root action 默认选择 `tui` profile。增加小型共享 alias builder，使 `web`、`tui` 与 `exec` 复用 patch/dump 行为且不复制命令定义。把 `exec` 映射到 `headless`。仅把完全独立的帮助调用视为 launcher help；出现第一个任务或应用 token 后，把其余 token 原样交给启动后的应用。launcher flag 保持位于 inner argument 之前。
 
 更新帮助 copy 与示例，列出 `dsh`、`dsh --resume`、`dsh exec`、`dsh web` 与高级 `--profile` 路径。
 
@@ -62,7 +67,7 @@ Ink 7 当前要求 Node 22 与 React 19.2+。锁定一个已验证的当前 7.x 
 **步骤 4：提交**
 
 ```sh
-git add apps/cli/src/args.ts apps/cli/tests/args.spec.ts apps/cli/package.json
+git add apps/cli/src/args.ts apps/cli/tests/args.spec.ts
 git commit -m "feat(cli): make tui the default dsh surface"
 ```
 
@@ -101,7 +106,7 @@ git commit -m "feat(cli): make tui the default dsh surface"
 
 把 `@deepseek-ai/dsh-tui` 声明为 ESM，提供 root 与 `./invariant` export。runtime dependency 包含锁定的 Ink 7.x、兼容 React 19.2、`@deepseek-ai/cordis`，以及 `src` 实际导入的 Service Definition package。dev dependency 增加与 React 19 兼容的 `@types/react`。
 
-不要把 TUI source 放进 `tsconfig.client.json`。把项目引用加入 `tsconfig.host.json`。把 `packages/ui/*/src/invariant.ts` 加入 `tsconfig.base.json` 的 invariant wildcard。仅在 TUI package project 中增加 JSX compiler 设置。
+不要把 TUI source 放进 `tsconfig.client.json`。把项目引用加入 `tsconfig.host.json`。当前 `tsconfig.base.json` 的 invariant path 是按 group 显式枚举的列表，且没有 `ui` 条目，因此只增加 `packages/ui/*/src/invariant.ts`；如果执行前 base 已改成能覆盖该路径的 wildcard，则不要重复增加。仅在 TUI package project 中增加 JSX compiler 设置。
 
 Group README 把 `ui/` 定义为 Node-native presentation package，并列出没有全局 `ctx` key 的 `tui/`。双语更新根 package hierarchy。Package README 包含 `Model Experience` 与 `Known Limitations and Deferred Work` section。
 
@@ -138,6 +143,8 @@ git commit -m "feat(tui): scaffold the node terminal package"
 - 新建：`packages/bundle/tui-app/src/startup.ts`
 - 新建：`packages/bundle/tui-app/tests/startup.spec.ts`
 - 新建：`packages/ui/tui/src/process.ts`
+- 修改：`packages/ui/tui/src/index.ts`
+- 新建：`packages/ui/tui/tests/config.spec.ts`
 - 新建：`packages/ui/tui/tests/process.spec.ts`
 - 修改：`tsconfig.base.json`
 - 修改：`tsconfig.host.json`
@@ -165,24 +172,24 @@ type TuiStartupValues =
 
 **步骤 3：编写失败的 process adapter 测试**
 
-测试 production policy 要求 stdin 与 stdout 都具备 TTY 能力，输出包含 `dsh exec` 的提示，以配置提供经过校验的 terminal columns fallback，并让 resize 与 exit subscription 可 dispose。使用 fake stream；不要增加仅测试环境变量。
+测试 production policy 要求 stdin 与 stdout 都具备 TTY 能力，输出包含 `dsh exec` 的提示，以配置提供经过校验的 terminal columns fallback，并让 resize 与 exit subscription 可 dispose。测试 TUI Schemastery `Config` 拒绝无效的 `terminalColumnsFallback`、`resumeTranscriptRows`、`sessionSelectorLimit` 与 `toolOutputDisplayBudget` 值。使用 fake stream；不要增加仅测试环境变量。
 
-运行：`pnpm vitest run packages/ui/tui/tests/process.spec.ts`
+运行：`pnpm vitest run packages/ui/tui/tests/config.spec.ts packages/ui/tui/tests/process.spec.ts`
 
 预期：FAIL，因为 adapter 不存在。
 
 **步骤 4：实现 adapter**
 
-建立唯一 `TuiProcess` interface，包含 stream、TTY fact、dimensions、current directory 与 exit request。导出 production constructor 与狭窄 test constructor。所有直接 `process` 访问都留在该 module。不要在这里注册 SIGINT 或 SIGTERM；共享 profile launcher 已经拥有进程级 signal。
+建立唯一 `TuiProcess` interface，包含 stream、TTY fact、dimensions、current directory 与 exit request。导出 production constructor 与狭窄 test constructor。在 TUI plugin 的 Schemastery `Config` 上集中声明 `terminalColumnsFallback`、`resumeTranscriptRows`、`sessionSelectorLimit` 与 `toolOutputDisplayBudget`；把已经校验的 column fallback 传给没有隐藏默认值的 production constructor。所有直接 `process` 访问都留在该 module。不要在这里注册 SIGINT 或 SIGTERM；共享 profile launcher 已经拥有进程级 signal。
 
 **步骤 5：运行聚焦测试并提交**
 
-运行：`pnpm vitest run packages/bundle/tui-app/tests/startup.spec.ts packages/ui/tui/tests/process.spec.ts`
+运行：`pnpm vitest run packages/bundle/tui-app/tests/startup.spec.ts packages/ui/tui/tests/config.spec.ts packages/ui/tui/tests/process.spec.ts`
 
 预期：PASS。
 
 ```sh
-git add packages/bundle/tui-app packages/ui/tui/src/process.ts packages/ui/tui/tests/process.spec.ts tsconfig.base.json tsconfig.host.json
+git add packages/bundle/tui-app packages/ui/tui/src/index.ts packages/ui/tui/src/process.ts packages/ui/tui/tests/config.spec.ts packages/ui/tui/tests/process.spec.ts tsconfig.base.json tsconfig.host.json
 git commit -m "feat(tui): define startup and terminal process contracts"
 ```
 
@@ -379,7 +386,7 @@ git commit -m "feat(tui): render an inline ink transcript"
 
 **步骤 1：编写失败的 projection 测试**
 
-注册带 `presentCall` 与 `presentResult` 的真实 tool definition，覆盖 `generic`、`terminal`、`diff`、`read`、`search` path、`search` match 与 `web` result。覆盖缺失 definition、presenter 返回 `undefined`、未来未知 result card、被 tool presenter 拒绝的 malformed replay argument，以及超过显示预算的 terminal output。
+注册带 `presentCall` 与 `presentResult` 的真实 tool definition。分别命名 call 侧 `generic`/`terminal`/`diff` union 和 result 侧 `generic`/`terminal`/`diff`/`read`/`search`/`web` union 的 case，包括 search path 与 match 以及 Web source。覆盖缺失 definition、presenter 返回 `undefined`、未来未知 result card、被 tool presenter 拒绝的 malformed replay argument，以及超过显示预算的 terminal output。显式写明 call/result 不对称，使未来 card union 变化在所属 projection 上准确失败。
 
 运行：`pnpm vitest run packages/ui/tui/tests/tool-render.spec.tsx`
 
@@ -533,13 +540,15 @@ git commit -m "feat(tui): complete interactive input and shutdown"
 - code runtime、`tui-startup`、`tui` 与两个 invariant row 存在；
 - 不存在 `api-gateway`、Host server、client modules、Web runtime、VS Code carrier 或 network listener row。
 
+另以旧 base-only tuple 初始化一个已有 `tui` profile，加载它，并断言其被规范化为已发布 TUI template。证明带任意用户新增 bundle 的 tuple 保持不变。
+
 运行：`pnpm vitest run packages/boot/app-boot/tests/profile.spec.ts packages/bundle/tui-app/tests/tui-app.spec.ts`
 
 预期：FAIL。
 
 **步骤 2：实现 bundle patch 与 registration**
 
-让 startup value 通过 lazy row config 传递；TUI row 不读取 global argv。把 package 加入 CLI dependency、两个 aggregate/path registration、bundle index、shipped template，以及需要时的 installation-owned template normalization。运行 `pnpm install` 更新 lockfile。
+让 startup value 通过 lazy row config 传递；TUI row 不读取 global argv。把 package 加入 CLI dependency、两个 aggregate/path registration、bundle index 与 shipped template。在 `INSTALLATION_OWNED_PROFILE_TUPLES` 中增加 `tui: ['@deepseek-ai/dsh-base']`，使已发布 TUI 出现前创建的 profile 精确升级一次，同时任何用户修改过的 tuple 继续由用户拥有。运行 `pnpm install` 更新 lockfile。
 
 **步骤 3：增加 package docs 与 invariant**
 
@@ -567,8 +576,12 @@ git commit -m "feat(tui): ship the in-process tui profile"
 - 新建：`examples/tui-agent/cordis.snapshot.yml`
 - 新建：`examples/tui-agent/tests/fixtures/terminal-driver.ts`
 - 新建：`examples/tui-agent/tests/tui.snapshot.ts`
-- 新建：`examples/tui-agent/tests/snapshots/tui/session.jsonl`
-- 新建：`examples/tui-agent/tests/snapshots/tui/transcript.expected.txt`
+- 新建：`examples/tui-agent/tests/snapshots/tui-transcript/session.jsonl`
+- 新建：`examples/tui-agent/tests/snapshots/tui-transcript/transcript.expected.txt`
+- 新建：`examples/tui-agent/tests/snapshots/tui-interactions/session.jsonl`
+- 新建：`examples/tui-agent/tests/snapshots/tui-interactions/transcript.expected.txt`
+- 新建：`examples/tui-agent/tests/snapshots/tui-lifecycle/session.jsonl`
+- 新建：`examples/tui-agent/tests/snapshots/tui-lifecycle/transcript.expected.txt`
 - 修改：`examples/README.md`
 - 修改：`examples/README.zh.md`
 - 修改：`examples/README.i18n.yaml`
@@ -583,23 +596,17 @@ git commit -m "feat(tui): ship the in-process tui profile"
 
 先编写聚焦 driver 测试并观察失败，再实现。
 
-**步骤 2：增加 LLM replay scenario**
+**步骤 2：增加三个聚焦的 LLM replay scenario**
 
-Scenario 必须在一个真实挂载应用中覆盖：
+使用三个可独立选择的测试，每个测试都通过同一个 driver 挂载真实应用：
 
-- 初始位置参数 prompt 提交；
-- assistant streaming 后跟 settled message；
-- 一个 terminal tool call 与 result；
-- 一个显式 allow-once 的 approval；
-- 一个多项 user question；
-- 一个 registered command result；
-- 一个被取消的 follow-up turn；
-- 通过空 draft Ctrl+C 正常退出；
-- 持久化 balanced Session output。
+- `tui assembled transcript` 覆盖初始位置参数 prompt 提交、assistant streaming 后跟 settled message，以及一个 terminal tool call 与 result。
+- `tui assembled interactions` 覆盖一个显式 allow-once approval、一个多项 user question、一个 registered command result，以及持久化 balanced Session output。
+- `tui assembled lifecycle` 覆盖一个被取消的 follow-up turn、通过空 draft Ctrl+C 正常退出、raw-mode 恢复，以及 balanced shutdown output。
 
-只规范化 nondeterministic id、timestamp、absolute temp path 与 renderer cursor movement。不要规范化缺失或重复的用户可见 row。
+只规范化 nondeterministic id、timestamp、absolute temp path 与 renderer cursor movement。不要规范化缺失或重复的用户可见 row。保持 replay input 与 expected transcript 相互独立，使一个行为的变化不要求重新录制其他 scenario。
 
-运行：`pnpm run build && pnpm run test:snapshot -- -t "tui assembled transcript"`
+运行：`pnpm run build && pnpm run test:snapshot -- -t "tui assembled"`
 
 记录 expected output 前预期：FAIL，原因是 snapshot 缺失或刻意 mismatch。通过仓库 snapshot workflow 记录，再 keyless 重跑并预期 PASS。
 
@@ -622,6 +629,7 @@ git commit -m "test(tui): add assembled terminal acceptance"
 
 **文件：**
 
+- 修改：`AGENTS.md`
 - 修改：`README.md`
 - 修改：`README.zh.md`
 - 修改：`README.i18n.yaml`
@@ -639,7 +647,7 @@ git commit -m "test(tui): add assembled terminal acceptance"
 
 **步骤 1：更新 current-state 文档**
 
-记录新的默认命令、显式别名、非 TTY 提示、resume 行为、快捷键、配置字段与已知限制。更新 architecture，加入 Node terminal presentation package 与 direct in-process interaction path。不要把本实施计划粘贴到产品文档。
+记录新的默认命令、显式别名、非 TTY 提示、resume 行为、快捷键、配置字段与已知限制。在 root `AGENTS.md` 的 repository-layout tree 中加入新的 `ui/` group；如果其中的命令示例仍然只描述 profile 启动，也一并更新。更新 architecture，加入 Node terminal presentation package 与 direct in-process interaction path。不要把本实施计划粘贴到产品文档。
 
 使用实际实现的 config field name 与 default。记录当前限制：model switching、image attachment、mouse input、alternate-screen mode 与 Tauri desktop 延期。
 
@@ -670,7 +678,7 @@ pnpm run typecheck
 pnpm run lint
 pnpm run build
 pnpm run hygiene
-pnpm run test:snapshot -- -t "tui assembled transcript"
+pnpm run test:snapshot -- -t "tui assembled"
 pnpm run doc-sync
 git diff --check
 ```
@@ -694,7 +702,7 @@ git diff --check
 确认没有无关 untracked 用户文件被暂存。
 
 ```sh
-git add README.md README.zh.md README.i18n.yaml docs packages examples apps/cli tsconfig.base.json tsconfig.host.json package.json pnpm-lock.yaml .agents/notes
+git add AGENTS.md README.md README.zh.md README.i18n.yaml docs packages examples apps/cli tsconfig.base.json tsconfig.host.json package.json pnpm-lock.yaml .agents/notes
 git commit -m "docs(tui): publish the terminal client contract"
 ```
 
@@ -708,6 +716,6 @@ Push 前使用 `.agents/skills/dsh-pre-push-checks/SKILL.md`，只选择最终 d
 - 已安装 profile composition；
 - 支持的 terminal 与 Windows evidence；
 - 关键 shortcut 与 deferred feature；
-- keyless snapshot 位置；
+- 三个 keyless snapshot 位置；
 - 被刻意保留、不受影响的 VSIX 工作和根目录 scratch file；
 - 下一个获授权设计任务是单独的 Tauri 2 desktop Agent Note，而不是在该 stack 中增加 desktop code。
