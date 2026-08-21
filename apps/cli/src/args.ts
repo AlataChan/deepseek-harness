@@ -10,8 +10,8 @@
  * `dsh --profile tui --resume abc` boots the tui profile with `--resume abc`,
  * and `dsh --profile web -h` prints the web app's help, not this one's.
  *
- * `web` is a hardcoded alias for `--profile web`; `plugin` manages a profile's
- * plugin dependencies by forwarding to pnpm.
+ * `tui`, `exec`, and `web` are aliases for shipped profiles; `plugin` manages
+ * a profile's plugin dependencies by forwarding to pnpm.
  * @module @deepseek-ai/dsh/args
  */
 
@@ -47,7 +47,7 @@ interface PluginInvocation {
 /** The resolved `dsh` invocation. Help, version, and errors exit inside {@link parseDshArgs}. */
 export type DshInvocation = ProfileInvocation | DumpConfigInvocation | PluginInvocation
 
-/** Launcher flags shared by the default command and the `web` alias. */
+/** Launcher flags shared by the default command and profile aliases. */
 interface BootOptions {
   patch?: string[]
   dumpConfig?: boolean
@@ -63,11 +63,11 @@ const collect = (value: string, previous: string[] = []): string[] => [...previo
 /** The launcher's own help text; each app prints its own. */
 const HELP_EXAMPLES = `
 Examples:
-  dsh --profile web                          boot the web profile (same as: dsh web)
-  dsh --profile headless "run the tests"     answer one task, print the result, and exit
-  dsh --profile tui --patch ./extra.yml      boot a custom profile with one extra overlay
-  dsh --profile tui --resume <session>       arguments after the launcher flags reach the app
-  dsh --profile web --help                   the web app's own flags and help
+  dsh "write the tests"                       start a task in the terminal client
+  dsh --resume                               choose a terminal session to resume
+  dsh exec "write the tests"                  run one headless task and exit
+  dsh web                                    open the web client
+  dsh --profile tui --patch ./extra.yml      use the advanced profile path with an overlay
   dsh plugin --profile tui add <package>     install a plugin into the tui profile
 `
 
@@ -117,29 +117,23 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
   program
     .name('dsh')
     .version(version, '-V, --version', 'output the version number')
-    .description('dsh: boot a DeepSeek Harness profile — an ordered stack of plugin-bundle patch layers under your own overrides.')
+    .description('dsh: start the DeepSeek Harness terminal client or another installed app profile.')
     .addHelpText('after', HELP_EXAMPLES)
     .exitOverride()
     // The launcher's flags come first and end at the first token it does not
-    // know; everything from there on belongs to the booted app, including
-    // its -h. `dsh -h` with no profile still prints this help, below.
+    // know; everything from there on belongs to the booted app.
     .helpOption(false)
     .allowUnknownOption()
     .passThroughOptions()
     .enablePositionalOptions()
-    .argument('[args...]', 'arguments for the booted profile\'s app (see: dsh --profile <name> --help)')
-    .option('--profile <name>', 'the profile under $DSH_HOME/profiles to boot')
+    .argument('[args...]', 'task or arguments for the terminal client')
+    .option('--profile <name>', 'advanced: profile under $DSH_HOME/profiles to boot')
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
     .option('--dump-config', 'print the composed profile tree and exit')
     .option('--dump-default-config', 'print the profile tree without its user layer or --patch overlays and exit')
     .action((args: string[], options: BootOptions & { profile?: string }) => {
-      // With the app owning -h, the launcher's own help is what a bare
-      // `dsh -h` (no profile to hand it to) must print.
-      if (options.profile === undefined) {
-        if (args.some(argument => argument === '-h' || argument === '--help')) program.help()
-        program.error('error: --profile <name> is required')
-      }
-      const profile = options.profile
+      if (argv.length === 1 && (argv[0] === '-h' || argv[0] === '--help')) program.help()
+      const profile = options.profile ?? 'tui'
       if (profile === '') program.error('error: --profile needs a name')
       resolved = resolveBoot(program, profile, options, args)
     })
@@ -153,20 +147,27 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     }
   }
 
-  const web = program.command('web').description('boot the web profile (alias of --profile web); the web app\'s own flags follow')
-  web
-    .helpOption(false)
-    .allowUnknownOption()
-    .passThroughOptions()
-    .enablePositionalOptions()
-    .argument('[args...]', 'arguments for the web app (see: dsh web --help)')
-    .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
-    .option('--dump-config', 'print the composed web-profile tree (with the user layer and any --patch) and exit')
-    .option('--dump-default-config', 'print the web profile\'s bundle layers (no user layer) and exit')
-    .action((args: string[], options: BootOptions) => {
-      rejectParentOptions('web')
-      resolved = resolveBoot(web, 'web', options, args)
-    })
+  /** Register a shipped profile alias with the launcher's shared boot flags. */
+  const addProfileAlias = (name: string, profile: string, description: string): void => {
+    const command = program.command(name).description(description)
+    command
+      .helpOption(false)
+      .allowUnknownOption()
+      .passThroughOptions()
+      .enablePositionalOptions()
+      .argument('[args...]', `arguments for the ${name} app`)
+      .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
+      .option('--dump-config', `print the composed ${profile}-profile tree (with the user layer and any --patch) and exit`)
+      .option('--dump-default-config', `print the ${profile} profile's bundle layers (no user layer) and exit`)
+      .action((args: string[], options: BootOptions) => {
+        rejectParentOptions(name)
+        resolved = resolveBoot(command, profile, options, args)
+      })
+  }
+
+  addProfileAlias('web', 'web', 'open the web client (alias of --profile web)')
+  addProfileAlias('tui', 'tui', 'start the terminal client (alias of --profile tui)')
+  addProfileAlias('exec', 'headless', 'run one headless task and exit (alias of --profile headless)')
 
   const plugin = program.command('plugin').description('manage a profile\'s plugins by forwarding the remaining arguments to pnpm in the profile directory')
   plugin
@@ -181,7 +182,11 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     })
 
   try {
-    program.parse(argv, { from: 'user' })
+    if (argv[0] === '--') {
+      resolved = resolveBoot(program, 'tui', {}, [...argv.slice(1)])
+    } else {
+      program.parse(argv, { from: 'user' })
+    }
   } catch (error) {
     return process.exit(error instanceof CommanderError ? error.exitCode : 1)
   }

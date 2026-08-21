@@ -21,13 +21,29 @@ function exitCode(argv: string[]): number {
 afterEach(() => { vi.restoreAllMocks() })
 
 describe('parseDshArgs', () => {
-  it('routes profile boots and the web alias, handing the rest to the app', () => {
+  it('defaults bare tasks and resume arguments to the tui profile', () => {
+    expect(parse([])).toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [] })
+    expect(parse(['write', 'the', 'tests']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['write', 'the', 'tests'] })
+    expect(parse(['--resume']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--resume'] })
+    expect(parse(['--resume', 'session-id']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--resume', 'session-id'] })
+  })
+
+  it('routes profile boots and app aliases, handing the rest to the app', () => {
     expect(parse(['--profile', 'tui'])).toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [] })
     expect(parse(['--profile', 'tui', '--patch', 'a.yml', '--patch', 'b.yml']))
       .toEqual({ mode: 'profile', profile: 'tui', patches: ['a.yml', 'b.yml'], args: [] })
+    expect(parse(['tui', '--resume', 'session-id']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--resume', 'session-id'] })
+    expect(parse(['exec', 'write', 'the', 'tests']))
+      .toEqual({ mode: 'profile', profile: 'headless', patches: [], args: ['write', 'the', 'tests'] })
     expect(parse(['web'])).toEqual({ mode: 'profile', profile: 'web', patches: [], args: [] })
     expect(parse(['web', '--patch', 'web.yml']))
       .toEqual({ mode: 'profile', profile: 'web', patches: ['web.yml'], args: [] })
+    expect(parse(['--', 'web']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['web'] })
   })
 
   it('ends the launcher flags at the first token it does not own', () => {
@@ -70,19 +86,23 @@ describe('parseDshArgs', () => {
       .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: true, patches: [] })
   })
 
-  it('rejects missing profile, removed flags, and contradictory inputs', () => {
-    expect(exitCode([])).toBe(1)
-    expect(exitCode(['tui'])).toBe(1) // an app argument without --profile has no app to reach
-    expect(exitCode(['--config', 'c.yml'])).toBe(1) // removed
-    expect(exitCode(['-p', 'task'])).toBe(1) // removed
-    expect(exitCode(['run', 'task'])).toBe(1) // app-owned task replaced the launcher subcommand
+  it('hands launcher-unknown flags and task words to the default app', () => {
+    expect(parse(['--config', 'c.yml']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--config', 'c.yml'] })
+    expect(parse(['-p', 'task']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['-p', 'task'] })
+    expect(parse(['run', 'task']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['run', 'task'] })
+    expect(parse(['--bogus']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--bogus'] })
+  })
+
+  it('rejects contradictory launcher inputs', () => {
     expect(exitCode(['--profile', ''])).toBe(1)
     expect(exitCode(['--profile', 'x', '--patch='])).toBe(1)
-    expect(exitCode(['--dump-config'])).toBe(1)
     expect(exitCode(['--profile', 'x', '--dump-config', '--dump-default-config'])).toBe(1)
     expect(exitCode(['--profile', 'x', '--dump-default-config', '--patch', 'p.yml'])).toBe(1)
     expect(exitCode(['--profile', 'x', '--dump-config', 'task'])).toBe(1)
-    expect(exitCode(['--bogus'])).toBe(1)
     expect(exitCode(['--profile', 'x', 'web'])).toBe(1)
     expect(exitCode(['web', '--dump-config', '--dump-default-config'])).toBe(1)
     expect(exitCode(['web', '--dump-default-config', '--patch', 'w.yml'])).toBe(1)
@@ -92,15 +112,35 @@ describe('parseDshArgs', () => {
     // invocation's boot would mislead.
     expect(exitCode(['web', '--dump-config', '--port', '8080'])).toBe(1)
     expect(exitCode(['--profile', 'web', '--dump-config', '-h'])).toBe(1)
+    expect(exitCode(['--dump-config', '--help'])).toBe(1)
+    expect(exitCode(['tui', '--dump-config', '--help'])).toBe(1)
+    expect(exitCode(['exec', '--dump-config', '--help'])).toBe(1)
     expect(exitCode(['plugin', 'add', 'x'])).toBe(1) // --profile required
     expect(exitCode(['plugin', '--profile', 'tui'])).toBe(1) // nothing to forward
     expect(exitCode(['plugin', '--profile', ''])).toBe(1)
     expect(exitCode(['--profile', 'x', 'plugin', 'add', 'y'])).toBe(1)
   })
 
-  it('keeps its own help for an invocation with no app to hand it to', () => {
+  it('keeps launcher help for exact bare help invocations', () => {
     expect(exitCode(['--help'])).toBe(0)
     expect(exitCode(['-h'])).toBe(0)
+  })
+
+  it('hands help to an app once the invocation contains an app token', () => {
+    expect(parse(['write', 'tests', '-h']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['write', 'tests', '-h'] })
+    expect(parse(['-h', 'write', 'tests']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['-h', 'write', 'tests'] })
+    expect(parse(['--resume', '--help']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--resume', '--help'] })
+    expect(parse(['tui', '--help']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--help'] })
+    expect(parse(['exec', '--help']))
+      .toEqual({ mode: 'profile', profile: 'headless', patches: [], args: ['--help'] })
+  })
+
+  it('keeps version flags launcher-owned', () => {
     expect(exitCode(['--version'])).toBe(0)
+    expect(exitCode(['-V'])).toBe(0)
   })
 })
