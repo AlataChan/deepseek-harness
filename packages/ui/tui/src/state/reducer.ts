@@ -6,6 +6,7 @@ import type {
   TuiAction,
   TuiState,
 } from './types.ts'
+import { createEditorState } from './editor.ts'
 
 export type { TranscriptRowInput } from './types.ts'
 
@@ -33,6 +34,7 @@ export function createInitialState(dimensions: { columns: number; rows?: number 
     interaction: undefined,
     status: { kind: 'idle' },
     dimensions: { columns: dimensions.columns, rows: dimensions.rows },
+    editor: createEditorState(),
     nextRowId: 1,
     disposed: false,
   }
@@ -91,6 +93,8 @@ export function reduceTuiState(state: TuiState, action: TuiAction): TuiState {
         ...state,
         dimensions: { columns: action.columns, rows: action.rows },
       }
+    case 'editor/update':
+      return { ...state, editor: action.editor }
     case 'runtime/running':
       return { ...state, status: { kind: 'running' } }
     case 'runtime/idle':

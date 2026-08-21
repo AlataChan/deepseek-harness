@@ -1,5 +1,7 @@
 /** Framework-free terminal application state. @module @deepseek-ai/dsh-tui/state/types */
 
+import type { EditorState } from './editor.ts'
+
 declare const interactionIdBrand: unique symbol
 
 /** Locally minted identity that prevents stale interaction settlement. */
@@ -68,6 +70,7 @@ export interface TuiState {
   readonly interaction: PendingInteraction | undefined
   readonly status: TuiStatus
   readonly dimensions: TerminalDimensions
+  readonly editor: EditorState
   readonly nextRowId: number
   readonly disposed: boolean
 }
@@ -92,6 +95,7 @@ export type TuiAction =
   }
   | { readonly type: 'interaction/settled'; readonly id: InteractionId }
   | { readonly type: 'terminal/resize'; readonly columns: number; readonly rows?: number }
+  | { readonly type: 'editor/update'; readonly editor: EditorState }
   | { readonly type: 'runtime/running' }
   | { readonly type: 'runtime/idle' }
   | { readonly type: 'runtime/failed'; readonly message: string }

@@ -24,6 +24,8 @@ function freezeState(state: TuiState): TuiState {
   }
   Object.freeze(state.status)
   Object.freeze(state.dimensions)
+  Object.freeze(state.editor.history)
+  Object.freeze(state.editor)
   return Object.freeze(state)
 }
 
