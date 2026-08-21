@@ -40,6 +40,22 @@ describe('the shipped shell composition (real bundle layers)', () => {
   // suite composes the shipped patch files, not test fixtures.
   const anchor = fileURLToPath(new URL('../package.json', import.meta.url))
 
+  it('loads the TUI in process from a JavaScript package entry without a Windows shim', () => {
+    const cliManifest = JSON.parse(readFileSync(anchor, 'utf8')) as {
+      dependencies?: Record<string, string>
+    }
+    const tuiManifestPath = fileURLToPath(new URL('../../../packages/ui/tui/package.json', import.meta.url))
+    const tuiManifest = JSON.parse(readFileSync(tuiManifestPath, 'utf8')) as {
+      exports?: { '.'?: { default?: string } }
+    }
+    const entry = tuiManifest.exports?.['.']?.default
+
+    expect(cliManifest.dependencies?.['@deepseek-ai/dsh-tui']).toBeDefined()
+    expect(PROFILE_TEMPLATES.tui).toContain('@deepseek-ai/dsh-tui-app')
+    expect(entry).toMatch(/\.js$/u)
+    expect(entry).not.toMatch(/\.(?:cmd|ps1)$/iu)
+  })
+
   it('composes the confined pwsh roster on win32 and the bash roster on POSIX from the same rows', () => {
     home = mkdtempSync(join(tmpdir(), 'dsh-windows-home-'))
     initProfile(join(home, PROFILES_DIR, 'web'), PROFILE_TEMPLATES.web ?? [])

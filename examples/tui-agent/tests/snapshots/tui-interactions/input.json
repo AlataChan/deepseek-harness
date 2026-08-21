@@ -1,0 +1,8 @@
+{
+  "steps": [
+    { "op": "answerQuestions", "text": "Code;ship it" },
+    { "op": "allowOnce" },
+    { "op": "command", "text": "/help" },
+    { "op": "exit" }
+  ]
+}

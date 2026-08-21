@@ -12,6 +12,10 @@ Optional overlays that connect supported third-party memory servers through the 
 
 A non-interactive agent that accepts one task, runs it, and emits a selected machine-readable or human-readable output format. See the [headless example reference](headless-agent/README.md).
 
+## tui-agent
+
+The shipped interactive terminal client, exercised through a real Loader composition, pseudo-terminal smokes, and deterministic transcript replay. See the [TUI example reference](tui-agent/README.md).
+
 ## jsonrpc-agent
 
 An unattended coding agent driven through the Python SDK and JSON-RPC. See the [JSON-RPC example reference](jsonrpc-agent/README.md).

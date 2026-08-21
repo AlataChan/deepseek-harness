@@ -1,0 +1,7 @@
+# Runnable overlay for the shipped tui profile. Plain JSONL keeps the example's
+# persisted transcript inspectable without changing the production runtime.
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none

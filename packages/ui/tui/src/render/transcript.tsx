@@ -86,15 +86,15 @@ export function ProjectedTranscript({
   readonly projectTool?: TranscriptProps['projectTool']
 }): React.JSX.Element {
   return <>
-    <Static items={[...projection.rows].map((row, index) => ({ row, key: `${row.sourceSeq}-${index}` }))}>
-      {item => <Box key={item.key} flexDirection="column">
-        {item.row.kind === 'tool-call' || item.row.kind === 'tool-result'
+    <Box flexDirection="column">
+      {[...projection.rows].map((row, index) => <Box key={`${row.sourceSeq}-${index}`} flexDirection="column">
+        {row.kind === 'tool-call' || row.kind === 'tool-result'
           ? projectTool === undefined
-            ? <><Text bold>{item.row.name || 'Tool'}</Text><Text>{item.row.kind === 'tool-call' ? item.row.arguments : item.row.text}</Text></>
-            : <ToolCard model={projectTool(item.row)} />
-          : <><Text bold>{projectedLabel(item.row)}</Text><Text>{projectedText(item.row)}</Text></>}
-      </Box>}
-    </Static>
+            ? <><Text bold>{row.name || 'Tool'}</Text><Text>{row.kind === 'tool-call' ? row.arguments : row.text}</Text></>
+            : <ToolCard model={projectTool(row)} />
+          : <><Text bold>{projectedLabel(row)}</Text><Text>{projectedText(row)}</Text></>}
+      </Box>)}
+    </Box>
     {projection.liveReasoning === undefined ? null : <Box flexDirection="column"><Text bold>Reasoning</Text><Text>{projection.liveReasoning}</Text></Box>}
     {projection.liveAssistant === undefined ? null : <Box flexDirection="column"><Text bold>Assistant</Text><Text>{projection.liveAssistant}</Text></Box>}
   </>

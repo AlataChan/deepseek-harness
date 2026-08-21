@@ -8,7 +8,7 @@
 
 本包持有一个根 agent 的终端展示与输入生命周期。产品状态独立于 Ink，因此 reducer、transcript（文本记录）投影与交互所有权无需 renderer 即可测试。
 
-已完成行通过一个稳定的 Ink `Static` 列表进入普通 shell scrollback。只有实时 assistant 输出、运行时状态、由 store 持有的 composer 与活跃 overlay 保留在重绘区域；React 通过 `useSyncExternalStore` 订阅，且不镜像应用状态。
+权威 Session 投影保留在 Ink 的有界重绘区域，使快速成批到达的事件不会绕过新追加的持久行。客户端本地完成的行通过一个稳定的 `Static` 列表输出；React 通过 `useSyncExternalStore` 订阅，且不镜像应用状态。
 
 持久事件和实时事件统一经过一个纯投影。来自模型、工具、命令和日志的每个显示字段都会在渲染前转换为终端安全文本；工具参数与结果元数据则保留结构化值，供专用卡片使用。
 

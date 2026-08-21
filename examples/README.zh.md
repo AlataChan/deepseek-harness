@@ -12,6 +12,10 @@
 
 非交互式 agent（智能体）：接受一项任务并运行，然后以选定的机器可读或人类可读格式输出结果。详见[无头示例参考](headless-agent/README.md)。
 
+## tui-agent
+
+随发行版交付的交互式终端客户端，通过真实 Loader 组合、伪终端 smoke 与确定性 transcript replay 进行验证。详见 [TUI 示例参考](tui-agent/README.md)。
+
 ## jsonrpc-agent
 
 由 Python SDK 和 JSON-RPC 驱动的无人值守编码 agent。详见 [JSON-RPC 示例参考](jsonrpc-agent/README.md)。

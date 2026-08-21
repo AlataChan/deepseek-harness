@@ -1,0 +1,74 @@
+DeepSeek Harness · dsh
+Status: ready
+You › Type a message
+DeepSeek Harness · dsh
+Status: ready
+╭──────────────────────────────────────────────────────────────────────────────╮
+│Questions                                                                     │
+│Target                                                                        │
+│Choose target                                                                 │
+│○ Code                                                                        │
+│○ Docs                                                                        │
+│Select one, or enter text                                                     │
+│Notes                                                                         │
+│Add release notes                                                             │
+│Select one, or enter text                                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+You › Waiting…
+DeepSeek Harness · dsh
+Status: ready
+╭──────────────────────────────────────────────────────────────────────────────╮
+│Questions                                                                     │
+│Target                                                                        │
+│Choose target                                                                 │
+│○ Code                                                                        │
+│○ Docs                                                                        │
+│Select one, or enter text                                                     │
+│Notes                                                                         │
+│Add release notes                                                             │
+│Select one, or enter text                                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+You › Code;ship it
+DeepSeek Harness · dsh
+Status: ready
+You › Type a message
+DeepSeek Harness · dsh
+Status: working
+You › Waiting…
+DeepSeek Harness · dsh
+Status: working
+╭──────────────────────────────────────────────────────────────────────────────╮
+│Approval required · fixture-tool                                              │
+│verify the terminal approval key                                              │
+│Allow once / Reject                                                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+You › Waiting…
+DeepSeek Harness · dsh
+Status: working
+You › Waiting…
+DeepSeek Harness · dsh
+Status: ready
+You › Type a message
+DeepSeek Harness · dsh
+Status: ready
+You › /help
+System
+/help — Show available commands
+/resume — Choose another saved session
+/exit — Exit after saving the current session
+/compact — Compact older conversation history
+/feedback <text> — record feedback about this session
+/goal [<objective>|clear|edit <objective>|pause|resume] — set or view the goal
+for a long-running task
+/permission <preset> — Switch the permission preset (sandbox mode + approval
+policy)
+/plan [off|message] — Enter or leave plan mode
+DeepSeek Harness · dsh
+Status: ready
+You › Type a message
+DeepSeek Harness · dsh
+Status: ready
+You › /exit
+DeepSeek Harness · dsh
+Status: ready
+You › Type a message
