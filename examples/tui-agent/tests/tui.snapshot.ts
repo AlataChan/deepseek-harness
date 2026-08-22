@@ -158,7 +158,7 @@ describe.skipIf(process.platform === 'win32')('tui assembled snapshots', () => {
       ],
       assertOutput(output) {
         expect(output).toContain('Status: working')
-        expect(output).toContain('Assistant\r\npartial')
+        expect(normalizeTerminalOutput(output)).toContain('Assistant\npartial')
       },
     })
   })
