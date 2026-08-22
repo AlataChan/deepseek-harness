@@ -3,7 +3,7 @@
 import type { InstalledEntry, ReleaseFamily, ReleaseMember } from './families.ts'
 
 /** A source package name and the name one publication target emits. */
-export interface PackageNameProjection {
+interface PackageNameProjection {
   /** Package name used by the source release family. */
   readonly source: string
   /** Package name written into the published artifact. */
@@ -35,6 +35,18 @@ export interface ResolvedPublicationTarget {
 /** Publication target identifiers accepted by release commands. */
 const TARGET_IDS = ['official', 'alatastudio'] as const
 
+/** Publication target identifiers accepted by release commands. */
+type PublicationTargetId = typeof TARGET_IDS[number]
+
+/**
+ * Check whether a command-line value names a supported publication target.
+ * @param value - command-line target value.
+ * @returns Whether the value is a publication target identifier.
+ */
+function isPublicationTargetId(value: string): value is PublicationTargetId {
+  return TARGET_IDS.some(id => id === value)
+}
+
 /**
  * Convert a source DSH package name to its AlataStudio publication name.
  * @param name - source package name.
@@ -59,7 +71,7 @@ export function resolvePublicationTarget(
   members: readonly ReleaseMember[],
 ): ResolvedPublicationTarget {
   const id = requested ?? 'official'
-  if (!TARGET_IDS.includes(id as typeof TARGET_IDS[number])) {
+  if (!isPublicationTargetId(id)) {
     throw new Error(`unknown publication target ${id}; expected one of ${TARGET_IDS.join(', ')}`)
   }
   if (id === 'alatastudio' && family.id !== 'dsh') {
