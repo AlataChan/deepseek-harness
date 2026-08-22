@@ -35,6 +35,7 @@ const members = [
   member('@deepseek-ai/dsh'),
   member('@deepseek-ai/dsh-alpha'),
   member('@deepseek-ai/dsh-alpha-long'),
+  member('@deepseek-ai/dsh-tools'),
 ]
 const target = resolvePublicationTarget('alatastudio', releaseFamily('dsh'), members)
 const roots: string[] = []
@@ -103,6 +104,22 @@ describe('packed payload projection', () => {
       target,
       'package/README.md',
     )).toBe('@alatastudio/dsh-alpha-long @alatastudio/dsh-alpha @deepseek-ai/dsh-like')
+  })
+
+  it('projects a source namespace prefix used as a package-name regular expression', () => {
+    expect(projectText(
+      "package_allowlist: ['^@deepseek-ai/dsh-']",
+      target,
+      'package/README.md',
+    )).toBe("package_allowlist: ['^@alatastudio/dsh-']")
+  })
+
+  it('projects known package-derived runtime identifiers without accepting unknown dot suffixes', () => {
+    expect(projectText(
+      "Symbol('@deepseek-ai/dsh-tools.scheduler') @deepseek-ai/dsh-tools.unknown",
+      target,
+      'package/lib/index.js',
+    )).toBe("Symbol('@alatastudio/dsh-tools.scheduler') @deepseek-ai/dsh-tools.unknown")
   })
 
   it('rejects an unresolved source-scope dsh package with its file context', () => {

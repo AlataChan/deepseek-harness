@@ -15,6 +15,11 @@ const SOURCE_DSH_PREFIX = '@deepseek-ai/dsh'
 /** Bytes that identify a residual source-scope DSH reference. */
 const SOURCE_DSH_BYTES = Buffer.from(SOURCE_DSH_PREFIX)
 
+/** Package-derived runtime identifiers that are not npm package references. */
+const PACKAGE_RUNTIME_IDENTIFIERS = [
+  { packageName: '@deepseek-ai/dsh-tools', suffix: '.scheduler' },
+] as const
+
 /** Decode UTF-8 strictly so binary payloads are never rewritten through replacement characters. */
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true })
 
@@ -28,7 +33,8 @@ function escapeRegExp(value: string): string {
 }
 
 /**
- * Project known package names inside one UTF-8 payload.
+ * Project known package names, package-derived runtime identifiers, and a
+ * delimiter-terminated DSH namespace prefix inside one UTF-8 payload.
  *
  * A package-name character after a known name means the occurrence may be a
  * different package, so it remains for residual validation instead of being
@@ -47,6 +53,18 @@ export function projectText(
   for (const entry of target.projections) {
     const expression = new RegExp(`${escapeRegExp(entry.source)}(?=$|[^A-Za-z0-9._-])`, 'g')
     projected = projected.replace(expression, entry.target)
+  }
+  for (const identifier of PACKAGE_RUNTIME_IDENTIFIERS) {
+    const packageName = target.projectReference(identifier.packageName)
+    if (packageName === undefined) continue
+    const source = `${identifier.packageName}${identifier.suffix}`
+    const expression = new RegExp(`${escapeRegExp(source)}(?=$|[^A-Za-z0-9._-])`, 'g')
+    projected = projected.replace(expression, `${packageName}${identifier.suffix}`)
+  }
+  const root = target.projections.find(entry => entry.source === SOURCE_DSH_PREFIX)
+  if (root !== undefined) {
+    const namespacePrefix = new RegExp(`${escapeRegExp(root.source)}-(?=$|[^A-Za-z0-9._-])`, 'g')
+    projected = projected.replace(namespacePrefix, `${root.target}-`)
   }
   return projected
 }
