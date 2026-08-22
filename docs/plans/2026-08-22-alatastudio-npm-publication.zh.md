@@ -14,7 +14,7 @@
 
 ## 范围与执行规则
 
-已批准的[设计](2026-08-22-alatastudio-npm-publication-design.zh.md)和[拟议 Agent Note](../../.agents/notes/proposed/process/2026-08-22-operator-owned-npm-scope.zh.md)负责记录方向和理由。如果实现需要重命名源码包、重新发布 Cordis 或修改运行时 loader，请停止执行并先修改设计。
+已批准的[设计](2026-08-22-alatastudio-npm-publication-design.zh.md)和[已实现 Agent Note](../../.agents/notes/implemented/process/2026-08-22-operator-owned-npm-scope.zh.md)负责记录方向和理由。如果实现需要重命名源码包、重新发布 Cordis 或修改运行时 loader，请停止执行并先修改设计。
 
 在当前 checkout 上创建可见的 `release/dsh-0.1.1-rc.4` 分支并执行。保留现有的用户未跟踪文件和目录。任务 1 至任务 4 使用测试驱动开发：先观察每个聚焦测试因预期原因失败，实现最小行为，重新运行测试，再提交该任务。
 

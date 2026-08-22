@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/plans/2026-08-22-alatastudio-npm-publication-design.md
-2026-08-22-alatastudio-npm-publication-design.md: 39054935830354f1b2a8e00d6ac5c1383052e7ed
-2026-08-22-alatastudio-npm-publication-design.zh.md: 6f6bba7f3ef3ffbff8efaf466ce9d8a9aa59acb0
+2026-08-22-alatastudio-npm-publication-design.md: c5fd0be48598a3827a1775ec26e3139cb629c932
+2026-08-22-alatastudio-npm-publication-design.zh.md: f49bd3674248685bf8d9fa85f1d0a3abecb4fb80

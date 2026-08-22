@@ -1,6 +1,6 @@
 # Agent Note: Project DSH npm artifacts into an operator-owned scope
 
-Status: proposed
+Status: implemented
 
 English | [中文](2026-08-22-operator-owned-npm-scope.zh.md)
 
@@ -10,7 +10,7 @@ The DSH workspace source names belong to the `@deepseek-ai` npm scope, but a rel
 
 The public CLI also depends on the complete DSH package graph. Publishing only `@alatastudio/dsh` would leave its runtime dependencies unavailable under names the operator controls.
 
-## Proposal
+## Decision
 
 The DSH release packer accepts an explicit publication target. The default target retains the source package identities. The `alatastudio` target projects every packed DSH package from `@deepseek-ai/dsh` or `@deepseek-ai/dsh-*` to the corresponding `@alatastudio` name without modifying workspace manifests or source imports.
 
@@ -28,15 +28,14 @@ Publication remains artifact-driven and target-independent: the publisher reads 
 
 **Publish one self-contained CLI bundle.** The harness loads plugins, resources, native packages, and configuration through package identities and filesystem paths. A single bundle would require a separate packaging architecture and would weaken the existing per-package verification and retry model.
 
-## Acceptance criteria
+## Verification
 
-- The source tree continues to use `@deepseek-ai/dsh*` package identities.
-- `release:pack --family dsh --target alatastudio` creates the complete DSH family under `@alatastudio` names.
-- The projected payload contains no reference to a source-scope DSH package name and leaves external `@deepseek-ai` packages unchanged.
-- A clean Linux consumer installs the projected tarballs and runs `dsh --version` successfully.
-- The `0.1.1-rc.4` registry release publishes all projected packages, assigns `@alatastudio/dsh@next`, and passes a clean registry installation probe.
+- Target tests pin the default official identities, AlataStudio names and subpaths, source-member immutability, installed entries, and rejected target-family combinations.
+- Projection tests pin manifest keys and values, text payloads, external package preservation, binary identity, residual source-name rejection, and archive path safety.
+- A real two-package pack fixture runs source lifecycle scripts, repacks projected payloads twice with equal hashes, and withholds `publish-order.txt` when one member fails.
+- Packed-install tests require the target-specific CLI tarball before npm install while retaining the existing direct-file dependency overrides.
 
-## Risks
+## Consequences
 
 Text projection can miss a package-bearing file format or rewrite content that is not a package reference. The packer limits edits to UTF-8 text, matches only release-family package identities, scans every final payload for residual source names, and keeps binary files byte-identical.
 

@@ -2,7 +2,7 @@
 
 English | [中文](2026-08-22-alatastudio-npm-publication-design.zh.md)
 
-The [operator-owned npm scope proposal](../../.agents/notes/proposed/process/2026-08-22-operator-owned-npm-scope.md) owns the decision and alternatives. This document defines the implementation design for publishing the DSH family as `@alatastudio/*` while preserving the upstream source namespace.
+The [operator-owned npm scope decision](../../.agents/notes/implemented/process/2026-08-22-operator-owned-npm-scope.md) owns the decision and alternatives. This document defines the implementation design for publishing the DSH family as `@alatastudio/*` while preserving the upstream source namespace.
 
 ## Goals and constraints
 

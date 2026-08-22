@@ -2,7 +2,7 @@
 
 [English](2026-08-22-alatastudio-npm-publication-design.md) | 中文
 
-[操作者自有 npm scope 提案](../../.agents/notes/proposed/process/2026-08-22-operator-owned-npm-scope.zh.md)负责记录决策和替代方案。本文定义把 DSH family 发布为 `@alatastudio/*`，同时保留上游源码命名空间的实现设计。
+[操作者自有 npm scope 决策](../../.agents/notes/implemented/process/2026-08-22-operator-owned-npm-scope.zh.md)负责记录决策和替代方案。本文定义把 DSH family 发布为 `@alatastudio/*`，同时保留上游源码命名空间的实现设计。
 
 ## 目标与限制
 

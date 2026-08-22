@@ -14,7 +14,7 @@ English | [中文](2026-08-22-alatastudio-npm-publication.zh.md)
 
 ## Scope and execution rules
 
-The approved [design](2026-08-22-alatastudio-npm-publication-design.md) and [proposed Agent Note](../../.agents/notes/proposed/process/2026-08-22-operator-owned-npm-scope.md) own direction and rationale. If implementation requires source-package renaming, Cordis republishing, or runtime loader changes, stop and amend the design before proceeding.
+The approved [design](2026-08-22-alatastudio-npm-publication-design.md) and [implemented Agent Note](../../.agents/notes/implemented/process/2026-08-22-operator-owned-npm-scope.md) own direction and rationale. If implementation requires source-package renaming, Cordis republishing, or runtime loader changes, stop and amend the design before proceeding.
 
 Execute on a visible `release/dsh-0.1.1-rc.4` branch created from the current checkout. Preserve the existing untracked user files and directories. Use test-driven development for Tasks 1 through 4: observe each focused test fail for the intended reason, implement the smallest behavior, rerun it, and commit the task.
 

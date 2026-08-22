@@ -1,6 +1,6 @@
 # Agent Note: 将 DSH npm 产物投射到操作者自有 scope
 
-Status: proposed
+Status: implemented
 
 [English](2026-08-22-operator-owned-npm-scope.md) | 中文
 
@@ -10,7 +10,7 @@ DSH workspace 的源码包名属于 `@deepseek-ai` npm scope，但发布操作�
 
 公开 CLI 还依赖完整的 DSH 包依赖图。只发布 `@alatastudio/dsh` 会让其运行时依赖无法通过操作者控制的名称获得。
 
-## 提案
+## 决策
 
 DSH 发布打包器接受显式发布目标。默认目标保留源码包身份；`alatastudio` 目标把每个已打包的 `@deepseek-ai/dsh` 或 `@deepseek-ai/dsh-*` 包投射为对应的 `@alatastudio` 名称，不修改 workspace manifest 或源码 import。
 
@@ -28,15 +28,14 @@ DSH 发布打包器接受显式发布目标。默认目标保留源码包身份�
 
 **发布一个自包含 CLI bundle。** harness 通过包身份和文件系统路径加载插件、资源、原生包与配置。单一 bundle 需要另一套打包架构，也会削弱现有逐包验证和重试模型。
 
-## 验收标准
+## 验证
 
-- 源码树继续使用 `@deepseek-ai/dsh*` 包身份。
-- `release:pack --family dsh --target alatastudio` 以 `@alatastudio` 名称创建完整 DSH family。
-- 投射后的内容不含源码 scope 的 DSH 包引用，并保持外部 `@deepseek-ai` 包不变。
-- 干净的 Linux consumer 能安装投射后的 tarball，并成功运行 `dsh --version`。
-- 注册表中的 `0.1.1-rc.4` 发布包含全部投射包、设置 `@alatastudio/dsh@next`，并通过干净的注册表安装探测。
+- 目标测试固定默认官方身份、AlataStudio 名称和 subpath、源码成员不可变性、安装入口，以及被拒绝的目标与 family 组合。
+- 投射测试固定 manifest 键和值、文本内容、外部包保留、二进制身份、残留源码名称拒绝和归档路径安全。
+- 真实双包打包 fixture 运行源码生命周期脚本，以相同 hash 两次重新打包投射后的内容，并在一个成员失败时不生成 `publish-order.txt`。
+- 打包安装测试在 npm install 前要求存在目标特定的 CLI tarball，同时保留现有的直接文件依赖 override。
 
-## 风险
+## 后果
 
 文本投射可能漏掉包含包名的文件格式，或改写并非包引用的内容。打包器仅编辑 UTF-8 文本，只匹配发布 family 中的包身份，扫描全部最终内容中的残留源码名称，并保持二进制文件逐字节不变。
 
