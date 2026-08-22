@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { normalizeSessionLog, scrubRequestHeaders } from '@deepseek-ai/dsh-acp-snapshot'
+import { normalizeSessionSnapshot } from '@deepseek-ai/dsh-acp-snapshot'
 import { MAX_WIRE_RECORD_BYTES } from '@deepseek-ai/dsh-client-connection-vscode/protocol'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { launchVsCodeIpc, VsCodeIpcStartupError } from './fixtures/ipc-driver.ts'
@@ -134,10 +134,10 @@ describe('vscode assembled snapshot', () => {
         stream: frames,
         persistedUserText: userText,
       }, null, 2)}\n`
-      const normalizedSession = `${scrubRequestHeaders(normalizeSessionLog(rawSession, {
+      const normalizedSession = `${normalizeSessionSnapshot(rawSession, {
         sessionIds: ['vscode-snapshot'],
         cwd: workspaceRoot,
-      })).trimEnd()}\n`
+      }).trimEnd()}\n`
       await compareOrRefresh(expectedBridgeFile, bridge)
       await compareOrRefresh(expectedSessionFile, normalizedSession)
     } finally {

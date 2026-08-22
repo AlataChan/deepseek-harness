@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { normalizeSessionLog, scrubRequestHeaders } from '@deepseek-ai/dsh-acp-snapshot'
+import { normalizeSessionSnapshot } from '@deepseek-ai/dsh-acp-snapshot'
 import { resolveExampleMode } from '@deepseek-ai/dsh-loader-smoke'
 import {
   normalizeTerminalOutput,
@@ -109,10 +109,10 @@ async function runScenario(options: ScenarioOptions): Promise<void> {
     const rawSession = await persistedSession(join(dshHome, 'sessions'))
     const header = JSON.parse(rawSession.split('\n')[0] ?? '{}') as { id?: unknown }
     if (typeof header.id !== 'string') throw new Error('persisted TUI session has no id')
-    const normalizedSession = scrubRequestHeaders(normalizeSessionLog(rawSession, {
+    const normalizedSession = normalizeSessionSnapshot(rawSession, {
       sessionIds: [header.id],
       cwd,
-    }))
+    })
     const normalizedTerminal = normalizeTerminalOutput(result.output).replaceAll(cwd, '{{cwd}}')
     await compareOrRefresh(join(scenarioDir, 'session.expected.jsonl'), normalizedSession)
     await compareOrRefresh(join(scenarioDir, 'terminal.expected.txt'), normalizedTerminal)
