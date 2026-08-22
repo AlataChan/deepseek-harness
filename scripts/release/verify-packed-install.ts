@@ -23,9 +23,18 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
-import { releaseFamily } from './families.ts'
+import { releaseFamily, type InstalledEntry, type ReleaseFamily, type ReleaseMember } from './families.ts'
 import { capture, isEntry } from './process.ts'
+import { resolvePublicationTarget } from './targets.ts'
 import { packedIdentity } from './tarball.ts'
+
+/** One supplied tarball used as a direct installed dependency. */
+interface PackedDependency {
+  /** File URL npm installs. */
+  readonly url: string
+  /** Package version declared by the tarball. */
+  readonly version: string
+}
 
 /**
  * Environment for the installed artifact: no host Node hooks, no host DeepSeek
@@ -54,8 +63,8 @@ function consumerEnvironment(consumerRoot: string): NodeJS.ProcessEnv {
  * @param directories - absolute directories holding packed tarballs.
  * @returns Package name to tarball file URL, and the version each carries.
  */
-function packedDependencies(directories: readonly string[]): Map<string, { url: string; version: string }> {
-  const dependencies = new Map<string, { url: string; version: string }>()
+function packedDependencies(directories: readonly string[]): Map<string, PackedDependency> {
+  const dependencies = new Map<string, PackedDependency>()
   for (const directory of directories) {
     const tarballs = readdirSync(directory).filter(name => name.endsWith('.tgz')).sort()
     if (tarballs.length === 0) throw new Error(`${directory} holds no packed tarball`)
@@ -66,6 +75,27 @@ function packedDependencies(directories: readonly string[]): Map<string, { url: 
     }
   }
   return dependencies
+}
+
+/**
+ * Select and require the installed executable for one packed target.
+ * @param family - source release family.
+ * @param targetId - publication target identifier, or undefined for official identities.
+ * @param members - complete source family inventory.
+ * @param packed - supplied tarballs by their final identities.
+ * @returns The executable entry and its supplied tarball, or undefined for a library-only family.
+ */
+export function packedInstallEntry(
+  family: ReleaseFamily,
+  targetId: string | undefined,
+  members: readonly ReleaseMember[],
+  packed: ReadonlyMap<string, PackedDependency>,
+): { readonly entry: InstalledEntry; readonly expected: PackedDependency } | undefined {
+  const entry = resolvePublicationTarget(targetId, family, members).installedEntry
+  if (entry === undefined) return undefined
+  const expected = packed.get(entry.packageName)
+  if (expected === undefined) throw new Error(`${entry.packageName} is not among the packed tarballs`)
+  return { entry, expected }
 }
 
 /**
@@ -95,24 +125,29 @@ export function packedInstallManifest(
 /** Install every tarball under `--from` and drive the `--family` entry. */
 function main(): void {
   const { values } = parseArgs({
-    options: { family: { type: 'string' }, from: { type: 'string', multiple: true } },
+    options: {
+      family: { type: 'string' },
+      from: { type: 'string', multiple: true },
+      target: { type: 'string' },
+    },
     allowPositionals: false,
   })
   if (values.family === undefined || values.from === undefined || values.from.length === 0) {
-    throw new Error('usage: verify-packed-install.ts --family <dsh|vendor> --from <packed directory> [--from ...]')
+    throw new Error(
+      'usage: verify-packed-install.ts --family <dsh|vendor>'
+      + ' [--target <official|alatastudio>] --from <packed directory> [--from ...]',
+    )
   }
 
   const family = releaseFamily(values.family)
-  const entry = family.sourceInstalledEntry
-  if (entry === undefined) {
+  const root = process.cwd()
+  const packed = packedDependencies(values.from.map(directory => resolve(root, directory)))
+  const selected = packedInstallEntry(family, values.target, family.members(root), packed)
+  if (selected === undefined) {
     console.log(`release verify-packed-install: family ${family.id} publishes no executable, nothing to drive`)
     return
   }
-
-  const root = process.cwd()
-  const packed = packedDependencies(values.from.map(directory => resolve(root, directory)))
-  const expected = packed.get(entry.packageName)
-  if (expected === undefined) throw new Error(`${entry.packageName} is not among the packed tarballs`)
+  const { entry, expected } = selected
 
   const consumerRoot = mkdtempSync(join(tmpdir(), `dsh-packed-${family.id}-`))
   try {

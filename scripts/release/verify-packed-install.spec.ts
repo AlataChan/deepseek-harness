@@ -1,7 +1,18 @@
 /** Packed-install consumer manifest construction. */
 
 import { describe, expect, it } from 'vitest'
-import { packedInstallManifest } from './verify-packed-install.ts'
+import { releaseFamily, type ReleaseMember } from './families.ts'
+import { packedInstallEntry, packedInstallManifest } from './verify-packed-install.ts'
+
+/** Create the source CLI member used to resolve target-specific entries. */
+function cliMember(): ReleaseMember {
+  return {
+    directory: 'apps/cli',
+    name: '@deepseek-ai/dsh',
+    version: '0.1.1-rc.4',
+    manifest: { name: '@deepseek-ai/dsh', version: '0.1.1-rc.4' },
+  }
+}
 
 describe('packed install verification', () => {
   it('overrides transitive package ranges with the supplied tarballs', () => {
@@ -23,5 +34,42 @@ describe('packed install verification', () => {
         '@deepseek-ai/dsh-bravo': '$@deepseek-ai/dsh-bravo',
       },
     })
+  })
+
+  it('selects the official installed entry when the target is omitted', () => {
+    const packed = new Map([
+      ['@deepseek-ai/dsh', { url: 'file:///tmp/dsh.tgz', version: '0.1.1-rc.4' }],
+    ])
+
+    expect(packedInstallEntry(releaseFamily('dsh'), undefined, [cliMember()], packed)).toEqual({
+      entry: { packageName: '@deepseek-ai/dsh', binPath: 'lib/bin.js' },
+      expected: { url: 'file:///tmp/dsh.tgz', version: '0.1.1-rc.4' },
+    })
+  })
+
+  it('selects the projected entry and rejects a missing tarball', () => {
+    const packed = new Map([
+      ['@alatastudio/dsh', { url: 'file:///tmp/alatastudio-dsh.tgz', version: '0.1.1-rc.4' }],
+    ])
+
+    expect(packedInstallEntry(releaseFamily('dsh'), 'alatastudio', [cliMember()], packed)).toEqual({
+      entry: { packageName: '@alatastudio/dsh', binPath: 'lib/bin.js' },
+      expected: { url: 'file:///tmp/alatastudio-dsh.tgz', version: '0.1.1-rc.4' },
+    })
+    expect(() => { packedInstallEntry(releaseFamily('dsh'), 'alatastudio', [cliMember()], new Map()) })
+      .toThrow(/@alatastudio\/dsh is not among the packed tarballs/)
+  })
+
+  it('rejects a projected target for the vendor family', () => {
+    const vendor = {
+      ...cliMember(),
+      directory: 'vendor/cordis',
+      name: '@deepseek-ai/cordis',
+      manifest: { name: '@deepseek-ai/cordis', version: '4.0.0' },
+      version: '4.0.0',
+    }
+
+    expect(() => { packedInstallEntry(releaseFamily('vendor'), 'alatastudio', [vendor], new Map()) })
+      .toThrow(/target alatastudio.*family dsh/)
   })
 })
