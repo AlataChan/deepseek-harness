@@ -113,6 +113,8 @@ dsh 族套用仓库的发布 payload 策略（拒绝源码与声明映射）。v
 
 dsh 的验证会一并安装 vendored 族的 pack 产物。harness 的包把 vendored 框架声明成 peer，而那些包属于另一条序列，无凭据的 job 无法从私有 registry 取到——所以 `release.yml` 为验证而打包 vendored 族，发布的仍只有自己那一份。
 
+一次性消费方把每个给定的 tarball 同时声明为直接 `file:` 依赖，以及引用该直接依赖的 npm override。直接依赖选定被测产物；override 还会把传递的 semver 边重定向到该产物。两项声明缺一时，npm 可能为传递的 dsh 范围查询 registry，并拒绝一个只有在本验证通过、发布开始后才可能出现在 registry 的版本。override 会取代 npm 的范围选择，因此发布后内部范围由 `check-workspace-constraints`、release 验证与 pack 替换负责；本探针负责 payload 完整性以及从已安装字节执行入口。
+
 验证还会打一份 Landlock entry 的 tarball——`dsh-sandbox-local` 把它声明为普通 `dependencies`——同时略去可选依赖。那些可选项背后的平台包需要 musl 工具链且每个架构各构建一次，单台 runner 产不出来；而装不到它们的消费方也必须能起，这正是「可选」在这里的含义。因此验证按目录内容读取 tarball，而不是读发布顺序：一个目录可能只装着为满足跨序列依赖而打出来的包，任何发布顺序都不描述它。
 
 ### 本次带出的仓库改动
@@ -144,7 +146,9 @@ dsh 的验证会一并安装 vendored 族的 pack 产物。harness 的包把 ven
 
 **只按版本号判断「是否已发布」，不比对内容。** 参照流程根本不查 registry：publish 逐个上传，重复版本由 npm 拒绝。只按版本号跳过会漏掉「改了代码没 bump」，而这是唯一会安静地把旧字节留在 registry 上的错误。代价是引入一次 registry 查询和对构建可复现性的依赖。
 
-**只做打包后安装验证，不起本地 registry。** 参照流程是把 tarball 解包成一棵树、用普通 Node 驱动，这绕过了版本范围解析。曾提议在 CI 里起本地 registry 补这一层，被否：产物正确性已由既有测试覆盖，发布路径由 master 的排练覆盖，而 pull request 只需证明发布集能打出来。用 `file:` 说明符安装依然会对每个内部依赖走一遍范围解析。
+**为打包后安装验证运行本地 registry。** 本地 registry 能让每个内部范围都经过 npm 的 registry 选择；它也会给一个只负责验证 payload 完整性与启动的已安装产物探针引入有状态服务和第二套发布过程。workspace 约束、release 验证与 pack 替换已经负责内部范围写法，因此本探针让每条内部边始终指向给定的 tarball。
+
+**只用直接 `file:` 依赖，不配 npm override。** 根 tarball 不会阻止 npm 经 registry 解析传递的 semver 边。首发前目标版本本就不在 registry，这会让安装失败。让 `overrides` 引用每项直接依赖，就能在不起 registry 的前提下始终从已验证的 tarball 解析。
 
 **按入口闭包挑一部分包发。** 从 `@deepseek-ai/dsh` 与 `@deepseek-ai/dsh-web-frontend` 沿 `dependencies` 爬得到 156 个包，比全量少 61 个。但本仓的插件是 `cordis.yml` 按名字挂载的、不是被 import 的：`vendor/cordis-plugin-group` 与 `vendor/cordis-plugin-logger-console` 落在依赖闭包之外，却是运行时必需。照代码依赖挑的失败形态是「消费方装完起不来」，而且要额外持续证明「没漏任何挂载项」。私有 scope 下多出来的包对组织外不可见。`python/`、根 `examples/`、`docs/` 与 `website/` 不是成员。
 

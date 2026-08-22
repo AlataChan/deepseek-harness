@@ -12,8 +12,10 @@
  * ([rationale](../../.agents/notes/implemented/process/2026-08-10-npm-release-sequences.md)).
  *
  * What this proves is that `files` selected a complete payload and that the
- * published dependency ranges resolve. A workspace link or a stale `lib/` in the
- * checkout cannot stand in for a missing file here.
+ * installed entry runs from those bytes. npm overrides deliberately keep
+ * internal edges on supplied tarballs; workspace constraints and release pack
+ * validation own their published range spelling. A workspace link or a stale
+ * `lib/` in the checkout cannot stand in for a missing file here.
  */
 
 import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -66,6 +68,30 @@ function packedDependencies(directories: readonly string[]): Map<string, { url: 
   return dependencies
 }
 
+/**
+ * Build the throwaway consumer manifest used to install packed artifacts.
+ *
+ * npm resolves a transitive semver edge from the registry even when the same
+ * package is a direct `file:` dependency. A new release version is necessarily
+ * absent there, so each packed package overrides its transitive edges with the
+ * corresponding direct dependency specifier.
+ * @param familyId - release family identifier used to name the consumer.
+ * @param packed - package names and their packed tarball locations.
+ * @returns A private package manifest whose internal edges stay on the supplied tarballs.
+ */
+export function packedInstallManifest(
+  familyId: string,
+  packed: ReadonlyMap<string, { readonly url: string }>,
+): Record<string, unknown> {
+  return {
+    name: `dsh-packed-install-${familyId}`,
+    version: '0.0.0',
+    private: true,
+    dependencies: Object.fromEntries([...packed].map(([name, entry]) => [name, entry.url])),
+    overrides: Object.fromEntries([...packed.keys()].map(name => [name, `$${name}`])),
+  }
+}
+
 /** Install every tarball under `--from` and drive the `--family` entry. */
 function main(): void {
   const { values } = parseArgs({
@@ -90,12 +116,10 @@ function main(): void {
 
   const consumerRoot = mkdtempSync(join(tmpdir(), `dsh-packed-${family.id}-`))
   try {
-    writeFileSync(join(consumerRoot, 'package.json'), `${JSON.stringify({
-      name: `dsh-packed-install-${family.id}`,
-      version: '0.0.0',
-      private: true,
-      dependencies: Object.fromEntries([...packed].map(([name, entryPacked]) => [name, entryPacked.url])),
-    }, null, 2)}\n`)
+    writeFileSync(
+      join(consumerRoot, 'package.json'),
+      `${JSON.stringify(packedInstallManifest(family.id, packed), null, 2)}\n`,
+    )
 
     const environment = consumerEnvironment(consumerRoot)
     console.log(`release verify-packed-install: installing ${String(packed.size)} tarball(s) into ${consumerRoot}`)
