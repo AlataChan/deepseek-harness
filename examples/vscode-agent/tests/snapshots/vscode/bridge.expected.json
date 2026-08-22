@@ -1,7 +1,7 @@
 {
   "ready": {
     "protocolVersion": 1,
-    "runtimeVersion": "0.1.0-rc.8",
+    "runtimeVersion": "0.1.1-rc.3",
     "maxLogicalRpcBytes": 2097152,
     "graph": [
       {

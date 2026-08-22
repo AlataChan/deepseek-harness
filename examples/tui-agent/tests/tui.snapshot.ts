@@ -19,6 +19,8 @@ const testsDir = dirname(fileURLToPath(import.meta.url))
 const snapshotsDir = join(testsDir, 'snapshots')
 const dshSource = fileURLToPath(new URL('../../../apps/cli/src/bin.ts', import.meta.url))
 const dshBuilt = fileURLToPath(new URL('../../../apps/cli/lib/bin.js', import.meta.url))
+const replaySource = fileURLToPath(new URL('../../../packages/test-support/llm-replay/src/index.ts', import.meta.url))
+const replayBuilt = fileURLToPath(new URL('../../../packages/test-support/llm-replay/lib/index.js', import.meta.url))
 const tsconfigPath = fileURLToPath(new URL('../../../tsconfig.json', import.meta.url))
 const patchPath = fileURLToPath(new URL('../cordis.snapshot.yml', import.meta.url))
 const refreshing = process.env.DSH_SNAPSHOT === 'refresh'
@@ -63,8 +65,24 @@ async function runScenario(options: ScenarioOptions): Promise<void> {
   const cwd = await mkdtemp(join(tmpdir(), `dsh-${options.name}-`))
   const dshHome = join(cwd, '.dsh')
   try {
+    const mode = resolveExampleMode()
     const fixture = join(scenarioDir, 'session.jsonl')
-    const additionalPatchPaths: string[] = []
+    const replayPatch = join(cwd, 'replay.patch.yml')
+    const replayUrl = pathToFileURL(mode === 'src' ? replaySource : replayBuilt).href
+    await writeFile(replayPatch, [
+      '- insert:',
+      '    - id: llm-replay',
+      `      name: '${replayUrl}'`,
+      '      config:',
+      '        providers:',
+      '          - id: deepseek-official',
+      '            name: DeepSeek',
+      '            models:',
+      '              - id: deepseek-v4-flash',
+      '              - id: deepseek-v4-pro',
+      '',
+    ].join('\n'))
+    const additionalPatchPaths: string[] = [replayPatch]
     if (options.name === 'tui-interactions') {
       const interactionPatch = join(cwd, 'interaction.patch.yml')
       const pluginUrl = pathToFileURL(join(testsDir, 'fixtures', 'interaction-fixture.ts')).href
@@ -72,7 +90,7 @@ async function runScenario(options: ScenarioOptions): Promise<void> {
       additionalPatchPaths.push(interactionPatch)
     }
     const launch = resolveTuiTerminalLaunch({
-      mode: resolveExampleMode(), dshSource, dshBuilt, tsconfigPath, patchPath,
+      mode, dshSource, dshBuilt, tsconfigPath, patchPath,
       cwd, dshHome, additionalPatchPaths,
       ...(options.args === undefined ? {} : { args: options.args }),
       env: {
