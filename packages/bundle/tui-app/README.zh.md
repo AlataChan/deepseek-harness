@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-`dsh-tui-app` 是交互式终端 profile 的内置 patch 层。它直接组合在 [`dsh-base`](../base/README.md) 之上，在 Host 进程内启动 [`dsh-tui`](../../ui/tui/README.md)，且不添加 Host gateway、Client runtime、浏览器传输、IPC 载体或网络监听器。
+`dsh-tui-app` 是交互式终端 profile 的内置 patch 层。它直接组合在 [`dsh-base`](../base/README.zh.md) 之上，在 Host 进程内启动 [`dsh-tui`](../../ui/tui/README.zh.md)，且不添加 Host gateway、Client runtime、浏览器传输、IPC 载体或网络监听器。
 
 ## 组合
 

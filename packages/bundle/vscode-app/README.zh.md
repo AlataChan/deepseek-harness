@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-叠加在 [`dsh-client-app`](../client-app/README.md) 之上的 VS Code 界面组合包。它的 [`cordis.patch.yml`](cordis.patch.yml) 保留共享交互式 Host 与完整的 `ui-*` 名册，将 API 网关的 `nativeOpen` 能力设为 false，挂载适用于远程环境的浏览式目录选择器，解析 extension 选中的 workspace 根目录，注册 VS Code 界面上下文，挂载 [`connection-vscode`](../../client/connection-vscode/README.md) 进程 IPC 载体，并添加 [`ui-vscode`](../../client/ui-vscode/README.md) 编辑器上下文控件。它有意不挂载 HTTP 服务器、静态前端适配器、Web connection、客户端插件 HMR、Host 原生目录选择器或浏览器 Session 下载操作。
+叠加在 [`dsh-client-app`](../client-app/README.zh.md) 之上的 VS Code 界面组合包。它的 [`cordis.patch.yml`](cordis.patch.yml) 保留共享交互式 Host 与完整的 `ui-*` 名册，将 API 网关的 `nativeOpen` 能力设为 false，挂载适用于远程环境的浏览式目录选择器，解析 extension 选中的 workspace 根目录，注册 VS Code 界面上下文，挂载 [`connection-vscode`](../../client/connection-vscode/README.zh.md) 进程 IPC 载体，并添加 [`ui-vscode`](../../client/ui-vscode/README.zh.md) 编辑器上下文控件。它有意不挂载 HTTP 服务器、静态前端适配器、Web connection、客户端插件 HMR、Host 原生目录选择器或浏览器 Session 下载操作。
 
 [`src/startup.ts`](src/startup.ts) 持有 companion 唯一的参数 `--workspace-root <path>`。该值必须是绝对路径，并通过 `ctx.vscodeStartup` 提供；运行时行与载体行会先注入该服务再读取它。安装后的 `@deepseek-ai/dsh` 应用负责进程发现、独占 home lease 和已发布的 companion 入口。
 

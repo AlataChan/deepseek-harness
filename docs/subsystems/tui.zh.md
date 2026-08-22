@@ -2,7 +2,7 @@
 
 [English](tui.md) | 中文
 
-[`dsh-tui`](../../packages/ui/tui/README.md) 包是在一个进程内 Agent 之上的仅限 Node 交互式呈现。[`dsh-tui-app`](../../packages/bundle/tui-app/README.md) bundle 解析应用参数，并在终端 row 挂载前发布启动值。
+[`dsh-tui`](../../packages/ui/tui/README.zh.md) 包是在一个进程内 Agent 之上的仅限 Node 交互式呈现。[`dsh-tui-app`](../../packages/bundle/tui-app/README.zh.md) bundle 解析应用参数，并在终端 row 挂载前发布启动值。
 
 启动服务携带三种模式之一：带可选初始任务的新 Session、有数量上限的恢复选择器，或一个准确的已持久化 Session id。它是内部组合数据，不是 Remote API。
 
@@ -14,7 +14,7 @@
 
 ## Cordis API
 
-Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — this section is byte-identical in both language sides of the page. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
 <a id="ctxtuistartup--tuistartupservice"></a>
 
@@ -22,7 +22,7 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 Service fields published for the TUI row after application arguments parse.
 
-Source: [`packages/bundle/tui-app/src/startup.ts:22`](../../packages/bundle/tui-app/src/startup.ts)
+Source: [`packages/bundle/tui-app/src/startup.ts`](../../packages/bundle/tui-app/src/startup.ts)
 
 <a id="tui-events"></a>
 
@@ -43,7 +43,7 @@ The same TUI-owned relation completed disposal.
 'tui/controller-disposed'(lifecycle: TuiControllerLifecycle): void
 ```
 
-Source: [`packages/ui/tui/src/index.ts:82`](../../packages/ui/tui/src/index.ts)
+Source: [`packages/ui/tui/src/index.ts`](../../packages/ui/tui/src/index.ts)
 
 <a id="tuicontroller-mounted--emit"></a>
 
@@ -60,5 +60,5 @@ A TUI controller and its interaction providers became live.
 'tui/controller-mounted'(lifecycle: TuiControllerLifecycle): void
 ```
 
-Source: [`packages/ui/tui/src/index.ts:76`](../../packages/ui/tui/src/index.ts)
+Source: [`packages/ui/tui/src/index.ts`](../../packages/ui/tui/src/index.ts)
 <!-- END GENERATED cordis-surface -->

@@ -10,6 +10,8 @@ DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的�
 
 DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**
 
+<a id="run"></a>
+
 ## 运行
 
 ### 通过 `npm` 运行
@@ -20,11 +22,13 @@ DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**
 npx @deepseek-ai/dsh
 ```
 
-该命令会在新 Session 中启动交互式终端客户端。使用 `dsh --resume` 选择最近的 Session，使用 `dsh --resume <session-id>` 直接恢复指定 Session，或使用 `dsh "task"` 提交初始任务。stdin 与 stdout 必须都是 TTY；非交互式自动化请使用 `dsh exec "task"`。Enter 提交，Ctrl+J 插入换行，Ctrl+R 打开恢复选择器，Ctrl+C 取消活跃工作，或从空闲且草稿为空的 composer 退出。配置项以及延期的模型切换、图片附件、鼠标输入、alternate-screen 模式与 Tauri 桌面工作见 [TUI 包参考](packages/ui/tui/README.md)。
+该命令会在新 Session 中启动交互式终端客户端。使用 `dsh --resume` 选择最近的 Session，使用 `dsh --resume <session-id>` 直接恢复指定 Session，或使用 `dsh "task"` 提交初始任务。stdin 与 stdout 必须都是 TTY；非交互式自动化请使用 `dsh exec "task"`。Enter 提交，Ctrl+J 插入换行，Ctrl+R 打开恢复选择器，Ctrl+C 取消活跃工作，或从空闲且草稿为空的 composer 退出。配置项以及延期的模型切换、图片附件、鼠标输入、alternate-screen 模式与 Tauri 桌面工作见 [TUI 包参考](packages/ui/tui/README.zh.md)。
 
-使用 `npx @deepseek-ai/dsh web` 启动 Web UI。它默认监听 `http://127.0.0.1:3080` 并打开本机浏览器；通过 SSH 启动时只打印宿主机 URL。详见 [Web UI 指南](docs/user/guide/index.md)。
+使用 `npx @deepseek-ai/dsh web` 启动 Web UI。它默认监听 `http://127.0.0.1:3080` 并打开本机浏览器；通过 SSH 启动时只打印宿主机 URL。详见 [Web UI 指南](docs/user/guide/index.zh.md)。
 
-开发者预览阶段的 [VS Code 客户端](docs/user/guide/vscode.md)会在 workspace 面板中复用交互式 UI，并要求安装 Harness runtime。
+开发者预览阶段的 [VS Code 客户端](docs/user/guide/vscode.zh.md)会在 workspace 面板中复用交互式 UI，并要求安装 Harness runtime。
+
+<a id="run-from-source"></a>
 
 ### 从源码运行
 
@@ -65,11 +69,11 @@ pnpm dsh
 
 ## 参与贡献
 
-参见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+参见 [CONTRIBUTING.md](CONTRIBUTING.zh.md)。
 
 ## 开发
 
-请先阅读[开发指南](docs/development.md)与[架构文档](docs/architecture.md)。
+请先阅读[开发指南](docs/development.zh.md)与[架构文档](docs/architecture.zh.md)。
 
 面向 agent：请遵循 [AGENTS.md](AGENTS.md)。
 

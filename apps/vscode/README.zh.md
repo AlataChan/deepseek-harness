@@ -16,7 +16,7 @@ Client 图配置以 JSON 形式进入 Webview。VS Code 构建会把 vendored Lo
 
 Workspace Trust（工作区信任）会阻止 runtime 发现与执行。可执行文件路径设置在不可信 workspace 中受限。进程输出经过有界凭据遮盖；carrier record 与编辑器快照没有日志 API。companion 负责 Harness home 的独占 lease（租约），当另一进程可能正在使用同一个持久存储时报告 `home-busy`。
 
-[VS Code 用户指南](../../docs/user/guide/vscode.md)介绍源码安装、远程放置、上下文隐私、恢复和当前限制。
+[VS Code 用户指南](../../docs/user/guide/vscode.zh.md)介绍源码安装、远程放置、上下文隐私、恢复和当前限制。
 
 ## 配置
 
@@ -33,7 +33,7 @@ Workspace Trust（工作区信任）会阻止 runtime 发现与执行。可执�
 
 ## 模型体验
 
-无。本外壳只选择 workspace 并传输既有 Client 消息；面向模型的 VS Code 界面说明由 [`@deepseek-ai/dsh-vscode-app`](../../packages/bundle/vscode-app/README.md) 负责，显式编辑器快照由上下文 Client Plugin 负责。
+无。本外壳只选择 workspace 并传输既有 Client 消息；面向模型的 VS Code 界面说明由 [`@deepseek-ai/dsh-vscode-app`](../../packages/bundle/vscode-app/README.zh.md) 负责，显式编辑器快照由上下文 Client Plugin 负责。
 
 #### KV Cache 影响
 

@@ -2,7 +2,7 @@
 
 [English](client-modules.md) | 中文
 
-Client Plugin 注册表是 [dsh-client-modules](../../packages/client/modules) 的 Node 半，以 `ctx.clientModules`（`ClientModuleRegistry`）形式提供。它扫描宿主 Loader 的 entry，找出声明了 `dsh.client` 的包，解析并哈希已构建的 bundle，并在不要求物理传输的情况下组合 `ClientBootGraph`。surface 适配器消费它的图和只读 bundle 记录。Web surface 挂载 [dsh-host-client-modules-web](../../packages/host/client-modules-web)，后者同时消费本注册表与 [dsh-host-webserver](../../packages/host/webserver)，以提供 `/plugins` 并注入 `window.__DSH_BOOT__`。同一个 client-modules 包的浏览器半（`ctx.modules`，即拉取并物化这些 bundle 的 lazy CJS 模块表）属于内核机件，记录在[包 README](../../packages/client/modules/README.md)中，不在本页。
+Client Plugin 注册表是 [dsh-client-modules](../../packages/client/modules) 的 Node 半，以 `ctx.clientModules`（`ClientModuleRegistry`）形式提供。它扫描宿主 Loader 的 entry，找出声明了 `dsh.client` 的包，解析并哈希已构建的 bundle，并在不要求物理传输的情况下组合 `ClientBootGraph`。surface 适配器消费它的图和只读 bundle 记录。Web surface 挂载 [dsh-host-client-modules-web](../../packages/host/client-modules-web)，后者同时消费本注册表与 [dsh-host-webserver](../../packages/host/webserver)，以提供 `/plugins` 并注入 `window.__DSH_BOOT__`。同一个 client-modules 包的浏览器半（`ctx.modules`，即拉取并物化这些 bundle 的 lazy CJS 模块表）属于内核机件，记录在[包 README](../../packages/client/modules/README.zh.md)中，不在本页。
 
 源码：[`packages/client/modules/src/client/manifest.ts`](../../packages/client/modules/src/client/manifest.ts)
 
@@ -78,7 +78,7 @@ interface ClientBundleRecord {
 
 `ClientModuleRegistry`（`ctx.clientModules`，定义于 [`packages/client/modules/src/index.ts`](../../packages/client/modules/src/index.ts)）暴露读取面与重建面；签名见生成的[服务目录](#ctxclientmodules--clientmoduleregistry)。`graph()` 返回当前组合出的图（两次变更之间是同一个稳定对象），`bundleRecords()` 则返回只读数组，把每个 entry 与其绝对产物路径配对。`rebuilt(id)` 是 bundle 内容到达图的唯一入口：它对文件重新哈希，只有 rev 真正变化才会重新组合图并发出通知。`onRebuilt` 按发生变化的 bundle 逐个触发并携带新 rev；`onGraphChanged` 在任何一次重新组合了图的 flush 之后触发（行的增删，或 rebuilt 带来的 rev 变化），并采用拉取模型——监听器自行重读 `graph()`。两条通知路径都会兜住监听器异常，因此一个抛错的订阅者既不能让后续订阅者被跳过，也不能杀死触发这次 flush 的一方。
 
-开发环境下，[dsh-client-hmr](../../packages/client/hmr/README.md) 是注册表的监视驱动：它的 Node 半从同步取得的基线出发，对每条 bundle 记录做 stat 轮询，变化时调用 `rebuilt(id)`，经 `onGraphChanged` 重新同步监视集合，并通过 SSE（Server-Sent Events）把 rev 变化广播给浏览器半。生产环境的图完全不含 HMR（热模块替换）行；模块宿主自身从不监视文件。
+开发环境下，[dsh-client-hmr](../../packages/client/hmr/README.zh.md) 是注册表的监视驱动：它的 Node 半从同步取得的基线出发，对每条 bundle 记录做 stat 轮询，变化时调用 `rebuilt(id)`，经 `onGraphChanged` 重新同步监视集合，并通过 SSE（Server-Sent Events）把 rev 变化广播给浏览器半。生产环境的图完全不含 HMR（热模块替换）行；模块宿主自身从不监视文件。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -86,7 +86,7 @@ interface ClientBundleRecord {
 
 ## Cordis API
 
-Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — this section is byte-identical in both language sides of the page. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
 <a id="ctxclientmodules--clientmoduleregistry"></a>
 
@@ -131,5 +131,5 @@ onRebuilt(listener: (id: string, rev: string) => void): () => void
 onGraphChanged(listener: () => void): () => void
 ```
 
-Source: [`packages/client/modules/src/index.ts:226`](../../packages/client/modules/src/index.ts)
+Source: [`packages/client/modules/src/index.ts`](../../packages/client/modules/src/index.ts)
 <!-- END GENERATED cordis-surface -->

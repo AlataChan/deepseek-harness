@@ -1,7 +1,7 @@
 /** Shared logical-request capacity for HTTP and VS Code carriers. */
 
-/** Default logical RPC cap: 100 MiB aggregate image data after base64 plus envelope headroom. */
-export const DEFAULT_MAX_REQUEST_BODY_BYTES = 160 * 1024 * 1024
+/** Default logical RPC cap: 200 MiB aggregate image data after base64 plus envelope headroom. */
+export const DEFAULT_MAX_REQUEST_BODY_BYTES = 300 * 1024 * 1024
 
 /** Fixed JSON-envelope headroom around aggregate base64 image data. */
 const REQUEST_ENVELOPE_HEADROOM_BYTES = 1024 * 1024
