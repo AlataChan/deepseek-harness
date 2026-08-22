@@ -22,6 +22,21 @@ export interface PackedIdentity {
 }
 
 /**
+ * Reject archive paths that could write outside npm's `package/` payload root.
+ * @param paths - tar member paths.
+ */
+export function assertSafeTarballPaths(paths: readonly string[]): void {
+  for (const path of paths) {
+    if (path.startsWith('/') || path.includes('\\')) throw new Error(`unsafe tarball path ${path}`)
+    const segments = path.split('/').filter((segment, index, all) => segment !== '' || index !== all.length - 1)
+    if (segments.some(segment => segment === '' || segment === '.' || segment === '..')) {
+      throw new Error(`unsafe tarball path ${path}`)
+    }
+    if (segments[0] !== 'package') throw new Error(`tarball path outside package/: ${path}`)
+  }
+}
+
+/**
  * List a tarball's members.
  * @param tarball - absolute tarball path.
  * @returns Every path inside the archive.
