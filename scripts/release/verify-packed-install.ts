@@ -103,7 +103,7 @@ function main(): void {
   }
 
   const family = releaseFamily(values.family)
-  const entry = family.installedEntry
+  const entry = family.sourceInstalledEntry
   if (entry === undefined) {
     console.log(`release verify-packed-install: family ${family.id} publishes no executable, nothing to drive`)
     return

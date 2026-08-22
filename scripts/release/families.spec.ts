@@ -255,9 +255,9 @@ describe('release families', () => {
     expect(() => { vendor.validatePayload(vendored, []) }).toThrow(/empty tarball/)
   })
 
-  it('drives the installed entry only for the family that publishes one', () => {
-    expect(releaseFamily('dsh').installedEntry).toEqual({ packageName: '@deepseek-ai/dsh', binPath: 'lib/bin.js' })
-    expect(releaseFamily('vendor').installedEntry).toBeUndefined()
+  it('declares a source installed entry only for the family that publishes one', () => {
+    expect(releaseFamily('dsh').sourceInstalledEntry).toEqual({ packageName: '@deepseek-ai/dsh', binPath: 'lib/bin.js' })
+    expect(releaseFamily('vendor').sourceInstalledEntry).toBeUndefined()
   })
 
   it('rejects an unknown family identifier', () => {

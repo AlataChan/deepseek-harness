@@ -313,7 +313,7 @@ export abstract class ReleaseFamily {
    * The executable that proves this family's artifacts install and run, or
    * `undefined` for a family that publishes no executable.
    */
-  abstract readonly installedEntry: InstalledEntry | undefined
+  abstract readonly sourceInstalledEntry: InstalledEntry | undefined
 }
 
 /** npm-published Harness packages and applications: one shared version across the whole family. */
@@ -362,7 +362,7 @@ class DshFamily extends ReleaseFamily {
     validateTarballPayload(files, member.name)
   }
 
-  readonly installedEntry = { packageName: '@deepseek-ai/dsh', binPath: 'lib/bin.js' }
+  readonly sourceInstalledEntry = { packageName: '@deepseek-ai/dsh', binPath: 'lib/bin.js' }
 }
 
 /** `vendor/*`: every package keeps its own version line, so every package has its own tag. */
@@ -409,7 +409,7 @@ class VendorFamily extends ReleaseFamily {
   }
 
   /** No installed-entry probe: these are libraries a consumer imports, with no executable. */
-  readonly installedEntry = undefined
+  readonly sourceInstalledEntry = undefined
 }
 
 /** Every release family this module owns, in workflow order. */
