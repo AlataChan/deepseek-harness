@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { releaseFamily, type ReleaseMember } from './families.ts'
-import { packedInstallEntry, packedInstallManifest } from './verify-packed-install.ts'
+import { packedInstallEntry, packedInstallManifest, packedInstallNpmArguments } from './verify-packed-install.ts'
 
 /** Create the source CLI member used to resolve target-specific entries. */
 function cliMember(): ReleaseMember {
@@ -15,6 +15,15 @@ function cliMember(): ReleaseMember {
 }
 
 describe('packed install verification', () => {
+  it('installs platform optional dependencies', () => {
+    expect(packedInstallNpmArguments()).toEqual([
+      'install',
+      '--no-audit',
+      '--no-fund',
+      '--package-lock=false',
+    ])
+  })
+
   it('overrides transitive package ranges with the supplied tarballs', () => {
     const packed = new Map([
       ['@deepseek-ai/dsh-alpha', { url: 'file:///tmp/dsh-alpha.tgz', version: '0.1.0-rc.1' }],

@@ -115,7 +115,7 @@ dsh 的验证会一并安装 vendored 族的 pack 产物。harness 的包把 ven
 
 一次性消费方把每个给定的 tarball 同时声明为直接 `file:` 依赖，以及引用该直接依赖的 npm override。直接依赖选定被测产物；override 还会把传递的 semver 边重定向到该产物。两项声明缺一时，npm 可能为传递的 dsh 范围查询 registry，并拒绝一个只有在本验证通过、发布开始后才可能出现在 registry 的版本。override 会取代 npm 的范围选择，因此发布后内部范围由 `check-workspace-constraints`、release 验证与 pack 替换负责；本探针负责 payload 完整性以及从已安装字节执行入口。
 
-验证还会打一份 Landlock entry 的 tarball——`dsh-sandbox-local` 把它声明为普通 `dependencies`——同时略去可选依赖。那些可选项背后的平台包需要 musl 工具链且每个架构各构建一次，单台 runner 产不出来；而装不到它们的消费方也必须能起，这正是「可选」在这里的含义。因此验证按目录内容读取 tarball，而不是读发布顺序：一个目录可能只装着为满足跨序列依赖而打出来的包，任何发布顺序都不描述它。
+验证还会提供一份打包后的 Landlock entry——`dsh-sandbox-local` 把它声明为普通 `dependencies`——并保留可选依赖。npm 根据每个平台可选包的 `os` 与 `cpu` 字段只安装兼容的 payload；由于 DSH 发布不会重新构建 Landlock，匹配的平台包可以从 registry 解析，而 Koffi 等外部依赖的平台 payload 必须保留，演练才能等同于真实 consumer 安装。因此验证按目录内容读取 tarball，而不是读发布顺序：一个目录可能只装着为满足跨序列依赖而打出来的包，任何发布顺序都不描述它。
 
 ### 本次带出的仓库改动
 

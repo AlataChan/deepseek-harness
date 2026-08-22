@@ -264,7 +264,7 @@ Expected: the DSH output contains 234 projected tarballs plus one publish-order 
 
 ```sh
 pnpm run release:verify-packed-install --family dsh --target alatastudio --from /private/tmp/dsh-release-0.1.1-rc.4/npm-dsh --from /private/tmp/dsh-release-0.1.1-rc.4/npm-vendor --from /private/tmp/dsh-release-0.1.1-rc.4/npm-landlock
-docker run --rm --platform linux/amd64 -v /Users/apple/deepseek-harness:/repo:ro -v /private/tmp/dsh-release-0.1.1-rc.4:/release:ro -w /repo node:24-bookworm npx -y tsx@4.22.4 scripts/release/verify-packed-install.ts --family dsh --target alatastudio --from /release/npm-dsh --from /release/npm-vendor --from /release/npm-landlock
+docker run --rm --platform linux/amd64 -v /Users/apple/deepseek-harness:/repo:ro --mount type=tmpfs,destination=/repo/node_modules -v /private/tmp/dsh-release-0.1.1-rc.4:/release:ro -w /repo node:24-bookworm npx -y tsx@4.22.4 scripts/release/verify-packed-install.ts --family dsh --target alatastudio --from /release/npm-dsh --from /release/npm-vendor --from /release/npm-landlock
 ```
 
 Expected: both probes report that installed `@alatastudio/dsh` is `0.1.1-rc.4`.
