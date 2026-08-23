@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-host-client-modules-web",
   "description": "Web adapter for Client Plugin discovery: serves registered bundles under /plugins and injects the boot graph into the shell index",
-  "version": "0.1.1-rc.4",
+  "version": "0.1.1-rc.5",
   "publishConfig": {
     "access": "public"
   },
