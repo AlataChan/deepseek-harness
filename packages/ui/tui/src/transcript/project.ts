@@ -192,6 +192,7 @@ export function foldSessionEvent(
       }
     }
     case 'user/message': {
+      if (event.data.source.kind !== 'user') return state
       const text = contentText(event.data.content)
       return text === '' ? state : appendRows(state, [{
         kind: 'message', sourceSeq: event.seq, role: 'user', text: displayText(text, budget),

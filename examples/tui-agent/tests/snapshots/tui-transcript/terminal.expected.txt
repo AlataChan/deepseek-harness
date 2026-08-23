@@ -5,32 +5,12 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Status: working
 You › Waiting…
 DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The
 Status: working
@@ -39,16 +19,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user
 Status: working
@@ -57,16 +27,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants
 Status: working
@@ -75,16 +35,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me
 Status: working
@@ -93,16 +43,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to
 Status: working
@@ -111,16 +51,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run
 Status: working
@@ -129,16 +59,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a
 Status: working
@@ -147,16 +67,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific
 Status: working
@@ -165,16 +75,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash
 Status: working
@@ -183,16 +83,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command
 Status: working
@@ -201,16 +91,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and
 Status: working
@@ -219,16 +99,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then
 Status: working
@@ -237,16 +107,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply
 Status: working
@@ -255,16 +115,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with
 Status: working
@@ -273,16 +123,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with D
 Status: working
@@ -291,16 +131,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE
 Status: working
@@ -309,16 +139,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 Status: working
@@ -327,16 +147,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -350,16 +160,6 @@ DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -376,110 +176,11 @@ echo SNAPSHOT_OK
 │exit 0                                                                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
-Reasoning
-The user wants me to run a specific bash command and then reply with DONE.
-echo SNAPSHOT_OK
-╭──────────────────────────────────────────────────────────────────────────────╮
-│Run echo SNAPSHOT_OK                                                          │
-│$ echo SNAPSHOT_OK                                                            │
-╰──────────────────────────────────────────────────────────────────────────────╯
-echo SNAPSHOT_OK
-╭──────────────────────────────────────────────────────────────────────────────╮
-│Run echo SNAPSHOT_OK                                                          │
-│$ echo SNAPSHOT_OK                                                            │
-│SNAPSHOT_OK                                                                   │
-│                                                                              │
-│exit 0                                                                        │
-╰──────────────────────────────────────────────────────────────────────────────╯
-Status: working
-You › Waiting…DeepSeek Harness · dsh
-You
-Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
-word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
-Reasoning
-The user wants me to run a specific bash command and then reply with DONE.
-echo SNAPSHOT_OK
-╭──────────────────────────────────────────────────────────────────────────────╮
-│Run echo SNAPSHOT_OK                                                          │
-│$ echo SNAPSHOT_OK                                                            │
-╰──────────────────────────────────────────────────────────────────────────────╯
-echo SNAPSHOT_OK
-╭──────────────────────────────────────────────────────────────────────────────╮
-│Run echo SNAPSHOT_OK                                                          │
-│$ echo SNAPSHOT_OK                                                            │
-│SNAPSHOT_OK                                                                   │
-│                                                                              │
-│exit 0                                                                        │
-╰──────────────────────────────────────────────────────────────────────────────╯
-Status: working
-You › Waiting…DeepSeek Harness · dsh
-You
-Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
-word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
-Reasoning
-The user wants me to run a specific bash command and then reply with DONE.
-echo SNAPSHOT_OK
-╭──────────────────────────────────────────────────────────────────────────────╮
-│Run echo SNAPSHOT_OK                                                          │
-│$ echo SNAPSHOT_OK                                                            │
-╰──────────────────────────────────────────────────────────────────────────────╯
-echo SNAPSHOT_OK
-╭──────────────────────────────────────────────────────────────────────────────╮
-│Run echo SNAPSHOT_OK                                                          │
-│$ echo SNAPSHOT_OK                                                            │
-│SNAPSHOT_OK                                                                   │
-│                                                                              │
-│exit 0                                                                        │
-╰──────────────────────────────────────────────────────────────────────────────╯
-Status: working
-You › Waiting…DeepSeek Harness · dsh
-You
-Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
-word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -498,20 +199,11 @@ echo SNAPSHOT_OK
 Reasoning
 The
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -530,20 +222,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -562,20 +245,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -594,20 +268,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -626,20 +291,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -658,20 +314,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -690,20 +337,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed S
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -722,20 +360,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNA
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -754,20 +383,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPS
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -786,20 +406,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPSH
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -818,20 +429,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPSHOT
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -850,20 +452,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPSHOT_OK
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -882,20 +475,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPSHOT_OK.
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -914,20 +498,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPSHOT_OK. Now
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -946,20 +521,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPSHOT_OK. Now I
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -978,20 +544,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPSHOT_OK. Now I need
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1010,20 +567,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPSHOT_OK. Now I need to
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1042,20 +590,11 @@ echo SNAPSHOT_OK
 Reasoning
 The command executed successfully and printed SNAPSHOT_OK. Now I need to reply
 Status: working
-You › Waiting…DeepSeek Harness · dsh
+You › Waiting…
+DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1079,16 +618,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1112,16 +641,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1145,16 +664,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1178,16 +687,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1211,16 +710,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1244,16 +733,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1277,49 +756,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
-Reasoning
-The user wants me to run a specific bash command and then reply with DONE.
-echo SNAPSHOT_OK
-╭──────────────────────────────────────────────────────────────────────────────╮
-│Run echo SNAPSHOT_OK                                                          │
-│$ echo SNAPSHOT_OK                                                            │
-╰──────────────────────────────────────────────────────────────────────────────╯
-echo SNAPSHOT_OK
-╭──────────────────────────────────────────────────────────────────────────────╮
-│Run echo SNAPSHOT_OK                                                          │
-│$ echo SNAPSHOT_OK                                                            │
-│SNAPSHOT_OK                                                                   │
-│                                                                              │
-│exit 0                                                                        │
-╰──────────────────────────────────────────────────────────────────────────────╯
-Reasoning
-The command executed successfully and printed SNAPSHOT_OK. Now I need to reply
-with the single word DONE.
-Status: working
-You › Waiting…DeepSeek Harness · dsh
-You
-Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
-word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1345,16 +781,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1380,16 +806,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1415,16 +831,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1450,16 +856,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1485,16 +881,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1520,16 +906,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1555,16 +931,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1590,16 +956,6 @@ You › Waiting…DeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1625,16 +981,6 @@ You › Type a messageDeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1660,16 +1006,6 @@ You › Type a messageDeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1695,16 +1031,6 @@ You › /exitDeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK
@@ -1730,16 +1056,6 @@ You › Type a messageDeepSeek Harness · dsh
 You
 Use the bash tool to run exactly: echo SNAPSHOT_OK. Then reply with the single
 word DONE and stop.
-You
-Current runtime context. This snapshot supersedes earlier runtime-context
-snapshots.
-
-Current DSH file policy: danger-full-access. The DSH file sandbox does not
-restrict file modifications by available operations.
-
-Approval prompts are disabled in this session: actions that require approval are
- rejected automatically — do not request sandbox escalation (do not set
-`sandbox_permissions`).
 Reasoning
 The user wants me to run a specific bash command and then reply with DONE.
 echo SNAPSHOT_OK

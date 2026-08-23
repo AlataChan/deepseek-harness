@@ -12,6 +12,8 @@ The authoritative Session projection remains in Ink's bounded redraw region so r
 
 Durable and live events pass through one pure projection. Every model-, tool-, command-, and log-supplied display field is made terminal-safe before rendering; tool arguments and result metadata remain structured for their dedicated cards.
 
+The human transcript renders `user/message` content only when its durable source is the user. Injected instructions, catalogs, policy snapshots, and other model-facing context remain in the session log and model request but do not appear as `You` in the terminal.
+
 Tool cards resolve the definition visible to the active agent and call only its pure `presentCall` and `presentResult` methods. Generic, terminal, diff, read, search, and Web result intents have compact terminal views; missing, rejected, and unknown intents use safe structured fallbacks without executing content or reading files.
 
 The controller registers one exact-agent approval answerer and the single user-question provider. Approval grants require an explicit allow-once action; abort and disposal cancel without granting. Question batches show every option and review detail and settle atomically only after the shared Service Definition validator accepts every required answer.

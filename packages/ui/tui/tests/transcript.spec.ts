@@ -59,6 +59,31 @@ describe('session transcript projection', () => {
     expect(projection.turn).toEqual({ kind: 'idle' })
   })
 
+  it('omits injected context from the human transcript', () => {
+    const projection = projectSessionEvents([
+      event('user/message', createUserMessage({
+        source: { kind: 'user' },
+        content: [{ type: 'text', text: 'visible prompt' }],
+      })),
+      event('user/message', createUserMessage({
+        source: { kind: 'agent-instructions', form: 'instructions', changes: [] } as never,
+        content: [{ type: 'text', text: '<system-reminder>hidden instructions</system-reminder>' }],
+      })),
+      event('user/message', createUserMessage({
+        source: { kind: 'plugin', plugin: 'system-prompt', form: 'snapshot', sections: [] },
+        content: [{ type: 'text', text: 'hidden policy snapshot' }],
+      })),
+      event('user/message', createUserMessage({
+        source: { kind: 'skill-catalog', form: 'catalog', entries: [] } as never,
+        content: [{ type: 'text', text: 'hidden skill catalog' }],
+      })),
+    ], budget)
+
+    expect(projection.rows).toEqual([
+      expect.objectContaining({ kind: 'message', role: 'user', text: 'visible prompt' }),
+    ])
+  })
+
   it('keeps tool pairing and result metadata structured', () => {
     const callId = CallId('call-1')
     const call = event('tool/call', {

@@ -12,6 +12,8 @@
 
 持久事件和实时事件统一经过一个纯投影。来自模型、工具、命令和日志的每个显示字段都会在渲染前转换为终端安全文本；工具参数与结果元数据则保留结构化值，供专用卡片使用。
 
+人类可读的 transcript 仅在持久来源为用户时渲染 `user/message` 内容。注入的指令、catalog、策略快照和其他面向模型的上下文仍保留在 Session 日志与模型请求中，但不会在终端内显示为 `You`。
+
 工具卡片解析活跃 agent 可见的 definition，并且只调用其纯 `presentCall` 与 `presentResult` 方法。generic、terminal、diff、read、search 与 Web 结果意图具有紧凑终端视图；缺失、拒绝和未知意图使用安全的结构化回退，且不执行内容或读取文件。
 
 controller 注册一个仅处理精确 agent 的审批 answerer 以及唯一的用户问题 provider。审批授权必须由显式 allow-once 操作触发；中止和 dispose 只会取消而不会授权。问题批次显示所有选项和审阅详情，并且只有共享 Service Definition validator 接受全部必答内容后才会原子结算。
