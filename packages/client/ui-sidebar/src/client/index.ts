@@ -6,12 +6,14 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the Session root standard-props merge.
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SidebarRootInjected } from './contract/slots.ts'
 import { SidebarRoot } from './SidebarRoot.tsx'
 import { en, zh, type SidebarKey } from './locales.ts'
 
 export type {
-  SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps,
+  SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFilesOwnerProps,
+  SidebarFooterActionOwnerProps,
   SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps, SidebarSettingsOwnerProps,
 } from './contract/slots.ts'
 export type { SidebarKey } from './locales.ts'
@@ -40,11 +42,16 @@ export function apply(ctx: ClientContext): void {
   const workspaceNavigation = ctx.get('uiWorkspace') as unknown as WorkspaceNavigation
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-sidebar: dictionaries')
 
+  const filesOccupied: HostObservable<boolean> = {
+    getSnapshot: () => ctx.slots.entries('sidebar.files').length > 0,
+    subscribe: listener => ctx.slots.subscribe('sidebar.files', listener),
+  }
   const injectProps = (): SidebarRootInjected => ({
     // The shell's New Session button rides the Workspace UI's shared action
     // (current Session Workspace, then recent Workspace).
     startSession: (workspaceId) => { workspaceNavigation.startSession(workspaceId) },
     toggleSidebar: () => { ctx.layout.toggleSidebar() },
+    hooks: { filesOccupied },
   })
   ctx.effect(
     () => ctx.slots.register({
@@ -52,11 +59,14 @@ export function apply(ctx: ClientContext): void {
       locale: NS,
       // The shell owns geometry; ui-workspace registers the whole browsing
       // region (header, search, session list, workspace dialogs), ui-settings
-      // registers the foot trigger + settings panel.
+      // registers the foot trigger + settings panel. `sidebar.files` is an
+      // optional overlay occupant — occupancy, not renderSlot truthiness,
+      // decides whether the 会话 / 文件 switch is drawn.
       children: {
         'sidebar.brand.mark': { kind: 'single', scope: 'root' },
         'sidebar.brand.name': { kind: 'single', scope: 'root' },
         'sidebar.workspaces': { kind: 'single', scope: 'root' },
+        'sidebar.files': { kind: 'single', scope: 'root' },
         'sidebar.settings': { kind: 'single', scope: 'root' },
         'sidebar.footer.action': { kind: 'list', scope: 'root' },
       },

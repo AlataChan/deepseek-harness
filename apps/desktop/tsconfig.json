@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.client.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "lib/types",
+    "types": ["client-build-environment", "node"]
+  },
+  "include": [
+    "src",
+    "tests"
+  ],
+  "references": [
+    { "path": "../../packages/boot/installed-runtime" },
+    { "path": "../../packages/client/connection/tsconfig.client.json" },
+    { "path": "../../packages/client/connection-desktop/tsconfig.client.json" },
+    { "path": "../../packages/client/connection-process/tsconfig.client.json" },
+    { "path": "../../packages/client/modules" },
+    { "path": "../../packages/client/web" }
+  ]
+}

@@ -34,6 +34,7 @@
     { "path": "../../llm/llm" },
     { "path": "../../util/deque" },
     { "path": "../../util/native-command" },
+    { "path": "../../host/workspace-entries" },
     { "path": "../../preset/agent-presets" },
     { "path": "../../runtime-diagnostics/invariants" },
     { "path": "../../session/session-persistence" },

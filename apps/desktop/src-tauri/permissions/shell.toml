@@ -1,0 +1,29 @@
+[[permission]]
+identifier = "allow-runtime-configure"
+description = "Persist Node, Harness, and workspace settings"
+commands.allow = ["runtime_configure"]
+
+[[permission]]
+identifier = "allow-runtime-get-config"
+description = "Read persisted Node, Harness, and workspace settings"
+commands.allow = ["runtime_get_config"]
+
+[[permission]]
+identifier = "allow-runtime-resolve"
+description = "Discover Node and resolve the installed Harness runtime"
+commands.allow = ["runtime_resolve"]
+
+[[permission]]
+identifier = "allow-carrier-open"
+description = "Spawn or replace the desktop companion and attach a downlink Channel"
+commands.allow = ["carrier_open"]
+
+[[permission]]
+identifier = "allow-carrier-send"
+description = "Forward one already-serialized carrier record uplink"
+commands.allow = ["carrier_send"]
+
+[[permission]]
+identifier = "allow-cache-bundle"
+description = "Hash-copy one announced Client bundle into the asset-protocol cache"
+commands.allow = ["cache_bundle"]

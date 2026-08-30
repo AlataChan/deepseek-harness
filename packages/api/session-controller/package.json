@@ -87,6 +87,7 @@
     "@deepseek-ai/dsh-attachment": "workspace:^",
     "@deepseek-ai/dsh-client-connection": "workspace:^",
     "@deepseek-ai/dsh-file-reference": "workspace:^",
+    "@deepseek-ai/dsh-host-workspace-entries": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-jobs": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
@@ -115,6 +116,9 @@
     },
     "@deepseek-ai/dsh-session-projection-cache": {
       "optional": true
+    },
+    "@deepseek-ai/dsh-host-workspace-entries": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -127,6 +131,7 @@
     "@deepseek-ai/dsh-client-connection": "workspace:^",
     "@deepseek-ai/dsh-client-store": "workspace:^",
     "@deepseek-ai/dsh-file-reference": "workspace:^",
+    "@deepseek-ai/dsh-host-workspace-entries": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-jobs": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",

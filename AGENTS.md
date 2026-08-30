@@ -153,3 +153,53 @@ Docs accompany every code change: update affected README and JSDoc contracts tog
 ## Vendoring policy
 
 `vendor/` packages are pinned source copies (manifest with upstream SHAs in [vendor/README.md](vendor/README.md)). Update via the sync procedure there; re-apply or retire the logged local modifications; rerun `pnpm run test && pnpm run build`.
+
+<!-- CCB-TEAM-ROUTING:START -->
+## CCB Team Role Routing
+
+This section applies only to CCB-managed agents for this project. Ordinary
+Codex, Cursor, Claude, or other sessions outside this project's CCB runtime
+must ignore it.
+
+Activate the routing only when at least one of these conditions is true:
+
+- `CCB_CALLER_ACTOR` is exactly `opus`, `sol`, or `grok`; or
+- the effective `HOME` path is below this project's
+  `.ccb/agents/<agent>/provider-state/` directory and `<agent>` is exactly
+  `opus`, `sol`, or `grok`.
+
+At the beginning of a CCB-managed task:
+
+1. Determine the logical agent from `CCB_CALLER_ACTOR`. If unavailable,
+   inspect `HOME` and extract the agent name only from the managed path shape
+   above.
+2. Read `.ccb/ccb_memory.md`.
+3. Read only the matching private memory:
+   `.ccb/agents/<agent>/memory.md`.
+4. Apply the shared contract and that one private role for the current task.
+5. Do not load or impersonate another CCB agent's private role.
+
+If identity cannot be established by these rules, do not guess and do not
+activate a CCB role. The current user request and higher-priority instructions
+always override CCB memory.
+<!-- CCB-TEAM-ROUTING:END -->
+
+## Learned User Preferences
+
+- 用户对话使用中文；桌面端用户可见文案优先中文
+- 本仓库更新推送到 github.com/AlataChan/deepseek-harness，不向上游开 PR，分支可直接 merge
+- 桌面首次进入应直接到首页，不要先强迫选择 Node / workspace；设置项须对普通用户可理解；分发目标：新用户只需配置 API Key，安装器自动处理 Node 和运行时
+- 公益课期包与社区桌面外挂均不改官方 `apps/desktop`、`packages/bundle/desktop-app`、`desktop-companion` 的产品逻辑；默认助理保持 `standard`，「公益项目助手」只做新会话 chip 入口；本 fork 桌面产品名为 `octopus_DSH`，dock 用原创绿叶鲸鱼标，窗口内 `FishLogo` 保持原样
+- 社区插件市场与「让模型搜装第三方插件」只作可选设置入口，不写进开机默认组合
+- 不要只列命令或让用户当测试员：涉及构建/打包/分发的活自己跑完并自验后再交付，反复出现的低级错误要变成打包链路里的硬门禁检查项
+
+## Learned Workspace Facts
+
+- 本仓库是 DeepSeek Harness 的 AlataChan fork；npm 发布为 `@alatastudio/*`（CLI 为 `@alatastudio/dsh`），源码包名仍为 `@deepseek-ai/dsh*`
+- 桌面端是 Tauri 2 外壳（现有 React Client + Node companion），不是 Electron。companion 跑 web-app Host（Typert remotes、官方 Connection、loopback `127.0.0.1` port `0`）；stdio 只做 handshake / bundle cache / 把 fetch+stream 隧穿到 `__DSH_TRANSPORT__`
+- 公益「公益项目助手」外挂包在课程仓库 `course/dsh-env-ngo/`，不入库官方 `packages/skill`
+- 桌面分发链路：`pnpm run build` → `cd apps/desktop && cargo tauri build` → `bash scripts/build-dmg.sh --arch arm64`；`scripts/verify-desktop-bundle.sh` 是 build-dmg 的强制门禁，含 companion 模块解析与生命周期烟测，不通过不产出 DMG
+- 桌面 bundle 的运行时依赖由 `scripts/collect-runtime-deps.mjs` 扁平收集（`pnpm deploy` 会漏 vendored 包的传递依赖），产物零 symlink；workspace 包可跳过 `src/`，第三方包的 `src/` 可能是运行时代码不能删
+- 打包版 companion 的 stderr 落在 `~/Library/Application Support/studio.octopus.dsh/companion.log`（每次启动截断），是排查 companion 崩溃与 Broken pipe 的入口
+- 社区桌面外挂由 `scripts/desktop-profile-plugins.json` 钉版本（现为文件工作台 + `@yejiming/dsh-data-agent@0.1.3`）；`dsh-context@0.36.0` 依赖 0.1.1 的 `settingsNamespace`，不能再种子。seed 会把 npm 钉的生产依赖打进包内（`schemastery` 这类同时出现在 dependencies/devDependencies 的包要先剥掉 dev 再装）；DMG 嵌 `Resources/resources/profile-plugins/`，首次启动合并；用户从 bundles 删掉后刷新不写回
+- 文件工作台是 overlay `experimental/desktop-files`，不写进官方 `desktop-app`；Client 走 `session.listEntries` / `session.openWorkspacePath`；冷会话 cwd 读 `persistence.list()`

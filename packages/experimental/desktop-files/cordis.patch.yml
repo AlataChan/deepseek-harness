@@ -1,0 +1,7 @@
+# Overlay row for octopus_DSH desktop file listing. Dual-face: this Host
+# insert is the only patch line; the Client half is discovered from
+# `dsh.client` after the Host fiber is live. Do not add a second insert.
+
+- insert:
+    - id: desktop-files
+      name: '@deepseek-ai/dsh-experimental-desktop-files'

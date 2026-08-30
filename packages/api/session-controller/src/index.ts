@@ -4,6 +4,10 @@ import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { errorChain } from '@deepseek-ai/dsh-llm'
 import { canOpenNativePath, openNativePath } from '@deepseek-ai/dsh-native-command'
+import type {} from '@deepseek-ai/dsh-host-workspace-entries'
+import {
+  WorkspaceEntriesError,
+} from '@deepseek-ai/dsh-host-workspace-entries'
 import type { SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionObservation } from '@deepseek-ai/dsh-session-query'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -35,6 +39,8 @@ import type {
   SessionForkValue,
   SessionListRequest,
   SessionListValue,
+  SessionListEntriesRequest,
+  SessionListEntriesValue,
   SessionOpenWorkspacePathRequest,
   SessionOpenWorkspacePathValue,
   SessionPage,
@@ -293,6 +299,59 @@ export class SessionController extends TypertRemoteService {
   }
 
   /**
+   * List one directory under a Session's project cwd. The Host derives the
+   * fence from the Session header; the Client must not send a root.
+   * @param request - Session identity and optional absolute list path.
+   * @param signal - caller lifetime; abort stops the filesystem scan.
+   * @returns one fenced directory level.
+   * @throws RemoteError when the capability is absent, the Session has no cwd,
+   * the path leaves the fence, or the scan fails.
+   */
+  @Remote('listEntries')
+  async listEntries(
+    request: SessionListEntriesRequest,
+    signal: AbortSignal,
+  ): Promise<SessionListEntriesValue> {
+    signal.throwIfAborted()
+    const capability = this.ctx.get('workspaceEntries')
+    if (capability === undefined) {
+      throw new RemoteError(
+        'session/entries-unavailable',
+        'session.listEntries needs the workspace-entries capability',
+        {},
+      )
+    }
+    const root = await this.sessionEntriesRoot(request.sessionId, signal)
+    signal.throwIfAborted()
+    try {
+      return await capability.list({
+        root,
+        ...request.path === undefined ? {} : { path: request.path },
+      }, signal)
+    } catch (error: unknown) {
+      if (signal.aborted) {
+        throw new RemoteError('gateway/cancelled', 'workspace listing was aborted', {})
+      }
+      if (error instanceof WorkspaceEntriesError) {
+        throw new RemoteError(
+          error.code === 'entries-outside-root'
+            ? 'session/entries-outside-root'
+            : 'session/entries-unreadable',
+          error.message,
+          error.code === 'entries-outside-root'
+            ? { path: error.path, root: error.root ?? '' }
+            : { path: error.path },
+        )
+      }
+      throw new RemoteError(
+        'gateway/internal',
+        error instanceof Error ? error.message : String(error),
+        {},
+      )
+    }
+  }
+
+  /**
    * Rename one Session after explicitly resuming it.
    * @param request - Session identity and proposed title.
    * @returns the accepted title and durable event sequence.
@@ -384,6 +443,40 @@ export class SessionController extends TypertRemoteService {
   @Remote({ mode: 'stream' })
   control(signal: AbortSignal): AsyncIterable<SessionControlFrame> {
     return this.controlState.control(signal)
+  }
+
+  /**
+   * Resolve the project root `session.listEntries` fences to: the named
+   * Session's `header.cwd`. Live Sessions win; otherwise a persistence
+   * index row. This does not resume an Agent.
+   * @param sessionId - Session whose cwd is the listing fence.
+   * @param signal - cancellation for persistence reads.
+   */
+  private async sessionEntriesRoot(sessionId: SessionId, signal: AbortSignal): Promise<string> {
+    const attached = this.ctx.sessions.get(sessionId)
+    if (attached !== undefined) {
+      if (attached.header.cwd === undefined || attached.header.cwd === '') {
+        throw new RemoteError(
+          'session/entries-unreadable',
+          `session "${sessionId}" has no project directory`,
+          { path: '' },
+        )
+      }
+      return attached.header.cwd
+    }
+    const stored = (await this.ctx.get('sessionPersistence')?.list(signal))
+      ?.find(header => header.id === sessionId)
+    if (stored === undefined) {
+      throw new RemoteError('session/not-found', `session "${sessionId}" not found`, { sessionId })
+    }
+    if (stored.cwd === undefined || stored.cwd === '') {
+      throw new RemoteError(
+        'session/entries-unreadable',
+        `session "${sessionId}" has no project directory`,
+        { path: '' },
+      )
+    }
+    return stored.cwd
   }
 
 }

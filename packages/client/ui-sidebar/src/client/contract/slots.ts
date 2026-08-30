@@ -7,7 +7,7 @@
  * `sidebar.settings` registrant's (ui-settings), followed by optional footer
  * actions in `sidebar.footer.action`.
  */
-import type { PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { HostObservable, PropsHooks, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 // Type-only: pulls ui-layout's SlotMap merge (the 'sidebar' entry) into every
 // program that sees this contract, so PropsRuntime<'sidebar'> resolves.
@@ -33,6 +33,13 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * registers the browser.
      */
     'sidebar.workspaces': { kind: 'single'; scope: 'root'; owner: SidebarSectionOwnerProps }
+    /**
+     * Optional file-tree region beside the session list. Declared by this
+     * package's `sidebar` entry; occupancy (not `renderSlot` truthiness)
+     * decides whether the 会话 / 文件 switch is drawn. The official web
+     * composition leaves this hole empty.
+     */
+    'sidebar.files': { kind: 'single'; scope: 'root'; owner: SidebarFilesOwnerProps }
     /**
      * The settings seat at the sidebar foot. Declared by this package's
      * 'sidebar' entry; ui-settings registers its trigger row + modal panel.
@@ -71,6 +78,19 @@ export interface SidebarSectionOwnerProps {
 }
 
 /**
+ * Owner share of the file-tree hole — column geometry plus the switch back
+ * to this region when a rail icon is clicked.
+ */
+export interface SidebarFilesOwnerProps {
+  /** Shell fold-state output: wide renders the tree, rail the files icon. */
+  wide: boolean
+  /** Rail icons request expansion; the tree rides the wide flip. */
+  expandSidebar: () => void
+  /** Show the files region after a rail-icon expand. */
+  selectFiles: () => void
+}
+
+/**
  * Owner share of the sidebar settings seat: the column display state the
  * occupant's trigger row must render against (wide row vs rail icon).
  */
@@ -99,6 +119,10 @@ export type SidebarRootInjected = {
   startSession: (workspaceId?: WorkspaceId) => void
   /** Toggle the sidebar column through the layout service. */
   toggleSidebar: () => void
+  hooks: {
+    /** True while `sidebar.files` has a registrant. */
+    filesOccupied: HostObservable<boolean>
+  }
 }
 
 /**
@@ -112,7 +136,10 @@ export type SidebarRootComponentProps =
     | 'sidebar.brand.mark'
     | 'sidebar.brand.name'
     | 'sidebar.workspaces'
+    | 'sidebar.files'
     | 'sidebar.settings'
     | 'sidebar.footer.action'
   >
-  & SidebarRootInjected & PropsLocale<'sidebar'>
+  & Omit<SidebarRootInjected, 'hooks'>
+  & PropsHooks<SidebarRootInjected['hooks']>
+  & PropsLocale<'sidebar'>

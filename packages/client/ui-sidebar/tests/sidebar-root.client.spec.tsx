@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import type {
-  SidebarFooterActionOwnerProps, SidebarRootComponentProps, SidebarSectionOwnerProps,
+  SidebarFilesOwnerProps, SidebarFooterActionOwnerProps, SidebarRootComponentProps,
+  SidebarSectionOwnerProps,
   SidebarSettingsOwnerProps,
 } from '../src/client/contract/slots.ts'
 import { SidebarRoot } from '../src/client/SidebarRoot.tsx'
@@ -28,23 +29,31 @@ type AttentionSnapshot = Parameters<Parameters<SidebarRootComponentProps['useSes
 const noAttention: AttentionSnapshot = new Map()
 const useSessionPendingInteraction: SidebarRootComponentProps['useSessionPendingInteraction'] = selector => selector(noAttention)
 
-function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; width?: number } = {}) {
+function mountShell({
+  collapsed = false, width = 300, filesOccupied = false,
+}: {
+  collapsed?: boolean
+  width?: number
+  filesOccupied?: boolean
+} = {}) {
   const startSession = vi.fn()
   const toggleSidebar = vi.fn()
   let regionOwner: SidebarSectionOwnerProps | undefined
+  let filesOwner: SidebarFilesOwnerProps | undefined
   let settingsOwner: SidebarSettingsOwnerProps | undefined
   let footerActionOwner: SidebarFooterActionOwnerProps | undefined
   const brandMark = <span data-testid="custom-brand-mark">M</span>
   const brandName = <span data-testid="custom-brand-name">Custom Brand</span>
-  let current = { collapsed, width }
+  let current = { collapsed, width, filesOccupied }
   const root = () => (
     <SidebarRoot
       collapsed={current.collapsed} width={current.width}
       useSessions={neverHook} useSessionPendingInteraction={useSessionPendingInteraction} useWorkspaces={neverHook}
+      useFilesOccupied={sel => sel(current.filesOccupied)}
       startSession={startSession} toggleSidebar={toggleSidebar} t={t}
       renderSlot={((
         key: string,
-        owner: SidebarFooterActionOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
+        owner: SidebarFilesOwnerProps | SidebarFooterActionOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
       ) => {
         if (key === 'sidebar.brand.mark') return brandMark
         if (key === 'sidebar.brand.name') return brandName
@@ -55,6 +64,10 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
         if (key === 'sidebar.footer.action') {
           footerActionOwner = owner
           return <div data-testid="footer-action-seat" data-wide={owner.wide} />
+        }
+        if (key === 'sidebar.files') {
+          filesOwner = owner as SidebarFilesOwnerProps
+          return <div data-testid="files-region" data-wide={owner.wide} />
         }
         regionOwner = owner as SidebarSectionOwnerProps
         return <div data-testid="region" data-wide={owner.wide} />
@@ -68,6 +81,10 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
     regionOwner: () => {
       if (regionOwner === undefined) throw new Error('region owner not rendered')
       return regionOwner
+    },
+    filesOwner: () => {
+      if (filesOwner === undefined) throw new Error('files owner not rendered')
+      return filesOwner
     },
     settingsOwner: () => {
       if (settingsOwner === undefined) throw new Error('settings owner not rendered')
@@ -105,6 +122,7 @@ describe('SidebarRoot shell', () => {
     const { container } = render(<SidebarRoot
       collapsed={false} width={300}
       useSessions={neverHook} useSessionPendingInteraction={useSessionPendingInteraction} useWorkspaces={neverHook}
+      useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
         options?.fallback ?? null) as SidebarRootComponentProps['renderSlot']}
@@ -123,6 +141,7 @@ describe('SidebarRoot shell', () => {
     render(<SidebarRoot
       collapsed={false} width={300}
       useSessions={neverHook} useSessionPendingInteraction={useSessionPendingInteraction} useWorkspaces={neverHook}
+      useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
         options?.fallback ?? null) as SidebarRootComponentProps['renderSlot']}
@@ -136,6 +155,7 @@ describe('SidebarRoot shell', () => {
     render(<SidebarRoot
       collapsed={false} width={300}
       useSessions={neverHook} useSessionPendingInteraction={useSessionPendingInteraction} useWorkspaces={neverHook}
+      useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
         options?.fallback ?? null) as SidebarRootComponentProps['renderSlot']}
@@ -174,5 +194,35 @@ describe('SidebarRoot shell', () => {
     const b = mountShell({ collapsed: true })
     expect(b.regionOwner().wide).toBe(false)
     expect(screen.getByRole('button', { name: 'Open sidebar' })).toBeTruthy()
+  })
+
+  it('hides the 会话 / 文件 tabs when sidebar.files has no occupant', () => {
+    mountShell()
+    expect(screen.queryByRole('tab', { name: 'Sessions' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Files' })).toBeNull()
+  })
+
+  it('draws the tabs when occupied and snaps back to sessions when occupancy drops', () => {
+    const b = mountShell({ filesOccupied: true })
+    expect(screen.getByRole('tab', { name: 'Sessions' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Files' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Files' }))
+    expect(screen.getByRole('tab', { name: 'Files' }).getAttribute('aria-selected')).toBe('true')
+    b.rerender({ filesOccupied: false })
+    expect(screen.queryByRole('tab', { name: 'Files' })).toBeNull()
+    expect(screen.getByTestId('region')).toBeTruthy()
+  })
+
+  it('keeps both region outlets mounted while collapsed so a files rail icon can expand', () => {
+    vi.useFakeTimers()
+    const b = mountShell({ filesOccupied: true })
+    b.rerender({ collapsed: true })
+    vi.advanceTimersByTime(200)
+    b.rerender({})
+    expect(screen.getByTestId('region')).toBeTruthy()
+    expect(screen.getByTestId('files-region')).toBeTruthy()
+    b.filesOwner().selectFiles()
+    b.filesOwner().expandSidebar()
+    expect(b.toggleSidebar).toHaveBeenCalledOnce()
   })
 })

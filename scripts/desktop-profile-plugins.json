@@ -1,0 +1,20 @@
+{
+  "profile": "desktop",
+  "shippedBundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-ai/dsh-web-app",
+    "@deepseek-ai/dsh-desktop-app"
+  ],
+  "plugins": [
+    {
+      "name": "@deepseek-ai/dsh-experimental-desktop-files",
+      "version": "0.1.2-alpha.2",
+      "source": "workspace",
+      "path": "packages/experimental/desktop-files"
+    },
+    {
+      "name": "@yejiming/dsh-data-agent",
+      "version": "0.1.3"
+    }
+  ]
+}

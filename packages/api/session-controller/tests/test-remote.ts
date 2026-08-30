@@ -32,6 +32,8 @@ import type {
   SessionForkValue,
   SessionFollowFrame,
   SessionFollowRequest,
+  SessionListEntriesRequest,
+  SessionListEntriesValue,
   SessionListRequest,
   SessionListValue,
   SessionOpenWorkspacePathRequest,
@@ -68,6 +70,10 @@ export interface TestSessionRemote {
     request: SessionOpenWorkspacePathRequest,
     signal?: AbortSignal,
   ): Promise<RemoteResult<SessionOpenWorkspacePathValue>>
+  listEntries(
+    request: SessionListEntriesRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionListEntriesValue>>
   page(request: SessionPageRequest, signal?: AbortSignal): Promise<RemoteResult<SessionPage>>
   follow(request: SessionFollowRequest, signal?: AbortSignal): AsyncIterable<SessionFollowFrame>
   control(signal?: AbortSignal): AsyncIterable<SessionControlFrame>
@@ -265,6 +271,10 @@ export function createSessionTestRemote(
     cancel: request => remoteResult(() => direct.cancel(request)),
     openWorkspacePath: (request, signal = new AbortController().signal) => remoteResult(
       () => direct.openWorkspacePath(request, signal),
+      signal,
+    ),
+    listEntries: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.listEntries(request, signal),
       signal,
     ),
     page: (request, signal = new AbortController().signal) => remoteResult(

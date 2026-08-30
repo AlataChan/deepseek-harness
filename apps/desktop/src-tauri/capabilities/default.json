@@ -1,0 +1,14 @@
+{
+  "identifier": "default",
+  "description": "Commands the desktop WebView may invoke",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-runtime-configure",
+    "allow-runtime-get-config",
+    "allow-runtime-resolve",
+    "allow-carrier-open",
+    "allow-carrier-send",
+    "allow-cache-bundle"
+  ]
+}

@@ -47,7 +47,7 @@ Scrollbars in the column are a pointer affordance: the shell rebinds the scrollb
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The shell is pure composition: `SidebarRootComponentProps` composes the layout owner share, the global `useSessions` and `useWorkspaces` hooks, the declared brand, the `sidebar.workspaces` and `sidebar.settings` child slots, and injected `startSession` plus sidebar-toggle callbacks. There is no plugin store.
+The shell is pure composition: `SidebarRootComponentProps` composes the layout owner share, the global `useSessions` and `useWorkspaces` hooks, the declared brand, the `sidebar.workspaces`, `sidebar.files`, and `sidebar.settings` child slots, occupancy of `sidebar.files` (the 会话 / 文件 switch), and injected `startSession` plus sidebar-toggle callbacks. There is no plugin store.
 
 ### Slot discipline
 

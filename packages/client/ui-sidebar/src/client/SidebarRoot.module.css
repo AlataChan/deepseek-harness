@@ -298,6 +298,30 @@
 /* Region seat: always mounted so the foot never moves. Its trailing margin
    cancels the wide shell inset so the nested scrollbar can sit at the sidebar
    edge; the browser restores that inset inside its own rows. */
+.regionTabs {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  margin: 0 2px 8px;
+}
+
+.regionTab {
+  flex: 1;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.regionTabActive {
+  background: var(--dsw-alias-button-elevated-fill);
+  color: var(--dsw-alias-label-primary);
+}
+
 .regionArea {
   flex: 1;
   min-height: 0;
@@ -307,6 +331,21 @@
   margin-right: calc(-1 * var(--dsh-sidebar-inline-padding));
   padding-left: 4px;
   overflow: hidden;
+}
+
+.regionPane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.regionPane[hidden] {
+  display: none;
+}
+
+.collapsed .regionPane:last-child {
+  flex: none;
 }
 
 .collapsed .regionArea {

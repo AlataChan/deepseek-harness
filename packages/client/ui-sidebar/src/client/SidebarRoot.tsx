@@ -56,6 +56,7 @@ export function SidebarRoot({
   toggleSidebar,
   t,
   renderSlot,
+  useFilesOccupied = select => select(false),
 }: SidebarRootComponentProps) {
   // Wide content stays mounted while the collapse animates (fading via
   // .collapsed .wide), unmounts at settle, and remounts right away on expand.
@@ -66,6 +67,12 @@ export function SidebarRoot({
     return () => { window.clearTimeout(timer) }
   }, [collapsed])
   const wide = !collapsed || !settled
+
+  const filesOccupied = useFilesOccupied(occupied => occupied)
+  const [region, setRegion] = useState<'sessions' | 'files'>('sessions')
+  useEffect(() => {
+    if (!filesOccupied && region === 'files') setRegion('sessions')
+  }, [filesOccupied, region])
 
   // Freeze the content at its expanded width while it fades out (collapsed
   // && wide): the sliding column then clips it instead of reflowing it. The
@@ -199,13 +206,45 @@ export function SidebarRoot({
         </button>
       </Tooltip>
 
-      {/* The browsing region fills the column between the controls and the
-          foot in both states; its rail icon column rides the same slot. */}
+      {/* Occupancy of sidebar.files — not renderSlot truthiness — draws the
+          会话 / 文件 switch. Both outlets stay mounted so a rail icon can
+          expand into the files region without remounting the tree. */}
+      {filesOccupied && wide && (
+        <div className={css.regionTabs} role="tablist" aria-label={t('region.files')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={region === 'sessions'}
+            className={clsx(css.regionTab, region === 'sessions' && css.regionTabActive)}
+            onClick={() => { setRegion('sessions') }}
+          >
+            {t('region.sessions')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={region === 'files'}
+            className={clsx(css.regionTab, region === 'files' && css.regionTabActive)}
+            onClick={() => { setRegion('files') }}
+          >
+            {t('region.files')}
+          </button>
+        </div>
+      )}
       <div className={css.regionArea}>
-        {renderSlot('sidebar.workspaces', {
-          wide,
-          expandSidebar: () => { if (collapsed) toggleSidebar() },
-        })}
+        <div hidden={wide && filesOccupied && region !== 'sessions'} className={css.regionPane}>
+          {renderSlot('sidebar.workspaces', {
+            wide,
+            expandSidebar: () => { if (collapsed) toggleSidebar() },
+          })}
+        </div>
+        <div hidden={wide && region !== 'files'} className={css.regionPane}>
+          {renderSlot('sidebar.files', {
+            wide,
+            expandSidebar: () => { if (collapsed) toggleSidebar() },
+            selectFiles: () => { setRegion('files') },
+          })}
+        </div>
       </div>
 
       {/* Footer actions stack above Settings in both sidebar widths. */}

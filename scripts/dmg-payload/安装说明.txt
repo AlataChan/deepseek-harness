@@ -1,0 +1,20 @@
+octopus_DSH 安装说明
+====================
+
+微信 / 浏览器传来的安装包，macOS 会标成「来自互联网」。
+应用目前没有 Apple 公证，系统常会误报「已损坏」。
+这不是文件坏了，也不要「推出磁盘映像」后丢掉。
+
+请按下面做（约 30 秒）：
+
+1. 把「octopus_DSH」拖到右边的「Applications」（应用程序）
+2. 打开「终端」（启动台里搜「终端」）
+3. 整行复制、粘贴、回车：
+
+xattr -cr /Applications/octopus_DSH.app
+
+4. 到「启动台」打开 octopus_DSH
+
+也可以双击「安装并打开.command」，若系统拦截，改用上面三、四步。
+
+装好后：Settings → Models 填 API Key，新建会话选「公益项目助手」。

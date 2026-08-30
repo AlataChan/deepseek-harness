@@ -1,0 +1,53 @@
+# The dsh-desktop-app bundle patch: desktop-owned rows over dsh-web-app.
+# Applied after dsh-base and dsh-web-app. A patch replaces the targeted
+# row's whole `config`, so each override restates every key it owns.
+
+# The companion is launched with `--workspace-root`, not the Web flag
+# family. Disable web-startup so commander does not reject the desktop
+# arguments, then publish the same `webStartup` service from desktop-startup
+# so webserver / web-runtime / connection still resolve.
+
+- id: web-startup
+  disabled: true
+
+# web-app mounts directory-picker-auto, which on a local macOS companion
+# resolves to native and provides `directoryPicker`. Pin browse instead so
+# the WebView owns the chooser and the service is registered once.
+- id: directory-picker
+  name: '@deepseek-ai/dsh-host-directory-picker-auto'
+  disabled: true
+
+- insert:
+    - id: desktop-startup
+      name: '@deepseek-ai/dsh-desktop-app/startup'
+
+- id: web-runtime
+  inject: [webStartup]
+  config:
+    openBrowser: false
+    printUrl: false
+    surfaceContext: true
+    trustedHosts: !!js ctx.webStartup.trustedHosts
+
+- insert:
+    - id: desktop-runtime
+      name: '@deepseek-ai/dsh-desktop-app'
+      inject: [desktopStartup]
+      config:
+        workspaceRoot: !!js ctx.desktopStartup.workspaceRoot
+        surfaceContext: true
+
+    # Host-only carrier. The WebView installs `__DSH_TRANSPORT__` before the
+    # official client-connection plugin boots; this row must not publish a
+    # second `dsh.client` face.
+    - id: connection-desktop
+      name: '@deepseek-ai/dsh-client-connection-desktop'
+      inject: [desktopStartup, connection, clientModules, typertGateway]
+      config:
+        workspaceRoot: !!js ctx.desktopStartup.workspaceRoot
+
+    - id: directory-picker-browse
+      name: '@deepseek-ai/dsh-host-directory-picker-browse'
+
+    - id: ui-directory-picker-browse
+      name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'

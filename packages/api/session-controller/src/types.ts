@@ -196,6 +196,9 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'session/steer-unavailable': { readonly itemId: MessageId }
     'session/title-invalid': { readonly sessionId: SessionId }
     'session/fork-unavailable': { readonly sessionId: SessionId }
+    'session/entries-unavailable': {}
+    'session/entries-unreadable': { readonly path: string }
+    'session/entries-outside-root': { readonly path: string; readonly root: string }
     'subagent/not-found': {
       readonly parentSessionId: SessionId
       readonly childSessionId: SessionId
@@ -356,6 +359,34 @@ export interface SessionOpenWorkspacePathRequest {
 /** Confirmation that the Host handed a workspace path to its native opener. */
 export interface SessionOpenWorkspacePathValue {
   readonly opened: true
+}
+
+/** Request to list one directory under a Session's project cwd. */
+export interface SessionListEntriesRequest {
+  /** Session whose `header.cwd` is the listing fence. */
+  readonly sessionId: SessionId
+  /** Absolute directory to list; absent lists the Session cwd. */
+  readonly path?: string
+}
+
+/** Kind of one listed workspace row. */
+export type SessionWorkspaceEntryKind = 'file' | 'directory' | 'broken-symlink'
+
+/** One child of a listed Session project directory. */
+export interface SessionWorkspaceEntry {
+  readonly name: string
+  readonly path: string
+  readonly kind: SessionWorkspaceEntryKind
+  readonly hidden: boolean
+  readonly symlink: boolean
+}
+
+/** One directory level fenced to a Session cwd. */
+export interface SessionListEntriesValue {
+  readonly path: string
+  readonly root: string
+  readonly entries: readonly SessionWorkspaceEntry[]
+  readonly truncated: boolean
 }
 
 /** Client-minted prompt identity used to reconcile optimistic and durable messages. */

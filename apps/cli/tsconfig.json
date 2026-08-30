@@ -33,6 +33,12 @@
       "path": "../../packages/bundle/web-app"
     },
     {
+      "path": "../../packages/bundle/desktop-app"
+    },
+    {
+      "path": "../../packages/client/connection-process/tsconfig.host.json"
+    },
+    {
       "path": "../../packages/host/webserver"
     },
     {
