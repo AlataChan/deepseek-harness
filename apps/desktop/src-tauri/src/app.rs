@@ -180,9 +180,14 @@ fn dsh_home() -> PathBuf {
 
 const DESKTOP_SHIPPED_BUNDLES: &[&str] = &[
     "@deepseek-ai/dsh-base",
-    "@deepseek-ai/dsh-client-app",
+    "@deepseek-ai/dsh-web-app",
     "@deepseek-ai/dsh-desktop-app",
 ];
+
+const RETIRED_DESKTOP_BUNDLE: (&str, &str) =
+    ("@deepseek-ai/dsh-client-app", "@deepseek-ai/dsh-web-app");
+
+const STRIP_DESKTOP_BUNDLES: &[&str] = &["dsh-context"];
 
 const PROFILE_PATCH_TEMPLATE: &str = "\
 # Your patch layer for this dsh profile, applied after every bundle layer:
@@ -239,10 +244,74 @@ fn install_bundled_presets(app: &AppHandle) {
     }
 }
 
+/// Rewrite leftover 0.1.1 desktop rows so a 0.1.2 companion can load.
+fn heal_desktop_profile_manifest(manifest: &mut serde_json::Value) {
+    let Some(object) = manifest.as_object_mut() else {
+        return;
+    };
+    if let Some(deps) = object
+        .get_mut("dependencies")
+        .and_then(|value| value.as_object_mut())
+    {
+        for name in STRIP_DESKTOP_BUNDLES {
+            deps.remove(*name);
+        }
+        deps.remove(RETIRED_DESKTOP_BUNDLE.0);
+    }
+    let Some(bundles) = object
+        .get_mut("dsh")
+        .and_then(|dsh| dsh.as_object_mut())
+        .and_then(|dsh| dsh.get_mut("profile"))
+        .and_then(|profile| profile.as_object_mut())
+        .and_then(|profile| profile.get_mut("bundles"))
+        .and_then(|value| value.as_array_mut())
+    else {
+        return;
+    };
+    let mut next = Vec::new();
+    let mut seen = std::collections::HashSet::<String>::new();
+    for item in bundles.iter() {
+        let Some(name) = item.as_str() else {
+            continue;
+        };
+        if STRIP_DESKTOP_BUNDLES.contains(&name) {
+            continue;
+        }
+        let mapped = if name == RETIRED_DESKTOP_BUNDLE.0 {
+            RETIRED_DESKTOP_BUNDLE.1
+        } else {
+            name
+        };
+        if seen.insert(mapped.to_string()) {
+            next.push(serde_json::Value::String(mapped.to_string()));
+        }
+    }
+    *bundles = next;
+}
+
+/// Heal an existing desktop profile manifest in place. Missing or unreadable
+/// files are left untouched so first-launch copy can still create them.
+fn heal_desktop_profile_file(profile_dir: &Path) {
+    let manifest_path = profile_dir.join("package.json");
+    if !manifest_path.is_file() {
+        return;
+    }
+    let Ok(raw) = std::fs::read_to_string(&manifest_path) else {
+        return;
+    };
+    let Ok(mut manifest) = serde_json::from_str::<serde_json::Value>(&raw) else {
+        return;
+    };
+    heal_desktop_profile_manifest(&mut manifest);
+    let pretty = serde_json::to_string_pretty(&manifest).unwrap_or(raw);
+    let _ = std::fs::write(&manifest_path, format!("{pretty}\n"));
+}
+
 /// Copy each Resources/resources/profile-plugins package into the live desktop
 /// profile. Dest is `node_modules/<package.json name>` (scoped names included).
 /// First install appends the bundle; a later refresh does not put back a
-/// bundle the user removed.
+/// bundle the user removed. Every launch also heals leftover `dsh-client-app`
+/// and `dsh-context` rows so a 0.1.1 profile can boot on 0.1.2.
 fn install_bundled_profile_plugins(app: &AppHandle) {
     let resource = match app.path().resource_dir() {
         Ok(dir) => dir,
@@ -253,6 +322,7 @@ fn install_bundled_profile_plugins(app: &AppHandle) {
         return;
     }
     let profile_dir = dsh_home().join("profiles").join("desktop");
+    heal_desktop_profile_file(&profile_dir);
     for src in bundled_profile_plugin_dirs(&src_root) {
         let Some(name) = package_json_name(&src) else {
             continue;
@@ -304,7 +374,8 @@ fn package_json_name(src: &Path) -> Option<String> {
 
 /// `node_modules/<name>` including scoped `@scope/name` children.
 fn package_node_modules_dest(profile_dir: &Path, name: &str) -> PathBuf {
-    name.split('/').fold(profile_dir.join("node_modules"), |acc, part| acc.join(part))
+    name.split('/')
+        .fold(profile_dir.join("node_modules"), |acc, part| acc.join(part))
 }
 
 fn install_one_profile_plugin(profile_dir: &Path, name: &str, src: &Path) -> std::io::Result<()> {
@@ -320,8 +391,10 @@ fn install_one_profile_plugin(profile_dir: &Path, name: &str, src: &Path) -> std
         })
     } else {
         let raw = std::fs::read_to_string(&manifest_path)?;
-        serde_json::from_str(&raw)
-            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?
+        let mut existing = serde_json::from_str(&raw)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+        heal_desktop_profile_manifest(&mut existing);
+        existing
     };
     let dest = package_node_modules_dest(profile_dir, name);
     if dest

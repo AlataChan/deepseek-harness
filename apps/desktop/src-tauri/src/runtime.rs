@@ -44,7 +44,11 @@ pub struct BundledResources {
 }
 
 fn extension_is_shim(path: &Path) -> Option<&'static str> {
-    match path.extension().and_then(OsStr::to_str).map(str::to_ascii_lowercase) {
+    match path
+        .extension()
+        .and_then(OsStr::to_str)
+        .map(str::to_ascii_lowercase)
+    {
         Some(ext) if ext == "cmd" => Some(".cmd"),
         Some(ext) if ext == "ps1" => Some(".ps1"),
         _ => None,
@@ -98,7 +102,10 @@ pub fn discover_node(
         } else {
             let name = if cfg!(windows) { "node.exe" } else { "node" };
             find_on_path(name, path_value).ok_or_else(|| {
-                ShellError::Config("Node executable was not found; configure nodePath or add real Node to PATH".into())
+                ShellError::Config(
+                    "Node executable was not found; configure nodePath or add real Node to PATH"
+                        .into(),
+                )
             })?
         }
     } else if let Some(persisted) = config.node_path.as_deref() {
@@ -106,7 +113,9 @@ pub fn discover_node(
     } else {
         let name = if cfg!(windows) { "node.exe" } else { "node" };
         find_on_path(name, path_value).ok_or_else(|| {
-            ShellError::Config("Node executable was not found; configure nodePath or add real Node to PATH".into())
+            ShellError::Config(
+                "Node executable was not found; configure nodePath or add real Node to PATH".into(),
+            )
         })?
     };
     if let Some(ext) = extension_is_shim(&selected) {
@@ -135,9 +144,16 @@ pub fn discover_node(
 }
 
 fn declares_desktop_companion(manifest: &Path) -> bool {
-    let Ok(bytes) = fs::read(manifest) else { return false };
-    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else { return false };
-    let name = value.get("name").and_then(serde_json::Value::as_str).unwrap_or("");
+    let Ok(bytes) = fs::read(manifest) else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+        return false;
+    };
+    let name = value
+        .get("name")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("");
     if name != "@deepseek-ai/dsh" && name != "@alatastudio/dsh" {
         return false;
     }
@@ -168,13 +184,21 @@ pub fn checkout_runtime_root(origin_exe: &Path) -> Option<PathBuf> {
     None
 }
 
-fn effective_runtime_path(config: &RuntimeConfig, origin_exe: &Path, bundled: &BundledResources) -> Option<PathBuf> {
+fn effective_runtime_path(
+    config: &RuntimeConfig,
+    origin_exe: &Path,
+    bundled: &BundledResources,
+) -> Option<PathBuf> {
     if let Some(ref bundled_harness) = bundled.harness {
         if declares_desktop_companion(&bundled_harness.join("package.json")) {
             return Some(bundled_harness.clone());
         }
     }
-    if let Some(persisted) = config.runtime_path.as_deref().filter(|value| !value.trim().is_empty()) {
+    if let Some(persisted) = config
+        .runtime_path
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+    {
         return Some(PathBuf::from(persisted));
     }
     checkout_runtime_root(origin_exe)
@@ -197,7 +221,8 @@ pub fn resolve_installed_runtime(
     bundled: &BundledResources,
 ) -> Result<ResolvedRuntime, ShellError> {
     let mut command = Command::new(node_path);
-    command.arg(cli_path)
+    command
+        .arg(cli_path)
         .arg("--companion")
         .arg("desktop")
         .arg("--accepted")
@@ -236,7 +261,9 @@ pub fn resolve_installed_runtime(
         return Err(ShellError::Config(message));
     }
     serde_json::from_str(line).map_err(|error| {
-        ShellError::Config(format!("installed-runtime CLI returned invalid JSON: {error}"))
+        ShellError::Config(format!(
+            "installed-runtime CLI returned invalid JSON: {error}"
+        ))
     })
 }
 
@@ -256,14 +283,17 @@ mod tests {
             "",
             &BundledResources::default(),
             |_| Ok("v24.1.0".into()),
-        ).expect_err("cmd shim");
+        )
+        .expect_err("cmd shim");
         assert!(error.to_string().contains(".cmd"));
     }
 
     #[test]
     fn accepts_an_executable_that_prints_a_supported_version() {
         let dir = tempdir().expect("tempdir");
-        let node = dir.path().join(if cfg!(windows) { "node.exe" } else { "node" });
+        let node = dir
+            .path()
+            .join(if cfg!(windows) { "node.exe" } else { "node" });
         fs::write(&node, "").expect("write node");
         #[cfg(unix)]
         {
@@ -281,7 +311,8 @@ mod tests {
                 assert_eq!(path, node);
                 Ok("v24.1.0".into())
             },
-        ).expect("discover");
+        )
+        .expect("discover");
         assert_eq!(discovered, NodeDiscovery::Persisted(node));
     }
 
@@ -295,7 +326,8 @@ mod tests {
             "",
             &BundledResources::default(),
             |_| Ok("v24.1.0".into()),
-        ).expect_err("ps1 shim");
+        )
+        .expect_err("ps1 shim");
         assert!(error.to_string().contains(".ps1"));
     }
 
@@ -303,7 +335,9 @@ mod tests {
     fn resolve_installed_runtime_passes_separated_argv() {
         let dir = tempdir().expect("tempdir");
         let cli = dir.path().join("cli.mjs");
-        fs::write(&cli, r#"
+        fs::write(
+            &cli,
+            r#"
 const nodePathFlag = process.argv.indexOf('--node-path');
 const out = {
   nodePath: process.execPath,
@@ -317,7 +351,9 @@ if (process.argv.includes('--companion') && process.argv.includes('desktop')) {
 } else {
   process.exit(2);
 }
-"#).expect("write cli");
+"#,
+        )
+        .expect("write cli");
         let node = PathBuf::from(std::env::var_os("CARGO_NODE").unwrap_or_else(|| "node".into()));
         let resolved = resolve_installed_runtime(
             &node,
@@ -325,7 +361,8 @@ if (process.argv.includes('--companion') && process.argv.includes('desktop')) {
             &RuntimeConfig::default(),
             Path::new(""),
             &BundledResources::default(),
-        ).expect("resolve");
+        )
+        .expect("resolve");
         assert_eq!(resolved.runtime_version, "0.0.1");
         assert_eq!(resolved.companion_entry, "/tmp/companion.js");
     }
@@ -334,8 +371,11 @@ if (process.argv.includes('--companion') && process.argv.includes('desktop')) {
     fn resolve_installed_runtime_names_stderr_when_stdout_is_empty() {
         let dir = tempdir().expect("tempdir");
         let cli = dir.path().join("cli.mjs");
-        fs::write(&cli, "process.stderr.write('package not found\\n'); process.exit(1);\n")
-            .expect("write cli");
+        fs::write(
+            &cli,
+            "process.stderr.write('package not found\\n'); process.exit(1);\n",
+        )
+        .expect("write cli");
         let node = PathBuf::from(std::env::var_os("CARGO_NODE").unwrap_or_else(|| "node".into()));
         let error = resolve_installed_runtime(
             &node,
@@ -343,7 +383,8 @@ if (process.argv.includes('--companion') && process.argv.includes('desktop')) {
             &RuntimeConfig::default(),
             Path::new(""),
             &BundledResources::default(),
-        ).expect_err("cli fail");
+        )
+        .expect_err("cli fail");
         let text = error.to_string();
         assert!(text.contains("package not found"), "{text}");
         assert!(text.contains("exit 1"), "{text}");
@@ -352,12 +393,22 @@ if (process.argv.includes('--companion') && process.argv.includes('desktop')) {
     fn stage_checkout(dir: &Path) -> PathBuf {
         let package = dir.join("apps").join("cli");
         fs::create_dir_all(package.join("lib")).expect("cli dir");
-        fs::write(package.join("package.json"), r#"{
+        fs::write(
+            package.join("package.json"),
+            r#"{
   "name": "@deepseek-ai/dsh",
   "version": "0.1.1-rc.5",
   "dsh": { "companions": { "desktop": "./lib/desktop-companion.js" } }
-}"#).expect("manifest");
-        let exe = dir.join("apps").join("desktop").join("src-tauri").join("target").join("release").join("dsh-desktop");
+}"#,
+        )
+        .expect("manifest");
+        let exe = dir
+            .join("apps")
+            .join("desktop")
+            .join("src-tauri")
+            .join("target")
+            .join("release")
+            .join("dsh-desktop");
         fs::create_dir_all(exe.parent().expect("exe parent")).expect("exe dir");
         fs::write(&exe, "").expect("exe");
         exe
@@ -376,11 +427,15 @@ if (process.argv.includes('--companion') && process.argv.includes('desktop')) {
         let dir = tempdir().expect("tempdir");
         let package = dir.path().join("apps").join("cli");
         fs::create_dir_all(&package).expect("cli dir");
-        fs::write(package.join("package.json"), r#"{
+        fs::write(
+            package.join("package.json"),
+            r#"{
   "name": "@alatastudio/dsh",
   "version": "0.1.1-rc.5",
   "dsh": { "companions": { "vscode": "./lib/vscode-companion.js" } }
-}"#).expect("manifest");
+}"#,
+        )
+        .expect("manifest");
         let exe = dir.path().join("apps").join("desktop").join("dsh-desktop");
         fs::create_dir_all(exe.parent().expect("exe parent")).expect("exe dir");
         fs::write(&exe, "").expect("exe");
@@ -392,7 +447,9 @@ if (process.argv.includes('--companion') && process.argv.includes('desktop')) {
         let dir = tempdir().expect("tempdir");
         let exe = stage_checkout(dir.path());
         let cli = dir.path().join("cli.mjs");
-        fs::write(&cli, r#"
+        fs::write(
+            &cli,
+            r#"
 const flag = process.argv.indexOf('--runtime-path');
 const out = {
   nodePath: process.execPath,
@@ -402,7 +459,9 @@ const out = {
   discoveryPath: flag >= 0 ? process.argv[flag + 1] : 'PATH',
 };
 process.stdout.write(JSON.stringify(out) + '\n');
-"#).expect("write cli");
+"#,
+        )
+        .expect("write cli");
         let node = PathBuf::from(std::env::var_os("CARGO_NODE").unwrap_or_else(|| "node".into()));
         let resolved = resolve_installed_runtime(
             &node,
@@ -410,7 +469,11 @@ process.stdout.write(JSON.stringify(out) + '\n');
             &RuntimeConfig::default(),
             &exe,
             &BundledResources::default(),
-        ).expect("resolve");
-        assert_eq!(PathBuf::from(&resolved.package_root), dir.path().join("apps").join("cli"));
+        )
+        .expect("resolve");
+        assert_eq!(
+            PathBuf::from(&resolved.package_root),
+            dir.path().join("apps").join("cli")
+        );
     }
 }

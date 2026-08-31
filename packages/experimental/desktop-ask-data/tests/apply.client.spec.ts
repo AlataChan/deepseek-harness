@@ -81,8 +81,9 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
 type GateInjected = DataSourcePageRemotes & {
   cancel: () => Promise<void>
   onCommitted: (sessionId: string) => void
-  openSession: (sessionId: string) => void
+  onAdvanced: (sessionId: string) => void
   currentBlankSessionId?: string
+  currentBound?: { sessionId: string; sourceId: string }
 }
 
 function gate(slots: SlotRegistry): GateInjected {
@@ -104,6 +105,25 @@ describe('desktop-ask-data apply', () => {
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(1)
     injected.openGate()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(1)
+    await b.dispose()
+  })
+
+  it('does not reuse a blank session that is already bound', async () => {
+    const b = await bench({
+      current: 's-bound',
+      byId: {
+        's-bound': {
+          id: 's-bound',
+          blank: true,
+          projectionValues: { agentPreset: 'data-agent', askDataBinding: { sourceId: 'src-sample' } },
+        },
+      },
+    })
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
+    injected.openGate()
+    const page = gate(b.slots)
+    expect(page.currentBlankSessionId).toBeUndefined()
+    expect(page.currentBound).toEqual({ sessionId: 's-bound', sourceId: 'src-sample' })
     await b.dispose()
   })
 
@@ -131,11 +151,114 @@ describe('desktop-ask-data apply', () => {
       workspaceId: 'ws-1',
       agentPreset: 'data-agent',
     })
-    page.openSession('s-open')
+    page.onAdvanced('s-open')
     expect(b.open).toHaveBeenCalled()
-    page.onCommitted('s-done')
     expect(b.seat.clearStage).toHaveBeenCalled()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
+    injected.openGate()
+    page.onCommitted('s-done')
+    expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
+    await b.dispose()
+  })
+
+  it('does not reopen the gate for an advanced-escape session', async () => {
+    const b = await bench()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
+    injected.openGate()
+    gate(b.slots).onAdvanced('s-adv')
+    expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
+    b.state.current = 's-adv'
+    b.state.byId = {
+      's-adv': {
+        id: 's-adv',
+        blank: true,
+        projectionValues: { agentPreset: 'data-agent', askDataBinding: null },
+      },
+    }
+    b.emit()
+    expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
+    await b.dispose()
+  })
+
+  it('creates an advanced session when the chip opened the gate without a current session', async () => {
+    const b = await bench()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
+    injected.openGate()
+    await gate(b.slots).createAdvanced({})
+    expect(b.remotes.create).toHaveBeenCalledWith({ agentPreset: 'data-agent' })
+    await b.dispose()
+  })
+
+  it('creates an advanced session when the current data-agent session is not blank', async () => {
+    const b = await bench({
+      current: 's-used',
+      byId: {
+        's-used': {
+          id: 's-used',
+          blank: false,
+          projectionValues: { agentPreset: 'data-agent' },
+        },
+      },
+    })
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
+    injected.openGate()
+    await gate(b.slots).createAdvanced({})
+    expect(b.remotes.create).toHaveBeenCalledWith({ agentPreset: 'data-agent' })
+    await b.dispose()
+  })
+
+  it('creates an advanced session when the current data-agent session is already bound', async () => {
+    const b = await bench({
+      current: 's-bound',
+      byId: {
+        's-bound': {
+          id: 's-bound',
+          blank: true,
+          projectionValues: { agentPreset: 'data-agent', askDataBinding: { sourceId: 'x' } },
+        },
+      },
+    })
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
+    injected.openGate()
+    await gate(b.slots).createAdvanced({})
+    expect(b.remotes.create).toHaveBeenCalledWith({ agentPreset: 'data-agent' })
+    await b.dispose()
+  })
+
+  it('still opens the gate for a different unbound data-agent session', async () => {
+    const b = await bench()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
+    injected.openGate()
+    gate(b.slots).onAdvanced('s-adv')
+    b.state.current = 's-other'
+    b.state.byId = {
+      's-other': {
+        id: 's-other',
+        blank: true,
+        projectionValues: { agentPreset: 'data-agent', askDataBinding: null },
+      },
+    }
+    b.emit()
+    expect(b.slots.entries('conversation.askData.gate')).toHaveLength(1)
+    await b.dispose()
+  })
+
+  it('reuses the current unbound data-agent session for advanced', async () => {
+    const b = await bench({
+      current: 's-blank',
+      byId: {
+        's-blank': {
+          id: 's-blank',
+          blank: true,
+          projectionValues: { agentPreset: 'data-agent', askDataBinding: null },
+        },
+      },
+    })
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
+    injected.openGate()
+    const result = await gate(b.slots).createAdvanced({})
+    expect(result).toEqual({ ok: true, value: { sessionId: 's-blank' } })
+    expect(b.remotes.create).not.toHaveBeenCalled()
     await b.dispose()
   })
 

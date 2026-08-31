@@ -26,7 +26,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={async () => undefined}
         onCommitted={vi.fn()}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         t={t}
       />,
     )
@@ -43,6 +43,93 @@ describe('DataSourcePage', () => {
     for (const id of ASK_DATA_RULE_IDS) {
       expect(view.container.textContent).toContain(id)
     }
+    expect(view.getByText('自己的表请先避开这些坑，否则很难分析')).toBeTruthy()
+    expect(view.getByText(/第一行只能是列名/)).toBeTruthy()
+    expect(view.getByText('下载填写模板')).toBeTruthy()
+    expect(view.getByText('连接已有数据库')).toBeTruthy()
+    expect(view.getByText(/已经有现成数据库时用这个/)).toBeTruthy()
+    expect(view.queryByText('开始提问')).toBeNull()
+  })
+
+  it('copies the fill-in template and says so', async () => {
+    const writeText = vi.fn(async () => undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({ ok: true, value: [] })}
+        importSpreadsheet={vi.fn()}
+        importSample={vi.fn()}
+        commit={vi.fn()}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={vi.fn()}
+        onAdvanced={vi.fn()}
+        t={t}
+      />,
+    )
+    fireEvent.click(view.getByText('下载填写模板'))
+    await waitFor(() => {
+      expect(view.getByText(/模板已复制/)).toBeTruthy()
+    })
+    expect(writeText).toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  it('reports a saved template file', async () => {
+    vi.stubGlobal('showSaveFilePicker', async () => ({
+      createWritable: async () => ({
+        write: async () => undefined,
+        close: async () => undefined,
+      }),
+    }))
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({ ok: true, value: [] })}
+        importSpreadsheet={vi.fn()}
+        importSample={vi.fn()}
+        commit={vi.fn()}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={vi.fn()}
+        onAdvanced={vi.fn()}
+        t={t}
+      />,
+    )
+    fireEvent.click(view.getByText('下载填写模板'))
+    await waitFor(() => {
+      expect(view.getByText(/模板已保存/)).toBeTruthy()
+    })
+    vi.unstubAllGlobals()
+  })
+
+  it('shows the template text when the clipboard is unavailable', async () => {
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText: async () => { throw new Error('denied') } },
+    })
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: () => false,
+    })
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({ ok: true, value: [] })}
+        importSpreadsheet={vi.fn()}
+        importSample={vi.fn()}
+        commit={vi.fn()}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={vi.fn()}
+        onAdvanced={vi.fn()}
+        t={t}
+      />,
+    )
+    fireEvent.click(view.getByText('下载填写模板'))
+    await waitFor(() => {
+      expect(view.getByText(/请全选并复制/)).toBeTruthy()
+    })
+    expect(view.getByRole('textbox')).toBeTruthy()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('imports the sample and commits from preview', async () => {
@@ -65,7 +152,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={async () => undefined}
         onCommitted={onCommitted}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         t={t}
       />,
     )
@@ -90,7 +177,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={async () => undefined}
         onCommitted={vi.fn()}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         sqlite3Missing
         t={t}
       />,
@@ -115,7 +202,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={async () => undefined}
         onCommitted={vi.fn()}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         t={t}
       />,
     )
@@ -147,7 +234,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={async () => undefined}
         onCommitted={onCommitted}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         t={t}
       />,
     )
@@ -155,18 +242,266 @@ describe('DataSourcePage', () => {
       expect(view.getByText('最近使用')).toBeTruthy()
       expect(view.getByText(/找不到这份表/)).toBeTruthy()
     })
-    for (const button of view.getAllByText('开始提问')) {
-      fireEvent.click(button)
-    }
+    expect(view.getAllByText('sales.csv')).toHaveLength(1)
+    expect(view.getByText('全部数据源')).toBeTruthy()
+    expect(view.queryByText('开始提问')).toBeNull()
+    fireEvent.click(view.getByText('sales.csv'))
+    expect(view.getAllByText('开始提问')).toHaveLength(1)
+    fireEvent.click(view.getByText('开始提问'))
     await waitFor(() => {
       expect(commit).toHaveBeenCalledWith(expect.objectContaining({ sourceId: 'src-1' }))
       expect(onCommitted).toHaveBeenCalledWith('s-pick')
     })
   })
 
+  it('starts and reselects from 全部数据源', async () => {
+    const commit = vi.fn(async () => ({ ok: true as const, value: { sessionId: 's-rest' } }))
+    const onCommitted = vi.fn()
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({
+          ok: true,
+          value: [
+            { id: 'src-rest', displayName: 'archive.csv', kind: 'import', missing: false, warnings: [] },
+            { id: 'src-miss', displayName: 'gone.csv', kind: 'import', missing: true, warnings: [] },
+          ],
+        })}
+        importSpreadsheet={vi.fn()}
+        importSample={vi.fn()}
+        commit={commit}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={onCommitted}
+        onAdvanced={vi.fn()}
+        t={t}
+      />,
+    )
+    await waitFor(() => {
+      expect(view.getByText('全部数据源')).toBeTruthy()
+    })
+    expect(view.queryByText('开始提问')).toBeNull()
+    fireEvent.click(view.getByText('archive.csv'))
+    fireEvent.click(view.getByText('开始提问'))
+    await waitFor(() => {
+      expect(commit).toHaveBeenCalledWith(expect.objectContaining({ sourceId: 'src-rest' }))
+      expect(onCommitted).toHaveBeenCalledWith('s-rest')
+    })
+    fireEvent.click(view.getByText('重新选文件'))
+  })
+
+  it('does not repeat a recently used source under 全部数据源', async () => {
+    const commit = vi.fn(async () => ({ ok: true as const, value: { sessionId: 's-2' } }))
+    const onCommitted = vi.fn()
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({
+          ok: true,
+          value: [
+            {
+              id: 'src-s',
+              displayName: '示例：销售明细',
+              kind: 'sample',
+              lastUsedAt: '2026-01-02T00:00:00.000Z',
+              missing: false,
+              warnings: [],
+            },
+            { id: 'src-2', displayName: 'other.csv', kind: 'import', missing: false, warnings: [] },
+          ],
+        })}
+        importSpreadsheet={vi.fn()}
+        importSample={vi.fn()}
+        commit={commit}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={onCommitted}
+        onAdvanced={vi.fn()}
+        t={t}
+      />,
+    )
+    await waitFor(() => {
+      expect(view.getByText('最近使用')).toBeTruthy()
+      expect(view.getByText('全部数据源')).toBeTruthy()
+    })
+    expect(view.getAllByText('示例：销售明细')).toHaveLength(1)
+    expect(view.getAllByText('other.csv')).toHaveLength(1)
+    expect(view.queryByText('开始提问')).toBeNull()
+    expect(view.getByText(/点名单选一份/)).toBeTruthy()
+    fireEvent.click(view.getByText('other.csv'))
+    expect(view.getAllByText('开始提问')).toHaveLength(1)
+    fireEvent.click(view.getByText('开始提问'))
+    await waitFor(() => {
+      expect(commit).toHaveBeenCalledWith(expect.objectContaining({ sourceId: 'src-2' }))
+      expect(onCommitted).toHaveBeenCalledWith('s-2')
+    })
+  })
+
+  it('hides 全部数据源 when every listed source is already recent', async () => {
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({
+          ok: true,
+          value: [{
+            id: 'src-s',
+            displayName: '示例：销售明细',
+            kind: 'sample',
+            lastUsedAt: '2026-01-02T00:00:00.000Z',
+            missing: false,
+            warnings: [],
+          }],
+        })}
+        importSpreadsheet={vi.fn()}
+        importSample={vi.fn()}
+        commit={vi.fn()}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={vi.fn()}
+        onAdvanced={vi.fn()}
+        t={t}
+      />,
+    )
+    await waitFor(() => {
+      expect(view.getByText('最近使用')).toBeTruthy()
+    })
+    expect(view.queryByText('全部数据源')).toBeNull()
+    expect(view.getAllByText('示例：销售明细')).toHaveLength(1)
+    expect(view.queryByText('开始提问')).toBeNull()
+    fireEvent.click(view.getByText('示例：销售明细'))
+    expect(view.getAllByText('开始提问')).toHaveLength(1)
+  })
+
+  it('keeps one 开始提问 when preview and the source list name the same sample', async () => {
+    const sample = {
+      id: 'src-s',
+      displayName: '示例：销售明细',
+      kind: 'sample' as const,
+      lastUsedAt: '2026-01-02T00:00:00.000Z',
+      missing: false,
+      warnings: [] as string[],
+    }
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({ ok: true, value: [sample] })}
+        importSpreadsheet={vi.fn()}
+        importSample={async () => ({
+          ok: true as const,
+          value: {
+            source: sample,
+            tables: [{ name: '销售明细', rowCount: 20, columns: ['日期'] }],
+            warnings: [],
+          },
+        })}
+        commit={vi.fn()}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={vi.fn()}
+        onAdvanced={vi.fn()}
+        t={t}
+      />,
+    )
+    await waitFor(() => {
+      expect(view.getByText('示例：销售明细')).toBeTruthy()
+    })
+    expect(view.queryByText('开始提问')).toBeNull()
+    fireEvent.click(view.getByText('先用示例试一次'))
+    await waitFor(() => {
+      expect(view.getAllByText('开始提问')).toHaveLength(1)
+    })
+    expect(view.queryByText('最近使用')).toBeNull()
+    expect(view.queryByText('全部数据源')).toBeNull()
+  })
+
+  it('reopens the current session when the picked source is already bound', async () => {
+    const commit = vi.fn()
+    const onCommitted = vi.fn()
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({
+          ok: true,
+          value: [{
+            id: 'src-s',
+            displayName: '示例：销售明细',
+            kind: 'sample',
+            lastUsedAt: '2026-01-02T00:00:00.000Z',
+            missing: false,
+            warnings: [],
+          }],
+        })}
+        importSpreadsheet={vi.fn()}
+        importSample={vi.fn()}
+        commit={commit}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={onCommitted}
+        onAdvanced={vi.fn()}
+        currentBound={{ sessionId: 's-bound', sourceId: 'src-s' }}
+        t={t}
+      />,
+    )
+    await waitFor(() => {
+      expect(view.getByText('示例：销售明细')).toBeTruthy()
+    })
+    expect(view.queryByText('开始提问')).toBeNull()
+    fireEvent.click(view.getByText('示例：销售明细'))
+    fireEvent.click(view.getByText('开始提问'))
+    await waitFor(() => {
+      expect(onCommitted).toHaveBeenCalledWith('s-bound')
+    })
+    expect(commit).not.toHaveBeenCalled()
+  })
+
+  it('commits a different source without the already-bound session id', async () => {
+    const commit = vi.fn(async () => ({ ok: true as const, value: { sessionId: 's-new' } }))
+    const onCommitted = vi.fn()
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({
+          ok: true,
+          value: [
+            {
+              id: 'src-s',
+              displayName: '示例：销售明细',
+              kind: 'sample',
+              lastUsedAt: '2026-01-02T00:00:00.000Z',
+              missing: false,
+              warnings: [],
+            },
+            {
+              id: 'src-csv',
+              displayName: 'other.csv',
+              kind: 'import',
+              lastUsedAt: '2026-01-01T00:00:00.000Z',
+              missing: false,
+              warnings: [],
+            },
+          ],
+        })}
+        importSpreadsheet={vi.fn()}
+        importSample={vi.fn()}
+        commit={commit}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={onCommitted}
+        onAdvanced={vi.fn()}
+        currentBound={{ sessionId: 's-bound', sourceId: 'src-s' }}
+        t={t}
+      />,
+    )
+    await waitFor(() => {
+      expect(view.getByText('other.csv')).toBeTruthy()
+    })
+    expect(view.queryByText('开始提问')).toBeNull()
+    fireEvent.click(view.getByText('other.csv'))
+    expect(view.getAllByText('开始提问')).toHaveLength(1)
+    fireEvent.click(view.getByText('开始提问'))
+    await waitFor(() => {
+      expect(commit).toHaveBeenCalledWith({ sourceId: 'src-csv' })
+      expect(onCommitted).toHaveBeenCalledWith('s-new')
+    })
+  })
+
   it('opens an advanced session without committing', async () => {
     const createAdvanced = vi.fn(async () => ({ ok: true as const, value: { sessionId: 's-adv' } }))
-    const openSession = vi.fn()
+    const onAdvanced = vi.fn()
     const view = render(
       <DataSourcePage
         listSources={async () => ({ ok: true, value: [] })}
@@ -176,15 +511,15 @@ describe('DataSourcePage', () => {
         createAdvanced={createAdvanced}
         cancel={async () => undefined}
         onCommitted={vi.fn()}
-        openSession={openSession}
+        onAdvanced={onAdvanced}
         workspaceId="ws-1"
         t={t}
       />,
     )
-    fireEvent.click(view.getByText('高级连接'))
+    fireEvent.click(view.getByText('连接已有数据库'))
     await waitFor(() => {
       expect(createAdvanced).toHaveBeenCalledWith({ workspaceId: 'ws-1' })
-      expect(openSession).toHaveBeenCalledWith('s-adv')
+      expect(onAdvanced).toHaveBeenCalledWith('s-adv')
     })
   })
 
@@ -208,7 +543,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={async () => undefined}
         onCommitted={onCommitted}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         currentBlankSessionId="s-blank"
         workspaceId="ws-1"
         t={t}
@@ -251,7 +586,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={async () => undefined}
         onCommitted={vi.fn()}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         t={t}
       />,
     )
@@ -296,7 +631,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={async () => undefined}
         onCommitted={vi.fn()}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         t={t}
       />,
     )
@@ -314,9 +649,10 @@ describe('DataSourcePage', () => {
         filename: 'b.csv',
         replaceSourceId: 'src-miss',
       }))
-      expect(view.getByText('仍要导入')).toBeTruthy()
+      expect(view.getByText(/merged-cells/)).toBeTruthy()
+      expect(view.getAllByText('开始提问')).toHaveLength(1)
     })
-    fireEvent.click(view.getByText('仍要导入'))
+    fireEvent.click(view.getByText('开始提问'))
     await waitFor(() => {
       expect(commit).toHaveBeenCalled()
     })
@@ -347,17 +683,17 @@ describe('DataSourcePage', () => {
         })}
         cancel={async () => undefined}
         onCommitted={vi.fn()}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         t={t}
       />,
     )
-    fireEvent.click(view.getByText('高级连接'))
+    fireEvent.click(view.getByText('连接已有数据库'))
     await waitFor(() => {
       expect(view.getByText(/no workspace/)).toBeTruthy()
     })
     fireEvent.click(view.getByText('先用示例试一次'))
     await waitFor(() => {
-      expect(view.getByText('仍要导入')).toBeTruthy()
+      expect(view.getByText('开始提问')).toBeTruthy()
     })
   })
 
@@ -373,7 +709,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={async () => undefined}
         onCommitted={vi.fn()}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         t={t}
       />,
     )
@@ -393,7 +729,7 @@ describe('DataSourcePage', () => {
         createAdvanced={vi.fn()}
         cancel={cancel}
         onCommitted={vi.fn()}
-        openSession={vi.fn()}
+        onAdvanced={vi.fn()}
         t={t}
       />,
     )
@@ -432,20 +768,16 @@ describe('encodeAskDataBytes', () => {
 })
 
 describe('PreviewPanel', () => {
-  it('renders warning ids and the import-anyway action', () => {
-    const onStart = vi.fn()
-    const onImportAnyway = vi.fn()
+  it('renders warning ids without a start control', () => {
     const view = render(
       <PreviewPanel
         tables={[{ name: 'sheet', rowCount: 1, columns: ['a'] }]}
         warnings={['merged-cells']}
         t={t}
         warningText={id => id}
-        onStart={onStart}
-        onImportAnyway={onImportAnyway}
       />,
     )
-    fireEvent.click(view.getByText('仍要导入'))
-    expect(onImportAnyway).toHaveBeenCalled()
+    expect(view.getByText('merged-cells')).toBeTruthy()
+    expect(view.queryByText('开始提问')).toBeNull()
   })
 })

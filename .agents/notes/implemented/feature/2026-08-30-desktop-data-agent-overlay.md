@@ -12,7 +12,7 @@ Users need a SQLite-first「问数」path on octopus_DSH without rewriting offic
 
 The pin in [`scripts/desktop-profile-plugins.json`](../../../../scripts/desktop-profile-plugins.json) is file-workbench plus `@yejiming/dsh-data-agent@0.1.3`. Official `desktop-app` and `PROFILE_TEMPLATES.desktop` do not name it. `dsh-context` is not seeded. The desktop entry users click is the ask-data overlay; this note still owns only the data-agent pin.
 
-[`scripts/seed-desktop-profile-plugin.mjs`](../../../../scripts/seed-desktop-profile-plugin.mjs) `npm pack` uses the unscoped tarball name (`@scope/name` → `scope-name-version.tgz`). After copy, an npm pin with `dependencies` gets a production install: the published `devDependencies` / `peerDependencies` are stripped for that install only, then the original `package.json` is restored. The install must not materialize `node_modules/@deepseek-ai`. Profile install copies that production `node_modules` when it is a real directory without `.pnpm`. Workspace pins still skip `node_modules`.
+[`scripts/seed-desktop-profile-plugin.mjs`](../../../../scripts/seed-desktop-profile-plugin.mjs) `npm pack` uses the unscoped tarball name (`@scope/name` → `scope-name-version.tgz`). After copy, a pin with third-party `dependencies` gets a production install: `workspace:` specs, `devDependencies`, and `peerDependencies` are stripped for that install only, then the original `package.json` is restored. The install must not materialize `node_modules/@deepseek-ai`. Profile install copies that production `node_modules` when it is a real directory without `.pnpm`. Workspace pins that only name `workspace:` peers still skip `node_modules`.
 
 Host injects `agentPresets`, so the desktop profile can mount the plugin; headless cannot. Connections other than SQLite and ClickHouse HTTP need a CLI on the machine. The plugin's optional `dsh-client-runtime` inject is skipped when that package is absent from the 0.1.2 graph.
 
@@ -28,4 +28,4 @@ Host injects `agentPresets`, so the desktop profile can mount the plugin; headle
 
 ## Consequences
 
-A new DMG user gets 数据模式 after first launch if `sqlite3` is on the Mac. MySQL/Postgres/Oracle stay unavailable until the matching CLI exists. Existing `~/.dsh/profiles/desktop` that already lists `dsh-context` must drop that bundle or the companion will not boot on 0.1.2.
+A new DMG user gets 数据模式 after first launch if `sqlite3` is on the Mac. MySQL/Postgres/Oracle stay unavailable until the matching CLI exists. Existing `~/.dsh/profiles/desktop` that still lists `dsh-client-app` or `dsh-context` is rewritten on load and first launch ([leftover profile heal](../bug-fix/2026-08-30-desktop-leftover-profile-heal.md)).

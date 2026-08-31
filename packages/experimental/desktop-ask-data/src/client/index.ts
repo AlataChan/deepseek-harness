@@ -22,6 +22,10 @@ export type { AskDataChipInjected, AskDataChipProps } from './AskDataChip.tsx'
 export type { DataSourcePageProps, ListedPreview, ListedSource } from './DataSourcePage.tsx'
 export type { AskDataKey } from './locales.ts'
 export { encodeAskDataBytes, readFileBytes } from './bytes.ts'
+export {
+  ASK_DATA_TEMPLATE_CSV, ASK_DATA_TEMPLATE_FILENAME, offerAskDataTemplate,
+  type AskDataTemplateOffer,
+} from './template.ts'
 export { LIMIT_LOCALES, LIMIT_SURFACE_KEYS, limitSurface, requiredLimitIds } from './limits-copy.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -41,6 +45,50 @@ interface AgentPresetSeatFace {
   clearStage(): void
 }
 
+/** One row from `sessions.list` as read by the ask-data occupant. */
+interface ListedSession {
+  id: string
+  blank?: boolean
+  projectionValues?: {
+    agentPreset?: string
+    askDataBinding?: unknown
+  }
+}
+
+/**
+ * Whether this session would otherwise auto-open the data-source page.
+ * @param session - current list row.
+ * @returns true for a blank unbound data-agent session.
+ */
+function isUnboundBlankDataAgent(session: ListedSession | undefined): session is ListedSession {
+  if (session?.blank !== true) return false
+  if (session.projectionValues?.agentPreset !== 'data-agent') return false
+  return boundSourceId(session) === undefined
+}
+
+/**
+ * Source id already bound on this list row, if any.
+ * @param session - current list row.
+ * @returns the bound source id, or undefined when unbound.
+ */
+function boundSourceId(session: ListedSession | undefined): string | undefined {
+  const binding = session?.projectionValues?.askDataBinding
+  if (typeof binding !== 'object' || binding === null) return undefined
+  if (!('sourceId' in binding)) return undefined
+  const { sourceId } = binding
+  return typeof sourceId === 'string' ? sourceId : undefined
+}
+
+/**
+ * Whether commit may reuse this Session instead of creating one.
+ * @param session - current list row.
+ * @returns true for a blank Session with no ask-data bind.
+ */
+function isReusableBlankSession(session: ListedSession | undefined): session is ListedSession {
+  if (session?.blank !== true) return false
+  return boundSourceId(session) === undefined
+}
+
 /** Services required by the ask-data occupant. */
 export const inject = ['slots', 'remote', 'remote.session', 'locale']
 
@@ -55,6 +103,15 @@ export function apply(ctx: ClientContext): void {
     let gateDispose: (() => void) | undefined
     let previousPreset = 'standard'
     let lastNonAskPreset = 'standard'
+    const advancedEscapeIds = new Set<string>()
+
+    const currentSession = (): ListedSession | undefined => {
+      const state = scope.sessions.list.getSnapshot() as {
+        current?: string
+        byId: Record<string, ListedSession>
+      }
+      return state.current === undefined ? undefined : state.byId[state.current]
+    }
 
     const remotes = (): DataSourcePageRemotes => {
       const session = scope.remote.session as unknown as {
@@ -69,16 +126,17 @@ export function apply(ctx: ClientContext): void {
         importSpreadsheet: (request, signal) => session.importAskDataSpreadsheet(request, signal),
         importSample: signal => session.importAskDataSample(signal),
         commit: (request, signal) => session.commitAskData(request, signal),
-        createAdvanced: request => session.create({
-          ...request.workspaceId === undefined ? {} : { workspaceId: request.workspaceId },
-          agentPreset: 'data-agent',
-        }),
+        createAdvanced: (request) => {
+          const current = currentSession()
+          if (isUnboundBlankDataAgent(current)) {
+            return Promise.resolve({ ok: true, value: { sessionId: current.id } })
+          }
+          return session.create({
+            ...request.workspaceId === undefined ? {} : { workspaceId: request.workspaceId },
+            agentPreset: 'data-agent',
+          })
+        },
       }
-    }
-
-    const currentSession = () => {
-      const state = scope.sessions.list.getSnapshot()
-      return state.current === undefined ? undefined : state.byId[state.current]
     }
 
     const closeGate = (): void => {
@@ -94,14 +152,19 @@ export function apply(ctx: ClientContext): void {
         inject: (): DataSourcePageRemotes & {
           cancel: () => Promise<void>
           onCommitted: (sessionId: string) => void
-          openSession: (sessionId: string) => void
+          onAdvanced: (sessionId: string) => void
           currentBlankSessionId?: string
+          currentBound?: { sessionId: string; sourceId: string }
           workspaceId?: string
         } => {
           const current = currentSession()
+          const boundId = boundSourceId(current)
           return {
             ...remotes(),
-            ...current?.blank === true ? { currentBlankSessionId: current.id } : {},
+            ...isReusableBlankSession(current) ? { currentBlankSessionId: current.id } : {},
+            ...current !== undefined && boundId !== undefined
+              ? { currentBound: { sessionId: current.id, sourceId: boundId } }
+              : {},
             cancel: async () => {
               const refusal = await seat.select(previousPreset)
               if (refusal !== undefined) return
@@ -113,7 +176,12 @@ export function apply(ctx: ClientContext): void {
               closeGate()
               scope.sessions.open(SessionId(sessionId))
             },
-            openSession: (sessionId) => { scope.sessions.open(SessionId(sessionId)) },
+            onAdvanced: (sessionId) => {
+              advancedEscapeIds.add(sessionId)
+              seat.clearStage()
+              closeGate()
+              scope.sessions.open(SessionId(sessionId))
+            },
           }
         },
       }, DataSourcePage)
@@ -129,12 +197,10 @@ export function apply(ctx: ClientContext): void {
       const session = currentSession()
       const preset = session?.projectionValues?.agentPreset
       if (typeof preset === 'string' && preset !== 'data-agent') lastNonAskPreset = preset
-      const binding = session?.projectionValues?.askDataBinding
       if (
-        preset === 'data-agent'
-        && session?.blank === true
-        && (binding === undefined || binding === null)
+        isUnboundBlankDataAgent(session)
         && gateDispose === undefined
+        && !advancedEscapeIds.has(session.id)
       ) {
         previousPreset = lastNonAskPreset
         registerGate()

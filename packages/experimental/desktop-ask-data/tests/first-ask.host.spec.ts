@@ -28,7 +28,12 @@ afterEach(async () => {
 })
 
 function stubAgent(session: Session): Agent {
-  return { id: session.id, session, status: 'idle' } as unknown as Agent
+  return {
+    id: session.id,
+    session,
+    status: 'idle',
+    options: { provider: 'test', model: 'test-model' },
+  } as unknown as Agent
 }
 
 describe('first-ask against data-agent 0.1.3', () => {
@@ -126,6 +131,12 @@ describe('first-ask against data-agent 0.1.3', () => {
       resolveForExecution(sessionId: string): Promise<{ database: string; readonly?: boolean }>
     }
     const signal = new AbortController().signal
+    const catalog = ctx.get('dataAgentCatalog') as {
+      resolveSource: (sessionId: string) => Promise<{ id: string }>
+    }
+    await expect(catalog.resolveSource(committed.value.sessionId)).resolves.toMatchObject({
+      id: expect.any(String),
+    })
     const resolved = await connections.resolveForExecution(committed.value.sessionId)
     expect(resolved.readonly).toBe(true)
     const queried = await connections.executeInteractive(

@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The desktop surface bundle over [`dsh-web-app`](../web-app/README.md). It keeps the web Host (Typert remotes, Connection, loopback webserver) so Client modules can compose a boot graph, disables `web-startup` so `--workspace-root` is the only accepted argument, and publishes `webStartup` from `desktop-startup` (`127.0.0.1`, port `0`, no browser). The WebView installs `__DSH_TRANSPORT__` and the official `client-connection` plugin consumes it. `connection-desktop` is Host-only.
+The desktop surface bundle over [`dsh-web-app`](../web-app/README.md). It keeps the web Host (Typert remotes, Connection, loopback webserver) so Client modules can compose a boot graph, disables `web-startup` so `--workspace-root` is the only accepted argument, and publishes `webStartup` from `desktop-startup` (`127.0.0.1`, port `0`, no browser). It disables `client-hmr` because the Tauri WebView rejects the web EventSource channel. The WebView installs `__DSH_TRANSPORT__` and the official `client-connection` plugin consumes it. `connection-desktop` is Host-only.
 
 [`src/startup.ts`](src/startup.ts) owns the companion's only argument, `--workspace-root <path>`. The value must be absolute and is provided as `ctx.desktopStartup`; the runtime and carrier rows inject that service before reading it. The Tauri shell owns process discovery, the exclusive home lease, and the published companion entry.
 

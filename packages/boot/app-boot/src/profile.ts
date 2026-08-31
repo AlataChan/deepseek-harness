@@ -166,6 +166,28 @@ const INSTALLATION_OWNED_PROFILE_TUPLES: Record<string, readonly string[]> = {
   headless: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless'],
 }
 
+/** Retired installation bundle names rewritten on every profile load. */
+const RETIRED_BUNDLE_ALIASES: Readonly<Record<string, string>> = {
+  '@deepseek-ai/dsh-client-app': '@deepseek-ai/dsh-web-app',
+}
+
+/**
+ * Replace retired bundle names and drop a name that already appears after mapping.
+ * @param bundles - the persisted `dsh.profile.bundles` list.
+ * @returns a new list with aliases applied.
+ */
+function rewriteRetiredBundles(bundles: readonly string[]): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const name of bundles) {
+    const mapped = RETIRED_BUNDLE_ALIASES[name] ?? name
+    if (seen.has(mapped)) continue
+    seen.add(mapped)
+    out.push(mapped)
+  }
+  return out
+}
+
 /** The bundle list a `dsh plugin` init uses for a name with no shipped template. */
 export const DEFAULT_PROFILE_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base']
 
@@ -717,27 +739,31 @@ function sameBundles(left: readonly string[], right: readonly string[]): boolean
 }
 
 /**
- * Normalize an exact installation-owned bundle tuple to its shipped template,
- * or add the shipped reload default to an exact current tuple. A changed value
- * is written back during profile loading while every other manifest field is
- * preserved; any other bundle list is user-owned and remains untouched.
+ * Normalize a persisted bundle list before the loader resolves it.
+ * Retired names such as `@deepseek-ai/dsh-client-app` become the current
+ * package, an exact installation-owned tuple becomes the shipped template,
+ * and an exact current tuple without `patchReload` receives the template
+ * default. Extra user bundles stay in place; only those three rewrites are
+ * written back.
  */
 function normalizeShippedProfile(name: string, dir: string, manifest: ProfileManifest): ProfileManifest {
   const installationOwned = INSTALLATION_OWNED_PROFILE_TUPLES[name]
   const template = PROFILE_TEMPLATES[name]
   const bundles = manifest.dsh?.profile?.bundles
   if (template === undefined || bundles === undefined) return manifest
-  const isRetiredTuple = installationOwned !== undefined && sameBundles(bundles, installationOwned)
-  const isCurrentTuple = sameBundles(bundles, template.bundles)
+  const rewritten = rewriteRetiredBundles(bundles)
+  const aliasChanged = !sameBundles(bundles, rewritten)
+  const isRetiredTuple = installationOwned !== undefined && sameBundles(rewritten, installationOwned)
+  const isCurrentTuple = sameBundles(rewritten, template.bundles)
   const needsReloadDefault = manifest.dsh?.profile?.patchReload === undefined && isCurrentTuple
-  if (!isRetiredTuple && !needsReloadDefault) return manifest
+  if (!isRetiredTuple && !needsReloadDefault && !aliasChanged) return manifest
   const normalized: ProfileManifest = {
     ...manifest,
     dsh: {
       ...manifest.dsh,
       profile: {
         ...manifest.dsh?.profile,
-        bundles: [...template.bundles],
+        bundles: isRetiredTuple ? [...template.bundles] : rewritten,
         patchReload: manifest.dsh?.profile?.patchReload ?? template.patchReload,
       },
     },

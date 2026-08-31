@@ -63,7 +63,9 @@ export async function bindSource(
   const ac = signal ?? new AbortController().signal
   const saved = getSavedProfile(ctx, request.sourceId)
   if (saved !== undefined) {
-    return bindSaved(connections, request, saved, previous, ac)
+    const lease = await bindSaved(connections, request, saved, previous, ac)
+    await startCatalogAfterBind(ctx, request.sessionId)
+    return lease
   }
   const row = await getStoredSource(dataHome, request.sourceId)
   const already = row.connectionRef !== undefined
@@ -91,6 +93,7 @@ export async function bindSource(
     displayName: row.displayName,
     readonly: true,
   }
+  await startCatalogAfterBind(ctx, request.sessionId)
   return {
     binding,
     rollback: async () => {
@@ -99,6 +102,35 @@ export async function bindSource(
       await putStoredSource(dataHome, snapshot)
       if (createdProfile) await deleteUnusedProfile(ctx, profileId, request.sessionId)
     },
+  }
+}
+
+/** Structural face of data-agent 0.1.3 `ctx.dataAgentCatalog`. */
+interface DataAgentCatalogFace {
+  listSources(): readonly { id: string }[]
+}
+
+/** Structural face of data-agent 0.1.3 `ctx.dataAgentCatalogScanner`. */
+interface DataAgentCatalogScannerFace {
+  start(input: { sessionId: string; scope: { kind: 'source' } }): Promise<unknown>
+}
+
+/**
+ * Register the bound profile in Catalog so the first `catalog-search` does
+ * not throw "Catalog is empty". Scan work continues in the background.
+ * @param ctx - Host context that may carry the Catalog services.
+ * @param sessionId - session that was just bound.
+ * @returns after the Catalog source row exists, or immediately on skip/failure.
+ */
+export async function startCatalogAfterBind(ctx: Context, sessionId: string): Promise<void> {
+  const scanner = ctx.get('dataAgentCatalogScanner') as DataAgentCatalogScannerFace | undefined
+  if (scanner === undefined) return
+  const catalog = ctx.get('dataAgentCatalog') as DataAgentCatalogFace | undefined
+  if ((catalog?.listSources().length ?? 0) > 0) return
+  try {
+    await scanner.start({ sessionId, scope: { kind: 'source' } })
+  } catch {
+    // Catalog registration is best-effort: sqlite is already bound and SQL still works.
   }
 }
 

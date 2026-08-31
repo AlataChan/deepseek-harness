@@ -47,7 +47,10 @@ pub fn sha256_bytes(bytes: &[u8]) -> String {
 /// Build the same asset URL `convertFileSrc` produces for a local file.
 #[must_use]
 pub fn asset_src(path: &Path) -> String {
-    let encoded = path.to_string_lossy().replace('\\', "/").replace(' ', "%20");
+    let encoded = path
+        .to_string_lossy()
+        .replace('\\', "/")
+        .replace(' ', "%20");
     if encoded.starts_with('/') {
         format!("asset://localhost{encoded}")
     } else {
@@ -57,7 +60,9 @@ pub fn asset_src(path: &Path) -> String {
 
 fn assert_no_traversal(field: &str, value: &str) -> Result<(), ShellError> {
     if value.split(['/', '\\']).any(|segment| segment == "..") {
-        return Err(ShellError::Config(format!("{field} must not contain path traversal")));
+        return Err(ShellError::Config(format!(
+            "{field} must not contain path traversal"
+        )));
     }
     Ok(())
 }
@@ -68,9 +73,14 @@ fn assert_no_traversal(field: &str, value: &str) -> Result<(), ShellError> {
  * @param cache_root - application data directory that owns `bundle-cache/`.
  * @param request - source path, hashes, and graph identity.
  */
-pub fn cache_bundle(cache_root: &Path, request: BundleCacheRequest<'_>) -> Result<CachedBundle, ShellError> {
+pub fn cache_bundle(
+    cache_root: &Path,
+    request: BundleCacheRequest<'_>,
+) -> Result<CachedBundle, ShellError> {
     if !request.source_path.is_absolute() {
-        return Err(ShellError::Config("bundle source path must be absolute".into()));
+        return Err(ShellError::Config(
+            "bundle source path must be absolute".into(),
+        ));
     }
     assert_no_traversal("graphRev", request.graph_rev)?;
     assert_no_traversal("id", request.id)?;
@@ -87,12 +97,16 @@ pub fn cache_bundle(cache_root: &Path, request: BundleCacheRequest<'_>) -> Resul
     let destination = generation_dir.join(file_name);
 
     let canonical_root = fs::canonicalize(cache_root).unwrap_or_else(|_| cache_root.to_path_buf());
-    fs::create_dir_all(&generation_dir)
-        .map_err(|error| ShellError::Config(format!("bundle cache directory is not writable: {error}")))?;
-    let canonical_dest_parent = fs::canonicalize(&generation_dir)
-        .map_err(|error| ShellError::Config(format!("bundle cache generation is not readable: {error}")))?;
+    fs::create_dir_all(&generation_dir).map_err(|error| {
+        ShellError::Config(format!("bundle cache directory is not writable: {error}"))
+    })?;
+    let canonical_dest_parent = fs::canonicalize(&generation_dir).map_err(|error| {
+        ShellError::Config(format!("bundle cache generation is not readable: {error}"))
+    })?;
     if !canonical_dest_parent.starts_with(canonical_root.join("bundle-cache")) {
-        return Err(ShellError::Config("bundle cache destination escaped bundle-cache".into()));
+        return Err(ShellError::Config(
+            "bundle cache destination escaped bundle-cache".into(),
+        ));
     }
 
     let temporary = generation_dir.join(format!(".{}.tmp", Uuid::new_v4()));
@@ -124,13 +138,17 @@ mod tests {
     #[test]
     fn refuses_a_relative_source_path() {
         let root = tempdir().expect("tempdir");
-        let error = cache_bundle(root.path(), BundleCacheRequest {
-            source_path: Path::new("relative.js"),
-            sha256: "00",
-            graph_rev: "rev",
-            index: 0,
-            id: "ui",
-        }).expect_err("relative path");
+        let error = cache_bundle(
+            root.path(),
+            BundleCacheRequest {
+                source_path: Path::new("relative.js"),
+                sha256: "00",
+                graph_rev: "rev",
+                index: 0,
+                id: "ui",
+            },
+        )
+        .expect_err("relative path");
         assert!(error.to_string().contains("absolute"));
     }
 
@@ -138,13 +156,17 @@ mod tests {
     fn refuses_a_sha256_mismatch() {
         let root = tempdir().expect("tempdir");
         let (source, _) = write_source(root.path(), b"export {}\n");
-        let error = cache_bundle(root.path(), BundleCacheRequest {
-            source_path: &source,
-            sha256: "deadbeef",
-            graph_rev: "rev",
-            index: 0,
-            id: "ui",
-        }).expect_err("hash mismatch");
+        let error = cache_bundle(
+            root.path(),
+            BundleCacheRequest {
+                source_path: &source,
+                sha256: "deadbeef",
+                graph_rev: "rev",
+                index: 0,
+                id: "ui",
+            },
+        )
+        .expect_err("hash mismatch");
         assert!(error.to_string().contains("hash mismatch"));
     }
 
@@ -152,21 +174,29 @@ mod tests {
     fn refuses_traversal_in_graph_rev_and_id() {
         let root = tempdir().expect("tempdir");
         let (source, hash) = write_source(root.path(), b"export {}\n");
-        let rev = cache_bundle(root.path(), BundleCacheRequest {
-            source_path: &source,
-            sha256: &hash,
-            graph_rev: "../escape",
-            index: 0,
-            id: "ui",
-        }).expect_err("graphRev traversal");
+        let rev = cache_bundle(
+            root.path(),
+            BundleCacheRequest {
+                source_path: &source,
+                sha256: &hash,
+                graph_rev: "../escape",
+                index: 0,
+                id: "ui",
+            },
+        )
+        .expect_err("graphRev traversal");
         assert!(rev.to_string().contains("traversal"));
-        let id = cache_bundle(root.path(), BundleCacheRequest {
-            source_path: &source,
-            sha256: &hash,
-            graph_rev: "rev",
-            index: 0,
-            id: "..\\escape",
-        }).expect_err("id traversal");
+        let id = cache_bundle(
+            root.path(),
+            BundleCacheRequest {
+                source_path: &source,
+                sha256: &hash,
+                graph_rev: "rev",
+                index: 0,
+                id: "..\\escape",
+            },
+        )
+        .expect_err("id traversal");
         assert!(id.to_string().contains("traversal"));
     }
 
@@ -174,24 +204,34 @@ mod tests {
     fn writes_the_hashed_cache_layout() {
         let root = tempdir().expect("tempdir");
         let (source, hash) = write_source(root.path(), b"export {}\n");
-        let cached = cache_bundle(root.path(), BundleCacheRequest {
-            source_path: &source,
-            sha256: &hash,
-            graph_rev: "graph-1",
-            index: 2,
-            id: "@deepseek-ai/dsh-client-web",
-        }).expect("cache");
+        let cached = cache_bundle(
+            root.path(),
+            BundleCacheRequest {
+                source_path: &source,
+                sha256: &hash,
+                graph_rev: "graph-1",
+                index: 2,
+                id: "@deepseek-ai/dsh-client-web",
+            },
+        )
+        .expect("cache");
         let expected_dir = root.path().join("bundle-cache").join(sha256_hex("graph-1"));
         let expected_name = format!("2-{}.js", &sha256_hex("@deepseek-ai/dsh-client-web")[..16]);
         assert_eq!(cached.generation_dir, expected_dir);
         assert_eq!(cached.destination, expected_dir.join(expected_name));
-        assert_eq!(fs::read(&cached.destination).expect("read cache"), b"export {}\n");
+        assert_eq!(
+            fs::read(&cached.destination).expect("read cache"),
+            b"export {}\n"
+        );
         assert!(cached.src.starts_with("asset://localhost/"));
         assert!(!cached.src.starts_with("asset://localhost//"));
     }
 
     #[test]
     fn asset_src_keeps_one_slash_after_localhost() {
-        assert_eq!(asset_src(Path::new("/tmp/file.js")), "asset://localhost/tmp/file.js");
+        assert_eq!(
+            asset_src(Path::new("/tmp/file.js")),
+            "asset://localhost/tmp/file.js"
+        );
     }
 }

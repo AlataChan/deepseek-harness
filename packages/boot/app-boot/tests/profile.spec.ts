@@ -219,6 +219,52 @@ describe('loadProfile', () => {
       .toBe('live')
   })
 
+  it('rewrites leftover dsh-client-app to dsh-web-app and keeps extra bundles', () => {
+    const anchor = stageInstallation({
+      '@deepseek-ai/dsh-base': { patch: '[]\n' },
+      '@deepseek-ai/dsh-web-app': { patch: '[]\n' },
+      '@deepseek-ai/dsh-desktop-app': { patch: '[]\n' },
+      'custom-bundle': { patch: '[]\n' },
+    })
+    const home = tmp()
+    const dir = resolveProfileDir('desktop', home)
+    initProfile(dir, [
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-client-app',
+      '@deepseek-ai/dsh-desktop-app',
+      'custom-bundle',
+    ])
+    loadProfile('t', 'desktop', anchor, home)
+    expect(readProfileManifest('t', dir).dsh?.profile?.bundles).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      '@deepseek-ai/dsh-desktop-app',
+      'custom-bundle',
+    ])
+  })
+
+  it('deduplicates when both dsh-client-app and dsh-web-app are listed', () => {
+    const anchor = stageInstallation({
+      '@deepseek-ai/dsh-base': { patch: '[]\n' },
+      '@deepseek-ai/dsh-web-app': { patch: '[]\n' },
+      '@deepseek-ai/dsh-desktop-app': { patch: '[]\n' },
+    })
+    const home = tmp()
+    const dir = resolveProfileDir('desktop', home)
+    initProfile(dir, [
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      '@deepseek-ai/dsh-client-app',
+      '@deepseek-ai/dsh-desktop-app',
+    ])
+    loadProfile('t', 'desktop', anchor, home)
+    expect(readProfileManifest('t', dir).dsh?.profile?.bundles).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      '@deepseek-ai/dsh-desktop-app',
+    ])
+  })
+
   it('normalizes only the exact installation-owned headless bundle tuple', () => {
     const anchor = stageInstallation({
       '@deepseek-ai/dsh-base': { patch: '[]\n' },

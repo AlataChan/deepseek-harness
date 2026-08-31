@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-30-desktop-ask-data-onboarding.md
-2026-08-30-desktop-ask-data-onboarding.md: b2a163f91385e7cc12f2938e91e6225d34fd743f
-2026-08-30-desktop-ask-data-onboarding.zh.md: db274a85375c4e4a3247cb2ace5d018df7e1f645
+2026-08-30-desktop-ask-data-onboarding.md: 1b736cd1298a77aa560f882e2b09f69b6f412977
+2026-08-30-desktop-ask-data-onboarding.zh.md: b9f4fa54f02a2e10671fc4711275ee9735993c22

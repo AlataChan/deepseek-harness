@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { removeFixtureSafely } from './test-fixture-cleanup.ts'
 import {
   fetchWorkspacePlugin,
+  healDesktopProfileManifest,
   installPluginIntoProfile,
   mergeProfileManifest,
+  productionInstallDependencies,
   validatePluginDir,
 } from './seed-desktop-profile-plugin.mjs'
 
@@ -22,12 +24,12 @@ const SHIPPED = [
   '@deepseek-ai/dsh-desktop-app',
 ]
 
-function writePlugin(root: string, name = 'dsh-context', version = '0.36.0'): string {
+function writePlugin(root: string, name = 'dsh-fixture-plugin', version = '0.36.0'): string {
   const dir = join(root, name)
   mkdirSync(join(dir, 'lib'), { recursive: true })
   writeFileSync(join(dir, 'lib', 'index.js'), 'export {}\n')
   writeFileSync(join(dir, 'lib', 'client.js'), 'export {}\n')
-  writeFileSync(join(dir, 'cordis.patch.yml'), '- insert:\n    - id: dsh-context\n      name: dsh-context\n')
+  writeFileSync(join(dir, 'cordis.patch.yml'), `- insert:\n    - id: ${name}\n      name: ${name}\n`)
   writeFileSync(join(dir, 'package.json'), `${JSON.stringify({
     name,
     version,
@@ -58,9 +60,9 @@ describe('seed-desktop-profile-plugin', () => {
     const result = installPluginIntoProfile(plugin, profile, SHIPPED)
     expect(result.firstInstall).toBe(true)
     const manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
-    expect(manifest.dsh.profile.bundles).toEqual([...SHIPPED, 'dsh-context'])
-    expect(manifest.dependencies['dsh-context']).toBe('0.36.0')
-    expect(validatePluginDir(join(profile, 'node_modules', 'dsh-context')).version).toBe('0.36.0')
+    expect(manifest.dsh.profile.bundles).toEqual([...SHIPPED, 'dsh-fixture-plugin'])
+    expect(manifest.dependencies['dsh-fixture-plugin']).toBe('0.36.0')
+    expect(validatePluginDir(join(profile, 'node_modules', 'dsh-fixture-plugin')).version).toBe('0.36.0')
   })
 
   it('does not re-insert a bundle the user removed when the package is already present', () => {
@@ -71,7 +73,7 @@ describe('seed-desktop-profile-plugin', () => {
     installPluginIntoProfile(plugin, profile, SHIPPED)
     const afterRemove = mergeProfileManifest(
       JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8')),
-      { name: 'dsh-context', version: '0.36.0' },
+      { name: 'dsh-fixture-plugin', version: '0.36.0' },
       { firstInstall: false },
     )
     afterRemove.dsh.profile.bundles = [...SHIPPED]
@@ -80,7 +82,7 @@ describe('seed-desktop-profile-plugin', () => {
     expect(result.firstInstall).toBe(false)
     const manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
     expect(manifest.dsh.profile.bundles).toEqual(SHIPPED)
-    expect(manifest.dependencies['dsh-context']).toBe('0.36.0')
+    expect(manifest.dependencies['dsh-fixture-plugin']).toBe('0.36.0')
   })
 
   it('installs a scoped package name under node_modules/@scope/name', () => {
@@ -102,7 +104,7 @@ describe('seed-desktop-profile-plugin', () => {
     const plugin = writePlugin(root)
     const profile = join(root, 'desktop')
     mkdirSync(join(profile, 'node_modules'), { recursive: true })
-    symlinkSync(plugin, join(profile, 'node_modules', 'dsh-context'))
+    symlinkSync(plugin, join(profile, 'node_modules', 'dsh-fixture-plugin'))
     expect(() => installPluginIntoProfile(plugin, profile, SHIPPED)).toThrow('symlink')
   })
 
@@ -120,5 +122,72 @@ describe('seed-desktop-profile-plugin', () => {
     expect(dest).toBe(join(root, 'out', '@deepseek-ai', 'dsh-experimental-desktop-files'))
     expect(validatePluginDir(dest).name).toBe(name)
     expect(existsSync(join(dest, 'node_modules'))).toBe(false)
+  })
+
+  it('drops workspace: specs so npm can install third-party overlay deps', () => {
+    expect(productionInstallDependencies({
+      '@deepseek-ai/dsh-host-ask-data': 'workspace:^',
+      exceljs: '^4.4.0',
+      zod: '^4.4.3',
+    })).toEqual({ exceljs: '^4.4.0', zod: '^4.4.3' })
+    expect(productionInstallDependencies({
+      '@deepseek-ai/dsh-host-workspace-entries': 'workspace:^',
+    })).toEqual({})
+  })
+
+  it('rewrites leftover dsh-client-app and strips dsh-context', () => {
+    const healed = healDesktopProfileManifest({
+      dependencies: {
+        'dsh-context': '0.36.0',
+        '@deepseek-ai/dsh-experimental-desktop-files': '0.1.1-rc.5',
+      },
+      dsh: {
+        profile: {
+          bundles: [
+            '@deepseek-ai/dsh-base',
+            '@deepseek-ai/dsh-client-app',
+            '@deepseek-ai/dsh-desktop-app',
+            'dsh-context',
+            '@deepseek-ai/dsh-experimental-desktop-files',
+          ],
+        },
+      },
+    })
+    expect(healed.dsh.profile.bundles).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      '@deepseek-ai/dsh-desktop-app',
+      '@deepseek-ai/dsh-experimental-desktop-files',
+    ])
+    expect(healed.dependencies).toEqual({
+      '@deepseek-ai/dsh-experimental-desktop-files': '0.1.1-rc.5',
+    })
+  })
+
+  it('heals a dirty profile before appending a first-install plugin', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-seed-heal-'))
+    fixtures.push(root)
+    const plugin = writePlugin(root)
+    const profile = join(root, 'desktop')
+    mkdirSync(profile, { recursive: true })
+    writeFileSync(join(profile, 'package.json'), `${JSON.stringify({
+      name: 'dsh-profile-desktop',
+      private: true,
+      dependencies: { 'dsh-context': '0.36.0' },
+      dsh: {
+        profile: {
+          bundles: [
+            '@deepseek-ai/dsh-base',
+            '@deepseek-ai/dsh-client-app',
+            '@deepseek-ai/dsh-desktop-app',
+            'dsh-context',
+          ],
+        },
+      },
+    }, undefined, 2)}\n`)
+    installPluginIntoProfile(plugin, profile, SHIPPED)
+    const manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
+    expect(manifest.dsh.profile.bundles).toEqual([...SHIPPED, 'dsh-fixture-plugin'])
+    expect(manifest.dependencies['dsh-context']).toBeUndefined()
   })
 })

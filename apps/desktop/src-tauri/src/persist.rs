@@ -32,7 +32,10 @@ fn default_workspace_root() -> Option<String> {
 }
 
 fn workspace_root_is_missing(config: &RuntimeConfig) -> bool {
-    config.workspace_root.as_deref().is_none_or(|value| value.trim().is_empty())
+    config
+        .workspace_root
+        .as_deref()
+        .is_none_or(|value| value.trim().is_empty())
 }
 
 /**
@@ -48,12 +51,17 @@ pub fn load_config_with_workspace_default(dir: &Path) -> Result<RuntimeConfig, S
         return Ok(current);
     }
     let home = default_workspace_root().ok_or_else(|| {
-        ShellError::Config("workspaceRoot is not configured and the user home directory is unknown".into())
+        ShellError::Config(
+            "workspaceRoot is not configured and the user home directory is unknown".into(),
+        )
     })?;
-    save_config(dir, &RuntimeConfig {
-        workspace_root: Some(home),
-        ..RuntimeConfig::default()
-    })
+    save_config(
+        dir,
+        &RuntimeConfig {
+            workspace_root: Some(home),
+            ..RuntimeConfig::default()
+        },
+    )
 }
 
 /**
@@ -74,7 +82,11 @@ pub fn load_config(dir: &Path) -> Result<RuntimeConfig, ShellError> {
 
 fn assign_optional(slot: &mut Option<String>, patch: &Option<String>) {
     let Some(value) = patch else { return };
-    *slot = if value.trim().is_empty() { None } else { Some(value.clone()) };
+    *slot = if value.trim().is_empty() {
+        None
+    } else {
+        Some(value.clone())
+    };
 }
 
 /**
@@ -89,8 +101,9 @@ pub fn save_config(dir: &Path, patch: &RuntimeConfig) -> Result<RuntimeConfig, S
     assign_optional(&mut current.node_path, &patch.node_path);
     assign_optional(&mut current.runtime_path, &patch.runtime_path);
     assign_optional(&mut current.workspace_root, &patch.workspace_root);
-    fs::create_dir_all(dir)
-        .map_err(|error| ShellError::Config(format!("runtime config directory is not writable: {error}")))?;
+    fs::create_dir_all(dir).map_err(|error| {
+        ShellError::Config(format!("runtime config directory is not writable: {error}"))
+    })?;
     let bytes = serde_json::to_vec_pretty(&current)
         .map_err(|error| ShellError::Config(format!("runtime config encode failed: {error}")))?;
     fs::write(config_path(dir), bytes)
@@ -106,11 +119,15 @@ mod tests {
     #[test]
     fn round_trips_persisted_fields() {
         let dir = tempdir().expect("tempdir");
-        let saved = save_config(dir.path(), &RuntimeConfig {
-            node_path: Some("/usr/bin/node".into()),
-            runtime_path: None,
-            workspace_root: Some("/tmp/project".into()),
-        }).expect("save");
+        let saved = save_config(
+            dir.path(),
+            &RuntimeConfig {
+                node_path: Some("/usr/bin/node".into()),
+                runtime_path: None,
+                workspace_root: Some("/tmp/project".into()),
+            },
+        )
+        .expect("save");
         assert_eq!(saved.node_path.as_deref(), Some("/usr/bin/node"));
         assert_eq!(saved.workspace_root.as_deref(), Some("/tmp/project"));
         let loaded = load_config(dir.path()).expect("load");
@@ -130,16 +147,24 @@ mod tests {
     #[test]
     fn empty_patch_values_clear_persisted_fields() {
         let dir = tempdir().expect("tempdir");
-        save_config(dir.path(), &RuntimeConfig {
-            node_path: Some("/usr/bin/node".into()),
-            runtime_path: Some("/tmp/old-dsh".into()),
-            workspace_root: Some("/tmp/project".into()),
-        }).expect("save");
-        let cleared = save_config(dir.path(), &RuntimeConfig {
-            node_path: Some(String::new()),
-            runtime_path: Some(String::new()),
-            workspace_root: Some("/tmp/kept".into()),
-        }).expect("clear");
+        save_config(
+            dir.path(),
+            &RuntimeConfig {
+                node_path: Some("/usr/bin/node".into()),
+                runtime_path: Some("/tmp/old-dsh".into()),
+                workspace_root: Some("/tmp/project".into()),
+            },
+        )
+        .expect("save");
+        let cleared = save_config(
+            dir.path(),
+            &RuntimeConfig {
+                node_path: Some(String::new()),
+                runtime_path: Some(String::new()),
+                workspace_root: Some("/tmp/kept".into()),
+            },
+        )
+        .expect("clear");
         assert_eq!(cleared.node_path, None);
         assert_eq!(cleared.runtime_path, None);
         assert_eq!(cleared.workspace_root.as_deref(), Some("/tmp/kept"));

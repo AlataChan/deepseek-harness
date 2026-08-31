@@ -13,7 +13,17 @@ export interface PinFile {
   plugins: PluginPin[]
 }
 
+export const RETIRED_DESKTOP_BUNDLES: Readonly<Record<string, string>>
+
+export const STRIP_DESKTOP_BUNDLES: readonly string[]
+
 export function readPinFile(path?: string): PinFile
+
+export function healDesktopProfileManifest(manifest: object): {
+  dsh: { profile: { bundles: string[] } }
+  dependencies?: Record<string, string>
+  [key: string]: unknown
+}
 
 export function validatePluginDir(dir: string, expected?: PluginPin): {
   name: string
@@ -44,3 +54,7 @@ export function fetchPlugin(
 ): string
 
 export function fetchWorkspacePlugin(plugin: PluginPin, outDir: string): string
+
+export function productionInstallDependencies(
+  deps?: Record<string, string>,
+): Record<string, string>

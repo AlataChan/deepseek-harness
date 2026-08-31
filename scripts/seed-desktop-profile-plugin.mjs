@@ -47,6 +47,20 @@ autoInstallPeers: false
 `
 
 /**
+ * Retired official desktop bundle → current official name.
+ * A leftover `dsh-client-app` row plus 0.1.2 `dsh-base` both register `storage`.
+ */
+export const RETIRED_DESKTOP_BUNDLES = Object.freeze({
+  '@deepseek-ai/dsh-client-app': '@deepseek-ai/dsh-web-app',
+})
+
+/**
+ * Leftover overlay names removed from a desktop profile on seed and first launch.
+ * `dsh-context@0.36.0` imports `settingsNamespace`, which 0.1.2 no longer exports.
+ */
+export const STRIP_DESKTOP_BUNDLES = Object.freeze(['dsh-context'])
+
+/**
  * @typedef {{ name: string, version: string, source?: 'npm' | 'workspace', path?: string }} PluginPin
  * @typedef {{ profile: string, shippedBundles: string[], plugins: PluginPin[] }} PinFile
  */
@@ -115,6 +129,36 @@ export function validatePluginDir(dir, expected) {
  * @param {PluginPin} plugin
  * @param {{ firstInstall: boolean }} options
  */
+/**
+ * Rewrite leftover 0.1.1 desktop rows so a 0.1.2 companion can load.
+ * `@deepseek-ai/dsh-client-app` becomes `@deepseek-ai/dsh-web-app`.
+ * `dsh-context` is removed from bundles and dependencies.
+ * Extra bundles stay in place; duplicate mapped names are dropped.
+ * @param {object} manifest
+ * @returns {object}
+ */
+export function healDesktopProfileManifest(manifest) {
+  const next = structuredClone(manifest)
+  const raw = [...(next.dsh?.profile?.bundles ?? [])]
+  const bundles = []
+  const seen = new Set()
+  for (const name of raw) {
+    if (STRIP_DESKTOP_BUNDLES.includes(name)) continue
+    const mapped = RETIRED_DESKTOP_BUNDLES[name] ?? name
+    if (seen.has(mapped)) continue
+    seen.add(mapped)
+    bundles.push(mapped)
+  }
+  next.dsh = { ...next.dsh, profile: { ...next.dsh?.profile, bundles } }
+  if (next.dependencies !== undefined && next.dependencies !== null) {
+    const dependencies = { ...next.dependencies }
+    for (const name of STRIP_DESKTOP_BUNDLES) delete dependencies[name]
+    for (const from of Object.keys(RETIRED_DESKTOP_BUNDLES)) delete dependencies[from]
+    next.dependencies = dependencies
+  }
+  return next
+}
+
 export function mergeProfileManifest(manifest, plugin, options) {
   const next = structuredClone(manifest)
   next.private = true
@@ -147,7 +191,7 @@ export function installPluginIntoProfile(src, profileDir, shippedBundles) {
       dsh: { profile: { bundles: [...shippedBundles] } },
     }
   } else {
-    profileManifest = JSON.parse(readFileSync(profileManifestPath, 'utf8'))
+    profileManifest = healDesktopProfileManifest(JSON.parse(readFileSync(profileManifestPath, 'utf8')))
   }
   const dest = join(profileDir, 'node_modules', ...plugin.name.split('/'))
   const firstInstall = !existsSync(join(dest, 'package.json'))
@@ -208,6 +252,8 @@ export function fetchPlugin(plugin, outDir, options = {}) {
 
 /**
  * Copy a workspace pin from the built package tree (not `npm pack`).
+ * Third-party production dependencies are installed after the copy;
+ * `workspace:` Harness peers are not.
  * @param {PluginPin} plugin
  * @param {string} outDir
  */
@@ -224,27 +270,45 @@ export function fetchWorkspacePlugin(plugin, outDir) {
   }
   rmSync(dest, { recursive: true, force: true })
   copyPackageTree(src, dest)
+  installProductionDependencies(dest)
   validatePluginDir(dest, plugin)
   return dest
 }
 
 /**
- * Install an npm pin's production dependencies into the copied package.
- * Workspace pins skip this: they import Harness peers through the profile
- * module fallback. A community pin such as `@yejiming/dsh-data-agent` ships
- * `schemastery` / `zod` / ECharts as own dependencies; without them the
- * first-launch copy cannot load.
+ * Production specs npm can install. `workspace:` peers stay on the published
+ * manifest and resolve through the profile module fallback.
+ * @param {Record<string, string> | undefined} deps
+ * @returns {Record<string, string>}
+ */
+export function productionInstallDependencies(deps = {}) {
+  /** @type {Record<string, string>} */
+  const next = {}
+  for (const [name, spec] of Object.entries(deps)) {
+    if (typeof spec === 'string' && spec.startsWith('workspace:')) continue
+    next[name] = spec
+  }
+  return next
+}
+
+/**
+ * Install third-party production dependencies into a copied pin.
+ * `workspace:` Harness peers are omitted so they resolve through the
+ * profile module fallback. A community pin such as `@yejiming/dsh-data-agent`
+ * ships `schemastery` / `zod` / ECharts as own dependencies; the ask-data
+ * workspace pin ships `exceljs` / `zod` the same way. Without those copies
+ * the first-launch tree cannot import.
  * @param {string} dir
  */
 function installProductionDependencies(dir) {
   const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
-  const deps = manifest.dependencies
-  if (deps === undefined || Object.keys(deps).length === 0) return
+  const thirdParty = productionInstallDependencies(manifest.dependencies)
+  if (Object.keys(thirdParty).length === 0) return
   // A production dep that is also listed under `devDependencies` is dropped
   // by `npm install --omit=dev` (data-agent does this with `schemastery`).
   // Strip the unused faces for the install only; restore the published
   // manifest afterward so validate still sees the original package.json.
-  const installManifest = { ...manifest }
+  const installManifest = { ...manifest, dependencies: thirdParty }
   delete installManifest.devDependencies
   delete installManifest.peerDependencies
   delete installManifest.peerDependenciesMeta
@@ -341,6 +405,16 @@ function main(argv) {
     console.log(`seed: ${result.firstInstall ? 'installed' : 'refreshed'} ${result.name}@${result.version} -> ${result.dest}`)
     return
   }
+  if (command === 'heal') {
+    const profileDir = takeFlag(args, '--profile-dir')
+    if (profileDir === undefined) fail('usage: seed-desktop-profile-plugin.mjs heal --profile-dir <dir>')
+    const manifestPath = join(resolve(profileDir), 'package.json')
+    if (!existsSync(manifestPath)) fail(`seed: missing ${manifestPath}`)
+    const healed = healDesktopProfileManifest(JSON.parse(readFileSync(manifestPath, 'utf8')))
+    writeFileSync(manifestPath, `${JSON.stringify(healed, undefined, 2)}\n`)
+    console.log(`seed: healed ${manifestPath}`)
+    return
+  }
   if (command === 'seed') {
     const profileDir = takeFlag(args, '--profile-dir')
     if (profileDir === undefined) fail('usage: seed-desktop-profile-plugin.mjs seed --profile-dir <dir>')
@@ -352,7 +426,7 @@ function main(argv) {
     }
     return
   }
-  fail('usage: seed-desktop-profile-plugin.mjs fetch|validate|install|seed ...')
+  fail('usage: seed-desktop-profile-plugin.mjs fetch|validate|install|seed|heal ...')
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

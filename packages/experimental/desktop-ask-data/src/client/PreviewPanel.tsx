@@ -1,8 +1,7 @@
 /**
- * Import preview: table counts, columns, warnings, and the start-asking actions.
+ * Import preview: table counts, columns, and warnings. Commit lives on the page.
  */
 
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AskDataKey } from './locales.ts'
 import css from './DataSourcePage.module.css'
 
@@ -19,18 +18,15 @@ export interface PreviewPanelProps {
   warnings: readonly string[]
   t: (key: AskDataKey) => string
   warningText: (id: string) => string
-  onStart: () => void
-  onImportAnyway?: () => void
-  busy?: boolean
 }
 
 /**
- * Render preview tables, warning ids, and commit actions.
- * @param props - preview rows and actions.
+ * Render preview tables and warning ids.
+ * @param props - preview rows.
  * @returns the preview block.
  */
 export function PreviewPanel({
-  tables, warnings, t, warningText, onStart, onImportAnyway, busy,
+  tables, warnings, t, warningText,
 }: PreviewPanelProps) {
   return (
     <section className={css.section}>
@@ -52,12 +48,6 @@ export function PreviewPanel({
           ))}
         </ul>
       )}
-      <div className={css.footer}>
-        <Button variant="primary" disabled={busy} onClick={onStart}>{t('start')}</Button>
-        {warnings.length > 0 && onImportAnyway !== undefined && (
-          <Button disabled={busy} onClick={onImportAnyway}>{t('importAnyway')}</Button>
-        )}
-      </div>
     </section>
   )
 }

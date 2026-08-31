@@ -34,7 +34,9 @@ pub fn validate_physical_line(line: &str) -> Result<(), RecordViolation> {
     if line.len() > MAX_WIRE_RECORD_BYTES {
         return Err(RecordViolation::Oversize);
     }
-    serde_json::from_str::<Value>(line).map(|_| ()).map_err(|_| RecordViolation::InvalidJson)
+    serde_json::from_str::<Value>(line)
+        .map(|_| ())
+        .map_err(|_| RecordViolation::InvalidJson)
 }
 
 #[cfg(test)]

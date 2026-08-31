@@ -83,6 +83,93 @@ describe('bindSource', () => {
     expect(connect).not.toHaveBeenCalled()
   })
 
+  it('starts a Catalog scan after bind when the catalog is empty', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-data-bind-catalog-'))
+    const id = brandString<AskDataSourceId>('src-1')
+    const dir = join(home, 'imports', 'src-1')
+    await mkdir(dir, { recursive: true })
+    await writeFile(join(dir, 'data.sqlite'), 'x')
+    await putStoredSource(home, {
+      id,
+      displayName: 'sales.csv',
+      kind: 'import',
+      sqlitePath: 'data.sqlite',
+      sourceCopyPath: 'source.csv',
+      warnings: [],
+    })
+    const start = vi.fn(async () => ({ id: 'run-1' }))
+    const ctx = new Context()
+    ctx.provide('dataAgentConnections', {
+      get: () => undefined,
+      connect: vi.fn(async () => ({ summary: { profileId: 'ask-data:src-1' } })),
+      disconnect: vi.fn(),
+      resolveForExecution: async () => ({ database: 'x' }),
+    })
+    ctx.provide('dataAgentCatalog', { listSources: () => [] })
+    ctx.provide('dataAgentCatalogScanner', { start })
+    await bindSource(ctx, home, { sourceId: id, sessionId: 's1' as SessionId })
+    expect(start).toHaveBeenCalledWith({ sessionId: 's1', scope: { kind: 'source' } })
+  })
+
+  it('skips Catalog scan when a source is already registered', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-data-bind-catalog-skip-'))
+    const id = brandString<AskDataSourceId>('src-1')
+    const dir = join(home, 'imports', 'src-1')
+    await mkdir(dir, { recursive: true })
+    await writeFile(join(dir, 'data.sqlite'), 'x')
+    await putStoredSource(home, {
+      id,
+      displayName: 'sales.csv',
+      kind: 'import',
+      sqlitePath: 'data.sqlite',
+      sourceCopyPath: 'source.csv',
+      warnings: [],
+    })
+    const start = vi.fn()
+    const ctx = new Context()
+    ctx.provide('dataAgentConnections', {
+      get: () => undefined,
+      connect: vi.fn(async () => ({ summary: { profileId: 'ask-data:src-1' } })),
+      disconnect: vi.fn(),
+      resolveForExecution: async () => ({ database: 'x' }),
+    })
+    ctx.provide('dataAgentCatalog', { listSources: () => [{ id: 'ask-data:src-1' }] })
+    ctx.provide('dataAgentCatalogScanner', { start })
+    await bindSource(ctx, home, { sourceId: id, sessionId: 's1' as SessionId })
+    expect(start).not.toHaveBeenCalled()
+  })
+
+  it('still binds when Catalog scan throws', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-data-bind-catalog-fail-'))
+    const id = brandString<AskDataSourceId>('src-1')
+    const dir = join(home, 'imports', 'src-1')
+    await mkdir(dir, { recursive: true })
+    await writeFile(join(dir, 'data.sqlite'), 'x')
+    await putStoredSource(home, {
+      id,
+      displayName: 'sales.csv',
+      kind: 'import',
+      sqlitePath: 'data.sqlite',
+      sourceCopyPath: 'source.csv',
+      warnings: [],
+    })
+    const ctx = new Context()
+    ctx.provide('dataAgentConnections', {
+      get: () => undefined,
+      connect: vi.fn(async () => ({ summary: { profileId: 'ask-data:src-1' } })),
+      disconnect: vi.fn(),
+      resolveForExecution: async () => ({ database: 'x' }),
+    })
+    ctx.provide('dataAgentCatalog', { listSources: () => [] })
+    ctx.provide('dataAgentCatalogScanner', {
+      start: async () => {
+        throw new Error('Catalog scan requires a connected, stable connection profile')
+      },
+    })
+    const lease = await bindSource(ctx, home, { sourceId: id, sessionId: 's1' as SessionId })
+    expect(lease.binding.connectionRef).toBe('ask-data:src-1')
+  })
+
   it('rolls back a rebind of an already-registered profile without deleting it', async () => {
     const home = await mkdtemp(join(tmpdir(), 'ask-data-bind-rebind-'))
     const id = brandString<AskDataSourceId>('src-1')
@@ -171,6 +258,39 @@ describe('bindSource', () => {
     expect(lease.binding.connectionRef).toBe('saved-1')
     await lease.rollback()
     expect(disconnect).toHaveBeenCalled()
+  })
+
+  it('starts a Catalog scan after binding a saved profile', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-data-bind-saved-catalog-'))
+    const start = vi.fn(async () => ({ id: 'run-1' }))
+    const ctx = new Context()
+    ctx.provide('dataAgentConnections', {
+      get: () => undefined,
+      connect: vi.fn(async () => ({ summary: { profileId: 'saved-1' } })),
+      disconnect: vi.fn(async () => undefined),
+      resolveForExecution: async () => ({ database: '/saved.db' }),
+    })
+    ctx.provide('dataAgentCatalog', { listSources: () => [] })
+    ctx.provide('dataAgentCatalogScanner', { start })
+    ctx.provide('storageDomain', {
+      get: () => ({
+        table: (name: string) => name === 'profiles'
+          ? {
+            entries: () => [['saved-1', {
+              database: '/saved.db',
+              name: 'saved',
+              readonly: true,
+            }]][Symbol.iterator](),
+            delete: async () => false,
+          }
+          : { entries: () => [][Symbol.iterator](), delete: async () => false },
+      }),
+    })
+    await bindSource(ctx, home, {
+      sourceId: brandString<AskDataSourceId>('saved:saved-1'),
+      sessionId: 's1' as SessionId,
+    })
+    expect(start).toHaveBeenCalledWith({ sessionId: 's1', scope: { kind: 'source' } })
   })
 
   it('is a no-op rollback when a saved profile is already bound', async () => {

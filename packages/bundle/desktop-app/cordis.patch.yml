@@ -10,6 +10,11 @@
 - id: web-startup
   disabled: true
 
+# web-app mounts client-hmr for `dsh web` EventSource reload. The Tauri
+# WebView rejects that channel as insecure and bricks the window.
+- id: client-hmr
+  disabled: true
+
 # web-app mounts directory-picker-auto, which on a local macOS companion
 # resolves to native and provides `directoryPicker`. Pin browse instead so
 # the WebView owns the chooser and the service is registered once.

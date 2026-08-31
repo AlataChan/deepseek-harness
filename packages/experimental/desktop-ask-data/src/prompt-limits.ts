@@ -19,5 +19,6 @@ export function renderAskDataLimitsPrompt(): string {
     'CSV 仅 UTF-8 或 GB18030，入库为 UTF-8（csv-encoding）。',
     '不修复合并单元格、不合并两行表头、不删备注行（no-merge-repair）。',
     '已绑定连接只读，不能改表。',
+    'Catalog 在绑定后才会登记；目录仍空时不要调用 catalog-search，直接用 sql-query 读 sqlite_master 或 PRAGMA table_info。',
   ].join('')
 }

@@ -72,15 +72,18 @@ pub fn spawn_companion(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|error| ShellError::Config(format!("companion spawn failed: {error}")))?;
-    let stdin = child.stdin.take().ok_or_else(|| {
-        ShellError::Config("companion stdin was not piped".into())
-    })?;
-    let stdout = child.stdout.take().ok_or_else(|| {
-        ShellError::Config("companion stdout was not piped".into())
-    })?;
-    let stderr = child.stderr.take().ok_or_else(|| {
-        ShellError::Config("companion stderr was not piped".into())
-    })?;
+    let stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| ShellError::Config("companion stdin was not piped".into()))?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| ShellError::Config("companion stdout was not piped".into()))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| ShellError::Config("companion stderr was not piped".into()))?;
     let generation_id = Uuid::new_v4().to_string();
     let stdout_log = log_path.clone();
     let stdout_generation = generation_id.clone();
@@ -94,7 +97,7 @@ pub fn spawn_companion(
         for line in reader.lines() {
             let Ok(line) = line else {
                 ending = "stdout read error";
-                break
+                break;
             };
             match validate_physical_line(&line) {
                 Ok(()) => {
@@ -104,7 +107,9 @@ pub fn spawn_companion(
                     }
                 }
                 Err(violation) => {
-                    let _ = events.send(CarrierEvent::Closed { reason: violation.reason().into() });
+                    let _ = events.send(CarrierEvent::Closed {
+                        reason: violation.reason().into(),
+                    });
                     ending = "child wrote an invalid physical record";
                     break;
                 }
@@ -112,7 +117,10 @@ pub fn spawn_companion(
         }
         if let Some(path) = stdout_log {
             if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&path) {
-                let _ = writeln!(file, "--- generation {stdout_generation} stdout relay ended: {ending} ---");
+                let _ = writeln!(
+                    file,
+                    "--- generation {stdout_generation} stdout relay ended: {ending} ---"
+                );
             }
         }
     });
@@ -124,10 +132,17 @@ pub fn spawn_companion(
         // Generations are separated by a header so the order stays readable.
         let mut sink = log_path.and_then(|path| {
             path.parent().map(std::fs::create_dir_all);
-            OpenOptions::new().create(true).append(true).open(&path).ok()
+            OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&path)
+                .ok()
         });
         if let Some(file) = sink.as_mut() {
-            let _ = writeln!(file, "--- companion generation {log_generation} started ---");
+            let _ = writeln!(
+                file,
+                "--- companion generation {log_generation} started ---"
+            );
             let _ = file.flush();
         }
         let reader = BufReader::new(stderr);
@@ -139,7 +154,10 @@ pub fn spawn_companion(
             }
         }
         if let Some(file) = sink.as_mut() {
-            let _ = writeln!(file, "--- companion generation {log_generation} stderr closed ---");
+            let _ = writeln!(
+                file,
+                "--- companion generation {log_generation} stderr closed ---"
+            );
             let _ = file.flush();
         }
     });
@@ -157,16 +175,19 @@ impl CarrierChild {
      * @param line - JSON text without a trailing newline.
      */
     pub fn send_line(&mut self, line: &str) -> Result<(), ShellError> {
-        validate_physical_line(line).map_err(|violation| {
-            ShellError::Closed { reason: violation.reason().into() }
+        validate_physical_line(line).map_err(|violation| ShellError::Closed {
+            reason: violation.reason().into(),
         })?;
-        let stdin = self.stdin.as_mut().ok_or_else(|| {
-            ShellError::Config("companion stdin is closed".into())
+        let stdin = self
+            .stdin
+            .as_mut()
+            .ok_or_else(|| ShellError::Config("companion stdin is closed".into()))?;
+        writeln!(stdin, "{line}").map_err(|error| {
+            ShellError::Config(format!("companion stdin write failed: {error}"))
         })?;
-        writeln!(stdin, "{line}")
-            .map_err(|error| ShellError::Config(format!("companion stdin write failed: {error}")))?;
-        stdin.flush()
-            .map_err(|error| ShellError::Config(format!("companion stdin flush failed: {error}")))?;
+        stdin.flush().map_err(|error| {
+            ShellError::Config(format!("companion stdin flush failed: {error}"))
+        })?;
         Ok(())
     }
 
@@ -190,7 +211,11 @@ impl CarrierChild {
                     return Ok(ShutdownOutcome::Killed);
                 }
                 Ok(None) => thread::sleep(Duration::from_millis(20)),
-                Err(error) => return Err(ShellError::Config(format!("companion wait failed: {error}"))),
+                Err(error) => {
+                    return Err(ShellError::Config(format!(
+                        "companion wait failed: {error}"
+                    )))
+                }
             }
         }
     }
@@ -200,7 +225,9 @@ impl CarrierChild {
         match self.child.try_wait() {
             Ok(Some(status)) => Ok(status.code()),
             Ok(None) => Ok(None),
-            Err(error) => Err(ShellError::Config(format!("companion wait failed: {error}"))),
+            Err(error) => Err(ShellError::Config(format!(
+                "companion wait failed: {error}"
+            ))),
         }
     }
 }
@@ -239,21 +266,33 @@ mod tests {
     #[test]
     fn forwards_records_in_arrival_order_without_inspecting_fields() {
         let dir = tempdir().expect("tempdir");
-        let fixture = write_fixture(dir.path(), r#"
+        let fixture = write_fixture(
+            dir.path(),
+            r#"
 import { createInterface } from 'node:readline';
 const rl = createInterface({ input: process.stdin });
 rl.on('line', (line) => {
   process.stdout.write(line + '\n');
   process.stdout.write('{"type":"control/ready"}\n');
 });
-"#);
+"#,
+        );
         let (tx, rx) = event_channel();
-        let mut child = spawn_companion(&node_path(), &fixture, "/tmp/project", tx, None).expect("spawn");
-        child.send_line(r#"{"type":"control/hello"}"#).expect("hello");
+        let mut child =
+            spawn_companion(&node_path(), &fixture, "/tmp/project", tx, None).expect("spawn");
+        child
+            .send_line(r#"{"type":"control/hello"}"#)
+            .expect("hello");
         let first = rx.recv_timeout(Duration::from_secs(5)).expect("hello echo");
         let second = rx.recv_timeout(Duration::from_secs(5)).expect("ready");
-        assert_eq!(first, CarrierEvent::Record(r#"{"type":"control/hello"}"#.into()));
-        assert_eq!(second, CarrierEvent::Record(r#"{"type":"control/ready"}"#.into()));
+        assert_eq!(
+            first,
+            CarrierEvent::Record(r#"{"type":"control/hello"}"#.into())
+        );
+        assert_eq!(
+            second,
+            CarrierEvent::Record(r#"{"type":"control/ready"}"#.into())
+        );
         let _ = child.shutdown();
     }
 
@@ -261,22 +300,40 @@ rl.on('line', (line) => {
     fn closes_the_relay_when_the_child_writes_an_oversize_line() {
         let dir = tempdir().expect("tempdir");
         let oversized = format!("\"{}\"", "x".repeat(MAX_WIRE_RECORD_BYTES));
-        let fixture = write_fixture(dir.path(), &format!("process.stdout.write({oversized:?} + '\\n');\n"));
+        let fixture = write_fixture(
+            dir.path(),
+            &format!("process.stdout.write({oversized:?} + '\\n');\n"),
+        );
         let (tx, rx) = event_channel();
-        let child = spawn_companion(&node_path(), &fixture, "/tmp/project", tx, None).expect("spawn");
+        let child =
+            spawn_companion(&node_path(), &fixture, "/tmp/project", tx, None).expect("spawn");
         let event = rx.recv_timeout(Duration::from_secs(5)).expect("close");
-        assert_eq!(event, CarrierEvent::Closed { reason: crate::record::RecordViolation::Oversize.reason().into() });
+        assert_eq!(
+            event,
+            CarrierEvent::Closed {
+                reason: crate::record::RecordViolation::Oversize.reason().into()
+            }
+        );
         let _ = child.shutdown();
     }
 
     #[test]
     fn records_companion_stderr_to_the_log_path() {
         let dir = tempdir().expect("tempdir");
-        let fixture = write_fixture(dir.path(), "process.stderr.write('fatal load failure: boom\\n');\n");
+        let fixture = write_fixture(
+            dir.path(),
+            "process.stderr.write('fatal load failure: boom\\n');\n",
+        );
         let log = dir.path().join("logs").join("companion.log");
         let (tx, _rx) = event_channel();
-        let child = spawn_companion(&node_path(), &fixture, "/tmp/project", tx, Some(log.clone()))
-            .expect("spawn");
+        let child = spawn_companion(
+            &node_path(),
+            &fixture,
+            "/tmp/project",
+            tx,
+            Some(log.clone()),
+        )
+        .expect("spawn");
         let deadline = Instant::now() + Duration::from_secs(5);
         let mut recorded = String::new();
         while Instant::now() < deadline {
@@ -288,7 +345,10 @@ rl.on('line', (line) => {
             }
             thread::sleep(Duration::from_millis(25));
         }
-        assert!(recorded.contains("fatal load failure: boom"), "log was {recorded:?}");
+        assert!(
+            recorded.contains("fatal load failure: boom"),
+            "log was {recorded:?}"
+        );
         let _ = child.shutdown();
     }
 
@@ -300,7 +360,8 @@ rl.on('line', (line) => {
             "/tmp/project",
             event_channel().0,
             None,
-        ).expect_err("missing node");
+        )
+        .expect_err("missing node");
         assert!(matches!(error, ShellError::Config(_)));
         assert!(error.to_string().contains("spawn failed"));
     }

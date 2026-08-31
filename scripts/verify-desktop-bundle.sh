@@ -175,6 +175,58 @@ else
   ok "desktop-profile-plugins.json does not name dsh-context"
 fi
 
+if grep -q 'dsh-client-app' "$PIN"; then
+  bad "desktop-profile-plugins.json still names dsh-client-app — 0.1.2 base already owns storage"
+else
+  ok "desktop-profile-plugins.json does not name dsh-client-app"
+fi
+
+if awk '/const DESKTOP_SHIPPED_BUNDLES/,/];/' "$REPO_ROOT/apps/desktop/src-tauri/src/app.rs" | grep -q 'dsh-client-app'; then
+  bad "DESKTOP_SHIPPED_BUNDLES still lists dsh-client-app — first launch would recreate the storage clash"
+else
+  ok "app.rs first-launch template does not seed dsh-client-app"
+fi
+
+if awk '/id: client-hmr/,/disabled:/' "$REPO_ROOT/packages/bundle/desktop-app/cordis.patch.yml" | grep -q 'disabled: true'; then
+  ok "desktop-app disables client-hmr so the Tauri WebView can boot"
+else
+  bad "desktop-app still leaves client-hmr enabled — WebView reports The operation is insecure"
+fi
+
+DIRTY_PROFILE=$(mktemp -d)
+printf '%s\n' '{
+  "dependencies": { "dsh-context": "0.36.0" },
+  "dsh": { "profile": { "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-ai/dsh-client-app",
+    "@deepseek-ai/dsh-desktop-app",
+    "dsh-context"
+  ] } }
+}' > "$DIRTY_PROFILE/package.json"
+HEALED=$(node --input-type=module -e '
+import { readFileSync } from "node:fs"
+import { healDesktopProfileManifest } from process.argv[1]
+const healed = healDesktopProfileManifest(JSON.parse(readFileSync(process.argv[2], "utf8")))
+const bundles = healed.dsh.profile.bundles.join(",")
+if (bundles.includes("dsh-client-app") || bundles.includes("dsh-context")) {
+  console.error(bundles)
+  process.exit(1)
+}
+if (!bundles.includes("@deepseek-ai/dsh-web-app")) {
+  console.error(bundles)
+  process.exit(1)
+}
+console.log(bundles)
+' "$REPO_ROOT/scripts/seed-desktop-profile-plugin.mjs" "$DIRTY_PROFILE/package.json") || {
+  bad "healDesktopProfileManifest left dsh-client-app or dsh-context on a dirty fixture"
+}
+if [[ "$HEALED" == *"dsh-web-app"* ]]; then
+  ok "healDesktopProfileManifest rewrites a leftover 0.1.1 desktop profile"
+else
+  bad "healDesktopProfileManifest did not introduce dsh-web-app"
+fi
+rm -rf "$DIRTY_PROFILE"
+
 ASK_DATA_SRC="$REPO_ROOT/packages/experimental/desktop-ask-data"
 if [[ -f "$ASK_DATA_SRC/samples/sample-sales.xlsx" && -f "$ASK_DATA_SRC/samples/sample-sales.sqlite" ]]; then
   if [[ "$(basename "$ASK_DATA_SRC/samples/sample-sales.xlsx")" == "sample-sales.xlsx" ]]; then
@@ -200,6 +252,11 @@ while IFS= read -r dest; do
         ok "$dest includes sample-sales.xlsx and sample-sales.sqlite"
       else
         bad "$dest is missing sample-sales.xlsx or sample-sales.sqlite"
+      fi
+      if [[ -d "$plugin_dir/node_modules/exceljs" ]]; then
+        ok "$dest includes exceljs for Host spreadsheet import"
+      else
+        bad "$dest is missing node_modules/exceljs — workspace pin must install third-party deps"
       fi
     fi
   else

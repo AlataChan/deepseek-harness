@@ -85,7 +85,13 @@ impl DesktopShell {
      * @param bundled - bundled resources (Node binary, harness package) for self-contained distribution.
      */
     #[must_use]
-    pub fn new(config_dir: PathBuf, cache_root: PathBuf, cli_path: PathBuf, path_value: String, bundled: BundledResources) -> Self {
+    pub fn new(
+        config_dir: PathBuf,
+        cache_root: PathBuf,
+        cli_path: PathBuf,
+        path_value: String,
+        bundled: BundledResources,
+    ) -> Self {
         Self {
             config_dir,
             cache_root,
@@ -134,10 +140,12 @@ impl DesktopShell {
             Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
         })?;
         let node_path = match discovered {
-            crate::runtime::NodeDiscovery::Persisted(path) | crate::runtime::NodeDiscovery::Path(path) => path,
+            crate::runtime::NodeDiscovery::Persisted(path)
+            | crate::runtime::NodeDiscovery::Path(path) => path,
         };
         let origin = std::env::current_exe().unwrap_or_default();
-        let resolved = resolve_installed_runtime(&node_path, &self.cli_path, &config, &origin, &self.bundled)?;
+        let resolved =
+            resolve_installed_runtime(&node_path, &self.cli_path, &config, &origin, &self.bundled)?;
         self.resolved = Some(resolved.clone());
         Ok(resolved)
     }
@@ -148,9 +156,10 @@ impl DesktopShell {
             ShellError::Config("runtime_resolve must succeed before carrier_open".into())
         })?;
         let config = load_config_with_workspace_default(&self.config_dir)?;
-        let workspace_root = config.workspace_root.clone().ok_or_else(|| {
-            ShellError::Config("workspaceRoot is not configured".into())
-        })?;
+        let workspace_root = config
+            .workspace_root
+            .clone()
+            .ok_or_else(|| ShellError::Config("workspaceRoot is not configured".into()))?;
         self.stop_child()?;
         let (tx, rx) = std::sync::mpsc::channel();
         let child = spawn_companion(
@@ -187,13 +196,16 @@ impl DesktopShell {
         index: u32,
         id: &str,
     ) -> Result<CacheBundleResult, ShellError> {
-        let cached = cache_bundle(&self.cache_root, BundleCacheRequest {
-            source_path,
-            sha256,
-            graph_rev,
-            index,
-            id,
-        })?;
+        let cached = cache_bundle(
+            &self.cache_root,
+            BundleCacheRequest {
+                source_path,
+                sha256,
+                graph_rev,
+                index,
+                id,
+            },
+        )?;
         if let Some(previous) = self.generation_dir.take() {
             if previous != cached.generation_dir {
                 self.asset_scope.revoke(&previous);
@@ -206,7 +218,10 @@ impl DesktopShell {
             src: cached.src,
             destination: cached.destination.to_string_lossy().into_owned(),
             generation_dir: cached.generation_dir.to_string_lossy().into_owned(),
-            allowed: self.asset_scope.allowed().iter()
+            allowed: self
+                .asset_scope
+                .allowed()
+                .iter()
                 .map(|path| path.to_string_lossy().into_owned())
                 .collect(),
         })
@@ -217,7 +232,10 @@ impl DesktopShell {
      *
      * @param args - absolute source, digest, and graph identity.
      */
-    pub fn cache_bundle_from_args(&mut self, args: &CacheBundleArgs) -> Result<CacheBundleResult, ShellError> {
+    pub fn cache_bundle_from_args(
+        &mut self,
+        args: &CacheBundleArgs,
+    ) -> Result<CacheBundleResult, ShellError> {
         self.cache_bundle(
             Path::new(&args.source_path),
             &args.sha256,
@@ -230,7 +248,9 @@ impl DesktopShell {
     /// Live companion generation token, if a child is running.
     #[must_use]
     pub fn current_generation(&self) -> Option<&str> {
-        self.child.as_ref().map(|child| child.generation_id.as_str())
+        self.child
+            .as_ref()
+            .map(|child| child.generation_id.as_str())
     }
 
     /// Generation directory last allowed on the asset-protocol scope.
@@ -278,14 +298,20 @@ impl DesktopShell {
         let path = self.companion_log_path();
         let Some(parent) = path.parent() else { return };
         let _ = std::fs::create_dir_all(parent);
-        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+        {
             let _ = writeln!(file, "{line}");
         }
     }
 
     fn stop_child(&mut self) -> Result<Option<ShutdownOutcome>, ShellError> {
         self.events = None;
-        let Some(child) = self.child.take() else { return Ok(None) };
+        let Some(child) = self.child.take() else {
+            return Ok(None);
+        };
         // Recorded because a shell-initiated replacement and a companion that
         // died on its own are indistinguishable downstream: both leave the
         // Webview writing into a closed pipe.
@@ -334,28 +360,46 @@ mod tests {
         let source = dir.path().join("a.js");
         fs::write(&source, b"export {}\n").expect("write");
         let hash = crate::bundle_cache::sha256_bytes(b"export {}\n");
-        let first = shell.cache_bundle(&source, &hash, "rev-a", 0, "ui").expect("first");
-        assert_eq!(shell.asset_scope.allowed(), [PathBuf::from(&first.generation_dir)]);
-        let second = shell.cache_bundle(&source, &hash, "rev-b", 0, "ui").expect("second");
-        assert_eq!(shell.asset_scope.allowed(), [PathBuf::from(&second.generation_dir)]);
+        let first = shell
+            .cache_bundle(&source, &hash, "rev-a", 0, "ui")
+            .expect("first");
+        assert_eq!(
+            shell.asset_scope.allowed(),
+            [PathBuf::from(&first.generation_dir)]
+        );
+        let second = shell
+            .cache_bundle(&source, &hash, "rev-b", 0, "ui")
+            .expect("second");
+        assert_eq!(
+            shell.asset_scope.allowed(),
+            [PathBuf::from(&second.generation_dir)]
+        );
         assert!(!PathBuf::from(first.generation_dir).exists());
         assert_eq!(second.allowed, [second.generation_dir.clone()]);
     }
 
     fn write_alive_fixture(dir: &std::path::Path) -> PathBuf {
         let path = dir.join("alive.mjs");
-        fs::write(&path, r#"
+        fs::write(
+            &path,
+            r#"
 process.stdin.resume();
 process.stdin.on('end', () => process.exit(0));
-"#).expect("write fixture");
+"#,
+        )
+        .expect("write fixture");
         path
     }
 
     fn write_exit_fixture(dir: &std::path::Path, code: i32) -> PathBuf {
         let path = dir.join("exit.mjs");
-        fs::write(&path, format!(
+        fs::write(
+            &path,
+            format!(
             "process.stdout.write('{{\"type\":\"control/ready\"}}\\n'); process.exit({code});\n"
-        )).expect("write fixture");
+        ),
+        )
+        .expect("write fixture");
         path
     }
 
@@ -377,10 +421,14 @@ process.stdin.on('end', () => process.exit(0));
     fn carrier_open_replaces_a_live_child_after_waiting_for_exit() {
         let dir = tempdir().expect("tempdir");
         let fixture = write_alive_fixture(dir.path());
-        crate::persist::save_config(dir.path(), &RuntimeConfig {
-            workspace_root: Some("/tmp/project".into()),
-            ..RuntimeConfig::default()
-        }).expect("config");
+        crate::persist::save_config(
+            dir.path(),
+            &RuntimeConfig {
+                workspace_root: Some("/tmp/project".into()),
+                ..RuntimeConfig::default()
+            },
+        )
+        .expect("config");
         let mut shell = DesktopShell::new(
             dir.path().to_path_buf(),
             dir.path().to_path_buf(),
@@ -400,10 +448,14 @@ process.stdin.on('end', () => process.exit(0));
     fn child_exit_reports_a_lifecycle_transition() {
         let dir = tempdir().expect("tempdir");
         let fixture = write_exit_fixture(dir.path(), 7);
-        crate::persist::save_config(dir.path(), &RuntimeConfig {
-            workspace_root: Some("/tmp/project".into()),
-            ..RuntimeConfig::default()
-        }).expect("config");
+        crate::persist::save_config(
+            dir.path(),
+            &RuntimeConfig {
+                workspace_root: Some("/tmp/project".into()),
+                ..RuntimeConfig::default()
+            },
+        )
+        .expect("config");
         let mut shell = DesktopShell::new(
             dir.path().to_path_buf(),
             dir.path().to_path_buf(),
@@ -416,10 +468,16 @@ process.stdin.on('end', () => process.exit(0));
         let started = std::time::Instant::now();
         let events = loop {
             let events = shell.take_events();
-            if events.iter().any(|event| matches!(event, CarrierEvent::ChildExit { .. })) {
+            if events
+                .iter()
+                .any(|event| matches!(event, CarrierEvent::ChildExit { .. }))
+            {
                 break events;
             }
-            assert!(started.elapsed() < std::time::Duration::from_secs(5), "child exit was not reported");
+            assert!(
+                started.elapsed() < std::time::Duration::from_secs(5),
+                "child exit was not reported"
+            );
             std::thread::sleep(std::time::Duration::from_millis(20));
         };
         assert!(events.contains(&CarrierEvent::Record(r#"{"type":"control/ready"}"#.into())));
@@ -434,7 +492,10 @@ process.stdin.on('end', () => process.exit(0));
             include_str!("app.rs"),
             include_str!("bin/carrier-harness.rs"),
         ] {
-            assert!(!source.contains(needle), "command {needle} must not be registered");
+            assert!(
+                !source.contains(needle),
+                "command {needle} must not be registered"
+            );
         }
     }
 }

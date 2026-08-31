@@ -12,7 +12,7 @@ pub use app::run;
 pub use bundle_cache::{asset_src, cache_bundle, BundleCacheRequest, CachedBundle};
 pub use carrier::{spawn_companion, CarrierChild, CarrierEvent, ShutdownOutcome};
 pub use persist::{load_config, save_config, RuntimeConfig};
-pub use record::{validate_physical_line, MAX_WIRE_RECORD_BYTES, RecordViolation};
+pub use record::{validate_physical_line, RecordViolation, MAX_WIRE_RECORD_BYTES};
 pub use runtime::{discover_node, resolve_installed_runtime, NodeDiscovery, ResolvedRuntime};
 pub use shell::{CarrierOpenResult, DesktopShell, ShellError};
 
@@ -92,27 +92,28 @@ pub fn forward_carrier_events(
     generation_id: String,
     mut emit: impl FnMut(DownlinkEvent) -> bool + Send + 'static,
 ) {
-    thread::spawn(move || {
-        loop {
-            let events = {
-                let Ok(mut guard) = shell.lock() else { return };
-                if guard.current_generation() != Some(generation_id.as_str()) {
-                    return;
-                }
-                guard.take_events()
-            };
-            if events.is_empty() {
-                thread::sleep(Duration::from_millis(15));
-                continue;
+    thread::spawn(move || loop {
+        let events = {
+            let Ok(mut guard) = shell.lock() else { return };
+            if guard.current_generation() != Some(generation_id.as_str()) {
+                return;
             }
-            for event in events {
-                let stop = matches!(event, CarrierEvent::Closed { .. } | CarrierEvent::ChildExit { .. });
-                if !emit(DownlinkEvent::from(event)) {
-                    return;
-                }
-                if stop {
-                    return;
-                }
+            guard.take_events()
+        };
+        if events.is_empty() {
+            thread::sleep(Duration::from_millis(15));
+            continue;
+        }
+        for event in events {
+            let stop = matches!(
+                event,
+                CarrierEvent::Closed { .. } | CarrierEvent::ChildExit { .. }
+            );
+            if !emit(DownlinkEvent::from(event)) {
+                return;
+            }
+            if stop {
+                return;
             }
         }
     });
@@ -124,18 +125,22 @@ mod spec_tests {
 
     #[test]
     fn asset_protocol_starts_enabled_and_empty() {
-        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json"))
-            .expect("tauri.conf.json");
-        assert_eq!(conf["app"]["security"]["assetProtocol"]["enable"], json!(true));
+        let conf: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json");
+        assert_eq!(
+            conf["app"]["security"]["assetProtocol"]["enable"],
+            json!(true)
+        );
         assert_eq!(conf["app"]["security"]["assetProtocol"]["scope"], json!([]));
     }
 
     #[test]
     fn webview_csp_forbids_eval_and_inline_scripts() {
-        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json"))
-            .expect("tauri.conf.json");
+        let conf: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json");
         let csp = conf["app"]["security"]["csp"].as_str().expect("csp");
-        let script = csp.split(';')
+        let script = csp
+            .split(';')
             .map(str::trim)
             .find(|part| part.starts_with("script-src"))
             .expect("script-src");
@@ -156,7 +161,10 @@ mod spec_tests {
             "cache_bundle",
         ] {
             assert!(app.contains(command), "{command} missing from app.rs");
-            assert!(harness.contains(command), "{command} missing from carrier-harness");
+            assert!(
+                harness.contains(command),
+                "{command} missing from carrier-harness"
+            );
         }
         let needle = concat!("workspace", "_set");
         assert!(!app.contains(needle));

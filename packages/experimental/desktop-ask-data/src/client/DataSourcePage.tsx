@@ -1,5 +1,5 @@
 /**
- * Root-scope data-source gate: sample first, then upload, then advanced connect.
+ * Root-scope data-source gate: sample first, then upload, then existing-database connect.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -8,7 +8,14 @@ import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import { encodeAskDataBytes, readFileBytes } from './bytes.ts'
 import type { AskDataKey } from './locales.ts'
 import { PreviewPanel, type PreviewTable } from './PreviewPanel.tsx'
+import {
+  ASK_DATA_TEMPLATE_CSV,
+  offerAskDataTemplate,
+  type AskDataTemplateOffer,
+} from './template.ts'
 import css from './DataSourcePage.module.css'
+
+const PITFALL_KEYS = ['pitfall1', 'pitfall2', 'pitfall3', 'pitfall4', 'pitfall5'] as const
 
 /** One listed source row from the Host. */
 export interface ListedSource {
@@ -46,8 +53,10 @@ export interface DataSourcePageRemotes {
 export interface DataSourcePageActions {
   cancel: () => Promise<void>
   onCommitted: (sessionId: string) => void
-  openSession: (sessionId: string) => void
+  onAdvanced: (sessionId: string) => void
   currentBlankSessionId?: string
+  /** Current Session when it already carries an ask-data bind. */
+  currentBound?: { sessionId: string; sourceId: string }
   workspaceId?: string
   sqlite3Missing?: boolean
 }
@@ -74,7 +83,7 @@ const WARNING_KEYS: Record<string, AskDataKey> = {
  */
 export function DataSourcePage({
   listSources, importSpreadsheet, importSample, commit, createAdvanced,
-  cancel, onCommitted, openSession, currentBlankSessionId, workspaceId,
+  cancel, onCommitted, onAdvanced, currentBlankSessionId, currentBound, workspaceId,
   sqlite3Missing, t,
 }: DataSourcePageProps) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -82,6 +91,8 @@ export function DataSourcePage({
   const [preview, setPreview] = useState<ListedPreview | undefined>()
   const [error, setError] = useState<string | undefined>()
   const [busy, setBusy] = useState(false)
+  const [templateOffer, setTemplateOffer] = useState<AskDataTemplateOffer | undefined>()
+  const [pickedId, setPickedId] = useState<string | undefined>()
   const replaceId = useRef<string | undefined>(undefined)
 
   const reload = (signal?: AbortSignal): void => {
@@ -117,10 +128,15 @@ export function DataSourcePage({
       return
     }
     setPreview(result.value)
+    setPickedId(result.value.source.id)
     reload()
   }
 
   const startWith = (sourceId: string): void => {
+    if (currentBound?.sourceId === sourceId) {
+      onCommitted(currentBound.sessionId)
+      return
+    }
     void run(async () => {
       const result = await commit({
         sourceId,
@@ -135,14 +151,35 @@ export function DataSourcePage({
     })
   }
 
+  const previewId = preview?.source.id
   const recent = [...sources]
-    .filter((row): row is ListedSource & { lastUsedAt: string } => row.lastUsedAt !== undefined)
+    .filter((row): row is ListedSource & { lastUsedAt: string } =>
+      row.lastUsedAt !== undefined && row.id !== previewId)
     .sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))
+  const recentIds = new Set(recent.map(row => row.id))
+  const rest = sources.filter(row => !recentIds.has(row.id) && row.id !== previewId)
+  const listed = [...recent, ...rest]
+  const selectedId = resolveSelectedId(pickedId, preview, listed)
+
+  const selectRow = (row: ListedSource): void => {
+    if (row.missing) return
+    setPickedId(row.id)
+    if (preview !== undefined && preview.source.id !== row.id) setPreview(undefined)
+  }
 
   return (
     <div className={css.page}>
       <h2 className={css.title}>{t('title')}</h2>
       <p className={css.lead}>{t('pageLead')}</p>
+      <section className={css.section}>
+        <h3 className={css.sectionTitle}>{t('pitfallsTitle')}</h3>
+        <ul className={css.pitfalls}>
+          {PITFALL_KEYS.map(key => (
+            <li key={key}>{t(key)}</li>
+          ))}
+        </ul>
+        <p className={css.helper}>{t('templateHint')}</p>
+      </section>
       <p className={css.helper}>{t('uploadHelper')}</p>
       {sqlite3Missing === true && <p className={css.error}>{t('sqlite3Missing')}</p>}
       <div className={css.actions}>
@@ -163,6 +200,17 @@ export function DataSourcePage({
           {t('upload')}
         </Button>
         <Button
+          variant="outline"
+          disabled={busy}
+          onClick={() => {
+            void run(async () => {
+              setTemplateOffer(await offerAskDataTemplate())
+            })
+          }}
+        >
+          {t('downloadTemplate')}
+        </Button>
+        <Button
           variant="ghost"
           disabled={busy}
           onClick={() => {
@@ -174,8 +222,7 @@ export function DataSourcePage({
                 fail(result)
                 return
               }
-              openSession(result.value.sessionId)
-              reload()
+              onAdvanced(result.value.sessionId)
             })
           }}
         >
@@ -183,6 +230,19 @@ export function DataSourcePage({
         </Button>
         <Button disabled={busy} onClick={() => { void cancel() }}>{t('cancel')}</Button>
       </div>
+      <p className={css.helper}>{t('advancedHint')}</p>
+      {templateOffer === 'saved' ? <p className={css.helper}>{t('templateSaved')}</p> : null}
+      {templateOffer === 'copied' ? <p className={css.helper}>{t('templateCopied')}</p> : null}
+      {templateOffer === 'shown' ? (
+        <div className={css.section}>
+          <p className={css.helper}>{t('templateCopyFallback')}</p>
+          <textarea
+            className={css.templateBody}
+            readOnly
+            value={ASK_DATA_TEMPLATE_CSV.replace(/^\uFEFF/, '')}
+          />
+        </div>
+      ) : null}
       <input
         ref={inputRef}
         className={css.hiddenInput}
@@ -209,11 +269,6 @@ export function DataSourcePage({
           warnings={preview.warnings}
           t={t}
           warningText={id => t(WARNING_KEYS[id] ?? 'failureLimits')}
-          busy={busy}
-          onStart={() => { startWith(preview.source.id) }}
-          {...preview.warnings.length === 0
-            ? {}
-            : { onImportAnyway: () => { startWith(preview.source.id) } }}
         />
       )}
       {error !== undefined && (
@@ -230,6 +285,9 @@ export function DataSourcePage({
           </Button>
         </div>
       )}
+      {listed.length > 0 && selectedId === undefined && (
+        <p className={css.helper}>{t('pickHint')}</p>
+      )}
       {recent.length > 0 && (
         <section className={css.section}>
           <h3 className={css.sectionTitle}>{t('recent')}</h3>
@@ -237,8 +295,9 @@ export function DataSourcePage({
             <SourceRow
               key={`recent-${row.id}`}
               row={row}
+              selected={row.id === selectedId}
               t={t}
-              onPick={() => { startWith(row.id) }}
+              onSelect={() => { selectRow(row) }}
               onReselect={() => {
                 replaceId.current = row.id
                 inputRef.current?.click()
@@ -247,15 +306,16 @@ export function DataSourcePage({
           ))}
         </section>
       )}
-      {sources.length > 0 && (
+      {rest.length > 0 && (
         <section className={css.section}>
           <h3 className={css.sectionTitle}>{t('allSources')}</h3>
-          {sources.map(row => (
+          {rest.map(row => (
             <SourceRow
               key={row.id}
               row={row}
+              selected={row.id === selectedId}
               t={t}
-              onPick={() => { startWith(row.id) }}
+              onSelect={() => { selectRow(row) }}
               onReselect={() => {
                 replaceId.current = row.id
                 inputRef.current?.click()
@@ -263,28 +323,72 @@ export function DataSourcePage({
             />
           ))}
         </section>
+      )}
+      {selectedId !== undefined && (
+        <div className={css.footer}>
+          <Button
+            variant="primary"
+            disabled={busy}
+            onClick={() => { startWith(selectedId) }}
+          >
+            {t('start')}
+          </Button>
+        </div>
       )}
     </div>
   )
 }
 
+/**
+ * The source the single start control will commit, after an explicit pick or import.
+ * @param pickedId - last clicked or imported source id.
+ * @param preview - open import preview, if any.
+ * @param listed - rows still shown in the lists.
+ * @returns a startable source id, or undefined before the user picks.
+ */
+function resolveSelectedId(
+  pickedId: string | undefined,
+  preview: ListedPreview | undefined,
+  listed: readonly ListedSource[],
+): string | undefined {
+  if (pickedId === undefined) return undefined
+  if (preview?.source.id === pickedId) return pickedId
+  const row = listed.find(item => item.id === pickedId)
+  if (row !== undefined && !row.missing) return pickedId
+  return undefined
+}
+
 function SourceRow({
-  row, t, onPick, onReselect,
+  row, selected, t, onSelect, onReselect,
 }: {
   row: ListedSource
+  selected: boolean
   t: (key: AskDataKey) => string
-  onPick: () => void
+  onSelect: () => void
   onReselect: () => void
 }) {
   return (
-    <div className={css.row}>
-      <span className={row.missing ? css.missing : undefined}>
-        {row.displayName}
-        {row.missing ? ` · ${t('missing')}` : ''}
-      </span>
+    <div className={selected ? `${css.row} ${css.rowSelected}` : css.row}>
+      {row.missing
+        ? (
+          <span className={css.missing}>
+            {row.displayName}
+            {` · ${t('missing')}`}
+          </span>
+        )
+        : (
+          <button
+            type="button"
+            className={css.rowPick}
+            aria-pressed={selected}
+            onClick={onSelect}
+          >
+            {row.displayName}
+          </button>
+        )}
       {row.missing
         ? <Button size="sm" onClick={onReselect}>{t('reselect')}</Button>
-        : <Button size="sm" onClick={onPick}>{t('start')}</Button>}
+        : null}
     </div>
   )
 }

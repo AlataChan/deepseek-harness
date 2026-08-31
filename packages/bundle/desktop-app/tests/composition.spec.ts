@@ -20,6 +20,7 @@ describe('the desktop bundle patch', () => {
       'webserver', 'connection', 'modules',
     ]))
     expect(rows.find(row => row.id === 'web-startup')?.disabled).toBe(true)
+    expect(rows.find(row => row.id === 'client-hmr')?.disabled).toBe(true)
     expect(rows.find(row => row.id === 'directory-picker')?.disabled).toBe(true)
     expect(ids.indexOf('desktop-startup')).toBeLessThan(ids.indexOf('connection-desktop'))
     expect(rows.find(row => row.id === 'connection-desktop')?.inject).toEqual([

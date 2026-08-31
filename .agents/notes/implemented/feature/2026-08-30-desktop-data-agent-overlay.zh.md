@@ -12,7 +12,7 @@ octopus_DSH 需要一条 SQLite 优先的问数路径，且不能改官方 `desk
 
 [`scripts/desktop-profile-plugins.json`](../../../../scripts/desktop-profile-plugins.json) 的钉是文件工作台加 `@yejiming/dsh-data-agent@0.1.3`。官方 `desktop-app` 和 `PROFILE_TEMPLATES.desktop` 不点名它。不再种子 `dsh-context`。用户点的桌面入口是问数 overlay；本笔记仍然只拥有 data-agent 钉。
 
-[`scripts/seed-desktop-profile-plugin.mjs`](../../../../scripts/seed-desktop-profile-plugin.mjs) 的 `npm pack` 使用去 `@` 的 tarball 名（`@scope/name` → `scope-name-version.tgz`）。拷贝后，带 `dependencies` 的 npm 钉会做一次生产安装：仅在安装期间去掉已发布的 `devDependencies` / `peerDependencies`，然后恢复原来的 `package.json`。安装结果不得出现 `node_modules/@deepseek-ai`。写入 profile 时，若生产 `node_modules` 是不含 `.pnpm` 的真目录则一并拷贝。workspace 钉仍跳过 `node_modules`。
+[`scripts/seed-desktop-profile-plugin.mjs`](../../../../scripts/seed-desktop-profile-plugin.mjs) 的 `npm pack` 使用去 `@` 的 tarball 名（`@scope/name` → `scope-name-version.tgz`）。拷贝后，带第三方 `dependencies` 的钉会做一次生产安装：仅在安装期间去掉 `workspace:` 规格、`devDependencies` 和 `peerDependencies`，然后恢复原来的 `package.json`。安装结果不得出现 `node_modules/@deepseek-ai`。写入 profile 时，若生产 `node_modules` 是不含 `.pnpm` 的真目录则一并拷贝。只点名 `workspace:` peer 的 workspace 钉仍跳过 `node_modules`。
 
 Host inject 需要 `agentPresets`，所以 desktop profile 能挂上，headless 不能。除 SQLite 和 ClickHouse HTTP 外，其它库要本机有对应 CLI。插件可选的 `dsh-client-runtime` inject 在 0.1.2 图里不存在该包时会被跳过。
 
@@ -28,4 +28,4 @@ Host inject 需要 `agentPresets`，所以 desktop profile 能挂上，headless 
 
 ## Consequences
 
-新 DMG 用户在本机有 `sqlite3` 时，首次启动后会有「数据模式」。MySQL/Postgres/Oracle 要本机已有对应 CLI。已经把 `dsh-context` 写进 `~/.dsh/profiles/desktop` 的用户必须去掉该 bundle，否则 companion 在 0.1.2 上起不来。
+新 DMG 用户在本机有 `sqlite3` 时，首次启动后会有「数据模式」。MySQL/Postgres/Oracle 要本机已有对应 CLI。仍列出 `dsh-client-app` 或 `dsh-context` 的 `~/.dsh/profiles/desktop` 会在加载和首次启动时被改写（[残留 profile 愈合](../bug-fix/2026-08-30-desktop-leftover-profile-heal.zh.md)）。
