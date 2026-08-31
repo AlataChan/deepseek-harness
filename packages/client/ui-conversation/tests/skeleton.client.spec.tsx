@@ -119,6 +119,8 @@ function mount(
     nestedSubagent?: boolean
     /** A composer block another plugin raised for this session. */
     composerBlock?: { reason: string }
+    /** Occupy `conversation.askData.gate` and hide the sendable composer. */
+    askDataGate?: boolean
     /** Mutable view ledger used by registration-order regressions. */
     viewTabs?: ViewTab[]
   } = {},
@@ -297,6 +299,7 @@ function mount(
     renderSlot,
     renderSlotChain,
     selectWorkspace: retargetWorkspace,
+    useAskDataGateOccupied: select => select(options.askDataGate === true),
     t,
   }
   const view = render(<ConversationRoot {...props} />)
@@ -573,6 +576,15 @@ describe('ConversationRoot resident composer', () => {
     // The agent-preset chip sits in the same row, for the same reason: both
     // choices are only open before the first message.
     expect(b.slotCalls).toContain('conversation.hero.agentPreset')
+    expect(b.slotCalls).toContain('conversation.hero.askData')
+    expect(b.view.queryByText('问数')).toBeNull()
+  })
+
+  it('hides the sendable composer while the ask-data gate is occupied', () => {
+    const b = mount(sessionSnapshotOf({ blank: true }), undefined, undefined, { askDataGate: true })
+    expect(b.view.queryByRole('textbox')).toBeNull()
+    expect(b.view.getByTestId('view-conversation.askData.gate')).toBeTruthy()
+    expect(b.view.queryByText('问数')).toBeNull()
   })
 
   it('prompt failure renders the promptError strip (ordinary failure, no transaction UI)', () => {

@@ -123,6 +123,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.brand.mark': { kind: 'single'; scope: 'root'; owner: HeroBrandMarkOwnerProps }
     /** Agent-preset control staged for a New Session. */
     'conversation.hero.agentPreset': { kind: 'single'; scope: 'root'; owner: HeroAgentPresetOwnerProps }
+    /** Ask-data chip staged for a New Session. */
+    'conversation.hero.askData': { kind: 'single'; scope: 'root'; owner: HeroAskDataOwnerProps }
+    /** Full data-source gate that replaces the sendable composer while occupied. */
+    'conversation.askData.gate': { kind: 'single'; scope: 'root'; owner: AskDataGateOwnerProps }
     /** Full-width entries above the composer card. */
     'conversation.input.dock': { kind: 'list'; scope: 'session'; owner: InputZone }
     /** Floating entries rendered inside the resident composer card. */
@@ -177,6 +181,18 @@ export interface HeroAgentPresetOwnerProps {
   children?: never
 }
 
+/** Owner share of the Hero ask-data chip. */
+export interface HeroAskDataOwnerProps {
+  /** Marker field: the occupant owns its opener. */
+  children?: never
+}
+
+/** Owner share of the ask-data data-source gate. */
+export interface AskDataGateOwnerProps {
+  /** Marker field: the occupant owns remotes and cancel. */
+  children?: never
+}
+
 /** Header actions derive their state from standard Session props. */
 export interface ConversationHeaderActionOwnerProps {
   /** Marker field: entries receive no owner-specific values. */
@@ -217,7 +233,11 @@ export interface ConversationInjected {
   /** Connect and open a blank Session in the selected Workspace. */
   selectWorkspace: (workspaceId: WorkspaceId) => Promise<void>
   /** Session-addressed composer block source, or the stable absent source. */
-  hooks: { composerBlock: ObservableSnapshot<ComposerBlock | undefined> }
+  hooks: {
+    composerBlock: ObservableSnapshot<ComposerBlock | undefined>
+    /** True while an occupant is registered on `conversation.askData.gate`. */
+    askDataGateOccupied: ObservableSnapshot<boolean>
+  }
 }
 
 /** Business callbacks injected into the strict Session body. */
@@ -327,6 +347,8 @@ export type ConversationSlotProps =
     | 'conversation.hero.brand.mark'
     | 'conversation.hero.workspace'
     | 'conversation.hero.agentPreset'
+    | 'conversation.hero.askData'
+    | 'conversation.askData.gate'
   >
   & InjectFace<ConversationInjected>
   & PropsLocale<'conversation'>

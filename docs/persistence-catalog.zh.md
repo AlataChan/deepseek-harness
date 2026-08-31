@@ -204,6 +204,24 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/interaction/user-approval/src/index.ts:32`](../packages/interaction/user-approval/src/index.ts)
 
+### `ask-data/*`
+
+<a id="ask-databound--log-only"></a>
+
+#### `ask-data/bound` — log-only
+
+```ts persistence-catalog
+/**
+ * The Session was bound to one ask-data source. Log-only: SQL tools
+ * resolve the connection through data-agent `resolveForExecution(sessionId)`,
+ * not this payload. Reconstruction of the Client list uses the
+ * `askDataBinding` projection.
+ */
+'ask-data/bound': AskDataBinding
+```
+
+来源：[`packages/host/ask-data/src/types.ts:26`](../packages/host/ask-data/src/types.ts)
+
 ### `assistant/*`
 
 <a id="assistantchunk--log-only"></a>

@@ -302,6 +302,8 @@
     { "path": "./packages/experimental/tool-agent-team" },
     { "path": "./packages/experimental/agent-team-web-profile" },
     { "path": "./packages/experimental/desktop-files" },
+    { "path": "./packages/experimental/desktop-ask-data" },
+    { "path": "./packages/host/ask-data" },
     { "path": "./packages/workflow/workflow" },
     { "path": "./packages/workflow/workflow-worker-thread" },
     { "path": "./packages/workflow/tool-workflow" },

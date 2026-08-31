@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-30-desktop-data-agent-overlay.md
-2026-08-30-desktop-data-agent-overlay.md: ce0287e95c4e11a3b4928c553fc6326926139617
-2026-08-30-desktop-data-agent-overlay.zh.md: fdaa2e5274306191d1ceee5eb9cb9639836e4592
+2026-08-30-desktop-data-agent-overlay.md: 4bf1702fa6132b65bf6d8d9418f183b04840d1a2
+2026-08-30-desktop-data-agent-overlay.zh.md: 237f91411eb53379e0ff27ce5035ad24555bb329

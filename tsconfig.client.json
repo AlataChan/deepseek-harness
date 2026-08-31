@@ -82,6 +82,7 @@
     { "path": "./packages/client/ui-subagent" },
     { "path": "./packages/experimental/client-ui-agent-team" },
     { "path": "./packages/experimental/desktop-files/tsconfig.client.json" },
+    { "path": "./packages/experimental/desktop-ask-data/tsconfig.client.json" },
     { "path": "./packages/client/ui-jobs" },
     { "path": "./packages/client/ui-schedule" },
     { "path": "./packages/client/ui-directory-picker-browse" },

@@ -10,7 +10,7 @@ Users need a SQLite-first「问数」path on octopus_DSH without rewriting offic
 
 ## Decision
 
-The pin in [`scripts/desktop-profile-plugins.json`](../../../../scripts/desktop-profile-plugins.json) is file-workbench plus `@yejiming/dsh-data-agent@0.1.3`. Official `desktop-app` and `PROFILE_TEMPLATES.desktop` do not name it. `dsh-context` is not seeded.
+The pin in [`scripts/desktop-profile-plugins.json`](../../../../scripts/desktop-profile-plugins.json) is file-workbench plus `@yejiming/dsh-data-agent@0.1.3`. Official `desktop-app` and `PROFILE_TEMPLATES.desktop` do not name it. `dsh-context` is not seeded. The desktop entry users click is the ask-data overlay; this note still owns only the data-agent pin.
 
 [`scripts/seed-desktop-profile-plugin.mjs`](../../../../scripts/seed-desktop-profile-plugin.mjs) `npm pack` uses the unscoped tarball name (`@scope/name` → `scope-name-version.tgz`). After copy, an npm pin with `dependencies` gets a production install: the published `devDependencies` / `peerDependencies` are stripped for that install only, then the original `package.json` is restored. The install must not materialize `node_modules/@deepseek-ai`. Profile install copies that production `node_modules` when it is a real directory without `.pnpm`. Workspace pins still skip `node_modules`.
 

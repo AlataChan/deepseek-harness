@@ -18,7 +18,9 @@
     "src/history.ts",
     "src/list.ts",
     "src/model-selection-projection.ts",
-    "src/skill-catalog.ts"
+    "src/skill-catalog.ts",
+    "src/ask-data.ts",
+    "src/session-gate.ts"
   ],
   "references": [
     { "path": "../../../vendor/cordis" },
@@ -35,6 +37,7 @@
     { "path": "../../util/deque" },
     { "path": "../../util/native-command" },
     { "path": "../../host/workspace-entries" },
+    { "path": "../../host/ask-data" },
     { "path": "../../preset/agent-presets" },
     { "path": "../../runtime-diagnostics/invariants" },
     { "path": "../../session/session-persistence" },

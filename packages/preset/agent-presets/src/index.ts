@@ -684,6 +684,24 @@ export class AgentPresets extends TypertRemoteService {
   private readonly switches = new Map<string, Promise<unknown>>()
 
   /**
+   * Hooks that run inside {@link swap} before recompose. session-controller
+   * uses this to share the per-session commit mutex and to refuse leaving
+   * data-agent after an ask-data bind.
+   */
+  private readonly admitSelectHooks = new Set<(agent: Agent, agentPreset: string) => void | Promise<void>>()
+
+  /**
+   * Register a hook that runs before every preset swap, including a direct
+   * Remote `select`. The disposer removes the hook.
+   * @param hook - called with the live agent and the requested preset id.
+   * @returns disposer.
+   */
+  admitSelect(hook: (agent: Agent, agentPreset: string) => void | Promise<void>): () => void {
+    this.admitSelectHooks.add(hook)
+    return () => { this.admitSelectHooks.delete(hook) }
+  }
+
+  /**
    * Compose a blank session's agent from a different preset and record it.
    * @param agent - the session's live agent, resolved from the wire identity.
    * @param agentPreset - the preset to compose the agent from instead.
@@ -707,6 +725,7 @@ export class AgentPresets extends TypertRemoteService {
 
   /** One queued switch: re-check, recompose, then record what the agent runs. */
   private async swap(agent: Agent, agentPreset: string): Promise<string> {
+    for (const hook of this.admitSelectHooks) await hook(agent, agentPreset)
     // Re-read inside the queue: an earlier switch may have run, and a
     // conversation may have started, since this call was queued. A turn is one
     // model-loop execution; standalone plugin events never open one, so a

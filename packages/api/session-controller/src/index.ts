@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-host-workspace-entries'
 import {
   WorkspaceEntriesError,
 } from '@deepseek-ai/dsh-host-workspace-entries'
+import type {} from '@deepseek-ai/dsh-host-ask-data'
 import type { SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionObservation } from '@deepseek-ai/dsh-session-query'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -55,7 +56,15 @@ import type {
   SessionSelectModelValue,
   SessionUpdateQueueRequest,
   SessionUpdateQueueValue,
+  SessionAskDataBinding,
+  SessionAskDataBindingRequest,
+  SessionAskDataImportPreview,
+  SessionAskDataSource,
+  SessionCommitAskDataRequest,
+  SessionCommitAskDataValue,
+  SessionImportAskDataSpreadsheetRequest,
 } from './types.ts'
+import { SessionAskDataController } from './ask-data.ts'
 
 export type * from './types.ts'
 export { ApiSessionNotFound } from './agent.ts'
@@ -112,6 +121,7 @@ export class SessionController extends TypertRemoteService {
   private readonly openPath: (path: string, signal: AbortSignal) => Promise<void>
   private readonly canOpenPath: () => boolean
   private readonly promotions = new Set<Promise<void>>()
+  private readonly askData: SessionAskDataController
 
   /**
    * @param ctx - Host context containing the Session capability assembly.
@@ -121,7 +131,15 @@ export class SessionController extends TypertRemoteService {
     super(ctx, 'sessionController', { namespace: 'session' })
     installModelSelectionProjection(ctx)
     this.agents = new ApiSessionAgentController(ctx)
+    this.askData = new SessionAskDataController(ctx, this.agents, process.cwd())
     this.commands = new SessionCommandController(ctx, this.agents, process.cwd())
+    const presets = ctx.get('agentPresets')
+    if (presets !== undefined && 'admitSelect' in presets) {
+      ctx.effect(
+        () => presets.admitSelect((agent, next) => { this.askData.assertSelectAllowed(agent, next) }),
+        'session-controller.ask-data.admitSelect',
+      )
+    }
     this.controlState = new SessionControlController(ctx)
     // Registered before history so reverse-order teardown closes every
     // follower before waiting for already-admitted promotions.
@@ -352,6 +370,68 @@ export class SessionController extends TypertRemoteService {
   }
 
   /**
+   * List overlay-managed sources plus unmatched data-agent connections.
+   * @param signal - caller lifetime; abort stops the listing.
+   * @returns listed sources.
+   * @throws RemoteError when the ask-data capability is absent.
+   */
+  @Remote('listAskDataSources')
+  listAskDataSources(signal: AbortSignal): Promise<readonly SessionAskDataSource[]> {
+    return this.askData.listSources(signal)
+  }
+
+  /**
+   * Import one `.xlsx` / `.csv`. `bytes` is canonical base64 of the decoded file.
+   * Does not apply a preset or open a session.
+   * @param request - filename, encoded bytes, optional replace target.
+   * @param signal - caller lifetime; abort stops the import.
+   * @returns preview read from the written sqlite.
+   */
+  @Remote('importAskDataSpreadsheet')
+  importAskDataSpreadsheet(
+    request: SessionImportAskDataSpreadsheetRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAskDataImportPreview> {
+    return this.askData.importSpreadsheet(request, signal)
+  }
+
+  /**
+   * Copy the packaged sample sqlite. Does not need host `sqlite3`.
+   * @param signal - caller lifetime; abort stops the copy.
+   * @returns preview of the copied sqlite.
+   */
+  @Remote('importAskDataSample')
+  importAskDataSample(signal: AbortSignal): Promise<SessionAskDataImportPreview> {
+    return this.askData.importSample(signal)
+  }
+
+  /**
+   * Bind one source to a Session. Host does not guess the current Session.
+   * Pass `sessionId` only when the caller already has a blank (or already
+   * bound-to-this-source) Session.
+   * @param request - source and optional session / workspace.
+   * @param signal - caller lifetime; abort stops the commit.
+   * @returns the Session identity after bind + `ask-data/bound`.
+   */
+  @Remote('commitAskData')
+  commitAskData(
+    request: SessionCommitAskDataRequest,
+    signal: AbortSignal,
+  ): Promise<SessionCommitAskDataValue> {
+    return this.askData.commit(request, signal)
+  }
+
+  /**
+   * Read the current ask-data bind of a live Session.
+   * @param request - Session identity.
+   * @returns the bind, or null before one.
+   */
+  @Remote('askDataBinding')
+  askDataBinding(request: SessionAskDataBindingRequest): SessionAskDataBinding | null {
+    return this.askData.askDataBinding(request.sessionId)
+  }
+
+  /**
    * Rename one Session after explicitly resuming it.
    * @param request - Session identity and proposed title.
    * @returns the accepted title and durable event sequence.
@@ -380,7 +460,12 @@ export class SessionController extends TypertRemoteService {
   @Remote('prompt')
   prompt(request: SessionPromptRequest, signal: AbortSignal): Promise<SessionPromptValue> {
     signal.throwIfAborted()
-    return this.commands.prompt(request)
+    return this.askData.gate.run(request.sessionId, 'wait', async () => {
+      const found = await this.agents.resolveAgent(request.sessionId)
+      if ('error' in found) throw found.error
+      this.askData.assertPromptAllowed(request.sessionId, found.agent)
+      return this.commands.prompt(request)
+    })
   }
 
   /**

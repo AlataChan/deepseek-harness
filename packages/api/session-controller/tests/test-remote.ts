@@ -50,6 +50,13 @@ import type {
   SessionSelectModelValue,
   SessionUpdateQueueRequest,
   SessionUpdateQueueValue,
+  SessionAskDataBinding,
+  SessionAskDataBindingRequest,
+  SessionAskDataImportPreview,
+  SessionAskDataSource,
+  SessionCommitAskDataRequest,
+  SessionCommitAskDataValue,
+  SessionImportAskDataSpreadsheetRequest,
 } from '../src/types.ts'
 
 /** Direct test face matching the generated `ctx.remote.session` unary methods. */
@@ -74,6 +81,19 @@ export interface TestSessionRemote {
     request: SessionListEntriesRequest,
     signal?: AbortSignal,
   ): Promise<RemoteResult<SessionListEntriesValue>>
+  listAskDataSources(signal?: AbortSignal): Promise<RemoteResult<readonly SessionAskDataSource[]>>
+  importAskDataSpreadsheet(
+    request: SessionImportAskDataSpreadsheetRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionAskDataImportPreview>>
+  importAskDataSample(signal?: AbortSignal): Promise<RemoteResult<SessionAskDataImportPreview>>
+  commitAskData(
+    request: SessionCommitAskDataRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionCommitAskDataValue>>
+  askDataBinding(
+    request: SessionAskDataBindingRequest,
+  ): Promise<RemoteResult<SessionAskDataBinding | null>>
   page(request: SessionPageRequest, signal?: AbortSignal): Promise<RemoteResult<SessionPage>>
   follow(request: SessionFollowRequest, signal?: AbortSignal): AsyncIterable<SessionFollowFrame>
   control(signal?: AbortSignal): AsyncIterable<SessionControlFrame>
@@ -277,6 +297,23 @@ export function createSessionTestRemote(
       () => direct.listEntries(request, signal),
       signal,
     ),
+    listAskDataSources: (signal = new AbortController().signal) => remoteResult(
+      () => direct.listAskDataSources(signal),
+      signal,
+    ),
+    importAskDataSpreadsheet: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.importAskDataSpreadsheet(request, signal),
+      signal,
+    ),
+    importAskDataSample: (signal = new AbortController().signal) => remoteResult(
+      () => direct.importAskDataSample(signal),
+      signal,
+    ),
+    commitAskData: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.commitAskData(request, signal),
+      signal,
+    ),
+    askDataBinding: request => remoteResult(() => direct.askDataBinding(request)),
     page: (request, signal = new AbortController().signal) => remoteResult(
       () => direct.page(request, signal),
       signal,

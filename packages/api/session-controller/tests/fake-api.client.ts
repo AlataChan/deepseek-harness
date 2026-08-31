@@ -13,6 +13,8 @@ import type {
   SessionControlFrame,
   SessionFollowFrame,
   SessionFollowRequest,
+  SessionAskDataImportPreview,
+  SessionAskDataSource,
   SessionListEntriesValue,
   SessionPage,
   SessionPageRequest,
@@ -155,6 +157,16 @@ export class FakeApiClient {
       entries: [],
       truncated: false,
     }))
+  onListAskDataSources: (payload: unknown) => Promise<RemoteResult<readonly SessionAskDataSource[]>> =
+    () => Promise.resolve(ok([]))
+  onImportAskDataSpreadsheet: (payload: unknown) => Promise<RemoteResult<SessionAskDataImportPreview>> =
+    () => Promise.resolve(ok({ source: { id: 'src-1', kind: 'import', displayName: 'a.csv', warnings: [], missing: false }, tables: [], warnings: [] }))
+  onImportAskDataSample: (payload: unknown) => Promise<RemoteResult<SessionAskDataImportPreview>> =
+    () => Promise.resolve(ok({ source: { id: 'src-s', kind: 'sample', displayName: '示例：销售明细', warnings: [], missing: false }, tables: [], warnings: [] }))
+  onCommitAskData: (payload: unknown) => Promise<RemoteResult<{ sessionId: SessionId }>> =
+    () => Promise.resolve(ok({ sessionId: 'fk-ask' as SessionId }))
+  onAskDataBinding: (payload: unknown) => Promise<RemoteResult<null>> =
+    () => Promise.resolve(ok(null))
 
   private readonly followConns = new Map<SessionId, ValueStreamConn<SessionFollowFrame>[]>()
   private readonly controlConns: ValueStreamConn<SessionControlFrame>[] = []
@@ -244,6 +256,31 @@ export class FakeApiClient {
           'session.listEntries',
           payload,
           this.onListEntries(payload),
+        ),
+        listAskDataSources: payload => this.record(
+          'session.listAskDataSources',
+          payload,
+          this.onListAskDataSources(payload),
+        ),
+        importAskDataSpreadsheet: payload => this.record(
+          'session.importAskDataSpreadsheet',
+          payload,
+          this.onImportAskDataSpreadsheet(payload),
+        ),
+        importAskDataSample: payload => this.record(
+          'session.importAskDataSample',
+          payload,
+          this.onImportAskDataSample(payload),
+        ),
+        commitAskData: payload => this.record(
+          'session.commitAskData',
+          payload,
+          this.onCommitAskData(payload),
+        ),
+        askDataBinding: payload => this.record(
+          'session.askDataBinding',
+          payload,
+          this.onAskDataBinding(payload),
         ),
         page: request => this.page(request),
         follow: (request, signal) => this.openFollow(request, signal),

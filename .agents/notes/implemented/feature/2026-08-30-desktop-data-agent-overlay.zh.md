@@ -10,7 +10,7 @@ octopus_DSH 需要一条 SQLite 优先的问数路径，且不能改官方 `desk
 
 ## Decision
 
-[`scripts/desktop-profile-plugins.json`](../../../../scripts/desktop-profile-plugins.json) 的钉是文件工作台加 `@yejiming/dsh-data-agent@0.1.3`。官方 `desktop-app` 和 `PROFILE_TEMPLATES.desktop` 不点名它。不再种子 `dsh-context`。
+[`scripts/desktop-profile-plugins.json`](../../../../scripts/desktop-profile-plugins.json) 的钉是文件工作台加 `@yejiming/dsh-data-agent@0.1.3`。官方 `desktop-app` 和 `PROFILE_TEMPLATES.desktop` 不点名它。不再种子 `dsh-context`。用户点的桌面入口是问数 overlay；本笔记仍然只拥有 data-agent 钉。
 
 [`scripts/seed-desktop-profile-plugin.mjs`](../../../../scripts/seed-desktop-profile-plugin.mjs) 的 `npm pack` 使用去 `@` 的 tarball 名（`@scope/name` → `scope-name-version.tgz`）。拷贝后，带 `dependencies` 的 npm 钉会做一次生产安装：仅在安装期间去掉已发布的 `devDependencies` / `peerDependencies`，然后恢复原来的 `package.json`。安装结果不得出现 `node_modules/@deepseek-ai`。写入 profile 时，若生产 `node_modules` 是不含 `.pnpm` 的真目录则一并拷贝。workspace 钉仍跳过 `node_modules`。
 

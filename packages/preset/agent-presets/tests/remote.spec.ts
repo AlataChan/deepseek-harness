@@ -18,7 +18,7 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import { remoteErrorOf, type RemoteFailure } from '@deepseek-ai/dsh-typert-protocol'
+import { RemoteError, remoteErrorOf, type RemoteFailure } from '@deepseek-ai/dsh-typert-protocol'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AgentPresets, { COMPOSITION_FILE, METADATA_FILE } from '@deepseek-ai/dsh-agent-presets'
 import type { Config } from '@deepseek-ai/dsh-agent-presets'
@@ -448,6 +448,21 @@ describe('switching one session\'s composition', () => {
       details: { agentPreset: 'damaged' },
     })
     expect(reasonOf(failure)).not.toBe('')
+  })
+
+  it('runs admitSelect hooks before recompose', async () => {
+    const ctx = await harness()
+    const agent = await agentOn(ctx, 'sel-admit', 'standard')
+    const seen: string[] = []
+    const dispose = ctx.agentPresets.admitSelect((_agent, next) => {
+      seen.push(next)
+      throw new RemoteError('session/ask-data-bound', 'bound', { sessionId: agent.id })
+    })
+    const failure = await remoteFailure(ctx.agentPresets.select(agent, 'minimal'))
+    expect(failure).toMatchObject({ code: 'session/ask-data-bound' })
+    expect(seen).toEqual(['minimal'])
+    expect(ctx.agentPresets.composedPreset(agent.ctx)).toBe('standard')
+    dispose()
   })
 
   it('raises an unrelated switch failure exactly as it was thrown', async () => {

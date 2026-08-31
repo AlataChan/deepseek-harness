@@ -199,6 +199,15 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'session/entries-unavailable': {}
     'session/entries-unreadable': { readonly path: string }
     'session/entries-outside-root': { readonly path: string; readonly root: string }
+    'session/ask-data-unavailable': {}
+    'session/ask-data-unbound': { readonly sessionId: SessionId }
+    'session/ask-data-bound': { readonly sessionId: SessionId }
+    'session/busy': { readonly sessionId: SessionId }
+    'session/ask-data-failed': {
+      readonly code: string
+      readonly ruleId?: string
+      readonly limit?: number
+    }
     'subagent/not-found': {
       readonly parentSessionId: SessionId
       readonly childSessionId: SessionId
@@ -387,6 +396,66 @@ export interface SessionListEntriesValue {
   readonly root: string
   readonly entries: readonly SessionWorkspaceEntry[]
   readonly truncated: boolean
+}
+
+/** Decoded-byte cap for `importAskDataSpreadsheet`; matches overlay `limits.ts`. */
+export const ASK_DATA_MAX_DECODED_BYTES = 50 * 1024 * 1024
+
+/** One listed ask-data source on the wire. */
+export interface SessionAskDataSource {
+  readonly id: string
+  readonly displayName: string
+  readonly kind: 'sample' | 'import' | 'saved'
+  readonly connectionRef?: string
+  readonly lastUsedAt?: string
+  readonly warnings: readonly string[]
+  readonly missing: boolean
+}
+
+/** One imported table as shown in preview. */
+export interface SessionAskDataTablePreview {
+  readonly name: string
+  readonly rowCount: number
+  readonly columns: readonly string[]
+}
+
+/** Result of an ask-data import Remote. */
+export interface SessionAskDataImportPreview {
+  readonly source: SessionAskDataSource
+  readonly tables: readonly SessionAskDataTablePreview[]
+  readonly warnings: readonly string[]
+}
+
+/** Spreadsheet import request; `bytes` is canonical base64. */
+export interface SessionImportAskDataSpreadsheetRequest {
+  readonly filename: string
+  readonly bytes: string
+  readonly replaceSourceId?: string
+}
+
+/** Bind one source to a Session; Host does not guess the current Session. */
+export interface SessionCommitAskDataRequest {
+  readonly sourceId: string
+  readonly sessionId?: SessionId
+  readonly workspaceId?: WorkspaceId
+}
+
+/** Identity of the Session that now carries the bind. */
+export interface SessionCommitAskDataValue {
+  readonly sessionId: SessionId
+}
+
+/** Fields recorded when a Session is bound to one data source. */
+export interface SessionAskDataBinding {
+  readonly sourceId: string
+  readonly connectionRef: string
+  readonly displayName: string
+  readonly readonly: boolean
+}
+
+/** Request the current ask-data bind of one Session. */
+export interface SessionAskDataBindingRequest {
+  readonly sessionId: SessionId
 }
 
 /** Client-minted prompt identity used to reconcile optimistic and durable messages. */

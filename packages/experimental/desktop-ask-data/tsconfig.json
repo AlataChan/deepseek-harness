@@ -1,0 +1,33 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src/index.ts",
+    "src/bind.ts",
+    "src/import-spreadsheet.ts",
+    "src/invariant.ts",
+    "src/limits.ts",
+    "src/manifest.ts",
+    "src/prompt-limits.ts",
+    "src/saved-connections.ts",
+    "src/sources.ts",
+    "src/sqlite-write.ts",
+    "src/zip-scan.ts"
+  ],
+  "references": [
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../host/ask-data" },
+    { "path": "../../core/agent" },
+    { "path": "../../util/home-paths" },
+    { "path": "../../util/brand" },
+    { "path": "../../core/session" },
+    { "path": "../../core/system-prompt" },
+    { "path": "../../session/session-projection" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

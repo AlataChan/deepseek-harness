@@ -441,4 +441,34 @@ describe('the new-session chip controller', () => {
     expect(controller.store.getSnapshot()).toMatchObject({ error: 'host down', options: [] })
   })
 
+  it('holds a staged pick until the ask-data page commits', async () => {
+    const writes: Recorded[] = []
+    const current = {
+      id: 's1' as SessionId,
+      blank: true,
+      projectionValues: { agentPreset: 'standard' },
+    }
+    const controller = chip(ROSTER, current, { writes })
+    await controller.load()
+    controller.stage('data-agent', { hold: true })
+    await controller.apply()
+    expect(writes).toEqual([])
+    expect(controller.store.getSnapshot().current).toBe('data-agent')
+    controller.clearStage()
+    await controller.apply()
+    expect(writes).toEqual([])
+    expect(controller.store.getSnapshot().current).toBe('standard')
+  })
+
+  it('clears the introduce cue once and ignores a repeat acknowledgement', async () => {
+    const controller = chip(ROSTER, undefined)
+    await controller.load()
+    controller.stage('data-agent', { introduce: true })
+    expect(controller.store.getSnapshot().introduce).toBe(true)
+    controller.introduced()
+    expect(controller.store.getSnapshot().introduce).toBe(false)
+    controller.introduced()
+    expect(controller.store.getSnapshot().introduce).toBe(false)
+  })
+
 })

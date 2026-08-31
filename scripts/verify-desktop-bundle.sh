@@ -169,6 +169,23 @@ else
   bad "desktop-profile-plugins.json missing"
 fi
 
+if grep -q 'dsh-context' "$PIN"; then
+  bad "desktop-profile-plugins.json still names dsh-context — companion boot fails on that leftover"
+else
+  ok "desktop-profile-plugins.json does not name dsh-context"
+fi
+
+ASK_DATA_SRC="$REPO_ROOT/packages/experimental/desktop-ask-data"
+if [[ -f "$ASK_DATA_SRC/samples/sample-sales.xlsx" && -f "$ASK_DATA_SRC/samples/sample-sales.sqlite" ]]; then
+  if [[ "$(basename "$ASK_DATA_SRC/samples/sample-sales.xlsx")" == "sample-sales.xlsx" ]]; then
+    ok "ask-data sample-sales.xlsx and sample-sales.sqlite are present with ASCII names"
+  else
+    bad "ask-data sample filenames are not ASCII sample-sales.*"
+  fi
+else
+  bad "ask-data samples/sample-sales.xlsx or .sqlite missing"
+fi
+
 while IFS= read -r dest; do
   [[ -z "$dest" ]] && continue
   plugin_dir="$RES/profile-plugins/$dest"
@@ -177,6 +194,13 @@ while IFS= read -r dest; do
       ok "$dest is a loadable dsh.bundle + dsh.client package"
     else
       bad "$dest failed seed validation"
+    fi
+    if [[ "$dest" == "@deepseek-ai/dsh-experimental-desktop-ask-data" ]]; then
+      if [[ -f "$plugin_dir/samples/sample-sales.xlsx" && -f "$plugin_dir/samples/sample-sales.sqlite" ]]; then
+        ok "$dest includes sample-sales.xlsx and sample-sales.sqlite"
+      else
+        bad "$dest is missing sample-sales.xlsx or sample-sales.sqlite"
+      fi
     fi
   else
     bad "profile-plugins/$dest missing — overlay will not install on first run"
@@ -195,6 +219,11 @@ if [[ -f "$SESSION_CLIENT" ]] && grep -q 'listEntries' "$SESSION_CLIENT"; then
   ok "bundled session-controller remote face includes listEntries"
 else
   bad "bundled session-controller remote face missing listEntries — rebuild that Host face before packaging"
+fi
+if [[ -f "$SESSION_CLIENT" ]] && grep -q 'commitAskData' "$SESSION_CLIENT"; then
+  ok "bundled session-controller remote face includes commitAskData"
+else
+  bad "bundled session-controller remote face missing commitAskData — rebuild that Host face before packaging"
 fi
 
 # ── 8. Code signature must be intact after embedding Node / harness ─────────

@@ -47,6 +47,32 @@ export type { AgentPresetLabelInjected, AgentPresetLabelProps } from './AgentPre
 export type { AgentPresetSeatInjected, AgentPresetSeatProps } from './AgentPresetSeat.tsx'
 export type { AgentPresetSectionInjected, AgentPresetSectionProps } from './AgentPresetSection.tsx'
 export type { AgentPresetSeatState } from './seat-store.ts'
+
+/** Conversation-scoped face for staging / applying the next session preset. */
+export interface AgentPresetSeat {
+  /**
+   * Stage a preset for the next session. `{ hold: true }` keeps {@link apply} from consuming it.
+   * @param id - preset id.
+   * @param introduce - boolean introduce cue, or `{ hold, introduce }`.
+   */
+  stage(id: string, introduce?: boolean | { hold?: boolean; introduce?: boolean }): void
+  /**
+   * Apply a preset to the current blank session.
+   * @param id - preset id.
+   * @returns refusal text, or undefined once settled.
+   */
+  select(id: string): Promise<string | undefined>
+  /** Drop a held or unused stage without applying it. */
+  clearStage(): void
+  /** Apply a non-held stage when a blank session is current. */
+  apply(): Promise<void>
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    agentPresetSeat: AgentPresetSeat
+  }
+}
 export {
   draftBlocker, type AgentPresetSectionState, type CopyDraft, type PresetRow, type PresetView,
 } from './section-store.ts'
@@ -107,6 +133,14 @@ export function apply(ctx: ClientContext): void {
       const state = scope.sessions.list.getSnapshot()
       return state.current === undefined ? undefined : state.byId[state.current]
     })
+
+    const seatFace: AgentPresetSeat = {
+      stage: (id, opts) => { seat.stage(id, opts as never) },
+      select: id => seat.select(id),
+      clearStage: () => { seat.clearStage() },
+      apply: () => seat.apply(),
+    }
+    scope.provide('agentPresetSeat', seatFace)
 
     const seatInjected = (): AgentPresetSeatInjected => ({
       hooks: { agentPresetSeat: seat.store },

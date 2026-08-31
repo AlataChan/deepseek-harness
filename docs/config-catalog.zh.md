@@ -435,6 +435,24 @@ export interface ConnectionConfig {
 
 来源：[`packages/client/connection/src/index.ts:55`](../packages/client/connection/src/index.ts)
 
+<a id="deepseek-aidsh-client-connection-process"></a>
+
+## `@deepseek-ai/dsh-client-connection-process`
+
+需要：`connection` · `clientModules` · `typertGateway`
+
+```ts config-catalog
+/** Companion carrier configuration. */
+export interface Config {
+  /** Maximum logical bytes accepted for RPC and stream-data frames. */
+  maxLogicalRpcBytes?: number
+  /** Workspace root the handshake must repeat exactly after path normalization. */
+  workspaceRoot?: string
+}
+```
+
+来源：[`packages/client/connection-process/src/index.ts:29`](../packages/client/connection-process/src/index.ts)
+
 <a id="deepseek-aidsh-client-hmr"></a>
 
 ## `@deepseek-ai/dsh-client-hmr`
@@ -590,6 +608,22 @@ export interface Config {
 
 来源：[`packages/credentials/credentials-local/src/index.ts:64`](../packages/credentials/credentials-local/src/index.ts)
 
+<a id="deepseek-aidsh-desktop-app"></a>
+
+## `@deepseek-ai/dsh-desktop-app`
+
+```ts config-catalog
+/** Desktop runtime configuration derived from the startup provider. */
+export interface Config {
+  /** Absolute workspace root selected by the desktop shell. */
+  workspaceRoot: string
+  /** Whether to register model-visible desktop surface orientation. */
+  surfaceContext: boolean
+}
+```
+
+来源：[`packages/bundle/desktop-app/src/index.ts:20`](../packages/bundle/desktop-app/src/index.ts)
+
 <a id="deepseek-aidsh-e2b"></a>
 
 ## `@deepseek-ai/dsh-e2b`
@@ -631,6 +665,39 @@ export interface Config {
 ```
 
 来源：[`packages/experimental/agent-team/src/types.ts:125`](../packages/experimental/agent-team/src/types.ts)
+
+<a id="deepseek-aidsh-experimental-desktop-ask-data"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-ask-data`
+
+需要：`sessionProjections` · `systemPrompt`
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface Config {
+  /**
+   * Absolute data-sources directory. When omitted, uses the companion-resolved
+   * profile home: `{dshHome}/profiles/desktop/data-sources`.
+   */
+  dataHome?: string
+}
+```
+
+来源：[`packages/experimental/desktop-ask-data/src/index.ts:24`](../packages/experimental/desktop-ask-data/src/index.ts)
+
+<a id="deepseek-aidsh-experimental-desktop-files"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-files`
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface Config {
+  /** Complete-result bound of one listing level; see {@link DesktopWorkspaceEntries.Config}. */
+  maxEntries: number
+}
+```
+
+来源：[`packages/experimental/desktop-files/src/index.ts:14`](../packages/experimental/desktop-files/src/index.ts)
 
 <a id="deepseek-aidsh-experimental-inspector"></a>
 
@@ -3498,7 +3565,9 @@ export interface Config {
 - `@deepseek-ai/dsh-credentials` — 抽象 `Credentials`（[`packages/credentials/credentials/src/index.ts`](../packages/credentials/credentials/src/index.ts)）
 - `@deepseek-ai/dsh-file-reference` — 抽象 `FileReferenceService`（[`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts)）
 - `@deepseek-ai/dsh-fs` — 抽象 `FileSystem`（[`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts)）
+- `@deepseek-ai/dsh-host-ask-data` — 抽象 `AskData`（[`packages/host/ask-data/src/index.ts`](../packages/host/ask-data/src/index.ts)）
 - `@deepseek-ai/dsh-host-directory-picker` — 抽象 `DirectoryPicker`（[`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts)）
+- `@deepseek-ai/dsh-host-workspace-entries` — 抽象 `WorkspaceEntries`（[`packages/host/workspace-entries/src/index.ts`](../packages/host/workspace-entries/src/index.ts)）
 - `@deepseek-ai/dsh-jobs` — 抽象 `JobRegistry`（[`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts)）
 - `@deepseek-ai/dsh-sandbox` — 抽象 `SandboxProvider`（[`packages/sandbox/sandbox/src/index.ts`](../packages/sandbox/sandbox/src/index.ts)）
 - `@deepseek-ai/dsh-session-persistence` — 抽象 `SessionPersistence`（[`packages/session/session-persistence/src/index.ts`](../packages/session/session-persistence/src/index.ts)）
@@ -3518,6 +3587,7 @@ export interface Config {
 - `@deepseek-ai/dsh-atomic-write`（[`packages/util/atomic-write/src/index.ts`](../packages/util/atomic-write/src/index.ts)）
 - `@deepseek-ai/dsh-base`（[`packages/bundle/base/src/index.ts`](../packages/bundle/base/src/index.ts)）
 - `@deepseek-ai/dsh-brand`（[`packages/util/brand/src/index.ts`](../packages/util/brand/src/index.ts)）
+- `@deepseek-ai/dsh-client-connection-desktop`（[`packages/client/connection-desktop/src/index.ts`](../packages/client/connection-desktop/src/index.ts)）
 - `@deepseek-ai/dsh-client-store`（[`packages/client/store/src/index.ts`](../packages/client/store/src/index.ts)）
 - `@deepseek-ai/dsh-client-test-runtime`（[`packages/test-support/client-runtime/src/index.ts`](../packages/test-support/client-runtime/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-primitives`（[`packages/client/ui-primitives/src/index.ts`](../packages/client/ui-primitives/src/index.ts)）
@@ -3532,6 +3602,7 @@ export interface Config {
 - `@deepseek-ai/dsh-experimental-webworker-runtime`（[`packages/experimental/webworker-runtime/src/index.ts`](../packages/experimental/webworker-runtime/src/index.ts)）
 - `@deepseek-ai/dsh-home-paths`（[`packages/util/home-paths/src/index.ts`](../packages/util/home-paths/src/index.ts)）
 - `@deepseek-ai/dsh-hook-protocol`（[`packages/hooks/hook-protocol/src/index.ts`](../packages/hooks/hook-protocol/src/index.ts)）
+- `@deepseek-ai/dsh-installed-runtime`（[`packages/boot/installed-runtime/src/index.ts`](../packages/boot/installed-runtime/src/index.ts)）
 - `@deepseek-ai/dsh-launch-environment`（[`packages/util/launch-environment/src/index.ts`](../packages/util/launch-environment/src/index.ts)）
 - `@deepseek-ai/dsh-llm-mock-server`（[`packages/test-support/llm-mock-server/src/index.ts`](../packages/test-support/llm-mock-server/src/index.ts)）
 - `@deepseek-ai/dsh-loader-smoke`（[`packages/test-support/loader-smoke/src/index.ts`](../packages/test-support/loader-smoke/src/index.ts)）

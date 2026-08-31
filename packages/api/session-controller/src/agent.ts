@@ -4,7 +4,7 @@ import { mkdir } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type {
-  Agent, AgentOptions, AgentSetup, ModelSelection as AgentModelSelection, ModelSelectionRef,
+  Agent, AgentHandle, AgentOptions, AgentSetup, ModelSelection as AgentModelSelection, ModelSelectionRef,
 } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-presets'
@@ -380,6 +380,37 @@ export class ApiSessionAgentController {
         await presets.mount(agentCtx, resolvedId)
       },
     }
+  }
+
+  /**
+   * Create one new Session and keep the {@link AgentHandle} for compensation.
+   * Public `session.create` / `ensureSession` drop that handle.
+   * @param sessionId - new Session identity.
+   * @param cwd - project directory the Session owns.
+   * @param presetId - Agent preset to compose, or the deployment default.
+   * @returns the live agent and the handle that can dispose it.
+   */
+  async createOwnedSession(
+    sessionId: SessionId,
+    cwd: string,
+    presetId: string | undefined,
+  ): Promise<{ readonly agent: Agent; readonly handle: AgentHandle }> {
+    try {
+      await mkdir(cwd, { recursive: true })
+    } catch (error: unknown) {
+      throw new Error(`failed to ensure project directory "${cwd}": ${String(error)}`, { cause: error })
+    }
+    const composition = await this.composeAgent(presetId)
+    const handle = await this.ctx.agents.create({
+      sessionId,
+      agentOptions: this.agentOptions(),
+      meta: {
+        cwd,
+        ...(composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset }),
+      },
+      setup: composition.setup,
+    })
+    return { agent: handle.agent, handle }
   }
 
   private liveAgent(sessionId: SessionId): ApiSessionAgentResult | undefined {

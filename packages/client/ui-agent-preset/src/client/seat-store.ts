@@ -54,6 +54,9 @@ export class AgentPresetSeatController {
   /** Set while a pick is waiting for a session; cleared once applied. */
   private staged: string | undefined
 
+  /** When true, {@link apply} must not consume the stage (问数 gate is open). */
+  private held = false
+
   constructor(
     private readonly ctx: ClientContext,
     /** The session the hero is about to hand over to, when there is one. */
@@ -123,9 +126,23 @@ export class AgentPresetSeatController {
    * @param introduce - true when the stage came from another screen and the
    * chip should announce itself on the session it lands on.
    */
-  stage(id: string, introduce = false): void {
+  stage(id: string, introduce?: boolean): void
+  stage(id: string, opts: { hold?: boolean; introduce?: boolean }): void
+  stage(id: string, introduceOrOpts: boolean | { hold?: boolean; introduce?: boolean } = false): void {
+    const opts = typeof introduceOrOpts === 'boolean'
+      ? { introduce: introduceOrOpts, hold: false }
+      : { introduce: introduceOrOpts.introduce === true, hold: introduceOrOpts.hold === true }
     this.staged = id
-    this.set({ current: id, error: null, introduce })
+    this.held = opts.hold
+    this.set({ current: id, error: null, introduce: opts.introduce })
+  }
+
+  /**
+   * Drop a held or unused stage without applying it.
+   */
+  clearStage(): void {
+    this.staged = undefined
+    this.held = false
   }
 
   /** Acknowledge the introduction cue once the chip has played it. */
@@ -142,6 +159,7 @@ export class AgentPresetSeatController {
    * @returns once the switch settled, or immediately when there is nothing to do.
    */
   async apply(): Promise<void> {
+    if (this.held) return
     const staged = this.staged
     const session = this.currentSession()
     if (staged === undefined) {

@@ -185,10 +185,16 @@ export function apply(ctx: Context): void {
       'conversation.hero.brand.mark': { kind: 'single', scope: 'root' },
       'conversation.hero.workspace': { kind: 'single', scope: 'root' },
       'conversation.hero.agentPreset': { kind: 'single', scope: 'root' },
+      'conversation.hero.askData': { kind: 'single', scope: 'root' },
+      'conversation.askData.gate': { kind: 'single', scope: 'root' },
     },
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
       hooks: {
         composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
+        askDataGateOccupied: {
+          getSnapshot: () => slots.entries('conversation.askData.gate').length > 0,
+          subscribe: listener => slots.subscribe('conversation.askData.gate', listener),
+        },
       },
       selectWorkspace: async (workspaceId) => {
         const nextId = await workspaceNavigation.connectWorkspace(workspaceId)

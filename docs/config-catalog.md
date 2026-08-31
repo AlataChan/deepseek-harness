@@ -308,7 +308,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/api/session-controller/src/index.ts:67`](../packages/api/session-controller/src/index.ts)
+Source: [`packages/api/session-controller/src/index.ts:82`](../packages/api/session-controller/src/index.ts)
 
 <a id="deepseek-aidsh-api-settings-controller"></a>
 
@@ -432,6 +432,24 @@ export interface ConnectionConfig {
 ```
 
 Source: [`packages/client/connection/src/index.ts:70`](../packages/client/connection/src/index.ts)
+
+<a id="deepseek-aidsh-client-connection-process"></a>
+
+## `@deepseek-ai/dsh-client-connection-process`
+
+Requires: `connection` · `clientModules` · `typertGateway`
+
+```ts config-catalog
+/** Companion carrier configuration. */
+export interface Config {
+  /** Maximum logical bytes accepted for RPC and stream-data frames. */
+  maxLogicalRpcBytes?: number
+  /** Workspace root the handshake must repeat exactly after path normalization. */
+  workspaceRoot?: string
+}
+```
+
+Source: [`packages/client/connection-process/src/index.ts:29`](../packages/client/connection-process/src/index.ts)
 
 <a id="deepseek-aidsh-client-hmr"></a>
 
@@ -588,6 +606,22 @@ export interface Config {
 
 Source: [`packages/credentials/credentials-local/src/index.ts:64`](../packages/credentials/credentials-local/src/index.ts)
 
+<a id="deepseek-aidsh-desktop-app"></a>
+
+## `@deepseek-ai/dsh-desktop-app`
+
+```ts config-catalog
+/** Desktop runtime configuration derived from the startup provider. */
+export interface Config {
+  /** Absolute workspace root selected by the desktop shell. */
+  workspaceRoot: string
+  /** Whether to register model-visible desktop surface orientation. */
+  surfaceContext: boolean
+}
+```
+
+Source: [`packages/bundle/desktop-app/src/index.ts:20`](../packages/bundle/desktop-app/src/index.ts)
+
 <a id="deepseek-aidsh-e2b"></a>
 
 ## `@deepseek-ai/dsh-e2b`
@@ -629,6 +663,39 @@ export interface Config {
 ```
 
 Source: [`packages/experimental/agent-team/src/types.ts:131`](../packages/experimental/agent-team/src/types.ts)
+
+<a id="deepseek-aidsh-experimental-desktop-ask-data"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-ask-data`
+
+Requires: `sessionProjections` · `systemPrompt`
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface Config {
+  /**
+   * Absolute data-sources directory. When omitted, uses the companion-resolved
+   * profile home: `{dshHome}/profiles/desktop/data-sources`.
+   */
+  dataHome?: string
+}
+```
+
+Source: [`packages/experimental/desktop-ask-data/src/index.ts:24`](../packages/experimental/desktop-ask-data/src/index.ts)
+
+<a id="deepseek-aidsh-experimental-desktop-files"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-files`
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface Config {
+  /** Complete-result bound of one listing level; see {@link DesktopWorkspaceEntries.Config}. */
+  maxEntries: number
+}
+```
+
+Source: [`packages/experimental/desktop-files/src/index.ts:14`](../packages/experimental/desktop-files/src/index.ts)
 
 <a id="deepseek-aidsh-experimental-inspector"></a>
 
@@ -3496,7 +3563,9 @@ Abstract service classes — a deployment loads a concrete implementation packag
 - `@deepseek-ai/dsh-credentials` — abstract `CredentialProvider` ([`packages/credentials/credentials/src/index.ts`](../packages/credentials/credentials/src/index.ts))
 - `@deepseek-ai/dsh-file-reference` — abstract `FileReferenceService` ([`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts))
 - `@deepseek-ai/dsh-fs` — abstract `FileSystem` ([`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts))
+- `@deepseek-ai/dsh-host-ask-data` — abstract `AskData` ([`packages/host/ask-data/src/index.ts`](../packages/host/ask-data/src/index.ts))
 - `@deepseek-ai/dsh-host-directory-picker` — abstract `DirectoryPicker` ([`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts))
+- `@deepseek-ai/dsh-host-workspace-entries` — abstract `WorkspaceEntries` ([`packages/host/workspace-entries/src/index.ts`](../packages/host/workspace-entries/src/index.ts))
 - `@deepseek-ai/dsh-jobs` — abstract `JobRegistry` ([`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts))
 - `@deepseek-ai/dsh-sandbox` — abstract `SandboxProvider` ([`packages/sandbox/sandbox/src/index.ts`](../packages/sandbox/sandbox/src/index.ts))
 - `@deepseek-ai/dsh-session-persistence` — abstract `SessionPersistence` ([`packages/session/session-persistence/src/index.ts`](../packages/session/session-persistence/src/index.ts))
@@ -3517,6 +3586,7 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-atomic-write` ([`packages/util/atomic-write/src/index.ts`](../packages/util/atomic-write/src/index.ts))
 - `@deepseek-ai/dsh-base` ([`packages/bundle/base/src/index.ts`](../packages/bundle/base/src/index.ts))
 - `@deepseek-ai/dsh-brand` ([`packages/util/brand/src/index.ts`](../packages/util/brand/src/index.ts))
+- `@deepseek-ai/dsh-client-connection-desktop` ([`packages/client/connection-desktop/src/index.ts`](../packages/client/connection-desktop/src/index.ts))
 - `@deepseek-ai/dsh-client-store` ([`packages/client/store/src/index.ts`](../packages/client/store/src/index.ts))
 - `@deepseek-ai/dsh-client-test-runtime` ([`packages/test-support/client-runtime/src/index.ts`](../packages/test-support/client-runtime/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-primitives` ([`packages/client/ui-primitives/src/index.ts`](../packages/client/ui-primitives/src/index.ts))
@@ -3531,6 +3601,7 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-experimental-webworker-runtime` ([`packages/experimental/webworker-runtime/src/index.ts`](../packages/experimental/webworker-runtime/src/index.ts))
 - `@deepseek-ai/dsh-home-paths` ([`packages/util/home-paths/src/index.ts`](../packages/util/home-paths/src/index.ts))
 - `@deepseek-ai/dsh-hook-protocol` ([`packages/hooks/hook-protocol/src/index.ts`](../packages/hooks/hook-protocol/src/index.ts))
+- `@deepseek-ai/dsh-installed-runtime` ([`packages/boot/installed-runtime/src/index.ts`](../packages/boot/installed-runtime/src/index.ts))
 - `@deepseek-ai/dsh-launch-environment` ([`packages/util/launch-environment/src/index.ts`](../packages/util/launch-environment/src/index.ts))
 - `@deepseek-ai/dsh-llm-mock-server` ([`packages/test-support/llm-mock-server/src/index.ts`](../packages/test-support/llm-mock-server/src/index.ts))
 - `@deepseek-ai/dsh-loader-smoke` ([`packages/test-support/loader-smoke/src/index.ts`](../packages/test-support/loader-smoke/src/index.ts))
