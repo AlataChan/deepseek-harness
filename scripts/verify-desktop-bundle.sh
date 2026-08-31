@@ -203,24 +203,19 @@ printf '%s\n' '{
     "dsh-context"
   ] } }
 }' > "$DIRTY_PROFILE/package.json"
-HEALED=$(node --input-type=module -e '
+if node "$REPO_ROOT/scripts/seed-desktop-profile-plugin.mjs" heal --profile-dir "$DIRTY_PROFILE"; then
+  HEALED=$(node --input-type=module -e '
 import { readFileSync } from "node:fs"
-import { healDesktopProfileManifest } from process.argv[1]
-const healed = healDesktopProfileManifest(JSON.parse(readFileSync(process.argv[2], "utf8")))
-const bundles = healed.dsh.profile.bundles.join(",")
-if (bundles.includes("dsh-client-app") || bundles.includes("dsh-context")) {
-  console.error(bundles)
-  process.exit(1)
-}
-if (!bundles.includes("@deepseek-ai/dsh-web-app")) {
-  console.error(bundles)
-  process.exit(1)
-}
-console.log(bundles)
-' "$REPO_ROOT/scripts/seed-desktop-profile-plugin.mjs" "$DIRTY_PROFILE/package.json") || {
+const healed = JSON.parse(readFileSync(process.argv[1], "utf8"))
+console.log(healed.dsh.profile.bundles.join(","))
+' "$DIRTY_PROFILE/package.json")
+else
+  HEALED=""
+  bad "seed heal CLI failed on a leftover 0.1.1 fixture"
+fi
+if [[ "$HEALED" == *"dsh-client-app"* || "$HEALED" == *"dsh-context"* ]]; then
   bad "healDesktopProfileManifest left dsh-client-app or dsh-context on a dirty fixture"
-}
-if [[ "$HEALED" == *"dsh-web-app"* ]]; then
+elif [[ "$HEALED" == *"dsh-web-app"* ]]; then
   ok "healDesktopProfileManifest rewrites a leftover 0.1.1 desktop profile"
 else
   bad "healDesktopProfileManifest did not introduce dsh-web-app"
