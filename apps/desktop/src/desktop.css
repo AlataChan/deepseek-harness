@@ -8,6 +8,11 @@ body,
   margin: 0;
 }
 
+html {
+  /* Client 设置 is the only chrome entry; the hidden opener needs no gutter. */
+  --dsh-desktop-chrome-right: 0px;
+}
+
 body {
   font-family: var(
     --dsw-font-family,
@@ -129,9 +134,11 @@ input {
 
 .dsh-settings-open {
   position: fixed;
-  top: 16px;
+  top: 12px;
   right: 16px;
   z-index: 20;
+  /* Reachable from Client 设置; not a second visible control. */
+  display: none;
 }
 
 .dsh-settings-layer {

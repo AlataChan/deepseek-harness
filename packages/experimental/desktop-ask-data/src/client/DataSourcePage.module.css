@@ -4,6 +4,12 @@
   gap: 16px;
   padding: 8px 4px 16px;
   max-width: 640px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.title,
+.sectionTitle {
+  color: var(--dsw-alias-label-primary);
 }
 
 .title {
@@ -14,11 +20,13 @@
 
 .lead,
 .helper,
-.limits {
+.limits,
+.pitfalls,
+.warnings {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--dsw-alias-text-secondary, inherit);
+  color: var(--dsw-alias-label-secondary);
 }
 
 .actions {
@@ -78,9 +86,7 @@
 
 .warnings,
 .pitfalls {
-  margin: 0;
   padding-inline-start: 18px;
-  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -96,6 +102,9 @@
   min-height: 88px;
   margin: 0;
   padding: 8px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-elevated, transparent);
+  border: 1px solid var(--dsw-alias-border-l2, rgb(255 255 255 / 14%));
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   line-height: 1.45;

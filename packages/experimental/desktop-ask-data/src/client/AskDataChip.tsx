@@ -1,8 +1,8 @@
 /**
  * New-session chip that opens the ask-data gate with a held data-agent stage.
+ * Geometry matches the workspace and agent-preset chips in the same row.
  */
 
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AskDataKey } from './locales.ts'
 import css from './AskDataChip.module.css'
 
@@ -24,8 +24,8 @@ export interface AskDataChipProps extends AskDataChipInjected {
  */
 export function AskDataChip({ openGate, t }: AskDataChipProps) {
   return (
-    <Button className={css.chip} variant="outline" size="sm" onClick={openGate}>
+    <button type="button" className={css.chip} onClick={openGate}>
       {t('chip')}
-    </Button>
+    </button>
   )
 }

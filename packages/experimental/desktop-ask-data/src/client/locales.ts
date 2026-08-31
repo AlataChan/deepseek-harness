@@ -10,6 +10,10 @@ export type AskDataKey = keyof typeof zh
 /** Chinese desktop copy. */
 export const zh = {
   chip: '问数',
+  heroHeadline: '先选工作文件夹，再提问',
+  'workspaceFolder.title': '工作文件夹',
+  'workspaceFolder.desc': '这个窗口读写哪个文件夹。Node 和运行时在高级选项里。',
+  'workspaceFolder.open': '更改',
   title: '选一份要问的数据',
   pageLead: '先选数据再提问。先用示例看一遍问数怎么工作；自己的表请按下表整理，或先下载模板填写再上传。accept-xlsx-csv one-file-one-source first-row-header header-empty header-duplicate type-guess sheet-name file-size row-count decoded-cell csv-encoding no-merge-repair。只接受 .xlsx / .csv；一份文件一个数据源；第一行是表头；空表头变为 col；重复表头加 _2；混列作文本；表名冲突加 _2；超过 50MB 或合计 20 万行或约 200MB 单元格则拒绝；CSV 仅 UTF-8 或 GB18030；不修复合并单元格。',
   uploadHelper: '上传前请确认：第一行是表头，只要 .xlsx / .csv，不超过 50MB，合计不超过 20 万行。accept-xlsx-csv one-file-one-source first-row-header header-empty header-duplicate type-guess sheet-name file-size row-count decoded-cell csv-encoding no-merge-repair。',
@@ -55,6 +59,10 @@ export const zh = {
 /** English fallback. */
 export const en = {
   chip: 'Ask data',
+  heroHeadline: 'Choose a folder, then ask',
+  'workspaceFolder.title': 'Working folder',
+  'workspaceFolder.desc': 'The folder this window reads and writes. Node and the runtime stay under Advanced.',
+  'workspaceFolder.open': 'Change',
   title: 'Choose a data source',
   pageLead: 'Pick data before you ask. Try the sample first, or download the template, fill the columns, then upload. accept-xlsx-csv one-file-one-source first-row-header header-empty header-duplicate type-guess sheet-name file-size row-count decoded-cell csv-encoding no-merge-repair. Only .xlsx / .csv; one file is one source; first row is the header; empty headers become col; duplicate headers get _2; mixed types become text; colliding sheet names get _2; reject at 50MB or 200,000 rows or ~200MB of cells; CSV must be UTF-8 or GB18030; merge cells are not repaired.',
   uploadHelper: 'Before you pick a file: first row is the header, .xlsx / .csv only, 50MB max, 200,000 rows across sheets. accept-xlsx-csv one-file-one-source first-row-header header-empty header-duplicate type-guess sheet-name file-size row-count decoded-cell csv-encoding no-merge-repair.',

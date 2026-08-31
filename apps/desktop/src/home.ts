@@ -18,7 +18,7 @@ export interface HomeViewOptions {
 /**
  * Render the product home. Settings stay closed until the user asks.
  * @param root - application mount point.
- * @param options - status text and the Start / Settings actions.
+ * @param options - status text and the 开始 / 设置 actions.
  * @returns nothing; the page is written into `root`.
  */
 export function renderHome(root: HTMLElement, options: HomeViewOptions): void {
@@ -36,7 +36,7 @@ export function renderHome(root: HTMLElement, options: HomeViewOptions): void {
   settings.type = 'button'
   settings.className = 'dsh-home-ghost'
   settings.dataset.testid = 'desktop-settings-open'
-  settings.textContent = 'Settings'
+  settings.textContent = '设置'
   settings.addEventListener('click', () => { options.onOpenSettings() })
   header.append(wordmark, settings)
 
@@ -66,7 +66,7 @@ export function renderHome(root: HTMLElement, options: HomeViewOptions): void {
   start.type = 'button'
   start.className = 'dsh-home-start'
   start.dataset.testid = 'desktop-home-start'
-  start.textContent = 'New session'
+  start.textContent = '开始'
   start.addEventListener('click', () => { void options.onStart() })
   main.append(start)
 

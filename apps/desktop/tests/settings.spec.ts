@@ -17,12 +17,12 @@ describe('describeDesktopFailure', () => {
     const copy = describeDesktopFailure(
       'installed-runtime CLI failed: Harness package does not declare dsh.companions.desktop (exit 1)',
     )
-    expect(copy.headline).toBe('The Harness on PATH cannot open a desktop session.')
+    expect(copy.headline).toBe('当前运行时打不开桌面会话。')
     expect(copy.detail).not.toMatch(/runtimePath|nodePath/)
   })
 
   it('names a missing Node install without a raw PATH lecture', () => {
-    expect(describeDesktopFailure('Node executable was not found').headline).toBe('Node.js was not found.')
+    expect(describeDesktopFailure('Node executable was not found').headline).toBe('没有找到 Node.js。')
   })
 })
 
@@ -37,6 +37,8 @@ describe('renderSettings', () => {
     const workspace = root.querySelector('input[name="workspaceRoot"]')
     const advanced = root.querySelector('[data-testid="desktop-settings-advanced"]')
     expect(workspace).not.toBeNull()
+    expect(root.textContent).toContain('工作文件夹')
+    expect(root.querySelector('.dsh-settings-title')?.textContent).toBe('设置')
     expect(advanced?.querySelector('input[name="nodePath"]')).not.toBeNull()
     expect(advanced?.querySelector('input[name="runtimePath"]')).not.toBeNull()
     expect(root.querySelector('[data-testid="desktop-settings-reason"]')).toBeNull()

@@ -121,6 +121,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.workspace': { kind: 'single'; scope: 'root'; owner: EmptyWorkspaceOwnerProps }
     /** Brand mark shown before the blank-session headline. */
     'conversation.hero.brand.mark': { kind: 'single'; scope: 'root'; owner: HeroBrandMarkOwnerProps }
+    /** Blank-session headline; a later occupant replaces the official slogan. */
+    'conversation.hero.headline': { kind: 'single'; scope: 'root'; owner: HeroHeadlineOwnerProps }
     /** Agent-preset control staged for a New Session. */
     'conversation.hero.agentPreset': { kind: 'single'; scope: 'root'; owner: HeroAgentPresetOwnerProps }
     /** Ask-data chip staged for a New Session. */
@@ -335,6 +337,12 @@ export interface HeroBrandMarkOwnerProps {
   className?: string | undefined
 }
 
+/** Presentation props supplied to the blank-session headline. */
+export interface HeroHeadlineOwnerProps {
+  /** Host class preserving the official headline typography. */
+  className?: string | undefined
+}
+
 /** Full props of the resident optional-Session Conversation shell. */
 export type ConversationSlotProps =
   PropsRuntime<'conversation'>
@@ -345,6 +353,7 @@ export type ConversationSlotProps =
     | 'conversation.input.dock' | 'conversation.composer.dock'
     | 'conversation.input.left' | 'conversation.input.right'
     | 'conversation.hero.brand.mark'
+    | 'conversation.hero.headline'
     | 'conversation.hero.workspace'
     | 'conversation.hero.agentPreset'
     | 'conversation.hero.askData'

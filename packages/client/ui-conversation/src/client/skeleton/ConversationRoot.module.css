@@ -38,6 +38,7 @@
   position: relative;
   flex: none;
   padding: 12px 28px 0 20px;
+  padding-right: max(28px, var(--dsh-desktop-chrome-right, 28px));
   border-bottom: 1px solid transparent;
 }
 

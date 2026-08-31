@@ -59,6 +59,11 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
     children: {
       'conversation.hero.askData': { kind: 'single', scope: 'root' },
       'conversation.askData.gate': { kind: 'single', scope: 'root' },
+      'conversation.hero.brand.mark': { kind: 'single', scope: 'root' },
+      'conversation.hero.headline': { kind: 'single', scope: 'root' },
+      'sidebar.brand.mark': { kind: 'single', scope: 'root' },
+      'sidebar.brand.name': { kind: 'single', scope: 'root' },
+      'settings.general.item': { kind: 'list', scope: 'root' },
     },
   } as never, () => null)
   const fiber = ctx.plugin({
@@ -93,6 +98,17 @@ function gate(slots: SlotRegistry): GateInjected {
 describe('desktop-ask-data apply', () => {
   it('declares only the services it uses', () => {
     expect(inject).toEqual(['slots', 'remote', 'remote.session', 'locale'])
+  })
+
+  it('shadows the official fish with the leaf-whale mark', async () => {
+    const b = await bench()
+    expect(b.slots.entries('sidebar.brand.mark')).toHaveLength(1)
+    expect(b.slots.entries('sidebar.brand.name')).toHaveLength(1)
+    expect(b.slots.entries('conversation.hero.brand.mark')).toHaveLength(1)
+    expect(b.slots.entries('conversation.hero.headline')).toHaveLength(1)
+    expect(b.slots.entries('settings.general.item').map(row => row.options.id))
+      .toEqual(['desktop-workspace-folder'])
+    await b.dispose()
   })
 
   it('registers the chip and opens the gate only on click', async () => {

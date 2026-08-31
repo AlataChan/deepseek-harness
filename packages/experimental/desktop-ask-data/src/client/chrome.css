@@ -1,0 +1,14 @@
+/* The visible settings entry is the sidebar 设置 row. The shell opener
+   stays in the DOM so that row can click it. Preview badge is official
+   chrome this overlay does not use. */
+html {
+  --dsh-desktop-chrome-right: 0px;
+}
+
+.dsh-settings-open {
+  display: none;
+}
+
+[class*='previewBadge'] {
+  display: none;
+}

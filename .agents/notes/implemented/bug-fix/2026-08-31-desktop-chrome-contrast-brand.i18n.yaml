@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-31-desktop-chrome-contrast-brand.md
+2026-08-31-desktop-chrome-contrast-brand.md: d9b22b8606033f4e7ad84eb7616a039957743cf7
+2026-08-31-desktop-chrome-contrast-brand.zh.md: 3e36eb511d38a508ff518df0b8bfea14a48fb3cb

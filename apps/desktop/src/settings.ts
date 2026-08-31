@@ -83,11 +83,11 @@ export function renderSettings(root: HTMLElement, options: SettingsViewOptions):
   head.className = 'dsh-settings-head'
   const title = document.createElement('h2')
   title.className = 'dsh-settings-title'
-  title.textContent = 'Settings'
+  title.textContent = '设置'
   const close = document.createElement('button')
   close.type = 'button'
   close.className = 'dsh-settings-close'
-  close.textContent = 'Close'
+  close.textContent = '关闭'
   close.addEventListener('click', () => { closeSettings(root) })
   head.append(title, close)
   form.append(head)
@@ -106,8 +106,8 @@ export function renderSettings(root: HTMLElement, options: SettingsViewOptions):
   appendField(
     form,
     'workspaceRoot',
-    'Workspace',
-    'The folder this window works in. Defaults to your home folder.',
+    '工作文件夹',
+    '这个窗口读写哪个文件夹。默认是你的用户目录。',
     options.config.workspaceRoot ?? '',
   )
 
@@ -115,20 +115,20 @@ export function renderSettings(root: HTMLElement, options: SettingsViewOptions):
   advanced.className = 'dsh-settings-advanced'
   advanced.dataset.testid = 'desktop-settings-advanced'
   const summary = document.createElement('summary')
-  summary.textContent = 'Advanced'
+  summary.textContent = '高级'
   advanced.append(summary)
   appendField(
     advanced,
     'nodePath',
-    'Node executable',
-    'Leave empty to use the first real node on PATH.',
+    'Node 程序',
+    '留空则使用系统里的 node。',
     options.config.nodePath ?? '',
   )
   appendField(
     advanced,
     'runtimePath',
-    'Harness package',
-    'Leave empty to use this checkout or an installed package on PATH.',
+    'Harness 程序包',
+    '留空则使用本机已安装的运行时。',
     options.config.runtimePath ?? '',
   )
   form.append(advanced)
@@ -136,13 +136,13 @@ export function renderSettings(root: HTMLElement, options: SettingsViewOptions):
   const submit = document.createElement('button')
   submit.type = 'submit'
   submit.className = 'dsh-settings-save'
-  submit.textContent = 'Save'
+  submit.textContent = '保存'
   form.append(submit)
   form.addEventListener('submit', (event) => {
     event.preventDefault()
     void (async () => {
       if (options.companionLive === true
-        && !window.confirm('A companion is running. Save and reload the window?')) {
+        && !window.confirm('窗口正在运行。保存后会重新加载，确定吗？')) {
         return
       }
       const saved = parseRuntimeConfigFields(await options.port.invoke('runtime_configure', {
@@ -181,7 +181,7 @@ export function attachSettingsButton(root: HTMLElement, options: {
   button.type = 'button'
   button.className = 'dsh-settings-open'
   button.dataset.testid = 'desktop-settings-open'
-  button.textContent = 'Settings'
+  button.textContent = '设置'
   button.addEventListener('click', () => {
     void options.port.invoke('runtime_get_config').then((value) => {
       const config = parseRuntimeConfigFields(value)

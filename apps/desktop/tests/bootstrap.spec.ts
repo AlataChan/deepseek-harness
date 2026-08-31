@@ -264,7 +264,7 @@ describe('bootDesktopClient', () => {
     expect(root.querySelector('[data-testid="desktop-home"]')).not.toBeNull()
     expect(root.querySelector('[data-testid="desktop-settings"]')).toBeNull()
     expect(root.querySelector('[data-testid="desktop-home-status"]')?.textContent)
-      .toBe('Node.js was not found.')
+      .toBe('没有找到 Node.js。')
   })
 
   it('keeps the home page when workspaceRoot is still empty', async () => {
@@ -292,7 +292,7 @@ describe('bootDesktopClient', () => {
     expect(root.querySelector('[data-testid="desktop-home"]')).not.toBeNull()
     expect(root.querySelector('[data-testid="desktop-settings"]')).not.toBeNull()
     expect(root.querySelector('[data-testid="desktop-settings-reason"]')?.textContent)
-      .toBe('Node.js was not found.')
+      .toBe('没有找到 Node.js。')
     expect(root.querySelector('[data-testid="desktop-settings-advanced"]')).not.toBeNull()
     expect(root.querySelector('input[name="workspaceRoot"]')).not.toBeNull()
   })

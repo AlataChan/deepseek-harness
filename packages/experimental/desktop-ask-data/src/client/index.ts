@@ -12,14 +12,28 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-agent-preset/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { AskDataChip } from './AskDataChip.tsx'
 import type { AskDataChipInjected } from './AskDataChip.tsx'
 import { DataSourcePage } from './DataSourcePage.tsx'
+import { OctopusBrandName } from './OctopusBrandName.tsx'
+import { OctopusHeroHeadline } from './OctopusHeroHeadline.tsx'
+import { OctopusMark } from './OctopusMark.tsx'
+import { WorkspaceFolderRow } from './WorkspaceFolderRow.tsx'
 import type { DataSourcePageRemotes, ListedPreview } from './DataSourcePage.tsx'
+import './chrome.css'
 import { en, zh, type AskDataKey } from './locales.ts'
 
 export type { AskDataChipInjected, AskDataChipProps } from './AskDataChip.tsx'
 export type { DataSourcePageProps, ListedPreview, ListedSource } from './DataSourcePage.tsx'
+export type { OctopusMarkProps } from './OctopusMark.tsx'
+export { OctopusMark } from './OctopusMark.tsx'
+export { OctopusBrandName } from './OctopusBrandName.tsx'
+export type { OctopusHeroHeadlineProps } from './OctopusHeroHeadline.tsx'
+export { OctopusHeroHeadline } from './OctopusHeroHeadline.tsx'
+export type { WorkspaceFolderRowProps } from './WorkspaceFolderRow.tsx'
+export { WorkspaceFolderRow } from './WorkspaceFolderRow.tsx'
 export type { AskDataKey } from './locales.ts'
 export { encodeAskDataBytes, readFileBytes } from './bytes.ts'
 export {
@@ -93,11 +107,26 @@ function isReusableBlankSession(session: ListedSession | undefined): session is 
 export const inject = ['slots', 'remote', 'remote.session', 'locale']
 
 /**
- * Register the 问数 chip. The gate occupant is registered only while open.
+ * Register the 问数 chip, brand chrome, headline, and workspace-folder
+ * settings row. The gate occupant is registered only while open.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'desktop-ask-data: dictionaries')
+  ctx.slots.inject('sidebar.brand.mark', () =>
+    ctx.slots.register({ name: 'sidebar.brand.mark' }, OctopusMark))
+  ctx.slots.inject('sidebar.brand.name', () =>
+    ctx.slots.register({ name: 'sidebar.brand.name' }, OctopusBrandName))
+  ctx.slots.inject('conversation.hero.brand.mark', () =>
+    ctx.slots.register({ name: 'conversation.hero.brand.mark' }, OctopusMark))
+  ctx.slots.inject('conversation.hero.headline', () =>
+    ctx.slots.register({ name: 'conversation.hero.headline', locale: NS }, OctopusHeroHeadline))
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item',
+    id: 'desktop-workspace-folder',
+    order: 5,
+    locale: NS,
+  }, WorkspaceFolderRow))
   ctx.inject(['conversation', 'sessions', 'agentPresetSeat'], (scope: ClientContext) => {
     const seat = scope.get('agentPresetSeat') as AgentPresetSeatFace
     let gateDispose: (() => void) | undefined

@@ -16,33 +16,33 @@ export interface DesktopFailureCopy {
 export function describeDesktopFailure(reason: string): DesktopFailureCopy {
   if (/dsh\.companions\.desktop/u.test(reason)) {
     return {
-      headline: 'The Harness on PATH cannot open a desktop session.',
-      detail: 'A source-built app uses this repository automatically. Build the CLI in this checkout if this message remains.',
+      headline: '当前运行时打不开桌面会话。',
+      detail: '源码启动会自动用本仓库。若仍出现这条，请先在本仓库构建 CLI。',
     }
   }
   if (/companion entry is missing/u.test(reason)) {
     return {
-      headline: 'This repository is not built yet.',
-      detail: 'Build the desktop companion in this checkout, then try New session again.',
+      headline: '这个仓库还没有构建完成。',
+      detail: '先构建桌面 companion，再点「开始」。',
     }
   }
   if (/Node executable was not found/u.test(reason)) {
     return {
-      headline: 'Node.js was not found.',
-      detail: 'Install Node.js 22.19 or newer so a real node executable is on PATH.',
+      headline: '没有找到 Node.js。',
+      detail: '请安装 Node.js 22.19 或更新版本，并保证系统能运行 node。',
     }
   }
   if (/workspaceRoot is not configured/u.test(reason)) {
     return {
-      headline: 'No workspace folder is set.',
-      detail: 'Choose the folder this window should work in.',
+      headline: '还没选工作文件夹。',
+      detail: '请选择这个窗口要读写的文件夹。',
     }
   }
   const stripped = reason
     .replace(/^installed-runtime CLI failed:\s*/u, '')
     .replace(/\s*\(exit \d+\)\s*$/u, '')
   return {
-    headline: 'This window could not start a session.',
+    headline: '这个窗口没能开始会话。',
     detail: stripped,
   }
 }
