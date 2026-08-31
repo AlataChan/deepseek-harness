@@ -5,7 +5,7 @@ import { fireEvent, render } from '@testing-library/react'
 import { OctopusBrandName } from '../src/client/OctopusBrandName.tsx'
 import { OctopusHeroHeadline } from '../src/client/OctopusHeroHeadline.tsx'
 import { OctopusMark } from '../src/client/OctopusMark.tsx'
-import { WorkspaceFolderRow } from '../src/client/WorkspaceFolderRow.tsx'
+import { WorkspaceFolderRow, type WorkspaceFolderRowProps } from '../src/client/WorkspaceFolderRow.tsx'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { OCTOPUS_MARK_URI } from '../src/client/octopus-mark-uri.ts'
 import { zh } from '../src/client/locales.ts'
@@ -45,7 +45,7 @@ describe('WorkspaceFolderRow', () => {
     const click = vi.fn()
     opener.addEventListener('click', click)
     document.body.append(opener)
-    const view = render(<WorkspaceFolderRow t={t} />)
+    const view = render(<WorkspaceFolderRow {...{ t } as WorkspaceFolderRowProps} />)
     fireEvent.click(view.getByText('更改'))
     expect(click).toHaveBeenCalled()
     opener.remove()
