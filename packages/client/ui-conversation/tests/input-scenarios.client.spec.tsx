@@ -161,6 +161,7 @@ async function scopedBench(register?: (inputTriggers: InputTriggerService) => vo
       previewUrl: `blob:${id}`,
     })),
     resolveSubmitMode: () => 'queue',
+    toggleReferenceMenu: vi.fn(),
     toggleCommandMenu: (selection) => {
       const snapshot = shell.snapshot
       controller.toggleSource('command', {

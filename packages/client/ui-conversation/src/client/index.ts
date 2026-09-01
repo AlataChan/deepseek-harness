@@ -46,14 +46,16 @@ export { ConversationViewRegistry } from './conversation/view-registry.ts'
 
 export type { ConversationKey } from './locales.ts'
 export type {
+  AttachKnowledgeOwnerProps, AttachSessionDocumentOwnerProps,
   ComposerAttachment, ComposerAttachmentsOwnerProps, ComposerAttachmentsProps,
   ComposerBarInjected, ComposerBarOwnerProps, ComposerBarProps, ComposerChainProps,
   ConversationHeaderActionOwnerProps, ConversationHeaderLineageOwnerProps,
   ConversationInjected, ConversationSessionHeaderInjected, ConversationSessionHeaderSlotProps,
   ConversationSessionInjected, ConversationSessionSlotProps, ConversationSlotProps,
   ConversationStore, ConvViewOwnerProps, ConvViewProps, EmptyWorkspaceOwnerProps,
-  HeroAgentPresetOwnerProps, HeroBrandMarkOwnerProps, HeroHeadlineOwnerProps,
-  InputControlOwnerProps, InputZone,
+  AskKnowledgePickerOwnerProps, HeroAgentPresetOwnerProps, HeroAskKnowledgeOwnerProps,
+  HeroBrandMarkOwnerProps, HeroHeadlineOwnerProps,
+  InputControlOwnerProps, InputZone, SessionDocumentExtractSettlement,
   MessageImageLoader, MessageImageSource, MessageImagesOwnerProps, RenderMessageImages, UseConversation,
   UseConversationViews,
 } from './contract/slots.ts'

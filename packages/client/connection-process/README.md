@@ -17,3 +17,5 @@ None; this package neither assembles nor sends a provider request.
 - **One fragmented message per direction** — a second start or inline frame closes that decoder instead of queuing unbounded work.
 - **Whole-frame memory remains bounded but not streaming** — a fragmented message reserves its declared byte length before receiving chunks.
 - **Installed-runtime IPC by default** — Host apply uses an injected port, else the current process channel. Desktop claims stdio before apply.
+- **`session/finishAskKnowledgeIngest` waits 180s** — that unary runs sidecar convert, LLM propose, and apply.
+- **`session/finishAskKnowledgeExtract` waits 90s** — that unary runs sidecar `convert-file` only. Other methods keep the 30s default.

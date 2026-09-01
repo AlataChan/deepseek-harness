@@ -11,6 +11,7 @@ set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="${1:-$REPO_ROOT/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app}"
+APP="$(cd "$(dirname -- "$APP")" && pwd)/$(basename -- "$APP")"
 RES="$APP/Contents/Resources/resources"
 
 PASS=0
@@ -51,9 +52,10 @@ HARNESS="$RES/harness"
 if [[ -f "$HARNESS/package.json" ]]; then
   ok "Harness package.json present"
   DECLARED="$("$RES/node" -e "
-    const p = require('$HARNESS/package.json');
+    const { readFileSync } = require('node:fs');
+    const p = JSON.parse(readFileSync(process.argv[1], 'utf8'));
     process.stdout.write(p.dsh?.companions?.desktop ?? '');
-  " 2>/dev/null)"
+  " "$HARNESS/package.json")"
   if [[ -n "$DECLARED" ]]; then
     ok "dsh.companions.desktop declared: $DECLARED"
   else
@@ -78,7 +80,8 @@ fi
 # graph resolved inside the bundle.
 
 head_ "Smoke-testing companion module graph"
-COMPANION_OUT="$("$RES/node" "$HARNESS/lib/desktop-companion.js" --workspace-root "$HOME" 2>&1 | head -40 || true)"
+SMOKE_HOME="$(mktemp -d "${TMPDIR:-/tmp}/dsh-bundle-smoke.XXXXXX")"
+COMPANION_OUT="$(HOME="$SMOKE_HOME" "$RES/node" "$HARNESS/lib/desktop-companion.js" --workspace-root "$SMOKE_HOME" 2>&1 | head -40 || true)"
 
 if grep -q "ERR_MODULE_NOT_FOUND" <<<"$COMPANION_OUT"; then
   MISSING="$(grep -o "Cannot find package '[^']*'" <<<"$COMPANION_OUT" | head -1)"
@@ -104,12 +107,13 @@ fi
 # Only a real handshake plus a hold period observes that.
 
 head_ "Driving a real companion handshake"
-if LIFECYCLE_OUT="$("$RES/node" "$REPO_ROOT/scripts/smoke-companion-lifecycle.mjs" "$APP" 6000 2>&1)"; then
+if LIFECYCLE_OUT="$(HOME="$SMOKE_HOME" "$RES/node" "$REPO_ROOT/scripts/smoke-companion-lifecycle.mjs" "$APP" 6000 2>&1)"; then
   ok "$(head -2 <<<"$LIFECYCLE_OUT" | tail -1)"
 else
   bad "Companion lifecycle FAILED"
   printf '\033[0;90m%s\033[0m\n' "$(head -12 <<<"$LIFECYCLE_OUT")"
 fi
+rm -rf "$SMOKE_HOME"
 
 # ── 6. No leaked developer paths ────────────────────────────────────────────
 #
@@ -134,6 +138,19 @@ ESCAPES="$(find "$HARNESS/node_modules" -maxdepth 3 -type l -lname "$REPO_ROOT/*
 [[ "$ESCAPES" == "0" ]] \
   && ok "No symlink points back into the source checkout" \
   || bad "$ESCAPES symlink(s) point into $REPO_ROOT — will break on a user machine"
+
+KB_RUNTIME="$RES/kb-runtime"
+if [[ -d "$KB_RUNTIME" ]]; then
+  KB_ESCAPES="$(find "$KB_RUNTIME" -type l \( -lname "$REPO_ROOT/*" -o -lname '/*' \) -print 2>/dev/null | wc -l | tr -d ' ')"
+  KB_BROKEN="$(find "$KB_RUNTIME" -type l ! -exec test -e {} \; -print 2>/dev/null | wc -l | tr -d ' ')"
+  if [[ "$KB_ESCAPES" == "0" && "$KB_BROKEN" == "0" ]]; then
+    ok "kb-runtime has no escaping or broken symlinks"
+  else
+    bad "kb-runtime has $KB_ESCAPES escaping and $KB_BROKEN broken symlinks"
+  fi
+else
+  bad "kb-runtime directory missing"
+fi
 
 # ── 7. Bundled presets ──────────────────────────────────────────────────────
 
@@ -276,6 +293,175 @@ if [[ -f "$SESSION_CLIENT" ]] && grep -q 'commitAskData' "$SESSION_CLIENT"; then
   ok "bundled session-controller remote face includes commitAskData"
 else
   bad "bundled session-controller remote face missing commitAskData — rebuild that Host face before packaging"
+fi
+if [[ -f "$SESSION_CLIENT" ]] && grep -q 'askKnowledgeRetrieve' "$SESSION_CLIENT"; then
+  ok "bundled session-controller remote face includes askKnowledgeRetrieve"
+else
+  bad "bundled session-controller remote face missing askKnowledgeRetrieve — rebuild that Host face before packaging"
+fi
+
+# Host beginIngest reads ACCEPTED_INGEST_EXTENSIONS from the profile plugin
+# bundle. tsdown Host face is compiled from lib/types; a client-only rebuild
+# leaves .pdf rejected with "extension .pdf is not accepted".
+ASK_K_HOST="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-knowledge/lib/index.js"
+ASK_K_CLIENT="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-knowledge/lib/client.js"
+if [[ -f "$ASK_K_HOST" ]] \
+  && grep -A12 'ACCEPTED_INGEST_EXTENSIONS' "$ASK_K_HOST" | grep -q '".pdf"' \
+  && grep -A12 'ACCEPTED_INGEST_EXTENSIONS' "$ASK_K_HOST" | grep -q '".xlsx"'; then
+  ok "bundled ask-knowledge Host accepts .pdf and .xlsx"
+else
+  bad "bundled ask-knowledge Host missing .pdf/.xlsx — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_CLIENT" ]] \
+  && grep -q '整理这份文档超过了等待时间' "$ASK_K_CLIENT"; then
+  ok "bundled ask-knowledge Client maps finish timeout copy"
+else
+  bad "bundled ask-knowledge Client missing finish timeout copy — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_CLIENT" ]] \
+  && grep -q '添加文档' "$ASK_K_CLIENT" \
+  && grep -q '点库名挂到这个会话' "$ASK_K_CLIENT"; then
+  ok "bundled ask-knowledge Client can add a document to an existing library"
+else
+  bad "bundled ask-knowledge Client missing 添加文档 — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_CLIENT" ]] \
+  && grep -q '点删除，从名单去掉' "$ASK_K_CLIENT" \
+  && grep -q '没能从名单移除' "$ASK_K_CLIENT"; then
+  ok "bundled ask-knowledge Client can delete a catalog row"
+else
+  bad "bundled ask-knowledge Client missing 删除 — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_HOST" ]] \
+  && grep -q '整理词条没有产出可写入的提案' "$ASK_K_HOST"; then
+  ok "bundled ask-knowledge Host returns finishIngest error text"
+else
+  bad "bundled ask-knowledge Host missing finishIngest error text — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_HOST" ]] \
+  && grep -q '模型没有按词条格式返回' "$ASK_K_HOST"; then
+  ok "bundled ask-knowledge Host maps LLM non-JSON to Chinese"
+else
+  bad "bundled ask-knowledge Host missing LLM non-JSON Chinese — run tsc -b then tsdown before packaging"
+fi
+# Vite minifies 180_000 to 18e4. The WebView is baked from apps/desktop/dist
+# at `cargo tauri build`; a stale connection-process lib/types emit leaves
+# the default 30s unary and drops finishAskKnowledgeIngest.
+DIST_JS="$(ls -t "$REPO_ROOT/apps/desktop/dist/assets"/index-*.js 2>/dev/null | head -1 || true)"
+DESKTOP_BIN="$APP/Contents/MacOS/dsh-desktop"
+if [[ -n "$DIST_JS" && -x "$DESKTOP_BIN" && "$DESKTOP_BIN" -nt "$DIST_JS" ]] \
+  && grep -q 'session/finishAskKnowledgeIngest' "$DIST_JS" \
+  && grep -qE '18e4|180000|180_000' "$DIST_JS"; then
+  ok "desktop WebView waits 180s for finishAskKnowledgeIngest"
+else
+  bad "desktop WebView missing 180s finishAskKnowledgeIngest deadline — tsc connection-process client, then cargo tauri build"
+fi
+
+# Persistence refuses a log whose event type is absent from this build's
+# KNOWN_SESSION_EVENT_TYPES. A reused harness-nm cache can keep an older
+# dsh-session that does not know ask-knowledge/bound, so attach writes the
+# event and resume then refuses the same session.
+head_ "Checking bundled session event vocabulary"
+SESSION_VOCAB="$HARNESS/node_modules/@deepseek-ai/dsh-session/lib/index.js"
+SESSION_VOCAB_TYPES="$HARNESS/node_modules/@deepseek-ai/dsh-session/lib/types/known-event-types.js"
+vocab_has() {
+  local needle="$1"
+  { [[ -f "$SESSION_VOCAB" ]] && grep -q -F "$needle" "$SESSION_VOCAB"; } \
+    || { [[ -f "$SESSION_VOCAB_TYPES" ]] && grep -q -F "$needle" "$SESSION_VOCAB_TYPES"; }
+}
+if vocab_has 'ask-knowledge/bound' && vocab_has 'ask-knowledge/unbound'; then
+  ok "bundled dsh-session knows ask-knowledge/bound and ask-knowledge/unbound"
+else
+  bad "bundled dsh-session missing ask-knowledge bind events — refresh workspace packages before packaging"
+fi
+
+# ── 7c. Ask-knowledge sidecar runtime ────────────────────────────────────────
+
+head_ "Checking kb-runtime sidecar"
+SIDECAR="$RES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar"
+if [[ -x "$SIDECAR" ]]; then
+  ok "octopus-kb-sidecar executable present"
+else
+  bad "octopus-kb-sidecar missing under Resources/resources/kb-runtime"
+fi
+if [[ -f "$RES/kb-runtime/prompts/propose.md" ]] \
+  && grep -q 'at most 800 characters' "$RES/kb-runtime/prompts/propose.md" \
+  && grep -q 'role (same as type' "$RES/kb-runtime/prompts/propose.md"; then
+  ok "kb-runtime/prompts/propose.md asks for a short create_page body with role"
+else
+  bad "kb-runtime/prompts/propose.md missing short-summary or role rule — rebuild kb-runtime"
+fi
+[[ -d "$RES/kb-runtime/schemas" ]] \
+  && ok "kb-runtime/schemas present" \
+  || bad "kb-runtime/schemas missing"
+[[ -f "$RES/kb-runtime/LICENSE" && -f "$RES/kb-runtime/SOURCE.txt" ]] \
+  && ok "kb-runtime LICENSE and SOURCE.txt present" \
+  || bad "kb-runtime LICENSE or SOURCE.txt missing"
+
+if [[ -x "$SIDECAR" ]]; then
+  SELFTEST="$(printf '%s\n' '{"command":"self-test"}' | env -i \
+    PATH="/usr/bin:/bin" \
+    OCTOPUS_KB_ROOT="$RES/kb-runtime" \
+    HOME="$TMPDIR" \
+    "$SIDECAR" 2>/dev/null || true)"
+  if printf '%s' "$SELFTEST" | grep -q '"ok": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"proposalSchema": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"applyRules": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"rulesSchema": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"pageMetaFill": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"retrieveFold": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"convertFile": true'; then
+    ok "bundled sidecar self-test passed in place"
+  else
+    bad "bundled sidecar self-test failed in place — must load proposal.json and builtins.yaml via the frozen package"
+    printf '\033[0;90m%s\033[0m\n' "$SELFTEST"
+  fi
+  if printf '%s' "$SELFTEST" | grep -q '"pdf": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"xlsx": true'; then
+    ok "bundled sidecar reports pdf and xlsx converters"
+  else
+    bad "bundled sidecar missing pdf/xlsx extras — rebuild kb-runtime without REUSE_KB_RUNTIME"
+    printf '\033[0;90m%s\033[0m\n' "$SELFTEST"
+  fi
+  MAGIKA_MODEL="$RES/kb-runtime/octopus-kb-sidecar/_internal/magika/models/standard_v3_3/model.onnx"
+  if [[ -f "$MAGIKA_MODEL" ]]; then
+    ok "bundled sidecar includes magika model for markitdown PDF"
+  else
+    bad "bundled sidecar missing magika model — PDF ingest will fail"
+  fi
+  RELOC="$(mktemp -d)"
+  ditto "$RES/kb-runtime" "$RELOC/kb-runtime"
+  RELOC_OUT="$(printf '%s\n' '{"command":"self-test"}' | env -i \
+    PATH="/usr/bin:/bin" \
+    OCTOPUS_KB_ROOT="$RELOC/kb-runtime" \
+    HOME="$TMPDIR" \
+    "$RELOC/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar" 2>/dev/null || true)"
+  if printf '%s' "$RELOC_OUT" | grep -q '"ok": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"proposalSchema": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"applyRules": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"rulesSchema": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"pageMetaFill": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"retrieveFold": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"convertFile": true'; then
+    ok "sidecar self-test passed after relocating kb-runtime"
+  else
+    bad "sidecar self-test failed after relocating kb-runtime — runtime is not relocatable"
+    printf '\033[0;90m%s\033[0m\n' "$RELOC_OUT"
+  fi
+  APPLY_DIR="$(mktemp -d)"
+  printf '%s\n' '{"id":"gate","operations":[]}' > "$APPLY_DIR/p.json"
+  APPLY_OUT="$(printf '%s\n' "{\"command\":\"validate-apply\",\"vault\":\"$APPLY_DIR\",\"proposal\":\"$APPLY_DIR/p.json\"}" | env -i \
+    PATH="/usr/bin:/bin" \
+    OCTOPUS_KB_ROOT="$RES/kb-runtime" \
+    HOME="$TMPDIR" \
+    "$SIDECAR" 2>/dev/null || true)"
+  if printf '%s' "$APPLY_OUT" | grep -q 'No such file or directory'; then
+    bad "frozen sidecar apply cannot open proposal.json or builtins.yaml"
+    printf '\033[0;90m%s\033[0m\n' "$APPLY_OUT"
+  else
+    ok "frozen sidecar apply reaches proposal validation"
+  fi
+  rm -rf "$RELOC" "$APPLY_DIR"
 fi
 
 # ── 8. Code signature must be intact after embedding Node / harness ─────────

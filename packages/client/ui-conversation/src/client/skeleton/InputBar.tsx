@@ -14,11 +14,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import type { ChangeEvent, CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import clsx from 'clsx'
 import {
-  IconPlusOutline16, IconWarningOutline16, Toast, Tooltip,
+  IconPlusOutline16, IconWarningOutline16, Menu, Toast, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 // Type-only: the `plan` projection key merge (the TodoDock posture — the
 // composer reads a host-computed value; the domain owns the key).
 import type {} from '@deepseek-ai/dsh-plan-mode/client'
@@ -33,15 +34,28 @@ import { ComposerContentEditable } from '../input/editor/ComposerContentEditable
 import { DecoratorPortals } from '../input/editor/DecoratorPortals.tsx'
 import { registerComposerKeymap } from '../input/editor/keymap.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
+import {
+  SESSION_DOCUMENT_ACCEPT,
+  appendSessionDocument,
+  frameSessionDocument,
+  isSessionDocumentConvertExtension,
+  isSessionDocumentSpreadsheet,
+  isSessionDocumentPlainExtension,
+  sessionDocumentExtension,
+} from '../session-document.ts'
+import type { SessionDocumentExtractSettlement } from '../contract/slots.ts'
 import { ContextMeter } from './ContextMeter.tsx'
 import { PermissionSelect } from './PermissionSelect.tsx'
 import css from './InputBar.module.css'
 
 export type InputBarProps = ComposerBarProps
 
+/** Native picker accept list when the host has not projected imageLimits yet. */
+const DEFAULT_IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif'
+
 export function InputBar({
   useSession, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
-  resolveSubmitMode, toggleCommandMenu, stop, command, t,
+  resolveSubmitMode, toggleCommandMenu, toggleReferenceMenu, stop, command, t,
   renderSlot, useNotices, useLexicon, useMenuLauncher,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
@@ -80,6 +94,11 @@ export function InputBar({
     setToast({ seq: toastSeq.current, text })
   }, [])
   const dismissToast = useCallback(() => { setToast(null) }, [])
+  const [attachOpen, setAttachOpen] = useState(false)
+  const [knowledgeOpenRequest, setKnowledgeOpenRequest] = useState(0)
+  const [knowledgeReady, setKnowledgeReady] = useState(false)
+  const [sessionDocReady, setSessionDocReady] = useState(false)
+  const [sessionDocFile, setSessionDocFile] = useState<File | null>(null)
   // The deployment's image-intake limits (absent while no attachment service
   // is composed — the pre-check below then defers entirely to the host).
   const imageLimits = useProjection('imageLimits')
@@ -103,6 +122,8 @@ export function InputBar({
   }, [notice, showToast])
   const cardRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const sessionDocInputRef = useRef<HTMLInputElement | null>(null)
 
   // The Access seat's data: the host-computed permissions projection
   // (undefined = capability absent → the chip renders nothing).
@@ -299,6 +320,107 @@ export function InputBar({
     if (keyboard !== undefined) toggleCommandMenu?.(keyboard.caretSpan())
   }
 
+  const onAttach = (): void => {
+    if (locked) return
+    setAttachOpen(open => !open)
+  }
+
+  const applySessionDocument = useCallback((filename: string, body: string, hostTruncated: boolean) => {
+    if (inputActions === undefined) return
+    const framed = frameSessionDocument(filename, body)
+    inputActions.setDraft(appendSessionDocument(draft, framed.text))
+    showToast(
+      hostTruncated || framed.truncated
+        ? t('input.attachSessionDocumentTruncated')
+        : t('input.attachSessionDocumentReady'),
+    )
+  }, [draft, inputActions, showToast, t])
+
+  const ingestSessionDocument = useCallback((file: File) => {
+    const extension = sessionDocumentExtension(file.name)
+    if (isSessionDocumentSpreadsheet(extension)) {
+      showToast(t('input.attachSessionDocumentSpreadsheet'))
+      return
+    }
+    if (isSessionDocumentPlainExtension(extension)) {
+      void file.text().then((body) => {
+        if (body.trim() === '') {
+          showToast(t('input.attachSessionDocumentEmpty'))
+          return
+        }
+        applySessionDocument(file.name, body, false)
+      })
+      return
+    }
+    if (isSessionDocumentConvertExtension(extension)) {
+      if (!sessionDocReady) {
+        showToast(t('input.attachSessionDocumentHint'))
+        return
+      }
+      showToast(t('input.attachSessionDocumentWorking'))
+      setSessionDocFile(file)
+      return
+    }
+    showToast(t('input.attachSessionDocumentUnsupported'))
+  }, [applySessionDocument, sessionDocReady, showToast, t])
+
+  const onSessionDocumentSettled = useCallback((result: SessionDocumentExtractSettlement) => {
+    setSessionDocFile(null)
+    if (!result.ok) {
+      showToast(result.error)
+      return
+    }
+    if (result.text.trim() === '') {
+      showToast(t('input.attachSessionDocumentEmpty'))
+      return
+    }
+    applySessionDocument(result.filename, result.text, result.truncated)
+  }, [applySessionDocument, showToast, t])
+
+  const onAttachSelect = (id: string): void => {
+    setAttachOpen(false)
+    if (id === 'image') {
+      fileInputRef.current?.click()
+      return
+    }
+    if (id === 'sessionDoc') {
+      sessionDocInputRef.current?.click()
+      return
+    }
+    if (id === 'file') {
+      if (keyboard !== undefined) toggleReferenceMenu?.(keyboard.caretSpan())
+      return
+    }
+    if (knowledgeReady) setKnowledgeOpenRequest(n => n + 1)
+    else showToast(t('input.attachKnowledgeHint'))
+  }
+
+  useEffect(() => {
+    if (locked) setAttachOpen(false)
+  }, [locked])
+
+  const onPickFiles = (event: ChangeEvent<HTMLInputElement>): void => {
+    const list = event.target.files
+    event.target.value = ''
+    if (list === null || list.length === 0) return
+    intakeImages([...list])
+    editor?.getRootElement()?.focus({ preventScroll: true })
+  }
+
+  const onPickSessionDoc = (event: ChangeEvent<HTMLInputElement>): void => {
+    const list = event.target.files
+    event.target.value = ''
+    if (list === null || list.length === 0) return
+    const file = list[0]
+    if (file === undefined) return
+    ingestSessionDocument(file)
+    editor?.getRootElement()?.focus({ preventScroll: true })
+  }
+
+  const imageAccept = imageLimits === undefined
+    ? DEFAULT_IMAGE_ACCEPT
+    : imageLimits.mediaTypes.join(',')
+
   // The no-session Workspace trigger: the resident editable div acts as the
   // picker trigger for keyboard users (no editor is bound in this state).
   const onWorkspaceKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
@@ -436,20 +558,81 @@ export function InputBar({
         </div>
         <div className={css.row}>
           <div className={css.tools}>
-            <Tooltip label={t('input.commands')} side="top" delayMs={500}>
-              <button
-                type="button"
-                className={css.add}
-                aria-label={t('input.commands')}
-                aria-haspopup="listbox"
-                aria-expanded={commandMenuOpen}
-                disabled={locked || toggleCommandMenu === undefined}
-                onMouseDown={keepFocus}
-                onClick={onToggleCommandMenu}
-              >
-                <IconPlusOutline16 size={14} />
-              </button>
-            </Tooltip>
+            <div className={css.leadingActions}>
+              <Tooltip label={t('input.attach')} side="top" delayMs={500}>
+                <Menu
+                  open={attachOpen}
+                  items={([
+                    { id: 'image', label: t('input.attachImage'), disabled: !canAcceptDrop },
+                    { id: 'sessionDoc', label: t('input.attachSessionDocument') },
+                    { id: 'file', label: t('input.attachFile'), disabled: toggleReferenceMenu === undefined },
+                    { id: 'knowledge', label: t('input.attachKnowledge') },
+                  ]) satisfies MenuEntry[]}
+                  onSelect={onAttachSelect}
+                  onClose={() => { setAttachOpen(false) }}
+                  side="top"
+                  portal
+                  anchor={
+                    <button
+                      type="button"
+                      className={css.add}
+                      aria-label={t('input.attach')}
+                      aria-haspopup="menu"
+                      aria-expanded={attachOpen}
+                      disabled={locked}
+                      onMouseDown={keepFocus}
+                      onClick={onAttach}
+                    >
+                      <IconPlusOutline16 size={14} />
+                    </button>
+                  }
+                />
+              </Tooltip>
+              {renderSlot('conversation.input.attachKnowledge', {
+                openRequest: knowledgeOpenRequest,
+                onReady: setKnowledgeReady,
+              })}
+              {renderSlot('conversation.input.attachSessionDocument', {
+                file: sessionDocFile,
+                onReady: setSessionDocReady,
+                onSettled: onSessionDocumentSettled,
+              })}
+              <Tooltip label={t('input.commands')} side="top" delayMs={500}>
+                <button
+                  type="button"
+                  className={css.add}
+                  aria-label={t('input.commands')}
+                  aria-haspopup="listbox"
+                  aria-expanded={commandMenuOpen}
+                  disabled={locked || toggleCommandMenu === undefined}
+                  onMouseDown={keepFocus}
+                  onClick={onToggleCommandMenu}
+                >
+                  <span aria-hidden className={css.slashGlyph}>/</span>
+                </button>
+              </Tooltip>
+            </div>
+            <input
+              ref={fileInputRef}
+              className={css.fileInput}
+              type="file"
+              accept={imageAccept}
+              multiple
+              tabIndex={-1}
+              aria-hidden
+              disabled={!canAcceptDrop}
+              onChange={onPickFiles}
+            />
+            <input
+              ref={sessionDocInputRef}
+              className={css.fileInput}
+              type="file"
+              accept={SESSION_DOCUMENT_ACCEPT}
+              tabIndex={-1}
+              aria-hidden
+              data-session-document
+              onChange={onPickSessionDoc}
+            />
             <div className={css.modes}>
               {accessSelect}
               {sessionId === undefined ? null : renderSlot('conversation.input.plan', { locked })}

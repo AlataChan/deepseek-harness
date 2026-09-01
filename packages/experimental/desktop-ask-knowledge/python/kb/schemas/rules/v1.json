@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "octopus-kb/rules/v1",
+  "title": "Octopus KB Declarative Rule File v1",
+  "type": "object",
+  "required": ["version", "rules"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"const": 1},
+    "rules": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/rule"}
+    }
+  },
+  "$defs": {
+    "op": {
+      "enum": ["create_page", "add_alias", "append_log"]
+    },
+    "verdict": {
+      "enum": ["reject", "defer", "downgrade", "pass"]
+    },
+    "rule": {
+      "type": "object",
+      "required": ["id", "applies_to", "check", "verdict", "reason_template"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "description": {"type": "string"},
+        "applies_to": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/op"},
+          "uniqueItems": true
+        },
+        "check": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "op_count": {
+              "type": "object",
+              "required": ["gt"],
+              "additionalProperties": false,
+              "properties": {
+                "gt": {"type": "integer", "minimum": 0}
+              }
+            },
+            "any_op_confidence_below": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "vault_has_canonical_key_for_new_page": {"type": "boolean"},
+            "proposal_schema_invalid": {"type": "boolean"},
+            "new_frontmatter_schema_invalid": {"type": "boolean"},
+            "op_target_outside_vault": {"type": "boolean"},
+            "op_target_in_forbidden_area": {"type": "boolean"}
+          }
+        },
+        "verdict": {"$ref": "#/$defs/verdict"},
+        "downgrade_to": {"type": "string", "minLength": 1},
+        "reason_template": {"type": "string", "minLength": 1},
+        "human_overridable": {"type": "boolean", "default": false}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"verdict": {"const": "downgrade"}},
+            "required": ["verdict"]
+          },
+          "then": {"required": ["downgrade_to"]}
+        }
+      ]
+    }
+  }
+}

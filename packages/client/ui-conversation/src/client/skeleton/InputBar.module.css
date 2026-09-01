@@ -207,7 +207,7 @@
   min-height: 52px;
 }
 
-/* Toolbar: attach + Plan + Read-only on the left; model + send on the right
+/* Toolbar: attach + slash + Plan + Read-only on the left; model + send on the right
    (figma Input_Bottom chrome). */
 .row {
   display: flex;
@@ -240,6 +240,31 @@
    controls. */
 .tools {
   gap: 16px;
+}
+
+.leadingActions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 4px;
+}
+
+.slashGlyph {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .modes {

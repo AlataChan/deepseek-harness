@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AlataChan/octopus-kb/schemas/cli/lint.json",
+  "title": "Lint CLI output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "path", "message"],
+        "properties": {
+          "code": {"type": "string"},
+          "path": {"type": "string"},
+          "message": {"type": "string"}
+        }
+      }
+    }
+  }
+}

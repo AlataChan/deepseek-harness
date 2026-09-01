@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "octopus-kb"
+version = "0.6.0"
+description = "Self-growing, self-maintaining LLM knowledge bases and Obsidian knowledge graphs."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+  {name = "Apple"}
+]
+dependencies = [
+  "httpx>=0.27",
+  "jsonschema>=4.18",
+  "pydantic>=2.5",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+ingest = ["markitdown>=0.1"]
+
+[project.scripts]
+octopus-kb = "octopus_kb_compound.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+octopus_kb_compound = ["_schemas/*.json", "validators/*.yaml"]

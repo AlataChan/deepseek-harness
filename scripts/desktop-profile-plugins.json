@@ -21,6 +21,12 @@
       "version": "0.1.2-alpha.2",
       "source": "workspace",
       "path": "packages/experimental/desktop-ask-data"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-desktop-ask-knowledge",
+      "version": "0.1.2-alpha.2",
+      "source": "workspace",
+      "path": "packages/experimental/desktop-ask-knowledge"
     }
   ]
 }

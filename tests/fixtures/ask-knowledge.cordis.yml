@@ -1,0 +1,5 @@
+# Ask-knowledge overlay composition for session / first-ask snapshots.
+# Official web-default does not include this experimental package.
+- insert:
+    - id: desktop-ask-knowledge
+      name: '@deepseek-ai/dsh-experimental-desktop-ask-knowledge'

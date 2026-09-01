@@ -20,6 +20,7 @@
     "src/model-selection-projection.ts",
     "src/skill-catalog.ts",
     "src/ask-data.ts",
+    "src/ask-knowledge.ts",
     "src/session-gate.ts"
   ],
   "references": [
@@ -38,6 +39,7 @@
     { "path": "../../util/native-command" },
     { "path": "../../host/workspace-entries" },
     { "path": "../../host/ask-data" },
+    { "path": "../../host/ask-knowledge" },
     { "path": "../../preset/agent-presets" },
     { "path": "../../runtime-diagnostics/invariants" },
     { "path": "../../session/session-persistence" },

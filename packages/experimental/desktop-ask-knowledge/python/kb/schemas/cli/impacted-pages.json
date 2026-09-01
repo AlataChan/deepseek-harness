@@ -1,0 +1,17 @@
+{
+  "$id": "octopus-kb/cli/impacted-pages",
+  "type": "object",
+  "required": ["page", "impacted", "next"],
+  "additionalProperties": false,
+  "properties": {
+    "page": {"type": "string"},
+    "impacted": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "next": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

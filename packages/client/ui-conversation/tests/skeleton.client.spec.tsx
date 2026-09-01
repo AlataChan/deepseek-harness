@@ -255,6 +255,7 @@ function mount(
           draftImages={() => []}
           resolveSubmitMode={() => 'queue'}
           toggleCommandMenu={vi.fn()}
+          toggleReferenceMenu={vi.fn()}
           useNotices={bindSnapshotSelector(wiring.notices)}
           useLexicon={bindSnapshotSelector(wiring.lexicon)}
           useMenuLauncher={bindSnapshotSelector(createSnapshotStore<string | null>(null))}
@@ -585,7 +586,15 @@ describe('ConversationRoot resident composer', () => {
     // choices are only open before the first message.
     expect(b.slotCalls).toContain('conversation.hero.agentPreset')
     expect(b.slotCalls).toContain('conversation.hero.askData')
+    expect(b.slotCalls).toContain('conversation.hero.askKnowledge')
     expect(b.view.queryByText('问数')).toBeNull()
+    expect(b.view.queryByText('知识库')).toBeNull()
+  })
+
+  it('keeps the sendable composer while the ask-knowledge picker is rendered', () => {
+    const b = mount(sessionSnapshotOf({ blank: true }))
+    expect(b.slotCalls).toContain('conversation.askKnowledge.picker')
+    expect(b.view.queryByRole('textbox')).not.toBeNull()
   })
 
   it('hides the sendable composer while the ask-data gate is occupied', () => {

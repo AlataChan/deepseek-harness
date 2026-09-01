@@ -1,0 +1,18 @@
+upstream: octopus-kb
+commit: d4852698caedbb37f4c370bc339da22a38db1367
+source: /Users/apple/Documents/2.1_AI_Journey/Cursor_projects/octopus-kb
+patches:
+- propose.py, proposals.py, and declarative.py resolve prompts/schemas via OCTOPUS_KB_ROOT, then the source tree, then the frozen onedir parent
+- package-data includes validators/*.yaml so apply can load builtins.yaml after freeze
+- sidecar.py JSON stdin/stdout entry; lookup loads page body; retrieve does not pass --max-tokens
+- ingest-file copies .md/.txt without markitdown
+- ingest-file converts .xlsx with openpyxl, not pandas
+- ingest-file decodes .csv with charset-normalizer / utf-8-sig / gb18030
+- ingest-file rejects an empty conversion (scanned PDF, empty sheet)
+- freeze collects magika models so markitdown can convert PDF
+- sidecar self-test reports pdf and xlsx extras
+- propose clips raw to 12000 chars and asks for a short create_page body
+- apply fills missing page-meta; retrieve/lookup re-apply page-meta rejections
+- lookup resolves title/alias/tag/retrieve hit; retrieve folds NFKC and renders bodies
+- llm.py keeps model text on JSON parse failure and unwraps fenced objects
+- propose waits 180s and retries when finish_reason is length

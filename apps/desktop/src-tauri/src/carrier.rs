@@ -54,7 +54,11 @@ pub struct CarrierChild {
  *   has a writable location for it. A window process has no terminal, so
  *   without this a companion that dies mid-session leaves the user with only
  *   the shell's downstream `Broken pipe`, which names the symptom and not the
- *   cause.
+ *   cause. Existing `None` arguments are this log path, not app-data.
+ * @param app_data_dir - absolute Tauri app-data directory; exported as
+ *   `OCTOPUS_APP_DATA`.
+ * @param sidecar_home - absolute sidecar runtime root; exported as
+ *   `OCTOPUS_SIDECAR_HOME`.
  */
 pub fn spawn_companion(
     node_path: &Path,
@@ -62,11 +66,17 @@ pub fn spawn_companion(
     workspace_root: &str,
     events: Sender<CarrierEvent>,
     log_path: Option<PathBuf>,
+    app_data_dir: &Path,
+    sidecar_home: &Path,
 ) -> Result<CarrierChild, ShellError> {
+    let app_data_dir = require_absolute_path(app_data_dir, "OCTOPUS_APP_DATA")?;
+    let sidecar_home = require_absolute_path(sidecar_home, "OCTOPUS_SIDECAR_HOME")?;
     let mut child = Command::new(node_path)
         .arg(companion_entry)
         .arg("--workspace-root")
         .arg(workspace_root)
+        .env("OCTOPUS_APP_DATA", &app_data_dir)
+        .env("OCTOPUS_SIDECAR_HOME", &sidecar_home)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -245,6 +255,21 @@ pub fn event_channel() -> (Sender<CarrierEvent>, Receiver<CarrierEvent>) {
     mpsc::channel()
 }
 
+/**
+ * Reject empty or relative paths so companion env cannot silently fall back.
+ * @param path - candidate directory.
+ * @param name - environment variable the path will be exported as.
+ * @returns the same path when it is absolute.
+ */
+fn require_absolute_path(path: &Path, name: &str) -> Result<PathBuf, ShellError> {
+    if path.as_os_str().is_empty() || !path.is_absolute() {
+        return Err(ShellError::Config(format!(
+            "{name} must be an absolute path"
+        )));
+    }
+    Ok(path.to_path_buf())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -278,8 +303,16 @@ rl.on('line', (line) => {
 "#,
         );
         let (tx, rx) = event_channel();
-        let mut child =
-            spawn_companion(&node_path(), &fixture, "/tmp/project", tx, None).expect("spawn");
+        let mut child = spawn_companion(
+            &node_path(),
+            &fixture,
+            "/tmp/project",
+            tx,
+            None,
+            dir.path(),
+            dir.path(),
+        )
+        .expect("spawn");
         child
             .send_line(r#"{"type":"control/hello"}"#)
             .expect("hello");
@@ -305,8 +338,16 @@ rl.on('line', (line) => {
             &format!("process.stdout.write({oversized:?} + '\\n');\n"),
         );
         let (tx, rx) = event_channel();
-        let child =
-            spawn_companion(&node_path(), &fixture, "/tmp/project", tx, None).expect("spawn");
+        let child = spawn_companion(
+            &node_path(),
+            &fixture,
+            "/tmp/project",
+            tx,
+            None,
+            dir.path(),
+            dir.path(),
+        )
+        .expect("spawn");
         let event = rx.recv_timeout(Duration::from_secs(5)).expect("close");
         assert_eq!(
             event,
@@ -332,6 +373,8 @@ rl.on('line', (line) => {
             "/tmp/project",
             tx,
             Some(log.clone()),
+            dir.path(),
+            dir.path(),
         )
         .expect("spawn");
         let deadline = Instant::now() + Duration::from_secs(5);
@@ -360,9 +403,62 @@ rl.on('line', (line) => {
             "/tmp/project",
             event_channel().0,
             None,
+            Path::new("/tmp"),
+            Path::new("/tmp"),
         )
         .expect_err("missing node");
         assert!(matches!(error, ShellError::Config(_)));
         assert!(error.to_string().contains("spawn failed"));
+    }
+
+    #[test]
+    fn exports_absolute_app_data_and_sidecar_home() {
+        let dir = tempdir().expect("tempdir");
+        let fixture = write_fixture(
+            dir.path(),
+            r#"
+const app = process.env.OCTOPUS_APP_DATA ?? '';
+const sidecar = process.env.OCTOPUS_SIDECAR_HOME ?? '';
+process.stdout.write(JSON.stringify({ type: 'control/ready', app, sidecar }) + '\n');
+"#,
+        );
+        let (tx, rx) = event_channel();
+        let app_data = dir.path().join("app-data");
+        let sidecar = dir.path().join("kb-runtime");
+        fs::create_dir_all(&app_data).expect("app-data");
+        fs::create_dir_all(&sidecar).expect("sidecar");
+        let child = spawn_companion(
+            &node_path(),
+            &fixture,
+            "/tmp/project",
+            tx,
+            None,
+            &app_data,
+            &sidecar,
+        )
+        .expect("spawn");
+        let event = rx.recv_timeout(Duration::from_secs(5)).expect("ready");
+        let CarrierEvent::Record(line) = event else {
+            panic!("expected record, got {event:?}");
+        };
+        let parsed: serde_json::Value = serde_json::from_str(&line).expect("json");
+        assert_eq!(parsed["app"], app_data.to_string_lossy().as_ref());
+        assert_eq!(parsed["sidecar"], sidecar.to_string_lossy().as_ref());
+        let _ = child.shutdown();
+    }
+
+    #[test]
+    fn rejects_relative_app_data_dir() {
+        let error = spawn_companion(
+            Path::new("/definitely-missing-node-binary"),
+            Path::new("/definitely-missing-companion.js"),
+            "/tmp/project",
+            event_channel().0,
+            None,
+            Path::new("relative-app-data"),
+            Path::new("/tmp"),
+        )
+        .expect_err("relative app-data");
+        assert!(error.to_string().contains("OCTOPUS_APP_DATA"));
     }
 }

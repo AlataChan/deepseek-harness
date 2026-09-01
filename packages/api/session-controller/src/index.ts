@@ -9,6 +9,7 @@ import {
   WorkspaceEntriesError,
 } from '@deepseek-ai/dsh-host-workspace-entries'
 import type {} from '@deepseek-ai/dsh-host-ask-data'
+import type {} from '@deepseek-ai/dsh-host-ask-knowledge'
 import type { SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionObservation } from '@deepseek-ai/dsh-session-query'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -63,8 +64,30 @@ import type {
   SessionCommitAskDataRequest,
   SessionCommitAskDataValue,
   SessionImportAskDataSpreadsheetRequest,
+  SessionAskKnowledgeBinding,
+  SessionAskKnowledgeBindingRequest,
+  SessionAskKnowledgeBundle,
+  SessionAskKnowledgeExtractResult,
+  SessionAskKnowledgeIngestResult,
+  SessionAskKnowledgeLibrary,
+  SessionAskKnowledgeLookup,
+  SessionAskKnowledgeLookupRequest,
+  SessionAskKnowledgeRetrieveRequest,
+  SessionAppendAskKnowledgeExtractChunkRequest,
+  SessionAppendAskKnowledgeIngestChunkRequest,
+  SessionAttachAskKnowledgeRequest,
+  SessionAttachAskKnowledgeValue,
+  SessionBeginAskKnowledgeExtractRequest,
+  SessionBeginAskKnowledgeIngestRequest,
+  SessionCreateAskKnowledgeLibraryRequest,
+  SessionDetachAskKnowledgeRequest,
+  SessionFinishAskKnowledgeExtractRequest,
+  SessionFinishAskKnowledgeIngestRequest,
+  SessionRemoveAskKnowledgeLibraryRequest,
+  SessionRenameAskKnowledgeLibraryRequest,
 } from './types.ts'
 import { SessionAskDataController } from './ask-data.ts'
+import { SessionAskKnowledgeController } from './ask-knowledge.ts'
 
 export type * from './types.ts'
 export { ApiSessionNotFound } from './agent.ts'
@@ -122,6 +145,7 @@ export class SessionController extends TypertRemoteService {
   private readonly canOpenPath: () => boolean
   private readonly promotions = new Set<Promise<void>>()
   private readonly askData: SessionAskDataController
+  private readonly askKnowledge: SessionAskKnowledgeController
 
   /**
    * @param ctx - Host context containing the Session capability assembly.
@@ -132,6 +156,12 @@ export class SessionController extends TypertRemoteService {
     installModelSelectionProjection(ctx)
     this.agents = new ApiSessionAgentController(ctx)
     this.askData = new SessionAskDataController(ctx, this.agents, process.cwd())
+    this.askKnowledge = new SessionAskKnowledgeController(
+      ctx,
+      this.agents,
+      this.askData.gate,
+      process.cwd(),
+    )
     this.commands = new SessionCommandController(ctx, this.agents, process.cwd())
     const presets = ctx.get('agentPresets')
     if (presets !== undefined && 'admitSelect' in presets) {
@@ -432,6 +462,207 @@ export class SessionController extends TypertRemoteService {
   }
 
   /**
+   * List overlay-managed knowledge libraries.
+   * @param signal - caller lifetime; abort stops the listing.
+   * @returns catalog rows.
+   */
+  @Remote('listAskKnowledgeLibraries')
+  listAskKnowledgeLibraries(signal: AbortSignal): Promise<readonly SessionAskKnowledgeLibrary[]> {
+    return this.askKnowledge.listLibraries(signal)
+  }
+
+  /**
+   * Create an empty knowledge library.
+   * @param request - display name and optional workspace shortcut.
+   * @param signal - caller lifetime; abort stops the create.
+   * @returns the new catalog row.
+   */
+  @Remote('createAskKnowledgeLibrary')
+  createAskKnowledgeLibrary(
+    request: SessionCreateAskKnowledgeLibraryRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAskKnowledgeLibrary> {
+    return this.askKnowledge.createLibrary(request, signal)
+  }
+
+  /**
+   * Rename a knowledge library.
+   * @param request - library id and new display name.
+   * @param signal - caller lifetime; abort stops the rename.
+   * @returns the updated row.
+   */
+  @Remote('renameAskKnowledgeLibrary')
+  renameAskKnowledgeLibrary(
+    request: SessionRenameAskKnowledgeLibraryRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAskKnowledgeLibrary> {
+    return this.askKnowledge.renameLibrary(request, signal)
+  }
+
+  /**
+   * Remove a knowledge library and unbind live and cold sessions.
+   * @param request - library id.
+   * @param signal - caller lifetime; abort stops the remove.
+   */
+  @Remote('removeAskKnowledgeLibrary')
+  removeAskKnowledgeLibrary(
+    request: SessionRemoveAskKnowledgeLibraryRequest,
+    signal: AbortSignal,
+  ): Promise<void> {
+    return this.askKnowledge.removeLibrary(request, signal)
+  }
+
+  /**
+   * Hang a library on a Session. Host does not guess the current Session.
+   * Omit `sessionId` to create a standard Session, then attach.
+   * A named data-agent Session with an ask-data bind creates a new standard
+   * Session instead, because data-agent denies retrieve tools.
+   * @param request - library and optional session / workspace.
+   * @param signal - caller lifetime; abort stops the attach.
+   * @returns the Session identity after bind.
+   */
+  @Remote('attachAskKnowledge')
+  attachAskKnowledge(
+    request: SessionAttachAskKnowledgeRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAttachAskKnowledgeValue> {
+    return this.askKnowledge.attach(request, signal)
+  }
+
+  /**
+   * Clear the library bind on a live Session.
+   * @param request - Session identity.
+   * @param signal - caller lifetime; abort stops the detach.
+   */
+  @Remote('detachAskKnowledge')
+  detachAskKnowledge(
+    request: SessionDetachAskKnowledgeRequest,
+    signal: AbortSignal,
+  ): Promise<void> {
+    return this.askKnowledge.detach(request, signal)
+  }
+
+  /**
+   * Open an ingest upload. `bytes` chunks follow on append.
+   * @param request - library and original filename.
+   * @param signal - caller lifetime; abort stops the begin.
+   * @returns the ingest handle.
+   */
+  @Remote('beginAskKnowledgeIngest')
+  beginAskKnowledgeIngest(
+    request: SessionBeginAskKnowledgeIngestRequest,
+    signal: AbortSignal,
+  ): Promise<string> {
+    return this.askKnowledge.beginIngest(request, signal)
+  }
+
+  /**
+   * Append one canonical-base64 chunk. Decoded size must be ≤ 160KiB.
+   * @param request - handle and encoded bytes.
+   * @param signal - caller lifetime; abort stops the append.
+   */
+  @Remote('appendAskKnowledgeIngestChunk')
+  appendAskKnowledgeIngestChunk(
+    request: SessionAppendAskKnowledgeIngestChunkRequest,
+    signal: AbortSignal,
+  ): Promise<void> {
+    return this.askKnowledge.appendIngestChunk(request, signal)
+  }
+
+  /**
+   * Assemble chunks and run ingest → propose → apply.
+   * @param request - handle and optional raw reuse path.
+   * @param signal - caller lifetime; abort stops the finish.
+   * @returns applied, deferred, or failed ingest status.
+   */
+  @Remote('finishAskKnowledgeIngest')
+  finishAskKnowledgeIngest(
+    request: SessionFinishAskKnowledgeIngestRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAskKnowledgeIngestResult> {
+    return this.askKnowledge.finishIngest(request, signal)
+  }
+
+  /**
+   * Open a session-only extract upload. Does not write catalog.
+   * @param request - original filename.
+   * @param signal - caller lifetime; abort stops the begin.
+   * @returns the extract handle.
+   */
+  @Remote('beginAskKnowledgeExtract')
+  beginAskKnowledgeExtract(
+    request: SessionBeginAskKnowledgeExtractRequest,
+    signal: AbortSignal,
+  ): Promise<string> {
+    return this.askKnowledge.beginExtract(request, signal)
+  }
+
+  /**
+   * Append one canonical-base64 chunk to a session-only extract upload.
+   * @param request - handle and encoded bytes.
+   * @param signal - caller lifetime; abort stops the append.
+   */
+  @Remote('appendAskKnowledgeExtractChunk')
+  appendAskKnowledgeExtractChunk(
+    request: SessionAppendAskKnowledgeExtractChunkRequest,
+    signal: AbortSignal,
+  ): Promise<void> {
+    return this.askKnowledge.appendExtractChunk(request, signal)
+  }
+
+  /**
+   * Convert the assembled file to text. Does not write catalog or vault.
+   * @param request - handle.
+   * @param signal - caller lifetime; abort stops the finish.
+   * @returns extracted text and whether it was truncated.
+   */
+  @Remote('finishAskKnowledgeExtract')
+  finishAskKnowledgeExtract(
+    request: SessionFinishAskKnowledgeExtractRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAskKnowledgeExtractResult> {
+    return this.askKnowledge.finishExtract(request, signal)
+  }
+
+  /**
+   * Retrieve pages for the Session's hung library.
+   * @param request - Session identity and terms.
+   * @param signal - caller lifetime; abort stops the retrieve.
+   * @returns a bounded bundle.
+   */
+  @Remote('askKnowledgeRetrieve')
+  askKnowledgeRetrieve(
+    request: SessionAskKnowledgeRetrieveRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAskKnowledgeBundle> {
+    return this.askKnowledge.retrieve(request, signal)
+  }
+
+  /**
+   * Look up one term on the Session's hung library.
+   * @param request - Session identity and term.
+   * @param signal - caller lifetime; abort stops the lookup.
+   * @returns lookup fields plus optional text.
+   */
+  @Remote('askKnowledgeLookup')
+  askKnowledgeLookup(
+    request: SessionAskKnowledgeLookupRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAskKnowledgeLookup> {
+    return this.askKnowledge.lookup(request, signal)
+  }
+
+  /**
+   * Read the current ask-knowledge bind of a live Session.
+   * @param request - Session identity.
+   * @returns the bind, or null before one.
+   */
+  @Remote('askKnowledgeBinding')
+  askKnowledgeBinding(request: SessionAskKnowledgeBindingRequest): SessionAskKnowledgeBinding | null {
+    return this.askKnowledge.askKnowledgeBinding(request.sessionId)
+  }
+
+  /**
    * Rename one Session after explicitly resuming it.
    * @param request - Session identity and proposed title.
    * @returns the accepted title and durable event sequence.
@@ -464,7 +695,8 @@ export class SessionController extends TypertRemoteService {
       const found = await this.agents.resolveAgent(request.sessionId)
       if ('error' in found) throw found.error
       this.askData.assertPromptAllowed(request.sessionId, found.agent)
-      return this.commands.prompt(request)
+      return this.askKnowledge.withOverlaySession(request.sessionId, () =>
+        this.commands.prompt(request))
     })
   }
 

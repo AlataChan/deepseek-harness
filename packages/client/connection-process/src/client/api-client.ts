@@ -31,6 +31,44 @@ export interface ProcessBridgePort {
 /** Default bounded unary deadline inherited by surface configuration. */
 export const DEFAULT_VSCODE_RESPONSE_TIMEOUT_MS = 30_000
 
+/** Session remote that runs sidecar convert, LLM propose, and apply. */
+export const ASK_KNOWLEDGE_FINISH_INGEST_METHOD = 'session/finishAskKnowledgeIngest'
+
+/**
+ * Unary deadline for {@link ASK_KNOWLEDGE_FINISH_INGEST_METHOD}.
+ * The Host call includes recover, ingest-file, propose (LLM default 60s), and apply.
+ */
+export const ASK_KNOWLEDGE_FINISH_INGEST_TIMEOUT_MS = 180_000
+
+/** Session remote that runs sidecar convert-file without propose. */
+export const ASK_KNOWLEDGE_FINISH_EXTRACT_METHOD = 'session/finishAskKnowledgeExtract'
+
+/**
+ * Unary deadline for {@link ASK_KNOWLEDGE_FINISH_EXTRACT_METHOD}.
+ * Convert-file has no LLM propose step; a large PDF can still take tens of seconds.
+ */
+export const ASK_KNOWLEDGE_FINISH_EXTRACT_TIMEOUT_MS = 90_000
+
+/**
+ * Resolve the unary deadline for one desktop/VS Code RPC method.
+ * @param method - Connection remote method, for example `session/listAskKnowledgeLibraries`.
+ * @param defaultMs - surface default, usually {@link DEFAULT_VSCODE_RESPONSE_TIMEOUT_MS}.
+ * @returns milliseconds until the client rejects the pending request.
+ */
+export function unaryResponseTimeoutMs(method: string, defaultMs: number): number {
+  if (method === ASK_KNOWLEDGE_FINISH_INGEST_METHOD) {
+    return defaultMs > ASK_KNOWLEDGE_FINISH_INGEST_TIMEOUT_MS
+      ? defaultMs
+      : ASK_KNOWLEDGE_FINISH_INGEST_TIMEOUT_MS
+  }
+  if (method === ASK_KNOWLEDGE_FINISH_EXTRACT_METHOD) {
+    return defaultMs > ASK_KNOWLEDGE_FINISH_EXTRACT_TIMEOUT_MS
+      ? defaultMs
+      : ASK_KNOWLEDGE_FINISH_EXTRACT_TIMEOUT_MS
+  }
+  return defaultMs
+}
+
 /** Default maximum requests awaiting correlated downlink responses. */
 export const DEFAULT_VSCODE_MAX_PENDING_REQUESTS = 256
 
@@ -227,7 +265,7 @@ export class ProcessTransport {
         this.pending.delete(message.rpcId)
         pending.detachAbort()
         pending.reject(new Error(`desktop API request ${message.method} timed out`))
-      }, this.responseTimeoutMs)
+      }, unaryResponseTimeoutMs(message.method, this.responseTimeoutMs))
       this.pending.set(message.rpcId, { resolve, reject, detachAbort, timer })
       signal?.addEventListener('abort', onAbort, { once: true })
       void this.sendFrame({ type: 'rpc/message', message }).catch((error: unknown) => {

@@ -73,6 +73,7 @@ function mountBar(shell: SessionInputShell, over?: { running?: boolean; disabled
     })),
     resolveSubmitMode: () => 'queue',
     toggleCommandMenu: vi.fn(),
+    toggleReferenceMenu: vi.fn(),
     useNotices: bindSnapshotSelector(shell.notices),
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(createSnapshotStore<string | null>(null)),
@@ -306,6 +307,7 @@ describe('matrix row: locked (session disabled)', () => {
   it('disables the textarea and chrome; the machine currency is untouched', () => {
     const { view, textarea, shell } = bench({ disabled: true })
     expect(textarea.getAttribute('aria-disabled')).toBe('true')
+    expect((view.getByLabelText('添加') as HTMLButtonElement).disabled).toBe(true)
     expect((view.getByLabelText('指令') as HTMLButtonElement).disabled).toBe(true)
     expect(shell.snapshot.phase).toBe('plain')
   })

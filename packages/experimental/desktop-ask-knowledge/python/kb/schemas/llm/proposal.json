@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "octopus-kb/llm/proposal",
+  "title": "Octopus KB LLM Proposal",
+  "type": "object",
+  "required": ["id", "created_at", "source", "produced_by", "operations", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "source": {
+      "type": "object",
+      "required": ["kind", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"const": "raw_file"},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+      }
+    },
+    "produced_by": {
+      "type": "object",
+      "required": ["provider_profile", "model", "prompt_version"],
+      "additionalProperties": false,
+      "properties": {
+        "provider_profile": {"type": "string", "minLength": 1},
+        "model": {"type": "string", "minLength": 1},
+        "prompt_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/create_page_op"},
+          {"$ref": "#/$defs/add_alias_op"},
+          {"$ref": "#/$defs/append_log_op"}
+        ]
+      }
+    },
+    "status": {
+      "enum": ["pending", "deferred", "applied", "rejected", "rolled_back"]
+    }
+  },
+  "$defs": {
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "source_span": {
+      "type": "object",
+      "required": ["path", "start_line", "end_line"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "start_line": {"type": "integer", "minimum": 1},
+        "end_line": {"type": "integer", "minimum": 1}
+      }
+    },
+    "create_page_op": {
+      "type": "object",
+      "required": [
+        "op",
+        "path",
+        "frontmatter",
+        "body",
+        "rationale",
+        "confidence",
+        "source_span"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {"const": "create_page"},
+        "path": {"type": "string", "minLength": 1},
+        "frontmatter": {"type": "object"},
+        "body": {"type": "string"},
+        "rationale": {"type": "string"},
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "source_span": {"$ref": "#/$defs/source_span"}
+      }
+    },
+    "add_alias_op": {
+      "type": "object",
+      "required": ["op", "target_page", "alias", "rationale", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "op": {"const": "add_alias"},
+        "target_page": {"type": "string", "minLength": 1},
+        "alias": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string"},
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "source_span": {"$ref": "#/$defs/source_span"}
+      }
+    },
+    "append_log_op": {
+      "type": "object",
+      "required": ["op", "path", "entry", "rationale", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "op": {"const": "append_log"},
+        "path": {"type": "string", "minLength": 1},
+        "entry": {"type": "string"},
+        "rationale": {"type": "string"},
+        "confidence": {"$ref": "#/$defs/confidence"}
+      }
+    }
+  }
+}

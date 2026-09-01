@@ -162,12 +162,21 @@ impl DesktopShell {
             .ok_or_else(|| ShellError::Config("workspaceRoot is not configured".into()))?;
         self.stop_child()?;
         let (tx, rx) = std::sync::mpsc::channel();
+        let sidecar_home = self
+            .bundled
+            .node
+            .as_ref()
+            .and_then(|node| node.parent())
+            .map(|parent| parent.join("kb-runtime"))
+            .unwrap_or_else(|| self.cache_root.join("kb-runtime"));
         let child = spawn_companion(
             Path::new(&resolved.node_path),
             Path::new(&resolved.companion_entry),
             &workspace_root,
             tx,
             Some(self.companion_log_path()),
+            &self.cache_root,
+            &sidecar_home,
         )?;
         let result = CarrierOpenResult {
             generation_id: child.generation_id.clone(),

@@ -315,6 +315,7 @@ export function ConversationRoot({
       })}
       {renderSlot('conversation.hero.agentPreset', {})}
       {renderSlot('conversation.hero.askData', {})}
+      {renderSlot('conversation.hero.askKnowledge', {})}
     </div>
   )
 
@@ -354,6 +355,7 @@ export function ConversationRoot({
     <div className={clsx(css.composerStack, hero && css.composerHero)}>
       {hero && <HeroShell t={t} renderSlot={renderSlot} />}
       {hero && heroWorkspaceRow}
+      {renderSlot('conversation.askKnowledge.picker', {})}
       {askDataGateOccupied
         ? renderSlot('conversation.askData.gate', {})
         : (

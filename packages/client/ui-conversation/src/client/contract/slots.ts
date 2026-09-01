@@ -48,6 +48,40 @@ export interface ComposerAttachmentsOwnerProps {
   dropLimits?: { readonly count: number; readonly size: string } | undefined
 }
 
+/** Owner share of the plus-menu knowledge opener. */
+export interface AttachKnowledgeOwnerProps {
+  /** Incremented when the plus menu asks to open the library picker. */
+  openRequest: number
+  /**
+   * Report whether an occupant is mounted so the plus menu can toast when
+   * the overlay is not composed.
+   * @param ready - true on mount, false on unmount.
+   */
+  onReady: (ready: boolean) => void
+}
+
+/** Settled session-only extract handed back to the composer. */
+export type SessionDocumentExtractSettlement =
+  | { readonly ok: true; readonly filename: string; readonly text: string; readonly truncated: boolean }
+  | { readonly ok: false; readonly error: string }
+
+/** Owner share of the plus-menu session-document extractor. */
+export interface AttachSessionDocumentOwnerProps {
+  /** File that needs sidecar convert-file; null while idle. */
+  file: File | null
+  /**
+   * Report whether an occupant is mounted so PDF/HTML can toast when
+   * the overlay is not composed.
+   * @param ready - true on mount, false on unmount.
+   */
+  onReady: (ready: boolean) => void
+  /**
+   * Deliver extracted text or a failure. The composer frames and pastes.
+   * @param result - sidecar extract outcome.
+   */
+  onSettled: (result: SessionDocumentExtractSettlement) => void
+}
+
 /**
  * One image inside a message record: a durable admitted reference, or the
  * local preview of a submission echo whose admission is still in flight.
@@ -127,6 +161,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.agentPreset': { kind: 'single'; scope: 'root'; owner: HeroAgentPresetOwnerProps }
     /** Ask-data chip staged for a New Session. */
     'conversation.hero.askData': { kind: 'single'; scope: 'root'; owner: HeroAskDataOwnerProps }
+    /** Ask-knowledge chip staged for a New Session. */
+    'conversation.hero.askKnowledge': { kind: 'single'; scope: 'root'; owner: HeroAskKnowledgeOwnerProps }
+    /** Knowledge-library picker. Must not replace the sendable composer. */
+    'conversation.askKnowledge.picker': { kind: 'single'; scope: 'root'; owner: AskKnowledgePickerOwnerProps }
     /** Full data-source gate that replaces the sendable composer while occupied. */
     'conversation.askData.gate': { kind: 'single'; scope: 'root'; owner: AskDataGateOwnerProps }
     /** Full-width entries above the composer card. */
@@ -146,6 +184,18 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
       kind: 'single'
       scope: 'session-maybe'
       owner: ComposerAttachmentsOwnerProps
+    }
+    /** Plus-menu opener for the knowledge-library picker. Absent when the overlay is not composed. */
+    'conversation.input.attachKnowledge': {
+      kind: 'single'
+      scope: 'session-maybe'
+      owner: AttachKnowledgeOwnerProps
+    }
+    /** Plus-menu extractor for session-only documents. Absent when the overlay is not composed. */
+    'conversation.input.attachSessionDocument': {
+      kind: 'single'
+      scope: 'session-maybe'
+      owner: AttachSessionDocumentOwnerProps
     }
     /** Plan control inside the composer tool row. */
     'conversation.input.plan': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
@@ -192,6 +242,18 @@ export interface HeroAskDataOwnerProps {
 /** Owner share of the ask-data data-source gate. */
 export interface AskDataGateOwnerProps {
   /** Marker field: the occupant owns remotes and cancel. */
+  children?: never
+}
+
+/** Owner share of the Hero ask-knowledge chip. */
+export interface HeroAskKnowledgeOwnerProps {
+  /** Marker field: the occupant owns its opener. */
+  children?: never
+}
+
+/** Owner share of the ask-knowledge library picker. */
+export interface AskKnowledgePickerOwnerProps {
+  /** Marker field: the occupant owns remotes and close. */
   children?: never
 }
 
@@ -295,6 +357,8 @@ export interface ComposerBarInjected {
     steeringAvailable: boolean,
   ) => InputSubmitMode
   toggleCommandMenu: ((selection: EditSelection) => void) | undefined
+  /** Open or close the `@` workspace-file / session menu at the caret. */
+  toggleReferenceMenu: ((selection: EditSelection) => void) | undefined
   stop: (() => void) | undefined
   command: ((line: string) => Promise<boolean>) | undefined
   hooks: {
@@ -314,7 +378,11 @@ export interface InputControlOwnerProps {
 export type ComposerBarProps =
   PropsRuntime<'conversation.composer.bar'>
   & PropsRenderSlots<
-    'conversation.input.attachments' | 'conversation.input.plan' | 'conversation.input.model'
+    | 'conversation.input.attachments'
+    | 'conversation.input.attachKnowledge'
+    | 'conversation.input.attachSessionDocument'
+    | 'conversation.input.plan'
+    | 'conversation.input.model'
   >
   & InjectFace<ComposerBarInjected>
   & PropsLocale<'conversation'>
@@ -357,7 +425,9 @@ export type ConversationSlotProps =
     | 'conversation.hero.workspace'
     | 'conversation.hero.agentPreset'
     | 'conversation.hero.askData'
+    | 'conversation.hero.askKnowledge'
     | 'conversation.askData.gate'
+    | 'conversation.askKnowledge.picker'
   >
   & InjectFace<ConversationInjected>
   & PropsLocale<'conversation'>

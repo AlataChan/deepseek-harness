@@ -12,7 +12,7 @@ The octopus_DSH desktop entry is the experimental Provider plus Client occupant 
 
 ## Model Experience
 
-None in this package. The overlay Provider registers a dynamic system-prompt section from the same limits module when `askDataBinding` is set.
+None, as this Service Definition owns only the capability vocabulary.
 
 #### KV Cache effect
 

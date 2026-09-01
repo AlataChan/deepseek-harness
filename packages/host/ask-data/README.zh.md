@@ -12,7 +12,7 @@ octopus_DSH 桌面入口是实验 Provider 加 Client 占位（`@deepseek-ai/dsh
 
 ## 模型体验
 
-本包不提供。overlay Provider 在已有 `askDataBinding` 时，从同一份限制模块注册动态 system-prompt 段。
+None, as this Service Definition owns only the capability vocabulary.
 
 #### KV Cache 影响
 

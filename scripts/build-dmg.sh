@@ -6,6 +6,7 @@
 #   Resources/resources/harness/      — @deepseek-ai/dsh package (with desktop-companion)
 #   Resources/resources/presets/      — bundled presets (copied to ~/.dsh on first run)
 #   Resources/resources/profile-plugins/ — fork-owned profile bundles (npm + workspace pins)
+#   Resources/resources/kb-runtime/     — relocatable octopus-kb PyInstaller onedir
 #
 # After opening the app, users only need to enter their API Key.
 #
@@ -80,6 +81,11 @@ if [[ "${REUSE_DEPS:-0}" != "1" || ! -f "$DEPS_CACHE/.collect-manifest.json" ]];
   info "Collecting runtime dependencies..."
   rm -rf "$DEPS_CACHE"
   node "$REPO_ROOT/scripts/collect-runtime-deps.mjs" "$CLI_DIR/package.json" "$DEPS_CACHE"
+else
+  info "Reusing third-party dep cache; refreshing workspace packages..."
+  node "$REPO_ROOT/scripts/collect-runtime-deps.mjs" --refresh-workspace \
+    "$CLI_DIR/package.json" "$DEPS_CACHE" \
+    || fail "Failed to refresh workspace packages in $DEPS_CACHE"
 fi
 
 rm -rf "$RESOURCES/harness"
@@ -119,12 +125,34 @@ node "$REPO_ROOT/scripts/seed-desktop-profile-plugin.mjs" fetch --out "$PLUGIN_R
   || fail "Failed to fetch desktop profile plugins"
 ok "Desktop profile plugins embedded"
 
+# ── 3b. Embed relocatable Python sidecar ────────────────────────────────────
+
+info "Freezing and embedding kb-runtime..."
+if [[ "${REUSE_KB_RUNTIME:-0}" == "1" && -x "$REPO_ROOT/dist/.cache/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar" ]]; then
+  info "Reusing dist/.cache/kb-runtime (REUSE_KB_RUNTIME=1)"
+else
+  bash "$REPO_ROOT/scripts/build-kb-sidecar.sh" || fail "Failed to freeze octopus-kb-sidecar"
+fi
+rm -rf "$RESOURCES/kb-runtime"
+ditto "$REPO_ROOT/dist/.cache/kb-runtime" "$RESOURCES/kb-runtime"
+[[ -x "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar" ]] \
+  || fail "kb-runtime missing octopus-kb-sidecar after embed"
+ok "kb-runtime embedded"
+
 # Embedding files after `tauri build` invalidates the bundle signature.
 # Resign here so Gatekeeper does not report a stale signature as “已损坏”.
 # Ad-hoc signing is not Apple notarization; the DMG still ships an installer
 # that clears quarantine on the user's machine.
 info "Ad-hoc signing the bundle after embedding..."
 codesign --force --sign - --timestamp=none "$RESOURCES/node"
+if [[ -x "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar" ]]; then
+  codesign --force --sign - --timestamp=none \
+    "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar"
+fi
+while IFS= read -r lib; do
+  [[ -z "$lib" ]] && continue
+  codesign --force --sign - --timestamp=none "$lib" || true
+done < <(find "$RESOURCES/kb-runtime" \( -name '*.so' -o -name '*.dylib' \) -type f 2>/dev/null)
 codesign --force --deep --sign - --timestamp=none "$APP_BUNDLE"
 if ! codesign --verify --deep "$APP_BUNDLE"; then
   fail "codesign --verify failed after embedding"

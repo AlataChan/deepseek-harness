@@ -685,6 +685,36 @@ export interface Config {
 
 来源：[`packages/experimental/desktop-ask-data/src/index.ts:24`](../packages/experimental/desktop-ask-data/src/index.ts)
 
+<a id="deepseek-aidsh-experimental-desktop-ask-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-ask-knowledge`
+
+需要：`sessionProjections` · `systemPrompt`
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface Config extends AskKnowledgeHomeConfig {
+  /** Ceiling of one ingest file in bytes after the last chunk is joined. */
+  readonly maxIngestBytes?: number
+  /** Maximum retrieve items kept in the full tool result. */
+  readonly maxResultItems?: number
+  /** Maximum retrieve characters kept in the full tool result. */
+  readonly maxResultChars?: number
+  /** Maximum retrieve tokens kept in the full tool result. */
+  readonly maxResultTokens?: number
+}
+
+/** Validated plugin configuration. */
+export interface AskKnowledgeHomeConfig {
+  /** Absolute Tauri app-data directory. Empty falls through to `OCTOPUS_APP_DATA`. */
+  readonly knowledgeHome?: string
+  /** Absolute sidecar runtime root. Empty falls through to `OCTOPUS_SIDECAR_HOME`. */
+  readonly sidecarRuntimePath?: string
+}
+```
+
+来源：[`packages/experimental/desktop-ask-knowledge/src/index.ts:54`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
+
 <a id="deepseek-aidsh-experimental-desktop-files"></a>
 
 ## `@deepseek-ai/dsh-experimental-desktop-files`
@@ -3566,6 +3596,7 @@ export interface Config {
 - `@deepseek-ai/dsh-file-reference` — 抽象 `FileReferenceService`（[`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts)）
 - `@deepseek-ai/dsh-fs` — 抽象 `FileSystem`（[`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts)）
 - `@deepseek-ai/dsh-host-ask-data` — 抽象 `AskData`（[`packages/host/ask-data/src/index.ts`](../packages/host/ask-data/src/index.ts)）
+- `@deepseek-ai/dsh-host-ask-knowledge` — 抽象 `AskKnowledge`（[`packages/host/ask-knowledge/src/index.ts`](../packages/host/ask-knowledge/src/index.ts)）
 - `@deepseek-ai/dsh-host-directory-picker` — 抽象 `DirectoryPicker`（[`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts)）
 - `@deepseek-ai/dsh-host-workspace-entries` — 抽象 `WorkspaceEntries`（[`packages/host/workspace-entries/src/index.ts`](../packages/host/workspace-entries/src/index.ts)）
 - `@deepseek-ai/dsh-jobs` — 抽象 `JobRegistry`（[`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts)）

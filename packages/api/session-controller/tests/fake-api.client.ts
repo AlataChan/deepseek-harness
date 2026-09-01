@@ -15,6 +15,12 @@ import type {
   SessionFollowRequest,
   SessionAskDataImportPreview,
   SessionAskDataSource,
+  SessionAskKnowledgeBinding,
+  SessionAskKnowledgeBundle,
+  SessionAskKnowledgeExtractResult,
+  SessionAskKnowledgeIngestResult,
+  SessionAskKnowledgeLibrary,
+  SessionAskKnowledgeLookup,
   SessionListEntriesValue,
   SessionPage,
   SessionPageRequest,
@@ -167,6 +173,50 @@ export class FakeApiClient {
     () => Promise.resolve(ok({ sessionId: 'fk-ask' as SessionId }))
   onAskDataBinding: (payload: unknown) => Promise<RemoteResult<null>> =
     () => Promise.resolve(ok(null))
+  onListAskKnowledgeLibraries: (payload: unknown) => Promise<RemoteResult<readonly SessionAskKnowledgeLibrary[]>> =
+    () => Promise.resolve(ok([]))
+  onCreateAskKnowledgeLibrary: (payload: unknown) => Promise<RemoteResult<SessionAskKnowledgeLibrary>> =
+    () => Promise.resolve(ok({
+      id: 'lib-1',
+      displayName: '制度',
+      createdAt: '2026-08-31T00:00:00.000Z',
+      lastUsedAt: '2026-08-31T00:00:00.000Z',
+      missing: false,
+      deleting: false,
+    }))
+  onRenameAskKnowledgeLibrary: (payload: unknown) => Promise<RemoteResult<SessionAskKnowledgeLibrary>> =
+    () => Promise.resolve(ok({
+      id: 'lib-1',
+      displayName: '制度',
+      createdAt: '2026-08-31T00:00:00.000Z',
+      lastUsedAt: '2026-08-31T00:00:00.000Z',
+      missing: false,
+      deleting: false,
+    }))
+  onRemoveAskKnowledgeLibrary: (payload: unknown) => Promise<RemoteResult<void>> =
+    () => Promise.resolve(ok(undefined))
+  onAttachAskKnowledge: (payload: unknown) => Promise<RemoteResult<{ sessionId: SessionId }>> =
+    () => Promise.resolve(ok({ sessionId: 'fk-ak' as SessionId }))
+  onDetachAskKnowledge: (payload: unknown) => Promise<RemoteResult<void>> =
+    () => Promise.resolve(ok(undefined))
+  onBeginAskKnowledgeIngest: (payload: unknown) => Promise<RemoteResult<string>> =
+    () => Promise.resolve(ok('handle-1'))
+  onAppendAskKnowledgeIngestChunk: (payload: unknown) => Promise<RemoteResult<void>> =
+    () => Promise.resolve(ok(undefined))
+  onFinishAskKnowledgeIngest: (payload: unknown) => Promise<RemoteResult<SessionAskKnowledgeIngestResult>> =
+    () => Promise.resolve(ok({ status: 'applied', rawRelPath: 'raw/a.md' }))
+  onBeginAskKnowledgeExtract: (payload: unknown) => Promise<RemoteResult<string>> =
+    () => Promise.resolve(ok('handle-extract'))
+  onAppendAskKnowledgeExtractChunk: (payload: unknown) => Promise<RemoteResult<void>> =
+    () => Promise.resolve(ok(undefined))
+  onFinishAskKnowledgeExtract: (payload: unknown) => Promise<RemoteResult<SessionAskKnowledgeExtractResult>> =
+    () => Promise.resolve(ok({ filename: 'note.md', text: '正文', truncated: false }))
+  onAskKnowledgeRetrieve: (payload: unknown) => Promise<RemoteResult<SessionAskKnowledgeBundle>> =
+    () => Promise.resolve(ok({ items: [], warnings: [], tokenEstimate: 0 }))
+  onAskKnowledgeLookup: (payload: unknown) => Promise<RemoteResult<SessionAskKnowledgeLookup>> =
+    () => Promise.resolve(ok({ term: '报销', warnings: [] }))
+  onAskKnowledgeBinding: (payload: unknown) => Promise<RemoteResult<SessionAskKnowledgeBinding | null>> =
+    () => Promise.resolve(ok(null))
 
   private readonly followConns = new Map<SessionId, ValueStreamConn<SessionFollowFrame>[]>()
   private readonly controlConns: ValueStreamConn<SessionControlFrame>[] = []
@@ -281,6 +331,81 @@ export class FakeApiClient {
           'session.askDataBinding',
           payload,
           this.onAskDataBinding(payload),
+        ),
+        listAskKnowledgeLibraries: payload => this.record(
+          'session.listAskKnowledgeLibraries',
+          payload,
+          this.onListAskKnowledgeLibraries(payload),
+        ),
+        createAskKnowledgeLibrary: payload => this.record(
+          'session.createAskKnowledgeLibrary',
+          payload,
+          this.onCreateAskKnowledgeLibrary(payload),
+        ),
+        renameAskKnowledgeLibrary: payload => this.record(
+          'session.renameAskKnowledgeLibrary',
+          payload,
+          this.onRenameAskKnowledgeLibrary(payload),
+        ),
+        removeAskKnowledgeLibrary: payload => this.record(
+          'session.removeAskKnowledgeLibrary',
+          payload,
+          this.onRemoveAskKnowledgeLibrary(payload),
+        ),
+        attachAskKnowledge: payload => this.record(
+          'session.attachAskKnowledge',
+          payload,
+          this.onAttachAskKnowledge(payload),
+        ),
+        detachAskKnowledge: payload => this.record(
+          'session.detachAskKnowledge',
+          payload,
+          this.onDetachAskKnowledge(payload),
+        ),
+        beginAskKnowledgeIngest: payload => this.record(
+          'session.beginAskKnowledgeIngest',
+          payload,
+          this.onBeginAskKnowledgeIngest(payload),
+        ),
+        appendAskKnowledgeIngestChunk: payload => this.record(
+          'session.appendAskKnowledgeIngestChunk',
+          payload,
+          this.onAppendAskKnowledgeIngestChunk(payload),
+        ),
+        finishAskKnowledgeIngest: payload => this.record(
+          'session.finishAskKnowledgeIngest',
+          payload,
+          this.onFinishAskKnowledgeIngest(payload),
+        ),
+        beginAskKnowledgeExtract: payload => this.record(
+          'session.beginAskKnowledgeExtract',
+          payload,
+          this.onBeginAskKnowledgeExtract(payload),
+        ),
+        appendAskKnowledgeExtractChunk: payload => this.record(
+          'session.appendAskKnowledgeExtractChunk',
+          payload,
+          this.onAppendAskKnowledgeExtractChunk(payload),
+        ),
+        finishAskKnowledgeExtract: payload => this.record(
+          'session.finishAskKnowledgeExtract',
+          payload,
+          this.onFinishAskKnowledgeExtract(payload),
+        ),
+        askKnowledgeRetrieve: payload => this.record(
+          'session.askKnowledgeRetrieve',
+          payload,
+          this.onAskKnowledgeRetrieve(payload),
+        ),
+        askKnowledgeLookup: payload => this.record(
+          'session.askKnowledgeLookup',
+          payload,
+          this.onAskKnowledgeLookup(payload),
+        ),
+        askKnowledgeBinding: payload => this.record(
+          'session.askKnowledgeBinding',
+          payload,
+          this.onAskKnowledgeBinding(payload),
         ),
         page: request => this.page(request),
         follow: (request, signal) => this.openFollow(request, signal),

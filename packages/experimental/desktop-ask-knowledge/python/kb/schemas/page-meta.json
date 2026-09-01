@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AlataChan/octopus-kb/schemas/page-meta.json",
+  "title": "PageMeta",
+  "type": "object",
+  "required": ["title", "type", "lang", "role"],
+  "additionalProperties": true,
+  "properties": {
+    "title": {"type": "string", "minLength": 1},
+    "type": {"type": "string", "enum": ["concept", "entity", "comparison", "timeline", "log", "note", "meta", "raw_source"]},
+    "lang": {"type": "string", "minLength": 2},
+    "role": {"type": "string", "enum": ["concept", "entity", "comparison", "timeline", "log", "index", "schema", "note", "raw_source"]},
+    "layer": {"type": "string", "enum": ["wiki", "source", "archive"]},
+    "canonical_name": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["draft", "active", "deprecated", "archived"]},
+    "source_of_truth": {"type": "string", "enum": ["canonical", "supporting", "derived", "external"]},
+    "aliases": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "related_entities": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "tags": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "workflow": {"type": "array", "items": {"type": "string"}},
+    "authors": {"type": "array", "items": {"type": "string"}},
+    "publisher": {"type": "string"},
+    "published": {"type": "string"},
+    "source_url": {"type": "string", "format": "uri"},
+    "source_file": {"type": "string"},
+    "original_format": {"type": "string"},
+    "ingest_method": {"type": "string"},
+    "fetched_at": {"type": "string", "format": "date-time"},
+    "converted_at": {"type": "string", "format": "date-time"},
+    "changelog": {"type": "array", "items": {"type": "string"}},
+    "summary": {"type": "string"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"layer": {"const": "wiki"}}, "required": ["layer"]},
+      "then": {
+        "properties": {"summary": {"type": "string", "minLength": 1}},
+        "required": ["summary"]
+      }
+    }
+  ]
+}

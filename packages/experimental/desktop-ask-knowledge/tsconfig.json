@@ -1,0 +1,42 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src/index.ts",
+    "src/bootstrap-vault.ts",
+    "src/catalog.ts",
+    "src/credentials-bridge.ts",
+    "src/extract.ts",
+    "src/ingest.ts",
+    "src/invariant.ts",
+    "src/knowledge-home.ts",
+    "src/library-lock.ts",
+    "src/prompt-retrieve.ts",
+    "src/result-bounds.ts",
+    "src/retrieve.ts",
+    "src/shortcut.ts",
+    "src/sidecar.ts",
+    "src/tools.ts",
+    "src/unbind.ts",
+    "src/upload-temp.ts"
+  ],
+  "references": [
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../host/ask-knowledge" },
+    { "path": "../../core/agent" },
+    { "path": "../../core/session" },
+    { "path": "../../core/system-prompt" },
+    { "path": "../../core/tools" },
+    { "path": "../../credentials/credentials" },
+    { "path": "../../session/session-persistence" },
+    { "path": "../../session/session-projection" },
+    { "path": "../../util/brand" },
+    { "path": "../../util/native-command" },
+    { "path": "../../workspace/workspace" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

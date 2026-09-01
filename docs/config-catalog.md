@@ -308,7 +308,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/api/session-controller/src/index.ts:82`](../packages/api/session-controller/src/index.ts)
+Source: [`packages/api/session-controller/src/index.ts:101`](../packages/api/session-controller/src/index.ts)
 
 <a id="deepseek-aidsh-api-settings-controller"></a>
 
@@ -682,6 +682,36 @@ export interface Config {
 ```
 
 Source: [`packages/experimental/desktop-ask-data/src/index.ts:24`](../packages/experimental/desktop-ask-data/src/index.ts)
+
+<a id="deepseek-aidsh-experimental-desktop-ask-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-ask-knowledge`
+
+Requires: `sessionProjections` · `systemPrompt`
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface Config extends AskKnowledgeHomeConfig {
+  /** Ceiling of one ingest file in bytes after the last chunk is joined. */
+  readonly maxIngestBytes?: number
+  /** Maximum retrieve items kept in the full tool result. */
+  readonly maxResultItems?: number
+  /** Maximum retrieve characters kept in the full tool result. */
+  readonly maxResultChars?: number
+  /** Maximum retrieve tokens kept in the full tool result. */
+  readonly maxResultTokens?: number
+}
+
+/** Validated plugin configuration. */
+export interface AskKnowledgeHomeConfig {
+  /** Absolute Tauri app-data directory. Empty falls through to `OCTOPUS_APP_DATA`. */
+  readonly knowledgeHome?: string
+  /** Absolute sidecar runtime root. Empty falls through to `OCTOPUS_SIDECAR_HOME`. */
+  readonly sidecarRuntimePath?: string
+}
+```
+
+Source: [`packages/experimental/desktop-ask-knowledge/src/index.ts:54`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
 
 <a id="deepseek-aidsh-experimental-desktop-files"></a>
 
@@ -3564,6 +3594,7 @@ Abstract service classes — a deployment loads a concrete implementation packag
 - `@deepseek-ai/dsh-file-reference` — abstract `FileReferenceService` ([`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts))
 - `@deepseek-ai/dsh-fs` — abstract `FileSystem` ([`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts))
 - `@deepseek-ai/dsh-host-ask-data` — abstract `AskData` ([`packages/host/ask-data/src/index.ts`](../packages/host/ask-data/src/index.ts))
+- `@deepseek-ai/dsh-host-ask-knowledge` — abstract `AskKnowledge` ([`packages/host/ask-knowledge/src/index.ts`](../packages/host/ask-knowledge/src/index.ts))
 - `@deepseek-ai/dsh-host-directory-picker` — abstract `DirectoryPicker` ([`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts))
 - `@deepseek-ai/dsh-host-workspace-entries` — abstract `WorkspaceEntries` ([`packages/host/workspace-entries/src/index.ts`](../packages/host/workspace-entries/src/index.ts))
 - `@deepseek-ai/dsh-jobs` — abstract `JobRegistry` ([`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts))

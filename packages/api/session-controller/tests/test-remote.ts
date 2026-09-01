@@ -57,6 +57,27 @@ import type {
   SessionCommitAskDataRequest,
   SessionCommitAskDataValue,
   SessionImportAskDataSpreadsheetRequest,
+  SessionAskKnowledgeBinding,
+  SessionAskKnowledgeBindingRequest,
+  SessionAskKnowledgeBundle,
+  SessionAskKnowledgeExtractResult,
+  SessionAskKnowledgeIngestResult,
+  SessionAskKnowledgeLibrary,
+  SessionAskKnowledgeLookup,
+  SessionAskKnowledgeLookupRequest,
+  SessionAskKnowledgeRetrieveRequest,
+  SessionAppendAskKnowledgeExtractChunkRequest,
+  SessionAppendAskKnowledgeIngestChunkRequest,
+  SessionAttachAskKnowledgeRequest,
+  SessionAttachAskKnowledgeValue,
+  SessionBeginAskKnowledgeExtractRequest,
+  SessionBeginAskKnowledgeIngestRequest,
+  SessionCreateAskKnowledgeLibraryRequest,
+  SessionDetachAskKnowledgeRequest,
+  SessionFinishAskKnowledgeExtractRequest,
+  SessionFinishAskKnowledgeIngestRequest,
+  SessionRemoveAskKnowledgeLibraryRequest,
+  SessionRenameAskKnowledgeLibraryRequest,
 } from '../src/types.ts'
 
 /** Direct test face matching the generated `ctx.remote.session` unary methods. */
@@ -94,6 +115,64 @@ export interface TestSessionRemote {
   askDataBinding(
     request: SessionAskDataBindingRequest,
   ): Promise<RemoteResult<SessionAskDataBinding | null>>
+  listAskKnowledgeLibraries(
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<readonly SessionAskKnowledgeLibrary[]>>
+  createAskKnowledgeLibrary(
+    request: SessionCreateAskKnowledgeLibraryRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionAskKnowledgeLibrary>>
+  renameAskKnowledgeLibrary(
+    request: SessionRenameAskKnowledgeLibraryRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionAskKnowledgeLibrary>>
+  removeAskKnowledgeLibrary(
+    request: SessionRemoveAskKnowledgeLibraryRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<void>>
+  attachAskKnowledge(
+    request: SessionAttachAskKnowledgeRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionAttachAskKnowledgeValue>>
+  detachAskKnowledge(
+    request: SessionDetachAskKnowledgeRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<void>>
+  beginAskKnowledgeIngest(
+    request: SessionBeginAskKnowledgeIngestRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<string>>
+  appendAskKnowledgeIngestChunk(
+    request: SessionAppendAskKnowledgeIngestChunkRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<void>>
+  finishAskKnowledgeIngest(
+    request: SessionFinishAskKnowledgeIngestRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionAskKnowledgeIngestResult>>
+  beginAskKnowledgeExtract(
+    request: SessionBeginAskKnowledgeExtractRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<string>>
+  appendAskKnowledgeExtractChunk(
+    request: SessionAppendAskKnowledgeExtractChunkRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<void>>
+  finishAskKnowledgeExtract(
+    request: SessionFinishAskKnowledgeExtractRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionAskKnowledgeExtractResult>>
+  askKnowledgeRetrieve(
+    request: SessionAskKnowledgeRetrieveRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionAskKnowledgeBundle>>
+  askKnowledgeLookup(
+    request: SessionAskKnowledgeLookupRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionAskKnowledgeLookup>>
+  askKnowledgeBinding(
+    request: SessionAskKnowledgeBindingRequest,
+  ): Promise<RemoteResult<SessionAskKnowledgeBinding | null>>
   page(request: SessionPageRequest, signal?: AbortSignal): Promise<RemoteResult<SessionPage>>
   follow(request: SessionFollowRequest, signal?: AbortSignal): AsyncIterable<SessionFollowFrame>
   control(signal?: AbortSignal): AsyncIterable<SessionControlFrame>
@@ -314,6 +393,63 @@ export function createSessionTestRemote(
       signal,
     ),
     askDataBinding: request => remoteResult(() => direct.askDataBinding(request)),
+    listAskKnowledgeLibraries: (signal = new AbortController().signal) => remoteResult(
+      () => direct.listAskKnowledgeLibraries(signal),
+      signal,
+    ),
+    createAskKnowledgeLibrary: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.createAskKnowledgeLibrary(request, signal),
+      signal,
+    ),
+    renameAskKnowledgeLibrary: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.renameAskKnowledgeLibrary(request, signal),
+      signal,
+    ),
+    removeAskKnowledgeLibrary: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.removeAskKnowledgeLibrary(request, signal),
+      signal,
+    ),
+    attachAskKnowledge: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.attachAskKnowledge(request, signal),
+      signal,
+    ),
+    detachAskKnowledge: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.detachAskKnowledge(request, signal),
+      signal,
+    ),
+    beginAskKnowledgeIngest: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.beginAskKnowledgeIngest(request, signal),
+      signal,
+    ),
+    appendAskKnowledgeIngestChunk: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.appendAskKnowledgeIngestChunk(request, signal),
+      signal,
+    ),
+    finishAskKnowledgeIngest: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.finishAskKnowledgeIngest(request, signal),
+      signal,
+    ),
+    beginAskKnowledgeExtract: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.beginAskKnowledgeExtract(request, signal),
+      signal,
+    ),
+    appendAskKnowledgeExtractChunk: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.appendAskKnowledgeExtractChunk(request, signal),
+      signal,
+    ),
+    finishAskKnowledgeExtract: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.finishAskKnowledgeExtract(request, signal),
+      signal,
+    ),
+    askKnowledgeRetrieve: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.askKnowledgeRetrieve(request, signal),
+      signal,
+    ),
+    askKnowledgeLookup: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.askKnowledgeLookup(request, signal),
+      signal,
+    ),
+    askKnowledgeBinding: request => remoteResult(() => direct.askKnowledgeBinding(request)),
     page: (request, signal = new AbortController().signal) => remoteResult(
       () => direct.page(request, signal),
       signal,

@@ -187,7 +187,9 @@ export function apply(ctx: Context): void {
       'conversation.hero.workspace': { kind: 'single', scope: 'root' },
       'conversation.hero.agentPreset': { kind: 'single', scope: 'root' },
       'conversation.hero.askData': { kind: 'single', scope: 'root' },
+      'conversation.hero.askKnowledge': { kind: 'single', scope: 'root' },
       'conversation.askData.gate': { kind: 'single', scope: 'root' },
+      'conversation.askKnowledge.picker': { kind: 'single', scope: 'root' },
     },
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
       hooks: {
@@ -251,6 +253,8 @@ export function apply(ctx: Context): void {
     locale: NS,
     children: {
       'conversation.input.attachments': { kind: 'single', scope: 'session-maybe' },
+      'conversation.input.attachKnowledge': { kind: 'single', scope: 'session-maybe' },
+      'conversation.input.attachSessionDocument': { kind: 'single', scope: 'session-maybe' },
       'conversation.input.plan': { kind: 'single', scope: 'session' },
       'conversation.input.model': { kind: 'single', scope: 'session' },
     },
@@ -264,6 +268,7 @@ export function apply(ctx: Context): void {
           resolveSubmitMode: (running, gesture, steeringAvailable) =>
             submissionPolicy.resolve(running, gesture, steeringAvailable),
           toggleCommandMenu: undefined,
+          toggleReferenceMenu: undefined,
           stop: undefined,
           command: undefined,
           hooks: {
@@ -276,6 +281,20 @@ export function apply(ctx: Context): void {
       const conversation = concreteConversation(ctx)
       const shell = inputHub.shell(sessionId)
       const inputTriggers = inputHub.inputTriggers(sessionId)
+      const toggleTrigger = inputTriggers === undefined
+        ? undefined
+        : (source: 'command' | 'reference', trigger: '/' | '@') =>
+          (selection: { start: number; end: number }) => {
+            shell.dismissPopup()
+            const snapshot = shell.snapshot
+            inputTriggers.toggleSource(source, {
+              trigger,
+              query: '',
+              quoted: false,
+              position: snapshot.draft.slice(0, selection.start).trim() === '' ? 'leading' : 'inline',
+              span: { ...selection, draftRev: snapshot.draftRev },
+            })
+          }
       return {
         keyboard: shell,
         addImages: (files) => {
@@ -297,19 +316,8 @@ export function apply(ctx: Context): void {
         draftImages: ids => conversation.draftImages(ids),
         resolveSubmitMode: (running, gesture, steeringAvailable) =>
           submissionPolicy.resolve(running, gesture, steeringAvailable),
-        toggleCommandMenu: inputTriggers === undefined
-          ? undefined
-          : (selection) => {
-            shell.dismissPopup()
-            const snapshot = shell.snapshot
-            inputTriggers.toggleSource('command', {
-              trigger: '/',
-              query: '',
-              quoted: false,
-              position: snapshot.draft.slice(0, selection.start).trim() === '' ? 'leading' : 'inline',
-              span: { ...selection, draftRev: snapshot.draftRev },
-            })
-          },
+        toggleCommandMenu: toggleTrigger?.('command', '/'),
+        toggleReferenceMenu: toggleTrigger?.('reference', '@'),
         stop: () => {
           scopedConversation(sessions, sessionId).cancel().catch(() => {
             // Stop failure is published through Session promptError.

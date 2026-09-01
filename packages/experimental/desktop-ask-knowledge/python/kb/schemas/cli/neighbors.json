@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AlataChan/octopus-kb/schemas/cli/neighbors.json",
+  "title": "Neighbors CLI output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["page", "inbound", "outbound", "aliases", "canonical_identity", "next"],
+  "properties": {
+    "page": {"type": "string"},
+    "inbound": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "via", "count"],
+        "properties": {
+          "path": {"type": "string"},
+          "via": {"type": "string", "enum": ["wikilink", "related_entities"]},
+          "count": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "outbound": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "via"],
+        "properties": {
+          "path": {"type": "string"},
+          "via": {"type": "string", "enum": ["wikilink", "related_entities"]}
+        }
+      }
+    },
+    "aliases": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "canonical_identity": {
+      "anyOf": [{"type": "string"}, {"type": "null"}]
+    },
+    "next": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

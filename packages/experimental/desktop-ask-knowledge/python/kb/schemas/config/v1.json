@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "octopus-kb/config/v1",
+  "title": "octopus-kb config v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {"const": 1},
+    "llm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default_profile": {"type": "string", "minLength": 1},
+        "profiles": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["base_url", "model"],
+            "properties": {
+              "base_url": {"type": "string", "minLength": 1},
+              "model": {"type": "string", "minLength": 1},
+              "api_key_env": {"type": "string"},
+              "timeout": {"type": "integer", "minimum": 1},
+              "max_retries": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      }
+    }
+  }
+}

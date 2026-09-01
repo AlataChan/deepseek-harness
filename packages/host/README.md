@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `host/` group provides the web GUI's plain HTTP server, the SPA dist server that serves the built Web shell, the workspace-directory picking seam with its native, browse, and adaptive composition packages, the one-level workspace file listing seam, the ask-data listing/import/bind seam, and the read-only plugin inventory projection. All nine packages are product packages; the browser transport lives in [`client/`](../client/README.md), and the composed application is [`apps/cli`](../../apps/cli/README.md) booting the [`dsh-base` bundle](../bundle/base/cordis.patch.yml) that serves the web app under `apps/web/`. The picker backends replace one another behind the shared seam.
+The `host/` group provides the web GUI's plain HTTP server, the SPA dist server that serves the built Web shell, the workspace-directory picking seam with its native, browse, and adaptive composition packages, the one-level workspace file listing seam, the ask-data listing/import/bind seam, the ask-knowledge catalog/ingest/attach/retrieve seam, and the read-only plugin inventory projection. All ten packages are product packages; the browser transport lives in [`client/`](../client/README.md), and the composed application is [`apps/cli`](../../apps/cli/README.md) booting the [`dsh-base` bundle](../bundle/base/cordis.patch.yml) that serves the web app under `apps/web/`. The picker backends replace one another behind the shared seam.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ The `host/` group provides the web GUI's plain HTTP server, the SPA dist server 
 <a id="packages"></a>
 ## Packages
 
-Nine packages play the host roles; each package README owns its contract and configuration.
+Ten packages play the host roles; each package README owns its contract and configuration.
 
 | Package | Role | ctx key |
 |---|---|---|
@@ -34,6 +34,7 @@ Nine packages play the host roles; each package README owns its contract and con
 | [`directory-picker-auto/`](directory-picker-auto/README.md) | Host-adaptive chooser that mounts the matching backend at boot | mounts a backend |
 | [`workspace-entries/`](workspace-entries/README.md) | One-level project-file listing seam | `ctx.workspaceEntries` |
 | [`ask-data/`](ask-data/README.md) | Ask-data listing, import, and Session bind seam | `ctx.askData` |
+| [`ask-knowledge/`](ask-knowledge/README.md) | Ask-knowledge catalog, ingest, attach, and retrieve seam | `ctx.askKnowledge` |
 | [`plugin-inventory/`](plugin-inventory/README.md) | Read-only projection of current Loader entries | Remote `pluginInventory/list` |
 
 -----

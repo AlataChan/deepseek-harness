@@ -1,0 +1,282 @@
+/**
+ * Library picker. Occupies conversation.askKnowledge.picker, never askData.gate.
+ * Create opens the native file dialog in the same click and writes the catalog only after a file or Skip.
+ * An existing row hangs on the name, or adds another document into that same library.
+ */
+
+import { useEffect, useRef, useState } from 'react'
+import { readFileBytes } from './bytes.ts'
+import {
+  ACCEPTED_INGEST_ACCEPT,
+  encodeIngestChunks,
+  ingestFilenameExtension,
+  ingestFilenameStem,
+  isAcceptedIngestExtension,
+  isDefaultLibraryName,
+  unusedLibraryName,
+} from './ingest-file.ts'
+import type { AskKnowledgeKey } from './locales.ts'
+import css from './LibraryPicker.module.css'
+
+/** One catalog row the picker can hang. */
+export interface PickerLibrary {
+  readonly id: string
+  readonly displayName: string
+}
+
+/** Result of `finishAskKnowledgeIngest` as the picker reads it. */
+export interface PickerIngestResult {
+  readonly status: 'applied' | 'deferred' | 'failed'
+  readonly deferredCount?: number
+  readonly rawRelPath?: string
+  readonly error?: string
+}
+
+/** Remotes the picker needs. */
+export interface LibraryPickerRemotes {
+  listLibraries: () => Promise<{ ok: boolean; value?: readonly PickerLibrary[]; error?: { message?: string } }>
+  createLibrary: (displayName: string) => Promise<{ ok: boolean; value?: PickerLibrary; error?: { message?: string } }>
+  attach: (libraryId: string) => Promise<{ ok: boolean; error?: { message?: string } }>
+  renameLibrary: (libraryId: string, displayName: string) => Promise<{ ok: boolean; error?: { message?: string } }>
+  removeLibrary: (libraryId: string) => Promise<{ ok: boolean; error?: { message?: string } }>
+  beginIngest: (libraryId: string, filename: string) => Promise<{ ok: boolean; value?: string; error?: { message?: string } }>
+  appendIngestChunk: (handle: string, bytes: string) => Promise<{ ok: boolean; error?: { message?: string } }>
+  finishIngest: (handle: string) => Promise<{ ok: boolean; value?: PickerIngestResult; error?: { message?: string } }>
+}
+
+/** Injected actions and remotes. */
+export interface LibraryPickerInjected extends LibraryPickerRemotes {
+  close: () => void
+}
+
+/** Picker props. */
+export interface LibraryPickerProps extends LibraryPickerInjected {
+  t: (key: AskKnowledgeKey) => string
+}
+
+/**
+ * Operator-facing text for a failed or empty finish.
+ * @param finished - remote result of `finishIngest`.
+ * @param fallback - generic failure copy.
+ * @param timeout - copy when the carrier timed out.
+ * @returns the message to show.
+ */
+export function ingestFinishError(
+  finished: { ok: boolean; value?: PickerIngestResult; error?: { message?: string } },
+  fallback: string,
+  timeout: string,
+): string {
+  if (!finished.ok || finished.value === undefined) {
+    const message = finished.error?.message ?? fallback
+    return message.includes('timed out') ? timeout : message
+  }
+  if (finished.value.status === 'failed') {
+    const detail = finished.value.error?.trim()
+    if (detail !== undefined && detail !== '') {
+      return detail.includes('timed out') ? timeout : detail
+    }
+    return fallback
+  }
+  return fallback
+}
+
+/**
+ * Render the knowledge-library picker.
+ * @param props - remotes, close, and locale.
+ * @returns the picker panel.
+ */
+export function LibraryPicker({
+  listLibraries,
+  createLibrary,
+  attach,
+  renameLibrary,
+  removeLibrary,
+  beginIngest,
+  appendIngestChunk,
+  finishIngest,
+  close,
+  t,
+}: LibraryPickerProps) {
+  const [rows, setRows] = useState<readonly PickerLibrary[]>([])
+  const [error, setError] = useState<string | undefined>()
+  const [phase, setPhase] = useState<'list' | 'upload'>('list')
+  const [ingesting, setIngesting] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const draftRef = useRef<PickerLibrary | undefined>(undefined)
+  const targetRef = useRef<PickerLibrary | undefined>(undefined)
+  const createPromise = useRef<Promise<PickerLibrary | undefined> | undefined>(undefined)
+
+  useEffect(() => {
+    let cancelled = false
+    void listLibraries().then((result) => {
+      if (cancelled) return
+      if (result.ok && result.value !== undefined) setRows(result.value)
+      else setError(result.error?.message ?? t('error.noKey'))
+    })
+    return () => { cancelled = true }
+  }, [listLibraries, t])
+
+  const hang = async (libraryId: string) => {
+    const result = await attach(libraryId)
+    if (result.ok) close()
+    else setError(result.error?.message ?? t('error.unbound'))
+  }
+
+  const ensureDraft = (): Promise<PickerLibrary | undefined> => {
+    if (draftRef.current !== undefined) return Promise.resolve(draftRef.current)
+    if (createPromise.current !== undefined) return createPromise.current
+    createPromise.current = createLibrary(
+      unusedLibraryName(rows.map(row => row.displayName), t('picker.create')),
+    ).then((result) => {
+      createPromise.current = undefined
+      if (result.ok && result.value !== undefined) {
+        draftRef.current = result.value
+        return result.value
+      }
+      setError(result.error?.message ?? t('error.noKey'))
+      setPhase('list')
+      return undefined
+    })
+    return createPromise.current
+  }
+
+  const ingestFile = async (file: File) => {
+    setIngesting(true)
+    setError(undefined)
+    try {
+      if (!isAcceptedIngestExtension(ingestFilenameExtension(file.name))) {
+        setError(t('error.unsupportedType'))
+        return
+      }
+      const existing = targetRef.current
+      const library = existing ?? await ensureDraft()
+      if (library === undefined) return
+      const begin = await beginIngest(library.id, file.name)
+      if (!begin.ok || begin.value === undefined) {
+        setError(begin.error?.message ?? t('ingest.failed'))
+        return
+      }
+      const chunks = encodeIngestChunks(await readFileBytes(file))
+      for (const bytes of chunks) {
+        const appended = await appendIngestChunk(begin.value, bytes)
+        if (!appended.ok) {
+          setError(appended.error?.message ?? t('ingest.failed'))
+          return
+        }
+      }
+      const finished = await finishIngest(begin.value)
+      if (!finished.ok || finished.value === undefined || finished.value.status === 'failed') {
+        setError(ingestFinishError(finished, t('ingest.failed'), t('ingest.timeout')))
+        return
+      }
+      if (existing === undefined || isDefaultLibraryName(library.displayName, t('picker.create'))) {
+        const stem = ingestFilenameStem(file.name)
+        const name = unusedLibraryName(
+          rows.map(row => row.displayName),
+          stem === '' ? t('picker.create') : stem,
+        )
+        await renameLibrary(library.id, name)
+      }
+      await hang(library.id)
+    } finally {
+      setIngesting(false)
+    }
+  }
+
+  const skipEmpty = async () => {
+    if (targetRef.current !== undefined) {
+      await hang(targetRef.current.id)
+      return
+    }
+    const library = await ensureDraft()
+    if (library !== undefined) await hang(library.id)
+  }
+
+  const openFileDialog = () => {
+    inputRef.current?.click()
+  }
+
+  const startCreate = () => {
+    targetRef.current = undefined
+    setError(undefined)
+    setPhase('upload')
+    openFileDialog()
+  }
+
+  const startAdd = (row: PickerLibrary) => {
+    targetRef.current = row
+    setError(undefined)
+    setPhase('upload')
+    openFileDialog()
+  }
+
+  const removeRow = async (row: PickerLibrary) => {
+    setError(undefined)
+    const result = await removeLibrary(row.id)
+    if (!result.ok) {
+      setError(result.error?.message ?? t('settings.removeFailed'))
+      return
+    }
+    setRows(current => current.filter(item => item.id !== row.id))
+  }
+
+  return (
+    <div className={css.panel} role="dialog" aria-label={phase === 'upload' ? t('picker.uploadTitle') : t('picker.title')}>
+      {phase === 'list' ? (
+        <>
+          <h2 className={css.title}>{t('picker.title')}</h2>
+          <p className={css.lead}>{t('picker.leadAskData')}</p>
+          <p className={css.lead}>{t('picker.leadLibrary')}</p>
+          <p className={css.lead}>{t('picker.leadPreset')}</p>
+          <p className={css.lead}>{t('picker.leadDataMode')}</p>
+          <p className={css.lead}>{t('picker.leadThicken')}</p>
+          <div className={css.list}>
+            {rows.map(row => (
+              <div key={row.id} className={css.libraryRow}>
+                <button type="button" className={css.row} onClick={() => { void hang(row.id) }}>
+                  {row.displayName}
+                </button>
+                <button type="button" className={css.add} onClick={() => { startAdd(row) }}>
+                  {t('picker.addDocument')}
+                </button>
+                <button type="button" className={css.remove} onClick={() => { void removeRow(row) }}>
+                  {t('picker.remove')}
+                </button>
+              </div>
+            ))}
+            <button type="button" className={css.create} onClick={startCreate}>
+              {t('picker.emptyCreate')}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <h2 className={css.title}>{t('picker.uploadTitle')}</h2>
+          <p className={css.lead}>{t('picker.uploadLead')}</p>
+          {ingesting ? <p className={css.lead}>{t('ingest.applying')}</p> : null}
+          <div className={css.list}>
+            <button type="button" className={css.create} disabled={ingesting} onClick={openFileDialog}>
+              {t('picker.chooseFile')}
+            </button>
+            <button type="button" className={css.row} disabled={ingesting} onClick={() => { void skipEmpty() }}>
+              {t('picker.skipEmpty')}
+            </button>
+          </div>
+        </>
+      )}
+      {error !== undefined && <p className={css.error}>{error}</p>}
+      <input
+        ref={inputRef}
+        className={css.hiddenInput}
+        type="file"
+        accept={ACCEPTED_INGEST_ACCEPT}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          event.target.value = ''
+          if (file === undefined) return
+          void ingestFile(file)
+        }}
+      />
+    </div>
+  )
+}

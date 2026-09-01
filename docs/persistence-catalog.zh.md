@@ -222,6 +222,35 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/host/ask-data/src/types.ts:26`](../packages/host/ask-data/src/types.ts)
 
+### `ask-knowledge/*`
+
+<a id="ask-knowledgebound--log-only"></a>
+
+#### `ask-knowledge/bound` — log-only
+
+```ts persistence-catalog
+/**
+ * The Session was bound to one ask-knowledge library.
+ * Reconstruction of the Client list uses the `askKnowledgeBinding` projection.
+ */
+'ask-knowledge/bound': AskKnowledgeBinding
+```
+
+来源：[`packages/host/ask-knowledge/src/types.ts:21`](../packages/host/ask-knowledge/src/types.ts)
+
+<a id="ask-knowledgeunbound--log-only"></a>
+
+#### `ask-knowledge/unbound` — log-only
+
+```ts persistence-catalog
+/**
+ * The Session was unbound from its ask-knowledge library.
+ */
+'ask-knowledge/unbound': { readonly libraryId: string }
+```
+
+来源：[`packages/host/ask-knowledge/src/types.ts:25`](../packages/host/ask-knowledge/src/types.ts)
+
 ### `assistant/*`
 
 <a id="assistantchunk--log-only"></a>

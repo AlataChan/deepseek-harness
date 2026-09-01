@@ -1,0 +1,78 @@
+version: 1
+rules:
+  - id: schema.proposal_invalid
+    description: Reject proposals that do not match the v1 proposal schema.
+    applies_to: [create_page, add_alias, append_log]
+    check:
+      proposal_schema_invalid: true
+    verdict: reject
+    reason_template: "proposal JSON schema invalid"
+
+  - id: safety.diff_size
+    description: Reject proposals that touch too many pages.
+    applies_to: [create_page, add_alias, append_log]
+    check:
+      op_count:
+        gt: 20
+    verdict: reject
+    reason_template: "diff size {op_count} > 20"
+
+  - id: safety.diff_size_downgrade
+    description: Downgrade larger-but-allowed proposals for human awareness.
+    applies_to: [create_page, add_alias, append_log]
+    check:
+      op_count:
+        gt: 5
+    verdict: downgrade
+    downgrade_to: medium
+    human_overridable: true
+    reason_template: "diff size {op_count} > 5"
+
+  - id: confidence.tier_gate_reject
+    description: Reject proposals containing very low confidence operations.
+    applies_to: [create_page, add_alias, append_log]
+    check:
+      any_op_confidence_below: 0.4
+    verdict: reject
+    reason_template: "an operation has confidence < 0.4"
+
+  - id: confidence.tier_gate_defer
+    description: Defer proposals containing medium confidence operations.
+    applies_to: [create_page, add_alias, append_log]
+    check:
+      any_op_confidence_below: 0.7
+    verdict: defer
+    human_overridable: true
+    reason_template: "an operation has confidence in [0.4, 0.7)"
+
+  - id: conflict.canonical_overlap
+    description: Reject proposed pages whose canonical identity already exists.
+    applies_to: [create_page]
+    check:
+      vault_has_canonical_key_for_new_page: true
+    verdict: reject
+    reason_template: "canonical identity already exists in vault"
+
+  - id: schema.page_meta_invalid
+    description: Reject create_page operations with invalid PageMeta.
+    applies_to: [create_page]
+    check:
+      new_frontmatter_schema_invalid: true
+    verdict: reject
+    reason_template: "new page frontmatter fails page-meta schema"
+
+  - id: safety.path_escape
+    description: Reject operation targets that escape the vault boundary.
+    applies_to: [create_page, add_alias, append_log]
+    check:
+      op_target_outside_vault: true
+    verdict: reject
+    reason_template: "operation target path escapes vault"
+
+  - id: safety.forbidden_area
+    description: Reject operation targets in control or environment directories.
+    applies_to: [create_page, add_alias, append_log]
+    check:
+      op_target_in_forbidden_area: true
+    verdict: reject
+    reason_template: "operation target is in a forbidden area (.git/, .octopus-kb/, .venv/)"

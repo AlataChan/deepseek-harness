@@ -16,12 +16,13 @@
  */
 
 import { createRequire } from 'node:module'
-import { cpSync, existsSync, globSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, globSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
-const [anchorArg, outArg] = process.argv.slice(2)
+const refreshWorkspace = process.argv.includes('--refresh-workspace')
+const [anchorArg, outArg] = process.argv.slice(2).filter(arg => arg !== '--refresh-workspace')
 if (anchorArg === undefined || outArg === undefined) {
-  console.error('usage: collect-runtime-deps.mjs <anchor-package.json> <out-node_modules>')
+  console.error('usage: collect-runtime-deps.mjs [--refresh-workspace] <anchor-package.json> <out-node_modules>')
   process.exit(1)
 }
 
@@ -196,10 +197,14 @@ while (queue.length > 0) {
   }
 }
 
-mkdirSync(outDir, { recursive: true })
-let copied = 0
-for (const [name, source] of resolved) {
+/**
+ * Copy one resolved package into the flat farm.
+ * @param name - package name, used as the destination folder.
+ * @param source - resolved source directory.
+ */
+function copyPackage(name, source) {
   const target = join(outDir, name)
+  rmSync(target, { recursive: true, force: true })
   mkdirSync(dirname(target), { recursive: true })
   const prefix = `${source}/`
   const fromWorkspace = workspacePackages.get(name) === source
@@ -214,6 +219,28 @@ for (const [name, source] of resolved) {
       return !(fromWorkspace && SKIP_WORKSPACE_ONLY.has(relative))
     },
   })
+}
+
+if (refreshWorkspace) {
+  if (!existsSync(join(outDir, '.collect-manifest.json'))) {
+    console.error('collect-runtime-deps: --refresh-workspace needs an existing .collect-manifest.json')
+    process.exit(1)
+  }
+  let refreshed = 0
+  for (const [name, source] of workspacePackages) {
+    const target = join(outDir, name)
+    if (!existsSync(target)) continue
+    copyPackage(name, source)
+    refreshed += 1
+  }
+  console.log(`collect-runtime-deps: refreshed ${String(refreshed)} workspace packages in ${outDir}`)
+  process.exit(0)
+}
+
+mkdirSync(outDir, { recursive: true })
+let copied = 0
+for (const [name, source] of resolved) {
+  copyPackage(name, source)
   copied += 1
 }
 

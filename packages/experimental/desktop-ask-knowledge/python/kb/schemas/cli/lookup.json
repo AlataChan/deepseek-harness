@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "octopus-kb/cli/lookup",
+  "type": "object",
+  "required": ["term", "canonical", "aliases", "ambiguous", "collisions", "next"],
+  "additionalProperties": false,
+  "properties": {
+    "term": {"type": "string"},
+    "canonical": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["path", "title"],
+          "additionalProperties": false,
+          "properties": {
+            "path": {"type": "string"},
+            "title": {"type": "string"},
+            "source_of_truth": {"type": ["string", "null"]}
+          }
+        }
+      ]
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "resolves_to"],
+        "additionalProperties": false,
+        "properties": {
+          "text": {"type": "string"},
+          "resolves_to": {"type": "string"}
+        }
+      }
+    },
+    "ambiguous": {"type": "boolean"},
+    "collisions": {"type": "array", "items": {"type": "string"}},
+    "next": {"type": "array", "items": {"type": "string"}}
+  }
+}

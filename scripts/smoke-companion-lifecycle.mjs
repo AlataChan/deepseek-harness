@@ -41,8 +41,17 @@ for (const [label, path] of [['embedded node', nodeBin], ['companion entry', com
 const PROTOCOL_VERSION = 2
 
 const workspaceRoot = process.env.HOME ?? '/tmp'
+const appData = process.env.OCTOPUS_APP_DATA ?? join(workspaceRoot, '.octopus-dsh-smoke-app-data')
+const sidecarHome = process.env.OCTOPUS_SIDECAR_HOME ?? join(resources, 'kb-runtime')
+if (!appData.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(appData)) {
+  console.error('smoke: OCTOPUS_APP_DATA must be an absolute path')
+  process.exit(2)
+}
+const childEnv = { ...process.env, OCTOPUS_APP_DATA: appData, OCTOPUS_SIDECAR_HOME: sidecarHome }
+delete childEnv.DEEPSEEK_API_KEY
 const child = spawn(nodeBin, [companion, '--workspace-root', workspaceRoot], {
   stdio: ['pipe', 'pipe', 'pipe'],
+  env: childEnv,
 })
 
 /** @type {string[]} */

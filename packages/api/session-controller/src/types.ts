@@ -208,6 +208,13 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly ruleId?: string
       readonly limit?: number
     }
+    'session/ask-knowledge-unavailable': {}
+    'session/ask-knowledge-unbound': { readonly sessionId: SessionId }
+    'session/ask-knowledge-failed': {
+      readonly code: string
+      readonly ruleId?: string
+      readonly limit?: number
+    }
     'subagent/not-found': {
       readonly parentSessionId: SessionId
       readonly childSessionId: SessionId
@@ -455,6 +462,155 @@ export interface SessionAskDataBinding {
 
 /** Request the current ask-data bind of one Session. */
 export interface SessionAskDataBindingRequest {
+  readonly sessionId: SessionId
+}
+
+/** Decoded-byte cap for one ask-knowledge ingest chunk. */
+export const ASK_KNOWLEDGE_MAX_CHUNK_BYTES = 160 * 1024
+
+/** One listed ask-knowledge library on the wire. */
+export interface SessionAskKnowledgeLibrary {
+  readonly id: string
+  readonly displayName: string
+  readonly createdAt: string
+  readonly lastUsedAt: string
+  readonly missing: boolean
+  readonly deleting: boolean
+}
+
+/** Create a library; Host does not guess the current Session. */
+export interface SessionCreateAskKnowledgeLibraryRequest {
+  readonly displayName: string
+  readonly workspaceId?: WorkspaceId
+}
+
+/** Rename one catalog row. */
+export interface SessionRenameAskKnowledgeLibraryRequest {
+  readonly libraryId: string
+  readonly displayName: string
+}
+
+/** Remove one catalog row and its vault. */
+export interface SessionRemoveAskKnowledgeLibraryRequest {
+  readonly libraryId: string
+}
+
+/**
+ * Bind a library to a Session; omit sessionId to create a standard Session.
+ * A named data-agent Session with an ask-data bind creates a new standard Session.
+ */
+export interface SessionAttachAskKnowledgeRequest {
+  readonly libraryId: string
+  readonly sessionId?: SessionId
+  readonly workspaceId?: WorkspaceId
+}
+
+/** Identity of the Session that now carries the library bind. */
+export interface SessionAttachAskKnowledgeValue {
+  readonly sessionId: SessionId
+}
+
+/** Clear the library bind on one live Session. */
+export interface SessionDetachAskKnowledgeRequest {
+  readonly sessionId: SessionId
+}
+
+/** Open an ingest upload. */
+export interface SessionBeginAskKnowledgeIngestRequest {
+  readonly libraryId: string
+  readonly filename: string
+}
+
+/** One canonical-base64 ingest chunk. */
+export interface SessionAppendAskKnowledgeIngestChunkRequest {
+  readonly handle: string
+  readonly bytes: string
+}
+
+/** Finish one ingest upload. */
+export interface SessionFinishAskKnowledgeIngestRequest {
+  readonly handle: string
+  readonly reuseRawPath?: string
+}
+
+/** Result of finishAskKnowledgeIngest. */
+export interface SessionAskKnowledgeIngestResult {
+  readonly status: 'applied' | 'deferred' | 'failed'
+  readonly deferredCount?: number
+  readonly rawRelPath?: string
+  readonly retryable?: boolean
+  readonly proposalId?: string
+  /** Operator-facing reason when `status` is `failed`. */
+  readonly error?: string
+}
+
+/** Open a session-only extract upload. */
+export interface SessionBeginAskKnowledgeExtractRequest {
+  readonly filename: string
+}
+
+/** One canonical-base64 extract chunk. */
+export interface SessionAppendAskKnowledgeExtractChunkRequest {
+  readonly handle: string
+  readonly bytes: string
+}
+
+/** Finish one session-only extract upload. */
+export interface SessionFinishAskKnowledgeExtractRequest {
+  readonly handle: string
+}
+
+/** Result of finishAskKnowledgeExtract. */
+export interface SessionAskKnowledgeExtractResult {
+  readonly filename: string
+  readonly text: string
+  readonly truncated: boolean
+}
+
+/** Retrieve pages for already-validated terms on a bound Session. */
+export interface SessionAskKnowledgeRetrieveRequest {
+  readonly sessionId: SessionId
+  readonly terms: string[]
+}
+
+/** One retrieved page after sidecar body load. */
+export interface SessionAskKnowledgeBundleItem {
+  readonly path: string
+  readonly title: string
+  readonly reason: string
+  readonly text: string
+  readonly kind: 'concept' | 'entity' | 'raw'
+}
+
+/** Bounded retrieve payload. */
+export interface SessionAskKnowledgeBundle {
+  readonly items: readonly SessionAskKnowledgeBundleItem[]
+  readonly warnings: readonly { readonly ruleId: string; readonly message: string }[]
+  readonly tokenEstimate: number
+}
+
+/** Look up one term on a bound Session. */
+export interface SessionAskKnowledgeLookupRequest {
+  readonly sessionId: SessionId
+  readonly term: string
+}
+
+/** Lookup payload with sidecar-supplied body. */
+export interface SessionAskKnowledgeLookup {
+  readonly term: string
+  readonly canonicalPath?: string
+  readonly text?: string
+  readonly warnings: readonly { readonly ruleId: string; readonly message: string }[]
+}
+
+/** Fields recorded when a Session is bound to one knowledge library. */
+export interface SessionAskKnowledgeBinding {
+  readonly libraryId: string
+  readonly displayName: string
+}
+
+/** Request the current ask-knowledge bind of one Session. */
+export interface SessionAskKnowledgeBindingRequest {
   readonly sessionId: SessionId
 }
 
