@@ -11,6 +11,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { assertVaultDir, requireLibrary } from './catalog.ts'
 import { resolveProposeEnv } from './credentials-bridge.ts'
 import { withLibraryLock } from './library-lock.ts'
+import { rewriteProposalPageMetaFile } from './proposal-page-meta.ts'
 import { runSidecar, type SidecarResponse } from './sidecar.ts'
 import type { AskKnowledgeHomeConfig } from './knowledge-home.ts'
 
@@ -161,11 +162,21 @@ export async function finishIngestPipeline(
     }
     request.onStage?.('applying')
     try {
+      const proposalAbs = resolve(vault, proposalPath)
+      await rewriteProposalPageMetaFile(proposalAbs)
       const applied = await runSidecar(config, {
         command: 'validate-apply',
         vault,
-        proposal: resolve(vault, proposalPath),
+        proposal: proposalAbs,
       }, { signal })
+      if (typeof applied.status === 'string' && applied.status.startsWith('rejected')) {
+        return failedIngest(
+          rawRelPath,
+          undefined,
+          { proposalId },
+          '整理词条没有写出可检索的页面。',
+        )
+      }
       const deferredCount = typeof applied.deferred_count === 'number'
         ? applied.deferred_count
         : typeof applied.deferredCount === 'number' ? applied.deferredCount : 0

@@ -27,6 +27,7 @@ export type AskKnowledgeKey =
   | 'error.terms'
   | 'error.unbound'
   | 'error.unsupportedType'
+  | 'error.emptyPick'
   | 'ingest.converting'
   | 'ingest.proposing'
   | 'ingest.applying'
@@ -48,7 +49,7 @@ const zh = {
   'picker.emptyCreate': '+ 新建知识库',
   'picker.create': '未命名知识库',
   'picker.uploadTitle': '上传本地文档',
-  'picker.uploadLead': '选一份文档写进这个知识库。可以用 .md、.txt、.html、.pdf、.csv、.json、.xlsx。表格更适合走问数。',
+  'picker.uploadLead': '选一份文档写进这个知识库。可以用 .md、.txt、.html、.pdf、.docx、.csv、.json、.xlsx。表格更适合走问数。',
   'picker.chooseFile': '选择本地文档',
   'picker.skipEmpty': '先空着，直接提问',
   'settings.section': '我的知识库',
@@ -57,7 +58,8 @@ const zh = {
   'error.noKey': '还没有 API Key',
   'error.terms': '请改用 1 到 6 个专名，不要整句。',
   'error.unbound': '先在上方挂上一个知识库。',
-  'error.unsupportedType': '这种文件还不能入库。请用 .md、.txt、.html、.pdf、.csv、.json 或 .xlsx。',
+  'error.unsupportedType': '这种文件还不能入库。请用 .md、.txt、.html、.pdf、.docx、.csv、.json 或 .xlsx。',
+  'error.emptyPick': '没有读到所选文件，请再选一次。',
   'ingest.converting': '正在转换文档',
   'ingest.proposing': '正在整理成词条',
   'ingest.applying': '正在写入知识库，可能需要几分钟。',
@@ -80,7 +82,7 @@ const en = {
   'picker.emptyCreate': '+ New knowledge library',
   'picker.create': 'Untitled knowledge library',
   'picker.uploadTitle': 'Upload a local document',
-  'picker.uploadLead': 'Choose a document for this knowledge library. .md, .txt, .html, .pdf, .csv, .json, and .xlsx are accepted. Spreadsheets fit ask-data better.',
+  'picker.uploadLead': 'Choose a document for this knowledge library. .md, .txt, .html, .pdf, .docx, .csv, .json, and .xlsx are accepted. Spreadsheets fit ask-data better.',
   'picker.chooseFile': 'Choose a local document',
   'picker.skipEmpty': 'Skip and ask with an empty library',
   'settings.section': 'My knowledge libraries',
@@ -89,7 +91,8 @@ const en = {
   'error.noKey': 'API Key is not set',
   'error.terms': 'Use 1 to 6 names, not a full sentence.',
   'error.unbound': 'Hang a knowledge library first.',
-  'error.unsupportedType': 'This file type cannot be ingested. Use .md, .txt, .html, .pdf, .csv, .json, or .xlsx.',
+  'error.unsupportedType': 'This file type cannot be ingested. Use .md, .txt, .html, .pdf, .docx, .csv, .json, or .xlsx.',
+  'error.emptyPick': 'The chosen file did not arrive. Choose it again.',
   'ingest.converting': 'Converting the document',
   'ingest.proposing': 'Organizing entries',
   'ingest.applying': 'Writing the knowledge library. This can take a few minutes.',

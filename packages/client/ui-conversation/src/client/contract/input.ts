@@ -190,8 +190,9 @@ export interface SessionInput extends InputTarget {
   /**
    * THE complexity sink: enter adjudication, submit transaction, and the default sink live inside.
    * @param mode - delivery intent retained through asynchronous adjudication and serialization.
+   * @param draft - clipboard text to send when the caller already composed it; omit to use the current editor projection.
    */
-  submit(mode?: InputSubmitMode): void
+  submit(mode?: InputSubmitMode, draft?: string): void
   /**
    * Surface a notice outside the machine's own effect stream: detached
    * command results and business notifications render through here.
@@ -227,8 +228,11 @@ export interface InputActions {
   removeImage(id: DraftAttachmentId): void
   /** Drop ids whose browser-owned objects no longer exist. */
   pruneImages(ids: readonly DraftAttachmentId[]): void
-  /** Enter submission (adjudication / claim transaction / default sink inside). */
-  submit(): void
+  /**
+   * Enter submission (adjudication / claim transaction / default sink inside).
+   * @param draft - clipboard text to send when the caller already composed it; omit to use the current editor projection.
+   */
+  submit(draft?: string): void
 }
 
 /** One surfaced notice (command results, adjudication failures). seq keys re-render of repeats. */
@@ -252,8 +256,12 @@ export interface ComposerKeyboard {
   readonly snapshot: InputState
   /** The shell-owned Lexical editor the composer binds its contenteditable to. */
   readonly editor: LexicalEditor
-  /** Submit with an explicit delivery mode resolved by the keyboard policy. */
-  submit(mode: InputSubmitMode): void
+  /**
+   * Submit with an explicit delivery mode resolved by the keyboard policy.
+   * @param mode - delivery intent retained through asynchronous adjudication and serialization.
+   * @param draft - clipboard text to send when the caller already composed it; omit to use the current editor projection.
+   */
+  submit(mode: InputSubmitMode, draft?: string): void
   /**
    * Steer every still-pending queued message into the running turn (the
    * empty-draft accelerated-Enter gesture; the queue dock's per-row steer

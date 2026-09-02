@@ -204,6 +204,7 @@ describe('upload leftover', () => {
     expect(() => parseIngestFilename('legacy.xls')).toThrow(AskKnowledgeError)
     expect(parseIngestFilename('制度.pdf')).toEqual({ basename: '制度.pdf', extension: '.pdf' })
     expect(parseIngestFilename('表.xlsx')).toEqual({ basename: '表.xlsx', extension: '.xlsx' })
+    expect(parseIngestFilename('制度.docx')).toEqual({ basename: '制度.docx', extension: '.docx' })
     expect(parseExtractFilename('会话.md')).toEqual({ basename: '会话.md', extension: '.md' })
     expect(() => parseExtractFilename('表.xlsx')).toThrow(AskKnowledgeError)
     expect(() => decodeIngestChunk('YQ==')).not.toThrow()

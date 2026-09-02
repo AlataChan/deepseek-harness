@@ -1,13 +1,15 @@
 /**
  * Library picker. Occupies conversation.askKnowledge.picker, never askData.gate.
- * Create opens the native file dialog in the same click and writes the catalog only after a file or Skip.
- * An existing row hangs on the name, or adds another document into that same library.
+ * Create and Add document show the upload panel. The choose-file control is a
+ * transparent file input over the visible button so Tauri WebView can open the
+ * native picker. The input omits HTML accept and listens on the element.
+ * Catalog writes wait for a file or Skip. An existing row hangs
+ * on the name, or adds another document.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { readFileBytes } from './bytes.ts'
 import {
-  ACCEPTED_INGEST_ACCEPT,
   encodeIngestChunks,
   ingestFilenameExtension,
   ingestFilenameStem,
@@ -44,9 +46,16 @@ export interface LibraryPickerRemotes {
   finishIngest: (handle: string) => Promise<{ ok: boolean; value?: PickerIngestResult; error?: { message?: string } }>
 }
 
+/** First panel when the picker mounts. */
+export type LibraryPickerPhase = 'list' | 'upload'
+
 /** Injected actions and remotes. */
 export interface LibraryPickerInjected extends LibraryPickerRemotes {
   close: () => void
+  /**
+   * First panel. The hero chip uses list; the composer plus menu uses upload.
+   */
+  initialPhase?: LibraryPickerPhase
 }
 
 /** Picker props. */
@@ -82,7 +91,7 @@ export function ingestFinishError(
 
 /**
  * Render the knowledge-library picker.
- * @param props - remotes, close, and locale.
+ * @param props - remotes, close, optional first panel, and locale.
  * @returns the picker panel.
  */
 export function LibraryPicker({
@@ -95,13 +104,15 @@ export function LibraryPicker({
   appendIngestChunk,
   finishIngest,
   close,
+  initialPhase = 'list',
   t,
 }: LibraryPickerProps) {
   const [rows, setRows] = useState<readonly PickerLibrary[]>([])
   const [error, setError] = useState<string | undefined>()
-  const [phase, setPhase] = useState<'list' | 'upload'>('list')
+  const [phase, setPhase] = useState<LibraryPickerPhase>(initialPhase)
   const [ingesting, setIngesting] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputId = useId()
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const draftRef = useRef<PickerLibrary | undefined>(undefined)
   const targetRef = useRef<PickerLibrary | undefined>(undefined)
   const createPromise = useRef<Promise<PickerLibrary | undefined> | undefined>(undefined)
@@ -182,6 +193,8 @@ export function LibraryPicker({
       setIngesting(false)
     }
   }
+  const ingestFileRef = useRef(ingestFile)
+  ingestFileRef.current = ingestFile
 
   const skipEmpty = async () => {
     if (targetRef.current !== undefined) {
@@ -192,22 +205,58 @@ export function LibraryPicker({
     if (library !== undefined) await hang(library.id)
   }
 
-  const openFileDialog = () => {
-    inputRef.current?.click()
-  }
+  useEffect(() => {
+    if (phase !== 'upload') return
+    const el = fileInputRef.current
+    if (el === null) return
+    let cancelled = false
+    let ignoreEmpty = false
+    let busy = false
+    const deliver = (): void => {
+      if (cancelled) {
+        cancelled = false
+        ignoreEmpty = false
+        busy = false
+        el.value = ''
+        return
+      }
+      if (busy) return
+      const file = el.files?.[0]
+      if (file === undefined) {
+        if (ignoreEmpty) return
+        setError(t('error.emptyPick'))
+        return
+      }
+      busy = true
+      ignoreEmpty = true
+      el.value = ''
+      queueMicrotask(() => { busy = false })
+      void ingestFileRef.current(file)
+    }
+    const onReady = (): void => { ignoreEmpty = false }
+    const onCancel = (): void => { cancelled = true }
+    el.addEventListener('click', onReady)
+    el.addEventListener('cancel', onCancel)
+    el.addEventListener('change', deliver)
+    el.addEventListener('input', deliver)
+    return () => {
+      el.removeEventListener('click', onReady)
+      el.removeEventListener('cancel', onCancel)
+      el.removeEventListener('change', deliver)
+      el.removeEventListener('input', deliver)
+    }
+  }, [phase, t])
 
   const startCreate = () => {
     targetRef.current = undefined
     setError(undefined)
     setPhase('upload')
-    openFileDialog()
   }
 
   const startAdd = (row: PickerLibrary) => {
     targetRef.current = row
     setError(undefined)
     setPhase('upload')
-    openFileDialog()
   }
 
   const removeRow = async (row: PickerLibrary) => {
@@ -255,9 +304,16 @@ export function LibraryPicker({
           <p className={css.lead}>{t('picker.uploadLead')}</p>
           {ingesting ? <p className={css.lead}>{t('ingest.applying')}</p> : null}
           <div className={css.list}>
-            <button type="button" className={css.create} disabled={ingesting} onClick={openFileDialog}>
+            <div className={css.chooseFile} data-file-pick="library">
               {t('picker.chooseFile')}
-            </button>
+              <input
+                id={fileInputId}
+                ref={fileInputRef}
+                className={css.fileInputOverlay}
+                type="file"
+                disabled={ingesting}
+              />
+            </div>
             <button type="button" className={css.row} disabled={ingesting} onClick={() => { void skipEmpty() }}>
               {t('picker.skipEmpty')}
             </button>
@@ -265,18 +321,6 @@ export function LibraryPicker({
         </>
       )}
       {error !== undefined && <p className={css.error}>{error}</p>}
-      <input
-        ref={inputRef}
-        className={css.hiddenInput}
-        type="file"
-        accept={ACCEPTED_INGEST_ACCEPT}
-        onChange={(event) => {
-          const file = event.target.files?.[0]
-          event.target.value = ''
-          if (file === undefined) return
-          void ingestFile(file)
-        }}
-      />
     </div>
   )
 }

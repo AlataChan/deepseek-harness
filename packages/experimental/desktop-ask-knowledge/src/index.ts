@@ -38,6 +38,7 @@ import { placeLibraryShortcut, revealLibraryVault } from './shortcut.ts'
 import { registerAskKnowledgeTools } from './tools.ts'
 import { listBoundSessionIds, unbindSession } from './unbind.ts'
 import { convertUploadToText } from './extract.ts'
+import { isDocxExtractFilename, writeDocxMarkdownForIngest } from './extract-docx.ts'
 import {
   appendUpload, beginExtractUpload, beginUpload, decodeIngestChunk, DEFAULT_MAX_INGEST_BYTES,
   disposeUpload, materializeUpload, type IngestUpload,
@@ -369,10 +370,14 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       throw new AskKnowledgeError('ingest-failed', 'unknown ingest handle')
     }
     try {
-      if (request.reuseRawPath === undefined) await materializeUpload(upload)
+      let tempPath = upload.path
+      if (request.reuseRawPath === undefined) {
+        await materializeUpload(upload)
+        tempPath = await writeDocxMarkdownForIngest(upload)
+      }
       return await finishIngestPipeline(this.ctx, this.config, this.home(), {
         libraryId: upload.libraryId,
-        tempPath: upload.path,
+        tempPath,
         ...request.reuseRawPath === undefined ? {} : { reuseRawPath: request.reuseRawPath },
       }, signal)
     } finally {
@@ -420,11 +425,11 @@ export default class DesktopAskKnowledge extends AskKnowledge {
     signal?: AbortSignal,
   ): Promise<AskKnowledgeExtractResult> {
     signal?.throwIfAborted()
-    this.requireSidecarHome()
     const upload = this.uploads.get(request.handle)
     if (upload === undefined) {
       throw new AskKnowledgeError('ingest-failed', 'unknown extract handle')
     }
+    if (!isDocxExtractFilename(upload.filename)) this.requireSidecarHome()
     try {
       await materializeUpload(upload)
       return await convertUploadToText(this.config, upload, signal)

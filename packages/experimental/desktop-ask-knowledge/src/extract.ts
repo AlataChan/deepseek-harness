@@ -3,8 +3,10 @@
  * @module @deepseek-ai/dsh-experimental-desktop-ask-knowledge/extract
  */
 
+import { readFile } from 'node:fs/promises'
 import { ASK_KNOWLEDGE_EXTRACT_MAX_CHARS, AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 import type { AskKnowledgeExtractResult } from '@deepseek-ai/dsh-host-ask-knowledge'
+import { extractDocxBytes, isDocxExtractFilename } from './extract-docx.ts'
 import type { AskKnowledgeHomeConfig } from './knowledge-home.ts'
 import { runSidecar } from './sidecar.ts'
 import type { IngestUpload } from './upload-temp.ts'
@@ -35,6 +37,14 @@ export async function convertUploadToText(
   upload: IngestUpload,
   signal?: AbortSignal,
 ): Promise<AskKnowledgeExtractResult> {
+  if (isDocxExtractFilename(upload.filename)) {
+    const text = extractDocxBytes(new Uint8Array(await readFile(upload.path)))
+    if (text.trim() === '') {
+      throw new AskKnowledgeError('ingest-failed', '这份 Word 没有可提取的文字')
+    }
+    const clipped = clipExtractText(text)
+    return { filename: upload.filename, text: clipped.text, truncated: clipped.truncated }
+  }
   const result = await runSidecar(config, {
     command: 'convert-file',
     path: upload.path,

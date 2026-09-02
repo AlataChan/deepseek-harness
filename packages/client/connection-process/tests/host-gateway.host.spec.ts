@@ -195,6 +195,91 @@ describe('desktop companion handshake and RPC', () => {
     })
   })
 
+  it('forwards $events/result with a literal dollar so Connection can match the endpoint', async () => {
+    const fetch = vi.fn(async (request: Request) => {
+      expect(new URL(request.url).pathname).toBe('/api/$events/result')
+      const body = await request.json() as { rpcId: string }
+      return new Response(JSON.stringify({
+        type: 'server-response',
+        rpcId: body.rpcId,
+        result: { ok: true, value: {} },
+      }), { status: 200 })
+    })
+    const harness = createHarness({ apiFetchHandler: { fetch } })
+    await ready(harness)
+    await harness.gateway.accept({
+      type: 'rpc/message',
+      message: {
+        type: 'client-request',
+        rpcId: RpcId('rpc-events'),
+        method: '$events/result',
+        payload: {},
+      },
+    })
+    expect(fetch).toHaveBeenCalledOnce()
+    expect(harness.sent[1]).toMatchObject({
+      type: 'rpc/message',
+      message: { type: 'server-response', rpcId: 'rpc-events', result: { ok: true } },
+    })
+    expect(harness.close).not.toHaveBeenCalled()
+  })
+
+  it('returns a failed server-response for HTTP 404 without closing the connection', async () => {
+    const fetch = vi.fn(async (request: Request) => {
+      const pathname = new URL(request.url).pathname
+      if (pathname === '/api/$events/result') {
+        return new Response('not found', { status: 404 })
+      }
+      expect(pathname).toBe('/api/session/cancel')
+      const body = await request.json() as { rpcId: string }
+      return new Response(JSON.stringify({
+        type: 'server-response',
+        rpcId: body.rpcId,
+        result: { ok: true, value: {} },
+      }), { status: 200 })
+    })
+    const harness = createHarness({ apiFetchHandler: { fetch } })
+    await ready(harness)
+    await harness.gateway.accept({
+      type: 'rpc/message',
+      message: {
+        type: 'client-request',
+        rpcId: RpcId('rpc-events'),
+        method: '$events/result',
+        payload: {},
+      },
+    })
+    expect(harness.close).not.toHaveBeenCalled()
+    expect(harness.sent[1]).toMatchObject({
+      type: 'rpc/message',
+      message: {
+        type: 'server-response',
+        rpcId: 'rpc-events',
+        result: {
+          ok: false,
+          error: {
+            code: 'gateway/internal',
+            message: 'Connection carrier returned HTTP 404 for $events/result',
+          },
+        },
+      },
+    })
+    await harness.gateway.accept({
+      type: 'rpc/message',
+      message: {
+        type: 'client-request',
+        rpcId: RpcId('rpc-cancel'),
+        method: 'session/cancel',
+        payload: {},
+      },
+    })
+    expect(harness.sent[2]).toMatchObject({
+      type: 'rpc/message',
+      message: { type: 'server-response', rpcId: 'rpc-cancel', result: { ok: true } },
+    })
+    expect(harness.close).not.toHaveBeenCalled()
+  })
+
   it('pumps a Typert stream and closes it', async () => {
     const openStream = vi.fn(async (_endpoint: string, _payload: unknown, signal: AbortSignal) => (
       async function * () {

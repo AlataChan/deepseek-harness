@@ -14,11 +14,11 @@ export const MAX_INGEST_CHUNK_BYTES = 160 * 1024
 /** Default assembled-file cap. */
 export const DEFAULT_MAX_INGEST_BYTES = 20 * 1024 * 1024
 
-/** Extensions the sidecar converters accept. `.xls` is rejected; use `.xlsx`. */
-export const ACCEPTED_INGEST_EXTENSIONS = ['.md', '.txt', '.html', '.htm', '.pdf', '.csv', '.json', '.xlsx'] as const
+/** Extensions `beginIngest` accepts. Host unzips `.docx` to markdown before sidecar `ingest-file`. `.xls` is rejected; use `.xlsx`. */
+export const ACCEPTED_INGEST_EXTENSIONS = ['.md', '.txt', '.html', '.htm', '.pdf', '.docx', '.csv', '.json', '.xlsx'] as const
 
 /** Extensions session-only extract accepts. Spreadsheets stay on ask-data. */
-export const ACCEPTED_EXTRACT_EXTENSIONS = ['.md', '.txt', '.html', '.htm', '.pdf'] as const
+export const ACCEPTED_EXTRACT_EXTENSIONS = ['.md', '.txt', '.html', '.htm', '.pdf', '.docx'] as const
 
 /** Sentinel library id stored on extract uploads. Never written to catalog.json. */
 export const EXTRACT_LIBRARY_ID = AskKnowledgeLibraryId('session-extract')

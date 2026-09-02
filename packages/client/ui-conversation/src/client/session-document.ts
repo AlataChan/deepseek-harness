@@ -9,14 +9,94 @@ export const SESSION_DOCUMENT_MAX_CHARS = 32_000
 /** Extensions read in the browser without the desktop sidecar. */
 export const SESSION_DOCUMENT_PLAIN_EXTENSIONS = ['.md', '.txt'] as const
 
-/** Extensions that need sidecar convert-file. */
-export const SESSION_DOCUMENT_CONVERT_EXTENSIONS = ['.html', '.htm', '.pdf'] as const
+/** Extensions that need the desktop overlay before the draft can hold them. */
+export const SESSION_DOCUMENT_CONVERT_EXTENSIONS = ['.html', '.htm', '.pdf', '.docx'] as const
 
 /** Spreadsheets belong on ask-data, not session extract. */
 export const SESSION_DOCUMENT_SPREADSHEET_EXTENSIONS = ['.csv', '.xlsx', '.xls'] as const
 
-/** Native picker accept list for session-only documents. */
-export const SESSION_DOCUMENT_ACCEPT = '.md,.txt,.html,.htm,.pdf'
+/**
+ * Allowed session-document suffixes for JS checks and product copy.
+ * Do not set this as the input `accept` in Tauri WebView: WebKit then closes
+ * the dialog without delivering a File when the UTI or MIME does not match.
+ */
+export const SESSION_DOCUMENT_ACCEPT = '.md,.txt,.html,.htm,.pdf,.docx'
+
+/**
+ * Bind change/input on the file element itself.
+ * React root delegation misses WKWebView file-input change when it does not bubble.
+ * @param el - the mounted file input, or null on unmount.
+ * @param onFiles - files after a completed pick; empty when the dialog closed without a File.
+ * Clearing the input after a File was already taken does not emit empty.
+ * @returns disposer.
+ */
+export function bindNativeFileChange(
+  el: HTMLInputElement | null,
+  onFiles: (files: readonly File[]) => void,
+): () => void {
+  if (el === null) return () => {}
+  let cancelled = false
+  let ignoreEmpty = false
+  let busy = false
+  const deliver = (): void => {
+    if (cancelled) {
+      cancelled = false
+      ignoreEmpty = false
+      busy = false
+      el.value = ''
+      return
+    }
+    if (busy) return
+    const list = el.files
+    const files = list === null ? [] : [...list]
+    if (files.length === 0) {
+      if (ignoreEmpty) return
+      onFiles([])
+      return
+    }
+    busy = true
+    ignoreEmpty = true
+    el.value = ''
+    onFiles(files)
+    queueMicrotask(() => { busy = false })
+  }
+  const onReady = (): void => { ignoreEmpty = false }
+  const onCancel = (): void => { cancelled = true }
+  el.addEventListener('click', onReady)
+  el.addEventListener('cancel', onCancel)
+  el.addEventListener('change', deliver)
+  el.addEventListener('input', deliver)
+  return () => {
+    el.removeEventListener('click', onReady)
+    el.removeEventListener('cancel', onCancel)
+    el.removeEventListener('change', deliver)
+    el.removeEventListener('input', deliver)
+  }
+}
+
+/**
+ * Read a user-selected file as text.
+ * `File.text()` is missing or rejects in some WebViews; FileReader still works.
+ * @param file - a File from a native picker.
+ * @returns the decoded text.
+ */
+export async function readSessionDocumentText(file: File): Promise<string> {
+  try {
+    if (typeof file.text === 'function') return await file.text()
+  } catch {
+    // WKWebView File.text() can reject after a successful picker.
+  }
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      resolve(typeof reader.result === 'string' ? reader.result : '')
+    }
+    reader.onerror = () => {
+      reject(reader.error ?? new Error('FileReader failed'))
+    }
+    reader.readAsText(file)
+  })
+}
 
 /**
  * Lowercase extension of a filename, including the leading dot.
@@ -32,14 +112,16 @@ export function sessionDocumentExtension(filename: string): string {
 /**
  * Whether the browser can read this file as text without the sidecar.
  * @param extension - lowercase suffix including the leading dot.
+ * @returns true when the suffix is Markdown or TXT.
  */
 export function isSessionDocumentPlainExtension(extension: string): boolean {
   return (SESSION_DOCUMENT_PLAIN_EXTENSIONS as readonly string[]).includes(extension)
 }
 
 /**
- * Whether convert-file must run before the draft can hold this file.
+ * Whether the desktop overlay must extract this file before the draft can hold it.
  * @param extension - lowercase suffix including the leading dot.
+ * @returns true when the suffix is HTML, PDF, or Word.
  */
 export function isSessionDocumentConvertExtension(extension: string): boolean {
   return (SESSION_DOCUMENT_CONVERT_EXTENSIONS as readonly string[]).includes(extension)
@@ -48,6 +130,7 @@ export function isSessionDocumentConvertExtension(extension: string): boolean {
 /**
  * Whether this file should go through ask-data instead of session extract.
  * @param extension - lowercase suffix including the leading dot.
+ * @returns true when the suffix is a spreadsheet.
  */
 export function isSessionDocumentSpreadsheet(extension: string): boolean {
   return (SESSION_DOCUMENT_SPREADSHEET_EXTENSIONS as readonly string[]).includes(extension)

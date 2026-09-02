@@ -138,7 +138,7 @@ export class SessionInputShell implements SessionInput {
     addImages: ids => this.addImages(ids),
     removeImage: (id) => { this.removeImage(id) },
     pruneImages: (ids) => { this.pruneImages(ids) },
-    submit: () => { this.submit('queue') },
+    submit: (draft) => { this.submit('queue', draft) },
   }
 
   private readonly core = new SubmitMachine()
@@ -264,6 +264,7 @@ export class SessionInputShell implements SessionInput {
    * Replace the whole draft (persisted-draft seed and programmatic writes).
    * Placeholder-sanitized; newlines split paragraphs; the caret lands at the
    * end. Merged into history so a seed is not an undoable step of its own.
+   * The published projection matches the sanitized draft before this returns.
    * @param text - the full next draft.
    */
   setDraft(text: string): void {
@@ -279,6 +280,8 @@ export class SessionInputShell implements SessionInput {
       }
       root.selectEnd()
     }, { discrete: true, tag: HISTORY_MERGE_TAG })
+    // Same-tick submit reads this projection; the update listener may run later.
+    this.onEditorUpdate()
   }
 
   /** Append ordered image ids unless an admission transaction is locked. */
@@ -356,9 +359,12 @@ export class SessionInputShell implements SessionInput {
    * from the machine; this method only feeds the event. Lock entry
    * (adjudicating/submitting) force-closes the transient layers: the popup
    * dismisses and the menu tracks frozen.
+   * @param mode - delivery intent retained through asynchronous adjudication and serialization.
+   * @param draft - clipboard text to send when the caller already composed it; omit to use the current editor projection.
    */
-  submit(mode: InputSubmitMode = 'queue'): void {
-    if (this.snapshot.draft.trim() === '' && this.imageIds.length > 0) {
+  submit(mode: InputSubmitMode = 'queue', draft?: string): void {
+    const text = draft ?? this.projection.clipboardText
+    if (text.trim() === '' && this.imageIds.length > 0) {
       if (this.snapshot.phase === 'plain') {
         const imageIds = [...this.imageIds]
         const controller = new AbortController()
@@ -388,7 +394,7 @@ export class SessionInputShell implements SessionInput {
       this.notify('error', this.deps.commandImages.unsupportedNotice(before.claim?.token ?? before.draft))
       return
     }
-    this.dispatchRun(({ type: 'enter', mode, draft: this.projection.clipboardText }))
+    this.dispatchRun(({ type: 'enter', mode, draft: text }))
     const phase = this.snapshot.phase
     if (phase === 'adjudicating' || phase === 'submitting') {
       this.deps.popup?.()?.dismiss()

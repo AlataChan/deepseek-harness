@@ -307,16 +307,30 @@ ASK_K_HOST="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-knowl
 ASK_K_CLIENT="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-knowledge/lib/client.js"
 if [[ -f "$ASK_K_HOST" ]] \
   && grep -A12 'ACCEPTED_INGEST_EXTENSIONS' "$ASK_K_HOST" | grep -q '".pdf"' \
-  && grep -A12 'ACCEPTED_INGEST_EXTENSIONS' "$ASK_K_HOST" | grep -q '".xlsx"'; then
-  ok "bundled ask-knowledge Host accepts .pdf and .xlsx"
+  && grep -A12 'ACCEPTED_INGEST_EXTENSIONS' "$ASK_K_HOST" | grep -q '".xlsx"' \
+  && grep -A12 'ACCEPTED_INGEST_EXTENSIONS' "$ASK_K_HOST" | grep -q '".docx"'; then
+  ok "bundled ask-knowledge Host accepts .pdf, .xlsx, and .docx"
 else
-  bad "bundled ask-knowledge Host missing .pdf/.xlsx — run tsc -b then tsdown before packaging"
+  bad "bundled ask-knowledge Host missing .pdf/.xlsx/.docx — run tsc -b then tsdown before packaging"
 fi
 if [[ -f "$ASK_K_CLIENT" ]] \
   && grep -q '整理这份文档超过了等待时间' "$ASK_K_CLIENT"; then
   ok "bundled ask-knowledge Client maps finish timeout copy"
 else
   bad "bundled ask-knowledge Client missing finish timeout copy — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_CLIENT" ]] \
+  && ! grep -q 'require("module")' "$ASK_K_CLIENT"; then
+  ok "bundled ask-knowledge Client does not require Node module"
+else
+  bad "bundled ask-knowledge Client requires Node module — a Host-only dep leaked into lib/client.js"
+fi
+if [[ -f "$ASK_K_CLIENT" ]] \
+  && grep -q '.docx' "$ASK_K_CLIENT" \
+  && grep -q '这种文件还不能入库。请用 .md、.txt、.html、.pdf、.docx' "$ASK_K_CLIENT"; then
+  ok "bundled ask-knowledge Client ingest list includes .docx"
+else
+  bad "bundled ask-knowledge Client missing ingest .docx — picker and Host lists must stay aligned"
 fi
 if [[ -f "$ASK_K_CLIENT" ]] \
   && grep -q '添加文档' "$ASK_K_CLIENT" \

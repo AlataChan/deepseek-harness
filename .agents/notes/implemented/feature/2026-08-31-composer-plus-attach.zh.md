@@ -10,7 +10,7 @@ Status: implemented
 
 ## Decision
 
-加号打开短菜单。「添加图片」走与粘贴、拖放同一条 `intakeImages` 路径；`accept` 跟随投影的 `imageLimits.mediaTypes`，没有该投影时为 PNG/JPEG/WebP/GIF。「看这份文档（仅本会话）」在浏览器里读本地 Markdown / TXT 并框进草稿；PDF / HTML 在 overlay 已 `onReady` 时设置 `conversation.input.attachSessionDocument.file`，否则 toast 这些类型需要桌面运行时。「引用工作区文件（@）」在光标处切换 `@` 引用菜单。「添加到知识库（制度 / PDF）」在桌面 overlay 已 `onReady` 时递增 `conversation.input.attachKnowledge.openRequest`，否则 toast 知识库路径。`/` 按钮保留原指令菜单启动器；在草稿中键入 `/` 仍打开该菜单。会话附件仍只接受图片。仅本会话正文随下一条 prompt 走 `{ type: 'text' }`（[会话抽取](2026-09-01-session-document.zh.md)）。
+加号打开短菜单。「添加图片」走与粘贴、拖放同一条 `intakeImages` 路径；`accept` 跟随投影的 `imageLimits.mediaTypes`，没有该投影时为 PNG/JPEG/WebP/GIF。「看这份文档（仅本会话）」在浏览器里读本地 Markdown / TXT 并放在 composer 芯片上；PDF / HTML / Word 在 overlay 已 `onReady` 时设置 `conversation.input.attachSessionDocument.file`，否则 toast 这些类型需要桌面运行时。「引用工作区文件（@）」在光标处切换 `@` 引用菜单。「添加到知识库（制度 / Word / PDF）」在桌面 overlay 已 `onReady` 时递增 `conversation.input.attachKnowledge.openRequest`，否则 toast 知识库路径。`/` 按钮保留原指令菜单启动器；在草稿中键入 `/` 仍打开该菜单。会话附件仍只接受图片。仅本会话正文随下一条 prompt 走 `{ type: 'text' }`（[会话抽取](2026-09-01-session-document.zh.md)）。
 
 ## Alternatives considered
 

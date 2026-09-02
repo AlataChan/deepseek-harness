@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { apply, inject } from '../src/client/index.ts'
-import type { AskKnowledgeChipInjected } from '../src/client/index.ts'
+import type { AskKnowledgeChipInjected, AttachKnowledgeBridgeInjected } from '../src/client/index.ts'
 import type { LibraryPickerInjected } from '../src/client/LibraryPicker.tsx'
 import type { LibrarySettingsRemotes } from '../src/client/LibrarySettingsSection.tsx'
 
@@ -109,7 +109,12 @@ describe('desktop-ask-knowledge apply', () => {
     expect(b.slots.entries('conversation.askKnowledge.picker')).toHaveLength(1)
     chip.openPicker()
     expect(b.slots.entries('conversation.askKnowledge.picker')).toHaveLength(1)
+    const listed = (b.slots.entries('conversation.askKnowledge.picker')[0]!.inject as unknown as () => LibraryPickerInjected)()
+    expect(listed.initialPhase).toBe('list')
+    const attach = (b.slots.entries('conversation.input.attachKnowledge')[0]!.inject as unknown as () => AttachKnowledgeBridgeInjected)()
+    attach.openPicker()
     const picker = (b.slots.entries('conversation.askKnowledge.picker')[0]!.inject as unknown as () => LibraryPickerInjected)()
+    expect(picker.initialPhase).toBe('upload')
     await picker.listLibraries()
     await picker.createLibrary('新')
     await picker.renameLibrary('1', '制度')

@@ -136,7 +136,7 @@ describe('Conversation inject API', () => {
     await b.runtime.dispose()
   })
 
-  it('fails loud for an unknown binding or an unloaded scoped service', async () => {
+  it('fails loud for an unknown binding; stop after unload still reaches Session cancel', async () => {
     const b = await bench()
     const entry = b.entryOf('conversation.composer.bar')
     const injectBar = entry.inject as unknown as (
@@ -155,7 +155,8 @@ describe('Conversation inject API', () => {
 
     const stop = injectBar(ROOT).stop!
     await b.feature.dispose()
-    expect(() => { stop() }).toThrow(/unavailable through the session scope/)
+    expect(() => { stop() }).not.toThrow()
+    await vi.waitFor(() => { expect(b.sessionFake.cancel).toHaveBeenCalledOnce() })
     await b.runtime.dispose()
   })
 

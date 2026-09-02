@@ -181,6 +181,10 @@ switch (request.command) {
       fail('old proposal rejected')
       break
     }
+    if (process.env.ASK_KNOWLEDGE_FAKE_APPLY === 'rejected') {
+      ok({ status: 'rejected' })
+      break
+    }
     if (process.env.ASK_KNOWLEDGE_FAKE_APPLY === 'deferred') {
       ok({ status: 'deferred', deferredCount: 1, deferred_count: 1 })
       break

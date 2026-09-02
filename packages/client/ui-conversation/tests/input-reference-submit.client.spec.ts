@@ -33,6 +33,25 @@ function chip(shell: SessionInputShell): void {
 }
 
 describe('reference submission', () => {
+  it('sends an explicit draft even when the editor projection is still the typed text', async () => {
+    const sink = vi.fn<(
+      _text: string,
+      _imageIds: readonly DraftAttachmentId[],
+      _mode: 'queue' | 'steer',
+      _signal: AbortSignal,
+    ) => Promise<SubmitOutcome>>(() => Promise.resolve({ kind: 'success' }))
+    const shell = new SessionInputShell({
+      actx: {} as Context,
+      defaultSink: sink,
+      commandImages,
+    })
+    shell.setDraft('only typed')
+    const framed = 'only typed\n\n<session-document filename="制度.md">\n报销流程\n</session-document>'
+    shell.actions.submit(framed)
+    await vi.waitFor(() => { expect(sink).toHaveBeenCalled() })
+    expect(sink.mock.calls[0]?.[0]).toBe(framed)
+  })
+
   it('mirrors canonical reference text so a persisted draft remains resolvable after remount', async () => {
     const mirror = vi.fn()
     const first = new SessionInputShell({

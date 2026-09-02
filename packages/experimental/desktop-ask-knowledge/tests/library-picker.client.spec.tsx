@@ -55,7 +55,10 @@ function fileInput(view: ReturnType<typeof render>) {
   return view.container.querySelector('input[type="file"]') as HTMLInputElement
 }
 
-function changeFile(view: ReturnType<typeof render>, file: File | undefined) {
+async function changeFile(view: ReturnType<typeof render>, file: File | undefined) {
+  await waitFor(() => {
+    expect(fileInput(view)).toBeTruthy()
+  })
   fireEvent.change(fileInput(view), { target: { files: file === undefined ? [] : [file] } })
 }
 
@@ -65,7 +68,8 @@ describe('ask-knowledge picker', () => {
     expect(en['picker.uploadTitle']).toBe('Upload a local document')
     expect(en['picker.chooseFile']).toBe('Choose a local document')
     expect(en['picker.skipEmpty']).toBe('Skip and ask with an empty library')
-    expect(en['error.unsupportedType']).toBe('This file type cannot be ingested. Use .md, .txt, .html, .pdf, .csv, .json, or .xlsx.')
+    expect(en['error.unsupportedType']).toBe('This file type cannot be ingested. Use .md, .txt, .html, .pdf, .docx, .csv, .json, or .xlsx.')
+    expect(en['error.emptyPick']).toBe('The chosen file did not arrive. Choose it again.')
     expect(en['picker.uploadLead']).toContain('Spreadsheets fit ask-data better.')
     expect(en['ingest.converting']).toBe('Converting the document')
     expect(en['ingest.proposing']).toBe('Organizing entries')
@@ -124,6 +128,43 @@ describe('ask-knowledge picker', () => {
     )
     expect(source).toContain('min-height: 28px')
     expect(source).toContain('border-radius: 16px')
+  })
+
+  it('opens on the upload panel when the plus menu asks for a file', () => {
+    const { view } = renderPicker({ initialPhase: 'upload' })
+    expect(view.getByText('上传本地文档')).toBeTruthy()
+    const choose = view.getByText('选择本地文档')
+    expect(choose.closest('[data-file-pick="library"]')?.contains(fileInput(view))).toBe(true)
+    expect(getComputedStyle(fileInput(view)).display).not.toBe('none')
+    expect(fileInput(view).hasAttribute('accept')).toBe(false)
+  })
+
+  it('toasts when the upload picker closes without a File', async () => {
+    const { view } = renderPicker({ initialPhase: 'upload' })
+    fireEvent.change(fileInput(view), { target: { files: [] } })
+    await waitFor(() => {
+      expect(view.getByText('没有读到所选文件，请再选一次。')).toBeTruthy()
+    })
+  })
+
+  it('does not toast emptyPick after a File arrives and the input clears', async () => {
+    const beginIngest = vi.fn(async () => ({ ok: true as const, value: 'h1' }))
+    const { view } = renderPicker({
+      initialPhase: 'upload',
+      beginIngest,
+    })
+    await waitFor(() => {
+      expect(fileInput(view)).toBeTruthy()
+    })
+    const input = fileInput(view)
+    const file = new File([new Uint8Array([97])], '测试文档.docx')
+    fireEvent.input(input, { target: { files: [file] } })
+    await Promise.resolve()
+    fireEvent.change(input, { target: { files: [] } })
+    await waitFor(() => {
+      expect(beginIngest).toHaveBeenCalledWith('2', '测试文档.docx')
+    })
+    expect(view.queryByText('没有读到所选文件，请再选一次。')).toBeNull()
   })
 
   it('prints the three locked lead sentences', async () => {
@@ -200,16 +241,15 @@ describe('ask-knowledge picker', () => {
     await waitFor(() => {
       expect(view.getByText('挂不上')).toBeTruthy()
     })
-    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
     view.getByRole('button', { name: '+ 新建知识库' }).click()
     await waitFor(() => {
       expect(view.getByText('上传本地文档')).toBeTruthy()
-      expect(view.getByText('选一份文档写进这个知识库。可以用 .md、.txt、.html、.pdf、.csv、.json、.xlsx。表格更适合走问数。')).toBeTruthy()
+      expect(view.getByText('选一份文档写进这个知识库。可以用 .md、.txt、.html、.pdf、.docx、.csv、.json、.xlsx。表格更适合走问数。')).toBeTruthy()
     })
-    expect(click).toHaveBeenCalled()
+    const choose = view.getByText('选择本地文档')
+    expect(choose.closest('[data-file-pick="library"]')?.contains(fileInput(view))).toBe(true)
     expect(attach).not.toHaveBeenCalledWith('2')
     expect(close).not.toHaveBeenCalled()
-    click.mockRestore()
     view.unmount()
     const createLibrary = vi.fn(async () => ({ ok: false as const, error: { message: '建不了' } }))
     const createFail = renderPicker({
@@ -276,17 +316,17 @@ describe('ask-knowledge picker', () => {
     view.getByRole('button', { name: '+ 新建知识库' }).click()
     expect(createLibrary).not.toHaveBeenCalled()
     await waitFor(() => {
-      expect(view.getByRole('button', { name: '选择本地文档' })).toBeTruthy()
+      expect(view.getByText('选择本地文档')).toBeTruthy()
     })
-    changeFile(view, undefined)
+    await changeFile(view, undefined)
     expect(beginIngest).not.toHaveBeenCalled()
     expect(close).not.toHaveBeenCalled()
     const body = new Uint8Array(MAX_INGEST_CHUNK_BYTES + 5)
     body.fill(65)
-    changeFile(view, new File([body], '制度.md', { type: 'text/markdown' }))
+    await changeFile(view, new File([body], '制度.md', { type: 'text/markdown' }))
     await waitFor(() => {
       expect(view.getByText('正在写入知识库，可能需要几分钟。')).toBeTruthy()
-      expect((view.getByRole('button', { name: '选择本地文档' }) as HTMLButtonElement).disabled).toBe(true)
+      expect(fileInput(view).disabled).toBe(true)
     })
     resolveBegin?.({ ok: true, value: 'h1' })
     await waitFor(() => {
@@ -309,7 +349,7 @@ describe('ask-knowledge picker', () => {
       expect(stemless.getByText('制度 A')).toBeTruthy()
     })
     stemless.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(stemless, new File([new Uint8Array([97])], '.md', { type: 'text/markdown' }))
+    await changeFile(stemless, new File([new Uint8Array([97])], '.md', { type: 'text/markdown' }))
     await waitFor(() => {
       expect(stemlessRename).toHaveBeenCalledWith('2', '未命名知识库')
     })
@@ -325,7 +365,7 @@ describe('ask-knowledge picker', () => {
       expect(view.getByText('制度 A')).toBeTruthy()
     })
     view.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(view, new File([new Uint8Array([97])], '意见.pdf', { type: 'application/pdf' }))
+    await changeFile(view, new File([new Uint8Array([97])], '意见.pdf', { type: 'application/pdf' }))
     await waitFor(() => {
       expect(finishIngest).toHaveBeenCalled()
       expect(view.getByText('整理这份文档超过了等待时间。请再试一次。')).toBeTruthy()
@@ -345,8 +385,8 @@ describe('ask-knowledge picker', () => {
       expect(view.getByText('制度 A')).toBeTruthy()
     })
     view.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(view, new File([new Uint8Array([97])], 'a.md', { type: 'text/markdown' }))
-    changeFile(view, new File([new Uint8Array([98])], 'b.md', { type: 'text/markdown' }))
+    await changeFile(view, new File([new Uint8Array([97])], 'a.md', { type: 'text/markdown' }))
+    await changeFile(view, new File([new Uint8Array([98])], 'b.md', { type: 'text/markdown' }))
     expect(createLibrary).toHaveBeenCalledTimes(1)
     expect(remotes.beginIngest).not.toHaveBeenCalled()
     resolveCreate?.({ ok: true, value: { id: '2', displayName: '新' } })
@@ -373,7 +413,7 @@ describe('ask-knowledge picker', () => {
       expect(view.getByText('挂不上')).toBeTruthy()
     })
     expect(createLibrary).toHaveBeenCalledTimes(1)
-    changeFile(view, new File([new Uint8Array([97])], 'notes.md', { type: 'text/markdown' }))
+    await changeFile(view, new File([new Uint8Array([97])], 'notes.md', { type: 'text/markdown' }))
     await waitFor(() => {
       expect(remotes.beginIngest).toHaveBeenCalledWith('2', 'notes.md')
     })
@@ -392,10 +432,8 @@ describe('ask-knowledge picker', () => {
     await waitFor(() => {
       expect(view.getByRole('button', { name: '先空着，直接提问' })).toBeTruthy()
     })
-    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
-    view.getByRole('button', { name: '选择本地文档' }).click()
-    expect(click).toHaveBeenCalled()
-    click.mockRestore()
+    const choose = view.getByText('选择本地文档')
+    expect(choose.closest('[data-file-pick="library"]')?.contains(fileInput(view))).toBe(true)
     view.getByRole('button', { name: '先空着，直接提问' }).click()
     await waitFor(() => {
       expect(createLibrary).toHaveBeenCalledWith('未命名知识库')
@@ -437,9 +475,9 @@ describe('ask-knowledge picker', () => {
       expect(view.getByText('制度 A')).toBeTruthy()
     })
     view.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(view, new File([new Uint8Array([97])], 'notes.docx'))
+    await changeFile(view, new File([new Uint8Array([97])], 'notes.pptx'))
     await waitFor(() => {
-      expect(view.getByText('这种文件还不能入库。请用 .md、.txt、.html、.pdf、.csv、.json 或 .xlsx。')).toBeTruthy()
+      expect(view.getByText('这种文件还不能入库。请用 .md、.txt、.html、.pdf、.docx、.csv、.json 或 .xlsx。')).toBeTruthy()
     })
     expect(createLibrary).not.toHaveBeenCalled()
     expect(remotes.beginIngest).not.toHaveBeenCalled()
@@ -452,7 +490,7 @@ describe('ask-knowledge picker', () => {
       expect(beginNamed.getByText('制度 A')).toBeTruthy()
     })
     beginNamed.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(beginNamed, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(beginNamed, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(beginNamed.getByText('打不开')).toBeTruthy()
     })
@@ -465,7 +503,7 @@ describe('ask-knowledge picker', () => {
       expect(beginFalse.getByText('制度 A')).toBeTruthy()
     })
     beginFalse.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(beginFalse, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(beginFalse, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(beginFalse.getByText('文档没有写进知识库。')).toBeTruthy()
     })
@@ -478,7 +516,7 @@ describe('ask-knowledge picker', () => {
       expect(beginEmpty.getByText('制度 A')).toBeTruthy()
     })
     beginEmpty.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(beginEmpty, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(beginEmpty, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(beginEmpty.getByText('文档没有写进知识库。')).toBeTruthy()
     })
@@ -491,7 +529,7 @@ describe('ask-knowledge picker', () => {
       expect(appendFail.getByText('制度 A')).toBeTruthy()
     })
     appendFail.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(appendFail, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(appendFail, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(appendFail.getByText('块失败')).toBeTruthy()
     })
@@ -504,7 +542,7 @@ describe('ask-knowledge picker', () => {
       expect(appendEmpty.getByText('制度 A')).toBeTruthy()
     })
     appendEmpty.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(appendEmpty, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(appendEmpty, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(appendEmpty.getByText('文档没有写进知识库。')).toBeTruthy()
     })
@@ -517,7 +555,7 @@ describe('ask-knowledge picker', () => {
       expect(finishFail.getByText('制度 A')).toBeTruthy()
     })
     finishFail.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(finishFail, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(finishFail, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(finishFail.getByText('写失败')).toBeTruthy()
     })
@@ -530,7 +568,7 @@ describe('ask-knowledge picker', () => {
       expect(finishEmpty.getByText('制度 A')).toBeTruthy()
     })
     finishEmpty.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(finishEmpty, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(finishEmpty, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(finishEmpty.getByText('文档没有写进知识库。')).toBeTruthy()
     })
@@ -543,7 +581,7 @@ describe('ask-knowledge picker', () => {
       expect(finishStatus.getByText('制度 A')).toBeTruthy()
     })
     finishStatus.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(finishStatus, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(finishStatus, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(finishStatus.getByText('文档没有写进知识库。')).toBeTruthy()
     })
@@ -559,7 +597,7 @@ describe('ask-knowledge picker', () => {
       expect(finishDetail.getByText('制度 A')).toBeTruthy()
     })
     finishDetail.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(finishDetail, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(finishDetail, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(finishDetail.getByText('模型给出的词条格式不对，请再试一次。')).toBeTruthy()
     })
@@ -580,7 +618,7 @@ describe('ask-knowledge picker', () => {
       expect(view.getByText('上传本地文档')).toBeTruthy()
     })
     expect(createLibrary).not.toHaveBeenCalled()
-    changeFile(view, new File([new Uint8Array([97])], 'notes.md', { type: 'text/markdown' }))
+    await changeFile(view, new File([new Uint8Array([97])], 'notes.md', { type: 'text/markdown' }))
     await waitFor(() => {
       expect(remotes.beginIngest).toHaveBeenCalledWith('1', 'notes.md')
       expect(attach).toHaveBeenCalledWith('1')
@@ -606,7 +644,7 @@ describe('ask-knowledge picker', () => {
       expect(view.getByText('未命名知识库 4')).toBeTruthy()
     })
     view.getByRole('button', { name: '添加文档' }).click()
-    changeFile(view, new File([new Uint8Array([97])], '意见.pdf', { type: 'application/pdf' }))
+    await changeFile(view, new File([new Uint8Array([97])], '意见.pdf', { type: 'application/pdf' }))
     await waitFor(() => {
       expect(remotes.beginIngest).toHaveBeenCalledWith('4', '意见.pdf')
       expect(renameLibrary).toHaveBeenCalledWith('4', '意见')
@@ -647,7 +685,7 @@ describe('ask-knowledge picker', () => {
       expect(view.getByText('制度 A')).toBeTruthy()
     })
     view.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(view, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(view, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(attach).toHaveBeenCalledWith('2')
       expect(close).toHaveBeenCalled()
@@ -661,7 +699,7 @@ describe('ask-knowledge picker', () => {
       expect(failed.getByText('制度 A')).toBeTruthy()
     })
     failed.getByRole('button', { name: '+ 新建知识库' }).click()
-    changeFile(failed, new File([new Uint8Array([97])], 'notes.md'))
+    await changeFile(failed, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
       expect(failed.getByText('建不了')).toBeTruthy()
     })

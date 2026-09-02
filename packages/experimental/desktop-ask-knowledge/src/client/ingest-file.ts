@@ -8,11 +8,8 @@ import { encodeAskKnowledgeBytes } from './bytes.ts'
 /** Decoded size of one append chunk. Must match the Host assembler. */
 export const MAX_INGEST_CHUNK_BYTES = 160 * 1024
 
-/** Extensions the Host assembler and sidecar converters accept. Must match `upload-temp`. */
-export const ACCEPTED_INGEST_EXTENSIONS = ['.md', '.txt', '.html', '.htm', '.pdf', '.csv', '.json', '.xlsx'] as const
-
-/** `accept` value for the picker file input. */
-export const ACCEPTED_INGEST_ACCEPT = ACCEPTED_INGEST_EXTENSIONS.join(',')
+/** Extensions the Host assembler accepts. Must match `upload-temp`. Host unzips `.docx` before sidecar `ingest-file`. */
+export const ACCEPTED_INGEST_EXTENSIONS = ['.md', '.txt', '.html', '.htm', '.pdf', '.docx', '.csv', '.json', '.xlsx'] as const
 
 /**
  * Whether `extension` is an accepted ingest suffix.

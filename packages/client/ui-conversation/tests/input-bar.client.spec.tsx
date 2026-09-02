@@ -267,6 +267,20 @@ function writeDraft(shell: SessionInputShell, text: string): void {
   act(() => { shell.setDraft(text) })
 }
 
+function openFilePick(
+  view: ReturnType<typeof render>,
+  item: string,
+  kind: 'image' | 'sessionDoc',
+): HTMLInputElement {
+  fireEvent.click(view.getByLabelText('添加'))
+  fireEvent.click(view.getByRole('menuitem', { name: item }))
+  const picker = view.container.querySelector(
+    `[data-file-pick="${kind}"] input[type="file"]`,
+  ) as HTMLInputElement | null
+  if (picker === null) throw new Error(`file pick ${kind} is missing`)
+  return picker
+}
+
 describe('image draft rail', () => {
   it('collects clipboard files while preserving text from a mixed paste', async () => {
     const addImages = vi.fn(() => null)
@@ -286,29 +300,39 @@ describe('image draft rail', () => {
     await vi.waitFor(() => { expect(shell.snapshot.draft).toBe('同时粘贴的文字') })
   })
 
-  it('the plus control lists attach paths; adding images opens the native picker', () => {
+  it('the plus control lists attach paths; adding images covers the choose control with a file input', () => {
     const addImages = vi.fn(() => null)
     const toggleCommandMenu = vi.fn()
     const toggleReferenceMenu = vi.fn()
     const { view } = bench({ addImages, toggleCommandMenu, toggleReferenceMenu })
-    const picker = view.container.querySelector('input[type="file"]') as HTMLInputElement
-    expect(picker.getAttribute('accept')).toBe('image/png,image/jpeg,image/webp,image/gif')
-    const open = vi.spyOn(picker, 'click')
     fireEvent.click(view.getByLabelText('添加'))
     expect(view.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
       '添加图片',
       '看这份文档（仅本会话）',
       '引用工作区文件（@）',
-      '添加到知识库（制度 / PDF）',
+      '添加到知识库（制度 / Word / PDF）',
     ])
-    expect(open).not.toHaveBeenCalled()
     fireEvent.click(view.getByRole('menuitem', { name: '添加图片' }))
-    expect(open).toHaveBeenCalledTimes(1)
     expect(toggleCommandMenu).not.toHaveBeenCalled()
     expect(toggleReferenceMenu).not.toHaveBeenCalled()
+    const choose = view.getByText('选择图片')
+    const picker = view.container.querySelector(
+      '[data-file-pick="image"] input[type="file"]',
+    ) as HTMLInputElement
+    expect(choose.closest('[data-file-pick="image"]')?.contains(picker)).toBe(true)
+    expect(picker.getAttribute('accept')).toBe('image/png,image/jpeg,image/webp,image/gif')
     const image = new File([Uint8Array.of(1, 2, 3)], 'pixel.png', { type: 'image/png' })
     fireEvent.change(picker, { target: { files: [image] } })
     expect(addImages).toHaveBeenCalledWith([image])
+    expect(view.queryByText('选择图片')).toBeNull()
+  })
+
+  it('toasts when an image pick closes without a File', () => {
+    const { view } = bench({ addImages: () => null })
+    const picker = openFilePick(view, '添加图片', 'image')
+    fireEvent.change(picker, { target: { files: [] } })
+    expect(view.getByText('选择图片')).toBeTruthy()
+    expect(view.getByRole('alert').textContent).toContain('没有读到所选文件，请再选一次')
   })
 
   it('the plus menu mentions a workspace file through the @ trigger', () => {
@@ -318,6 +342,7 @@ describe('image draft rail', () => {
     fireEvent.click(view.getByLabelText('添加'))
     fireEvent.click(view.getByRole('menuitem', { name: '引用工作区文件（@）' }))
     expect(toggleReferenceMenu).toHaveBeenCalledExactlyOnceWith({ start: 2, end: 7 })
+    expect(view.getByText('在列表里点选工作区文件。列表马上消失表示工作区里还没有文件')).toBeTruthy()
   })
 
   it('the plus menu opens the knowledge picker when the overlay reports ready', () => {
@@ -327,49 +352,137 @@ describe('image draft rail', () => {
     })
     act(() => { owner?.onReady(true) })
     fireEvent.click(view.getByLabelText('添加'))
-    fireEvent.click(view.getByRole('menuitem', { name: '添加到知识库（制度 / PDF）' }))
+    fireEvent.click(view.getByRole('menuitem', { name: '添加到知识库（制度 / Word / PDF）' }))
     expect(owner?.openRequest).toBe(1)
   })
 
   it('the plus menu teaches the knowledge path when the overlay is absent', () => {
     const { view } = bench()
     fireEvent.click(view.getByLabelText('添加'))
-    fireEvent.click(view.getByRole('menuitem', { name: '添加到知识库（制度 / PDF）' }))
-    expect(view.getByRole('alert').textContent).toContain('制度 PDF 请用 @ 引用工作区文件')
+    fireEvent.click(view.getByRole('menuitem', { name: '添加到知识库（制度 / Word / PDF）' }))
+    expect(view.getByRole('alert').textContent).toContain('制度、Word、PDF 请用 @ 引用工作区文件')
   })
 
-  it('the plus menu pastes a local markdown file as a session document', async () => {
-    const { view, shell } = bench({ draft: '先看这个' })
-    fireEvent.click(view.getByLabelText('添加'))
-    fireEvent.click(view.getByRole('menuitem', { name: '看这份文档（仅本会话）' }))
-    const picker = view.container.querySelector('input[data-session-document]') as HTMLInputElement
-    expect(picker.getAttribute('accept')).toBe('.md,.txt,.html,.htm,.pdf')
+  it('the plus menu keeps a local markdown file as a composer chip and frames it on send', async () => {
+    const { view, shell, sink } = bench({ draft: '先看这个' })
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
+    expect(picker.hasAttribute('accept')).toBe(false)
+    expect(picker.hasAttribute('data-session-document')).toBe(true)
+    const choose = view.getByText('选择文档')
+    expect(choose.closest('[data-file-pick="sessionDoc"]')?.contains(picker)).toBe(true)
     const file = new File(['报销流程'], '制度.md', { type: 'text/markdown' })
     fireEvent.change(picker, { target: { files: [file] } })
     await vi.waitFor(() => {
-      expect(shell.snapshot.draft).toContain('<session-document filename="制度.md">')
-      expect(shell.snapshot.draft).toContain('报销流程')
-      expect(shell.snapshot.draft).toContain('先看这个')
+      expect(view.container.querySelector('[data-session-document-chip]')).toBeTruthy()
     })
+    expect(view.getByText('制度.md')).toBeTruthy()
+    expect(shell.snapshot.draft).toBe('先看这个')
+    expect(shell.snapshot.draft).not.toContain('<session-document')
     expect(view.getByRole('alert').textContent).toContain('已提取，随下一条发送，不入库')
+    const submit = vi.spyOn(shell.actions, 'submit')
+    fireEvent.click(view.getByRole('button', { name: '发送消息' }))
+    expect(submit).toHaveBeenCalledWith(expect.stringContaining('<session-document filename="制度.md">'))
+    expect(submit.mock.calls[0]?.[0]).toContain('报销流程')
+    expect(submit.mock.calls[0]?.[0]).toContain('先看这个')
+    await vi.waitFor(() => { expect(sink).toHaveBeenCalled() })
+    expect(sink.mock.calls[0]?.[0]).toContain('<session-document filename="制度.md">')
+    expect(sink.mock.calls[0]?.[0]).toContain('报销流程')
+    expect(sink.mock.calls[0]?.[0]).toContain('先看这个')
+  })
+
+  it('a session-document pick with an empty FileList stays visible and toasts', () => {
+    const { view } = bench()
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
+    fireEvent.change(picker, { target: { files: [] } })
+    expect(view.getByText('选择文档')).toBeTruthy()
+    expect(view.getByRole('alert').textContent).toContain('没有读到所选文件，请再选一次')
+    expect(view.container.querySelector('[data-session-document-chip]')).toBeNull()
+  })
+
+  it('a markdown file with an empty MIME type still becomes a composer chip', async () => {
+    const { view } = bench()
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
+    fireEvent.change(picker, {
+      target: { files: [new File(['报销流程'], '制度.md', { type: '' })] },
+    })
+    await vi.waitFor(() => {
+      expect(view.container.querySelector('[data-session-document-chip]')).toBeTruthy()
+    })
+    expect(view.getByText('制度.md')).toBeTruthy()
+  })
+
+  it('toasts when a markdown file cannot be read', async () => {
+    const Original = FileReader
+    class BoomReader extends Original {
+      override readAsText(): void {
+        queueMicrotask(() => {
+          Object.defineProperty(this, 'error', { value: new Error('disk') })
+          this.onerror?.(new ProgressEvent('error') as ProgressEvent<FileReader>)
+        })
+      }
+    }
+    vi.stubGlobal('FileReader', BoomReader)
+    const { view } = bench()
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
+    const file = new File(['报销流程'], '制度.md', { type: 'text/markdown' })
+    Object.defineProperty(file, 'text', { value: () => Promise.reject(new Error('webview')) })
+    fireEvent.change(picker, { target: { files: [file] } })
+    await vi.waitFor(() => {
+      expect(view.getByRole('alert').textContent).toContain('读不了这份文件')
+    })
+    expect(view.container.querySelector('[data-session-document-chip]')).toBeNull()
+    vi.unstubAllGlobals()
+  })
+
+  it('a session-document chip alone enables send, and removing it disables send', async () => {
+    const { view, sink } = bench()
+    expect((view.getByRole('button', { name: '发送消息' }) as HTMLButtonElement).disabled).toBe(true)
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
+    fireEvent.change(picker, {
+      target: { files: [new File(['报销流程'], '制度.md', { type: 'text/markdown' })] },
+    })
+    await vi.waitFor(() => {
+      expect((view.getByRole('button', { name: '发送消息' }) as HTMLButtonElement).disabled).toBe(false)
+    })
+    fireEvent.click(view.getByLabelText('去掉 制度.md'))
+    expect(view.container.querySelector('[data-session-document-chip]')).toBeNull()
+    expect((view.getByRole('button', { name: '发送消息' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(sink).not.toHaveBeenCalled()
   })
 
   it('the plus menu toasts when a session PDF has no desktop overlay', () => {
     const { view } = bench()
-    fireEvent.click(view.getByLabelText('添加'))
-    fireEvent.click(view.getByRole('menuitem', { name: '看这份文档（仅本会话）' }))
-    const picker = view.container.querySelector('input[data-session-document]') as HTMLInputElement
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
     fireEvent.change(picker, {
       target: { files: [new File(['%PDF'], '扫描.pdf', { type: 'application/pdf' })] },
     })
-    expect(view.getByRole('alert').textContent).toContain('PDF 和 HTML 需要桌面运行时提取')
+    expect(view.getByRole('alert').textContent).toContain('PDF、HTML 和 Word 需要桌面运行时提取')
+  })
+
+  it('the plus menu hands a Word file to the overlay', () => {
+    let owner: {
+      file: File | null
+      onReady: (ready: boolean) => void
+      onSettled: (result:
+        | { ok: true; filename: string; text: string; truncated: boolean }
+        | { ok: false; error: string },
+      ) => void
+    } | undefined
+    const { view } = bench({
+      onAttachSessionDocument: (next) => { owner = next },
+    })
+    act(() => { owner?.onReady(true) })
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
+    fireEvent.change(picker, {
+      target: { files: [new File(['PK'], '说明.docx')] },
+    })
+    expect(owner?.file?.name).toBe('说明.docx')
+    expect(view.getByRole('alert').textContent).toContain('正在提取文档')
   })
 
   it('the plus menu toasts a spreadsheet toward ask-data', () => {
     const { view } = bench()
-    fireEvent.click(view.getByLabelText('添加'))
-    fireEvent.click(view.getByRole('menuitem', { name: '看这份文档（仅本会话）' }))
-    const picker = view.container.querySelector('input[data-session-document]') as HTMLInputElement
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
     fireEvent.change(picker, {
       target: { files: [new File(['a,b'], '表.xlsx', { type: 'application/vnd.ms-excel' })] },
     })
@@ -389,9 +502,7 @@ describe('image draft rail', () => {
       onAttachSessionDocument: (next) => { owner = next },
     })
     act(() => { owner?.onReady(true) })
-    fireEvent.click(view.getByLabelText('添加'))
-    fireEvent.click(view.getByRole('menuitem', { name: '看这份文档（仅本会话）' }))
-    const picker = view.container.querySelector('input[data-session-document]') as HTMLInputElement
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
     fireEvent.change(picker, {
       target: { files: [new File(['%PDF'], '制度.pdf', { type: 'application/pdf' })] },
     })
@@ -401,28 +512,26 @@ describe('image draft rail', () => {
       owner?.onSettled({ ok: true, filename: '制度.pdf', text: '报销正文', truncated: false })
     })
     await vi.waitFor(() => {
-      expect(shell.snapshot.draft).toContain('报销正文')
+      expect(view.getByText('制度.pdf')).toBeTruthy()
     })
+    expect(shell.snapshot.draft).not.toContain('报销正文')
     expect(view.getByRole('alert').textContent).toContain('已提取，随下一条发送，不入库')
   })
 
   it('the plus menu toasts an empty markdown file and an unsupported suffix', async () => {
     const { view } = bench()
-    const picker = view.container.querySelector('input[data-session-document]') as HTMLInputElement
-    fireEvent.click(view.getByLabelText('添加'))
-    fireEvent.click(view.getByRole('menuitem', { name: '看这份文档（仅本会话）' }))
+    const picker = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
     fireEvent.change(picker, {
       target: { files: [new File(['   '], '空.md', { type: 'text/markdown' })] },
     })
     await vi.waitFor(() => {
       expect(view.getByRole('alert').textContent).toContain('这份文件没有可提取的文字')
     })
-    fireEvent.click(view.getByLabelText('添加'))
-    fireEvent.click(view.getByRole('menuitem', { name: '看这份文档（仅本会话）' }))
-    fireEvent.change(picker, {
-      target: { files: [new File(['x'], '说明.docx')] },
+    const next = openFilePick(view, '看这份文档（仅本会话）', 'sessionDoc')
+    fireEvent.change(next, {
+      target: { files: [new File(['x'], '说明.pptx')] },
     })
-    expect(view.getByRole('alert').textContent).toContain('仅支持 Markdown、TXT、HTML、PDF')
+    expect(view.getByRole('alert').textContent).toContain('仅支持 Markdown、TXT、HTML、PDF、Word')
   })
 
   it('the plus menu toasts a failed overlay extract', () => {
@@ -465,8 +574,9 @@ describe('image draft rail', () => {
       owner?.onSettled({ ok: true, filename: '长.pdf', text: '截断正文', truncated: true })
     })
     await vi.waitFor(() => {
-      expect(shell.snapshot.draft).toContain('截断正文')
+      expect(view.getByText('长.pdf')).toBeTruthy()
     })
+    expect(shell.snapshot.draft).not.toContain('截断正文')
     expect(view.getByRole('alert').textContent).toContain('已提取并截断，随下一条发送，不入库')
   })
 
@@ -482,7 +592,9 @@ describe('image draft rail', () => {
         mediaTypes: ['image/png', 'image/jpeg'] as const,
       },
     })
-    expect(view.container.querySelector('input[type="file"]')?.getAttribute('accept'))
+    fireEvent.click(view.getByLabelText('添加'))
+    fireEvent.click(view.getByRole('menuitem', { name: '添加图片' }))
+    expect(view.container.querySelector('[data-file-pick="image"] input[type="file"]')?.getAttribute('accept'))
       .toBe('image/png,image/jpeg')
   })
 
@@ -937,7 +1049,7 @@ describe('Enter semantics', () => {
 
 describe('running and lock semantics', () => {
   it('running switches the primary between Stop and Queue Send with the draft', async () => {
-    const { textarea, button, stop, sink, shell } = bench({ running: true, busyEnter: 'steer' })
+    const { textarea, button, stop, sink, shell, view } = bench({ running: true, busyEnter: 'steer' })
     expect(textarea.getAttribute('aria-disabled')).not.toBe('true')
     expect(button.getAttribute('aria-label')).toBe('停止生成')
     fireEvent.click(button)
@@ -949,10 +1061,12 @@ describe('running and lock semantics', () => {
     expect(button.getAttribute('aria-label')).toBe('停止生成')
     writeDraft(shell, '排队消息2')
     expect(button.getAttribute('aria-label')).toBe('发送消息')
+    fireEvent.click(view.getByRole('button', { name: '停止生成' }))
+    expect(stop).toHaveBeenCalledTimes(2)
     fireEvent.click(button)
     expect(sink).toHaveBeenCalledWith('排队消息2', [], 'queue', expect.any(AbortSignal))
     await vi.waitFor(() => { expect(button.getAttribute('aria-label')).toBe('停止生成') })
-    expect(stop).toHaveBeenCalledTimes(1)
+    expect(stop).toHaveBeenCalledTimes(2)
   })
 
   it('running treats an attachment-only draft as Send', async () => {
@@ -962,8 +1076,10 @@ describe('running and lock semantics', () => {
       file: new File([Uint8Array.of(1)], 'pixel.png', { type: 'image/png' }),
       previewUrl: 'blob:pixel',
     }
-    const { button, sink } = bench({ running: true, attachments: [attachment] })
+    const { button, sink, stop, view } = bench({ running: true, attachments: [attachment] })
     expect(button.getAttribute('aria-label')).toBe('发送消息')
+    fireEvent.click(view.getByRole('button', { name: '停止生成' }))
+    expect(stop).toHaveBeenCalledTimes(1)
     fireEvent.click(button)
     expect(sink).toHaveBeenCalledWith('', ['draft-1'], 'queue', expect.any(AbortSignal))
     await vi.waitFor(() => { expect(button.getAttribute('aria-label')).toBe('停止生成') })

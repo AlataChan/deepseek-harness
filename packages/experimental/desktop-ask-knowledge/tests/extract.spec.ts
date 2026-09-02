@@ -2,6 +2,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { afterEach, describe, expect, it } from 'vitest'
+import { strToU8, zipSync } from 'fflate'
 import { AskKnowledgeError, ASK_KNOWLEDGE_EXTRACT_MAX_CHARS } from '@deepseek-ai/dsh-host-ask-knowledge'
 import type { AskKnowledge } from '@deepseek-ai/dsh-host-ask-knowledge'
 import { clipExtractText } from '../src/extract.ts'
@@ -23,6 +24,18 @@ async function extractText(capability: AskKnowledge, filename: string, body: str
   return capability.finishExtract({ handle })
 }
 
+async function extractBytes(capability: AskKnowledge, filename: string, body: Uint8Array) {
+  const handle = await capability.beginExtract({ filename })
+  await capability.appendExtractChunk({ handle, bytes: Buffer.from(body).toString('base64') })
+  return capability.finishExtract({ handle })
+}
+
+function docxWithParagraphs(paragraphs: readonly string[]): Uint8Array {
+  const body = paragraphs.map(text => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`).join('')
+  const xml = `<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}</w:body></w:document>`
+  return zipSync({ 'word/document.xml': strToU8(xml) })
+}
+
 describe('session-only extract', () => {
   it('clips at the extract character cap', () => {
     expect(clipExtractText('短')).toEqual({ text: '短', truncated: false })
@@ -34,6 +47,7 @@ describe('session-only extract', () => {
 
   it('rejects spreadsheets and accepts session document suffixes', () => {
     expect(parseExtractFilename('制度.pdf')).toEqual({ basename: '制度.pdf', extension: '.pdf' })
+    expect(parseExtractFilename('制度.docx')).toEqual({ basename: '制度.docx', extension: '.docx' })
     expect(() => parseExtractFilename('表.xlsx')).toThrow(AskKnowledgeError)
     expect(() => parseExtractFilename('../x.md')).toThrow(AskKnowledgeError)
   })
@@ -99,6 +113,29 @@ describe('session-only extract', () => {
     const result = await extractText(started.ctx.askKnowledge, 'long.md', '# short\n')
     expect(result.truncated).toBe(true)
     expect([...result.text]).toHaveLength(ASK_KNOWLEDGE_EXTRACT_MAX_CHARS)
+  })
+
+  it('extracts Word paragraphs without convert-file', async () => {
+    const started = await bootOverlay()
+    cleanups.push(() => started.fiber.dispose())
+    await expect(extractBytes(started.ctx.askKnowledge, '制度.docx', docxWithParagraphs(['报销流程', '第二段'])))
+      .resolves.toEqual({
+        filename: '制度.docx',
+        text: '报销流程\n第二段',
+        truncated: false,
+      })
+    await expect(extractBytes(started.ctx.askKnowledge, '空.docx', docxWithParagraphs([])))
+      .rejects.toMatchObject({
+        code: 'ingest-failed',
+        message: '这份 Word 没有可提取的文字',
+      })
+    const clipped = await extractBytes(
+      started.ctx.askKnowledge,
+      '长.docx',
+      docxWithParagraphs(['字'.repeat(ASK_KNOWLEDGE_EXTRACT_MAX_CHARS + 2)]),
+    )
+    expect(clipped.truncated).toBe(true)
+    expect([...clipped.text]).toHaveLength(ASK_KNOWLEDGE_EXTRACT_MAX_CHARS)
   })
 
   it('surfaces a sidecar convert-file failure', async () => {

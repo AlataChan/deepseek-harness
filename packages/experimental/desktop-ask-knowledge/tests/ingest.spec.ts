@@ -1,9 +1,10 @@
 /** Ingest barrier, reuseRawPath, apply-failure re-propose, and upload caps. */
 
-import { mkdtemp, readdir, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { strToU8, zipSync } from 'fflate'
 import { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
@@ -58,6 +59,23 @@ async function boot(options: {
   return { ctx, root, sidecarHome, capability: ctx.askKnowledge }
 }
 
+function docxWithParagraphs(paragraphs: readonly string[]): Uint8Array {
+  const body = paragraphs.map(text => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`).join('')
+  const xml = `<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}</w:body></w:document>`
+  return zipSync({ 'word/document.xml': strToU8(xml) })
+}
+
+async function ingestBytes(
+  capability: AskKnowledge,
+  libraryId: Parameters<AskKnowledge['beginIngest']>[0]['libraryId'],
+  filename: string,
+  body: Uint8Array,
+) {
+  const handle = await capability.beginIngest({ libraryId, filename })
+  await capability.appendIngestChunk({ handle, bytes: Buffer.from(body).toString('base64') })
+  return capability.finishIngest({ handle })
+}
+
 async function ingestText(
   capability: AskKnowledge,
   libraryId: Parameters<AskKnowledge['beginIngest']>[0]['libraryId'],
@@ -80,6 +98,24 @@ describe('ask-knowledge ingest', () => {
     const library = await capability.createLibrary({ displayName: '制度' })
     const result = await ingestText(capability, library.id, '报销.md', '# 报销\n\n流程\n')
     expect(result).toMatchObject({ status: 'applied', rawRelPath: 'raw/报销.md' })
+  })
+
+  it('unzips Word on the Host and ingests the markdown copy', async () => {
+    const { capability, root } = await boot()
+    const library = await capability.createLibrary({ displayName: '制度' })
+    const result = await ingestBytes(
+      capability,
+      library.id,
+      '制度.docx',
+      docxWithParagraphs(['报销流程']),
+    )
+    expect(result).toMatchObject({ status: 'applied', rawRelPath: 'raw/制度.md' })
+    expect(await readFile(
+      join(root, 'knowledge-bases', 'libraries', library.id, 'raw', '制度.md'),
+      'utf8',
+    )).toContain('报销流程')
+    await expect(ingestBytes(capability, library.id, '空.docx', docxWithParagraphs([])))
+      .rejects.toMatchObject({ message: '这份 Word 没有可提取的文字' })
   })
 
   it('serializes two overlapping finishIngest calls on one library', async () => {
@@ -165,6 +201,18 @@ describe('ask-knowledge ingest', () => {
     expect(retried).toMatchObject({ status: 'applied', proposalId: 'prop-new' })
   })
 
+  it('does not treat sidecar apply rejected as applied', async () => {
+    const { capability } = await boot({
+      sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'rejected' },
+    })
+    const library = await capability.createLibrary({ displayName: '拒写' })
+    const result = await ingestText(capability, library.id, '意见.md', '# 意见\n')
+    expect(result).toMatchObject({
+      status: 'failed',
+      error: '整理词条没有写出可检索的页面。',
+    })
+  })
+
   it('reports deferred ingest as not fully written', async () => {
     const { capability } = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'deferred' },
@@ -179,11 +227,13 @@ describe('ask-knowledge ingest', () => {
     const library = await capability.createLibrary({ displayName: '上限' })
     await expect(capability.beginIngest({ libraryId: library.id, filename: 'x.xls' }))
       .rejects.toMatchObject({ code: 'type-unsupported' })
-    await expect(capability.beginIngest({ libraryId: library.id, filename: 'x.docx' }))
+    await expect(capability.beginIngest({ libraryId: library.id, filename: 'x.pptx' }))
       .rejects.toMatchObject({ code: 'type-unsupported' })
     await expect(capability.beginIngest({ libraryId: library.id, filename: 'ok.pdf' }))
       .resolves.toBeTruthy()
     await expect(capability.beginIngest({ libraryId: library.id, filename: 'ok.xlsx' }))
+      .resolves.toBeTruthy()
+    await expect(capability.beginIngest({ libraryId: library.id, filename: 'ok.docx' }))
       .resolves.toBeTruthy()
     const handle = await capability.beginIngest({ libraryId: library.id, filename: 'ok.md' })
     const huge = Buffer.alloc(MAX_INGEST_CHUNK_BYTES + 1).toString('base64')
@@ -214,5 +264,3 @@ describe('ask-knowledge ingest', () => {
       .rejects.toMatchObject({ code: 'ENOENT' })
   })
 })
-
-void writeFile

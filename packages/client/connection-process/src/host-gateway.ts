@@ -8,11 +8,58 @@ import {
   VSCODE_CARRIER_PROTOCOL_VERSION,
   serverResponseSchema,
   type ClientBundleLocation,
+  type RpcId,
+  type ServerResponse,
   type VsCodeCarrierFrame,
   type VsCodeStreamId,
 } from './protocol.ts'
 
 const INTERNAL_BASE = 'http://dsh.internal'
+/** Same alphabet Connection uses in `endpointFromPath`. Encoded `$` becomes `%24` and 404s. */
+const ENDPOINT_SEGMENT_PATTERN = /^[A-Za-z0-9_$.-]+$/
+
+/**
+ * Join an RPC method into a Connection `/api` path without encoding legal segments.
+ * @param method - client-request method, slash-separated.
+ * @returns path under `/api/`.
+ */
+function rpcEndpointPath(method: string): string {
+  return method.split('/').map(segment => (
+    ENDPOINT_SEGMENT_PATTERN.test(segment) ? segment : encodeURIComponent(segment)
+  )).join('/')
+}
+
+/**
+ * Turn a non-2xx Connection fetch into a unary failure the caller can handle.
+ * A 404 must not tear down the companion channel; Stop still needs `session/cancel`.
+ * @param rpcId - the request's correlation id.
+ * @param response - the non-ok fetch result.
+ * @param method - original client-request method for the fallback message.
+ * @returns a server-response the extension can complete.
+ */
+async function rpcFailureResponse(
+  rpcId: RpcId,
+  response: Response,
+  method: string,
+): Promise<ServerResponse> {
+  try {
+    return serverResponseSchema.parse(await response.json())
+  } catch {
+    // Connection 404s are plain text (`not found`), not a server-response envelope.
+  }
+  return {
+    type: 'server-response',
+    rpcId,
+    result: {
+      ok: false,
+      error: {
+        code: 'gateway/internal',
+        message: `Connection carrier returned HTTP ${String(response.status)} for ${method}`,
+        details: {},
+      },
+    },
+  }
+}
 
 interface ApiFetchHandler {
   fetch(request: Request): Promise<Response>
@@ -197,13 +244,19 @@ export class VsCodeHostGateway {
       await this.fail('unexpected-frame', new Error(`${message.type} is downlink-only`))
       return
     }
-    const endpoint = message.method.split('/').map(segment => encodeURIComponent(segment)).join('/')
+    const endpoint = rpcEndpointPath(message.method)
     const response = await this.fetchHandler.fetch(new Request(new URL(`/api/${endpoint}`, INTERNAL_BASE), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(message),
     }))
-    if (!response.ok) throw new Error(`Connection carrier returned HTTP ${String(response.status)} for ${message.method}`)
+    if (!response.ok) {
+      await this.options.send({
+        type: 'rpc/message',
+        message: await rpcFailureResponse(message.rpcId, response, message.method),
+      })
+      return
+    }
     await this.options.send({ type: 'rpc/message', message: serverResponseSchema.parse(await response.json()) })
   }
 

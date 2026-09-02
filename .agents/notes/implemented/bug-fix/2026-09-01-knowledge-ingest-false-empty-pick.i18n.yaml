@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-01-knowledge-ingest-false-empty-pick.md
+2026-09-01-knowledge-ingest-false-empty-pick.md: 48139f21c1e17985f7690bdedbeed27beee54b87
+2026-09-01-knowledge-ingest-false-empty-pick.zh.md: 1fd4da9bf502ba7e5558bdea427c497a2c5f91a7

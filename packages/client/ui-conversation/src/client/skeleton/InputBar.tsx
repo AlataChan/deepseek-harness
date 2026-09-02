@@ -14,10 +14,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ChangeEvent, CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import clsx from 'clsx'
 import {
-  IconPlusOutline16, IconWarningOutline16, Menu, Toast, Tooltip,
+  IconCloseFill14, IconPlusOutline16, IconWarningOutline16, Menu, Toast, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 // Type-only: the `plan` projection key merge (the TodoDock posture — the
@@ -35,9 +35,10 @@ import { DecoratorPortals } from '../input/editor/DecoratorPortals.tsx'
 import { registerComposerKeymap } from '../input/editor/keymap.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
 import {
-  SESSION_DOCUMENT_ACCEPT,
   appendSessionDocument,
+  bindNativeFileChange,
   frameSessionDocument,
+  readSessionDocumentText,
   isSessionDocumentConvertExtension,
   isSessionDocumentSpreadsheet,
   isSessionDocumentPlainExtension,
@@ -52,6 +53,23 @@ export type InputBarProps = ComposerBarProps
 
 /** Native picker accept list when the host has not projected imageLimits yet. */
 const DEFAULT_IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif'
+
+/** Plus-menu path that still needs a visible next step after the menu closes. */
+type AttachChooser = 'image' | 'sessionDoc' | 'reference'
+
+/** Extracted session-only document held as a composer chip until send. */
+interface SessionDocPayload {
+  readonly filename: string
+  readonly text: string
+}
+
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+      <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
+    </svg>
+  )
+}
 
 export function InputBar({
   useSession, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
@@ -83,7 +101,6 @@ export function InputBar({
     () => input === undefined || draftImages === undefined ? [] : draftImages(input.imageIds),
     [draftImages, input?.imageIds],
   )
-  const empty = draft.trim() === '' && attachments.length === 0
   // Transient error banner (machine notices, image-intake rejections, and
   // prompt failures): the seq keys the Toast so an identical repeated message
   // restarts the hold-then-fade cycle instead of reusing the faded one.
@@ -95,10 +112,13 @@ export function InputBar({
   }, [])
   const dismissToast = useCallback(() => { setToast(null) }, [])
   const [attachOpen, setAttachOpen] = useState(false)
+  const [attachChooser, setAttachChooser] = useState<AttachChooser | null>(null)
+  const [sessionDocPayload, setSessionDocPayload] = useState<SessionDocPayload | null>(null)
   const [knowledgeOpenRequest, setKnowledgeOpenRequest] = useState(0)
   const [knowledgeReady, setKnowledgeReady] = useState(false)
   const [sessionDocReady, setSessionDocReady] = useState(false)
   const [sessionDocFile, setSessionDocFile] = useState<File | null>(null)
+  const empty = draft.trim() === '' && attachments.length === 0 && sessionDocPayload === null
   // The deployment's image-intake limits (absent while no attachment service
   // is composed — the pre-check below then defers entirely to the host).
   const imageLimits = useProjection('imageLimits')
@@ -123,7 +143,6 @@ export function InputBar({
   const cardRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const sessionDocInputRef = useRef<HTMLInputElement | null>(null)
 
   // The Access seat's data: the host-computed permissions projection
   // (undefined = capability absent → the chip renders nothing).
@@ -267,12 +286,36 @@ export function InputBar({
 
   const canAcceptDrop = !locked && !machineBusy && addImages !== undefined
 
+  const applySessionDocument = useCallback((filename: string, body: string, hostTruncated: boolean) => {
+    const framed = frameSessionDocument(filename, body)
+    setSessionDocPayload({ filename, text: body })
+    setAttachChooser(null)
+    showToast(
+      hostTruncated || framed.truncated
+        ? t('input.attachSessionDocumentTruncated')
+        : t('input.attachSessionDocumentReady'),
+    )
+  }, [showToast, t])
+
+  const flushSessionDocument = useCallback((): string | null => {
+    if (sessionDocPayload === null || inputActions === undefined) return null
+    const framed = frameSessionDocument(sessionDocPayload.filename, sessionDocPayload.text)
+    const next = appendSessionDocument(draft, framed.text)
+    inputActions.setDraft(next)
+    setSessionDocPayload(null)
+    return next
+  }, [draft, inputActions, sessionDocPayload])
+
   // The keymap handlers read live bar state through this ref so the editor
   // registration survives re-renders without re-arming per keystroke.
   const gate = useRef({
     locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode, intakeImages,
+    flushSessionDocument,
   })
-  gate.current = { locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode, intakeImages }
+  gate.current = {
+    locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode, intakeImages,
+    flushSessionDocument,
+  }
 
   useEffect(() => {
     if (editor === null || keyboard === undefined) return
@@ -293,11 +336,12 @@ export function InputBar({
           keyboard.steerQueue()
           return
         }
+        const flushed = g.flushSessionDocument()
         keyboard.submit(g.resolveSubmitMode(
           g.running,
           accelerated ? 'accelerated' : 'enter',
           g.subagent === null,
-        ))
+        ), flushed ?? undefined)
       },
       intakeFiles: (files) => { gate.current.intakeImages(files) },
       pasteText: (text) => {
@@ -325,17 +369,6 @@ export function InputBar({
     setAttachOpen(open => !open)
   }
 
-  const applySessionDocument = useCallback((filename: string, body: string, hostTruncated: boolean) => {
-    if (inputActions === undefined) return
-    const framed = frameSessionDocument(filename, body)
-    inputActions.setDraft(appendSessionDocument(draft, framed.text))
-    showToast(
-      hostTruncated || framed.truncated
-        ? t('input.attachSessionDocumentTruncated')
-        : t('input.attachSessionDocumentReady'),
-    )
-  }, [draft, inputActions, showToast, t])
-
   const ingestSessionDocument = useCallback((file: File) => {
     const extension = sessionDocumentExtension(file.name)
     if (isSessionDocumentSpreadsheet(extension)) {
@@ -343,12 +376,14 @@ export function InputBar({
       return
     }
     if (isSessionDocumentPlainExtension(extension)) {
-      void file.text().then((body) => {
+      void readSessionDocumentText(file).then((body) => {
         if (body.trim() === '') {
           showToast(t('input.attachSessionDocumentEmpty'))
           return
         }
         applySessionDocument(file.name, body, false)
+      }, () => {
+        showToast(t('input.attachSessionDocumentReadFailed'))
       })
       return
     }
@@ -380,42 +415,56 @@ export function InputBar({
   const onAttachSelect = (id: string): void => {
     setAttachOpen(false)
     if (id === 'image') {
-      fileInputRef.current?.click()
+      setAttachChooser('image')
       return
     }
     if (id === 'sessionDoc') {
-      sessionDocInputRef.current?.click()
+      setAttachChooser('sessionDoc')
       return
     }
     if (id === 'file') {
+      setAttachChooser('reference')
       if (keyboard !== undefined) toggleReferenceMenu?.(keyboard.caretSpan())
       return
     }
+    setAttachChooser(null)
     if (knowledgeReady) setKnowledgeOpenRequest(n => n + 1)
     else showToast(t('input.attachKnowledgeHint'))
   }
 
   useEffect(() => {
-    if (locked) setAttachOpen(false)
+    if (!locked) return
+    setAttachOpen(false)
+    setAttachChooser(null)
   }, [locked])
 
-  const onPickFiles = (event: ChangeEvent<HTMLInputElement>): void => {
-    const list = event.target.files
-    event.target.value = ''
-    if (list === null || list.length === 0) return
-    intakeImages([...list])
+  const onPickedImages = useCallback((files: readonly File[]): void => {
+    if (files.length === 0) {
+      showToast(t('input.attachFileMissed'))
+      return
+    }
+    setAttachChooser(null)
+    intakeImages(files)
     editor?.getRootElement()?.focus({ preventScroll: true })
-  }
+  }, [editor, intakeImages, showToast, t])
 
-  const onPickSessionDoc = (event: ChangeEvent<HTMLInputElement>): void => {
-    const list = event.target.files
-    event.target.value = ''
-    if (list === null || list.length === 0) return
-    const file = list[0]
-    if (file === undefined) return
+  const onPickedSessionDoc = useCallback((files: readonly File[]): void => {
+    const file = files[0]
+    if (file === undefined) {
+      showToast(t('input.attachFileMissed'))
+      return
+    }
+    setAttachChooser(null)
     ingestSessionDocument(file)
     editor?.getRootElement()?.focus({ preventScroll: true })
-  }
+  }, [editor, ingestSessionDocument, showToast, t])
+
+  useEffect(() => {
+    return bindNativeFileChange(fileInputRef.current, (files) => {
+      if (attachChooser === 'image') onPickedImages(files)
+      else if (attachChooser === 'sessionDoc') onPickedSessionDoc(files)
+    })
+  }, [attachChooser, onPickedImages, onPickedSessionDoc])
 
   const imageAccept = imageLimits === undefined
     ? DEFAULT_IMAGE_ACCEPT
@@ -431,11 +480,13 @@ export function InputBar({
     }
   }
 
-  // An ordinary running session keeps Stop while the composer is empty or
-  // owner-blocked; an actionable draft gets the existing Queue action. A
-  // continuable child keeps Send primary and exposes Stop independently.
+  // An ordinary running session keeps Stop as the primary while the composer
+  // is empty or owner-blocked; an actionable draft gets Queue Send. An
+  // independent Stop stays visible so a filled draft cannot hide cancellation.
+  // A continuable child keeps Send primary and exposes Stop independently.
   const primaryStops = running && subagent === null && (empty || blocked !== undefined)
   const interruptible = running && continuable
+  const independentStop = running && subagent === null && !primaryStops
   const primaryLabel = primaryStops ? t('input.stop') : t('input.send')
   const onPrimary = (): void => {
     if (primaryStops) {
@@ -444,7 +495,9 @@ export function InputBar({
     }
     if (inputActions === undefined) return // absent machine: the button is disabled
     /* v8 ignore next -- defensive: the primary button is disabled while empty||disabled, so a click cannot reach the false arm. */
-    if (!empty && !disabled && !machineBusy) inputActions.submit()
+    if (!empty && !disabled && !machineBusy) {
+      inputActions.submit(flushSessionDocument() ?? undefined)
+    }
   }
 
   // The Access seat: the projection-fed permission chip (renders nothing
@@ -525,6 +578,71 @@ export function InputBar({
             size: imageSizeText(imageLimits.maxImageBytes),
           },
         })}
+        {attachChooser !== null && (
+          <div className={css.attachChooser} data-attach-chooser={attachChooser} role="region">
+            {attachChooser === 'reference' ? (
+              <p className={css.attachChooserHint}>{t('input.attachFileHint')}</p>
+            ) : (
+              <>
+                <div
+                  className={css.attachChooserAction}
+                  data-file-pick={attachChooser}
+                >
+                  {attachChooser === 'image'
+                    ? t('input.attachImageChoose')
+                    : t('input.attachSessionDocumentChoose')}
+                  <input
+                    ref={fileInputRef}
+                    className={css.fileInputOverlay}
+                    type="file"
+                    {...(attachChooser === 'image' ? { accept: imageAccept, multiple: true } : {})}
+                    tabIndex={-1}
+                    disabled={attachChooser === 'image' && !canAcceptDrop}
+                    data-session-document={attachChooser === 'sessionDoc' ? '' : undefined}
+                  />
+                </div>
+                <p className={css.attachChooserHint}>{t('input.attachChooserHint')}</p>
+              </>
+            )}
+            <button
+              type="button"
+              className={css.attachChooserDismiss}
+              onMouseDown={keepFocus}
+              onClick={() => { setAttachChooser(null) }}
+            >
+              {t('input.attachChooserDismiss')}
+            </button>
+          </div>
+        )}
+        {(sessionDocFile !== null || sessionDocPayload !== null) && (
+          <div className={css.sessionDocRail} data-session-document-chip>
+            <div
+              className={css.sessionDocCard}
+              role="status"
+              aria-label={sessionDocPayload === null
+                ? undefined
+                : t('input.attachSessionDocumentChip', { name: sessionDocPayload.filename })}
+            >
+              <span className={css.sessionDocThumb} aria-hidden />
+              <span className={css.sessionDocName}>
+                {sessionDocFile !== null
+                  ? t('input.attachSessionDocumentWorking')
+                  : sessionDocPayload?.filename}
+              </span>
+              {sessionDocPayload !== null && (
+                <button
+                  type="button"
+                  className={css.sessionDocRemove}
+                  aria-label={t('input.attachSessionDocumentRemove', { name: sessionDocPayload.filename })}
+                  onMouseDown={keepFocus}
+                  onClick={() => { setSessionDocPayload(null) }}
+                >
+                  <IconCloseFill14 size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {/* One scrollport, one text surface: the contenteditable grows with
             its content and .scroll — capped at 14 lines in CSS — is the only
             thing that scrolls. Chips are decorator portals inside the same
@@ -612,27 +730,6 @@ export function InputBar({
                 </button>
               </Tooltip>
             </div>
-            <input
-              ref={fileInputRef}
-              className={css.fileInput}
-              type="file"
-              accept={imageAccept}
-              multiple
-              tabIndex={-1}
-              aria-hidden
-              disabled={!canAcceptDrop}
-              onChange={onPickFiles}
-            />
-            <input
-              ref={sessionDocInputRef}
-              className={css.fileInput}
-              type="file"
-              accept={SESSION_DOCUMENT_ACCEPT}
-              tabIndex={-1}
-              aria-hidden
-              data-session-document
-              onChange={onPickSessionDoc}
-            />
             <div className={css.modes}>
               {accessSelect}
               {sessionId === undefined ? null : renderSlot('conversation.input.plan', { locked })}
@@ -643,7 +740,7 @@ export function InputBar({
             {rightItems}
             {sessionId === undefined ? null : renderSlot('conversation.input.model', { locked: modelSeatLocked })}
             <ContextMeter useProjection={useProjection} t={t} />
-            {interruptible && (
+            {(interruptible || independentStop) && (
               <Tooltip label={t('input.stop')} side="top" delayMs={500}>
                 <button
                   type="button"
@@ -653,9 +750,7 @@ export function InputBar({
                   onMouseDown={keepFocus}
                   onClick={stop}
                 >
-                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-                    <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
-                  </svg>
+                  <StopIcon />
                 </button>
               </Tooltip>
             )}
@@ -669,9 +764,7 @@ export function InputBar({
                 onClick={onPrimary}
               >
                 {primaryStops ? (
-                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-                    <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
-                  </svg>
+                  <StopIcon />
                 ) : (
                   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
                     <path d="M8.3125 0.980183C8.66767 1.0531 8.97902 1.20418 9.2627 1.43233C9.48724 1.61297 9.73029 1.85793 9.97949 2.10714L14.707 6.83468L13.293 8.24874L9 3.95577V15.0417H7V3.95577L2.70703 8.24874L1.29297 6.83468L6.02051 2.10714C6.26971 1.85793 6.51277 1.61297 6.7373 1.43233C6.97662 1.23986 7.28445 1.04402 7.6875 0.980183C7.8973 0.947006 8.1031 0.95516 8.3125 0.980183Z" fill="currentColor" />
