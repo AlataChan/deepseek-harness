@@ -3,7 +3,7 @@
 import { bootDesktopClient } from './bootstrap.ts'
 import { createTauriShellPort } from './harness-port.ts'
 
-const DESKTOP_APP_VERSION = '0.1.2-alpha.2'
+const DESKTOP_APP_VERSION = '0.1.2-rc.1'
 
 const root = document.getElementById('root')
 if (root === null) throw new Error('desktop WebView is missing #root')

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-desktop-files",
   "description": "octopus_DSH desktop file-tree Provider and sidebar occupant (session-cwd listing + system open)",
-  "version": "0.1.2-alpha.2",
+  "version": "0.1.2-rc.1",
   "private": true,
   "repository": {
     "type": "git",

@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "@deepseek-ai/dsh-experimental-desktop-files",
-      "version": "0.1.2-alpha.2",
+      "version": "0.1.2-rc.1",
       "source": "workspace",
       "path": "packages/experimental/desktop-files"
     },
@@ -18,13 +18,13 @@
     },
     {
       "name": "@deepseek-ai/dsh-experimental-desktop-ask-data",
-      "version": "0.1.2-alpha.2",
+      "version": "0.1.2-rc.1",
       "source": "workspace",
       "path": "packages/experimental/desktop-ask-data"
     },
     {
       "name": "@deepseek-ai/dsh-experimental-desktop-ask-knowledge",
-      "version": "0.1.2-alpha.2",
+      "version": "0.1.2-rc.1",
       "source": "workspace",
       "path": "packages/experimental/desktop-ask-knowledge"
     },

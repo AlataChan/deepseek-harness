@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-desktop-ask-data",
   "description": "octopus_DSH desktop ask-data Provider and data-source page (import + bind before prompt)",
-  "version": "0.1.2-alpha.2",
+  "version": "0.1.2-rc.1",
   "private": true,
   "repository": {
     "type": "git",

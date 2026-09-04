@@ -58,7 +58,7 @@ function createHarness(overrides: Partial<HostGatewayOptions> = {}) {
       clientPath: () => '/artifacts/client.js',
     },
     expectedWorkspaceRoot: '/workspace',
-    runtimeVersion: '0.1.2-alpha.2',
+    runtimeVersion: '0.1.2-rc.1',
     maxLogicalRpcBytes: 4096,
     send: async (frame) => { sent.push(frame) },
     close,
@@ -133,7 +133,7 @@ describe('desktop companion handshake and RPC', () => {
     const port = new AutoPort()
     applyPlugin(ctx, { workspaceRoot: '/workspace', maxLogicalRpcBytes: 4096 }, {
       port,
-      runtimeVersion: '0.1.2-alpha.2',
+      runtimeVersion: '0.1.2-rc.1',
     })
     expect(port.disconnects.size).toBe(1)
     await ctx.fiber.dispose()
@@ -145,7 +145,7 @@ describe('desktop companion handshake and RPC', () => {
     expect(harness.sent[0]).toMatchObject({
       type: 'control/ready',
       protocolVersion: VSCODE_CARRIER_PROTOCOL_VERSION,
-      runtimeVersion: '0.1.2-alpha.2',
+      runtimeVersion: '0.1.2-rc.1',
       graph,
       bundles: [{
         id: '@fixture/client',

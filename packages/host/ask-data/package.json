@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-host-ask-data",
   "description": "Abstract ask-data seam (ctx.askData): list, import, and bind a data source to a Session",
-  "version": "0.1.2-alpha.2",
+  "version": "0.1.2-rc.1",
   "publishConfig": {
     "access": "public"
   },

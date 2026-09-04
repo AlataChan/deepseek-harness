@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-host-workspace-entries",
   "description": "Abstract one-level workspace file listing seam (ctx.workspaceEntries) for the DeepSeek Harness web GUI host",
-  "version": "0.1.2-alpha.2",
+  "version": "0.1.2-rc.1",
   "publishConfig": {
     "access": "public"
   },

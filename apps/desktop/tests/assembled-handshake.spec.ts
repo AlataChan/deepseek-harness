@@ -183,7 +183,7 @@ describe('assembled desktop handshake', () => {
     const result = await bootDesktopClient({
       port: wrapped,
       root: document.createElement('div'),
-      extensionVersion: '0.1.2-alpha.2',
+      extensionVersion: '0.1.2-rc.1',
       handshakeTimeoutMs: 30_000,
       loadBundle: async () => {},
       createAppEntry: () => ({
