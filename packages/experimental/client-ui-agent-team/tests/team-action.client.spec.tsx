@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
@@ -15,6 +15,10 @@ import {
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
+
+beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn()
+})
 
 const SESSION = 'lead' as SessionId
 const TASK_1 = 'task-1' as TeamTaskId
@@ -44,6 +48,7 @@ const view: TeamView = {
     },
   ],
   tasks: [task],
+  interactions: [],
 }
 
 function taskSuccess(value: TeamTask): TeamTaskActionResult {
@@ -155,15 +160,66 @@ describe('TeamAction', () => {
     }} />)
     fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     expect(await screen.findByText(zh.templatesTitle)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: zh['template.researcher.label'] }))
-    expect(setDraft).toHaveBeenCalledWith(zh['template.researcher.body'])
+    expect(screen.getByText(zh.topology)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: zh['template.document.label'] }))
+    expect(setDraft).toHaveBeenCalledWith(zh['template.document.body'])
+    expect(zh['template.document.body']).toMatch(/name=archivist/)
+    expect(zh['template.document.body']).toMatch(/资料员/)
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('toggles the collaboration topology without a second Host load', async () => {
+    const load = vi.fn(() => Promise.resolve({
+      ok: true as const,
+      value: {
+        ...view,
+        interactions: [{
+          id: 'message:m1',
+          from: 'lead',
+          to: 'worker',
+          kind: 'message' as const,
+        }],
+      },
+    }))
+    render(<TeamAction {...props(actions({ load }))} />)
+    await waitFor(() => { expect(load).toHaveBeenCalled() })
+    const prefetchCount = load.mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: /团队协作/u }))
+    expect(await screen.findByText(zh.topology)).toBeTruthy()
+    expect(screen.getByText(zh.topologyEdgeMessage)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: zh.topologyHide }))
+    expect(screen.queryByText(zh.topologyEdgeMessage)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: zh.topologyShow }))
+    expect(screen.getByText(zh.topologyEdgeMessage)).toBeTruthy()
+    expect(load.mock.calls.length).toBeGreaterThan(prefetchCount)
+  })
+
+  it('prefetches a header badge and reveals topology above the roster on open', async () => {
+    const load = vi.fn(() => Promise.resolve({
+      ok: true as const,
+      value: {
+        ...view,
+        members: [
+          view.members[0]!,
+          { ...view.members[1]!, status: 'running' as const },
+        ],
+      },
+    }))
+    render(<TeamAction {...props(actions({ load }))} />)
+    expect(await screen.findByText('1/1')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /1\/1 名队友运行中/u })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /团队协作/u }))
+    const topology = await screen.findByText(zh.topology)
+    const roster = screen.getByText(zh.roster)
+    expect(topology.compareDocumentPosition(roster) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
   })
 
   it('explains durable teammates when the roster has only the lead', async () => {
     const leadOnly: TeamView = {
       members: [{ id: SESSION, name: 'lead', role: 'lead', status: 'idle', diagnostics: [] }],
       tasks: [],
+      interactions: [],
     }
     render(<TeamAction {...props(actions({
       load: () => Promise.resolve({ ok: true, value: leadOnly }),
@@ -203,6 +259,7 @@ describe('TeamAction', () => {
       tasks: [{ ...task, id: 'newest-task' as TeamTaskId, subject: 'Newest task' }],
     }
     const load = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockImplementationOnce(() => older.promise)
       .mockImplementationOnce(() => newer.promise)
@@ -226,6 +283,7 @@ describe('TeamAction', () => {
     const stale = Promise.withResolvers<TeamActionResult<TeamView>>()
     const completedView = { ...view, tasks: [{ ...task, revision: 2, status: 'completed' as const }] }
     const load = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockImplementationOnce(() => stale.promise)
       .mockResolvedValueOnce({ ok: true, value: completedView })
@@ -250,6 +308,7 @@ describe('TeamAction', () => {
     const stale = Promise.withResolvers<TeamActionResult<TeamView>>()
     const createdTask = { ...task, id: TASK_2, subject: 'New task' }
     const load = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockImplementationOnce(() => stale.promise)
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [...view.tasks, createdTask] } })
@@ -275,6 +334,7 @@ describe('TeamAction', () => {
   it('keeps task and create failures newer than an in-flight refresh', async () => {
     const staleTask = Promise.withResolvers<TeamActionResult<TeamView>>()
     const taskLoad = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockImplementationOnce(() => staleTask.promise)
     const first = render(<TeamAction {...props(actions({
@@ -293,6 +353,7 @@ describe('TeamAction', () => {
 
     const staleCreate = Promise.withResolvers<TeamActionResult<TeamView>>()
     const createLoad = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockImplementationOnce(() => staleCreate.promise)
     render(<TeamAction {...props(actions({
@@ -317,6 +378,7 @@ describe('TeamAction', () => {
     const createdTask = { ...task, id: TASK_2, subject: 'Concurrent task' }
     const completedTask = { ...task, revision: 2, status: 'completed' as const }
     const load = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [completedTask] } })
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [completedTask, createdTask] } })
@@ -357,6 +419,7 @@ describe('TeamAction', () => {
       tasks: [completed, { ...related, writeScopeWarnings: ['derived warning refreshed'] }],
     }
     const load = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [task, related] } })
       .mockResolvedValueOnce({ ok: true, value: refreshed })
     render(<TeamAction {...props(actions({
@@ -369,7 +432,7 @@ describe('TeamAction', () => {
 
     expect(await screen.findByText('derived warning refreshed')).toBeTruthy()
     expect(screen.queryByText('old warning')).toBeNull()
-    expect(load).toHaveBeenCalledTimes(2)
+    expect(load).toHaveBeenCalledTimes(3)
   })
 
   it('creates a task from normalized blocker and write-scope lists', async () => {
@@ -487,6 +550,7 @@ describe('TeamAction', () => {
 
   it('reloads and warns instead of retrying a stale task mutation', async () => {
     const load = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [{ ...task, revision: 2 }] } })
     const updateTask = vi.fn(() => Promise.resolve(taskConflict('stale')))
@@ -495,12 +559,13 @@ describe('TeamAction', () => {
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /完成/u }))
     expect(await screen.findByText(zh.conflict)).toBeTruthy()
-    expect(load).toHaveBeenCalledTimes(2)
+    expect(load).toHaveBeenCalledTimes(3)
     expect(updateTask).toHaveBeenCalledTimes(1)
   })
 
   it('keeps reload failures visible after task and dependency conflicts', async () => {
     const taskLoad = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockResolvedValueOnce(remoteFailure('task reload failed'))
     const first = render(<TeamAction {...props(actions({
@@ -515,6 +580,7 @@ describe('TeamAction', () => {
     first.unmount()
 
     const dependencyLoad = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [{ ...task, revision: 2, subject: 'Edited' }] } })
       .mockResolvedValueOnce(remoteFailure('dependency reload failed'))
@@ -570,10 +636,10 @@ describe('TeamAction', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /failed-worker/u }).disabled).toBe(true)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /provisioning-worker/u }).disabled).toBe(true)
 
-    fireEvent.click(screen.getByRole('button', { name: /^worker/u }))
+    fireEvent.click(screen.getAllByRole('button', { name: /^worker\b/u })[0]!)
     expect(await screen.findByText('Error: navigation failed')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: zh.refresh }))
-    await waitFor(() => { expect(load).toHaveBeenCalledTimes(2) })
+    await waitFor(() => { expect(load).toHaveBeenCalledTimes(3) })
     fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     expect(screen.queryByRole('dialog')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
@@ -640,6 +706,7 @@ describe('TeamAction', () => {
   it('does not publish a task conflict after its reload switches sessions', async () => {
     const reload = Promise.withResolvers<TeamActionResult<TeamView>>()
     const load = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockImplementationOnce(() => reload.promise)
     const rendered = render(<TeamAction {...props(actions({
@@ -661,6 +728,7 @@ describe('TeamAction', () => {
   it('does not settle a successful task after its reload switches sessions', async () => {
     const reload = Promise.withResolvers<TeamActionResult<TeamView>>()
     const load = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockImplementationOnce(() => reload.promise)
     const rendered = render(<TeamAction {...props(actions({
@@ -758,6 +826,7 @@ describe('TeamAction', () => {
 
   it('reloads a dependency conflict and ignores dependency settlement after a session switch', async () => {
     const load = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [{ ...task, revision: 2, subject: 'Conflict edit' }] } })
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [{ ...task, revision: 3 }] } })
@@ -772,11 +841,12 @@ describe('TeamAction', () => {
     fireEvent.change(screen.getByPlaceholderText(zh.blockers), { target: { value: 'task-2' } })
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
     expect(await screen.findByText(zh.conflict)).toBeTruthy()
-    expect(load).toHaveBeenCalledTimes(3)
+    expect(load).toHaveBeenCalledTimes(4)
     first.unmount()
 
     const dependencyReload = Promise.withResolvers<TeamActionResult<TeamView>>()
     const dependencyLoad = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: view }) // silent prefetch
       .mockResolvedValueOnce({ ok: true, value: view })
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [{ ...task, revision: 2, subject: 'Late edit' }] } })
       .mockImplementationOnce(() => dependencyReload.promise)
@@ -790,7 +860,7 @@ describe('TeamAction', () => {
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Late edit' } })
     fireEvent.change(screen.getByPlaceholderText(zh.blockers), { target: { value: 'task-2' } })
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
-    await waitFor(() => { expect(dependencyLoad).toHaveBeenCalledTimes(3) })
+    await waitFor(() => { expect(dependencyLoad).toHaveBeenCalledTimes(4) })
     second.rerender(<TeamAction {...props(actions(), 'next-session' as SessionId)} />)
     dependencyReload.resolve({ ok: true, value: { ...view, tasks: [{ ...task, revision: 3 }] } })
     await Promise.resolve()

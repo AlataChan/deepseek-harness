@@ -39,6 +39,11 @@
   text-align: center;
 }
 
+.countLive {
+  background: color-mix(in srgb, var(--dsw-alias-interactive-label) 22%, var(--dsw-alias-fill-l2));
+  color: var(--dsw-alias-interactive-label);
+}
+
 .panel {
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
@@ -324,4 +329,117 @@
 .error {
   padding: 9px;
   font-size: 12px;
+}
+
+.topology {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.topologyHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topologyHeader h3 {
+  margin: 0;
+  flex: 1;
+}
+
+.topologyHint,
+.topologyEmpty {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.topologyCanvas {
+  position: relative;
+  min-height: 96px;
+  padding: 8px 4px 4px;
+  border-radius: 8px;
+  background: var(--dsw-alias-fill-l1);
+  overflow-x: auto;
+}
+
+.topologySvg {
+  position: absolute;
+  inset: 0 0 40px;
+  width: 100%;
+  height: 56px;
+  pointer-events: none;
+}
+
+.topologyNodes {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 12px;
+  margin-top: 44px;
+  min-width: max-content;
+}
+
+.topologyNode {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 108px;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: var(--dsw-specific-menu);
+  color: var(--dsw-alias-label-primary);
+}
+
+.topologyNodePulse {
+  outline: 1px solid var(--dsw-alias-interactive-label);
+}
+
+.topologyNodeText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.topologyNodeText strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topologyNodeText span {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+}
+
+.topologyEdgeMessage {
+  stroke: var(--dsw-alias-interactive-label);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.topologyEdgeTask {
+  stroke: var(--dsw-alias-label-tertiary);
+  stroke-width: 1.25;
+}
+
+.topologyEdgeLabel {
+  fill: var(--dsw-alias-label-tertiary);
+  font-size: 9px;
+  text-anchor: middle;
+}
+
+.topologyEdgeFlash line {
+  stroke: var(--dsw-alias-interactive-label);
+  stroke-width: 2.25;
+}
+
+.topologyEdgeFlash text {
+  fill: var(--dsw-alias-interactive-label);
 }

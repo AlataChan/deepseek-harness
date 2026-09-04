@@ -16,6 +16,7 @@ import { teamProjectionDefinition } from './projection.ts'
 import { TeamRoster } from './roster.ts'
 import type { TeamMembership } from './roster.ts'
 import { TeamTaskBoard } from './task-board.ts'
+import { teamInteractions } from './interactions.ts'
 import { TeamId, TeamTaskId } from './types.ts'
 import type {
   Config,
@@ -250,9 +251,14 @@ export class TeamService extends TypertRemoteService {
    */
   @Remote('view')
   remoteView(agent: Agent): TeamView {
+    const members = this.listMembers(agent)
+    const tasks = this.listTasks(agent)
+    const root = this.roster.membership(agent).root
+    const state = this.journal.state(root)
     return {
-      members: this.listMembers(agent),
-      tasks: this.listTasks(agent),
+      members,
+      tasks,
+      interactions: teamInteractions(state, members, tasks),
     }
   }
 

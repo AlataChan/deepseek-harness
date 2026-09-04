@@ -119,6 +119,26 @@ export interface TeamTaskView {
 export interface TeamView {
   readonly members: TeamMemberView[]
   readonly tasks: TeamTaskView[]
+  /**
+   * Thin interaction edges for the Team panel topology: pending mailbox hops and
+   * owner-to-owner task dependencies. No message bodies.
+   */
+  readonly interactions: TeamInteractionEdge[]
+}
+
+/** Kind of one topology edge projected for the live Team graph. */
+export type TeamInteractionKind = 'message' | 'task-dep'
+
+/**
+ * One authored interaction edge. `from` / `to` are durable teammate names
+ * (`lead` for the Lead). Identifiers stay stable across refreshes so the Client
+ * can flash new edges without storing message content.
+ */
+export interface TeamInteractionEdge {
+  readonly id: string
+  readonly from: string
+  readonly to: string
+  readonly kind: TeamInteractionKind
 }
 
 /** One peer message retained until its target Session records it. */

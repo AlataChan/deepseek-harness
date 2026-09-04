@@ -194,7 +194,8 @@ always override CCB memory.
 - fork 桌面功能以装盘版可正常开机可用为交付标准：须钉进 `desktop-profile-plugins` 并保证 harness 闭包可解析，不能只停在 experimental 源码；上游合入后要对齐 companion 与 harness 版本
 - 问数路径要对普通用户足够简单：先选或上传数据源，再点「开始提问」；提供示例表与脏表避坑提示；同一入口不要并列多个「开始提问」
 - 打包体积敏感：优先轻量依赖；问知识 PDF 入库值得加；表格类优先引导走问数，避免为 Excel 再引入沉重 extras
-- Agent Team 须对普通用户可自助使用：中文区分一次性任务与常驻队友；提供按钮或快捷键填入启动提示词模板；队友模型选择应对用户开放，且面板展示与实际选用一致
+- Agent Team 须对普通用户可自助使用：中文区分一次性任务与常驻队友；面板填入机构向启动话术（文书/案例/传播小队；队友 name 为英文 kebab、职责中文）；队友模型选择应对用户开放，且面板展示与实际选用一致
+- Agent Team 协作可视化：实时互动用自建 UI；archify 只做事后总结（可选 `dsh plugin --profile web add @tt-a1i/archify-dsh@0.1.0`，不进默认开机种子）；实时层须控制开销，避免拖慢桌面端或冗余
 
 ## Learned Workspace Facts
 

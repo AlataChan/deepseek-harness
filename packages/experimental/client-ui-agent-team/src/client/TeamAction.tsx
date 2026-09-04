@@ -16,6 +16,7 @@ import {
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { NS, STARTER_TEMPLATES, type StarterTemplateId, type TeamKey } from './locales.ts'
+import { TeamTopology } from './TeamTopology.tsx'
 import css from './TeamAction.module.css'
 
 /** Generated Remote result consumed directly by the Team UI. */
@@ -115,17 +116,17 @@ function roleKey(role: TeamRosterMember['role']): TeamKey {
 
 function templateLabelKey(id: StarterTemplateId): TeamKey {
   switch (id) {
-    case 'researcher': return 'template.researcher.label'
-    case 'squad': return 'template.squad.label'
-    case 'list': return 'template.list.label'
+    case 'document': return 'template.document.label'
+    case 'case': return 'template.case.label'
+    case 'comms': return 'template.comms.label'
   }
 }
 
 function templateBodyKey(id: StarterTemplateId): TeamKey {
   switch (id) {
-    case 'researcher': return 'template.researcher.body'
-    case 'squad': return 'template.squad.body'
-    case 'list': return 'template.list.body'
+    case 'document': return 'template.document.body'
+    case 'case': return 'template.case.body'
+    case 'comms': return 'template.comms.body'
   }
 }
 
@@ -142,13 +143,18 @@ export function TeamAction({
   const [editing, setEditing] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<Draft>(EMPTY_DRAFT)
   const [pendingTasks, setPendingTasks] = useState<ReadonlySet<string>>(() => new Set())
+  const [topologyReveal, setTopologyReveal] = useState(0)
   const sessionRef = useRef(sessionId)
+  const openRef = useRef(false)
   const refreshGeneration = useRef(0)
+  const topologyAnchorRef = useRef<HTMLDivElement | null>(null)
   sessionRef.current = sessionId
+  openRef.current = open
 
   useEffect(() => {
     refreshGeneration.current += 1
     setOpen(false)
+    openRef.current = false
     setLoading(false)
     setView(null)
     setError(null)
@@ -159,22 +165,34 @@ export function TeamAction({
     setPendingTasks(new Set())
   }, [sessionId])
 
-  const refresh = useCallback(async (): Promise<boolean> => {
+  const refresh = useCallback(async (opts?: { silent?: boolean }): Promise<boolean> => {
     const requestedSession = sessionId
     const generation = ++refreshGeneration.current
-    setLoading(true)
+    const silent = opts?.silent === true
+    if (!silent) setLoading(true)
     const result = await load(requestedSession)
     if (sessionRef.current !== requestedSession || refreshGeneration.current !== generation) return false
-    setLoading(false)
+    if (!silent) setLoading(false)
     if (result.ok) {
       setView(result.value)
-      setError(null)
+      if (openRef.current) setError(null)
       return true
-    } else {
-      setError(failureText(result.error))
-      return false
     }
+    if (openRef.current) setError(failureText(result.error))
+    return false
   }, [load, sessionId])
+
+  // Shallow header badge: one silent TeamView load per session, no polling.
+  useEffect(() => {
+    void refresh({ silent: true })
+  }, [refresh])
+
+  useEffect(() => {
+    if (!open || view === null) return
+    const node = topologyAnchorRef.current
+    if (node === null) return
+    node.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [open, view, topologyReveal])
 
   const invalidateRefresh = useCallback((): void => {
     refreshGeneration.current += 1
@@ -275,6 +293,7 @@ export function TeamAction({
   }
 
   const teammates = view?.members.filter(member => member.role === 'teammate') ?? []
+  const runningCount = teammates.filter(member => member.status === 'running').length
   const assignable = view?.members.filter(member => member.status !== 'failed' && member.status !== 'provisioning') ?? []
 
   const fillStarter = (id: StarterTemplateId): void => {
@@ -283,21 +302,43 @@ export function TeamAction({
     setOpen(false)
   }
 
+  const openPanel = (): void => {
+    setOpen(true)
+    openRef.current = true
+    setTopologyReveal(value => value + 1)
+    void refresh()
+  }
+
+  const triggerLabel = teammates.length === 0
+    ? t('trigger')
+    : runningCount > 0
+      ? t('triggerBadgeRunning', { count: String(teammates.length), running: String(runningCount) })
+      : t('triggerBadge', { count: String(teammates.length) })
+
   return (
     <div className={css.root} data-team-action>
       <button
         type="button"
         className={css.trigger}
         aria-expanded={open}
+        aria-label={triggerLabel}
+        title={t('triggerHint')}
         onClick={() => {
-          const next = !open
-          setOpen(next)
-          if (next) void refresh()
+          if (open) {
+            setOpen(false)
+            openRef.current = false
+            return
+          }
+          openPanel()
         }}
       >
         <IconUserOutline16 size={14} />
         <span>{t('trigger')}</span>
-        {teammates.length > 0 && <span className={css.count}>{teammates.length}</span>}
+        {teammates.length > 0 && (
+          <span className={`${css.count}${runningCount > 0 ? ` ${css.countLive}` : ''}`}>
+            {runningCount > 0 ? `${runningCount}/${teammates.length}` : teammates.length}
+          </span>
+        )}
       </button>
       {open && (
         <div className={css.panel} role="dialog" aria-label={t('trigger')}>
@@ -319,6 +360,22 @@ export function TeamAction({
           {view !== null && (
             <>
               <p className={css.hint}>{t('howToUse')}</p>
+              <div ref={topologyAnchorRef}>
+                <TeamTopology
+                  view={view}
+                  revealKey={topologyReveal}
+                  copy={{
+                    title: t('topology'),
+                    hint: t('topologyHint'),
+                    show: t('topologyShow'),
+                    hide: t('topologyHide'),
+                    empty: t('topologyEmpty'),
+                    edgeMessage: t('topologyEdgeMessage'),
+                    edgeTask: t('topologyEdgeTask'),
+                    memberStatus: key => t(key),
+                  }}
+                />
+              </div>
               <section>
                 <h3>{t('roster')}</h3>
                 {teammates.length === 0 && <p className={css.hint}>{t('rosterHint')}</p>}
@@ -390,12 +447,14 @@ export function TeamAction({
                       <article key={task.id} className={css.task}>
                         <div className={css.taskTitle}>
                           <strong>{task.subject}</strong>
-                          <span>{t(statusKey(task.status))}</span>
+                          <span className={css.badge}>{t(statusKey(task.status))}</span>
+                          {task.status === 'pending' && (
+                            <span className={css.badge}>{task.ready ? t('ready') : t('blocked')}</span>
+                          )}
                         </div>
                         <p>{task.description}</p>
                         <div className={css.meta}>
-                          <span>{task.id}</span>
-                          {task.status === 'pending' && <span>{task.ready ? t('ready') : t('blocked')}</span>}
+                          <span>{t('owner')}: {task.ownerName ?? t('unowned')}</span>
                           {task.blockedBy.length > 0 && <span>{t('blockedBy')}: {task.blockedBy.join(', ')}</span>}
                           {task.writeScopes.length > 0 && <span>{t('writeScopes')}: {task.writeScopes.join(', ')}</span>}
                           {task.writeScopeWarnings.map(warning => <span key={warning} className={css.warning}>{warning}</span>)}
@@ -420,15 +479,17 @@ export function TeamAction({
                               {assignable.map(member => <option key={member.id} value={member.name}>{member.name}</option>)}
                             </select>
                           </label>
-                          <button type="button" onClick={() => { startEdit(task) }} disabled={pendingTasks.has(task.id)}>
-                            <IconEditOutline16 size={13} /> {t('edit')}
-                          </button>
+                          {(task.status === 'pending' || task.status === 'in_progress') && (
+                            <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => { startEdit(task) }}>
+                              <IconEditOutline16 size={13} /> {t('edit')}
+                            </button>
+                          )}
                           {task.status === 'in_progress' && (
                             <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => {
                               void settleTask(task.id, () => updateTask(sessionId, {
                                 taskId: task.id, expectedRevision: task.revision, action: 'complete',
                               }))
-                            }}><IconCheckOutline14 /> {t('complete')}</button>
+                            }}><IconCheckOutline14 size={13} /> {t('complete')}</button>
                           )}
                           {task.status === 'completed' && (
                             <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => {

@@ -2,6 +2,8 @@
 
 export type {
   CreateTeamTaskRequest,
+  TeamInteractionEdge,
+  TeamInteractionKind,
   TeamMemberView,
   TeamTaskAction,
   TeamTaskId,

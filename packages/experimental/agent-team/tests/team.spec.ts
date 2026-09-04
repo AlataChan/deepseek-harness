@@ -1109,6 +1109,7 @@ describe('Team Remote API', () => {
     expect(ctx.agentTeams.remoteView(lead)).toEqual({
       members: [expect.objectContaining({ name: 'lead', role: 'lead', status: 'idle' })],
       tasks: [],
+      interactions: [],
     })
 
     const createdResult = await ctx.agentTeams.remoteCreateTask(lead, {
