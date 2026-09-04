@@ -15,7 +15,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { STARTER_TEMPLATES, type StarterTemplateId, type TeamKey } from './locales.ts'
+import { NS, STARTER_TEMPLATES, type StarterTemplateId, type TeamKey } from './locales.ts'
 import css from './TeamAction.module.css'
 
 /** Generated Remote result consumed directly by the Team UI. */
