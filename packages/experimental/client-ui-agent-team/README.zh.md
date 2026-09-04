@@ -27,6 +27,8 @@ kind: "package-reference"
 
 在稳定 Web bundle 与 Host-side Agent Teams profile 之后，通过 [`@deepseek-ai/dsh-experimental-agent-team-web-profile`](../agent-team-web-profile/README.zh.md) 安装本包。Web Client loader 挂载 `/client` export；root Host export 不执行行为，本包也没有用户配置字段。
 
+octopus_DSH 桌面也会从 [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json) seed 本包。其 `cordis.patch.yml` 是 dual-face 桌面 bundle 文档：禁用重叠的全局 continuable-child 控件，插入 Host Team service 与 tools，再插入本包以挂载 Client half。Headless 与源码 Web 仍使用 `agent-team-profile` + `agent-team-web-profile`，不走这条 seed 路径。
+
 ### 检查并导航 roster
 
 打开 panel 会调用 `agentTeams/view`。Roster row 展示持久 name、运行时 status、model 与 diagnostics。选择健康 teammate 时，系统刷新既有直接 child catalog，并打开普通的 `{ parentSessionId, childSessionId, mode: 'continuable' }` address。History 与后续人类 prompt 继续使用稳定 addressed-subagent 会话路径；本包不会添加 Team 专用 address 字段。

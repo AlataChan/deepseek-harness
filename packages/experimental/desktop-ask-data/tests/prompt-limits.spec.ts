@@ -38,7 +38,7 @@ describe('ask-data limit surfaces', () => {
     const firstText = renderAskDataLimitsPrompt()
     expect(first.sessionProjections.stateOf(session, 'askDataBinding')).toEqual(bound)
     expect(Object.keys(bound)).toEqual(['sourceId', 'connectionRef', 'displayName', 'readonly'])
-    const events = [...session.events]
+    const events = [...session.snapshotEvents()]
     await first.fiber.dispose()
 
     const second = new Context()

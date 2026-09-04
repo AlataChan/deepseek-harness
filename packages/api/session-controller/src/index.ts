@@ -794,19 +794,19 @@ export class SessionController extends TypertRemoteService {
       }
       return attached.header.cwd
     }
-    const stored = (await this.ctx.get('sessionPersistence')?.list(signal))
-      ?.find(header => header.id === sessionId)
+    const stored = (await this.ctx.get('sessionPersistence')?.list({ signal }))
+      ?.find(snapshot => snapshot.header.id === sessionId)
     if (stored === undefined) {
       throw new RemoteError('session/not-found', `session "${sessionId}" not found`, { sessionId })
     }
-    if (stored.cwd === undefined || stored.cwd === '') {
+    if (stored.header.cwd === undefined || stored.header.cwd === '') {
       throw new RemoteError(
         'session/entries-unreadable',
         `session "${sessionId}" has no project directory`,
         { path: '' },
       )
     }
-    return stored.cwd
+    return stored.header.cwd
   }
 
 }

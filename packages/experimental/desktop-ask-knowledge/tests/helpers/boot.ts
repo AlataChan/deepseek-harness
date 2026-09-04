@@ -89,7 +89,7 @@ export async function bootOverlay(options: {
         const definition = defs.find(item => item.key === key)
         if (definition === undefined) return undefined
         let state = definition.init(session.header)
-        for (const event of session.events) state = definition.apply(state, event)
+        for (const event of session.snapshotEvents()) state = definition.apply(state, event)
         return state
       },
     })

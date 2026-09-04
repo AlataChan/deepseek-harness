@@ -384,10 +384,10 @@ describe('Team identity and provisioning', () => {
 
   it('reports a completed result from an idle live teammate assistant message', async () => {
     const { ctx, lead } = await setup([])
-    const child = ctx.agentLoop.create(SessionId('idle-worker'), { provider: 'mock', model: 'mock' })
+    const child = await ctx.agentLoop.create(SessionId('idle-worker'), { provider: 'mock', model: 'mock' })
     appendAssistant(child.session, 'final answer from worker')
     lead.session.append('team/member', {
-      version: 1,
+      version: 2,
       teamId: TeamId(lead.id),
       member: {
         id: child.id,
@@ -399,7 +399,7 @@ describe('Team identity and provisioning', () => {
       },
     })
     lead.session.append('team/member', {
-      version: 1,
+      version: 2,
       teamId: TeamId(lead.id),
       member: {
         id: child.id,
@@ -420,11 +420,11 @@ describe('Team identity and provisioning', () => {
 
   it('truncates a teammate result summary to 500 characters', async () => {
     const { ctx, lead } = await setup([])
-    const child = ctx.agentLoop.create(SessionId('long-worker'), { provider: 'mock', model: 'mock' })
+    const child = await ctx.agentLoop.create(SessionId('long-worker'), { provider: 'mock', model: 'mock' })
     const longText = 'x'.repeat(501)
     appendAssistant(child.session, longText)
     lead.session.append('team/member', {
-      version: 1,
+      version: 2,
       teamId: TeamId(lead.id),
       member: {
         id: child.id,
@@ -436,7 +436,7 @@ describe('Team identity and provisioning', () => {
       },
     })
     lead.session.append('team/member', {
-      version: 1,
+      version: 2,
       teamId: TeamId(lead.id),
       member: {
         id: child.id,
@@ -688,12 +688,12 @@ describe('Team filesystem attribution', () => {
       context: 'fresh' as const,
     }
     lead.session.append('team/member', {
-      version: 1,
+      version: 2,
       teamId: TeamId(lead.id),
       member: { ...member, phase: 'provisioning' },
     })
     lead.session.append('team/member', {
-      version: 1,
+      version: 2,
       teamId: TeamId(lead.id),
       member: { ...member, phase: 'active' },
     })
@@ -728,12 +728,12 @@ describe('Team filesystem attribution', () => {
       context: 'fresh' as const,
     }
     lead.session.append('team/member', {
-      version: 1,
+      version: 2,
       teamId: TeamId(lead.id),
       member: { ...member, phase: 'provisioning' },
     })
     lead.session.append('team/member', {
-      version: 1,
+      version: 2,
       teamId: TeamId(lead.id),
       member: { ...member, phase: 'active' },
     })

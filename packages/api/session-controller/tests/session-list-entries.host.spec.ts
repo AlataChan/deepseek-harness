@@ -36,7 +36,15 @@ function requireBackend(backend: StubEntries | undefined): StubEntries {
 }
 
 async function harness(options: {
-  persistence?: { list: (signal?: AbortSignal) => Promise<{ id: SessionId; cwd?: string }[]> }
+  persistence?: {
+    list: (signal?: AbortSignal) => Promise<Array<{
+      version: 0
+      id: SessionId
+      createdAt: number
+      isSeeded: boolean
+      cwd?: string
+    }>>
+  }
   entries?: boolean
 } = {}) {
   const ctx = new Context()
@@ -146,7 +154,11 @@ describe('session/listEntries', () => {
   it('uses a persisted session cwd without creating a live session', async () => {
     const cold = SessionId('cold')
     const { remote, ctx, backend } = await harness({
-      persistence: { list: () => Promise.resolve([{ id: cold, cwd: '/stored' }]) },
+      persistence: {
+        list: () => Promise.resolve([{
+          version: 0 as const, id: cold, createdAt: 1, isSeeded: false, cwd: '/stored',
+        }]),
+      },
     })
     expect(ctx.sessions.get(cold)).toBeUndefined()
     await expect(remote.listEntries({ sessionId: cold }))
@@ -157,7 +169,11 @@ describe('session/listEntries', () => {
   it('fails with entries-unreadable when a persisted session has no cwd', async () => {
     const cold = SessionId('cold-empty')
     const { remote, backend } = await harness({
-      persistence: { list: () => Promise.resolve([{ id: cold }]) },
+      persistence: {
+        list: () => Promise.resolve([{
+          version: 0 as const, id: cold, createdAt: 1, isSeeded: false,
+        }]),
+      },
     })
     await expect(remote.listEntries({ sessionId: cold }))
       .resolves.toMatchObject({

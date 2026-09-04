@@ -470,7 +470,7 @@ export class TeamRoster {
 
   /** Return the last non-empty assistant text, bounded for roster display. */
   private lastAssistantSummary(session: Session): string | undefined {
-    const events = session.events
+    const events = session.snapshotEvents()
     for (let i = events.length - 1; i >= 0; i--) {
       const event = events[i]
       if (event?.type !== 'assistant/message') continue

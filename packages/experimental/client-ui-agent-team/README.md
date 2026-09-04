@@ -27,6 +27,8 @@ This package adds an Agent Teams action to the Web conversation header, where a 
 
 Install the package through [`@deepseek-ai/dsh-experimental-agent-team-web-profile`](../agent-team-web-profile/README.md) after the stable Web bundle and the Host-side Agent Teams profile. The Web Client loader mounts the `/client` export; the root Host export is inert, and the package has no user configuration fields.
 
+octopus_DSH desktop also seeds this package from [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json). Its `cordis.patch.yml` is the dual-face desktop bundle document: it disables the overlapping global continuable-child controls, inserts the Host Team service and tools, then inserts this package so the Client half mounts. Headless and source Web keep using `agent-team-profile` + `agent-team-web-profile` instead of this seed path.
+
 ### Inspect and navigate the roster
 
 Opening the panel calls `agentTeams/view`. Roster rows show durable names, runtime status, model, and diagnostics. Selecting a healthy teammate refreshes the existing direct-child catalog and opens the ordinary `{ parentSessionId, childSessionId, mode: 'continuable' }` address. History and later human prompts continue through the stable addressed-subagent conversation path; this package adds no Team-specific address field.

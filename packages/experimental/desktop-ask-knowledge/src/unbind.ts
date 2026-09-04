@@ -4,7 +4,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
+import { SessionSeq, type Session, type SessionEvent, type SessionId } from '@deepseek-ai/dsh-session'
 import type { AskKnowledgeLibraryId } from '@deepseek-ai/dsh-host-ask-knowledge'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 
@@ -39,19 +39,24 @@ export async function listBoundSessionIds(
   if (sessions !== undefined) {
     for (const session of sessions.list()) {
       const binding = ctx.get('sessionProjections')?.stateOf(session, 'askKnowledgeBinding')
-        ?? foldAskKnowledgeBinding(session.events)
+        ?? foldAskKnowledgeBinding(session.snapshotEvents())
       if (binding?.libraryId === libraryId) ids.add(session.id)
     }
   }
   const persistence = ctx.get('sessionPersistence')
   if (persistence !== undefined) {
-    const headers = await persistence.list()
-    for (const header of headers) {
-      if (ids.has(header.id)) continue
-      if (sessions?.get(header.id) !== undefined) continue
-      const loaded = await persistence.load(header.id)
-      const binding = foldAskKnowledgeBinding(loaded.events)
-      if (binding?.libraryId === libraryId) ids.add(header.id)
+    const snapshots = await persistence.list()
+    for (const snapshot of snapshots) {
+      const sessionId = snapshot.header.id
+      if (ids.has(sessionId)) continue
+      if (sessions?.get(sessionId) !== undefined) continue
+      const handle = await persistence.open(sessionId, 'read')
+      try {
+        const binding = foldAskKnowledgeBinding(await handle.read())
+        if (binding?.libraryId === libraryId) ids.add(sessionId)
+      } finally {
+        await handle.close()
+      }
     }
   }
   return [...ids] as SessionId[]
@@ -81,21 +86,27 @@ export async function unbindSession(
     appendUnbound(raced, libraryId)
     return
   }
-  const loaded = await persistence.load(sessionId)
-  const stillLive = ctx.get('sessions')?.get(sessionId)
-  if (stillLive !== undefined) {
-    appendUnbound(stillLive, libraryId)
-    return
+  const handle = await persistence.open(sessionId, 'write')
+  try {
+    const stillLive = ctx.get('sessions')?.get(sessionId)
+    if (stillLive !== undefined) {
+      appendUnbound(stillLive, libraryId)
+      return
+    }
+    const events = await handle.read()
+    const last = events.at(-1)
+    const seq = last === undefined ? SessionSeq(0) : SessionSeq(last.seq + 1)
+    const event = {
+      type: 'ask-knowledge/unbound',
+      seq,
+      time: Date.now(),
+      data: { libraryId },
+    } as SessionEvent
+    await handle.append([event])
+    await handle.flush()
+  } finally {
+    await handle.close()
   }
-  const last = loaded.events.at(-1)
-  const seq = last === undefined ? 0 : last.seq + 1
-  const event = {
-    type: 'ask-knowledge/unbound',
-    seq,
-    time: Date.now(),
-    data: { libraryId },
-  } as SessionEvent
-  await persistence.append(sessionId, [event])
 }
 
 function appendUnbound(session: Session, libraryId: AskKnowledgeLibraryId): void {
@@ -109,7 +120,7 @@ function isBinding(value: unknown): value is { libraryId: string; displayName: s
 }
 
 /**
- * Refuse persistence.append when the id is live.
+ * Refuse persistence writes when the id is live.
  * @param ctx - Host context.
  * @param sessionId - identity.
  */
