@@ -128,6 +128,28 @@ describe('TeamAction', () => {
     await waitFor(() => { expect(openTeammate).toHaveBeenCalledWith(SESSION, view.members[1]) })
   })
 
+  it('shows a localized result badge and truncated summary tooltip', async () => {
+    const longSummary = `${'y'.repeat(120)}tail`
+    const withResult: TeamView = {
+      ...view,
+      members: [
+        view.members[0]!,
+        {
+          ...view.members[1]!,
+          result: { outcome: 'completed', summary: longSummary },
+        },
+      ],
+    }
+    render(<TeamAction {...props(actions({
+      load: () => Promise.resolve({ ok: true, value: withResult }),
+    }))} />)
+    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    expect(await screen.findByText(zh['result.completed'])).toBeTruthy()
+    const summary = screen.getByTitle(longSummary)
+    expect(summary.textContent).toHaveLength(100)
+    expect(summary.textContent).toBe(`${'y'.repeat(97)}...`)
+  })
+
   it('keeps only the newest overlapping refresh for one session', async () => {
     const older = Promise.withResolvers<TeamActionResult<TeamView>>()
     const newer = Promise.withResolvers<TeamActionResult<TeamView>>()

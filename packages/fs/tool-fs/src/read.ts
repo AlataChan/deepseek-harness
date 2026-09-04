@@ -158,7 +158,7 @@ export function applyReadTool(ctx: Context, caps: ReadToolCaps): void {
       // Record the present observation (a no-op when no policy plugin listens). The
       // read already succeeded; an fs/observed listener is contractually a
       // synchronous, side-effect-only recorder.
-      ctx.emit('fs/observed', target, { kind: 'present', version: info.version }, exec)
+      ctx.emit('fs/observed', target, { kind: 'present', version: info.version }, exec, 'read')
       return outcome
     },
     // Result-time display: a `read` card carrying the structured line window a

@@ -2,6 +2,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { FsErrorRemedyRequest } from './index.ts'
 import type { FsObservation, FsTarget } from './types.ts'
 
 const PACKAGE_NAME = '@deepseek-ai/dsh-fs'
@@ -22,7 +23,17 @@ const install: InvariantInstaller = (ctx, fail) => {
   ctx.on('internal/dispatch', (_mode, eventName, args) => {
     if (eventName !== 'fs/write-intent'
       && eventName !== 'fs/edit-intent'
-      && eventName !== 'fs/observed') return
+      && eventName !== 'fs/observed'
+      && eventName !== 'fs/error-remedy') return
+    if (eventName === 'fs/error-remedy') {
+      const request = args[0] as FsErrorRemedyRequest
+      validateTarget(request.target, fail)
+      const operation = request.operation as string
+      if (operation !== 'write' && operation !== 'edit') {
+        fail('fs/error-remedy operation must be write or edit')
+      }
+      return
+    }
     validateTarget(args[0] as FsTarget, fail)
     if (eventName === 'fs/observed') {
       const observation = args[1] as FsObservation

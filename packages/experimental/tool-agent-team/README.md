@@ -56,7 +56,7 @@ Try it by asking the Lead model: "create a teammate named reviewer to check the 
 
 The ten tools group into four capabilities:
 
-- **Create a teammate** — `spawn_teammate` takes a name, a description, and the initial task; only the Lead can call it.
+- **Create a teammate** — `spawn_teammate` takes a name, a description, and the initial task; only the Lead can call it. Optional `provider`, `model`, and `reasoning_effort` fields override the teammate's LLM route when the Lead Session has a model-selection policy; `context: 'fork'` rejects these fields to preserve KV-cache prefix reuse.
 - **Send messages** — `send_message` delivers information without waking an idle teammate; `followup_task` makes the message the recipient's next turn and wakes it when needed.
 - **See and wait** — `list_agents` shows the roster with live status; `wait_agent` waits for the next team change; `interrupt_agent` stops a teammate's current turn (Lead only).
 - **Manage the task board** — `team_task_create`, `team_task_list`, `team_task_get`, and `team_task_update` add, browse, read, and update shared tasks.
@@ -143,6 +143,7 @@ Prefix-stable while the Team plugin generation, configuration, member role/name,
 These limits describe what the policy and tools cannot guarantee for a team. They are current package constraints, not a comparison with other collaboration surfaces.
 
 - **Prompt policy is coordination, not confinement** — it cannot stop Bash or external processes from writing overlapping files.
+- **Fork teammates cannot select a child LLM route** — `context: 'fork'` rejects `provider`/`model`/`reasoning_effort` to preserve KV-cache prefix reuse of the inherited conversation.
 - **No autonomous team creation** — ordinary tasks do not trigger delegation unless the user explicitly requests it.
 - **No Web controls** — browser roster and task-board presentation is outside this runtime package.
 - **Experimental prototype with no stability promise** — the package is private, excluded from official releases, and its schemas change freely while it incubates.

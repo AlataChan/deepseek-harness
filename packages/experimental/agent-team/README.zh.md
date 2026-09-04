@@ -209,7 +209,16 @@ Peer 消息追加在 target 可复用历史前缀之后。冷恢复会先复用�
 
 #### Promotion
 
-promotion 到产品角色组需要按[实验子树规则](../AGENTS.md)审查公共约定、限制、测试证据、发布载荷、运行时依赖与具名稳定 owner。
+promotion 到产品角色组需要按[实验子树规则](../AGENTS.md)审查公共约定、限制、测试证据、发布载荷、运行时依赖与具名稳定 owner。晋升 Agent Team 包之前：
+
+- [ ] 公共约定审查：每个导出类型、工具 schema、Remote 方法稳定
+- [ ] 限制已记录：共享 checkout、advisory write scopes、进程本地归因、mailbox 非跨进程 exactly-once
+- [ ] 测试证据：单元、组件、Web e2e 测试通过
+- [ ] 发布载荷：去掉 `@deepseek-ai/dsh-experimental-*` 前缀、移除 `private: true`、添加 `publishConfig`
+- [ ] 运行时依赖：无产品角色包依赖剩余实验包
+- [ ] 具名 owner：维护者接受稳定包义务
+- [ ] import 更新：原子重命名所有 `@deepseek-ai/dsh-experimental-*` import
+- [ ] 组合行：更新所有引用实验 id 的 `cordis.patch.yml`
 
 #### 未来方向
 

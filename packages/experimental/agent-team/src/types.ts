@@ -1,6 +1,7 @@
 /** Public Agent Teams identities, durable records, and service request values. */
 
 import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { AgentOptions } from '@deepseek-ai/dsh-agent'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
@@ -43,6 +44,14 @@ export function TeamMessageId(id: string): TeamMessageId {
 /** Durable teammate lifecycle. */
 export type TeamMemberPhase = 'provisioning' | 'active' | 'failed'
 
+/** Durable summary of a teammate's final output, derived from the worker session. */
+export interface TeamMemberResult {
+  /** Settlement outcome derived from the durable member edge and live session. */
+  readonly outcome: 'completed' | 'failed'
+  /** Last assistant text summary, truncated to a bounded length. */
+  readonly summary?: string
+}
+
 /** Whole durable value written on every teammate lifecycle change. */
 export interface TeamMemberSnapshot {
   readonly id: SessionId
@@ -65,7 +74,15 @@ export interface TeamMemberView {
   readonly context?: 'fresh' | 'fork'
   readonly model?: string
   readonly diagnostics: string[]
+  /** Durable worker result summary; absent while running, provisioning, or before first observation. */
+  readonly result?: TeamMemberResult
 }
+
+/** Worker output the Lead proposes for human-reviewed execution. */
+export type ProposedAction =
+  | { readonly kind: 'patch'; readonly description: string; readonly diff: string }
+  | { readonly kind: 'command'; readonly description: string; readonly command: string }
+  | { readonly kind: 'followup'; readonly description: string; readonly prompt: string }
 
 /** Durable task lifecycle. */
 export type TeamTaskStatus = 'pending' | 'in_progress' | 'completed' | 'deleted'
@@ -148,6 +165,11 @@ export interface SpawnTeammateRequest {
   readonly prompt: ContentBlock[]
   readonly context: 'fresh' | 'fork'
   readonly provider: string
+  /**
+   * Optional child provider, model, reasoning-effort overrides. Passed to startContinuable;
+   * the subagent descriptor owns the durable route for cold resume.
+   */
+  readonly agentOptions?: AgentOptions
   readonly signal: AbortSignal
 }
 

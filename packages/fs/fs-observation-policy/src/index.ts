@@ -124,7 +124,7 @@ export function apply(ctx: Context): void {
   // fs/observed must remain synchronous and non-throwing: emit does not await
   // promises, and successful mutations have already committed. WeakMap.set
   // satisfies that contract for both presence and absence.
-  ctx.on('fs/observed', (target, observation, actor) => {
+  ctx.on('fs/observed', (target, observation, actor, _operation) => {
     gate.observe(target, observation, actor)
   })
 }

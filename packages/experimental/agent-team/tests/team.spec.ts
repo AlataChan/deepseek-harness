@@ -3,10 +3,11 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { FsError, FsTargetKey, FsVersion } from '@deepseek-ai/dsh-fs'
+import { createMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, type Session } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
@@ -71,6 +72,22 @@ function content(text: string) {
   return [{ type: 'text' as const, text }]
 }
 
+function appendAssistant(session: Session, text: string): void {
+  session.append('turn/start', { turn: 1 })
+  session.append('step/start', { turn: 1, step: 1 })
+  session.append('assistant/message', {
+    turn: 1,
+    step: 1,
+    message: createMessage({
+      role: 'assistant',
+      content: content(text),
+      source: { kind: 'model', provider: 'mock', model: 'mock' },
+    }),
+  }, { surfaceOp: 'append' })
+  session.append('step/end', { turn: 1, step: 1 })
+  session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+}
+
 interface TeamServiceInternals {
   readonly roster: {
     readonly inFlightCreations: Set<Promise<unknown>>
@@ -100,7 +117,7 @@ function spawn(
   ctx: Context,
   lead: Agent,
   name: string,
-  options: { context?: 'fresh' | 'fork'; provider?: string } = {},
+  options: { context?: 'fresh' | 'fork'; provider?: string; agentOptions?: AgentOptions } = {},
 ) {
   const context = options.context ?? 'fresh'
   return ctx.agentTeams.spawnTeammate(lead, {
@@ -109,6 +126,7 @@ function spawn(
     prompt: content(`${name} initial`),
     context,
     provider: options.provider ?? (context === 'fork' ? 'fork' : 'spawn'),
+    ...(options.agentOptions === undefined ? {} : { agentOptions: options.agentOptions }),
     signal: SIGNAL,
   })
 }
@@ -220,6 +238,33 @@ describe('Team identity and provisioning', () => {
     await expect(spawn(ctx, lead, 'fresh-worker')).rejects.toMatchObject({ code: 'TEAM_MEMBER_NAME_TAKEN' })
   })
 
+  it('preserves per-member agentOptions model across cold resume', async () => {
+    const { ctx, lead } = await setup(['hang', 'hang'])
+    const started = await spawn(ctx, lead, 'routed-worker', {
+      agentOptions: { provider: 'mock', model: 'mock-v2' },
+    })
+
+    const live = await waitRunning(ctx, started.member.id)
+    expect(live.options.provider).toBe('mock')
+    expect(live.options.model).toBe('mock-v2')
+
+    await ctx.subagents.drainContinuableChildren(lead, [started.member.id])
+    await waitNoAgent(ctx, started.member.id)
+
+    await ctx.agentTeams.sendMessage(lead, {
+      target: 'routed-worker',
+      content: content('resume via descriptor'),
+      delivery: 'wakeup',
+      signal: SIGNAL,
+    })
+    const recovered = await waitRunning(ctx, started.member.id)
+    expect(recovered.options.provider).toBe('mock')
+    expect(recovered.options.model).toBe('mock-v2')
+
+    await ctx.subagents.drainContinuableChildren(lead, [started.member.id])
+    await waitNoAgent(ctx, started.member.id)
+  })
+
   it('flushes the accepted child prompt before committing the active roster edge', async () => {
     const { ctx, lead } = await setup([textResponse('checkpointed child answer')])
     const flush = ctx.sessions.flush.bind(ctx.sessions)
@@ -316,9 +361,91 @@ describe('Team identity and provisioning', () => {
       name: 'failed-worker',
       status: 'failed',
       provider: 'missing',
+      result: { outcome: 'failed' },
     })
     await expect(spawn(ctx, lead, 'failed-worker')).rejects.toMatchObject({ code: 'TEAM_MEMBER_NAME_TAKEN' })
     await expect(spawn(ctx, lead, 'other-worker')).rejects.toMatchObject({ code: 'TEAM_MEMBER_LIMIT' })
+  })
+
+  it('reports a completed result from an idle live teammate assistant message', async () => {
+    const { ctx, lead } = await setup([])
+    const child = ctx.agentLoop.create(SessionId('idle-worker'), { provider: 'mock', model: 'mock' })
+    appendAssistant(child.session, 'final answer from worker')
+    lead.session.append('team/member', {
+      version: 1,
+      teamId: TeamId(lead.id),
+      member: {
+        id: child.id,
+        name: 'idle-worker',
+        description: 'idle-worker responsibility',
+        provider: 'spawn',
+        context: 'fresh',
+        phase: 'provisioning',
+      },
+    })
+    lead.session.append('team/member', {
+      version: 1,
+      teamId: TeamId(lead.id),
+      member: {
+        id: child.id,
+        name: 'idle-worker',
+        description: 'idle-worker responsibility',
+        provider: 'spawn',
+        context: 'fresh',
+        phase: 'active',
+      },
+    })
+
+    expect(ctx.agentTeams.listMembers(lead)[1]).toMatchObject({
+      name: 'idle-worker',
+      status: 'idle',
+      result: { outcome: 'completed', summary: 'final answer from worker' },
+    })
+  })
+
+  it('truncates a teammate result summary to 500 characters', async () => {
+    const { ctx, lead } = await setup([])
+    const child = ctx.agentLoop.create(SessionId('long-worker'), { provider: 'mock', model: 'mock' })
+    const longText = 'x'.repeat(501)
+    appendAssistant(child.session, longText)
+    lead.session.append('team/member', {
+      version: 1,
+      teamId: TeamId(lead.id),
+      member: {
+        id: child.id,
+        name: 'long-worker',
+        description: 'long-worker responsibility',
+        provider: 'spawn',
+        context: 'fresh',
+        phase: 'provisioning',
+      },
+    })
+    lead.session.append('team/member', {
+      version: 1,
+      teamId: TeamId(lead.id),
+      member: {
+        id: child.id,
+        name: 'long-worker',
+        description: 'long-worker responsibility',
+        provider: 'spawn',
+        context: 'fresh',
+        phase: 'active',
+      },
+    })
+
+    const summary = ctx.agentTeams.listMembers(lead)[1]?.result?.summary
+    expect(summary).toHaveLength(500)
+    expect(summary).toBe(`${'x'.repeat(497)}...`)
+  })
+
+  it('omits result while a teammate is running', async () => {
+    const { ctx, lead } = await setup(['hang'])
+    const started = await spawn(ctx, lead, 'running-worker')
+    await waitRunning(ctx, started.member.id)
+
+    const member = ctx.agentTeams.listMembers(lead)[1]
+    expect(member).toMatchObject({ name: 'running-worker', status: 'running' })
+    expect(member).not.toHaveProperty('result')
   })
 
   it('records non-Error provider failures and contains a reversed provisioning settlement race', async () => {
@@ -530,6 +657,102 @@ describe('Team identity and provisioning', () => {
     expect(second.ctx.agentTeams.tryMembership(child.agent)).toBeUndefined()
     journal.state = state
     await child.dispose()
+  })
+})
+
+describe('Team filesystem attribution', () => {
+  it('enriches stale filesystem remedies with the last observing teammate', async () => {
+    const { ctx, lead } = await setup([])
+    const writerId = SessionId('fs-writer')
+    const member = {
+      id: writerId,
+      name: 'writer',
+      description: 'writes files',
+      provider: 'spawn',
+      context: 'fresh' as const,
+    }
+    lead.session.append('team/member', {
+      version: 1,
+      teamId: TeamId(lead.id),
+      member: { ...member, phase: 'provisioning' },
+    })
+    lead.session.append('team/member', {
+      version: 1,
+      teamId: TeamId(lead.id),
+      member: { ...member, phase: 'active' },
+    })
+    const writer = await ctx.agents.create({
+      sessionId: writerId,
+      meta: { parentSession: lead.id },
+      agentOptions: { provider: 'mock', model: 'mock' },
+    })
+    const target = { targetKey: FsTargetKey('team-file'), displayPath: '/work/team-file.txt' }
+    const actor = { agent: writer.agent }
+
+    ctx.emit('fs/observed', target, { kind: 'present', version: FsVersion('v1') }, actor, 'write')
+
+    const remedy = await ctx.waterfall('fs/error-remedy', {
+      error: new FsError('cannot edit "team-file": file changed since it was read', 'FS_STALE_VERSION'),
+      target,
+      operation: 'edit',
+      actor,
+    }, () => 're-read the file, then retry')
+    expect(remedy).toBe('last changed by writer; re-read and rebase, or ask the Lead to re-assign')
+    await writer.dispose()
+  })
+
+  it('keeps default remedies when a teammate only read the target', async () => {
+    const { ctx, lead } = await setup([])
+    const readerId = SessionId('fs-reader')
+    const member = {
+      id: readerId,
+      name: 'reader',
+      description: 'reads files',
+      provider: 'spawn',
+      context: 'fresh' as const,
+    }
+    lead.session.append('team/member', {
+      version: 1,
+      teamId: TeamId(lead.id),
+      member: { ...member, phase: 'provisioning' },
+    })
+    lead.session.append('team/member', {
+      version: 1,
+      teamId: TeamId(lead.id),
+      member: { ...member, phase: 'active' },
+    })
+    const reader = await ctx.agents.create({
+      sessionId: readerId,
+      meta: { parentSession: lead.id },
+      agentOptions: { provider: 'mock', model: 'mock' },
+    })
+    const target = { targetKey: FsTargetKey('team-read-file'), displayPath: '/work/team-read-file.txt' }
+    const actor = { agent: reader.agent }
+
+    ctx.emit('fs/observed', target, { kind: 'present', version: FsVersion('v1') }, actor, 'read')
+
+    const remedy = await ctx.waterfall('fs/error-remedy', {
+      error: new FsError('cannot edit "team-read-file": file changed since it was read', 'FS_STALE_VERSION'),
+      target,
+      operation: 'edit',
+      actor,
+    }, () => 're-read the file, then retry')
+    expect(remedy).toBe('re-read the file, then retry')
+    await reader.dispose()
+  })
+
+  it('keeps default remedies for non-Team filesystem errors', async () => {
+    const { ctx } = await setup([])
+    const target = { targetKey: FsTargetKey('outside-file'), displayPath: '/work/outside.txt' }
+
+    const remedy = await ctx.waterfall('fs/error-remedy', {
+      error: new FsError('cannot edit "outside": file changed since it was read', 'FS_STALE_VERSION'),
+      target,
+      operation: 'edit',
+      actor: undefined,
+    }, () => 're-read the file, then retry')
+
+    expect(remedy).toBe('re-read the file, then retry')
   })
 })
 

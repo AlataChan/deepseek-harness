@@ -14,6 +14,7 @@ import type {
   FsDirEntry,
   FsEditOutcome,
   FsEditRequest,
+  FsError,
   FsInfo,
   FsPathInfo,
   FsObservation,
@@ -40,6 +41,22 @@ export type {
   FsWriteIntent,
   FsWriteOutcome,
 } from './types.ts'
+
+export type FsMutationOperation = 'write' | 'edit'
+
+export interface FsErrorRemedyRequest {
+  /** The mapped provider error after sandbox mapping. */
+  readonly error: FsError
+  /** The resolved target that was being mutated. */
+  readonly target: FsTarget
+  /** Which mutation operation failed. */
+  readonly operation: FsMutationOperation
+  /** The opaque tool-execution context; undefined for non-agent callers. */
+  readonly actor: object | undefined
+}
+
+/** A remedy string to append to the error message, or undefined for no remedy. */
+export type FsErrorRemedy = string | undefined
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -71,9 +88,18 @@ declare module '@deepseek-ai/cordis' {
      * @param target - the target whose presence or absence was observed.
      * @param observation - present with its version, or confirmed absent.
      * @param actor - the observing tool-execution context; undefined records nothing useful.
+     * @param operation - which tool operation produced this observation, or undefined for non-tool sources.
      * @mode emit
      */
-    'fs/observed'(target: FsTarget, observation: FsObservation, actor: object | undefined): void
+    'fs/observed'(target: FsTarget, observation: FsObservation, actor: object | undefined, operation?: 'read' | 'write' | 'edit'): void
+    /**
+     * Enrich a guarded-mutation failure's remedy text. The default listener
+     * returns the static remedy; a Team runtime may override it with attribution.
+     * @param request - the error, target, operation, and actor.
+     * @param next - returns the default remedy string, or undefined for un-remedied errors.
+     * @mode waterfall
+     */
+    'fs/error-remedy'(request: FsErrorRemedyRequest, next: () => FsErrorRemedy | Promise<FsErrorRemedy>): Promise<FsErrorRemedy>
   }
 }
 

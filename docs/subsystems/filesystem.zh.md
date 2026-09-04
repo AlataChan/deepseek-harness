@@ -476,9 +476,10 @@ Record an authoritative positive or negative observation. Listeners must be sync
  * @param target - the target whose presence or absence was observed.
  * @param observation - present with its version, or confirmed absent.
  * @param actor - the observing tool-execution context; undefined records nothing useful.
+ * @param operation - which tool operation produced this observation, or undefined for non-tool sources.
  * @mode emit
  */
-'fs/observed'(target: FsTarget, observation: FsObservation, actor: object | undefined): void
+'fs/observed'(target: FsTarget, observation: FsObservation, actor: object | undefined, operation?: 'read' | 'write' | 'edit'): void
 ```
 
 Source: [`packages/fs/fs/src/index.ts`](../../packages/fs/fs/src/index.ts)

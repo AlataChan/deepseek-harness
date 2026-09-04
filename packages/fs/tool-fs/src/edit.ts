@@ -10,7 +10,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { DiffCallView, DiffResultView, ToolResult } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-fs'
 import { computeHunkDiffs, diffsFromMeta } from './diff.ts'
-import { remediateFsError } from './error.ts'
+import { remediateFsToolError } from './error.ts'
 import { sessionResolveOptions } from './session-cwd.ts'
 import type { FsSandboxController } from './sandbox.ts'
 
@@ -134,9 +134,9 @@ export function applyEditTool(ctx: Context, sandbox: FsSandboxController): void 
         // A sandbox denial becomes the shared [sandbox: …] marker (the model
         // recognizes it from bash); stale/not-observed failures gain their
         // model-facing remedy; anything else passes through.
-        throw remediateFsError(sandbox.mapError(error, sandboxPolicy))
+        throw await remediateFsToolError(ctx, sandbox.mapError(error, sandboxPolicy), target, 'edit', exec)
       }
-      ctx.emit('fs/observed', target, { kind: 'present', version: outcome.version }, exec)
+      ctx.emit('fs/observed', target, { kind: 'present', version: outcome.version }, exec, 'edit')
       return {
         path: target.displayPath,
         before: outcome.before,

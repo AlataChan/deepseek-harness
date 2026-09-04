@@ -695,3 +695,16 @@ export function apply(ctx: Context, config: Config): void {
   // new ancestry. Other registry changes are idempotent no-ops here.
   ctx.on('tools/change', reconcileComposedAgents)
 }
+
+export {
+  assertAllowedModelSelection,
+  requestedAgentOptions,
+  hasDelegationModelRequest,
+  type AllowedModelRoute,
+  type DelegationModelRequest,
+  type ModelSelectionPolicy,
+} from './model-selection.ts'
+export {
+  subagentModelSelectionPolicy,
+  subagentModelSelectionProjectionDefinition,
+} from './model-selection-state.ts'

@@ -67,6 +67,10 @@ function taskIds(value: string): TeamTaskId[] {
   return items(value) as TeamTaskId[]
 }
 
+function truncate(value: string, limit: number): string {
+  return value.length > limit ? `${value.slice(0, limit - 3)}...` : value
+}
+
 /**
  * One failure line for either carrier: a Remote failure, or a Team business
  * rejection whose codes stay local to this seam and never ride the wire.
@@ -92,6 +96,13 @@ function memberStatusKey(status: TeamRosterMember['status']): TeamKey {
     case 'inactive': return 'memberStatus.inactive'
     case 'provisioning': return 'memberStatus.provisioning'
     case 'failed': return 'memberStatus.failed'
+  }
+}
+
+function resultOutcomeKey(outcome: NonNullable<TeamRosterMember['result']>['outcome']): TeamKey {
+  switch (outcome) {
+    case 'completed': return 'result.completed'
+    case 'failed': return 'result.failed'
   }
 }
 
@@ -293,6 +304,14 @@ export function TeamAction({
                       <span className={css.memberText}>
                         <span>{member.name}</span>
                         <small>{t(memberStatusKey(member.status))}{member.model === undefined ? '' : ` · ${t('model')}: ${member.model}`}</small>
+                        {member.result !== undefined && (
+                          <small className={css.result}>
+                            <span className={css.resultBadge}>{t(resultOutcomeKey(member.result.outcome))}</span>
+                            {member.result.summary === undefined ? null : (
+                              <span title={member.result.summary}>{truncate(member.result.summary, 100)}</span>
+                            )}
+                          </small>
+                        )}
                         {member.diagnostics.map(diagnostic => <small key={diagnostic} className={css.diagnostic}>{diagnostic}</small>)}
                       </span>
                     </button>

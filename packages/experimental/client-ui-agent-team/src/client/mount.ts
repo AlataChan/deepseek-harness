@@ -7,6 +7,7 @@ import type {
 import type {} from '@deepseek-ai/dsh-experimental-agent-team/remote'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -17,6 +18,8 @@ import {
   TeamAction, type TeamActionInjected, type TeamActionResult, type TeamTaskActionResult,
 } from './TeamAction.tsx'
 import { en, NS, zh, type TeamKey } from './locales.ts'
+
+type AgentTeamClientContext = Omit<ClientContext, 'sessions'> & { readonly sessions: ISessions }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -29,10 +32,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 export const inject = ['sessions', 'remote', 'slots', 'locale']
 
 function registerUi(ctx: ClientContext): void {
+  const clientCtx = ctx as unknown as AgentTeamClientContext
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'client-ui-agent-team: dictionaries')
-  const sessions = ctx.sessions
+  const sessions = clientCtx.sessions
   const leadSessionId = (sessionId: SessionId): SessionId => {
-    const address = sessions.binding(sessionId)?.session.getSnapshot().subagent?.address
+    const address = sessions.subagentAddress(sessionId)
     return address?.parentSessionId ?? sessionId
   }
 

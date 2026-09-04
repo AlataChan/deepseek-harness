@@ -254,7 +254,7 @@ export function applyReadImageTool(ctx: Context): void {
           { cause: error },
         )
       }
-      ctx.emit('fs/observed', target, { kind: 'present', version: info.version }, exec)
+      ctx.emit('fs/observed', target, { kind: 'present', version: info.version }, exec, 'read')
       const value: ImageReadValue = {
         path: target.displayPath,
         image: {

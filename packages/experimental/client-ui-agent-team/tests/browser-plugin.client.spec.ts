@@ -88,16 +88,12 @@ async function bench(options: {
   let current = options.addressed === true ? CHILD : SESSION
   ctx.provide('sessions', {
     list: { getSnapshot: () => ({ current }) },
-    binding: (id: SessionId) => options.addressed === true && id === CHILD
-      ? { session: { getSnapshot: () => ({
-        subagent: {
-          address: {
-            parentSessionId: SESSION,
-            childSessionId: CHILD,
-            mode: 'continuable' as const,
-          },
-        },
-      }) } }
+    subagentAddress: (id: SessionId) => options.addressed === true && id === CHILD
+      ? {
+        parentSessionId: SESSION,
+        childSessionId: CHILD,
+        mode: 'continuable' as const,
+      }
       : undefined,
     refreshSubagents: (id: SessionId) => {
       navigation.push(['refresh', id])

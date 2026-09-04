@@ -18,11 +18,13 @@ import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
 import { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import * as ToolSubagentControl from '@deepseek-ai/dsh-tool-subagent-control'
 import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
+import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import { MockAdapter, textResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import TeamService from '../../agent-team/src/index.ts'
 import * as toolTeam from '../src/index.ts'
 
 const SIGNAL = new AbortController().signal
+const ALLOWED_MODELS = [{ provider: 'alpha', model: 'fast-model' }]
 const TOOL_NAMES = [
   'spawn_teammate',
   'send_message',
@@ -30,6 +32,7 @@ const TOOL_NAMES = [
   'list_agents',
   'wait_agent',
   'interrupt_agent',
+  'propose_action',
   'team_task_create',
   'team_task_list',
   'team_task_get',
@@ -67,6 +70,7 @@ async function setup(script: ConstructorParameters<typeof MockAdapter>[0], legac
   if (legacyControl) await ctx.plugin(ToolSubagentControl)
   await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
   await ctx.plugin(SubagentFork, { providerName: 'fork' })
+  await ctx.plugin(UserQuestionService)
   await ctx.plugin(TeamService)
   const fiber = await ctx.plugin(toolTeam)
   const adapter = new MockAdapter(script)
@@ -96,13 +100,14 @@ function text(result: Awaited<ReturnType<typeof execute>>): string {
 }
 
 function spawnedChildId(result: Awaited<ReturnType<typeof execute>>): SessionId {
-  const parsed: unknown = JSON.parse(text(result))
+  const raw = text(result)
+  const parsed: unknown = JSON.parse(raw)
   if (typeof parsed !== 'object' || parsed === null || !('member' in parsed)) {
-    throw new Error('spawn_teammate result has no member')
+    throw new Error(`spawn_teammate result has no member: ${raw}`)
   }
   const member = parsed.member
   if (typeof member !== 'object' || member === null || !('id' in member) || typeof member.id !== 'string') {
-    throw new Error('spawn_teammate result has no member id')
+    throw new Error(`spawn_teammate result has no member id: ${raw}`)
   }
   return SessionId(member.id)
 }
@@ -111,6 +116,13 @@ async function assembly(ctx: Context, agent: Agent) {
   const scope = scopeOf(agent.ctx)
   if (scope === undefined) throw new Error('expected Agent scope')
   return ctx.systemPrompt.assemble({ scope })
+}
+
+async function spawnSchemaProperties(ctx: Context, agent: Agent): Promise<Record<string, unknown>> {
+  const schema = (await assembly(ctx, agent)).tools.find(candidate => candidate.name === 'spawn_teammate')
+  const properties = (schema?.parameters as { properties?: Record<string, unknown> } | undefined)?.properties
+  if (properties === undefined) throw new Error('spawn_teammate schema has no properties')
+  return properties
 }
 
 async function waitRunning(ctx: Context, id: SessionId): Promise<Agent> {
@@ -144,7 +156,7 @@ describe('dsh-tool-team', () => {
       description: 'exercise scoped tools',
       prompt: 'stay available',
     })
-    expect(spawned.isError).toBe(false)
+    if (spawned.isError) throw new Error(text(spawned))
     const childId = spawnedChildId(spawned)
     const child = await waitRunning(ctx, childId)
     const childAssembly = await assembly(ctx, child)
@@ -266,6 +278,137 @@ describe('dsh-tool-team', () => {
     expect(childInterrupt.isError).toBe(true)
     await execute(ctx, lead, 'interrupt_agent', { target: 'json-worker' })
     await vi.waitFor(() => { expect(ctx.agents.get(childId)).toBeUndefined() }, { timeout: 5_000 })
+  })
+
+  it('asks the human to review a proposed action and returns approval with the action', async () => {
+    const { ctx, lead } = await setup([])
+    const ask = vi.spyOn(ctx.userQuestions, 'ask').mockResolvedValue({
+      answers: [{ id: 'propose-action', selected: ['Execute'] }],
+    })
+
+    const proposed = await execute(ctx, lead, 'propose_action', {
+      action_kind: 'patch',
+      description: 'Apply worker patch',
+      content: 'diff --git a/file b/file',
+    })
+
+    expect(proposed.isError).toBe(false)
+    expect(ask).toHaveBeenCalledWith({
+      agent: lead,
+      questions: [{
+        id: 'propose-action',
+        question: 'Approve patch from worker output?',
+        detail: '**patch**: Apply worker patch\n\n```diff\ndiff --git a/file b/file\n```',
+        options: [
+          { label: 'Execute', description: 'Approve and let the Lead proceed.' },
+          { label: 'Reject', description: 'Decline this action.' },
+        ],
+        intent: { kind: 'plan-review', approve: 'Execute' },
+      }],
+    })
+    expect(JSON.parse(text(proposed))).toEqual({
+      approved: true,
+      action: { kind: 'patch', description: 'Apply worker patch', diff: 'diff --git a/file b/file' },
+    })
+  })
+
+  it('returns false when the human rejects a proposed action', async () => {
+    const { ctx, lead } = await setup([])
+    vi.spyOn(ctx.userQuestions, 'ask').mockResolvedValue({
+      answers: [{ id: 'propose-action', selected: ['Reject'] }],
+    })
+
+    const proposed = await execute(ctx, lead, 'propose_action', {
+      action_kind: 'command',
+      description: 'Run verification',
+      content: 'pnpm run typecheck',
+    })
+
+    expect(proposed.isError).toBe(false)
+    expect(JSON.parse(text(proposed))).toEqual({
+      approved: false,
+      action: { kind: 'command', description: 'Run verification', command: 'pnpm run typecheck' },
+    })
+  })
+
+  it('rejects proposed actions from non-Lead callers', async () => {
+    const { ctx, lead } = await setup(['hang'])
+    const ask = vi.spyOn(ctx.userQuestions, 'ask').mockResolvedValue({
+      answers: [{ id: 'propose-action', selected: ['Execute'] }],
+    })
+    const spawned = await execute(ctx, lead, 'spawn_teammate', {
+      name: 'proposal-worker', description: 'proposal worker', prompt: 'wait',
+    })
+    const childId = spawnedChildId(spawned)
+    const child = await waitRunning(ctx, childId)
+
+    const proposed = await execute(ctx, child, 'propose_action', {
+      action_kind: 'followup',
+      description: 'Continue work',
+      content: 'finish the task',
+    })
+
+    expect(proposed.isError).toBe(true)
+    if (!proposed.isError) throw new Error('expected propose_action to reject non-Lead caller')
+    expect(proposed.error.info).toMatchObject({ name: 'TeamError', code: 'TEAM_LEAD_REQUIRED' })
+    expect(ask).not.toHaveBeenCalled()
+    await execute(ctx, lead, 'interrupt_agent', { target: 'proposal-worker' })
+    await waitNoAgent(ctx, childId)
+  })
+
+  it('passes authorized child model selections to fresh teammates', async () => {
+    const { ctx, lead } = await setup(['hang'])
+    ctx.llm.registerAdapter(['alpha'], new MockAdapter([textResponse('routed done')]))
+    const startContinuable = vi.spyOn(ctx.subagents, 'startContinuable')
+    lead.session.append('subagent/model-selection-policy', { allowedModels: ALLOWED_MODELS })
+
+    const properties = await spawnSchemaProperties(ctx, lead)
+    expect(properties['provider']).toBeDefined()
+    expect(properties['model']).toBeDefined()
+    expect(properties['reasoning_effort']).toBeDefined()
+
+    const spawned = await execute(ctx, lead, 'spawn_teammate', {
+      name: 'routed-worker',
+      description: 'routed worker',
+      prompt: 'stay active',
+      provider: 'alpha',
+      model: 'fast-model',
+      reasoning_effort: 'medium',
+    })
+    expect(spawned.isError).toBe(false)
+    const [startSpec] = startContinuable.mock.calls[0] ?? []
+    expect(startSpec?.request.agentOptions).toEqual({
+      provider: 'alpha',
+      model: 'fast-model',
+      reasoningEffort: 'medium',
+    })
+  })
+
+  it('rejects fork model selections and unauthorized fresh routes', async () => {
+    const { ctx, lead } = await setup(['hang'])
+    ctx.llm.registerAdapter(['alpha'], new MockAdapter(['hang']))
+    lead.session.append('subagent/model-selection-policy', { allowedModels: ALLOWED_MODELS })
+
+    const fork = await execute(ctx, lead, 'spawn_teammate', {
+      name: 'fork-routed',
+      description: 'fork routed',
+      prompt: 'stay active',
+      context: 'fork',
+      provider: 'alpha',
+      model: 'fast-model',
+    })
+    expect(fork.isError).toBe(true)
+    expect(text(fork)).toContain('agentOptions are not allowed for fork teammates')
+
+    const unauthorized = await execute(ctx, lead, 'spawn_teammate', {
+      name: 'blocked-route',
+      description: 'blocked route',
+      prompt: 'stay active',
+      provider: 'alpha',
+      model: 'other-model',
+    })
+    expect(unauthorized.isError).toBe(true)
+    expect(text(unauthorized)).toContain('is not allowed for this Session')
   })
 
   it('adapts optional task filters, mutations, pagination, and default waiting', async () => {
@@ -438,7 +581,7 @@ describe('dsh-tool-team', () => {
     expect(text(result)).toContain('unknown tool "list_agents"')
     expect('default' in toolTeam).toBe(false)
     expect(toolTeam.name).toBe('tool-agent-team')
-    expect(toolTeam.inject).toEqual(['agents', 'agentTeams', 'tools', 'systemPrompt'])
+    expect(toolTeam.inject).toEqual(['agents', 'agentTeams', 'tools', 'systemPrompt', 'sessionProjections', 'userQuestions'])
   })
 
   it('uses configured fresh and fork provider names', async () => {

@@ -133,6 +133,19 @@
   color: var(--dsw-alias-state-error-primary);
 }
 
+.result {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.resultBadge {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--dsw-alias-fill-l2);
+  color: var(--dsw-alias-label-secondary);
+}
+
 .smallButton {
   display: inline-flex;
   align-items: center;

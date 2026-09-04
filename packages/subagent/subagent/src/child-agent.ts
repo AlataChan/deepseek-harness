@@ -203,7 +203,7 @@ export function applyChildComposition(
 ): void {
   childCtx.get('agentPresets')?.composeFrom(childCtx, parent.ctx)
   childCtx.systemPrompt.context({
-    name: 'subagent:delegation',
+    name: `subagent:delegation:${(childCtx.agent as Agent).id}`,
     order: childCtx.systemPrompt.getContextOrder('SUBAGENT_DELEGATION'),
     text: SUBAGENT_DELEGATION_CONTEXT,
   })

@@ -3146,10 +3146,10 @@ export const EVENT_API: readonly EventApiEntry[] = [
   {
     name: 'fs/observed',
     mode: 'emit',
-    signature: '\'fs/observed\'(target: FsTarget, observation: FsObservation, actor: object | undefined): void',
+    signature: '\'fs/observed\'(target: FsTarget, observation: FsObservation, actor: object | undefined, operation?: \'read\' | \'write\' | \'edit\'): void',
     summary: 'Record an authoritative positive or negative observation.',
     description: 'Record an authoritative positive or negative observation. Listeners must be synchronous recorders: throws fail the tool call and returned promises are not awaited.',
-    parameters: [{ name: 'target', description: 'the target whose presence or absence was observed.' }, { name: 'observation', description: 'present with its version, or confirmed absent.' }, { name: 'actor', description: 'the observing tool-execution context; undefined records nothing useful.' }],
+    parameters: [{ name: 'target', description: 'the target whose presence or absence was observed.' }, { name: 'observation', description: 'present with its version, or confirmed absent.' }, { name: 'actor', description: 'the observing tool-execution context; undefined records nothing useful.' }, { name: 'operation', description: 'which tool operation produced this observation, or undefined for non-tool sources.' }],
   },
   {
     name: 'fs/write-intent',

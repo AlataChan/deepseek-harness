@@ -4,8 +4,8 @@ import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { MessageId } from '@deepseek-ai/dsh-llm'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { ContentBlock, MessageId } from '@deepseek-ai/dsh-llm'
+import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { foldSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
 import type { ContinuableStart } from '@deepseek-ai/dsh-subagent'
 import { errorMessage, TeamError } from './error.ts'
@@ -17,6 +17,7 @@ import { TeamId } from './types.ts'
 import type {
   SpawnTeammateRequest,
   SpawnTeammateResult,
+  TeamMemberResult,
   TeamMemberSnapshot,
   TeamMemberView,
 } from './types.ts'
@@ -153,6 +154,7 @@ export class TeamRoster {
         context: member.context,
         ...model === undefined ? {} : { model },
         diagnostics: member.error === undefined ? [] : [member.error],
+        ...this.deriveResult(member, live),
       })
     }
     return result
@@ -285,6 +287,7 @@ export class TeamRoster {
         request: {
           prompt: request.prompt,
           parent: root,
+          ...request.agentOptions !== undefined ? { agentOptions: request.agentOptions } : {},
         },
         signal,
       })
@@ -444,7 +447,41 @@ export class TeamRoster {
       context: member.context,
       ...live?.options.model === undefined ? {} : { model: live.options.model },
       diagnostics: [],
+      ...this.deriveResult(member, live),
     }
+  }
+
+  /** Derive a finished result from the durable member edge and live child state. */
+  private deriveResult(
+    member: TeamMemberSnapshot,
+    live: Agent | undefined,
+  ): { result?: TeamMemberResult } {
+    if (member.phase === 'failed') {
+      return { result: { outcome: 'failed', ...member.error === undefined ? {} : { summary: member.error } } }
+    }
+    if (member.phase === 'provisioning') return {}
+    if (live?.status === 'running') return {}
+    const session = live?.session ?? this.ctx.sessions.get(member.id)
+    if (session === undefined) return {}
+    const summary = this.lastAssistantSummary(session)
+    return { result: { outcome: 'completed', ...summary === undefined ? {} : { summary } } }
+  }
+
+  /** Return the last non-empty assistant text, bounded for roster display. */
+  private lastAssistantSummary(session: Session): string | undefined {
+    const events = session.events
+    for (let i = events.length - 1; i >= 0; i--) {
+      const event = events[i]
+      if (event?.type !== 'assistant/message') continue
+      const text = this.extractTextFromContent(event.data.message.content)
+      if (text.length === 0) continue
+      return text.length > 500 ? `${text.slice(0, 497)}...` : text
+    }
+    return undefined
+  }
+
+  private extractTextFromContent(content: readonly ContentBlock[]): string {
+    return content.flatMap(block => block.type === 'text' ? [block.text.trim()] : []).filter(Boolean).join('\n')
   }
 
   /** Validate a never-reused model-facing teammate name. */

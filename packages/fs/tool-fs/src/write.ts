@@ -11,7 +11,7 @@ import type { DiffCallView, DiffResultView, ToolResult } from '@deepseek-ai/dsh-
 import type { FsWriteOutcome } from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-fs'
 import { computeHunkDiffs, diffsFromMeta } from './diff.ts'
-import { remediateFsError } from './error.ts'
+import { remediateFsToolError } from './error.ts'
 import { sessionResolveOptions } from './session-cwd.ts'
 import type { FsSandboxController } from './sandbox.ts'
 
@@ -115,9 +115,9 @@ export function applyWriteTool(ctx: Context, sandbox: FsSandboxController): void
         // A sandbox denial becomes the shared [sandbox: …] marker (the model
         // recognizes it from bash); stale/not-observed failures gain their
         // model-facing remedy; anything else passes through.
-        throw remediateFsError(sandbox.mapError(error, sandboxPolicy))
+        throw await remediateFsToolError(ctx, sandbox.mapError(error, sandboxPolicy), target, 'write', exec)
       }
-      ctx.emit('fs/observed', target, { kind: 'present', version: outcome.version }, exec)
+      ctx.emit('fs/observed', target, { kind: 'present', version: outcome.version }, exec, 'write')
       return {
         path: target.displayPath,
         operation: outcome.operation,

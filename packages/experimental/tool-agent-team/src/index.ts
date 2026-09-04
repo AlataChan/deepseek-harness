@@ -3,15 +3,26 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { TeamTaskId } from '@deepseek-ai/dsh-experimental-agent-team'
-import type { TeamMemberView } from '@deepseek-ai/dsh-experimental-agent-team'
+import type { AgentOptions } from '@deepseek-ai/dsh-agent'
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { TeamError, TeamTaskId } from '@deepseek-ai/dsh-experimental-agent-team'
+import type { ProposedAction, TeamMemberView } from '@deepseek-ai/dsh-experimental-agent-team'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { InferValue, ValueSchemaSpec } from '@deepseek-ai/dsh-tools'
+import type { AskUserQuestionRequest } from '@deepseek-ai/dsh-user-questions'
+import {
+  assertAllowedModelSelection,
+  hasDelegationModelRequest,
+  requestedAgentOptions,
+  subagentModelSelectionPolicy,
+  subagentModelSelectionProjectionDefinition,
+} from '@deepseek-ai/dsh-tool-subagent'
+import type { DelegationModelRequest } from '@deepseek-ai/dsh-tool-subagent'
 
 /** Cordis plugin name. */
 export const name = 'tool-agent-team'
 /** Services required by the Team tool plugin. */
-export const inject = ['agents', 'agentTeams', 'tools', 'systemPrompt']
+export const inject = ['agents', 'agentTeams', 'tools', 'systemPrompt', 'sessionProjections', 'userQuestions']
 
 /** Tool routing configuration. */
 export interface Config {
@@ -57,6 +68,14 @@ const MEMBER_VIEW_SCHEMA = {
     context: { type: 'string', enum: ['fresh', 'fork'] },
     model: { type: 'string' },
     diagnostics: { type: 'array', required: true, items: { type: 'string' } },
+    result: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        outcome: { type: 'string', required: true, enum: ['completed', 'failed'] },
+        summary: { type: 'string' },
+      },
+    },
   },
 } as const
 
@@ -122,6 +141,26 @@ const INTERRUPT_VALUE_SCHEMA = {
   },
 } as const
 
+const PROPOSE_ACTION_VALUE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    approved: { type: 'boolean', required: true },
+    action: {
+      type: 'object',
+      required: true,
+      additionalProperties: false,
+      properties: {
+        kind: { type: 'string', required: true, enum: ['patch', 'command', 'followup'] },
+        description: { type: 'string', required: true },
+        diff: { type: 'string' },
+        command: { type: 'string' },
+        prompt: { type: 'string' },
+      },
+    },
+  },
+} as const
+
 const TASK_LIST_VALUE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -155,17 +194,53 @@ function callingAgent(agent: Agent | undefined, toolName: string): Agent {
   return agent
 }
 
+function buildProposedAction(args: {
+  action_kind: 'patch' | 'command' | 'followup'
+  description: string
+  content: string
+}): ProposedAction {
+  switch (args.action_kind) {
+    case 'patch': return { kind: 'patch', description: args.description, diff: args.content }
+    case 'command': return { kind: 'command', description: args.description, command: args.content }
+    case 'followup': return { kind: 'followup', description: args.description, prompt: args.content }
+  }
+}
+
+function buildApprovalRequest(action: ProposedAction, agent: Agent): AskUserQuestionRequest {
+  return {
+    questions: [{
+      id: 'propose-action',
+      question: `Approve ${action.kind} from worker output?`,
+      detail: formatActionForReview(action),
+      options: [
+        { label: 'Execute', description: 'Approve and let the Lead proceed.' },
+        { label: 'Reject', description: 'Decline this action.' },
+      ],
+      intent: { kind: 'plan-review', approve: 'Execute' },
+    }],
+    agent,
+  }
+}
+
+function formatActionForReview(action: ProposedAction): string {
+  const header = `**${action.kind}**: ${action.description}\n\n`
+  switch (action.kind) {
+    case 'patch': return `${header}\`\`\`diff\n${action.diff}\n\`\`\``
+    case 'command': return `${header}\`\`\`bash\n${action.command}\n\`\`\``
+    case 'followup': return `${header}${action.prompt}`
+  }
+}
+
 /** Register the complete Team tool set in one exact Agent scope. */
-function install(agent: Agent, ctx: Context, config: Required<Config>): () => void {
-  const scoped = agent.ctx
+function install(agent: Agent, scoped: Context, teamCtx: Context, config: Required<Config>): () => void {
   const disposers: Array<() => unknown> = []
   const register = (disposer: () => unknown): void => { disposers.push(disposer) }
   try {
     register(scoped.systemPrompt.section({
-      name: 'team:policy',
+      name: `team:policy:${agent.id}`,
       order: scoped.systemPrompt.getSectionOrder('TEAM_POLICY'),
       text: () => {
-        const membership = ctx.agentTeams.membership(agent)
+        const membership = teamCtx.agentTeams.membership(agent)
         return `${POLICY}\n\nYour Team role is ${membership.role}; your Team name is ${membership.name}; Team id is ${membership.id}.`
       },
     }))
@@ -182,18 +257,51 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
           enum: ['fresh', 'fork'],
           description: 'fresh starts without Lead history; fork inherits completed Lead turns. Defaults to fresh.',
         },
+        provider: {
+          type: 'string',
+          description: 'Child LLM provider id. Must be supplied together with model. Requires the Lead Session to have a model-selection policy.',
+        },
+        model: {
+          type: 'string',
+          description: 'Child LLM model id. Must be supplied together with provider. Requires the Lead Session to have a model-selection policy.',
+        },
+        reasoning_effort: {
+          type: 'string',
+          description: 'Child reasoning effort override. Requires the Lead Session to have a model-selection policy.',
+        },
       },
       output: jsonOutput(SPAWN_VALUE_SCHEMA),
       async execute(args, exec) {
         const agent = callingAgent(exec.agent, 'spawn_teammate')
         const context = args.context ?? 'fresh'
-        return await ctx.agentTeams.spawnTeammate(agent, {
+        const modelRequest: DelegationModelRequest = {
+          ...args.provider === undefined ? {} : { provider: args.provider },
+          ...args.model === undefined ? {} : { model: args.model },
+          ...args.reasoning_effort === undefined ? {} : { reasoning_effort: ReasoningEffortId(args.reasoning_effort) },
+        }
+        if (context === 'fork' && hasDelegationModelRequest(modelRequest)) {
+          throw new TeamError(
+            'agentOptions are not allowed for fork teammates; fork inherits the Lead provider and model for KV-cache prefix reuse',
+            'TEAM_FORK_NO_ROUTE_OVERRIDE',
+          )
+        }
+        const policy = subagentModelSelectionPolicy(teamCtx.sessionProjections, agent.session)
+        const enabled = policy !== undefined
+        const agentOptions: AgentOptions | undefined = requestedAgentOptions(agent.options, undefined, modelRequest, enabled)
+        assertAllowedModelSelection(
+          policy !== undefined ? { routes: policy } : undefined,
+          agent.options,
+          agentOptions,
+          modelRequest,
+        )
+        return await teamCtx.agentTeams.spawnTeammate(agent, {
           name: args.name,
           description: args.description,
           prompt: [{ type: 'text', text: args.prompt }],
           context,
           provider: context === 'fork' ? config.forkProvider : config.freshProvider,
           signal: exec.signal,
+          ...agentOptions !== undefined ? { agentOptions } : {},
         })
       },
     })))
@@ -210,7 +318,7 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
         },
         output: jsonOutput(SEND_VALUE_SCHEMA),
         execute(args, exec) {
-          return ctx.agentTeams.sendMessage(callingAgent(exec.agent, toolName), {
+          return teamCtx.agentTeams.sendMessage(callingAgent(exec.agent, toolName), {
             target: args.target,
             content: [{ type: 'text', text: args.message }],
             delivery,
@@ -228,7 +336,7 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
       parameters: {},
       output: jsonOutput(MEMBER_LIST_VALUE_SCHEMA),
       async execute(_args, exec) {
-        return Promise.resolve(ctx.agentTeams.listMembers(callingAgent(exec.agent, 'list_agents')))
+        return Promise.resolve(teamCtx.agentTeams.listMembers(callingAgent(exec.agent, 'list_agents')))
       },
     })))
 
@@ -248,11 +356,11 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
         // Preserve TeamService's authoritative timeout validation before the
         // model-only no-progress shortcut.
         if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 10_000 || timeoutMs > 3_600_000) {
-          return await ctx.agentTeams.waitForChange(caller, timeoutMs, exec.signal)
+          return await teamCtx.agentTeams.waitForChange(caller, timeoutMs, exec.signal)
         }
         // The active-peer read and waiter registration must remain one synchronous
         // span; awaiting between them can lose the only peer-status edge.
-        const hasActivePeer = ctx.agentTeams.listMembers(caller).some(member =>
+        const hasActivePeer = teamCtx.agentTeams.listMembers(caller).some(member =>
           member.id !== caller.id && ACTIVE_WAIT_STATUSES.has(member.status))
         if (!hasActivePeer) {
           return {
@@ -263,7 +371,7 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
             },
           }
         }
-        return await ctx.agentTeams.waitForChange(caller, timeoutMs, exec.signal)
+        return await teamCtx.agentTeams.waitForChange(caller, timeoutMs, exec.signal)
       },
     })))
 
@@ -275,10 +383,36 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
       },
       output: jsonOutput(INTERRUPT_VALUE_SCHEMA),
       async execute(args, exec) {
-        return Promise.resolve(ctx.agentTeams.interrupt(
+        return Promise.resolve(teamCtx.agentTeams.interrupt(
           callingAgent(exec.agent, 'interrupt_agent'),
           args.target,
         ))
+      },
+    })))
+
+    register(scoped.tools.register(defineTool({
+      name: 'propose_action',
+      description: 'Propose worker output for human approval before execution. Team Lead only. Use when a teammate produced a patch, command, or follow-up task that should be reviewed before applying.',
+      parameters: {
+        action_kind: {
+          type: 'string', required: true,
+          enum: ['patch', 'command', 'followup'],
+          description: 'Type of action: patch (a diff to apply), command (a shell command to run), or followup (a follow-up task prompt).',
+        },
+        description: { type: 'string', required: true, description: 'What this action does and why it should be approved.' },
+        content: { type: 'string', required: true, description: 'The patch diff, shell command, or follow-up prompt content.' },
+      },
+      output: jsonOutput(PROPOSE_ACTION_VALUE_SCHEMA),
+      async execute(args, exec) {
+        const agent = callingAgent(exec.agent, 'propose_action')
+        const membership = teamCtx.agentTeams.membership(agent)
+        if (membership.role !== 'lead') {
+          throw new TeamError('only the Team Lead can propose actions for review', 'TEAM_LEAD_REQUIRED')
+        }
+        const action = buildProposedAction(args)
+        const answer = await teamCtx.userQuestions.ask(buildApprovalRequest(action, agent))
+        const approved = (answer.answers[0]?.selected ?? []).includes('Execute')
+        return { approved, action }
       },
     })))
 
@@ -297,7 +431,7 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
       },
       output: jsonOutput(TASK_VIEW_SCHEMA),
       async execute(args, exec) {
-        return await ctx.agentTeams.createTask(callingAgent(exec.agent, 'team_task_create'), {
+        return await teamCtx.agentTeams.createTask(callingAgent(exec.agent, 'team_task_create'), {
           subject: args.subject,
           description: args.description,
           ...args.blocked_by === undefined ? {} : { blockedBy: args.blocked_by.map(TeamTaskId) },
@@ -323,7 +457,7 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
       output: jsonOutput(TASK_LIST_VALUE_SCHEMA),
       execute(args, exec) {
         const status = args.status
-        const filtered = ctx.agentTeams.listTasks(callingAgent(exec.agent, 'team_task_list')).filter(task =>
+        const filtered = teamCtx.agentTeams.listTasks(callingAgent(exec.agent, 'team_task_list')).filter(task =>
           (status === undefined || task.status === status)
           && (args.owner === undefined || (args.owner === 'unowned' ? task.ownerName === undefined : task.ownerName === args.owner))
           && (args.ready === undefined || task.ready === args.ready))
@@ -346,7 +480,7 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
       },
       output: jsonOutput(TASK_VIEW_SCHEMA),
       async execute(args, exec) {
-        return Promise.resolve(ctx.agentTeams.getTask(
+        return Promise.resolve(teamCtx.agentTeams.getTask(
           callingAgent(exec.agent, 'team_task_get'),
           TeamTaskId(args.task_id),
         ))
@@ -373,7 +507,7 @@ function install(agent: Agent, ctx: Context, config: Required<Config>): () => vo
       },
       output: jsonOutput(TASK_VIEW_SCHEMA),
       async execute(args, exec) {
-        return await ctx.agentTeams.updateTask(callingAgent(exec.agent, 'team_task_update'), {
+        return await teamCtx.agentTeams.updateTask(callingAgent(exec.agent, 'team_task_update'), {
           taskId: TeamTaskId(args.task_id),
           expectedRevision: args.expected_revision,
           action: args.action,
@@ -400,16 +534,17 @@ export function apply(ctx: Context, config: Config = {}): void {
     freshProvider: config.freshProvider ?? 'spawn',
     forkProvider: config.forkProvider ?? 'fork',
   }
-  const installed = new Map<Agent, () => void>()
+  ctx.sessionProjections.register(subagentModelSelectionProjectionDefinition)
+  const installed = new Map<Agent['id'], () => void>()
   const maybeInstall = (agent: Agent): void => {
-    if (installed.has(agent) || ctx.agentTeams.tryMembership(agent) === undefined) return
-    installed.set(agent, install(agent, ctx, resolved))
+    if (installed.has(agent.id) || ctx.agentTeams.tryMembership(agent) === undefined) return
+    installed.set(agent.id, install(agent, agent.ctx, ctx, resolved))
   }
   for (const agent of ctx.agents.list()) maybeInstall(agent)
   ctx.on('agent/created', ({ agent }) => { maybeInstall(agent) })
   ctx.on('agent/disposed', ({ agent }) => {
-    installed.get(agent)?.()
-    installed.delete(agent)
+    installed.get(agent.id)?.()
+    installed.delete(agent.id)
   })
   ctx.effect(() => () => {
     for (const dispose of installed.values()) dispose()

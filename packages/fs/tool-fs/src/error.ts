@@ -8,7 +8,8 @@
  */
 
 import { FsError } from '@deepseek-ai/dsh-fs'
-import type { FsErrorCode } from '@deepseek-ai/dsh-fs'
+import type { Context } from '@deepseek-ai/cordis'
+import type { FsErrorCode, FsErrorRemedyRequest, FsMutationOperation, FsTarget } from '@deepseek-ai/dsh-fs'
 
 /** The remedy appended to each remediable failure code's message. */
 const REMEDIES: Partial<Record<FsErrorCode, string>> = {
@@ -30,5 +31,29 @@ export function remediateFsError(error: unknown): unknown {
   if (!(error instanceof FsError)) return error
   const remedy = REMEDIES[error.code]
   if (!remedy) return error
+  return new FsError(`${error.message} — ${remedy}`, error.code, { cause: error })
+}
+
+/**
+ * Consult filesystem error-remedy listeners before appending the default
+ * guarded-mutation recovery instruction.
+ * @param ctx - tool execution context for the waterfall dispatch.
+ * @param error - the caught value from a write/edit execution after sandbox mapping.
+ * @param target - the resolved target that was being mutated.
+ * @param operation - which mutation operation failed.
+ * @param actor - the opaque tool-execution context.
+ * @returns a remediated `FsError`, or the original value for non-remediable inputs.
+ */
+export async function remediateFsToolError(
+  ctx: Context,
+  error: unknown,
+  target: FsTarget,
+  operation: FsMutationOperation,
+  actor: object | undefined,
+): Promise<unknown> {
+  if (!(error instanceof FsError)) return error
+  const request: FsErrorRemedyRequest = { error, target, operation, actor }
+  const remedy = await ctx.waterfall('fs/error-remedy', request, () => REMEDIES[error.code])
+  if (remedy === undefined) return error
   return new FsError(`${error.message} — ${remedy}`, error.code, { cause: error })
 }

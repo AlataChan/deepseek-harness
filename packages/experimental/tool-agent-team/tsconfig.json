@@ -10,10 +10,14 @@
     { "path": "../../../vendor/schemastery" },
     { "path": "../../../vendor/cordis" },
     { "path": "../../core/agent" },
+    { "path": "../../llm/llm" },
     { "path": "../../core/scope" },
     { "path": "../../core/session" },
+    { "path": "../../session/session-projection" },
     { "path": "../../core/system-prompt" },
     { "path": "../../core/tools" },
+    { "path": "../../interaction/user-questions" },
+    { "path": "../../subagent/tool-subagent" },
     { "path": "../agent-team" },
     { "path": "../../runtime-diagnostics/invariants" }
   ]

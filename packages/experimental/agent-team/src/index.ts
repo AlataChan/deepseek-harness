@@ -3,9 +3,11 @@
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { TeamActivity } from './activity.ts'
+import { TeamAttribution } from './attribution.ts'
 import { errorMessage, TeamError } from './error.ts'
 import { TeamJournal } from './journal.ts'
 import { TeamRuntimeLifecycle } from './lifecycle.ts'
@@ -72,6 +74,7 @@ export class TeamService extends TypertRemoteService {
 
   private readonly activity: TeamActivity
   private readonly lifecycle: TeamRuntimeLifecycle
+  private readonly attribution: TeamAttribution
   private readonly journal: TeamJournal
   private readonly roster: TeamRoster
   private readonly mailbox: TeamMailbox
@@ -97,6 +100,7 @@ export class TeamService extends TypertRemoteService {
     this.lifecycle = new TeamRuntimeLifecycle(this.config.disposalTimeoutMs)
     this.journal = new TeamJournal(ctx, (root) => { this.activity.notify(TeamId(root.id)) })
     this.roster = new TeamRoster(ctx, this.journal, this.lifecycle, this.config.maxMembers)
+    this.attribution = new TeamAttribution(this.roster)
     this.mailbox = new TeamMailbox(
       ctx,
       this.journal,
@@ -108,6 +112,11 @@ export class TeamService extends TypertRemoteService {
     this.tasks = new TeamTaskBoard(this.journal, this.config.maxTasks)
 
     ctx.on('session/event', (session, event) => { this.mailbox.observeSessionEvent(session, event) })
+    ctx.on('fs/observed', (target, observation, actor, operation) => { this.attribution.observe(target, observation, actor, operation) })
+    ctx.on('fs/error-remedy', (request, next) => {
+      const enriched = this.attribution.remedy(request)
+      return Promise.resolve(enriched === undefined ? next() : enriched)
+    })
     ctx.on('agent/session-start', ({ agent }) => { this.scheduleRecovery(agent) })
     ctx.on('agent/status', ({ agent }) => {
       const membership = this.roster.tryMembership(agent)
@@ -306,6 +315,7 @@ export class TeamService extends TypertRemoteService {
   private async disposeRuntime(): Promise<void> {
     this.lifecycle.close()
     this.activity.close()
+    this.attribution.clear()
 
     const failures: unknown[] = []
     await this.lifecycle.settle(this.roster.pendingCreations(), failures)

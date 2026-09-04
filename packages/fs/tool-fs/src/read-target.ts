@@ -24,7 +24,7 @@ export async function resolveRegularReadTarget(
   const target = await ctx.fs.resolve(requestedPath, sessionResolveOptions(exec, requestedPath))
   const info = await ctx.fs.stat(target, exec.signal)
   if (info === undefined) {
-    ctx.emit('fs/observed', target, { kind: 'absent' }, exec)
+    ctx.emit('fs/observed', target, { kind: 'absent' }, exec, 'read')
     throw new FsError(`cannot read "${target.displayPath}": not found`, 'FS_NOT_FOUND')
   }
   if (info.type !== 'file') {

@@ -194,7 +194,7 @@ These limits describe what a team cannot do yet or what needs special operationa
 
 - **Experimental prototype with no stability promise** — the package is private, excluded from official releases, and its contracts change freely while it incubates.
 - **One process and one shared checkout** — members share cwd and observe edits immediately; this package provides no worktree, remote member, merge, or filesystem lock.
-- **Advisory write scopes** — Bash, formatters, code generators, and direct external writers can bypass filesystem version checks; Leads must coordinate ownership and review the final diff.
+- **Advisory write scopes** — Bash, formatters, code generators, and direct external writers can bypass filesystem version checks; Leads must coordinate ownership and review the final diff. A `fs/error-remedy` waterfall event enriches `FS_STALE_VERSION` with teammate attribution for filesystem-tool writes (write/edit only), but the attribution is process-local and does not survive session resume.
 - **Flat immutable roster** — only the Lead creates direct teammates; there is no nested Team, rename, deletion, or name reuse.
 - **No automatic ownership release** — idle, interruption, process exit, and failed work do not release a task owner.
 - **Mailbox is not cross-process exactly-once** — concurrent harness processes over one Team are unsupported.
@@ -209,7 +209,16 @@ This Dev Note is working context for maintainers and is explicitly non-authorita
 
 #### Promotion
 
-Promotion to a product-role group requires reviewing the public contract, limitations, test evidence, release payload, runtime dependents, and a named stable owner, per the [experimental subtree rules](../AGENTS.md).
+Promotion to a product-role group requires reviewing the public contract, limitations, test evidence, release payload, runtime dependents, and a named stable owner, per the [experimental subtree rules](../AGENTS.md). Before promoting the Agent Team packages:
+
+- [ ] Public contract review: every exported type, tool schema, and Remote method is stable
+- [ ] Limitations documented: shared checkout, advisory write scopes, process-local attribution, mailbox is not cross-process exactly-once
+- [ ] Test evidence: unit, component, and Web e2e tests pass on the promoted packages
+- [ ] Release payload: `@deepseek-ai/dsh-experimental-*` prefix removed, `private: true` removed, `publishConfig` added
+- [ ] Runtime dependents: no product-role package depends on remaining experimental packages
+- [ ] Named owner: a maintainer accepts stable-package obligations
+- [ ] Import updates: every `@deepseek-ai/dsh-experimental-*` import renamed atomically
+- [ ] Composition rows: every `cordis.patch.yml` referencing experimental ids updated
 
 #### Future directions
 

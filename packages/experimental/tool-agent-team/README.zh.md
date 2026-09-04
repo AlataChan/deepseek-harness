@@ -56,7 +56,7 @@ kind: "package-reference"
 
 十个工具分为四类能力：
 
-- **创建 teammate**——`spawn_teammate` 接收名字、描述与初始任务；只有 Lead 可以调用它。
+- **创建 teammate**——`spawn_teammate` 接收名字、描述与初始任务；只有 Lead 可以调用它。当 Lead Session 拥有 model-selection 策略时，可选 `provider`、`model`、`reasoning_effort` 字段覆盖 teammate 的 LLM 路由；`context: 'fork'` 拒绝这些字段以保留 KV-cache 前缀复用。
 - **发送消息**——`send_message` 在不唤醒 idle teammate 的情况下传达信息；`followup_task` 让消息成为接收方的下一个轮次，并在需要时唤醒它。
 - **查看与等待**——`list_agents` 显示带实时状态的 roster；`wait_agent` 等待下一次团队变化；`interrupt_agent` 停止 teammate 的当前轮次（仅限 Lead）。
 - **管理任务板**——`team_task_create`、`team_task_list`、`team_task_get` 与 `team_task_update` 添加、浏览、读取与更新共享任务。
@@ -143,7 +143,8 @@ Team 插件 generation、配置、member role／name 与 schema 不变时，前�
 这些限制说明策略与工具无法为一支团队保证什么。它们是当前包约束，不是与其他协作表面的对比。
 
 - **提示词策略只负责协调，不负责 confinement**——它无法阻止 Bash 或外部进程写入重叠文件。
-- **不会自主创建 Team**——除非用户明确要求，普通任务不会触发 delegation。
+- **fork teammate 无法选择子 Agent LLM 路由**——`context: 'fork'` 拒绝 `provider`/`model`/`reasoning_effort`，以保留继承对话前缀的 KV-cache 复用。
+- **不会自主创建 Team**——除非用户明确请求，普通任务不会触发 delegation。
 - **没有 Web 控制功能**——浏览器 roster 与任务板呈现不属于该运行时包。
 - **实验原型，无稳定性承诺**——本包为私有、不进入正式发布，孵化期间 schema 可自由变更。
 
