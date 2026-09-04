@@ -6,6 +6,7 @@
 #   Resources/resources/harness/      — @deepseek-ai/dsh package (with desktop-companion)
 #   Resources/resources/presets/      — bundled presets (copied to ~/.dsh on first run)
 #   Resources/resources/profile-plugins/ — fork-owned profile bundles (npm + workspace pins)
+#   Resources/resources/bundled-skills/   — fork-owned skills seeded to ~/.dsh/skills on launch
 #   Resources/resources/kb-runtime/     — relocatable octopus-kb PyInstaller onedir
 #
 # After opening the app, users only need to enter their API Key.
@@ -124,6 +125,13 @@ rm -rf "$PLUGIN_RESOURCES"
 node "$REPO_ROOT/scripts/seed-desktop-profile-plugin.mjs" fetch --out "$PLUGIN_RESOURCES" \
   || fail "Failed to fetch desktop profile plugins"
 ok "Desktop profile plugins embedded"
+
+info "Preparing bundled skills..."
+SKILL_RESOURCES="$RESOURCES/bundled-skills"
+rm -rf "$SKILL_RESOURCES"
+node "$REPO_ROOT/scripts/seed-desktop-bundled-skills.mjs" --out "$SKILL_RESOURCES" \
+  || fail "Failed to prepare bundled skills"
+ok "Bundled skills embedded"
 
 # ── 3b. Embed relocatable Python sidecar ────────────────────────────────────
 

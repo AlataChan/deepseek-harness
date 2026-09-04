@@ -262,6 +262,10 @@ describe('Team identity and provisioning', () => {
     await ctx.subagents.drainContinuableChildren(lead, [started.member.id])
     await waitNoAgent(ctx, started.member.id)
 
+    const inactive = ctx.agentTeams.listMembers(lead).find(member => member.name === 'routed-worker')
+    expect(inactive?.status).toBe('inactive')
+    expect(inactive?.model).toBe('mock-v2')
+
     await ctx.agentTeams.sendMessage(lead, {
       target: 'routed-worker',
       content: content('resume via descriptor'),

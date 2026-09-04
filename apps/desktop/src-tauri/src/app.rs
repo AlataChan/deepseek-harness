@@ -471,6 +471,45 @@ fn install_one_profile_plugin(profile_dir: &Path, name: &str, src: &Path) -> std
     Ok(())
 }
 
+/// Copy each Resources/resources/bundled-skills package into ~/.dsh/skills so
+/// every workspace can load fork-shipped skills (user-dsh, rank 400). Preserves
+/// local `.rate-limit-state.json` across refreshes.
+fn install_bundled_skills(app: &AppHandle) {
+    let resource = match app.path().resource_dir() {
+        Ok(dir) => dir,
+        Err(_) => return,
+    };
+    let src_root = resource.join("resources").join("bundled-skills");
+    if !src_root.is_dir() {
+        return;
+    }
+    let dest_root = dsh_home().join("skills");
+    let Ok(entries) = std::fs::read_dir(&src_root) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let src = entry.path();
+        if !src.is_dir() || !src.join("SKILL.md").is_file() {
+            continue;
+        }
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        let dest = dest_root.join(&name);
+        let state_backup = dest.join(".rate-limit-state.json");
+        let saved_state = std::fs::read(&state_backup).ok();
+        if dest.exists() {
+            let _ = std::fs::remove_dir_all(&dest);
+        }
+        if copy_dir_recursive(&src, &dest).is_err() {
+            continue;
+        }
+        if let Some(bytes) = saved_state {
+            let _ = std::fs::write(dest.join(".rate-limit-state.json"), bytes);
+        }
+    }
+}
+
 fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src)? {
@@ -504,6 +543,7 @@ pub fn run() {
             let bundled = discover_bundled_resources(app.app_handle());
             install_bundled_presets(app.app_handle());
             install_bundled_profile_plugins(app.app_handle());
+            install_bundled_skills(app.app_handle());
             app.manage(AppState(Arc::new(Mutex::new(DesktopShell::new(
                 config_dir, cache_root, cli_path, path_value, bundled,
             )))));

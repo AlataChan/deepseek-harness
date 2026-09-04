@@ -140,7 +140,7 @@ export class TeamRoster {
     }]
     for (const member of state.members) {
       const live = this.ctx.agents.get(member.id)
-      const model = live?.options.model ?? root.options.model
+      const model = this.memberModel(member, live, root)
       result.push({
         id: member.id,
         name: member.name,
@@ -314,9 +314,11 @@ export class TeamRoster {
       }
       throw error
     }
+    const liveChild = this.ctx.agents.get(childId)
     const active = {
       ...member,
       phase: 'active' as const,
+      ...liveChild?.options.model === undefined ? {} : { model: liveChild.options.model },
     } satisfies TeamMemberSnapshot
     // Once the continuation accepted its first prompt, it is a real child. If
     // this checkpoint fails, keep the in-memory active edge instead of inventing
@@ -336,7 +338,7 @@ export class TeamRoster {
       }
       throw conflict
     }
-    return { member: this.memberView(active) }
+    return { member: this.memberView(active, root) }
   }
 
   /** Flush the accepted initial inbox item before the Lead can commit `active`. */
@@ -436,8 +438,12 @@ export class TeamRoster {
   }
 
   /** Build one runtime member row after successful creation. */
-  private memberView(member: TeamMemberSnapshot & { readonly phase: 'active' }): TeamMemberView {
+  private memberView(
+    member: TeamMemberSnapshot & { readonly phase: 'active' },
+    root: Agent,
+  ): TeamMemberView {
     const live = this.ctx.agents.get(member.id)
+    const model = this.memberModel(member, live, root)
     return {
       id: member.id,
       name: member.name,
@@ -446,10 +452,37 @@ export class TeamRoster {
       description: member.description,
       provider: member.provider,
       context: member.context,
-      ...live?.options.model === undefined ? {} : { model: live.options.model },
+      ...model === undefined ? {} : { model },
       diagnostics: [],
       ...this.deriveResult(member, live),
     }
+  }
+
+  /**
+   * Resolve the model id shown for one teammate without inventing the Lead route
+   * for an inactive fresh child that already declared its own route.
+   */
+  private memberModel(
+    member: TeamMemberSnapshot,
+    live: Agent | undefined,
+    root: Agent,
+  ): string | undefined {
+    if (live?.options.model !== undefined) return live.options.model
+    if (member.model !== undefined) return member.model
+    const session = live?.session ?? this.ctx.sessions.get(member.id)
+    if (session !== undefined) {
+      const descriptor = foldSubagentDescriptor(session.snapshotEvents(session.inheritedEventCount))
+      if (descriptor?.mode === 'continuable' && descriptor.agentModel !== undefined) {
+        return descriptor.agentModel
+      }
+      const fromContext = session.requestContext()?.model
+      if (fromContext !== undefined) return fromContext
+      const fromHeader = session.requestHeader()?.config.model
+      if (fromHeader !== undefined) return fromHeader
+    }
+    // Fork without an explicit child route reuses the Lead route for KV-cache prefix reuse.
+    if (member.context === 'fork') return root.options.model
+    return undefined
   }
 
   /** Derive a finished result from the durable member edge and live child state. */

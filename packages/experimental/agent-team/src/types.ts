@@ -60,6 +60,8 @@ export interface TeamMemberSnapshot {
   readonly provider: string
   readonly context: 'fresh' | 'fork'
   readonly phase: TeamMemberPhase
+  /** Child LLM model id when known; retained so inactive roster rows do not invent the Lead route. */
+  readonly model?: string
   readonly error?: string
 }
 

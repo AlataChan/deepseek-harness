@@ -72,6 +72,13 @@ function props(actions: TeamActionInjected, sessionId: SessionId = SESSION): Tea
   return {
     sessionId,
     ...actions,
+    inputActions: {
+      setDraft: vi.fn(),
+      addImages: () => true,
+      removeImage: () => {},
+      pruneImages: () => {},
+      submit: () => {},
+    },
     t: makeTranslate(zh, commonZh),
   } as unknown as TeamActionProps
 }
@@ -103,11 +110,11 @@ describe('TeamAction', () => {
       : Promise.resolve({ ok: true as const, value: nextView }))
     const injected = actions({ load })
     const rendered = render(<TeamAction {...props(injected)} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await waitFor(() => { expect(load).toHaveBeenCalledWith(SESSION) })
 
     rendered.rerender(<TeamAction {...props(injected, nextSession)} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     expect(await screen.findByText('Next session task')).toBeTruthy()
     firstLoad.resolve({ ok: true, value: view })
     await Promise.resolve()
@@ -121,11 +128,49 @@ describe('TeamAction', () => {
   it('loads roster/task diagnostics on open and navigates a healthy teammate', async () => {
     const openTeammate = vi.fn(() => Promise.resolve())
     render(<TeamAction {...props(actions({ openTeammate }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     const worker = await screen.findByRole('button', { name: /worker/u })
+    expect(screen.getByText(zh['role.lead'])).toBeTruthy()
+    expect(screen.getByText(zh['role.teammate'])).toBeTruthy()
+    expect(screen.getByText(zh.howToUse)).toBeTruthy()
+    expect(screen.getByText(zh.templatesTitle)).toBeTruthy()
+    expect(screen.queryByText(zh.rosterHint)).toBeNull()
     expect(screen.getByText('write scopes overlap with task-2')).toBeTruthy()
     fireEvent.click(worker)
     await waitFor(() => { expect(openTeammate).toHaveBeenCalledWith(SESSION, view.members[1]) })
+  })
+
+  it('fills a starter prompt into the composer without submitting', async () => {
+    const setDraft = vi.fn()
+    const injected = actions()
+    render(<TeamAction {...{
+      ...props(injected),
+      inputActions: {
+        setDraft,
+        addImages: () => true,
+        removeImage: () => {},
+        pruneImages: () => {},
+        submit: () => {},
+      },
+    }} />)
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
+    expect(await screen.findByText(zh.templatesTitle)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: zh['template.researcher.label'] }))
+    expect(setDraft).toHaveBeenCalledWith(zh['template.researcher.body'])
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('explains durable teammates when the roster has only the lead', async () => {
+    const leadOnly: TeamView = {
+      members: [{ id: SESSION, name: 'lead', role: 'lead', status: 'idle', diagnostics: [] }],
+      tasks: [],
+    }
+    render(<TeamAction {...props(actions({
+      load: () => Promise.resolve({ ok: true, value: leadOnly }),
+    }))} />)
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
+    expect(await screen.findByText(zh.rosterHint)).toBeTruthy()
+    expect(screen.getByText(zh.empty)).toBeTruthy()
   })
 
   it('shows a localized result badge and truncated summary tooltip', async () => {
@@ -143,7 +188,7 @@ describe('TeamAction', () => {
     render(<TeamAction {...props(actions({
       load: () => Promise.resolve({ ok: true, value: withResult }),
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     expect(await screen.findByText(zh['result.completed'])).toBeTruthy()
     const summary = screen.getByTitle(longSummary)
     expect(summary.textContent).toHaveLength(100)
@@ -162,7 +207,7 @@ describe('TeamAction', () => {
       .mockImplementationOnce(() => older.promise)
       .mockImplementationOnce(() => newer.promise)
     render(<TeamAction {...props(actions({ load }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
 
     const refresh = screen.getByRole('button', { name: zh.refresh })
@@ -188,7 +233,7 @@ describe('TeamAction', () => {
       taskSuccess({ ...task, revision: 2, status: 'completed' }),
     ))
     render(<TeamAction {...props(actions({ load, updateTask }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
 
     fireEvent.click(screen.getByRole('button', { name: zh.refresh }))
@@ -212,7 +257,7 @@ describe('TeamAction', () => {
       load,
       createTask: () => Promise.resolve(taskSuccess(createdTask)),
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
 
     fireEvent.click(screen.getByRole('button', { name: zh.refresh }))
@@ -236,7 +281,7 @@ describe('TeamAction', () => {
       load: taskLoad,
       updateTask: () => Promise.resolve(taskRejected('task rejected')),
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: zh.refresh }))
     fireEvent.click(screen.getByRole('button', { name: /完成/u }))
@@ -254,7 +299,7 @@ describe('TeamAction', () => {
       load: createLoad,
       createTask: () => Promise.resolve(taskRejected('create rejected')),
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: zh.refresh }))
     fireEvent.click(screen.getByRole('button', { name: /新建任务/u }))
@@ -277,7 +322,7 @@ describe('TeamAction', () => {
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [completedTask, createdTask] } })
     const createTask = vi.fn(() => create.promise)
     render(<TeamAction {...props(actions({ load, createTask }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /新建任务/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Concurrent task' } })
@@ -318,7 +363,7 @@ describe('TeamAction', () => {
       load,
       updateTask: () => Promise.resolve(taskSuccess(completed)),
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('old warning')
     fireEvent.click(screen.getAllByRole('button', { name: /完成/u })[0]!)
 
@@ -330,7 +375,7 @@ describe('TeamAction', () => {
   it('creates a task from normalized blocker and write-scope lists', async () => {
     const createTask = vi.fn(actions().createTask)
     render(<TeamAction {...props(actions({ createTask }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /新建任务/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: ' New task ' } })
@@ -397,7 +442,7 @@ describe('TeamAction', () => {
       value: { ...view, tasks: current.status === 'deleted' ? [] : [current] },
     }))
     render(<TeamAction {...props(actions({ load, updateTask }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
 
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'worker' } })
@@ -446,7 +491,7 @@ describe('TeamAction', () => {
       .mockResolvedValueOnce({ ok: true, value: { ...view, tasks: [{ ...task, revision: 2 }] } })
     const updateTask = vi.fn(() => Promise.resolve(taskConflict('stale')))
     render(<TeamAction {...props(actions({ load, updateTask }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /完成/u }))
     expect(await screen.findByText(zh.conflict)).toBeTruthy()
@@ -462,7 +507,7 @@ describe('TeamAction', () => {
       load: taskLoad,
       updateTask: () => Promise.resolve(taskConflict('stale task')),
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /完成/u }))
     expect(await screen.findByText('task reload failed (gateway/internal)')).toBeTruthy()
@@ -477,7 +522,7 @@ describe('TeamAction', () => {
       .mockResolvedValueOnce(taskSuccess({ ...task, revision: 2, subject: 'Edited' }))
       .mockResolvedValueOnce(taskConflict('stale dependency'))
     render(<TeamAction {...props(actions({ load: dependencyLoad, updateTask: dependencyUpdate }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /编辑/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Edited' } })
@@ -518,20 +563,20 @@ describe('TeamAction', () => {
     const load = vi.fn(() => Promise.resolve({ ok: true as const, value: richView }))
     const openTeammate = vi.fn(() => Promise.reject(new Error('navigation failed')))
     render(<TeamAction {...props(actions({ load, openTeammate }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     expect(await screen.findByText('provider failed')).toBeTruthy()
     expect(screen.getByText(zh.ready)).toBeTruthy()
     expect(screen.getByText(zh.blocked)).toBeTruthy()
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /failed-worker/u }).disabled).toBe(true)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /provisioning-worker/u }).disabled).toBe(true)
 
-    fireEvent.click(screen.getByRole('button', { name: /^worker运行中/u }))
+    fireEvent.click(screen.getByRole('button', { name: /^worker/u }))
     expect(await screen.findByText('Error: navigation failed')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: zh.refresh }))
     await waitFor(() => { expect(load).toHaveBeenCalledTimes(2) })
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     expect(screen.queryByRole('dialog')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByRole('dialog')
     fireEvent.click(screen.getByRole('button', { name: zh.close }))
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -542,13 +587,13 @@ describe('TeamAction', () => {
       load: () => Promise.resolve(remoteFailure('load failed')),
     })
     const first = render(<TeamAction {...props(failedLoad)} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     expect(await screen.findByText('load failed (gateway/internal)')).toBeTruthy()
     first.unmount()
 
     const createTask = vi.fn(() => Promise.resolve(remoteFailure('create failed')))
     const second = render(<TeamAction {...props(actions({ createTask }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /新建任务/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Task' } })
@@ -559,7 +604,7 @@ describe('TeamAction', () => {
 
     const pending = Promise.withResolvers<TeamTaskActionResult>()
     const third = render(<TeamAction {...props(actions({ createTask: () => pending.promise }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /新建任务/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Late task' } })
@@ -574,7 +619,7 @@ describe('TeamAction', () => {
   it('contains stale-session and ordinary task failures without retrying', async () => {
     const pending = Promise.withResolvers<TeamTaskActionResult>()
     const rendered = render(<TeamAction {...props(actions({ updateTask: () => pending.promise }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /完成/u }))
     rendered.rerender(<TeamAction {...props(actions(), 'next-session' as SessionId)} />)
@@ -586,7 +631,7 @@ describe('TeamAction', () => {
     render(<TeamAction {...props(actions({
       updateTask: () => Promise.resolve(taskRejected('update failed')),
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /完成/u }))
     expect(await screen.findByText('update failed (team-rejected)')).toBeTruthy()
@@ -601,7 +646,7 @@ describe('TeamAction', () => {
       load,
       updateTask: () => Promise.resolve(taskConflict('stale task')),
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /完成/u }))
     await waitFor(() => { expect(load).toHaveBeenCalledTimes(2) })
@@ -622,7 +667,7 @@ describe('TeamAction', () => {
       load,
       updateTask: () => Promise.resolve(taskSuccess({ ...task, revision: 2, status: 'completed' })),
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /完成/u }))
     await waitFor(() => { expect(load).toHaveBeenCalledTimes(2) })
@@ -642,7 +687,7 @@ describe('TeamAction', () => {
       .mockResolvedValueOnce(taskRejected('dependency failed'))
       .mockResolvedValueOnce(taskSuccess({ ...unownedTask, revision: 2 }))
     render(<TeamAction {...props(actions({ updateTask }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
 
     fireEvent.click(screen.getByRole('button', { name: /新建任务/u }))
@@ -681,7 +726,7 @@ describe('TeamAction', () => {
       .mockResolvedValueOnce(taskSuccess({ ...task, revision: 2, subject: 'Edited' }))
       .mockResolvedValueOnce(remoteFailure('dependency transport failed'))
     render(<TeamAction {...props(actions({ updateTask }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /编辑/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Edited' } })
@@ -700,7 +745,7 @@ describe('TeamAction', () => {
       load: () => Promise.resolve({ ok: true, value: { ...view, tasks: [blockedTask] } }),
       updateTask,
     }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /编辑/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Same dependencies' } })
@@ -720,7 +765,7 @@ describe('TeamAction', () => {
       .mockResolvedValueOnce(taskSuccess({ ...task, revision: 2, subject: 'Conflict edit' }))
       .mockResolvedValueOnce(taskConflict('stale dependency'))
     const first = render(<TeamAction {...props(actions({ load, updateTask: conflictUpdate }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /编辑/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Conflict edit' } })
@@ -739,7 +784,7 @@ describe('TeamAction', () => {
       .mockResolvedValueOnce(taskSuccess({ ...task, revision: 2, subject: 'Late edit' }))
       .mockResolvedValueOnce(taskConflict('stale dependency'))
     const second = render(<TeamAction {...props(actions({ load: dependencyLoad, updateTask: staleUpdate }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /编辑/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Late edit' } })
@@ -758,7 +803,7 @@ describe('TeamAction', () => {
       .mockResolvedValueOnce(taskSuccess({ ...task, revision: 2, subject: 'Late edit' }))
       .mockImplementationOnce(() => dependency.promise)
     const third = render(<TeamAction {...props(actions({ updateTask: lateUpdate }))} />)
-    fireEvent.click(screen.getByRole('button', { name: /Agent Team/u }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
     await screen.findByText('Implement runtime')
     fireEvent.click(screen.getByRole('button', { name: /编辑/u }))
     fireEvent.change(screen.getByPlaceholderText('任务标题'), { target: { value: 'Late edit' } })

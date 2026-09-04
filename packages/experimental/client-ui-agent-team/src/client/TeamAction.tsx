@@ -15,7 +15,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { NS, type TeamKey } from './locales.ts'
+import { STARTER_TEMPLATES, type StarterTemplateId, type TeamKey } from './locales.ts'
 import css from './TeamAction.module.css'
 
 /** Generated Remote result consumed directly by the Team UI. */
@@ -106,9 +106,32 @@ function resultOutcomeKey(outcome: NonNullable<TeamRosterMember['result']>['outc
   }
 }
 
+function roleKey(role: TeamRosterMember['role']): TeamKey {
+  switch (role) {
+    case 'lead': return 'role.lead'
+    case 'teammate': return 'role.teammate'
+  }
+}
+
+function templateLabelKey(id: StarterTemplateId): TeamKey {
+  switch (id) {
+    case 'researcher': return 'template.researcher.label'
+    case 'squad': return 'template.squad.label'
+    case 'list': return 'template.list.label'
+  }
+}
+
+function templateBodyKey(id: StarterTemplateId): TeamKey {
+  switch (id) {
+    case 'researcher': return 'template.researcher.body'
+    case 'squad': return 'template.squad.body'
+    case 'list': return 'template.list.body'
+  }
+}
+
 /** Render the live Team roster and compare-and-set task board. */
 export function TeamAction({
-  sessionId, load, createTask, updateTask, openTeammate, t,
+  sessionId, load, createTask, updateTask, openTeammate, t, inputActions,
 }: TeamActionProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -254,6 +277,12 @@ export function TeamAction({
   const teammates = view?.members.filter(member => member.role === 'teammate') ?? []
   const assignable = view?.members.filter(member => member.status !== 'failed' && member.status !== 'provisioning') ?? []
 
+  const fillStarter = (id: StarterTemplateId): void => {
+    if (inputActions === undefined) return
+    inputActions.setDraft(t(templateBodyKey(id)))
+    setOpen(false)
+  }
+
   return (
     <div className={css.root} data-team-action>
       <button
@@ -273,7 +302,10 @@ export function TeamAction({
       {open && (
         <div className={css.panel} role="dialog" aria-label={t('trigger')}>
           <div className={css.toolbar}>
-            <strong>{t('trigger')}</strong>
+            <div className={css.toolbarTitle}>
+              <strong>{t('trigger')}</strong>
+              <small>{t('brand')}</small>
+            </div>
             <span className={css.spacer} />
             <button type="button" className={css.iconButton} aria-label={t('refresh')} onClick={() => { void refresh() }}>
               <IconRefreshOutline14 />
@@ -286,8 +318,10 @@ export function TeamAction({
           {loading && view === null && <div className={css.notice}>{t('loading')}</div>}
           {view !== null && (
             <>
+              <p className={css.hint}>{t('howToUse')}</p>
               <section>
                 <h3>{t('roster')}</h3>
+                {teammates.length === 0 && <p className={css.hint}>{t('rosterHint')}</p>}
                 <div className={css.roster}>
                   {view.members.map(member => (
                     <button
@@ -302,7 +336,10 @@ export function TeamAction({
                     >
                       <StateDot state={member.status === 'running' ? 'ongoing' : member.status === 'failed' ? 'error' : 'done'} />
                       <span className={css.memberText}>
-                        <span>{member.name}</span>
+                        <span>
+                          {member.name}
+                          <span className={css.roleBadge}>{t(roleKey(member.role))}</span>
+                        </span>
                         <small>{t(memberStatusKey(member.status))}{member.model === undefined ? '' : ` · ${t('model')}: ${member.model}`}</small>
                         {member.result !== undefined && (
                           <small className={css.result}>
@@ -408,6 +445,22 @@ export function TeamAction({
                         </div>
                       </article>
                     ))}
+                </div>
+              </section>
+              <section className={css.templates} aria-label={t('templatesTitle')}>
+                <h3>{t('templatesTitle')}</h3>
+                <div className={css.templateRow}>
+                  {STARTER_TEMPLATES.map(id => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={css.templateButton}
+                      disabled={inputActions === undefined}
+                      onClick={() => { fillStarter(id) }}
+                    >
+                      {t(templateLabelKey(id))}
+                    </button>
+                  ))}
                 </div>
               </section>
             </>

@@ -1,0 +1,8 @@
+{
+  "skills": [
+    {
+      "name": "wechat-article-extractor",
+      "path": ".agents/skills/wechat-article-extractor"
+    }
+  ]
+}

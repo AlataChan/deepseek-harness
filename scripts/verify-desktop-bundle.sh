@@ -210,6 +210,28 @@ else
   bad "desktop-app still leaves client-hmr enabled — WebView reports The operation is insecure"
 fi
 
+# Fork-owned skills: Resources/bundled-skills → ~/.dsh/skills on launch.
+head_ "Checking bundled skills"
+SKILL_PIN="$REPO_ROOT/scripts/desktop-bundled-skills.json"
+if [[ -f "$SKILL_PIN" ]]; then
+  ok "desktop-bundled-skills.json present"
+else
+  bad "desktop-bundled-skills.json missing"
+fi
+if grep -q 'install_bundled_skills' "$REPO_ROOT/apps/desktop/src-tauri/src/app.rs"; then
+  ok "app.rs seeds bundled skills on launch"
+else
+  bad "app.rs missing install_bundled_skills"
+fi
+if [[ -d "$RES/bundled-skills/wechat-article-extractor" \
+   && -f "$RES/bundled-skills/wechat-article-extractor/SKILL.md" \
+   && -f "$RES/bundled-skills/wechat-article-extractor/scripts/rate-limit.js" \
+   && -d "$RES/bundled-skills/wechat-article-extractor/node_modules" ]]; then
+  ok "bundled-skills/wechat-article-extractor present with deps"
+else
+  bad "bundled-skills/wechat-article-extractor incomplete — desktop users will not get WeChat extract"
+fi
+
 DIRTY_PROFILE=$(mktemp -d)
 printf '%s\n' '{
   "dependencies": { "dsh-context": "0.36.0" },
