@@ -280,6 +280,22 @@ const pin = JSON.parse(readFileSync(process.argv[1], "utf8"))
 for (const plugin of pin.plugins) console.log(plugin.name)
 ' "$PIN")
 
+# Agent Team Host packages are inserted by the client-ui-agent-team patch but
+# are not copied into profile-plugins (workspace: deps are dropped). They must
+# resolve from the harness collect closure or companion boot fails entirely.
+if [[ -d "$RES/profile-plugins/@deepseek-ai/dsh-experimental-client-ui-agent-team" ]]; then
+  for pkg in \
+    "@deepseek-ai/dsh-experimental-agent-team" \
+    "@deepseek-ai/dsh-experimental-tool-agent-team"
+  do
+    if [[ -f "$HARNESS/node_modules/$pkg/package.json" ]]; then
+      ok "harness includes $pkg for Agent Team Host insert"
+    else
+      bad "harness missing $pkg — move it to apps/cli dependencies so collect-runtime-deps embeds it"
+    fi
+  done
+fi
+
 # session.listEntries lives on the generated Session Remote face. A stale
 # session-controller client makes every file-tree listing look unreadable.
 head_ "Checking session-controller client knows listEntries"
