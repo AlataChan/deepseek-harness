@@ -3,6 +3,13 @@
     {
       "name": "wechat-article-extractor",
       "path": ".agents/skills/wechat-article-extractor"
+    },
+    {
+      "name": "archify",
+      "source": "npm",
+      "package": "@tt-a1i/archify-dsh",
+      "version": "0.1.0",
+      "skillSubpath": "skills/archify"
     }
   ]
 }

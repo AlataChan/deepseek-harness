@@ -195,7 +195,7 @@ always override CCB memory.
 - 问数路径要对普通用户足够简单：先选或上传数据源，再点「开始提问」；提供示例表与脏表避坑提示；同一入口不要并列多个「开始提问」
 - 打包体积敏感：优先轻量依赖；问知识 PDF 入库值得加；表格类优先引导走问数，避免为 Excel 再引入沉重 extras
 - Agent Team 须对普通用户可自助使用：中文区分一次性任务与常驻队友；面板填入机构向启动话术（文书/案例/传播小队；队友 name 为英文 kebab、职责中文）；队友模型选择应对用户开放，且面板展示与实际选用一致
-- Agent Team 协作可视化：实时互动用自建 UI；archify 只做事后总结（可选 `dsh plugin --profile web add @tt-a1i/archify-dsh@0.1.0`，不进默认开机种子）；实时层须控制开销，避免拖慢桌面端或冗余
+- Agent Team 协作可视化：实时互动用自建右侧可调宽协作舱（拓扑为主，任务/ops 在舱底；派发/回传可用轻量通讯光点）；舱打开时约 1.5s 软刷新（关闭即停）；消息边含已投递往来；Archify 经 `bundled-skills` 默认进桌面；任务完成后 CTA 一点发送，总结图页沙箱预览 HTML（失败则浏览器打开）；协作入口勿过深；实时层须控制开销
 
 ## Learned Workspace Facts
 
@@ -207,6 +207,6 @@ always override CCB memory.
 - 打包版 companion 的 stderr 落在 `~/Library/Application Support/studio.octopus.dsh/companion.log`（每次启动截断），是排查 companion 崩溃与 Broken pipe 的入口；companion 与 harness 版本字符串须一致，否则握手报 `Harness runtime version mismatch`，旧安装不会随重打 DMG 自更新
 - 社区桌面外挂由 `scripts/desktop-profile-plugins.json` 钉版本（文件工作台 + `@yejiming/dsh-data-agent@0.1.3` + `desktop-ask-data` + `desktop-ask-knowledge` + `client-ui-agent-team`）；pin 须 dual-face（`dsh.bundle.patch` + `dsh.client` + `./client`），Host-only profile 层不能直接 seed。seed 丢弃 `workspace:` 传递依赖、只装第三方生产依赖（`schemastery` 等同时在 dependencies/devDependencies 的要先剥 dev）；DMG 嵌 `Resources/resources/profile-plugins/`，首次启动合并；用户从 bundles 删掉后刷新不写回；`dsh-context@0.36.0` 依赖 0.1.1 的 `settingsNamespace`，不能再种子
 - 文件工作台是 overlay `experimental/desktop-files`，不写进官方 `desktop-app`；Client 走 `session.listEntries` / `session.openWorkspacePath`；冷会话 cwd 读 `persistence.list()`
-- 微信公众号提取 skill 在 `.agents/skills/wechat-article-extractor/`（宽松本地限流：每小时 8 篇、间隔 20s）；DMG 经 `bundled-skills` 种子到 `~/.dsh/skills/`，启动时由 `install_bundled_skills` 刷新并保留限流计数
+- 微信公众号提取 skill 在 `.agents/skills/wechat-article-extractor/`（宽松本地限流：每小时 8 篇、间隔 20s）；Archify skill 从 `@tt-a1i/archify-dsh` 经 `desktop-bundled-skills.json` 的 npm 源打进 DMG；二者均经 `bundled-skills` 种子到 `~/.dsh/skills/`，启动时由 `install_bundled_skills` 刷新（微信侧保留限流计数）
 - 问数是 overlay `experimental/desktop-ask-data`（配合 seeded data-agent）：先有数据再有会话，上传/选 Excel·CSV 后 Host 建 SQLite 并绑定会话
 - 问知识是 overlay `experimental/desktop-ask-knowledge`：库目录默认 `<app_data_dir>/knowledge-bases`（工作区放快捷方式）；Python sidecar 由 `scripts/build-kb-sidecar.sh` 打进 DMG；入库与「仅本会话看文档」分流

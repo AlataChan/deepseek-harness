@@ -231,6 +231,13 @@ if [[ -d "$RES/bundled-skills/wechat-article-extractor" \
 else
   bad "bundled-skills/wechat-article-extractor incomplete — desktop users will not get WeChat extract"
 fi
+if [[ -d "$RES/bundled-skills/archify" \
+   && -f "$RES/bundled-skills/archify/SKILL.md" \
+   && -f "$RES/bundled-skills/archify/bin/archify.mjs" ]]; then
+  ok "bundled-skills/archify present (post-hoc Team diagram skill)"
+else
+  bad "bundled-skills/archify incomplete — desktop users will not get Archify"
+fi
 
 DIRTY_PROFILE=$(mktemp -d)
 printf '%s\n' '{

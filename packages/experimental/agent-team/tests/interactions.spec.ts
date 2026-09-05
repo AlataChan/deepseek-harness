@@ -16,7 +16,7 @@ const members: TeamMemberView[] = [
 ]
 
 describe('teamInteractions', () => {
-  it('projects pending mailbox hops without bodies', () => {
+  it('projects mailbox hops without bodies, including delivered ones', () => {
     const state = emptyTeamState(LEAD)
     state.messages.push({
       id: TeamMessageId('msg-1'),
@@ -25,6 +25,7 @@ describe('teamInteractions', () => {
       targetId: WORKER,
       content: [{ type: 'text', text: 'secret body must not appear in edge id alone' }],
     })
+    state.delivered.push(TeamMessageId('msg-1'))
     const edges = teamInteractions(state, members, [])
     expect(edges).toEqual([{
       id: 'message:msg-1',
@@ -33,6 +34,18 @@ describe('teamInteractions', () => {
       kind: 'message',
     }])
     expect(JSON.stringify(edges)).not.toMatch(/secret body/)
+  })
+
+  it('still projects pending mailbox hops before delivery', () => {
+    const state = emptyTeamState(LEAD)
+    state.messages.push({
+      id: TeamMessageId('msg-pending'),
+      senderId: LEAD,
+      senderName: 'lead',
+      targetId: WORKER,
+      content: [{ type: 'text', text: 'body' }],
+    })
+    expect(teamInteractions(state, members, []).map(edge => edge.id)).toEqual(['message:msg-pending'])
   })
 
   it('projects owner-to-owner task dependency edges', () => {

@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-archify-desktop-seed.md
+2026-09-04-archify-desktop-seed.md: 5935a44c4f686971b044a1be30167c0dc55ea9d4
+2026-09-04-archify-desktop-seed.zh.md: d05cb562899e4fad6f8f80f6ca3fd78405f766bc

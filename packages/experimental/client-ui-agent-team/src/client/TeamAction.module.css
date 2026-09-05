@@ -45,23 +45,188 @@
 }
 
 .panel {
+  /* legacy name kept for tests that query dialog content; dock owns layout */
+}
+
+.dockBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent);
+}
+
+.dock {
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 0;
-  z-index: 110;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 121;
   box-sizing: border-box;
-  width: min(560px, calc(100vw - 32px));
-  max-height: min(680px, calc(100vh - 120px));
-  padding: 10px;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 280px;
+  max-width: 55vw;
+  padding: 12px 12px 12px 16px;
+  overflow: hidden;
   border: 0;
-  border-radius: 12px;
+  border-left: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 12px 0 0 12px;
   background: var(--dsw-specific-menu);
   --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
   box-shadow: var(--dsw-elevation-prominent);
+}
+
+.dockResize {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.dockResize:hover,
+.dockResize:active {
+  background: color-mix(in srgb, var(--dsw-alias-interactive-label) 35%, transparent);
+}
+
+.dockBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.dockMain {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.dockOps {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.dockOpsCollapsed > *:not(.opsHeader) {
+  display: none;
+}
+
+.opsHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.opsHeader h3 {
+  margin: 0;
+  flex: 1;
+}
+
+.archifyCta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dsw-alias-interactive-label) 12%, var(--dsw-alias-fill-l1));
+}
+
+.archifyCta strong {
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+}
+
+.archifyCta p {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.archifyCtaActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.dockTabs {
+  display: flex;
+  gap: 4px;
+}
+
+.dockTab {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  min-height: 28px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.dockTab:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.dockTabActive {
+  background: var(--dsw-alias-fill-l2);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.archifySummary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+}
+
+.archifyPathInput {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-fill-l1);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+}
+
+.archifyFrame {
+  flex: 1;
+  width: 100%;
+  min-height: 280px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-alias-fill-l1);
+}
+
+.archifyFramePlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--dsw-alias-fill-l1);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  text-align: center;
 }
 
 .toolbar,
@@ -359,18 +524,18 @@
 
 .topologyCanvas {
   position: relative;
-  min-height: 96px;
-  padding: 8px 4px 4px;
-  border-radius: 8px;
+  min-height: 160px;
+  padding: 10px 6px 8px;
+  border-radius: 10px;
   background: var(--dsw-alias-fill-l1);
   overflow-x: auto;
 }
 
 .topologySvg {
   position: absolute;
-  inset: 0 0 40px;
+  inset: 0 0 52px;
   width: 100%;
-  height: 56px;
+  height: 88px;
   pointer-events: none;
 }
 
@@ -379,7 +544,7 @@
   z-index: 1;
   display: flex;
   gap: 12px;
-  margin-top: 44px;
+  margin-top: 72px;
   min-width: max-content;
 }
 
@@ -442,4 +607,30 @@
 
 .topologyEdgeFlash text {
   fill: var(--dsw-alias-interactive-label);
+}
+
+.topologyDot {
+  fill: var(--dsw-alias-interactive-label);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .topologyEdgeFlash .topologyDot {
+    offset-distance: 0%;
+    animation: team-edge-dot 700ms ease-out forwards;
+  }
+
+  .topologyNodePulse {
+    animation: team-node-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes team-edge-dot {
+  from { offset-distance: 0%; opacity: 1; }
+  to { offset-distance: 100%; opacity: 0.15; }
+}
+
+@keyframes team-node-pulse {
+  0%, 100% { outline-color: color-mix(in srgb, var(--dsw-alias-interactive-label) 35%, transparent); }
+  50% { outline-color: var(--dsw-alias-interactive-label); }
 }

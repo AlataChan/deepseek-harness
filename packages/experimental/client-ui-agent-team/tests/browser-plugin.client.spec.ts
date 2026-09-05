@@ -83,6 +83,13 @@ async function bench(options: {
         }
         : { ok: true as const, value: { ok: true as const, value: { ...task, revision: 2 } } })
     },
+    readHtmlPreview: answer('agentTeams/readHtmlPreview', {
+      path: '/proj/out.html',
+      html: '<!doctype html><title>ok</title>',
+    }),
+  })
+  ctx.provide('remote.session', {
+    openWorkspacePath: answer('session/openWorkspacePath', { opened: true as const }),
   })
   const navigation: unknown[] = []
   let current = options.addressed === true ? CHILD : SESSION
@@ -140,7 +147,7 @@ async function bench(options: {
 describe('ui-team browser plugin', () => {
   it('registers one disposable header action with RPC-backed task operations', async () => {
     const b = await bench()
-    expect(inject).toEqual(['sessions', 'remote', 'slots', 'locale'])
+    expect(inject).toEqual(['sessions', 'remote', 'remote.session', 'slots', 'locale'])
     expect(b.entry()).toMatchObject({
       options: { id: 'agent-team', order: 20 },
       locale: 'agent-team',

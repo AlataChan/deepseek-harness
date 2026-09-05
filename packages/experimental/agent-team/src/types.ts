@@ -120,10 +120,24 @@ export interface TeamView {
   readonly members: TeamMemberView[]
   readonly tasks: TeamTaskView[]
   /**
-   * Thin interaction edges for the Team panel topology: pending mailbox hops and
-   * owner-to-owner task dependencies. No message bodies.
+   * Thin interaction edges for the Team panel topology: mailbox hops (pending
+   * and delivered) and owner-to-owner task dependencies. No message bodies.
    */
   readonly interactions: TeamInteractionEdge[]
+}
+
+/** Request to load one Archify (or other) HTML file for the Team dock preview. */
+export interface ReadHtmlPreviewRequest {
+  /** Absolute path, or path relative to the Lead session cwd. */
+  readonly path: string
+}
+
+/** UTF-8 HTML body for a sandboxed dock iframe preview. */
+export interface ReadHtmlPreviewResult {
+  /** Absolute path that was read. */
+  readonly path: string
+  /** File contents (capped by the Host). */
+  readonly html: string
 }
 
 /** Kind of one topology edge projected for the live Team graph. */

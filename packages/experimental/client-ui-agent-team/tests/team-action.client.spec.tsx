@@ -14,7 +14,11 @@ import {
 } from '../src/client/TeamAction.tsx'
 import { zh } from '../src/client/locales.ts'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
@@ -97,6 +101,11 @@ function actions(overrides: Partial<TeamActionInjected> = {}): TeamActionInjecte
       value: { ok: true, value: { ...task, revision: 2 } },
     }),
     openTeammate: () => Promise.resolve(),
+    readHtmlPreview: () => Promise.resolve({
+      ok: true,
+      value: { path: '/proj/notes/team.html', html: '<!doctype html><title>t</title>' },
+    }),
+    openWorkspacePath: () => Promise.resolve({ ok: true, value: { opened: true as const } }),
     ...overrides,
   }
 }
@@ -165,7 +174,75 @@ describe('TeamAction', () => {
     expect(setDraft).toHaveBeenCalledWith(zh['template.document.body'])
     expect(zh['template.document.body']).toMatch(/name=archivist/)
     expect(zh['template.document.body']).toMatch(/资料员/)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(screen.getByRole('dialog').hasAttribute('data-team-dock')).toBe(true)
+  })
+
+  it('shows an Archify CTA after all shared tasks complete and fills the prompt', async () => {
+    const setDraft = vi.fn()
+    const submit = vi.fn()
+    const settled: TeamView = {
+      ...view,
+      tasks: [{ ...task, status: 'completed' }],
+    }
+    const load = vi.fn(() => Promise.resolve({ ok: true as const, value: settled }))
+    render(<TeamAction {...{
+      ...props(actions({ load })),
+      inputActions: {
+        setDraft,
+        addImages: () => true,
+        removeImage: () => {},
+        pruneImages: () => {},
+        submit,
+      },
+    }} />)
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
+    expect(await screen.findByText(zh.archifyCtaTitle)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: zh.archifyCtaAction }))
+    expect(setDraft).toHaveBeenCalledWith(zh['archify.prompt'])
+    expect(submit).toHaveBeenCalled()
+    expect(screen.queryByText(zh.archifyCtaTitle)).toBeNull()
+    expect(screen.getByRole('tab', { name: zh.tabSummary, selected: true })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: zh.archifySummaryTitle })).toBeTruthy()
+  })
+
+  it('loads an Archify HTML preview into the summary tab iframe', async () => {
+    const readHtmlPreview = vi.fn(() => Promise.resolve({
+      ok: true as const,
+      value: { path: '/proj/out.html', html: '<!doctype html><html><body>diagram</body></html>' },
+    }))
+    const createObjectURL = vi.fn(() => 'blob:team-archify')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+    render(<TeamAction {...props(actions({ readHtmlPreview }))} />)
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
+    fireEvent.click(await screen.findByRole('tab', { name: zh.tabSummary }))
+    const input = await screen.findByPlaceholderText(zh.archifyPathPlaceholder)
+    fireEvent.change(input, { target: { value: 'ARCHIFY_HTML_PATH: notes/out.html' } })
+    fireEvent.click(screen.getByRole('button', { name: zh.archifyLoadPreview }))
+    await waitFor(() => {
+      expect(readHtmlPreview).toHaveBeenCalledWith(SESSION, 'notes/out.html')
+    })
+    expect(screen.getByTitle(zh.archifySummaryTitle)).toBeTruthy()
+    expect(createObjectURL).toHaveBeenCalled()
+  })
+
+  it('soft-refreshes TeamView while the dock stays open', async () => {
+    const setIntervalSpy = vi.spyOn(window, 'setInterval')
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval')
+    const load = vi.fn(() => Promise.resolve({ ok: true as const, value: view }))
+    render(<TeamAction {...props(actions({ load }))} />)
+    await waitFor(() => { expect(load).toHaveBeenCalled() })
+    fireEvent.click(screen.getByRole('button', { name: /团队协作/u }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    const dockTick = setIntervalSpy.mock.calls.find(call => call[1] === 1500)
+    expect(dockTick).toBeDefined()
+    const openCount = load.mock.calls.length
+    ;(dockTick![0] as () => void)()
+    await waitFor(() => { expect(load.mock.calls.length).toBeGreaterThan(openCount) })
+    fireEvent.click(screen.getByRole('button', { name: zh.close }))
     expect(screen.queryByRole('dialog')).toBeNull()
+    expect(clearIntervalSpy).toHaveBeenCalled()
   })
 
   it('toggles the collaboration topology without a second Host load', async () => {

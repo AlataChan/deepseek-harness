@@ -2,6 +2,8 @@
 
 export type {
   CreateTeamTaskRequest,
+  ReadHtmlPreviewRequest,
+  ReadHtmlPreviewResult,
   TeamInteractionEdge,
   TeamInteractionKind,
   TeamMemberView,

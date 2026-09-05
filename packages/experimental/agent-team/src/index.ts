@@ -1,5 +1,7 @@
 /** Agent Teams service façade over roster, mailbox, task, and runtime lifecycle owners. */
 
+import { readFile } from 'node:fs/promises'
+import { extname, isAbsolute, relative, resolve as resolvePath } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -21,6 +23,8 @@ import { TeamId, TeamTaskId } from './types.ts'
 import type {
   Config,
   CreateTeamTaskRequest,
+  ReadHtmlPreviewRequest,
+  ReadHtmlPreviewResult,
   SendTeamMessageRequest,
   SendTeamMessageResult,
   SpawnTeammateRequest,
@@ -49,6 +53,8 @@ const DEFAULT_MAX_TASKS = 256
 const DEFAULT_MAX_PENDING_MESSAGES = 64
 const DEFAULT_MAX_MESSAGE_BYTES = 65_536
 const DEFAULT_DISPOSAL_TIMEOUT_MS = 5_000
+/** Upper bound for dock Archify HTML previews (2 MiB). */
+const MAX_HTML_PREVIEW_BYTES = 2 * 1024 * 1024
 
 /** Validate one positive safe-integer deployment limit. */
 function positiveLimit(name: string, value: number): number {
@@ -282,6 +288,64 @@ export class TeamService extends TypertRemoteService {
   @Remote('updateTask')
   remoteUpdateTask(agent: Agent, request: UpdateTeamTaskRequest): Promise<TeamTaskMutationResult> {
     return this.taskMutationResult(this.updateTask(agent, request))
+  }
+
+  /**
+   * Read one `.html` / `.htm` file for the Team dock sandboxed preview.
+   * Paths resolve against the Lead session cwd when relative; absolute paths
+   * must stay under that cwd when the Lead has one.
+   * @param agent - exact live Team member used as the authority credential.
+   * @param request - path to the HTML file.
+   * @returns absolute path and UTF-8 HTML body.
+   */
+  @Remote('readHtmlPreview')
+  async remoteReadHtmlPreview(
+    agent: Agent,
+    request: ReadHtmlPreviewRequest,
+  ): Promise<ReadHtmlPreviewResult> {
+    const membership = this.roster.membership(agent)
+    const raw = request.path.trim()
+    if (raw === '') {
+      throw new TeamError('HTML preview path is required', 'TEAM_INVALID_TARGET')
+    }
+    const cwd = membership.root.session.header.cwd
+    const absolute = isAbsolute(raw)
+      ? resolvePath(raw)
+      : cwd === undefined
+        ? (() => {
+          throw new TeamError(
+            'relative HTML preview paths need a Lead session cwd',
+            'TEAM_INVALID_TARGET',
+          )
+        })()
+        : resolvePath(cwd, raw)
+    const ext = extname(absolute).toLowerCase()
+    if (ext !== '.html' && ext !== '.htm') {
+      throw new TeamError('HTML preview path must end in .html or .htm', 'TEAM_INVALID_TARGET')
+    }
+    if (cwd !== undefined) {
+      const rel = relative(cwd, absolute)
+      if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) {
+        throw new TeamError('HTML preview path must stay under the Lead session cwd', 'TEAM_INVALID_TARGET')
+      }
+    }
+    let html: string
+    try {
+      html = await readFile(absolute, 'utf8')
+    } catch (error: unknown) {
+      throw new TeamError(
+        `HTML preview could not be read: ${errorMessage(error)}`,
+        'TEAM_INVALID_TARGET',
+        { cause: error },
+      )
+    }
+    if (Buffer.byteLength(html, 'utf8') > MAX_HTML_PREVIEW_BYTES) {
+      throw new TeamError(
+        `HTML preview exceeds ${MAX_HTML_PREVIEW_BYTES} bytes`,
+        'TEAM_INVALID_TARGET',
+      )
+    }
+    return { path: absolute, html }
   }
 
   /** Preserve Team task rejections while allowing unexpected failures to reject the Remote call. */

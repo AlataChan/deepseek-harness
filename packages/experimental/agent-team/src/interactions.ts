@@ -4,8 +4,10 @@ import type { TeamState } from './projection.ts'
 import type { TeamInteractionEdge, TeamMemberView, TeamTaskView } from './types.ts'
 
 /**
- * Build pending-message and task-dependency edges for the Team panel graph.
- * @param state - current Team journal state (pending mailbox only).
+ * Build message and task-dependency edges for the Team panel graph.
+ * Message edges include pending and delivered mailbox hops (no bodies) so the
+ * map stays readable after delivery; task edges link distinct owners.
+ * @param state - current Team journal state.
  * @param members - roster views used to resolve message Session ids to names.
  * @param tasks - non-deleted task views with owners and blockers.
  * @returns stable, body-free interaction edges.
@@ -26,10 +28,11 @@ export function teamInteractions(
   }
 
   for (const message of state.messages) {
-    if (state.delivered.includes(message.id)) continue
     const from = nameById.get(message.senderId)
     const to = nameById.get(message.targetId)
     if (from === undefined || to === undefined || from === to) continue
+    // Keep delivered hops so the map still shows who messaged whom after
+    // the mailbox empties; light-dot flash keys off new edge ids on refresh.
     push({
       id: `message:${message.id}`,
       from,

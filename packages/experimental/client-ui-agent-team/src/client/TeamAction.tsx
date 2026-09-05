@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   TeamMemberView as TeamRosterMember,
@@ -7,6 +7,7 @@ import type {
   TeamTaskMutationResult,
   TeamTaskView as TeamTask,
   TeamView,
+  ReadHtmlPreviewResult,
 } from '@deepseek-ai/dsh-experimental-agent-team/client'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import {
@@ -17,6 +18,7 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { NS, STARTER_TEMPLATES, type StarterTemplateId, type TeamKey } from './locales.ts'
 import { TeamTopology } from './TeamTopology.tsx'
+import { ArchifySummary } from './ArchifySummary.tsx'
 import css from './TeamAction.module.css'
 
 /** Generated Remote result consumed directly by the Team UI. */
@@ -45,6 +47,8 @@ export interface TeamActionInjected {
     owner?: string
   }) => Promise<TeamTaskActionResult>
   openTeammate: (sessionId: SessionId, member: TeamRosterMember) => Promise<void>
+  readHtmlPreview: (sessionId: SessionId, path: string) => Promise<TeamActionResult<ReadHtmlPreviewResult>>
+  openWorkspacePath: (path: string) => Promise<TeamActionResult<{ opened: true }>>
 }
 
 /** Full props of the Team conversation-header action. */
@@ -59,6 +63,83 @@ interface Draft {
 }
 
 const EMPTY_DRAFT: Draft = { subject: '', description: '', blockers: '', scopes: '' }
+
+const DOCK_WIDTH_KEY = 'dsh.client.agent-team.dockWidth'
+const DOCK_PIN_KEY = 'dsh.client.agent-team.dockPin'
+const DOCK_OPS_KEY = 'dsh.client.agent-team.dockOps'
+const ARCHIFY_CTA_PREFIX = 'dsh.client.agent-team.archifyCta.'
+
+const DOCK_MIN = 280
+
+function clampDockWidth(width: number): number {
+  const max = typeof window === 'undefined' ? 720 : Math.max(DOCK_MIN, Math.floor(window.innerWidth * 0.55))
+  return Math.min(Math.max(Math.round(width), DOCK_MIN), max)
+}
+
+function defaultDockWidth(): number {
+  if (typeof window === 'undefined') return 420
+  return clampDockWidth(Math.min(window.innerWidth * 0.4, 560))
+}
+
+function readDockWidth(): number {
+  try {
+    const raw = localStorage.getItem(DOCK_WIDTH_KEY)
+    if (raw !== null) {
+      const parsed = Number(raw)
+      if (Number.isFinite(parsed)) return clampDockWidth(parsed)
+    }
+  } catch {
+    /* localStorage may be unavailable */
+  }
+  return defaultDockWidth()
+}
+
+function writeDockWidth(width: number): void {
+  try {
+    localStorage.setItem(DOCK_WIDTH_KEY, String(clampDockWidth(width)))
+  } catch {
+    /* ignore quota / privacy mode */
+  }
+}
+
+function readBoolPref(key: string, fallback: boolean): boolean {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw === '1') return true
+    if (raw === '0') return false
+  } catch {
+    /* ignore */
+  }
+  return fallback
+}
+
+function writeBoolPref(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, value ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
+
+function archifyCtaKey(sessionId: SessionId): string {
+  return `${ARCHIFY_CTA_PREFIX}${sessionId}`
+}
+
+function readArchifyDismissed(sessionId: SessionId): boolean {
+  try {
+    return sessionStorage.getItem(archifyCtaKey(sessionId)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeArchifyDismissed(sessionId: SessionId): void {
+  try {
+    sessionStorage.setItem(archifyCtaKey(sessionId), '1')
+  } catch {
+    /* ignore */
+  }
+}
 
 function items(value: string): string[] {
   return [...new Set(value.split(',').map(item => item.trim()).filter(Boolean))]
@@ -132,9 +213,11 @@ function templateBodyKey(id: StarterTemplateId): TeamKey {
 
 /** Render the live Team roster and compare-and-set task board. */
 export function TeamAction({
-  sessionId, load, createTask, updateTask, openTeammate, t, inputActions,
+  sessionId, load, createTask, updateTask, openTeammate, readHtmlPreview, openWorkspacePath, t, inputActions,
 }: TeamActionProps) {
   const [open, setOpen] = useState(false)
+  const [dockTab, setDockTab] = useState<'live' | 'summary'>('live')
+  const [archifyGenerating, setArchifyGenerating] = useState(false)
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState<TeamView | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -144,12 +227,19 @@ export function TeamAction({
   const [editDraft, setEditDraft] = useState<Draft>(EMPTY_DRAFT)
   const [pendingTasks, setPendingTasks] = useState<ReadonlySet<string>>(() => new Set())
   const [topologyReveal, setTopologyReveal] = useState(0)
+  const [dockWidth, setDockWidth] = useState(readDockWidth)
+  const [pinned, setPinned] = useState(() => readBoolPref(DOCK_PIN_KEY, false))
+  const [opsOpen, setOpsOpen] = useState(() => readBoolPref(DOCK_OPS_KEY, true))
+  const [archifyDismissed, setArchifyDismissed] = useState(() => readArchifyDismissed(sessionId))
   const sessionRef = useRef(sessionId)
   const openRef = useRef(false)
   const refreshGeneration = useRef(0)
   const topologyAnchorRef = useRef<HTMLDivElement | null>(null)
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const dockWidthRef = useRef(dockWidth)
   sessionRef.current = sessionId
   openRef.current = open
+  dockWidthRef.current = dockWidth
 
   useEffect(() => {
     refreshGeneration.current += 1
@@ -163,7 +253,26 @@ export function TeamAction({
     setEditing(null)
     setEditDraft(EMPTY_DRAFT)
     setPendingTasks(new Set())
+    setArchifyDismissed(readArchifyDismissed(sessionId))
+    setDockTab('live')
+    setArchifyGenerating(false)
   }, [sessionId])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape' || pinned) return
+      const target = event.target
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return
+      }
+      setOpen(false)
+      openRef.current = false
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey) }
+  }, [open, pinned])
 
   const refresh = useCallback(async (opts?: { silent?: boolean }): Promise<boolean> => {
     const requestedSession = sessionId
@@ -186,6 +295,16 @@ export function TeamAction({
   useEffect(() => {
     void refresh({ silent: true })
   }, [refresh])
+
+  // While the dock is open, soft-refresh so roster/edges/light-dots track live
+  // Team activity without a manual click. Interval only; closes with the dock.
+  useEffect(() => {
+    if (!open) return
+    const timer = window.setInterval(() => {
+      void refresh({ silent: true })
+    }, 1500)
+    return () => { window.clearInterval(timer) }
+  }, [open, refresh])
 
   useEffect(() => {
     if (!open || view === null) return
@@ -299,7 +418,26 @@ export function TeamAction({
   const fillStarter = (id: StarterTemplateId): void => {
     if (inputActions === undefined) return
     inputActions.setDraft(t(templateBodyKey(id)))
+  }
+
+  const fillArchify = (): void => {
+    if (inputActions === undefined) return
+    inputActions.setDraft(t('archify.prompt'))
+    inputActions.submit()
+    writeArchifyDismissed(sessionId)
+    setArchifyDismissed(true)
+    setArchifyGenerating(true)
+    setDockTab('summary')
+  }
+
+  const dismissArchify = (): void => {
+    writeArchifyDismissed(sessionId)
+    setArchifyDismissed(true)
+  }
+
+  const closeDock = (): void => {
     setOpen(false)
+    openRef.current = false
   }
 
   const openPanel = (): void => {
@@ -309,11 +447,59 @@ export function TeamAction({
     void refresh()
   }
 
+  const onResizePointerDown = (event: PointerEvent<HTMLDivElement>): void => {
+    event.preventDefault()
+    resizeRef.current = { startX: event.clientX, startWidth: dockWidth }
+    const target = event.currentTarget
+    target.setPointerCapture(event.pointerId)
+  }
+
+  const onResizePointerMove = (event: PointerEvent<HTMLDivElement>): void => {
+    const start = resizeRef.current
+    if (start === null) return
+    // Dock is right-anchored: dragging left grows width.
+    const next = clampDockWidth(start.startWidth + (start.startX - event.clientX))
+    setDockWidth(next)
+  }
+
+  const onResizePointerUp = (event: PointerEvent<HTMLDivElement>): void => {
+    if (resizeRef.current === null) return
+    resizeRef.current = null
+    writeDockWidth(dockWidthRef.current)
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* capture may already be released */
+    }
+  }
+
+  const togglePin = (): void => {
+    setPinned((current) => {
+      const next = !current
+      writeBoolPref(DOCK_PIN_KEY, next)
+      return next
+    })
+  }
+
+  const toggleOps = (): void => {
+    setOpsOpen((current) => {
+      const next = !current
+      writeBoolPref(DOCK_OPS_KEY, next)
+      return next
+    })
+  }
+
   const triggerLabel = teammates.length === 0
     ? t('trigger')
     : runningCount > 0
       ? t('triggerBadgeRunning', { count: String(teammates.length), running: String(runningCount) })
       : t('triggerBadge', { count: String(teammates.length) })
+
+  const teamSettled = view !== null
+    && teammates.length > 0
+    && view.tasks.length > 0
+    && view.tasks.every(task => task.status === 'completed')
+  const showArchifyCta = teamSettled && !archifyDismissed
 
   return (
     <div className={css.root} data-team-action>
@@ -325,8 +511,7 @@ export function TeamAction({
         title={t('triggerHint')}
         onClick={() => {
           if (open) {
-            setOpen(false)
-            openRef.current = false
+            closeDock()
             return
           }
           openPanel()
@@ -340,191 +525,300 @@ export function TeamAction({
           </span>
         )}
       </button>
+      {open && !pinned && (
+        <div className={css.dockBackdrop} data-team-dock-backdrop onClick={closeDock} />
+      )}
       {open && (
-        <div className={css.panel} role="dialog" aria-label={t('trigger')}>
+        <div
+          className={css.dock}
+          role="dialog"
+          aria-label={t('trigger')}
+          data-team-dock
+          style={{ width: dockWidth }}
+        >
+          <div
+            className={css.dockResize}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t('resize')}
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onPointerCancel={onResizePointerUp}
+          />
           <div className={css.toolbar}>
             <div className={css.toolbarTitle}>
               <strong>{t('trigger')}</strong>
-              <small>{t('brand')}</small>
+              <small>
+                {t('brand')}
+                {teammates.length > 0
+                  ? ` · ${runningCount > 0 ? `${runningCount}/${teammates.length}` : teammates.length}`
+                  : ''}
+              </small>
             </div>
             <span className={css.spacer} />
+            <button
+              type="button"
+              className={css.smallButton}
+              aria-label={pinned ? t('unpin') : t('pin')}
+              aria-pressed={pinned}
+              onClick={togglePin}
+            >
+              {pinned ? t('unpin') : t('pin')}
+            </button>
             <button type="button" className={css.iconButton} aria-label={t('refresh')} onClick={() => { void refresh() }}>
               <IconRefreshOutline14 />
             </button>
-            <button type="button" className={css.iconButton} aria-label={t('close')} onClick={() => { setOpen(false) }}>
+            <button type="button" className={css.iconButton} aria-label={t('close')} onClick={closeDock}>
               <IconCloseOutline16 size={14} />
             </button>
           </div>
           {error !== null && <div className={css.error} role="alert">{error}</div>}
           {loading && view === null && <div className={css.notice}>{t('loading')}</div>}
           {view !== null && (
-            <>
-              <p className={css.hint}>{t('howToUse')}</p>
-              <div ref={topologyAnchorRef}>
-                <TeamTopology
-                  view={view}
-                  revealKey={topologyReveal}
+            <div className={css.dockBody}>
+              <div className={css.dockTabs} role="tablist" aria-label={t('trigger')}>
+                <button
+                  type="button"
+                  role="tab"
+                  className={`${css.dockTab}${dockTab === 'live' ? ` ${css.dockTabActive}` : ''}`}
+                  aria-selected={dockTab === 'live'}
+                  onClick={() => { setDockTab('live') }}
+                >
+                  {t('tabLive')}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className={`${css.dockTab}${dockTab === 'summary' ? ` ${css.dockTabActive}` : ''}`}
+                  aria-selected={dockTab === 'summary'}
+                  onClick={() => { setDockTab('summary') }}
+                >
+                  {t('tabSummary')}
+                </button>
+              </div>
+              {dockTab === 'summary' ? (
+                <ArchifySummary
+                  sessionId={sessionId}
+                  generating={archifyGenerating}
+                  canFillPrompt={inputActions !== undefined}
+                  onGenerate={fillArchify}
+                  readHtml={readHtmlPreview}
+                  openPath={openWorkspacePath}
                   copy={{
-                    title: t('topology'),
-                    hint: t('topologyHint'),
-                    show: t('topologyShow'),
-                    hide: t('topologyHide'),
-                    empty: t('topologyEmpty'),
-                    edgeMessage: t('topologyEdgeMessage'),
-                    edgeTask: t('topologyEdgeTask'),
-                    memberStatus: key => t(key),
+                    title: t('archifySummaryTitle'),
+                    hint: t('archifySummaryHint'),
+                    pathPlaceholder: t('archifyPathPlaceholder'),
+                    loadPreview: t('archifyLoadPreview'),
+                    openBrowser: t('archifyOpenBrowser'),
+                    previewFailed: t('archifyPreviewFailed'),
+                    previewEmpty: t('archifyPreviewEmpty'),
+                    generating: t('archifyGenerating'),
+                    ctaAction: t('archifyCtaAction'),
+                    ctaHint: t('archifySummaryCtaHint'),
                   }}
                 />
-              </div>
-              <section>
-                <h3>{t('roster')}</h3>
-                {teammates.length === 0 && <p className={css.hint}>{t('rosterHint')}</p>}
-                <div className={css.roster}>
-                  {view.members.map(member => (
-                    <button
-                      key={member.id}
-                      type="button"
-                      className={css.member}
-                      disabled={member.role === 'lead' || member.status === 'failed' || member.status === 'provisioning'}
-                      title={member.role === 'teammate' ? t('open') : undefined}
-                      onClick={() => {
-                        void openTeammate(sessionId, member).catch((reason: unknown) => { setError(String(reason)) })
+              ) : (
+                <>
+                  {showArchifyCta && (
+                    <div className={css.archifyCta} data-team-archify-cta>
+                      <strong>{t('archifyCtaTitle')}</strong>
+                      <p>{t('archifyCtaHint')}</p>
+                      <div className={css.archifyCtaActions}>
+                        <button
+                          type="button"
+                          className={css.smallButton}
+                          disabled={inputActions === undefined}
+                          onClick={fillArchify}
+                        >
+                          {t('archifyCtaAction')}
+                        </button>
+                        <button type="button" className={css.smallButton} onClick={dismissArchify}>
+                          {t('archifyCtaDismiss')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <p className={css.hint}>{t('howToUse')}</p>
+                  <div className={css.dockMain} ref={topologyAnchorRef}>
+                    <TeamTopology
+                      view={view}
+                      revealKey={topologyReveal}
+                      copy={{
+                        title: t('topology'),
+                        hint: t('topologyHint'),
+                        show: t('topologyShow'),
+                        hide: t('topologyHide'),
+                        empty: t('topologyEmpty'),
+                        edgeMessage: t('topologyEdgeMessage'),
+                        edgeTask: t('topologyEdgeTask'),
+                        motionReduce: t('motionReduce'),
+                        motionFull: t('motionFull'),
+                        memberStatus: key => t(key),
                       }}
-                    >
-                      <StateDot state={member.status === 'running' ? 'ongoing' : member.status === 'failed' ? 'error' : 'done'} />
-                      <span className={css.memberText}>
-                        <span>
-                          {member.name}
-                          <span className={css.roleBadge}>{t(roleKey(member.role))}</span>
-                        </span>
-                        <small>{t(memberStatusKey(member.status))}{member.model === undefined ? '' : ` · ${t('model')}: ${member.model}`}</small>
-                        {member.result !== undefined && (
-                          <small className={css.result}>
-                            <span className={css.resultBadge}>{t(resultOutcomeKey(member.result.outcome))}</span>
-                            {member.result.summary === undefined ? null : (
-                              <span title={member.result.summary}>{truncate(member.result.summary, 100)}</span>
-                            )}
-                          </small>
-                        )}
-                        {member.diagnostics.map(diagnostic => <small key={diagnostic} className={css.diagnostic}>{diagnostic}</small>)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-              <section>
-                <div className={css.sectionTitle}>
-                  <h3>{t('tasks')}</h3>
-                  <button type="button" className={css.smallButton} onClick={() => { setCreating(true) }}>
-                    <IconPlusOutline16 size={13} /> {t('create')}
-                  </button>
-                </div>
-                {creating && (
-                  <TaskForm
-                    draft={createDraft}
-                    setDraft={setCreateDraft}
-                    pending={pendingTasks.has('create')}
-                    onSave={() => { void submitCreate() }}
-                    onCancel={() => { setCreating(false) }}
-                    t={t}
-                  />
-                )}
-                {view.tasks.length === 0 && !creating && <div className={css.notice}>{t('empty')}</div>}
-                <div className={css.tasks}>
-                  {view.tasks.map(task => editing === task.id
-                    ? (
-                      <TaskForm
-                        key={task.id}
-                        draft={editDraft}
-                        setDraft={setEditDraft}
-                        pending={pendingTasks.has(task.id)}
-                        onSave={() => { void submitEdit(task) }}
-                        onCancel={() => { setEditing(null) }}
-                        t={t}
-                      />
-                    )
-                    : (
-                      <article key={task.id} className={css.task}>
-                        <div className={css.taskTitle}>
-                          <strong>{task.subject}</strong>
-                          <span className={css.badge}>{t(statusKey(task.status))}</span>
-                          {task.status === 'pending' && (
-                            <span className={css.badge}>{task.ready ? t('ready') : t('blocked')}</span>
-                          )}
-                        </div>
-                        <p>{task.description}</p>
-                        <div className={css.meta}>
-                          <span>{t('owner')}: {task.ownerName ?? t('unowned')}</span>
-                          {task.blockedBy.length > 0 && <span>{t('blockedBy')}: {task.blockedBy.join(', ')}</span>}
-                          {task.writeScopes.length > 0 && <span>{t('writeScopes')}: {task.writeScopes.join(', ')}</span>}
-                          {task.writeScopeWarnings.map(warning => <span key={warning} className={css.warning}>{warning}</span>)}
-                        </div>
-                        <div className={css.taskActions}>
-                          <label>
-                            {t('owner')}
-                            <select
-                              value={task.ownerName ?? ''}
-                              disabled={pendingTasks.has(task.id) || task.status === 'completed'}
-                              onChange={(event: ChangeEvent<HTMLSelectElement>) => {
-                                const owner = event.target.value
-                                void settleTask(task.id, () => updateTask(sessionId, {
-                                  taskId: task.id,
-                                  expectedRevision: task.revision,
-                                  action: 'reassign',
-                                  ...owner === '' ? {} : { owner },
-                                }))
-                              }}
-                            >
-                              <option value="">{t('unowned')}</option>
-                              {assignable.map(member => <option key={member.id} value={member.name}>{member.name}</option>)}
-                            </select>
-                          </label>
-                          {(task.status === 'pending' || task.status === 'in_progress') && (
-                            <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => { startEdit(task) }}>
-                              <IconEditOutline16 size={13} /> {t('edit')}
-                            </button>
-                          )}
-                          {task.status === 'in_progress' && (
-                            <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => {
-                              void settleTask(task.id, () => updateTask(sessionId, {
-                                taskId: task.id, expectedRevision: task.revision, action: 'complete',
-                              }))
-                            }}><IconCheckOutline14 size={13} /> {t('complete')}</button>
-                          )}
-                          {task.status === 'completed' && (
-                            <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => {
-                              void settleTask(task.id, () => updateTask(sessionId, {
-                                taskId: task.id, expectedRevision: task.revision, action: 'reopen',
-                              }))
-                            }}>{t('reopen')}</button>
-                          )}
-                          <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => {
-                            void settleTask(task.id, () => updateTask(sessionId, {
-                              taskId: task.id, expectedRevision: task.revision, action: 'delete',
-                            }))
-                          }}><IconTrashOutline16 size={13} /> {t('delete')}</button>
-                        </div>
-                      </article>
-                    ))}
-                </div>
-              </section>
-              <section className={css.templates} aria-label={t('templatesTitle')}>
-                <h3>{t('templatesTitle')}</h3>
-                <div className={css.templateRow}>
-                  {STARTER_TEMPLATES.map(id => (
-                    <button
-                      key={id}
-                      type="button"
-                      className={css.templateButton}
-                      disabled={inputActions === undefined}
-                      onClick={() => { fillStarter(id) }}
-                    >
-                      {t(templateLabelKey(id))}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </>
+                    />
+                  </div>
+                  <div className={`${css.dockOps}${opsOpen ? '' : ` ${css.dockOpsCollapsed}`}`}>
+                    <div className={css.opsHeader}>
+                      <h3>{t('opsTitle')}</h3>
+                      <button type="button" className={css.smallButton} onClick={toggleOps}>
+                        {opsOpen ? t('opsCollapse') : t('opsExpand')}
+                      </button>
+                    </div>
+                    <section>
+                      <h3>{t('roster')}</h3>
+                      {teammates.length === 0 && <p className={css.hint}>{t('rosterHint')}</p>}
+                      <div className={css.roster}>
+                        {view.members.map(member => (
+                          <button
+                            key={member.id}
+                            type="button"
+                            className={css.member}
+                            disabled={member.role === 'lead' || member.status === 'failed' || member.status === 'provisioning'}
+                            title={member.role === 'teammate' ? t('open') : undefined}
+                            onClick={() => {
+                              void openTeammate(sessionId, member).catch((reason: unknown) => { setError(String(reason)) })
+                            }}
+                          >
+                            <StateDot state={member.status === 'running' ? 'ongoing' : member.status === 'failed' ? 'error' : 'done'} />
+                            <span className={css.memberText}>
+                              <span>
+                                {member.name}
+                                <span className={css.roleBadge}>{t(roleKey(member.role))}</span>
+                              </span>
+                              <small>{t(memberStatusKey(member.status))}{member.model === undefined ? '' : ` · ${t('model')}: ${member.model}`}</small>
+                              {member.result !== undefined && (
+                                <small className={css.result}>
+                                  <span className={css.resultBadge}>{t(resultOutcomeKey(member.result.outcome))}</span>
+                                  {member.result.summary === undefined ? null : (
+                                    <span title={member.result.summary}>{truncate(member.result.summary, 100)}</span>
+                                  )}
+                                </small>
+                              )}
+                              {member.diagnostics.map(diagnostic => (
+                                <small key={diagnostic} className={css.diagnostic}>{diagnostic}</small>
+                              ))}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                    <section>
+                      <div className={css.sectionTitle}>
+                        <h3>{t('tasks')}</h3>
+                        <button type="button" className={css.smallButton} onClick={() => { setCreating(true) }}>
+                          <IconPlusOutline16 size={13} /> {t('create')}
+                        </button>
+                      </div>
+                      {creating && (
+                        <TaskForm
+                          draft={createDraft}
+                          setDraft={setCreateDraft}
+                          pending={pendingTasks.has('create')}
+                          onSave={() => { void submitCreate() }}
+                          onCancel={() => { setCreating(false) }}
+                          t={t}
+                        />
+                      )}
+                      {view.tasks.length === 0 && !creating && <div className={css.notice}>{t('empty')}</div>}
+                      <div className={css.tasks}>
+                        {view.tasks.map(task => editing === task.id
+                          ? (
+                            <TaskForm
+                              key={task.id}
+                              draft={editDraft}
+                              setDraft={setEditDraft}
+                              pending={pendingTasks.has(task.id)}
+                              onSave={() => { void submitEdit(task) }}
+                              onCancel={() => { setEditing(null) }}
+                              t={t}
+                            />
+                          )
+                          : (
+                            <article key={task.id} className={css.task}>
+                              <div className={css.taskTitle}>
+                                <strong>{task.subject}</strong>
+                                <span className={css.badge}>{t(statusKey(task.status))}</span>
+                                {task.status === 'pending' && (
+                                  <span className={css.badge}>{task.ready ? t('ready') : t('blocked')}</span>
+                                )}
+                              </div>
+                              <p>{task.description}</p>
+                              <div className={css.meta}>
+                                <span>{t('owner')}: {task.ownerName ?? t('unowned')}</span>
+                                {task.blockedBy.length > 0 && <span>{t('blockedBy')}: {task.blockedBy.join(', ')}</span>}
+                                {task.writeScopes.length > 0 && <span>{t('writeScopes')}: {task.writeScopes.join(', ')}</span>}
+                                {task.writeScopeWarnings.map(warning => <span key={warning} className={css.warning}>{warning}</span>)}
+                              </div>
+                              <div className={css.taskActions}>
+                                <label>
+                                  {t('owner')}
+                                  <select
+                                    value={task.ownerName ?? ''}
+                                    disabled={pendingTasks.has(task.id) || task.status === 'completed'}
+                                    onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                                      const owner = event.target.value
+                                      void settleTask(task.id, () => updateTask(sessionId, {
+                                        taskId: task.id,
+                                        expectedRevision: task.revision,
+                                        action: 'reassign',
+                                        ...owner === '' ? {} : { owner },
+                                      }))
+                                    }}
+                                  >
+                                    <option value="">{t('unowned')}</option>
+                                    {assignable.map(member => <option key={member.id} value={member.name}>{member.name}</option>)}
+                                  </select>
+                                </label>
+                                {(task.status === 'pending' || task.status === 'in_progress') && (
+                                  <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => { startEdit(task) }}>
+                                    <IconEditOutline16 size={13} /> {t('edit')}
+                                  </button>
+                                )}
+                                {task.status === 'in_progress' && (
+                                  <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => {
+                                    void settleTask(task.id, () => updateTask(sessionId, {
+                                      taskId: task.id, expectedRevision: task.revision, action: 'complete',
+                                    }))
+                                  }}><IconCheckOutline14 size={13} /> {t('complete')}</button>
+                                )}
+                                {task.status === 'completed' && (
+                                  <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => {
+                                    void settleTask(task.id, () => updateTask(sessionId, {
+                                      taskId: task.id, expectedRevision: task.revision, action: 'reopen',
+                                    }))
+                                  }}>{t('reopen')}</button>
+                                )}
+                                <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => {
+                                  void settleTask(task.id, () => updateTask(sessionId, {
+                                    taskId: task.id, expectedRevision: task.revision, action: 'delete',
+                                  }))
+                                }}><IconTrashOutline16 size={13} /> {t('delete')}</button>
+                              </div>
+                            </article>
+                          ))}
+                      </div>
+                    </section>
+                    <section className={css.templates} aria-label={t('templatesTitle')}>
+                      <h3>{t('templatesTitle')}</h3>
+                      <div className={css.templateRow}>
+                        {STARTER_TEMPLATES.map(id => (
+                          <button
+                            key={id}
+                            type="button"
+                            className={css.templateButton}
+                            disabled={inputActions === undefined}
+                            onClick={() => { fillStarter(id) }}
+                          >
+                            {t(templateLabelKey(id))}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       )}

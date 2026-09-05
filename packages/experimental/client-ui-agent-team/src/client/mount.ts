@@ -29,7 +29,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 /** Required browser services for RPC, navigation, slots, and localized copy. */
-export const inject = ['sessions', 'remote', 'slots', 'locale']
+export const inject = ['sessions', 'remote', 'remote.session', 'slots', 'locale']
 
 function registerUi(ctx: ClientContext): void {
   const clientCtx = ctx as unknown as AgentTeamClientContext
@@ -64,6 +64,12 @@ function registerUi(ctx: ClientContext): void {
         childSessionId: member.id,
         mode: 'continuable',
       })
+    },
+    async readHtmlPreview(sessionId, path) {
+      return await ctx.remote.agentTeams.readHtmlPreview(leadSessionId(sessionId), { path })
+    },
+    async openWorkspacePath(path) {
+      return await ctx.remote.session.openWorkspacePath({ path })
     },
   }
 

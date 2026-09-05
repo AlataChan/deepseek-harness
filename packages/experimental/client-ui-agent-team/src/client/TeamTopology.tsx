@@ -11,6 +11,7 @@ import type { TeamKey } from './locales.ts'
 import css from './TeamAction.module.css'
 
 const TOPOLOGY_PREF_KEY = 'dsh.client.agent-team.topology'
+const MOTION_PREF_KEY = 'dsh.client.agent-team.reduceMotion'
 
 function readTopologyPref(): boolean {
   try {
@@ -28,6 +29,22 @@ function writeTopologyPref(enabled: boolean): void {
     sessionStorage.setItem(TOPOLOGY_PREF_KEY, enabled ? '1' : '0')
   } catch {
     /* ignore quota / privacy mode */
+  }
+}
+
+function readReduceMotion(): boolean {
+  try {
+    return localStorage.getItem(MOTION_PREF_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeReduceMotion(enabled: boolean): void {
+  try {
+    localStorage.setItem(MOTION_PREF_KEY, enabled ? '1' : '0')
+  } catch {
+    /* ignore */
   }
 }
 
@@ -61,6 +78,8 @@ export interface TeamTopologyCopy {
   empty: string
   edgeMessage: string
   edgeTask: string
+  motionReduce: string
+  motionFull: string
   memberStatus: (key: TeamKey) => string
 }
 
@@ -77,6 +96,7 @@ export interface TeamTopologyProps {
  */
 export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
   const [enabled, setEnabled] = useState(readTopologyPref)
+  const [reduceMotion, setReduceMotion] = useState(readReduceMotion)
   const [flashIds, setFlashIds] = useState<ReadonlySet<string>>(() => new Set())
   const [pulseNames, setPulseNames] = useState<ReadonlySet<string>>(() => new Set())
   const prevEdges = useRef<ReadonlySet<string>>(new Set())
@@ -100,7 +120,14 @@ export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
     }
     prevEdges.current = nextEdgeIds
     prevStatus.current = new Map(view.members.map(member => [member.name, member.status]))
-    if (appeared.length === 0 && nextPulse.size === 0) return
+    if (reduceMotion || (appeared.length === 0 && nextPulse.size === 0)) {
+      if (reduceMotion) {
+        setFlashIds(new Set())
+        setPulseNames(new Set())
+      }
+      if (appeared.length === 0 && nextPulse.size === 0) return
+      if (reduceMotion) return
+    }
     setFlashIds(new Set(appeared))
     setPulseNames(nextPulse)
     const timer = window.setTimeout(() => {
@@ -108,12 +135,20 @@ export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
       setPulseNames(new Set())
     }, 900)
     return () => { window.clearTimeout(timer) }
-  }, [view])
+  }, [view, reduceMotion])
 
   const toggle = (): void => {
     setEnabled((current) => {
       const next = !current
       writeTopologyPref(next)
+      return next
+    })
+  }
+
+  const toggleMotion = (): void => {
+    setReduceMotion((current) => {
+      const next = !current
+      writeReduceMotion(next)
       return next
     })
   }
@@ -130,6 +165,9 @@ export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
     <section className={css.topology} aria-label={copy.title}>
       <div className={css.topologyHeader}>
         <h3>{copy.title}</h3>
+        <button type="button" className={css.smallButton} onClick={toggleMotion}>
+          {reduceMotion ? copy.motionFull : copy.motionReduce}
+        </button>
         <button type="button" className={css.smallButton} onClick={toggle}>
           {enabled ? copy.hide : copy.show}
         </button>
@@ -141,7 +179,7 @@ export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
             <p className={css.topologyEmpty}>{copy.empty}</p>
           ) : (
             <div className={css.topologyCanvas}>
-              <svg className={css.topologySvg} viewBox={`0 0 ${Math.max(layoutNames.length, 1) * 120} 88`} aria-hidden>
+              <svg className={css.topologySvg} viewBox={`0 0 ${Math.max(layoutNames.length, 1) * 120} 120`} aria-hidden>
                 {view.interactions.map(edge => renderEdge(edge, indexByName, flashIds.has(edge.id), copy))}
               </svg>
               <div className={css.topologyNodes}>
@@ -193,6 +231,13 @@ function renderEdge(
         className={edge.kind === 'message' ? css.topologyEdgeMessage : css.topologyEdgeTask}
       />
       <text x={(x1 + x2) / 2} y={y - 6} className={css.topologyEdgeLabel}>{label}</text>
+      {flash && (
+        <circle
+          r={3.5}
+          className={css.topologyDot}
+          style={{ offsetPath: `path("M ${x1} ${y} L ${x2} ${y}")` }}
+        />
+      )}
     </g>
   )
 }
