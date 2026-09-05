@@ -20,5 +20,5 @@ Keep Archify as an explicit CTA (no silent generate). Treat HTML on disk + `ARCH
 ## Verification
 
 ```bash
-pnpm exec vitest run packages/experimental/client-ui-agent-team/tests/discover-archify-path.spec.ts packages/experimental/client-ui-agent-team/tests/team-action.client.spec.tsx
+pnpm exec vitest run packages/experimental/client-ui-agent-team/tests/discover-archify-path.client.spec.ts packages/experimental/client-ui-agent-team/tests/team-action.client.spec.tsx
 ```

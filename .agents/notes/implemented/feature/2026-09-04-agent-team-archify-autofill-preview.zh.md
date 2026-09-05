@@ -20,5 +20,5 @@ Status: implemented
 ## Verification
 
 ```bash
-pnpm exec vitest run packages/experimental/client-ui-agent-team/tests/discover-archify-path.spec.ts packages/experimental/client-ui-agent-team/tests/team-action.client.spec.tsx
+pnpm exec vitest run packages/experimental/client-ui-agent-team/tests/discover-archify-path.client.spec.ts packages/experimental/client-ui-agent-team/tests/team-action.client.spec.tsx
 ```
