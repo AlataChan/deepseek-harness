@@ -19,6 +19,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { NS, STARTER_TEMPLATES, type StarterTemplateId, type TeamKey } from './locales.ts'
 import { TeamTopology } from './TeamTopology.tsx'
 import { ArchifySummary } from './ArchifySummary.tsx'
+import { discoverArchifyPathFromViews } from './discoverArchifyPath.ts'
 import css from './TeamAction.module.css'
 
 /** Generated Remote result consumed directly by the Team UI. */
@@ -214,10 +215,14 @@ function templateBodyKey(id: StarterTemplateId): TeamKey {
 /** Render the live Team roster and compare-and-set task board. */
 export function TeamAction({
   sessionId, load, createTask, updateTask, openTeammate, readHtmlPreview, openWorkspacePath, t, inputActions,
+  useConversation,
 }: TeamActionProps) {
   const [open, setOpen] = useState(false)
   const [dockTab, setDockTab] = useState<'live' | 'summary'>('live')
   const [archifyGenerating, setArchifyGenerating] = useState(false)
+  const discoveredPath = useConversation(snapshot => discoverArchifyPathFromViews({
+    get: target => snapshot.views.get(target as never),
+  }))
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState<TeamView | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -601,8 +606,10 @@ export function TeamAction({
                 <ArchifySummary
                   sessionId={sessionId}
                   generating={archifyGenerating}
+                  discoveredPath={discoveredPath}
                   canFillPrompt={inputActions !== undefined}
                   onGenerate={fillArchify}
+                  onPreviewReady={() => { setArchifyGenerating(false) }}
                   readHtml={readHtmlPreview}
                   openPath={openWorkspacePath}
                   copy={{

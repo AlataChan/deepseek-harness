@@ -26,26 +26,28 @@ export const zh = {
   opsCollapse: '收起',
   opsExpand: '展开',
   archifyCtaTitle: '任务已全部完成',
-  archifyCtaHint: '点一下生成协作总结图（填入并发送 archify 话术）。生成后把路径贴到「总结图」页预览。',
+  archifyCtaHint: '点一下生成协作总结图（填入并发送）。跑完后路径会自动回填并刷新预览。',
   archifyCtaAction: '生成协作总结图',
   archifyCtaDismiss: '稍后',
   'archify.prompt':
     '加载 archify skill。根据本会话 Agent Team 的真实成员、任务依赖与消息往来，'
     + '生成一张「小队协作流水线」架构图 HTML（节点=成员，边=任务/消息），'
     + '保存到当前工作区。不要重新跑任务，不要编造成员或边。'
+    + '交付成功标准：HTML 已写入磁盘，且回复最后一行严格为 ARCHIFY_HTML_PATH: <文件路径>。'
+    + 'visual-check / Chrome 截图在桌面沙箱里常不可用：跳过或失败时不要写成交付失败，只需说明「自动截图不可用，请在总结图页查看」。'
     + '回复里给出可点击路径，并且最后一行必须严格为：ARCHIFY_HTML_PATH: <文件路径>',
   tabLive: '协作',
   tabSummary: '总结图',
   archifySummaryTitle: '总结图',
   archifySummaryHint:
-    '事后 Archify HTML。先点生成，等助理写完后把路径贴下方（或粘贴含 ARCHIFY_HTML_PATH 的整段回复），再加载预览；失败可用浏览器打开。',
-  archifyPathPlaceholder: 'HTML 路径或含 ARCHIFY_HTML_PATH 的文本',
+    '事后 Archify HTML。点生成后，助理回复里的 ARCHIFY_HTML_PATH 会自动回填并加载预览；也可手动改路径或用浏览器打开。',
+  archifyPathPlaceholder: 'HTML 路径（自动回填）',
   archifyLoadPreview: '加载预览',
   archifyOpenBrowser: '用浏览器打开',
   archifyPreviewFailed: '预览失败',
   archifyPreviewEmpty: '还没有可预览的 HTML',
   archifyGenerating: '已填入并发送…',
-  archifySummaryCtaHint: '一点即发送；跑完后粘贴路径到下方。',
+  archifySummaryCtaHint: '一点即发送；完成后自动回填路径并刷新预览。',
   topology: '协作关系',
   topologyHint: '与名单同一份数据：成员状态、消息往来边、任务依赖边；不含消息正文。舱打开时约每 1.5 秒自动刷新；也可手动刷新。',
   topologyShow: '显示关系图',
@@ -141,26 +143,28 @@ export const en = {
   opsCollapse: 'Collapse',
   opsExpand: 'Expand',
   archifyCtaTitle: 'All tasks completed',
-  archifyCtaHint: 'One click fills and sends the Archify prompt. Paste the path into the Summary tab to preview.',
+  archifyCtaHint: 'One click fills and sends Archify. When done, the path autofills and the preview refreshes.',
   archifyCtaAction: 'Generate collaboration diagram',
   archifyCtaDismiss: 'Later',
   'archify.prompt':
     'Load the archify skill. From this session’s Agent Team members, task dependencies, and message edges, '
     + 'produce a squad-pipeline architecture HTML (nodes = members, edges = tasks/messages), '
     + 'save it in the workspace. Do not re-run tasks or invent members/edges. '
+    + 'Success means the HTML is on disk and the last reply line is exactly ARCHIFY_HTML_PATH: <file-path>. '
+    + 'visual-check / Chrome screenshots often fail in the desktop sandbox: if skipped or failed, do not call delivery a failure — say screenshots are unavailable and the Summary tab preview is the review surface. '
     + 'Reply with a clickable path, and end with exactly: ARCHIFY_HTML_PATH: <file-path>',
   tabLive: 'Live',
   tabSummary: 'Summary',
   archifySummaryTitle: 'Summary diagram',
   archifySummaryHint:
-    'Post-hoc Archify HTML. Generate first, then paste the path (or text containing ARCHIFY_HTML_PATH) and load the preview; on failure open in the browser.',
-  archifyPathPlaceholder: 'HTML path or text with ARCHIFY_HTML_PATH',
+    'Post-hoc Archify HTML. After generate, ARCHIFY_HTML_PATH from the assistant reply autofills and loads the preview; you can still edit the path or open in the browser.',
+  archifyPathPlaceholder: 'HTML path (autofilled)',
   archifyLoadPreview: 'Load preview',
   archifyOpenBrowser: 'Open in browser',
   archifyPreviewFailed: 'Preview failed',
   archifyPreviewEmpty: 'No HTML to preview yet',
   archifyGenerating: 'Filled and sent…',
-  archifySummaryCtaHint: 'One click sends; paste the path below when done.',
+  archifySummaryCtaHint: 'One click sends; path autofills and preview refreshes when done.',
   topology: 'Collaboration map',
   topologyHint: 'Same TeamView as the roster: member status, message edges, and task-dependency edges — no message bodies. Soft-refreshes about every 1.5s while the dock is open; manual refresh still works.',
   topologyShow: 'Show map',

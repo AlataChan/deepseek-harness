@@ -77,7 +77,47 @@ function remoteFailure(message: string): TeamActionResult<never> {
   return { ok: false, error: new RemoteError('gateway/internal', message, {}) }
 }
 
-function props(actions: TeamActionInjected, sessionId: SessionId = SESSION): TeamActionProps {
+function emptyConversation() {
+  return {
+    views: { get: (_target: string) => undefined },
+    activeTargets: new Set<string>(),
+  }
+}
+
+function chatWithArchifyPath(path: string) {
+  return {
+    order: ['assistant-1'],
+    nodes: {
+      get(key: string) {
+        if (key !== 'assistant-1') return undefined
+        return {
+          kind: 'assistant',
+          data: {
+            blocks: [{ kind: 'text', text: `done\nARCHIFY_HTML_PATH: ${path}` }],
+          },
+        }
+      },
+      values() {
+        return [this.get('assistant-1')]
+      },
+    },
+    legacy: { partial: null },
+  }
+}
+
+function props(
+  actions: TeamActionInjected,
+  sessionId: SessionId = SESSION,
+  options: { chat?: unknown } = {},
+): TeamActionProps {
+  const conversation = {
+    views: {
+      get(target: string) {
+        return target === 'chat' ? options.chat : undefined
+      },
+    },
+    activeTargets: new Set<string>(),
+  }
   return {
     sessionId,
     ...actions,
@@ -88,6 +128,9 @@ function props(actions: TeamActionInjected, sessionId: SessionId = SESSION): Tea
       pruneImages: () => {},
       submit: () => {},
     },
+    useConversation: (select: (value: typeof conversation) => unknown) => select(
+      options.chat === undefined ? emptyConversation() as typeof conversation : conversation,
+    ),
     t: makeTranslate(zh, commonZh),
   } as unknown as TeamActionProps
 }
@@ -223,6 +266,30 @@ describe('TeamAction', () => {
     await waitFor(() => {
       expect(readHtmlPreview).toHaveBeenCalledWith(SESSION, 'notes/out.html')
     })
+    expect(screen.getByTitle(zh.archifySummaryTitle)).toBeTruthy()
+    expect(createObjectURL).toHaveBeenCalled()
+  })
+
+  it('autofills ARCHIFY_HTML_PATH from chat and loads the summary preview', async () => {
+    const readHtmlPreview = vi.fn(() => Promise.resolve({
+      ok: true as const,
+      value: {
+        path: '/Users/apple/self-evol-lab/team-pipeline.html',
+        html: '<!doctype html><html><body>auto</body></html>',
+      },
+    }))
+    const createObjectURL = vi.fn(() => 'blob:team-archify-auto')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+    const path = '/Users/apple/self-evol-lab/team-pipeline.html'
+    render(<TeamAction {...props(actions({ readHtmlPreview }), SESSION, { chat: chatWithArchifyPath(path) })} />)
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
+    fireEvent.click(await screen.findByRole('tab', { name: zh.tabSummary }))
+    await waitFor(() => {
+      expect(readHtmlPreview).toHaveBeenCalledWith(SESSION, path)
+    })
+    const input = screen.getByPlaceholderText(zh.archifyPathPlaceholder) as HTMLInputElement
+    expect(input.value).toBe(path)
     expect(screen.getByTitle(zh.archifySummaryTitle)).toBeTruthy()
     expect(createObjectURL).toHaveBeenCalled()
   })
