@@ -1,0 +1,19 @@
+{
+  "steps": [
+    {
+      "op": "initialize"
+    },
+    {
+      "op": "newSession"
+    },
+    {
+      "op": "prompt",
+      "text": "Use only the commerce tools. Call commerce_load_sample, then commerce_get_listing for P-100. Stage one price change for P-100 to 21.90 with the summary 'Raise jasmine tea to 21.90'. Then call commerce_export_changes with that change id and platform sample. I will approve the permission prompt. After the export result, reply with the single word DONE and stop."
+    }
+  ],
+  "permissionAnswers": [
+    {
+      "kind": "allow_once"
+    }
+  ]
+}

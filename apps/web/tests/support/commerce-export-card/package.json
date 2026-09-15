@@ -1,0 +1,8 @@
+{
+  "name": "@deepseek-ai/dsh-web-e2e-commerce-export-card",
+  "private": true,
+  "description": "Web e2e install anchor: its dependency closure supplies the experimental commerce rows named by commerce-export-card.overlay.yml.",
+  "dependencies": {
+    "@deepseek-ai/dsh-experimental-commerce-mode": "workspace:^"
+  }
+}

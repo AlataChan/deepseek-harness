@@ -1,0 +1,9 @@
+version: 1
+scenario: commerce-export-card
+profile: web
+composition: acp-commerce
+recording: authored
+header:
+  class: acp-commerce
+session:
+  source: ../../acp/commerce-export-approved/session.jsonl

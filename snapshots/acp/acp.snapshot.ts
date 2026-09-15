@@ -40,6 +40,21 @@ const controllerCases: readonly {
     hasModelTurn: true,
     configPath: join(corpusDir, 'image-compaction', 'cordis.yml'),
   },
+  {
+    name: 'commerce-export-approved',
+    hasModelTurn: true,
+    configPath: join(corpusDir, 'commerce-export-approved', 'cordis.yml'),
+  },
+  {
+    name: 'commerce-export-rejected',
+    hasModelTurn: true,
+    configPath: join(corpusDir, 'commerce-export-approved', 'cordis.yml'),
+  },
+  {
+    name: 'commerce-poisoned-review',
+    hasModelTurn: true,
+    configPath: join(corpusDir, 'commerce-export-approved', 'cordis.yml'),
+  },
 ] as const
 
 function localScenarioSource(source: string | undefined): string | undefined {

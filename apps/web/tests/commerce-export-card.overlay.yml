@@ -1,16 +1,14 @@
-# Commerce composition for automation profiles. The headless and SDK bundles
-# compose no agent preset roster, so the experimental Provider and its tool
-# Consumer mount at the Host root; sources live under the scenario DSH_HOME.
+# Commerce rows the approved ACP recording composed, mounted at the Host root
+# over the scaffold's stable base and Web bundles: the Provider accepts the
+# seeded `commerce/bound` event, and the root tool Consumer registers the
+# `commerceSession` projection the export card's ledger line reads. The
+# experimental package's `./client` face renders the commerce tool cards.
 - insert:
     - id: commerce-mode
       name: '@deepseek-ai/dsh-experimental-commerce-mode'
       config:
         sourcesRoot: !!js dshHomePath('commerce-sources')
         platforms:
-          taobao:
-            orders: { order_id: 订单编号, listing_id: 商品ID, quantity: 数量, gross_sales: 实付金额, currency: 币种, ordered_at: 下单时间 }
-            products: { listing_id: 商品ID, title: 商品标题, sku: 商家编码, status: 状态, parent_id: 父商品ID, price: 价格, description: 宝贝描述 }
-            inventory: { listing_id: 商品ID, available: 可用库存, low_stock_threshold: 低库存阈值 }
           sample:
             orders: { order_id: order, listing_id: listing, quantity: quantity, gross_sales: sales, currency: currency, ordered_at: date }
             products: { listing_id: listing, title: title, sku: sku, status: status, parent_id: parent, price: price, description: description }

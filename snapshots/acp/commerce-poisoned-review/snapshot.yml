@@ -1,0 +1,8 @@
+version: 1
+scenario: commerce-poisoned-review
+profile: acp
+composition: acp-commerce
+recording: live
+header:
+  class: acp-commerce
+permission: workspace-write

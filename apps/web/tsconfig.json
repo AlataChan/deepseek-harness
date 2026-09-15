@@ -106,7 +106,8 @@
     "tests/complex-history.perf.ts",
     "tests/pwsh-terminal.e2e.ts",
     "tests/workflow-run.e2e.ts",
-    "tests/ask-knowledge-picker.e2e.ts"
+    "tests/ask-knowledge-picker.e2e.ts",
+    "tests/commerce-export-card.e2e.ts"
   ],
   "references": [
     {

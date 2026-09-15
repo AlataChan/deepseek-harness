@@ -1,0 +1,106 @@
+- banner:
+  - navigation "Session hierarchy":
+    - button "Use only the commerce tools." [disabled]
+  - button "Session log":
+    - text: Session log
+    - img
+  - tablist:
+    - tab "Chat" [selected]
+    - tab "Trajectory"
+- button "System prompt":
+  - img
+  - img
+  - text: System prompt
+- text: Use only the commerce tools. Call commerce_load_sample, then commerce_get_listing for P-100. Stage one price change for P-100 to 21.90 with the summary 'Raise jasmine tea to 21.90'. Then call commerce_export_changes with that change id and platform sample. I will approve the permission prompt. After the export result, reply with the single word DONE and stop. {{clock}}
+- button "Copy":
+  - img
+- button "4 tool calls · 3 messages" [expanded]:
+  - text: 4 tool calls · 3 messages
+  - img
+- button "Context injection @deepseek-ai/dsh-system-prompt":
+  - img
+  - img
+  - text: Context injection @deepseek-ai/dsh-system-prompt
+- button "Think The user wants me to load the sample, get listing P-100, stage a price change, then export. Also they want me to reply with just \"DONE\" and stop.":
+  - img
+  - img
+  - text: Think The user wants me to load the sample, get listing P-100, stage a price change, then export. Also they want me to reply with just "DONE" and stop.
+- paragraph: I'll start by loading the sample and reading the listing.
+- 'button "Tool call commerce_load_sample · {}"':
+  - img
+  - img
+  - text: "Tool call commerce_load_sample · {}"
+- button "Tool call commerce_get_listing · P-100":
+  - img
+  - img
+  - text: Tool call commerce_get_listing · P-100
+- button "Think Sample loaded, listing P-100 with current price 19.90. Stage price change to 21.90.":
+  - img
+  - img
+  - text: Think Sample loaded, listing P-100 with current price 19.90. Stage price change to 21.90.
+- paragraph: Sample loaded; P-100 (Jasmine Green Tea) is currently 19.90. Staging the price change now.
+- button "Stage change chg-0001 · Price change · Raise jasmine tea to 21.90" [expanded]:
+  - img
+  - text: Stage change chg-0001 · Price change · Raise jasmine tea to 21.90
+- region "Change details":
+  - text: Change details
+  - table:
+    - rowgroup:
+      - row "Listing Field Before After":
+        - columnheader "Listing"
+        - columnheader "Field"
+        - columnheader "Before"
+        - columnheader "After"
+    - rowgroup:
+      - row "P-100 price 19.9 21.9":
+        - cell "P-100"
+        - cell "price"
+        - cell "19.9"
+        - cell "21.9"
+- paragraph: "Current ledger: 0 staged · 1 exported · 0 discarded"
+- button "Inspect"
+- 'button "Think Now export with change id chg-0001 and platform sample. The user says they will approve the permission prompt. Note: export writes a CSV after merchant approves. The user is the merchant and has stated they''ll approve. Let me call export."':
+  - img
+  - img
+  - text: "Think Now export with change id chg-0001 and platform sample. The user says they will approve the permission prompt. Note: export writes a CSV after merchant approves. The user is the merchant and has stated they'll approve. Let me call export."
+- paragraph: Change staged (19.90 → 21.90). Requesting the export now.
+- button "Export changes 1 exported · commerce-exports/b78cf93b2a6432b4.csv" [expanded]:
+  - img
+  - text: Export changes 1 exported · commerce-exports/b78cf93b2a6432b4.csv
+- region "Export file":
+  - text: Export file
+  - code: commerce-exports/b78cf93b2a6432b4.csv
+  - button "Open"
+  - paragraph: "Changes: chg-0001"
+  - paragraph: Nothing was sent to a store; the merchant uploads this file.
+- paragraph: "Current ledger: 0 staged · 1 exported · 0 discarded"
+- button "Inspect"
+- paragraph: DONE
+- button "Copy":
+  - img
+- button "Good response":
+  - img
+- button "Bad response":
+  - img
+- button "Branch into a new conversation":
+  - img
+- button "Usage 42.7K tok":
+  - img
+  - text: Usage 42.7K tok
+- button "Ran for {{duration}}":
+  - img
+  - text: Ran for {{duration}}
+- text: {{clock}}
+- button "Back to bottom":
+  - img
+- textbox "Message or run a task... / commands, @ files or sessions"
+- button "Add":
+  - img
+- button "Commands"
+- 'button "Access mode, current: Workspace Write"': Workspace Write
+- button "Select model, current DeepSeek-V4-Flash":
+  - text: DeepSeek-V4-Flash
+  - img
+- button "1% of context used"
+- button "Send message" [disabled]
+- text: 1 turns · 4 steps LLM {{duration}} · Tool call {{duration}} TTFT avg {{duration}} · {{throughput}} tok/s Cache hit 74% Input 42.1K tok · Output 545 tok

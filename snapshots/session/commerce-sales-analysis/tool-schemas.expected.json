@@ -62,6 +62,50 @@
       }
     },
     {
+      "name": "commerce_discard_change",
+      "description": "Discard one staged change so it is not exported. The change stays in the session ledger as discarded.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "change_id": {
+            "type": "string",
+            "description": "Change id returned by a staging tool."
+          }
+        },
+        "required": [
+          "change_id"
+        ]
+      }
+    },
+    {
+      "name": "commerce_export_changes",
+      "description": "Write staged commerce changes to a CSV file in this session workspace after the merchant approves. Nothing is sent to a store; the merchant uploads the file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "change_ids": {
+            "type": "array",
+            "description": "Staged change ids to export.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "platform": {
+            "type": "string",
+            "description": "Platform mapping whose column headers the CSV uses.",
+            "enum": [
+              "taobao",
+              "sample"
+            ]
+          }
+        },
+        "required": [
+          "change_ids",
+          "platform"
+        ]
+      }
+    },
+    {
       "name": "commerce_get_listing",
       "description": "Read one complete product listing from the commerce source bound to this session.",
       "parameters": {
@@ -162,6 +206,211 @@
         },
         "required": [
           "limit"
+        ]
+      }
+    },
+    {
+      "name": "commerce_stage_campaign",
+      "description": "Stage a new dated marketing campaign with a budget for merchant review. Staging changes nothing in the store.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "One sentence the merchant reads when reviewing this change."
+          },
+          "name": {
+            "type": "string",
+            "description": "Campaign name."
+          },
+          "budget": {
+            "type": "number",
+            "description": "Total campaign budget in the store currency."
+          },
+          "starts_on": {
+            "type": "string",
+            "description": "First campaign day, YYYY-MM-DD."
+          },
+          "ends_on": {
+            "type": "string",
+            "description": "Last campaign day, YYYY-MM-DD."
+          },
+          "listing_ids": {
+            "type": "array",
+            "description": "Listing ids the campaign promotes, returned by a commerce read; may be empty.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "summary",
+          "name",
+          "budget",
+          "starts_on",
+          "ends_on",
+          "listing_ids"
+        ]
+      }
+    },
+    {
+      "name": "commerce_stage_listing_update",
+      "description": "Stage a content edit to one product listing in the bound commerce source for merchant review. Staging changes nothing in the store.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "Listing id read in full with commerce_get_listing."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One sentence the merchant reads when reviewing this change."
+          },
+          "fields": {
+            "type": "array",
+            "description": "One entry per listing field to change.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "description": "Listing field name, such as title or description."
+                },
+                "value": {
+                  "type": "string",
+                  "description": "New text for the field."
+                }
+              },
+              "required": [
+                "field",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "listing_id",
+          "summary",
+          "fields"
+        ]
+      }
+    },
+    {
+      "name": "commerce_stage_price_change",
+      "description": "Stage new prices for listings in the bound commerce source for merchant review. Current prices come from the source; staging changes nothing in the store.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "One sentence the merchant reads when reviewing this change."
+          },
+          "items": {
+            "type": "array",
+            "description": "One line per listing.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "listing_id": {
+                  "type": "string",
+                  "description": "Listing id returned by a commerce read."
+                },
+                "price": {
+                  "type": "number",
+                  "description": "New price in the listing currency."
+                }
+              },
+              "required": [
+                "listing_id",
+                "price"
+              ]
+            }
+          }
+        },
+        "required": [
+          "summary",
+          "items"
+        ]
+      }
+    },
+    {
+      "name": "commerce_stage_promotion",
+      "description": "Stage a dated percentage discount on listings in the bound commerce source for merchant review. Promotion prices are computed from current source prices; staging changes nothing in the store.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "One sentence the merchant reads when reviewing this change."
+          },
+          "listing_ids": {
+            "type": "array",
+            "description": "Listing ids returned by a commerce read.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "discount_pct": {
+            "type": "number",
+            "description": "Discount off each current price, in percent."
+          },
+          "starts_on": {
+            "type": "string",
+            "description": "First promotion day, YYYY-MM-DD."
+          },
+          "ends_on": {
+            "type": "string",
+            "description": "Last promotion day, YYYY-MM-DD."
+          }
+        },
+        "required": [
+          "summary",
+          "listing_ids",
+          "discount_pct",
+          "starts_on",
+          "ends_on"
+        ]
+      }
+    },
+    {
+      "name": "commerce_stage_restock",
+      "description": "Stage inventory additions for listings in the bound commerce source for merchant review. Current stock comes from the imported inventory table; staging changes nothing in the store.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "One sentence the merchant reads when reviewing this change."
+          },
+          "items": {
+            "type": "array",
+            "description": "One line per listing.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "listing_id": {
+                  "type": "string",
+                  "description": "Listing id returned by a commerce read."
+                },
+                "quantity": {
+                  "type": "integer",
+                  "description": "Units to add to the current stock."
+                }
+              },
+              "required": [
+                "listing_id",
+                "quantity"
+              ]
+            }
+          }
+        },
+        "required": [
+          "summary",
+          "items"
         ]
       }
     },

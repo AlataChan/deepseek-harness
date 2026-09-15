@@ -1,16 +1,21 @@
-# Commerce composition for automation profiles. The headless and SDK bundles
-# compose no agent preset roster, so the experimental Provider and its tool
-# Consumer mount at the Host root; sources live under the scenario DSH_HOME.
+# ACP commerce snapshot-record patch, applied after the default ACP snapshot
+# patch (`escalation-approved/cordis.yml`). The ACP bundle composes no agent
+# preset roster, so the experimental Provider and its tool Consumer mount at
+# the Host root; sources live under the scenario DSH_HOME and exports land in
+# the session workspace. `cordis.snapshot.yml` restates this complete delta.
+
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    persona: |
+      You are a commerce operations assistant powered by the {{model}} model. Your working directory is {{cwd}}. Ground every figure in the bound store export and stage changes for merchant review; an export writes a CSV file only after the merchant approves it.
+
 - insert:
     - id: commerce-mode
       name: '@deepseek-ai/dsh-experimental-commerce-mode'
       config:
         sourcesRoot: !!js dshHomePath('commerce-sources')
         platforms:
-          taobao:
-            orders: { order_id: 订单编号, listing_id: 商品ID, quantity: 数量, gross_sales: 实付金额, currency: 币种, ordered_at: 下单时间 }
-            products: { listing_id: 商品ID, title: 商品标题, sku: 商家编码, status: 状态, parent_id: 父商品ID, price: 价格, description: 宝贝描述 }
-            inventory: { listing_id: 商品ID, available: 可用库存, low_stock_threshold: 低库存阈值 }
           sample:
             orders: { order_id: order, listing_id: listing, quantity: quantity, gross_sales: sales, currency: currency, ordered_at: date }
             products: { listing_id: listing, title: title, sku: sku, status: status, parent_id: parent, price: price, description: description }

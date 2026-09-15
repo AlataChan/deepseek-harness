@@ -1,0 +1,19 @@
+{
+  "steps": [
+    {
+      "op": "initialize"
+    },
+    {
+      "op": "newSession"
+    },
+    {
+      "op": "prompt",
+      "text": "Use only the commerce tools. Call commerce_load_sample, then commerce_get_listing for P-100. Stage one price change for P-100 to 21.90 with the summary 'Raise jasmine tea to 21.90'. Then call commerce_export_changes with that change id and platform sample. I will reject the permission prompt; after the rejection, do not retry and do not work around it. Reply with the single word REJECTED and stop."
+    }
+  ],
+  "permissionAnswers": [
+    {
+      "kind": "reject_once"
+    }
+  ]
+}

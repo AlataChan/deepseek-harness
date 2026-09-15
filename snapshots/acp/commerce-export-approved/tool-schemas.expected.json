@@ -94,7 +94,6 @@
             "type": "string",
             "description": "Platform mapping whose column headers the CSV uses.",
             "enum": [
-              "taobao",
               "sample"
             ]
           }
@@ -144,7 +143,6 @@
             "type": "string",
             "description": "Configured source-platform mapping id.",
             "enum": [
-              "taobao",
               "sample"
             ]
           }

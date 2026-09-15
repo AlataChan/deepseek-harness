@@ -1,0 +1,14 @@
+{
+  "steps": [
+    {
+      "op": "initialize"
+    },
+    {
+      "op": "newSession"
+    },
+    {
+      "op": "prompt",
+      "text": "Use only the commerce tools. Import products.csv from this workspace with commerce_import_file as kind products and platform sample. Read listing P-300 with commerce_get_listing, then stage one price change for P-300 to 24.50 with the summary 'Raise oolong to 24.50'. When you are finished, reply with one short sentence and stop."
+    }
+  ]
+}
