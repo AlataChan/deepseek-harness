@@ -48,6 +48,8 @@ import {
 import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
+// Side-effect type import: declaration-merges the Loader service read at the readiness boundary.
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 // Side-effect type import: declaration-merges the approval waterfall answered below.
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { supportsAcpImagePrompts } from './content.ts'
@@ -174,6 +176,13 @@ export function apply(ctx: Context, config: AcpConfig): void {
 
   const implementation = {
     async initialize(_params: InitializeRequest): Promise<InitializeResponse> {
+      // `initialize` is the ACP readiness boundary. This plugin can activate
+      // before async sibling Loader entries (for example a Provider whose load
+      // probes gate its service and the tools that inject it), so answer only
+      // after the complete current tree has settled; otherwise the first prompt
+      // can reach the model without those tools. A hand-built context without
+      // Loader remains immediately usable.
+      await ctx.get('loader')?.await()
       // Single-version agent: the spec's "same version if supported, else
       // the latest supported" both resolve to this server's one version.
       imagePromptEnabled = await supportsAcpImagePrompts(ctx, config.provider, config.model)

@@ -61,7 +61,7 @@ kind: "package-reference"
 
 | 调用 | 你会得到什么 |
 |---|---|
-| `initialize` | 稳定 ACP v1，以及 `session/list`、`session/resume`、`session/close` 与 Streamable HTTP MCP 支持；图片提示词只在持久附件存储和配置的确切路由支持时公布。 |
+| `initialize` | 只在组合的插件树完成加载后应答，因此异步挂载的工具会在首个提示词之前注册；稳定 ACP v1，以及 `session/list`、`session/resume`、`session/close` 与 Streamable HTTP MCP 支持；图片提示词只在持久附件存储和配置的确切路由支持时公布。 |
 | `authenticate` | 立即成功；服务器不需要身份验证。 |
 | `session/new` | 全新持久 agent；其绝对工作区与 stdio 或 HTTP MCP 服务器会在发布前通过校验，并返回完整配置选项状态。 |
 | `session/list` | 按确定的新到旧顺序分页返回已持久、可恢复的根会话；可选绝对 `cwd` 筛选会尽可能使用物理目录标识。 |
