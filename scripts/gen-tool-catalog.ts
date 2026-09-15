@@ -59,6 +59,7 @@ import * as ToolSkill from '@deepseek-ai/dsh-tool-skill'
 import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
 import type TeamService from '@deepseek-ai/dsh-experimental-agent-team'
+import * as CommerceTools from '@deepseek-ai/dsh-experimental-commerce-mode/tools'
 import * as ToolTeam from '@deepseek-ai/dsh-experimental-tool-agent-team'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
 import * as ToolSubagent from '@deepseek-ai/dsh-tool-subagent'
@@ -508,14 +509,39 @@ const TOOL_PACKAGES: ToolPackage[] = [
       'The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers\' `ctx.jobs.start()`.',
   },
   {
+    pkg: '@deepseek-ai/dsh-experimental-commerce-mode',
+    dir: 'commerce-mode',
+    source: 'packages/experimental/commerce-mode/src/tools/index.ts',
+    requires: ['ctx.tools', 'ctx.commerce', 'ctx.fs', 'ctx.sessionProjections', 'a direct calling Agent'],
+    writes: ['tool/call', 'commerce/bound on the first import', 'tool/result with read provenance metadata'],
+    async mount(ctx) {
+      await ctx.plugin(LocalFileSystem, { cwd: root })
+      ctx.provide('commerce', {
+        platforms: () => ['taobao', 'pinduoduo', 'douyin-shop', 'youzan', 'sample'],
+      } as unknown as Context['commerce'])
+      await mountCatalogChildScope(ctx, (childCtx) => {
+        childCtx.plugin(CommerceTools, {
+          maxResultChars: 50_000,
+          maxListingIds: 200,
+          maxMetaBytes: 16_384,
+          maxImportBytes: 33_554_432,
+        })
+      }, undefined, ['tools', 'commerce', 'fs', 'sessionProjections'])
+    },
+    scope: ctx => catalogChildScopes.get(ctx) as Agent,
+    note:
+      'The `./preset` row mounts the seven tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import tools are exclusive; read tools are concurrency-safe and require a session binding created by an import.',
+  },
+  {
     pkg: '@deepseek-ai/dsh-experimental-tool-agent-team',
     dir: 'tool-agent-team',
     source: 'packages/experimental/tool-agent-team/src/index.ts',
-    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.agentTeams', 'an exact live Team member Agent'],
+    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.agentTeams', 'ctx.userQuestions', 'an exact live Team member Agent'],
     writes: ['tool/call', 'team/member', 'team/message/queued', 'team/message/delivered', 'team/task', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(AgentRegistry)
       await ctx.plugin(SessionStore)
+      await ctx.plugin(UserQuestionService)
       const session = ctx.sessions.create(SessionId('tool-catalog-team-lead'))
       let agent!: Agent
       const membership = {
@@ -543,7 +569,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     scope: ctx => catalogChildScopes.get(ctx) as Agent,
     note:
-      'All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.',
+      'All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-todo',

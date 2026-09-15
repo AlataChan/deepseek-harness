@@ -8,6 +8,10 @@ octopus_DSH 私有 overlay：[`ctx.askData`](../../host/ask-data/README.zh.md) �
 
 硬限制集中在 `src/limits.ts`，出现在页首、上传旁、预览、失败恢复和模型可见段落。本机没有 `sqlite3` 时只禁用上传；`importSample` 复制 `samples/sample-sales.sqlite`。向该文件提问仍需要 data-agent 的 `sqlite3` CLI。
 
+## 复用表格导入
+
+其他 workspace 包从 `@deepseek-ai/dsh-experimental-desktop-ask-data/spreadsheet` 导入，而不使用源码路径。这个受支持入口公开表格解析、扩展名检测、SQLite 表写入与预览读取、SQL 标识符引用、`ParsedWorkbook` 与 `ImportedTable` 类型，以及允许扩展名、解码文件、总行数和解码单元格限制。解析与 SQLite 失败仍是 `AskDataError` 值，其错误码由 [`dsh-host-ask-data`](../../host/ask-data/README.zh.md) 声明；公开常量是问数的解码器限制，而不是 Consumer 专属配置。
+
 ## 配置
 
 ```yaml

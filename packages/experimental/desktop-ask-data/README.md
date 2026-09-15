@@ -8,6 +8,10 @@ The path is data first. 「问数」stages `data-agent` with `hold` and opens th
 
 Hard limits live in `src/limits.ts` and appear on the page lead, beside upload, on preview, on failure recovery, and in the model-visible paragraph. Missing host `sqlite3` disables upload only; `importSample` copies `samples/sample-sales.sqlite`. Asking that file still needs data-agent's `sqlite3` CLI.
 
+## Reuse spreadsheet import
+
+Other workspace packages import `@deepseek-ai/dsh-experimental-desktop-ask-data/spreadsheet` instead of source paths. This supported entry exposes spreadsheet parsing, extension detection, SQLite table writing and preview reads, SQL identifier quoting, the `ParsedWorkbook` and `ImportedTable` types, and the accepted-extension, decoded-file, total-row, and decoded-cell limits. Parsing and SQLite failures remain `AskDataError` values with the codes declared by [`dsh-host-ask-data`](../../host/ask-data/README.md); the exported constants are Ask Data's decoder limits rather than Consumer-specific configuration.
+
 ## Config
 
 ```yaml

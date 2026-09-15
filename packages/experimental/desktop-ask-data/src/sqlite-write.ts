@@ -61,14 +61,16 @@ async function importWhich(): Promise<{ default: string | undefined }> {
  * @param sqlitePath - destination file.
  * @param tables - tables to create.
  * @param signal - caller lifetime.
+ * @param sqlite3Path - resolved sqlite3 executable override.
  * @returns after chmod / readonly probe.
  */
 export async function writeSqliteFile(
   sqlitePath: string,
   tables: readonly ImportedTable[],
   signal?: AbortSignal,
+  sqlite3Path?: string,
 ): Promise<void> {
-  const command = await findSqlite3()
+  const command = sqlite3Path ?? await findSqlite3()
   if (command === undefined) {
     throw new AskDataError('sqlite3-missing', 'sqlite3 is not on PATH', { ruleId: 'sqlite3-missing' })
   }

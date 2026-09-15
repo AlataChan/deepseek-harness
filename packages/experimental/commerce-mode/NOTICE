@@ -1,0 +1,11 @@
+@deepseek-ai/dsh-experimental-commerce-mode
+
+Skill text under preset/commerce/skills/ is adapted from Claude Commerce Agents
+(https://github.com/anthropics/commerce-agents), which is licensed under the
+Apache License, Version 2.0. A copy of that license is included at
+preset/commerce/LICENSE-APACHE-2.0.txt.
+
+- preset/commerce/skills/commerce-sales-analysis/SKILL.md is adapted from
+  merchant-agent/skills/performance-insights/SKILL.md. It is rewritten for this
+  package's commerce_* tools; guidance on memory, metric presentation
+  components, and follow-up chips is removed.

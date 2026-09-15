@@ -1,0 +1,90 @@
+{
+  "name": "@deepseek-ai/dsh-experimental-commerce-mode",
+  "description": "Experimental file-backed commerce source provider, commerce tools, and preset-scoped tool mount",
+  "version": "0.1.2-rc.1",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/commerce-mode"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./tools": {
+      "types": "./lib/types/tools/index.d.ts",
+      "default": "./lib/tools.js"
+    },
+    "./preset": {
+      "types": "./lib/types/preset/index.d.ts",
+      "default": "./lib/preset.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "cordis.patch.yml",
+    "lib/tools.js",
+    "lib/preset.js",
+    "NOTICE",
+    "preset/**",
+    "samples/**",
+    "lib/types/**/*.d.ts"
+  ],
+  "scripts": {
+    "bundle": "tsdown"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/dsh-atomic-write": "workspace:^",
+    "@deepseek-ai/dsh-experimental-desktop-ask-data": "workspace:^",
+    "@deepseek-ai/schemastery": "workspace:^",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-agent-presets": "workspace:^",
+    "@deepseek-ai/dsh-fence-policy": "workspace:^",
+    "@deepseek-ai/dsh-fs": "workspace:^",
+    "@deepseek-ai/dsh-home-paths": "workspace:^",
+    "@deepseek-ai/dsh-host-commerce": "workspace:^",
+    "@deepseek-ai/dsh-sandbox": "workspace:^",
+    "@deepseek-ai/dsh-scope": "workspace:^",
+    "@deepseek-ai/dsh-session-projection": "workspace:^",
+    "@deepseek-ai/dsh-subprocess": "workspace:^",
+    "@deepseek-ai/dsh-tools": "workspace:^"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/cordis-plugin-include": "workspace:^",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
+    "@deepseek-ai/dsh-agent": "workspace:^",
+    "@deepseek-ai/dsh-agent-loop": "workspace:^",
+    "@deepseek-ai/dsh-agent-presets": "workspace:^",
+    "@deepseek-ai/dsh-fence-policy": "workspace:^",
+    "@deepseek-ai/dsh-fs": "workspace:^",
+    "@deepseek-ai/dsh-fs-local": "workspace:^",
+    "@deepseek-ai/dsh-home-paths": "workspace:^",
+    "@deepseek-ai/dsh-host-commerce": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-sandbox": "workspace:^",
+    "@deepseek-ai/dsh-scope": "workspace:^",
+    "@deepseek-ai/dsh-session": "workspace:^",
+    "@deepseek-ai/dsh-session-projection": "workspace:^",
+    "@deepseek-ai/dsh-system-prompt": "workspace:^",
+    "@deepseek-ai/dsh-subprocess": "workspace:^",
+    "@deepseek-ai/dsh-subprocess-local": "workspace:^",
+    "@deepseek-ai/dsh-tools": "workspace:^"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

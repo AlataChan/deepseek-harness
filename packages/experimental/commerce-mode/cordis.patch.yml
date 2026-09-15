@@ -1,0 +1,40 @@
+- insert:
+    - id: commerce-mode
+      name: '@deepseek-ai/dsh-experimental-commerce-mode'
+      config:
+        sourcesRoot: !!js dshHomePath('commerce-sources')
+        platforms:
+          taobao:
+            orders: { order_id: 订单编号, listing_id: 商品ID, quantity: 数量, gross_sales: 实付金额, currency: 币种, ordered_at: 下单时间 }
+            products: { listing_id: 商品ID, title: 商品标题, sku: 商家编码, status: 状态, parent_id: 父商品ID }
+            inventory: { listing_id: 商品ID, available: 可用库存, low_stock_threshold: 低库存阈值 }
+          pinduoduo:
+            orders: { order_id: 订单号, listing_id: 商品id, quantity: 商品数量, gross_sales: 商家实收金额, currency: 币种, ordered_at: 成团时间 }
+            products: { listing_id: 商品id, title: 商品名称, sku: 商家编码, status: 商品状态, parent_id: 父商品id }
+            inventory: { listing_id: 商品id, available: 可售库存, low_stock_threshold: 低库存阈值 }
+          douyin-shop:
+            orders: { order_id: 订单号, listing_id: 商品ID, quantity: 购买数量, gross_sales: 订单应付金额, currency: 币种, ordered_at: 下单时间 }
+            products: { listing_id: 商品ID, title: 商品名称, sku: 商家编码, status: 商品状态, parent_id: 父商品ID }
+            inventory: { listing_id: 商品ID, available: 可售库存, low_stock_threshold: 低库存阈值 }
+          youzan:
+            orders: { order_id: 订单号, listing_id: 商品编码, quantity: 商品数量, gross_sales: 实付金额, currency: 币种, ordered_at: 下单时间 }
+            products: { listing_id: 商品编码, title: 商品名称, sku: 商家编码, status: 商品状态, parent_id: 父商品编码 }
+            inventory: { listing_id: 商品编码, available: 可售库存, low_stock_threshold: 低库存阈值 }
+          sample:
+            orders: { order_id: order, listing_id: listing, quantity: quantity, gross_sales: sales, currency: currency, ordered_at: date }
+            products: { listing_id: listing, title: title, sku: sku, status: status, parent_id: parent }
+            inventory: { listing_id: listing, available: available, low_stock_threshold: threshold }
+        analysis:
+          maxRows: 500
+          maxOutputBytes: 1048576
+          timeoutMs: 10000
+          graceMs: 1000
+        lockWaitMs: 60000
+
+    - id: commerce-preset
+      name: '@deepseek-ai/dsh-experimental-commerce-mode/preset'
+      config:
+        maxResultChars: 50000
+        maxListingIds: 200
+        maxMetaBytes: 16384
+        maxImportBytes: 33554432

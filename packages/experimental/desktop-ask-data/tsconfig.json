@@ -14,6 +14,7 @@
     "src/prompt-limits.ts",
     "src/saved-connections.ts",
     "src/sources.ts",
+    "src/spreadsheet.ts",
     "src/sqlite-write.ts",
     "src/zip-scan.ts"
   ],

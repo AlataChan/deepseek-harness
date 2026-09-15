@@ -87,4 +87,21 @@ describe('package payload constraints', () => {
       'lib/types/**/*.d.ts',
     ])
   })
+
+  it('includes the Ask Data spreadsheet entry and runtime samples', () => {
+    expect(expectedDshPackageFiles({
+      name: '@deepseek-ai/dsh-experimental-desktop-ask-data',
+      exports: {
+        './spreadsheet': {
+          types: './lib/types/spreadsheet.d.ts',
+          default: './lib/spreadsheet.js',
+        },
+      },
+    })).toEqual([
+      'lib/index.js',
+      'lib/spreadsheet.js',
+      'samples/**',
+      'lib/types/**/*.d.ts',
+    ])
+  })
 })

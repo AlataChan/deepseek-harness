@@ -125,6 +125,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/host/webserver': { kind: 'none', reason: 'The HTTP carrier bridges browser and API handler and registers nothing model-facing.' },
   'packages/host/ask-knowledge': { kind: 'none', reason: 'The Service Definition owns the capability vocabulary and term schema; the overlay Provider registers the prompt and tools.' },
   'packages/host/ask-data': { kind: 'none', reason: 'The Service Definition owns the capability vocabulary; the overlay Provider registers the prompt and tools.' },
+  'packages/host/commerce': { kind: 'none', reason: 'The Service Definition owns capability types and a log-only Session binding event; Providers and Consumers own model-facing behavior.' },
   'packages/webhook/webhook-github': { kind: 'indirect', reason: 'The adapter delegates model-visible text to matching rules and dsh-webhook.' },
   'packages/host/frontend-static': { kind: 'none', reason: 'The SPA dist server answers browser asset requests and registers nothing model-facing.' },
   'packages/host/plugin-inventory': { kind: 'none', reason: 'Host-side read-only Loader projection; registers nothing model-facing.' },

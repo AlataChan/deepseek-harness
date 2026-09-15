@@ -40,7 +40,8 @@
 | `@deepseek-ai/dsh-tool-subagent` | `list_subagent_models`、`subagent` | `ctx.tools`、`ctx.subagents`、`ctx.systemPrompt`、`用于模型发现和所选路由校验的 ctx.llm` | `tool/call`、`tool/result`、`child session events through the chosen provider` | `subagent`、`subagent_fork` | 注册的委派工具名称取决于加载时 `toolName` 配置（默认为 `subagent`）；上述默认 schema 关闭模型选择，而发现 schema 则展示为已启用 Session 中可用的固定配套工具。Web preset 会在每个新顶层 Session 创建时读取插件页偏好，并为其子 Session 保留该决定；`subagent_fork` 始终使用固定路由。每个实例通过 `modelSelectionSettings`、`backgroundMode` 与 `enableRunInBackground` 独立控制是否读取模型选择设置及其后台行为。 |
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`、`list_agents`、`send_message` | `ctx.tools`、`ctx.subagents`、`ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`、`tool/result`、`child session events through ctx.subagents` | - | 这些是控制可继续后台 subagent 的全局命名工具：绑定提供方的 `tool-subagent` 实例注册不同的委派工具；本包注册一次 `send_message` 和 `interrupt_agent`，另由 `list_agents` 通过单独加载的 `/list-agents` 插件提供，其目录行使用 sessionProjections 和实时 Agent 注册表。 |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`、`job_list`、`job_output` | `ctx.tools`、`ctx.jobs`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`user/message via agent.inject() for background completion notices` | - | 与任务种类无关的后台任务控制器：后台 bash 命令、PTY 发送和 subagent 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。 |
-| `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`、`list_agents`、`send_message`、`spawn_teammate`、`team_task_create`、`team_task_get`、`team_task_list`、`team_task_update`、`wait_agent` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agentTeams`、`an exact live Team member Agent` | `tool/call`、`team/member`、`team/message/queued`、`team/message/delivered`、`team/task`、`tool/result` | - | 这 9 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。 |
+| `@deepseek-ai/dsh-experimental-commerce-mode` | `commerce_analysis_query`、`commerce_get_listing`、`commerce_import_file`、`commerce_inventory_health`、`commerce_load_sample`、`commerce_sales_summary`、`commerce_search_listings` | `ctx.tools`、`ctx.commerce`、`ctx.fs`、`ctx.sessionProjections`、`a direct calling Agent` | `tool/call`、`commerce/bound on the first import`、`tool/result with read provenance metadata` | - | `./preset` row 在 `commerce` preset standing scope 中挂载这七个工具；没有 preset 名册的部署通过根 `./tools` row 为所有 Agent 挂载它们。导入工具是独占操作；读取工具可并发安全执行，并要求会话具有由导入创建的 binding。 |
+| `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`、`list_agents`、`propose_action`、`send_message`、`spawn_teammate`、`team_task_create`、`team_task_get`、`team_task_list`、`team_task_update`、`wait_agent` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agentTeams`、`ctx.userQuestions`、`an exact live Team member Agent` | `tool/call`、`team/member`、`team/message/queued`、`team/message/delivered`、`team/task`、`tool/result` | - | 这 10 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
@@ -1744,6 +1745,170 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 与任务种类无关的后台任务控制器：后台 bash 命令、PTY 发送和 subagent 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。
 
+<a id="deepseek-aidsh-experimental-commerce-mode"></a>
+
+## `@deepseek-ai/dsh-experimental-commerce-mode`
+
+### `commerce_analysis_query`
+
+对当前会话绑定的 commerce 数据源运行一条只读 SELECT 或 WITH 查询。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "One read-only SQLite SELECT or WITH statement."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_get_listing`
+
+从当前会话绑定的 commerce 数据源读取一个完整商品。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "listing_id": {
+      "type": "string",
+      "description": "Opaque listing id returned by a commerce read."
+    }
+  },
+  "required": [
+    "listing_id"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_import_file`
+
+从当前会话 workspace 内的普通 spreadsheet 文件导入或替换一张 commerce 表。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Workspace-relative CSV or XLSX path."
+    },
+    "kind": {
+      "type": "string",
+      "description": "Fixed table to replace.",
+      "enum": [
+        "orders",
+        "products",
+        "inventory"
+      ]
+    },
+    "platform": {
+      "type": "string",
+      "description": "Configured source-platform mapping id.",
+      "enum": [
+        "taobao",
+        "pinduoduo",
+        "douyin-shop",
+        "youzan",
+        "sample"
+      ]
+    }
+  },
+  "required": [
+    "path",
+    "kind",
+    "platform"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_inventory_health`
+
+读取当前会话绑定的 commerce 数据源中的商品库存健康状况。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_load_sample`
+
+将打包的虚构 commerce 示例加载到当前会话。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_sales_summary`
+
+读取当前会话绑定的 commerce 数据源的销售汇总。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "from": {
+      "type": "string",
+      "description": "Optional inclusive date lower bound."
+    },
+    "to": {
+      "type": "string",
+      "description": "Optional inclusive date upper bound."
+    }
+  }
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_search_listings`
+
+搜索当前会话绑定的 commerce 数据源中的商品。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Optional title or SKU search text."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Maximum listings to return."
+    }
+  },
+  "required": [
+    "limit"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+`./preset` row 在 `commerce` preset standing scope 中挂载这七个工具；没有 preset 名册的部署通过根 `./tools` row 为所有 Agent 挂载它们。导入工具是独占操作；读取工具可并发安全执行，并要求会话具有由导入创建的 binding。
+
 <a id="deepseek-aidsh-experimental-tool-agent-team"></a>
 
 ## `@deepseek-ai/dsh-experimental-tool-agent-team`
@@ -1777,6 +1942,42 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 {
   "type": "object",
   "properties": {}
+}
+```
+
+来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
+
+### `propose_action`
+
+提出 worker 产物，供人工批准后再执行。仅 Team Lead 可用。Teammate 产生的 patch、命令或后续任务需要在应用前审查时使用。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action_kind": {
+      "type": "string",
+      "description": "Type of action: patch (a diff to apply), command (a shell command to run), or followup (a follow-up task prompt).",
+      "enum": [
+        "patch",
+        "command",
+        "followup"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "description": "What this action does and why it should be approved."
+    },
+    "content": {
+      "type": "string",
+      "description": "The patch diff, shell command, or follow-up prompt content."
+    }
+  },
+  "required": [
+    "action_kind",
+    "description",
+    "content"
+  ]
 }
 ```
 
@@ -1835,6 +2036,18 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
         "fresh",
         "fork"
       ]
+    },
+    "provider": {
+      "type": "string",
+      "description": "Child LLM provider id. Must be supplied together with model. Requires the Lead Session to have a model-selection policy."
+    },
+    "model": {
+      "type": "string",
+      "description": "Child LLM model id. Must be supplied together with provider. Requires the Lead Session to have a model-selection policy."
+    },
+    "reasoning_effort": {
+      "type": "string",
+      "description": "Child reasoning effort override. Requires the Lead Session to have a model-selection policy."
     }
   },
   "required": [

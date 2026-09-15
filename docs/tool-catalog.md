@@ -36,7 +36,8 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-subagent` | `list_subagent_models`, `subagent` | `ctx.tools`, `ctx.subagents`, `ctx.systemPrompt`, `ctx.llm for model discovery and selected-route validation` | `tool/call`, `tool/result`, `child session events through the chosen provider` | `subagent`, `subagent_fork` | The registered delegation name is the load-time `toolName` config (default `subagent`); the default schema above has model selection off, while the discovery schema is shown as the fixed companion available in an enabled Session. Web presets sample the Plugins preference for each new top-level Session and preserve that decision for its child Sessions; `subagent_fork` remains fixed-route. Each instance independently controls whether it reads model-selection settings and its background behavior through `modelSelectionSettings`, `backgroundMode`, and `enableRunInBackground`. |
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`, `list_agents`, `send_message` | `ctx.tools`, `ctx.subagents`, `ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`, `tool/result`, `child session events through ctx.subagents` | - | The globally named control tools over continuable background subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries). |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
-| `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`, `list_agents`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
+| `@deepseek-ai/dsh-experimental-commerce-mode` | `commerce_analysis_query`, `commerce_get_listing`, `commerce_import_file`, `commerce_inventory_health`, `commerce_load_sample`, `commerce_sales_summary`, `commerce_search_listings` | `ctx.tools`, `ctx.commerce`, `ctx.fs`, `ctx.sessionProjections`, `a direct calling Agent` | `tool/call`, `commerce/bound on the first import`, `tool/result with read provenance metadata` | - | The `./preset` row mounts the seven tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import tools are exclusive; read tools are concurrency-safe and require a session binding created by an import. |
+| `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`, `list_agents`, `propose_action`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `ctx.userQuestions`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
@@ -1738,6 +1739,170 @@ Source: [`packages/jobs/tool-jobs/src/index.ts`](../packages/jobs/tool-jobs/src/
 
 The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`.
 
+<a id="deepseek-aidsh-experimental-commerce-mode"></a>
+
+## `@deepseek-ai/dsh-experimental-commerce-mode`
+
+### `commerce_analysis_query`
+
+Run one read-only SELECT or WITH query against the commerce source bound to this session.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "One read-only SQLite SELECT or WITH statement."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_get_listing`
+
+Read one complete product listing from the commerce source bound to this session.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "listing_id": {
+      "type": "string",
+      "description": "Opaque listing id returned by a commerce read."
+    }
+  },
+  "required": [
+    "listing_id"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_import_file`
+
+Import or replace one commerce table from a regular spreadsheet file inside this session workspace.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Workspace-relative CSV or XLSX path."
+    },
+    "kind": {
+      "type": "string",
+      "description": "Fixed table to replace.",
+      "enum": [
+        "orders",
+        "products",
+        "inventory"
+      ]
+    },
+    "platform": {
+      "type": "string",
+      "description": "Configured source-platform mapping id.",
+      "enum": [
+        "taobao",
+        "pinduoduo",
+        "douyin-shop",
+        "youzan",
+        "sample"
+      ]
+    }
+  },
+  "required": [
+    "path",
+    "kind",
+    "platform"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_inventory_health`
+
+Read inventory health for listings in the commerce source bound to this session.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_load_sample`
+
+Load the packaged fictional commerce sample into this session.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_sales_summary`
+
+Read aggregate sales totals from the commerce source bound to this session.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "from": {
+      "type": "string",
+      "description": "Optional inclusive date lower bound."
+    },
+    "to": {
+      "type": "string",
+      "description": "Optional inclusive date upper bound."
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_search_listings`
+
+Search product listings in the commerce source bound to this session.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Optional title or SKU search text."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Maximum listings to return."
+    }
+  },
+  "required": [
+    "limit"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+The `./preset` row mounts the seven tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import tools are exclusive; read tools are concurrency-safe and require a session binding created by an import.
+
 <a id="deepseek-aidsh-experimental-tool-agent-team"></a>
 
 ## `@deepseek-ai/dsh-experimental-tool-agent-team`
@@ -1771,6 +1936,42 @@ List the Lead and every durable teammate with current runtime status.
 {
   "type": "object",
   "properties": {}
+}
+```
+
+Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
+
+### `propose_action`
+
+Propose worker output for human approval before execution. Team Lead only. Use when a teammate produced a patch, command, or follow-up task that should be reviewed before applying.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action_kind": {
+      "type": "string",
+      "description": "Type of action: patch (a diff to apply), command (a shell command to run), or followup (a follow-up task prompt).",
+      "enum": [
+        "patch",
+        "command",
+        "followup"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "description": "What this action does and why it should be approved."
+    },
+    "content": {
+      "type": "string",
+      "description": "The patch diff, shell command, or follow-up prompt content."
+    }
+  },
+  "required": [
+    "action_kind",
+    "description",
+    "content"
+  ]
 }
 ```
 
@@ -1829,6 +2030,18 @@ Create one named, durable teammate. Only the Team Lead may call this tool.
         "fresh",
         "fork"
       ]
+    },
+    "provider": {
+      "type": "string",
+      "description": "Child LLM provider id. Must be supplied together with model. Requires the Lead Session to have a model-selection policy."
+    },
+    "model": {
+      "type": "string",
+      "description": "Child LLM model id. Must be supplied together with provider. Requires the Lead Session to have a model-selection policy."
+    },
+    "reasoning_effort": {
+      "type": "string",
+      "description": "Child reasoning effort override. Requires the Lead Session to have a model-selection policy."
     }
   },
   "required": [
@@ -2026,7 +2239,7 @@ Wait for the next teammate status, mailbox, or shared-task change after this cal
 
 Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
 
-All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.
+All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.
 
 <a id="deepseek-aidsh-tool-todo"></a>
 

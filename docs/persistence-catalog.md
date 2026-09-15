@@ -329,6 +329,23 @@ Source: [`packages/interaction/commands/src/types.ts:104`](../packages/interacti
 
 Source: [`packages/interaction/commands/src/types.ts:97`](../packages/interaction/commands/src/types.ts)
 
+### `commerce/*`
+
+<a id="commercebound--log-only"></a>
+
+#### `commerce/bound` — log-only
+
+```ts persistence-catalog
+/**
+ * The Session was bound to one commerce source. Consumers reconstruct the
+ * binding through the `commerceBinding` projection.
+ * @param data - source identity, display name, and imported table families.
+ */
+'commerce/bound': CommerceBinding
+```
+
+Source: [`packages/host/commerce/src/types.ts:24`](../packages/host/commerce/src/types.ts)
+
 ### `compaction/*`
 
 <a id="compactionend--log-only"></a>
@@ -828,7 +845,7 @@ Source: [`packages/subagent/tool-subagent/src/model-selection-state.ts:17`](../p
 
 Types: [TeamId](subsystems/agent-team.md) · [TeamMemberSnapshot](subsystems/agent-team.md)
 
-Source: [`packages/experimental/agent-team/src/types.ts:221`](../packages/experimental/agent-team/src/types.ts)
+Source: [`packages/experimental/agent-team/src/types.ts:279`](../packages/experimental/agent-team/src/types.ts)
 
 <a id="teammessagedelivered--log-only"></a>
 
@@ -846,7 +863,7 @@ Source: [`packages/experimental/agent-team/src/types.ts:221`](../packages/experi
 
 Types: [TeamId](subsystems/agent-team.md) · [TeamMessageId](subsystems/agent-team.md)
 
-Source: [`packages/experimental/agent-team/src/types.ts:227`](../packages/experimental/agent-team/src/types.ts)
+Source: [`packages/experimental/agent-team/src/types.ts:285`](../packages/experimental/agent-team/src/types.ts)
 
 <a id="teammessagequeued--log-only"></a>
 
@@ -859,7 +876,7 @@ Source: [`packages/experimental/agent-team/src/types.ts:227`](../packages/experi
 
 Types: [TeamId](subsystems/agent-team.md) · [TeamMessageSnapshot](subsystems/agent-team.md)
 
-Source: [`packages/experimental/agent-team/src/types.ts:225`](../packages/experimental/agent-team/src/types.ts)
+Source: [`packages/experimental/agent-team/src/types.ts:283`](../packages/experimental/agent-team/src/types.ts)
 
 <a id="teamtask--log-only"></a>
 
@@ -872,7 +889,7 @@ Source: [`packages/experimental/agent-team/src/types.ts:225`](../packages/experi
 
 Types: [TeamId](subsystems/agent-team.md) · [TeamTaskSnapshot](subsystems/agent-team.md)
 
-Source: [`packages/experimental/agent-team/src/types.ts:223`](../packages/experimental/agent-team/src/types.ts)
+Source: [`packages/experimental/agent-team/src/types.ts:281`](../packages/experimental/agent-team/src/types.ts)
 
 ### `todo/*`
 

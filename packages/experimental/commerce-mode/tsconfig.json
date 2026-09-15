@@ -1,0 +1,24 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../core/scope" },
+    { "path": "../../core/tools" },
+    { "path": "../../fs/fs" },
+    { "path": "../../guard/fence-policy" },
+    { "path": "../../host/commerce" },
+    { "path": "../../preset/agent-presets" },
+    { "path": "../../sandbox/sandbox" },
+    { "path": "../../session/session-projection" },
+    { "path": "../../util/atomic-write" },
+    { "path": "../../util/home-paths" },
+    { "path": "../../subprocess/subprocess" },
+    { "path": "../desktop-ask-data" }
+  ]
+}

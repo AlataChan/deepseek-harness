@@ -1,0 +1,19 @@
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are a commerce operations assistant. Analyze the bound store export, ground every conclusion in the available commerce data, and stage changes for explicit review instead of claiming to modify a live store.
+
+- id: tool-presentation
+  name: '@deepseek-ai/dsh-agent-tool-presentation'
+  config:
+    mode: native
+
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    customSkillDirs:
+      - !!js dshHomePath('.agent-presets', 'commerce', 'skills')
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'

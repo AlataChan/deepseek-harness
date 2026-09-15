@@ -153,6 +153,12 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-experimental-code-runtime-python': ['py/**/*.py'],
   // The shipped preset compositions travel inside the roster package.
   '@deepseek-ai/dsh-agent-presets': ['presets'],
+  // Ask Data copies its fictional sample database and CSV at runtime.
+  '@deepseek-ai/dsh-experimental-desktop-ask-data': ['samples/**'],
+  // Commerce Mode ships its tool Consumer and preset mount as separate Loader
+  // entries, installs its agent preset, imports its fictional sample CSV files,
+  // and carries the NOTICE for adapted Apache-2.0 skill text.
+  '@deepseek-ai/dsh-experimental-commerce-mode': ['lib/tools.js', 'lib/preset.js', 'NOTICE', 'preset/**', 'samples/**'],
   // The Web Host mounts the default-off settings owner independently of each
   // Agent-scoped delegation-tool instance.
   '@deepseek-ai/dsh-tool-subagent': ['lib/model-selection-settings.js'],
@@ -197,6 +203,9 @@ export function expectedDshPackageFiles(manifest: PackageManifest): readonly str
     ...exportDefault(manifest, './client') === './lib/client.js' ? ['lib/client.js'] : [],
     // runtime's shell-held loader subpath ships as its own bundle beside the client half.
     ...exportDefault(manifest, './loader') === './lib/loader.js' ? ['lib/loader.js'] : [],
+    // A spreadsheet decoder subpath is a standalone Node bundle consumed by
+    // other workspace packages without loading the owning plugin.
+    ...exportDefault(manifest, './spreadsheet') === './lib/spreadsheet.js' ? ['lib/spreadsheet.js'] : [],
     // A store subpath ships its own bundle (single-entry builds; no shared chunk).
     ...exportDefault(manifest, './store') === './lib/store/index.js' ? ['lib/store/index.js'] : [],
     // A surface bundle's startup row is its own bundle: the Loader imports it
