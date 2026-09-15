@@ -1,0 +1,11 @@
+version: 1
+scenario: external-data-poisoned
+profile: headless
+composition: external-data
+recording: live
+permission: workspace-write
+header:
+  class: external-data
+  pin: true
+workspace:
+  final: true

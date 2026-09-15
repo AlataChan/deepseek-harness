@@ -1,0 +1,22 @@
+# Native external-data composition with a deterministic HTTP provider.
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-v4-pro
+
+- insert:
+    - id: external-data-fixture
+      name: '../external-data-fixture-server.mjs'
+
+- id: web
+  name: '@deepseek-ai/dsh-web'
+
+- id: web-fetch-http
+  name: '@deepseek-ai/dsh-web-fetch-http'
+  disabled: true
+
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    search: false

@@ -1,0 +1,11 @@
+version: 1
+scenario: external-data-ptc-poisoned
+profile: headless
+composition: external-data-ptc
+recording: live
+permission: workspace-write
+header:
+  class: external-data-ptc
+  pin: true
+workspace:
+  final: true
