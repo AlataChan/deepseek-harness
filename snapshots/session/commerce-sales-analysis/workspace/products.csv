@@ -1,0 +1,10 @@
+商品ID,商品标题,商家编码,状态,父商品ID
+TB-1000,龙井茶系列,LJ,active,
+TB-1001,明前龙井 100g,LJ-100,active,TB-1000
+TB-1002,明前龙井 250g,LJ-250,active,TB-1000
+TB-2000,白茶系列,BC,active,
+TB-2001,福鼎白毫银针 50g,BC-050,active,TB-2000
+TB-2002,白牡丹茶饼 357g,BC-357,active,TB-2000
+TB-3000,茶具系列,TJ,active,
+TB-3001,青瓷盖碗,TJ-GW,active,TB-3000
+TB-3002,玻璃公道杯,TJ-GDB,active,TB-3000

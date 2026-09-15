@@ -49,6 +49,10 @@ const editingCordisSkill = join(
   repoRoot,
   'packages/preset/agent-presets/presets/cordis/skills/editing-cordis-compositions/SKILL.md',
 )
+const commerceSalesAnalysisSkill = join(
+  repoRoot,
+  'packages/experimental/commerce-mode/preset/commerce/skills/commerce-sales-analysis/SKILL.md',
+)
 
 type SnapshotMode = 'replay' | 'record' | 'refresh'
 
@@ -402,6 +406,11 @@ async function seedWorkspace(scenario: HeadlessScenario, cwd: string): Promise<v
 }
 
 const workspaceSetups: Record<string, (cwd: string) => Promise<void>> = {
+  async 'commerce-sales-analysis-skill'(cwd) {
+    const target = join(cwd, '.dsh', 'skills', 'commerce-sales-analysis', 'SKILL.md')
+    await mkdir(dirname(target), { recursive: true })
+    await copyFile(commerceSalesAnalysisSkill, target)
+  },
   async 'editing-cordis-skill'(cwd) {
     const target = join(cwd, '.dsh', 'skills', 'editing-cordis-compositions', 'SKILL.md')
     await mkdir(dirname(target), { recursive: true })

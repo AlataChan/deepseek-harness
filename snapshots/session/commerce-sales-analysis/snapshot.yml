@@ -1,0 +1,11 @@
+version: 1
+scenario: commerce-sales-analysis
+profile: headless
+composition: commerce
+recording: live
+permission: workspace-write
+header:
+  class: commerce
+  pin: true
+workspace:
+  setup: commerce-sales-analysis-skill

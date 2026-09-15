@@ -1,0 +1,31 @@
+# Commerce composition for automation profiles. The headless and SDK bundles
+# compose no agent preset roster, so the experimental Provider and its tool
+# Consumer mount at the Host root; sources live under the scenario DSH_HOME.
+- insert:
+    - id: commerce-mode
+      name: '@deepseek-ai/dsh-experimental-commerce-mode'
+      config:
+        sourcesRoot: !!js dshHomePath('commerce-sources')
+        platforms:
+          taobao:
+            orders: { order_id: 订单编号, listing_id: 商品ID, quantity: 数量, gross_sales: 实付金额, currency: 币种, ordered_at: 下单时间 }
+            products: { listing_id: 商品ID, title: 商品标题, sku: 商家编码, status: 状态, parent_id: 父商品ID }
+            inventory: { listing_id: 商品ID, available: 可用库存, low_stock_threshold: 低库存阈值 }
+          sample:
+            orders: { order_id: order, listing_id: listing, quantity: quantity, gross_sales: sales, currency: currency, ordered_at: date }
+            products: { listing_id: listing, title: title, sku: sku, status: status, parent_id: parent }
+            inventory: { listing_id: listing, available: available, low_stock_threshold: threshold }
+        analysis:
+          maxRows: 500
+          maxOutputBytes: 1048576
+          timeoutMs: 10000
+          graceMs: 1000
+        lockWaitMs: 60000
+
+    - id: commerce-tools
+      name: '@deepseek-ai/dsh-experimental-commerce-mode/tools'
+      config:
+        maxResultChars: 50000
+        maxListingIds: 200
+        maxMetaBytes: 16384
+        maxImportBytes: 33554432
