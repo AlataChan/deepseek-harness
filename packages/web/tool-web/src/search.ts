@@ -10,7 +10,6 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, ToolResult, WebSearchResultView, WebSource } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { WebSearchResult, WebSearchSource } from '@deepseek-ai/dsh-web'
-import { EXTERNAL_WEB_CONTENT_NOTICE } from './trust.ts'
 
 /**
  * Default upper bound on returned sources (the `searchMaxResults` config).
@@ -71,7 +70,7 @@ function sourceLabel(url: string, title: string | undefined): string {
  *   truncated, and a standing cite-your-sources instruction.
  */
 export function formatSearchOutput(result: WebSearchResult): string {
-  const parts: string[] = [EXTERNAL_WEB_CONTENT_NOTICE]
+  const parts: string[] = []
   if (result.content !== undefined && result.content.length > 0) parts.push(result.content)
 
   if (result.sources.length > 0) {

@@ -12,7 +12,6 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, ToolResult, WebFetchResultView } from '@deepseek-ai/dsh-tools'
 import type { WebFetchBody, WebFetchResult } from '@deepseek-ai/dsh-web'
 import { assertNever, type JsonValue } from '@deepseek-ai/dsh-util-values'
-import { EXTERNAL_WEB_CONTENT_NOTICE } from './trust.ts'
 
 /**
  * The shared HTML→markdown converter: turndown over its bundled domino DOM,
@@ -326,7 +325,7 @@ const renderCache = new WeakMap<WebFetchResult, Map<number, RenderedFetch>>()
  * @returns the bounded text and effective truncation.
  */
 function computeFetchOutput(result: WebFetchResult, maxOutputChars: number): RenderedFetch {
-  const header = `Fetched ${result.url} (HTTP ${result.statusCode})\n\n${EXTERNAL_WEB_CONTENT_NOTICE}\n\n`
+  const header = `Fetched ${result.url} (HTTP ${result.statusCode})\n\n`
   const rendered = renderBody(result.body, maxOutputChars)
   const prefix = `${header}${rendered.text}`
   const truncated = result.truncated || rendered.sourceTruncated || prefix.length > maxOutputChars

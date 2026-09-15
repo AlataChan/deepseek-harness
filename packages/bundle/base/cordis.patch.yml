@@ -391,6 +391,12 @@
       config:
         maxInlineBytes: 50000
 
+    - id: fence-policy
+      name: '@deepseek-ai/dsh-fence-policy'
+      config:
+        tools: [web_fetch, web_search, 'mcp__*', ask_knowledge_retrieve, ask_knowledge_lookup, run_code]
+        maxMixedTextBytes: 50000
+
     # Durability checkpoints before each model request and top-level dispatch.
     - id: session-checkpoint-policy
       name: '@deepseek-ai/dsh-session-checkpoint-policy'

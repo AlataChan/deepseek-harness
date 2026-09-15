@@ -44,9 +44,17 @@ describe('dsh-base bundle', () => {
     expect(rows.find(row => row.id === 'web')?.config).toMatchObject({ fetchProvider: 'http' })
     expect(rows.find(row => row.id === 'web-fetch-http')).toBeDefined()
     expect(rows.find(row => row.id === 'tool-web')?.config).toMatchObject({ fetch: true })
+    const spillIndex = rows.findIndex(row => row.id === 'spill-policy')
+    const fenceIndex = rows.findIndex(row => row.id === 'fence-policy')
+    expect(fenceIndex).toBe(spillIndex + 1)
+    expect(rows[fenceIndex]?.config).toEqual({
+      tools: ['web_fetch', 'web_search', 'mcp__*', 'ask_knowledge_retrieve', 'ask_knowledge_lookup', 'run_code'],
+      maxMixedTextBytes: 50_000,
+    })
     expect(manifest.dependencies).not.toHaveProperty('@deepseek-ai/dsh-subagent-codex')
     expect(manifest.dependencies).not.toHaveProperty('@deepseek-ai/dsh-subagent-claude-code')
     expect(manifest.dependencies).toHaveProperty('@deepseek-ai/dsh-web-fetch-http')
+    expect(manifest.dependencies).toHaveProperty('@deepseek-ai/dsh-fence-policy', 'workspace:^')
   })
 
   it('gates each shell stack by platform with a symmetric disabled expression', () => {

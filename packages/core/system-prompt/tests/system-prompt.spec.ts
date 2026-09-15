@@ -15,7 +15,7 @@ const BUILT_IN = ['harness:identity', 'deployment:persona']
 const IDENTITY = 'You are an AI agent powered by DeepSeek Harness.'
 const SECTION_ORDER_NAMES = [
   'HARNESS_IDENTITY', 'HARNESS_SOURCE', 'WEB_SURFACE', 'DEPLOYMENT_PERSONA',
-  'PLAN_POLICY', 'TEAM_POLICY', 'PTC_ONLY', 'FILE_REFERENCE', 'TOOL_BASH',
+  'PLAN_POLICY', 'TEAM_POLICY', 'EXTERNAL_DATA', 'PTC_ONLY', 'FILE_REFERENCE', 'TOOL_BASH',
   'TOOL_PWSH', 'TOOL_READ', 'TOOL_WRITE', 'TOOL_EDIT', 'TOOL_GLOB',
   'TOOL_GREP', 'TOOL_JOBS', 'TOOL_PTY', 'TOOL_WEB_SEARCH', 'TOOL_WEB_FETCH',
   'TOOL_LSP', 'TOOL_SESSION_QUERY', 'TOOL_GOAL', 'TOOL_CORDIS', 'TOOL_WORKFLOW',
@@ -34,6 +34,7 @@ describe('SystemPrompt', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt, {})
     const orders = SECTION_ORDER_NAMES.map(name => ctx.systemPrompt.getSectionOrder(name))
+    expect(ctx.systemPrompt.getSectionOrder('EXTERNAL_DATA')).toBe(700)
     expect(orders.every(Number.isInteger)).toBe(true)
     expect(new Set(orders).size).toBe(orders.length)
     const sorted = [...orders].sort((a, b) => a - b)

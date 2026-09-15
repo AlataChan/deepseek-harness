@@ -1,15 +1,15 @@
 ---
-description: "Package map for the loop-hygiene guard family: the advisory repeat-tool reminder and the per-call tool-call timeout policy, for users and maintainers choosing or composing the guards."
+description: "Package map for agent-loop guard plugins covering repeated calls, call deadlines, and structural fencing of selected external tool results."
 kind: "package-group"
 ---
 
-# guard/ — loop-hygiene guard family
+# guard/ — agent-loop guard family
 
 English | [中文](README.zh.md)
 
 ## Summary
 
-The `guard/` group keeps the agent loop productive by watching for two common failure patterns. `repeat-tool-reminder` notices when the model repeats the exact same tool call and reminds it to change approach or finish, so a stuck loop stops burning time and tokens. `timeout-policy` puts a time limit on tool calls that declare one, so a hung call returns a clear timed-out error to the model instead of stalling the session. Both ship enabled in the `dsh` base bundle; a composition can tune or remove them.
+The `guard/` group provides focused policies around tool execution. `repeat-tool-reminder` advises a model that repeats an identical call, `timeout-policy` enforces declared call deadlines, and `fence-policy` marks selected third-party result text as external data while neutralizing structural prompt-injection forms. All three ship in the `dsh` base bundle, and fence policy remains available for explicit compositions.
 
 ## Table of Contents
 
@@ -22,10 +22,11 @@ The `guard/` group keeps the agent loop productive by watching for two common fa
 <a id="packages"></a>
 ## Packages
 
-Two small plugins cover the two patterns; each README below explains when to keep, tune, or remove it.
+Each package owns one policy and documents its composition requirements.
 
 | Package | What it provides |
 |---|---|
+| [`fence-policy/`](fence-policy/README.md) | Escapes and fences selected external tool-result text before it reaches the model |
 | [`repeat-tool-reminder/`](repeat-tool-reminder/README.md) | Reminds the model when it repeats the same tool call, so it changes approach or finishes |
 | [`timeout-policy/`](timeout-policy/README.md) | Times out tool calls that declare a limit, so the model gets a clear error instead of waiting forever |
 
@@ -34,7 +35,7 @@ Two small plugins cover the two patterns; each README below explains when to kee
 <a id="related-documentation"></a>
 ## Related documentation
 
-Start with the tools subsystem reference for the tool-call pipeline, then the reminder's configuration and the timeout-library decision behind the policy.
+Start with the tools subsystem reference for the tool-call pipeline, then the generated configuration and the timeout-library decision behind the deadline policy.
 
 - [Tools subsystem reference](../../docs/subsystems/tools.md) — the tool-call pipeline and decisions both guards build on.
 - [Generated configuration catalog](../../docs/config-catalog.md#deepseek-aidsh-repeat-tool-reminder) — every accepted field of the repeat-call reminder.
