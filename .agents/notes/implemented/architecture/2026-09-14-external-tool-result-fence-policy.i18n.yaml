@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-14-external-tool-result-fence-policy.md
-2026-09-14-external-tool-result-fence-policy.md: c4faff0018ab3a1332f96f516a620390278caf7b
-2026-09-14-external-tool-result-fence-policy.zh.md: d57f60b9ff901f51d9563417c772adf9c6e633b7
+2026-09-14-external-tool-result-fence-policy.md: 6a446c1106d5fe259e727164867df397cd055af8
+2026-09-14-external-tool-result-fence-policy.zh.md: 09b5062b66852ab24229da8df655f24d85531d84

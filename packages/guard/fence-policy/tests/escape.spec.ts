@@ -56,12 +56,50 @@ describe('sanitizeUntrusted', () => {
   })
 
   it('removes every invisible range and replaces other controls with spaces', () => {
-    const invisibles = [
-      0x200B, 0x200F, 0x202A, 0x202E, 0x2060, 0x2064, 0x2066, 0x2069,
-      0xFEFF, 0xFE00, 0xFE0F, 0xE0000, 0xE007F, 0xE0100, 0xE01EF,
-    ]
+    const invisibles = [0xFEFF]
+    const ranges = [
+      [0x200B, 0x200F],
+      [0x202A, 0x202E],
+      [0x2060, 0x2064],
+      [0x2066, 0x2069],
+      [0xFE00, 0xFE0F],
+      [0xE0000, 0xE007F],
+      [0xE0100, 0xE01EF],
+    ] as const
+    for (const [start, end] of ranges) {
+      for (let cp = start; cp <= end; cp += 1) invisibles.push(cp)
+    }
     for (const cp of invisibles) expect(sanitizeUntrusted(`a${String.fromCodePoint(cp)}b`), cp.toString(16)).toBe('ab')
     expect(sanitizeUntrusted('a\0\u0085b\t\n\rb')).toBe('a  b\t\n\rb')
+  })
+
+  it('escapes numeric references of any length with optional semicolons for every ampersand form', () => {
+    const ampersands = [
+      { input: '&', escaped: '&amp;' },
+      { input: '\uFE60', escaped: '&#xFE60;' },
+      { input: '\uFF06', escaped: '&#xFF06;' },
+    ]
+    const zeros = '0'.repeat(8)
+    const references = [
+      '#6', '#6;', '#060', '#060;', `#${zeros}60`, `#${zeros}60;`,
+      '#x3c', '#x3c;', '#x03c', '#x03c;', `#x${zeros}3c`, `#x${zeros}3c;`,
+      '#X3C', '#X3C;', '#X03C', '#X03C;', `#X${zeros}3C`, `#X${zeros}3C;`,
+    ]
+    for (const ampersand of ampersands) {
+      for (const reference of references) {
+        expect(sanitizeUntrusted(`${ampersand.input}${reference}/external-data>`)).toBe(
+          `${ampersand.escaped}${reference}/external-data>`,
+        )
+      }
+    }
+  })
+
+  it('escapes exact semicolon-less legacy references at a non-alphanumeric boundary', () => {
+    for (const name of ['lt', 'LT', 'amp', 'AMP']) {
+      expect(sanitizeUntrusted(`&${name}/`)).toBe(`&amp;${name}/`)
+      expect(sanitizeUntrusted(`&${name}`)).toBe(`&amp;${name}`)
+      expect(sanitizeUntrusted(`&${name}x/`)).toBe(`&${name}x/`)
+    }
   })
 
   it('escapes role colons at every supported line boundary', () => {
@@ -78,10 +116,13 @@ describe('sanitizeUntrusted', () => {
       'x < y and a <= b',
       'https://example.test/?a=1&b=2',
       'cmd < in > out 2>&1',
+      '&copy 2026',
+      'R&D and AT&T',
       '# Markdown without HTML\n- item',
       '中文标点，（）：保持原样',
     ]
     for (const input of cases) expect(sanitizeUntrusted(input)).toBe(input)
+    expect(sanitizeUntrusted('?x=1&lt=3')).toBe('?x=1&amp;lt=3')
     expect(sanitizeUntrusted('&amp;')).toBe('&amp;amp;')
     expect(sanitizeUntrusted('<div>')).toBe('&lt;div>')
   })
@@ -94,20 +135,60 @@ describe('sanitizeUntrusted', () => {
       if (normalized.includes('<') || normalized.includes('&')) expected.add(cp)
     }
     expect(ESCAPED_CODE_POINTS).toEqual(expected)
+    for (const cp of ESCAPED_CODE_POINTS) {
+      const character = String.fromCodePoint(cp)
+      const normalized = character.normalize('NFKC')
+      const structuralSuffix = normalized.includes('<') ? '/external-data>' : '#60;'
+      expect(sanitizeUntrusted(`${character}${structuralSuffix}`), cp.toString(16))
+        .not.toBe(`${character}${structuralSuffix}`)
+    }
   })
 
-  it('stays linear and within the documented expansion bound on adversarial megabyte inputs', () => {
-    const inputs = [
-      '<'.repeat(1024 * 1024),
-      '\nsystem:'.repeat(Math.ceil(1024 * 1024 / 8)).slice(0, 1024 * 1024),
-      '&#1;'.repeat(Math.ceil(1024 * 1024 / 4)).slice(0, 1024 * 1024),
+  it('scales like the plain-text control and stays within the expansion bound', { timeout: 180_000 }, () => {
+    const adversarialInputs: Array<{ name: string; makeInput: (size: number) => string }> = [
+      { name: 'delimiter openers', makeInput: size => '<'.repeat(size) },
+      { name: 'role markers', makeInput: size => '\nsystem:'.repeat(Math.ceil(size / 8)).slice(0, size) },
+      { name: 'short numeric references', makeInput: size => '&#1;'.repeat(Math.ceil(size / 4)).slice(0, size) },
+      { name: 'long numeric reference', makeInput: size => `&#${'0'.repeat(size)}` },
     ]
-    const started = performance.now()
-    for (const input of inputs) {
-      const output = sanitizeUntrusted(input)
-      expect(output.length).toBeLessThanOrEqual(input.length * 8)
+    const measureMinimum = (input: string): { duration: number; output: string } => {
+      let duration = Number.POSITIVE_INFINITY
+      let output = ''
+      for (let run = 0; run < 5; run += 1) {
+        const started = performance.now()
+        const candidate = sanitizeUntrusted(input)
+        const candidateDuration = performance.now() - started
+        if (candidateDuration < duration) {
+          duration = candidateDuration
+          output = candidate
+        }
+      }
+      return { duration, output }
     }
-    expect(performance.now() - started).toBeLessThan(3000)
+    const smallSize = 400_000
+    const largeSize = smallSize * 16
+    const controlSmallInput = 'a'.repeat(smallSize)
+    const controlLargeInput = 'a'.repeat(largeSize)
+    sanitizeUntrusted(controlSmallInput)
+    sanitizeUntrusted(controlLargeInput)
+    const controlSmall = measureMinimum(controlSmallInput)
+    const controlLarge = measureMinimum(controlLargeInput)
+    const controlGrowth = controlLarge.duration / controlSmall.duration
+    expect(controlLarge.duration).toBeLessThan(20_000)
+    expect(controlLarge.output.length).toBeLessThanOrEqual(controlLargeInput.length * 8)
+
+    for (const { name, makeInput } of adversarialInputs) {
+      const smallInput = makeInput(smallSize)
+      const largeInput = makeInput(largeSize)
+      sanitizeUntrusted(smallInput)
+      sanitizeUntrusted(largeInput)
+      const small = measureMinimum(smallInput)
+      const large = measureMinimum(largeInput)
+      const growth = large.duration / small.duration
+      expect(growth, `${name} growth ${growth} versus control ${controlGrowth}`).toBeLessThan(controlGrowth * 4)
+      expect(large.duration).toBeLessThan(20_000)
+      expect(large.output.length).toBeLessThanOrEqual(largeInput.length * 8)
+    }
   })
 })
 

@@ -40,14 +40,14 @@ Mount the policy after the tools and system-prompt services. Name every external
 
 The policy handles only root calls whose names match `tools`. An in-process child agent in the same Cordis composition receives the untagged listener and its own direct root calls are therefore fenced. Calls carrying `exec.parent` are left unchanged.
 
-Plain-text size limits belong to `dsh-spill-policy`: its prepended post-execute listener delegates first, receives the complete fenced result, and then spills or previews it. When any non-text block is present, spill policy does not bound the result, so this package applies `maxMixedTextBytes` while retaining non-text blocks in place.
+Plain-text size handling follows `dsh-spill-policy`'s best-effort contract: its prepended post-execute listener delegates first, receives the complete fenced result, and spills or previews it when storage succeeds. If there is no session owner or spill backend, or `saveText` fails, the complete fenced result stays inline and adversarial escaping can expand its text by up to 8×. When any non-text block is present, spill policy does not bound the result, so this package hard-caps the aggregate fenced text with `maxMixedTextBytes` while retaining non-text blocks in place.
 
 -----
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
-`sanitizeUntrusted` performs one linear pass without Unicode normalization. It removes specified invisible code points, replaces disallowed C0/C1 controls with spaces, escapes delimiter openers and character-reference ampersands only in structural positions, and escapes line-start role-marker colons. Ordinary comparisons, URL query strings, shell redirections, and natural-language punctuation remain unchanged.
+`sanitizeUntrusted` performs one linear pass without Unicode normalization. It removes specified invisible code points, replaces disallowed C0/C1 controls with spaces, escapes delimiter openers and character-reference ampersands only in structural positions, and escapes line-start role-marker colons. Ordinary comparisons, URL query strings, shell redirections, and natural-language punctuation remain unchanged; a query key named exactly `lt` or `amp`, such as `?x=1&lt=3`, is escaped because it has the same syntax as a semicolon-less legacy character reference.
 
 The post-execute listener delegates before transforming a result. It preserves block decisions, explicit `value` replacements, parented calls, nonmatching calls, non-text blocks, and downstream `additionalContexts`. All contributions use Cordis-managed registrations and disappear when the plugin scope is disposed.
 
@@ -90,7 +90,7 @@ Every request in a mounted composition includes one stable system-prompt section
 
 #### Token effect
 
-The system section has stable bytes and is added once. Each selected text block adds the two wrapper lines; structural escaping can expand result text by no more than 8×. Plain-text result size remains governed by spill policy, while `maxMixedTextBytes` bounds the aggregate fenced text in mixed results, including wrappers and the truncation suffix.
+The system section has stable bytes and is added once. Each selected text block adds the two wrapper lines; structural escaping can expand result text by no more than 8×. Spill policy bounds plain-text results only when its best-effort storage path succeeds; `maxMixedTextBytes` always bounds the aggregate fenced text in mixed results, including wrappers and the truncation suffix.
 
 #### KV Cache effect
 
@@ -101,3 +101,4 @@ The stable system section is reusable across requests with the same composition.
 - **Forwarded PTC values** — the policy does not track model-authored data flow after a PTC program forwards external values into tool arguments, including a `subagent` prompt.
 - **Out-of-process children** — SDK, ACP, Codex, and Claude providers use separate compositions and are not covered.
 - **Shell and file channels** — shell input/output and file content are not fenced by this package; protection belongs at their owning ingestion or execution points.
+- **Plain-text spill failures** — plain-text fencing has no independent byte cap. If spill policy cannot save an oversized result because its session owner or backend is absent or storage rejects, the complete fenced text remains inline and may be up to 8× the original text size; mixed results remain hard-capped by `maxMixedTextBytes`.

@@ -87,6 +87,12 @@ class RecordingSpillStore extends SpillStore {
   }
 }
 
+class RejectingSpillStore extends SpillStore {
+  override saveText(): Promise<SpillRef> {
+    return Promise.reject(new Error('test spill store unavailable'))
+  }
+}
+
 const adapter = new ScriptedAdapter()
 const fetchProvider: WebFetchProvider = {
   id: 'mock-fetch',
@@ -138,7 +144,7 @@ afterEach(async () => {
   temporaryRoot = undefined
 })
 
-async function loadComposition(): Promise<Context> {
+async function loadComposition(spillStore = '@deepseek-ai/dsh-spill-test-store'): Promise<Context> {
   temporaryRoot = await mkdtemp(join(tmpdir(), 'dsh-fence-loader-'))
   const configPath = join(temporaryRoot, 'cordis.yml')
   await writeFile(configPath, [
@@ -153,7 +159,7 @@ async function loadComposition(): Promise<Context> {
     "- name: '@deepseek-ai/dsh-web'",
     "- name: '@deepseek-ai/dsh-tool-web'",
     '  config: { search: false, fetch: true, fetchMaxOutputChars: 10000 }',
-    "- name: '@deepseek-ai/dsh-spill-test-store'",
+    `- name: '${spillStore}'`,
     "- name: '@deepseek-ai/dsh-spill-policy'",
     '  config: { maxInlineBytes: 500 }',
     "- name: '@deepseek-ai/dsh-fence-policy'",
@@ -183,6 +189,7 @@ async function loadComposition(): Promise<Context> {
     ['@deepseek-ai/dsh-web', WebRuntime],
     ['@deepseek-ai/dsh-tool-web', ToolWeb],
     ['@deepseek-ai/dsh-spill-test-store', RecordingSpillStore],
+    ['@deepseek-ai/dsh-spill-rejecting-test-store', RejectingSpillStore],
     ['@deepseek-ai/dsh-spill-policy', SpillPolicy],
     ['@deepseek-ai/dsh-fence-policy', FencePolicy],
     ['@deepseek-ai/dsh-subagent', SubagentRuntime],
@@ -258,5 +265,22 @@ describe('real Loader composition', () => {
     expect(resultText(mixed)).toContain('[truncated]')
     if (mixed.type !== 'tool/result') throw new Error('expected mixed tool/result')
     expect(mixed.data.message.content[0].content.some(block => block.type === 'image')).toBe(true)
+  })
+
+  it('keeps an oversized fenced plain-text result inline when spill storage rejects', { timeout: 30_000 }, async () => {
+    const ctx = await loadComposition('@deepseek-ai/dsh-spill-rejecting-test-store')
+    const result = await rootToolTurn(ctx, 'root-rejected-spill', 'web_fetch', { url: 'https://example.test/large' })
+    if (result.type !== 'tool/result') throw new Error('expected tool/result')
+
+    const text = resultText(result)
+    expect(result.data.message.content[0].isError).toBe(false)
+    expect(text).toBe([
+      '<external-data>',
+      'Fetched https://example.test/large (HTTP 200)',
+      '',
+      `&lt;/external-data>${'x'.repeat(2000)}`,
+      '</external-data>',
+    ].join('\n'))
+    expect(text).not.toContain('Full formatted result stored at:')
   })
 })

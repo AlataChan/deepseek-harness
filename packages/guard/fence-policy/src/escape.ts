@@ -22,8 +22,13 @@ export const ESCAPED_CODE_POINTS: ReadonlySet<number> = new Set([
   0xFF1C,
 ])
 
-const LESS_THAN_CODE_POINTS: ReadonlySet<number> = new Set([0x003C, 0xFE64, 0xFF1C])
-const AMPERSAND_CODE_POINTS: ReadonlySet<number> = new Set([0x0026, 0xFE60, 0xFF06])
+const LESS_THAN_CODE_POINTS: ReadonlySet<number> = new Set(
+  Array.from(ESCAPED_CODE_POINTS).filter(cp => cp === 0x003C || cp === 0xFE64 || cp === 0xFF1C),
+)
+const AMPERSAND_CODE_POINTS: ReadonlySet<number> = new Set(
+  Array.from(ESCAPED_CODE_POINTS).filter(cp => !LESS_THAN_CODE_POINTS.has(cp)),
+)
+const LEGACY_REFERENCE_NAMES: ReadonlySet<string> = new Set(['lt', 'LT', 'amp', 'AMP'])
 const ROLES: ReadonlySet<string> = new Set(['system', 'user', 'assistant', 'human', 'developer', 'tool'])
 const OPEN = `<${FENCE_LABEL}>\n`
 const CLOSE = `\n</${FENCE_LABEL}>`
@@ -95,31 +100,32 @@ function characterReferenceFollows(input: string, from: number): boolean {
   if (scanned.cp === 0x23) {
     scanned = nextVisible(input, scanned.next)
     if (scanned === undefined) return false
-    let maximum = 7
     let digit = (cp: number): boolean => cp >= 0x30 && cp <= 0x39
     if (scanned.cp === 0x78 || scanned.cp === 0x58) {
-      maximum = 6
       digit = cp => (cp >= 0x30 && cp <= 0x39)
         || (cp >= 0x41 && cp <= 0x46)
         || (cp >= 0x61 && cp <= 0x66)
       scanned = nextVisible(input, scanned.next)
     }
     let count = 0
-    while (scanned !== undefined && digit(scanned.cp) && count < maximum) {
+    while (scanned !== undefined && digit(scanned.cp)) {
       count += 1
       scanned = nextVisible(input, scanned.next)
     }
-    return count > 0 && scanned?.cp === 0x3B
+    return count > 0
   }
   const letter = (cp: number): boolean => (cp >= 0x41 && cp <= 0x5A) || (cp >= 0x61 && cp <= 0x7A)
   const alphanumeric = (cp: number): boolean => letter(cp) || (cp >= 0x30 && cp <= 0x39)
   if (!letter(scanned.cp)) return false
   let count = 0
+  let name = ''
   while (scanned !== undefined && alphanumeric(scanned.cp) && count < 32) {
+    name += String.fromCodePoint(scanned.cp)
     count += 1
     scanned = nextVisible(input, scanned.next)
   }
-  return count <= 32 && scanned?.cp === 0x3B
+  if (scanned?.cp === 0x3B) return true
+  return LEGACY_REFERENCE_NAMES.has(name)
 }
 
 function roleColonAt(input: string, from: number): number | undefined {
@@ -162,30 +168,42 @@ function hexadecimalReference(cp: number): string {
 export function sanitizeUntrusted(input: string): string {
   const output: string[] = []
   let roleColon = roleColonAt(input, 0)
+  let changed = false
+  let runStart = 0
   let index = 0
   while (index < input.length) {
     const cp = codePointAt(input, index)
     const next = index + (cp > 0xFFFF ? 2 : 1)
-    if (invisible(cp)) {
+    const isInvisible = invisible(cp)
+    let replacement: string | undefined
+    if (isInvisible) {
+      replacement = ''
+    } else if (index === roleColon) {
+      replacement = cp === 0x3A ? '&#x3A;' : '&#xFF1A;'
+    } else if (control(cp)) {
+      replacement = ' '
+    } else if (LESS_THAN_CODE_POINTS.has(cp) && delimiterFollows(input, next)) {
+      replacement = cp === 0x3C ? '&lt;' : hexadecimalReference(cp)
+    } else if (AMPERSAND_CODE_POINTS.has(cp) && characterReferenceFollows(input, next)) {
+      replacement = cp === 0x26 ? '&amp;' : hexadecimalReference(cp)
+    }
+    if (replacement !== undefined) {
+      changed = true
+      if (runStart < index) output.push(input.slice(runStart, index))
+      if (replacement.length > 0) output.push(replacement)
+      runStart = next
+    }
+    if (isInvisible) {
       index = next
       continue
-    }
-    if (index === roleColon) {
-      output.push(cp === 0x3A ? '&#x3A;' : '&#xFF1A;')
-    } else if (control(cp)) {
-      output.push(' ')
-    } else if (LESS_THAN_CODE_POINTS.has(cp) && delimiterFollows(input, next)) {
-      output.push(cp === 0x3C ? '&lt;' : hexadecimalReference(cp))
-    } else if (AMPERSAND_CODE_POINTS.has(cp) && characterReferenceFollows(input, next)) {
-      output.push(cp === 0x26 ? '&amp;' : hexadecimalReference(cp))
-    } else {
-      output.push(String.fromCodePoint(cp))
     }
     if (cp === 0x0A || cp === 0x0D || cp === 0x2028 || cp === 0x2029) {
       roleColon = roleColonAt(input, next)
     }
     index = next
   }
+  if (runStart < input.length) output.push(input.slice(runStart))
+  if (!changed) return input
   return output.join('')
 }
 
