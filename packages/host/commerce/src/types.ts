@@ -1,5 +1,5 @@
 /**
- * Durable commerce binding types and their Session projection declarations.
+ * Commerce identity, value, change-kind, and durable binding types with their Session projection declarations.
  * This module has no Host runtime imports so Client aggregates can consume it.
  * @module @deepseek-ai/dsh-host-commerce/types
  */
@@ -8,6 +8,23 @@ import type { Branded } from '@deepseek-ai/dsh-brand'
 
 /** Provider-managed commerce source identity. */
 export type CommerceSourceId = Branded<'CommerceSourceId'>
+
+/** Stable identity of one listing in a commerce source. */
+export type ListingId = Branded<'ListingId'>
+
+/** Stable identity of one staged commerce change. */
+export type ChangeId = Branded<'ChangeId'>
+
+/** Scalar value read from or rendered for a commerce source. */
+export type CommerceValue = string | number | boolean | null
+
+/** Staged operation families the Provider can render for platform export. */
+export type CommerceChangeKind =
+  | 'listing-update'
+  | 'price-change'
+  | 'promotion'
+  | 'restock'
+  | 'campaign'
 
 /** Imported table families available in one commerce source. */
 export type CommerceDataKind = 'orders' | 'products' | 'inventory'

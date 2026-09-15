@@ -6,23 +6,23 @@
         platforms:
           taobao:
             orders: { order_id: 订单编号, listing_id: 商品ID, quantity: 数量, gross_sales: 实付金额, currency: 币种, ordered_at: 下单时间 }
-            products: { listing_id: 商品ID, title: 商品标题, sku: 商家编码, status: 状态, parent_id: 父商品ID }
+            products: { listing_id: 商品ID, title: 商品标题, sku: 商家编码, status: 状态, parent_id: 父商品ID, price: 价格, description: 宝贝描述 }
             inventory: { listing_id: 商品ID, available: 可用库存, low_stock_threshold: 低库存阈值 }
           pinduoduo:
             orders: { order_id: 订单号, listing_id: 商品id, quantity: 商品数量, gross_sales: 商家实收金额, currency: 币种, ordered_at: 成团时间 }
-            products: { listing_id: 商品id, title: 商品名称, sku: 商家编码, status: 商品状态, parent_id: 父商品id }
+            products: { listing_id: 商品id, title: 商品名称, sku: 商家编码, status: 商品状态, parent_id: 父商品id, price: 商品价格, description: 商品描述 }
             inventory: { listing_id: 商品id, available: 可售库存, low_stock_threshold: 低库存阈值 }
           douyin-shop:
             orders: { order_id: 订单号, listing_id: 商品ID, quantity: 购买数量, gross_sales: 订单应付金额, currency: 币种, ordered_at: 下单时间 }
-            products: { listing_id: 商品ID, title: 商品名称, sku: 商家编码, status: 商品状态, parent_id: 父商品ID }
+            products: { listing_id: 商品ID, title: 商品名称, sku: 商家编码, status: 商品状态, parent_id: 父商品ID, price: 售价, description: 商品描述 }
             inventory: { listing_id: 商品ID, available: 可售库存, low_stock_threshold: 低库存阈值 }
           youzan:
             orders: { order_id: 订单号, listing_id: 商品编码, quantity: 商品数量, gross_sales: 实付金额, currency: 币种, ordered_at: 下单时间 }
-            products: { listing_id: 商品编码, title: 商品名称, sku: 商家编码, status: 商品状态, parent_id: 父商品编码 }
+            products: { listing_id: 商品编码, title: 商品名称, sku: 商家编码, status: 商品状态, parent_id: 父商品编码, price: 价格, description: 商品描述 }
             inventory: { listing_id: 商品编码, available: 可售库存, low_stock_threshold: 低库存阈值 }
           sample:
             orders: { order_id: order, listing_id: listing, quantity: quantity, gross_sales: sales, currency: currency, ordered_at: date }
-            products: { listing_id: listing, title: title, sku: sku, status: status, parent_id: parent }
+            products: { listing_id: listing, title: title, sku: sku, status: status, parent_id: parent, price: price, description: description }
             inventory: { listing_id: listing, available: available, low_stock_threshold: threshold }
         analysis:
           maxRows: 500
@@ -38,3 +38,14 @@
         maxListingIds: 200
         maxMetaBytes: 16384
         maxImportBytes: 33554432
+        maxStagedChanges: 50
+        guardrails:
+          maxItemsPerChange: 25
+          maxPriceDeltaPct: 20
+          maxPromotionDiscountPct: 50
+          maxRestockQuantity: 500
+          maxCampaignBudget: 10000
+          maxListingFieldChars: 2000
+          protectedFields: [listing_id, currency, tax_category, compliance_notes]
+          priceBearingFields: [price]
+          listingUpdateBlockedFields: [price, stock, available]

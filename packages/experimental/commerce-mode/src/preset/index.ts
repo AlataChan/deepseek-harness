@@ -13,7 +13,7 @@ import * as CommerceTools from '../tools/index.ts'
 /** Loader-facing plugin name. */
 export const name = 'commerce-preset'
 /** The scope creator must hold every service the scoped tool Consumer injects. */
-export const inject = ['commerce', 'agentPresets', 'fs', 'tools', 'sessionProjections']
+export const inject = ['commerce', 'agentPresets', 'fs', 'tools', 'sessionProjections', 'approval', 'sandboxPolicy']
 
 /** Tool bounds for the preset-scoped `./tools` Consumer. */
 export type Config = CommerceTools.Config

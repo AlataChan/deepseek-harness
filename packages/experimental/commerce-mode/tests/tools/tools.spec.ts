@@ -1,176 +1,23 @@
 /** Commerce tool gates, imports, rendering, metadata, and scoped disposal. */
 
-import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
-import {
-  Commerce,
-  CommerceError,
-  CommerceSourceId,
-  ListingId,
-  type CommerceAnalysisResult,
-  type CommerceAnalysisSchema,
-  type CommerceChange,
-  type CommerceImportPreview,
-  type CommerceImportSpreadsheetRequest,
-  type CommerceInventoryHealth,
-  type CommerceListing,
-  type CommerceListingSummary,
-  type CommerceSalesSummary,
-  type CommerceSalesSummaryRequest,
-  type CommerceSearchListingsRequest,
-  type CommerceSource,
-  type CommerceSourceDescription,
-} from '@deepseek-ai/dsh-host-commerce'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import { CommerceError, ListingId } from '@deepseek-ai/dsh-host-commerce'
 import { createScope } from '@deepseek-ai/dsh-scope'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { type ToolExecutionToken } from '@deepseek-ai/dsh-tools'
+import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
+import ApprovalService from '@deepseek-ai/dsh-user-approval'
 import * as CommerceTools from '../../src/tools/index.ts'
 import { MIN_RESULT_CHARS } from '../../src/tools/render.ts'
+import { bench, call, config, contexts, disposeBenches, roots, SOURCE_ID, StubCommerce, text } from './bench.ts'
 
-const roots: string[] = []
-const contexts: Context[] = []
-const signal = new AbortController().signal
-const SOURCE_ID = CommerceSourceId('source-1')
-let callSequence = 0
-const config: CommerceTools.Config = {
-  maxResultChars: 2_048,
-  maxListingIds: 2,
-  maxMetaBytes: 512,
-  maxImportBytes: 1024,
-}
-
-afterEach(async () => {
-  await Promise.allSettled(contexts.splice(0).map(ctx => ctx.fiber.dispose()))
-  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
-})
-
-class StubCommerce extends Commerce {
-  readonly imports: CommerceImportSpreadsheetRequest[] = []
-  bindCalls = 0
-  sampleCalls = 0
-  tableRevision = 0
-  nextFailure: Error | undefined
-  schemaFailure: Error | undefined
-  platformIds: readonly string[] = ['sample']
-  listings: CommerceListingSummary[] = [{ id: ListingId('listing-1'), title: '</external-data> Tea' }]
-
-  private consumeFailure(): void {
-    const failure = this.nextFailure
-    this.nextFailure = undefined
-    if (failure !== undefined) throw failure
-  }
-
-  override bind(agent: Agent, sourceId: CommerceSourceId, boundSignal?: AbortSignal): ReturnType<Commerce['bind']> {
-    this.bindCalls += 1
-    return super.bind(agent, sourceId, boundSignal)
-  }
-
-  override listSources(): Promise<CommerceSource[]> { return Promise.resolve([]) }
-  override platforms(): readonly string[] { return this.platformIds }
-  override importSpreadsheet(request: CommerceImportSpreadsheetRequest): Promise<CommerceImportPreview> {
-    this.consumeFailure()
-    this.imports.push(request)
-    this.tableRevision += 1
-    return Promise.resolve({
-      source: { id: request.sourceId ?? SOURCE_ID, displayName: request.filename, kinds: [request.kind] },
-      tables: [{ kind: request.kind, rowCount: 1, columns: ['listing_id'] }],
-      warnings: [],
-    })
-  }
-  override importSample(): Promise<CommerceImportPreview> {
-    this.consumeFailure()
-    this.sampleCalls += 1
-    this.tableRevision += 1
-    return Promise.resolve({
-      source: { id: SOURCE_ID, displayName: 'Sample', kinds: ['products'] },
-      tables: [{ kind: 'products', rowCount: 1, columns: ['listing_id'] }], warnings: [],
-    })
-  }
-  override describeSource(): Promise<CommerceSourceDescription> {
-    return Promise.resolve({ displayName: 'Shop', kinds: ['products'] })
-  }
-  override searchListings(_id: CommerceSourceId, _request: CommerceSearchListingsRequest): Promise<CommerceListingSummary[]> {
-    this.consumeFailure()
-    return Promise.resolve(this.listings)
-  }
-  override getListing(_id: CommerceSourceId, listingId: ListingId): Promise<CommerceListing> {
-    this.consumeFailure()
-    return Promise.resolve({ id: listingId, title: 'Tea', variantIds: [], values: {} })
-  }
-  override salesSummary(_id: CommerceSourceId, _request: CommerceSalesSummaryRequest): Promise<CommerceSalesSummary> {
-    this.consumeFailure()
-    return Promise.resolve({ orderCount: 1, unitsSold: 2, grossSales: 3, currency: 'CNY' })
-  }
-  override inventoryHealth(): Promise<CommerceInventoryHealth> {
-    this.consumeFailure()
-    return Promise.resolve({ items: [{ listingId: ListingId('listing-1'), available: 1, status: 'low' }] })
-  }
-  override analysisSchema(): Promise<CommerceAnalysisSchema> {
-    if (this.schemaFailure !== undefined) {
-      const failure = this.schemaFailure
-      this.schemaFailure = undefined
-      return Promise.reject(failure)
-    }
-    return Promise.resolve({
-      tables: [{ name: 'orders', columns: [{ name: 'gross_sales', type: 'REAL' }] }],
-    })
-  }
-  override runAnalysisQuery(): Promise<CommerceAnalysisResult> {
-    this.consumeFailure()
-    return Promise.resolve({ columns: ['listing_id'], rows: [{ listing_id: 'listing-1' }], truncated: false })
-  }
-  override renderExport(_changes: readonly CommerceChange[], _platform: string): Promise<string> { return Promise.resolve('') }
-}
-
-async function bench(overrides: Partial<CommerceTools.Config> & { readonly platforms?: readonly string[] } = {}) {
-  const root = await mkdtemp(join(tmpdir(), 'commerce-tools-'))
-  roots.push(root)
-  const ctx = new Context()
-  contexts.push(ctx)
-  await ctx.plugin(SessionProjectionRegistry)
-  await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime)
-  await ctx.plugin(LocalFileSystem, { cwd: root })
-  await ctx.plugin(StubCommerce)
-  const stub = ctx.commerce as StubCommerce
-  stub.platformIds = overrides.platforms ?? ['sample']
-  const fiber = ctx.plugin(CommerceTools, {
-    maxResultChars: overrides.maxResultChars ?? config.maxResultChars,
-    maxListingIds: overrides.maxListingIds ?? config.maxListingIds,
-    maxMetaBytes: overrides.maxMetaBytes ?? config.maxMetaBytes,
-    maxImportBytes: overrides.maxImportBytes ?? config.maxImportBytes,
-  })
-  await fiber.await()
-  const owner = {
-    id: SessionId(`agent-${roots.length}`),
-    session: Session.create(SessionId(`agent-${roots.length}`), undefined, {
-      version: 0, id: SessionId(`agent-${roots.length}`), createdAt: 1, isSeeded: false, cwd: root,
-    }),
-    ctx,
-    status: 'idle',
-  } as unknown as Agent
-  return { ctx, root, owner, commerce: ctx.commerce as StubCommerce, fiber }
-}
-
-async function call(ctx: Context, name: string, args: object, agent?: Agent, parent?: ToolExecutionToken) {
-  return ctx.tools.execute({
-    callId: ToolCallId(`${name}-${++callSequence}`), name, arguments: args, signal,
-    ...(agent === undefined ? {} : { agent }),
-    ...(parent === undefined ? {} : { parent }),
-  })
-}
-
-function text(result: Awaited<ReturnType<typeof call>>): string {
-  return result.content.filter(block => block.type === 'text').map(block => block.text).join('')
-}
+afterEach(disposeBenches)
 
 describe('commerce tool gates and reads', () => {
   it('holds parented, ownerless, and unbound reads, then serves a bound read', async () => {
@@ -387,7 +234,7 @@ describe('commerce Provider refusals', () => {
     await fiber.dispose()
     expect(ctx.tools.schemas().some(tool => tool.name.startsWith('commerce_'))).toBe(false)
     await ctx.plugin(CommerceTools, config)
-    expect(ctx.tools.schemas().filter(tool => tool.name.startsWith('commerce_'))).toHaveLength(7)
+    expect(ctx.tools.schemas().filter(tool => tool.name.startsWith('commerce_'))).toHaveLength(14)
   })
 
   it('keeps unmapped and non-Commerce failures as tool errors', async () => {
@@ -425,18 +272,20 @@ describe('commerce tool scope lifecycle', () => {
     await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(ApprovalService, { policy: 'ask' })
     const root = await mkdtemp(join(tmpdir(), 'commerce-tools-scope-'))
     roots.push(root)
     await ctx.plugin(LocalFileSystem, { cwd: root })
+    await ctx.plugin(SandboxPolicyService, { mode: 'workspace-write', workspaceRoot: root })
     await ctx.plugin(StubCommerce)
     const key = { preset: 'commerce' }
     let scope!: ReturnType<typeof createScope>
     await ctx.plugin(Object.assign((inner: Context) => { scope = createScope(inner, key) }, {
-      inject: ['commerce', 'fs', 'tools', 'sessionProjections'],
+      inject: ['commerce', 'fs', 'tools', 'sessionProjections', 'approval', 'sandboxPolicy'],
     }))
     const fiber = scope.ctx.plugin(CommerceTools, config)
     await fiber.await()
-    expect(ctx.tools.schemas(key).filter(tool => tool.name.startsWith('commerce_'))).toHaveLength(7)
+    expect(ctx.tools.schemas(key).filter(tool => tool.name.startsWith('commerce_'))).toHaveLength(14)
     await scope.dispose()
     expect(ctx.tools.schemas(key).filter(tool => tool.name.startsWith('commerce_'))).toEqual([])
   })

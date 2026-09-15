@@ -40,7 +40,7 @@ Consumer 注入 `commerce`，调用其 Provider-neutral 方法，并把闭合的
 | 文件 | 职责 |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Service Definition、带品牌标识、Provider-neutral 操作与错误 |
-| [`src/types.ts`](src/types.ts) | 持久化事件以及 Host／Client 投影声明 |
+| [`src/types.ts`](src/types.ts) | 身份、取值与改动类别类型，持久化事件，以及 Host／Client 投影声明 |
 | [`src/session.ts`](src/session.ts) | 可重放的 `commerceBinding` 投影定义 |
 | [`src/client.ts`](src/client.ts) | 仅类型的 Client 入口 |
 | — | 不发布运行时 invariant companion，因为该无状态 Service Definition 不存在可能分歧的独立观测状态。 |

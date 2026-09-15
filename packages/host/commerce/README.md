@@ -40,7 +40,7 @@ Consumers inject `commerce`, call its provider-neutral methods, and map the clos
 | File | Role |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Service Definition, branded identities, provider-neutral operations, and errors |
-| [`src/types.ts`](src/types.ts) | Durable event and Host/Client projection declarations |
+| [`src/types.ts`](src/types.ts) | Identity, value, and change-kind types, the durable event, and Host/Client projection declarations |
 | [`src/session.ts`](src/session.ts) | Replayable `commerceBinding` projection definition |
 | [`src/client.ts`](src/client.ts) | Types-only Client entry point |
 | — | No runtime invariant companion is published because this stateless Service Definition has no independently observed state that can diverge. |

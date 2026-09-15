@@ -512,25 +512,39 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@deepseek-ai/dsh-experimental-commerce-mode',
     dir: 'commerce-mode',
     source: 'packages/experimental/commerce-mode/src/tools/index.ts',
-    requires: ['ctx.tools', 'ctx.commerce', 'ctx.fs', 'ctx.sessionProjections', 'a direct calling Agent'],
-    writes: ['tool/call', 'commerce/bound on the first import', 'tool/result with read provenance metadata'],
+    requires: ['ctx.tools', 'ctx.commerce', 'ctx.fs', 'ctx.sessionProjections', 'ctx.approval', 'ctx.sandboxPolicy', 'a direct calling Agent'],
+    writes: ['tool/call', 'commerce/bound on the first import', 'approval/asked and approval/decided for an export', 'tool/result with read provenance or staged-change ledger metadata'],
     async mount(ctx) {
       await ctx.plugin(LocalFileSystem, { cwd: root })
       ctx.provide('commerce', {
         platforms: () => ['taobao', 'pinduoduo', 'douyin-shop', 'youzan', 'sample'],
       } as unknown as Context['commerce'])
+      ctx.provide('approval', {} as Context['approval'])
+      ctx.provide('sandboxPolicy', {} as Context['sandboxPolicy'])
       await mountCatalogChildScope(ctx, (childCtx) => {
         childCtx.plugin(CommerceTools, {
           maxResultChars: 50_000,
           maxListingIds: 200,
           maxMetaBytes: 16_384,
           maxImportBytes: 33_554_432,
+          maxStagedChanges: 50,
+          guardrails: {
+            maxItemsPerChange: 25,
+            maxPriceDeltaPct: 20,
+            maxPromotionDiscountPct: 50,
+            maxRestockQuantity: 500,
+            maxCampaignBudget: 10_000,
+            maxListingFieldChars: 2_000,
+            protectedFields: ['listing_id', 'currency', 'tax_category', 'compliance_notes'],
+            priceBearingFields: ['price'],
+            listingUpdateBlockedFields: ['price', 'stock', 'available'],
+          },
         })
-      }, undefined, ['tools', 'commerce', 'fs', 'sessionProjections'])
+      }, undefined, ['tools', 'commerce', 'fs', 'sessionProjections', 'approval', 'sandboxPolicy'])
     },
     scope: ctx => catalogChildScopes.get(ctx) as Agent,
     note:
-      'The `./preset` row mounts the seven tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import tools are exclusive; read tools are concurrency-safe and require a session binding created by an import.',
+      'The `./preset` row mounts the commerce tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import, staging, discard, and export tools are exclusive; read tools are concurrency-safe. Read, staging, and export tools require a session binding created by an import; staging tools record changes in the session ledger, and the export tool writes a CSV file into the session workspace only after approval.',
   },
   {
     pkg: '@deepseek-ai/dsh-experimental-tool-agent-team',

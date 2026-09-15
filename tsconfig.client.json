@@ -84,6 +84,7 @@
     { "path": "./packages/experimental/desktop-files/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-ask-data/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-ask-knowledge/tsconfig.client.json" },
+    { "path": "./packages/experimental/commerce-mode/tsconfig.client.json" },
     { "path": "./packages/client/ui-jobs" },
     { "path": "./packages/client/ui-schedule" },
     { "path": "./packages/client/ui-directory-picker-browse" },

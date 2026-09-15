@@ -9,3 +9,19 @@ preset/commerce/LICENSE-APACHE-2.0.txt.
   merchant-agent/skills/performance-insights/SKILL.md. It is rewritten for this
   package's commerce_* tools; guidance on memory, metric presentation
   components, and follow-up chips is removed.
+
+- preset/commerce/skills/commerce-listing-copy/SKILL.md is adapted from
+  merchant-agent/skills/catalog-listings/SKILL.md. It is rewritten for this
+  package's commerce_* tools; guidance on memory, brand voice, attributes,
+  categorization, and image callouts is removed.
+
+- preset/commerce/skills/commerce-inventory-pricing/SKILL.md is adapted from
+  merchant-agent/skills/inventory-operations/SKILL.md and
+  merchant-agent/skills/pricing-promotions/SKILL.md. It is rewritten for this
+  package's commerce_* tools; guidance on daily briefings, order exceptions,
+  pricing context, margins, and presentation components is removed.
+
+- preset/commerce/skills/commerce-marketing-campaigns/SKILL.md is adapted from
+  merchant-agent/skills/marketing-campaigns/SKILL.md. It is rewritten for this
+  package's commerce_* tools; guidance on campaign performance reviews,
+  attribution, memory, and presentation components is removed.

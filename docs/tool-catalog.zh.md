@@ -40,7 +40,7 @@
 | `@deepseek-ai/dsh-tool-subagent` | `list_subagent_models`、`subagent` | `ctx.tools`、`ctx.subagents`、`ctx.systemPrompt`、`用于模型发现和所选路由校验的 ctx.llm` | `tool/call`、`tool/result`、`child session events through the chosen provider` | `subagent`、`subagent_fork` | 注册的委派工具名称取决于加载时 `toolName` 配置（默认为 `subagent`）；上述默认 schema 关闭模型选择，而发现 schema 则展示为已启用 Session 中可用的固定配套工具。Web preset 会在每个新顶层 Session 创建时读取插件页偏好，并为其子 Session 保留该决定；`subagent_fork` 始终使用固定路由。每个实例通过 `modelSelectionSettings`、`backgroundMode` 与 `enableRunInBackground` 独立控制是否读取模型选择设置及其后台行为。 |
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`、`list_agents`、`send_message` | `ctx.tools`、`ctx.subagents`、`ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`、`tool/result`、`child session events through ctx.subagents` | - | 这些是控制可继续后台 subagent 的全局命名工具：绑定提供方的 `tool-subagent` 实例注册不同的委派工具；本包注册一次 `send_message` 和 `interrupt_agent`，另由 `list_agents` 通过单独加载的 `/list-agents` 插件提供，其目录行使用 sessionProjections 和实时 Agent 注册表。 |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`、`job_list`、`job_output` | `ctx.tools`、`ctx.jobs`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`user/message via agent.inject() for background completion notices` | - | 与任务种类无关的后台任务控制器：后台 bash 命令、PTY 发送和 subagent 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。 |
-| `@deepseek-ai/dsh-experimental-commerce-mode` | `commerce_analysis_query`、`commerce_get_listing`、`commerce_import_file`、`commerce_inventory_health`、`commerce_load_sample`、`commerce_sales_summary`、`commerce_search_listings` | `ctx.tools`、`ctx.commerce`、`ctx.fs`、`ctx.sessionProjections`、`a direct calling Agent` | `tool/call`、`commerce/bound on the first import`、`tool/result with read provenance metadata` | - | `./preset` row 在 `commerce` preset standing scope 中挂载这七个工具；没有 preset 名册的部署通过根 `./tools` row 为所有 Agent 挂载它们。导入工具是独占操作；读取工具可并发安全执行，并要求会话具有由导入创建的 binding。 |
+| `@deepseek-ai/dsh-experimental-commerce-mode` | `commerce_analysis_query`、`commerce_discard_change`、`commerce_export_changes`、`commerce_get_listing`、`commerce_import_file`、`commerce_inventory_health`、`commerce_load_sample`、`commerce_sales_summary`、`commerce_search_listings`、`commerce_stage_campaign`、`commerce_stage_listing_update`、`commerce_stage_price_change`、`commerce_stage_promotion`、`commerce_stage_restock` | `ctx.tools`、`ctx.commerce`、`ctx.fs`、`ctx.sessionProjections`、`ctx.approval`、`ctx.sandboxPolicy`、`a direct calling Agent` | `tool/call`、`commerce/bound on the first import`、`approval/asked and approval/decided for an export`、`tool/result with read provenance or staged-change ledger metadata` | - | `./preset` row 在 `commerce` preset standing scope 中挂载 commerce 工具；没有 preset 名册的部署通过根 `./tools` row 为所有 Agent 挂载它们。导入、暂存、丢弃与导出工具是独占操作；读取工具可并发安全执行。读取、暂存与导出工具要求会话具有由导入创建的 binding；暂存工具在会话 ledger 中记录变更，导出工具仅在获批后把 CSV 文件写入会话 workspace。 |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`、`list_agents`、`propose_action`、`send_message`、`spawn_teammate`、`team_task_create`、`team_task_get`、`team_task_list`、`team_task_update`、`wait_agent` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agentTeams`、`ctx.userQuestions`、`an exact live Team member Agent` | `tool/call`、`team/member`、`team/message/queued`、`team/message/delivered`、`team/task`、`tool/result` | - | 这 10 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
@@ -1770,6 +1770,63 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
 
+### `commerce_discard_change`
+
+丢弃一个已暂存的变更，使其不会被导出。该变更以已丢弃状态保留在会话 ledger 中。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "change_id": {
+      "type": "string",
+      "description": "Change id returned by a staging tool."
+    }
+  },
+  "required": [
+    "change_id"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_export_changes`
+
+在商家批准后，把暂存的 commerce 变更写入本会话 workspace 中的 CSV 文件。不会向店铺发送任何内容；由商家自行上传该文件。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "change_ids": {
+      "type": "array",
+      "description": "Staged change ids to export.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "platform": {
+      "type": "string",
+      "description": "Platform mapping whose column headers the CSV uses.",
+      "enum": [
+        "taobao",
+        "pinduoduo",
+        "douyin-shop",
+        "youzan",
+        "sample"
+      ]
+    }
+  },
+  "required": [
+    "change_ids",
+    "platform"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
 ### `commerce_get_listing`
 
 从当前会话绑定的 commerce 数据源读取一个完整商品。
@@ -1907,7 +1964,237 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
 
-`./preset` row 在 `commerce` preset standing scope 中挂载这七个工具；没有 preset 名册的部署通过根 `./tools` row 为所有 Agent 挂载它们。导入工具是独占操作；读取工具可并发安全执行，并要求会话具有由导入创建的 binding。
+### `commerce_stage_campaign`
+
+暂存一个带预算的新限时营销活动，供商家审阅。暂存不会改动店铺中的任何内容。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "name": {
+      "type": "string",
+      "description": "Campaign name."
+    },
+    "budget": {
+      "type": "number",
+      "description": "Total campaign budget in the store currency."
+    },
+    "starts_on": {
+      "type": "string",
+      "description": "First campaign day, YYYY-MM-DD."
+    },
+    "ends_on": {
+      "type": "string",
+      "description": "Last campaign day, YYYY-MM-DD."
+    },
+    "listing_ids": {
+      "type": "array",
+      "description": "Listing ids the campaign promotes, returned by a commerce read; may be empty.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "name",
+    "budget",
+    "starts_on",
+    "ends_on",
+    "listing_ids"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_stage_listing_update`
+
+暂存对当前绑定 commerce 数据源中一个商品的内容编辑，供商家审阅。暂存不会改动店铺中的任何内容。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "listing_id": {
+      "type": "string",
+      "description": "Listing id read in full with commerce_get_listing."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "fields": {
+      "type": "array",
+      "description": "One entry per listing field to change.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Listing field name, such as title or description."
+          },
+          "value": {
+            "type": "string",
+            "description": "New text for the field."
+          }
+        },
+        "required": [
+          "field",
+          "value"
+        ]
+      }
+    }
+  },
+  "required": [
+    "listing_id",
+    "summary",
+    "fields"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_stage_price_change`
+
+暂存当前绑定 commerce 数据源中商品的新价格，供商家审阅。当前价格来自数据源；暂存不会改动店铺中的任何内容。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "items": {
+      "type": "array",
+      "description": "One line per listing.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "Listing id returned by a commerce read."
+          },
+          "price": {
+            "type": "number",
+            "description": "New price in the listing currency."
+          }
+        },
+        "required": [
+          "listing_id",
+          "price"
+        ]
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "items"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_stage_promotion`
+
+暂存对当前绑定 commerce 数据源中商品的限时百分比折扣，供商家审阅。促销价格根据数据源中的当前价格计算；暂存不会改动店铺中的任何内容。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "listing_ids": {
+      "type": "array",
+      "description": "Listing ids returned by a commerce read.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "discount_pct": {
+      "type": "number",
+      "description": "Discount off each current price, in percent."
+    },
+    "starts_on": {
+      "type": "string",
+      "description": "First promotion day, YYYY-MM-DD."
+    },
+    "ends_on": {
+      "type": "string",
+      "description": "Last promotion day, YYYY-MM-DD."
+    }
+  },
+  "required": [
+    "summary",
+    "listing_ids",
+    "discount_pct",
+    "starts_on",
+    "ends_on"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_stage_restock`
+
+暂存当前绑定 commerce 数据源中商品的库存补充，供商家审阅。当前库存来自已导入的库存表；暂存不会改动店铺中的任何内容。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "items": {
+      "type": "array",
+      "description": "One line per listing.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "Listing id returned by a commerce read."
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Units to add to the current stock."
+          }
+        },
+        "required": [
+          "listing_id",
+          "quantity"
+        ]
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "items"
+  ]
+}
+```
+
+来源：[`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+`./preset` row 在 `commerce` preset standing scope 中挂载 commerce 工具；没有 preset 名册的部署通过根 `./tools` row 为所有 Agent 挂载它们。导入、暂存、丢弃与导出工具是独占操作；读取工具可并发安全执行。读取、暂存与导出工具要求会话具有由导入创建的 binding；暂存工具在会话 ledger 中记录变更，导出工具仅在获批后把 CSV 文件写入会话 workspace。
 
 <a id="deepseek-aidsh-experimental-tool-agent-team"></a>
 

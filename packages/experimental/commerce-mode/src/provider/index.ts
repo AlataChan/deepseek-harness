@@ -64,7 +64,7 @@ export type { AnalysisConfig, ColumnMapping, Config, PlatformConfig } from './ty
 
 const FIXED_COLUMNS = {
   orders: ['order_id', 'listing_id', 'quantity', 'gross_sales', 'currency', 'ordered_at'],
-  products: ['listing_id', 'title', 'sku', 'status', 'parent_id'],
+  products: ['listing_id', 'title', 'sku', 'status', 'parent_id', 'price', 'description'],
   inventory: ['listing_id', 'available', 'low_stock_threshold'],
 } as const satisfies Record<CommerceDataKind, readonly string[]>
 
@@ -240,7 +240,7 @@ export default class CommerceMode extends Commerce {
     signal?: AbortSignal,
   ): Promise<CommerceListing> {
     const row = (await this.fixedQuery(sourceId,
-      `SELECT * FROM products WHERE listing_id = ${sqlText(listingId)} LIMIT 1`, signal)).rows[0]
+      `SELECT listing_id, title, sku, status, parent_id, CAST(price AS REAL) AS price, description FROM products WHERE listing_id = ${sqlText(listingId)} LIMIT 1`, signal)).rows[0]
     if (row === undefined) {
       throw new CommerceError('source-missing', `listing ${listingId} is not present`, { ruleId: 'listing-id' })
     }
@@ -540,6 +540,7 @@ function mapImportedTable(
 
 function numericColumn(kind: CommerceDataKind, column: string): boolean {
   return (kind === 'orders' && (column === 'quantity' || column === 'gross_sales'))
+    || (kind === 'products' && column === 'price')
     || (kind === 'inventory' && (column === 'available' || column === 'low_stock_threshold'))
 }
 

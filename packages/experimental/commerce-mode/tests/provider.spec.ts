@@ -53,7 +53,7 @@ const platforms: Config['platforms'] = {
   },
   sample: {
     orders: { order_id: 'order', listing_id: 'listing', quantity: 'quantity', gross_sales: 'sales', currency: 'currency', ordered_at: 'date' },
-    products: { listing_id: 'listing', title: 'title', sku: 'sku', status: 'status', parent_id: 'parent' },
+    products: { listing_id: 'listing', title: 'title', sku: 'sku', status: 'status', parent_id: 'parent', price: 'price', description: 'description' },
     inventory: { listing_id: 'listing', available: 'available', low_stock_threshold: 'threshold' },
   },
 }
@@ -152,6 +152,17 @@ describe('CommerceMode Provider', () => {
   it('lists configured platform ids in configuration order', async () => {
     const { commerce } = await bench()
     expect(commerce.platforms()).toEqual(['taobao', 'pinduoduo', 'douyin-shop', 'youzan', 'sample'])
+  })
+
+  it('imports optional numeric price and text description product columns', async () => {
+    const { commerce } = await bench()
+    const sample = await commerce.importSample()
+    const listing = await commerce.getListing(sample.source.id, ListingId('P-100'))
+    expect(listing.values).toMatchObject({ price: 19.9, description: 'Spring-picked jasmine green tea in a 100 g tin' })
+    await expect(commerce.importSpreadsheet({
+      kind: 'products', platform: 'sample', filename: 'bad-price.csv',
+      bytes: new TextEncoder().encode('listing,title,price\nP-1,Tea,free\n'),
+    })).rejects.toMatchObject({ code: 'import-invalid', details: { ruleId: 'numeric-price' } })
   })
 
   it('imports the packaged fictional sample', async () => {

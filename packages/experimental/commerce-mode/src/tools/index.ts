@@ -1,231 +1,75 @@
-/** Native commerce import and read tools scoped to the commerce agent preset. */
+/** Native commerce import, read, staging, and export tools scoped to the commerce agent preset. */
 
 import { basename } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import {
-  CommerceError,
-  ListingId,
-  type CommerceAnalysisSchema,
-} from '@deepseek-ai/dsh-host-commerce'
+import { ListingId } from '@deepseek-ai/dsh-host-commerce'
 import { canonicalPath } from '@deepseek-ai/dsh-sandbox'
-import { defineTool, type ToolRunContext } from '@deepseek-ai/dsh-tools'
+import { defineTool } from '@deepseek-ai/dsh-tools'
+import {
+  binding,
+  directCall,
+  held,
+  holdRecoverableFailure,
+  ok,
+  outputFor,
+} from './outcome.ts'
 import { commerceSessionProjectionDefinition } from './projection.ts'
-import { COMMERCE_TRUNCATION_SUFFIX, MIN_RESULT_CHARS, renderCommerceText } from './render.ts'
+import { MIN_RESULT_CHARS } from './render.ts'
+import { registerExportTool } from './export.ts'
+import { boundSession, registerStagingTools, type StagingConfig } from './staging.ts'
 
 // Type-only imports install the Context service and projection declarations.
 import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-session-projection'
 
 export type * from './types.ts'
+export type { GuardrailConfig } from './guardrails.ts'
+export type { OutcomeBounds } from './outcome.ts'
+export type { StagingConfig } from './staging.ts'
 export { commerceSessionProjectionDefinition } from './projection.ts'
 
 /** Loader-facing plugin name. */
 export const name = 'commerce-tools'
 /** Services required by the commerce tool Consumer. */
-export const inject = ['commerce', 'fs', 'tools', 'sessionProjections']
+export const inject = ['commerce', 'fs', 'tools', 'sessionProjections', 'approval', 'sandboxPolicy']
 
 /** Host service each tool mount claims so one Host cannot expose two mounts. */
 const TOOL_MOUNT_SERVICE = 'commerceToolMount'
 
-/** Deployment bounds for commerce tool inputs, outputs, and provenance. */
-export interface Config {
-  /** Maximum characters in one complete fenced Provider render. */
-  readonly maxResultChars: number
-  /** Maximum listing ids persisted in one tool-result metadata record. */
-  readonly maxListingIds: number
-  /** Maximum UTF-8 bytes in serialized presentation metadata. */
-  readonly maxMetaBytes: number
+/** Deployment bounds for commerce tool inputs, outputs, provenance, and staging. */
+export interface Config extends StagingConfig {
   /** Maximum bytes read from one workspace import file. */
   readonly maxImportBytes: number
 }
 
-/** Schemastery validation for the required commerce tool bounds. */
+/** Schemastery validation for the required commerce tool bounds and guardrails. */
 export const Config: z<Config> = z.object({
   maxResultChars: z.number().step(1).min(MIN_RESULT_CHARS).required(),
   maxListingIds: z.number().step(1).min(1).required(),
   maxMetaBytes: z.number().step(1).min(2).required(),
   maxImportBytes: z.number().step(1).min(1).required(),
+  maxStagedChanges: z.number().step(1).min(1).required(),
+  guardrails: z.object({
+    maxItemsPerChange: z.number().step(1).min(1).required(),
+    maxPriceDeltaPct: z.number().min(0).required(),
+    maxPromotionDiscountPct: z.number().min(0).max(90).required(),
+    maxRestockQuantity: z.number().step(1).min(1).required(),
+    maxCampaignBudget: z.number().min(0).required(),
+    maxListingFieldChars: z.number().step(1).min(1).required(),
+    protectedFields: z.array(z.string()).required(),
+    priceBearingFields: z.array(z.string()).required(),
+    listingUpdateBlockedFields: z.array(z.string()).required(),
+  }).required(),
 })
 
 const PARENT_PATH_SEGMENT = /(?:^|[\\/])\.\.(?:[\\/]|$)/
-type ToolOutcome = {
-  readonly status: 'ok'
-  readonly text: string
-  readonly listingIds: ListingId[]
-  readonly fullListing: boolean
-} | {
-  readonly status: 'held'
-  readonly message: string
-}
-
-const outcomeSchema = {
-  oneOf: [{
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      status: { type: 'string', required: true, enum: ['ok'] },
-      text: { type: 'string', required: true },
-      listingIds: { type: 'array', required: true, items: { type: 'string' } },
-      fullListing: { type: 'boolean', required: true },
-    },
-  }, {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      status: { type: 'string', required: true, enum: ['held'] },
-      message: { type: 'string', required: true },
-    },
-  }],
-} as const
-
-function held(message: string): ToolOutcome {
-  return { status: 'held', message }
-}
-
-function boundText(text: string, maxResultChars: number): string {
-  if (text.length <= maxResultChars) return text
-  let kept = ''
-  for (const codePoint of text) {
-    if (kept.length + codePoint.length + COMMERCE_TRUNCATION_SUFFIX.length > maxResultChars) break
-    kept += codePoint
-  }
-  return `${kept}${COMMERCE_TRUNCATION_SUFFIX}`
-}
-
-function heldWithDetail(
-  introduction: string,
-  detail: string,
-  recovery: string,
-  config: Config,
-): ToolOutcome {
-  const detailBudget = config.maxResultChars - introduction.length - recovery.length - 2
-  if (detailBudget < MIN_RESULT_CHARS) {
-    return held(`${introduction} ${recovery}`)
-  }
-  const rendered = renderCommerceText(detail, detailBudget)
-  return held(`${introduction}\n${rendered}\n${recovery}`)
-}
-
-const ANALYSIS_RULE_MEANINGS: Readonly<Record<string, string>> = {
-  empty: 'the query is empty',
-  comments: 'SQL comments are not allowed',
-  'multiple-statements': 'multiple statements were provided',
-  'forbidden-keyword': 'the query contains a write or unsafe keyword',
-  'select-only': 'the query is not a SELECT or WITH statement',
-  'sqlite-execution': 'SQLite refused the query',
-  'sqlite-json': 'SQLite returned invalid JSON',
-}
-
-async function recoverCommerceFailure(
-  error: unknown,
-  config: Config,
-  analysisSchema?: () => Promise<CommerceAnalysisSchema>,
-): Promise<ToolOutcome> {
-  if (!(error instanceof CommerceError)) throw error
-  switch (error.code) {
-    case 'analysis-rejected': {
-      const ruleId = error.details.ruleId ?? 'unknown'
-      const meaning = ANALYSIS_RULE_MEANINGS[ruleId] ?? 'the provider rejected the query'
-      let schema: CommerceAnalysisSchema | undefined
-      if (ruleId === 'sqlite-execution' && analysisSchema !== undefined) {
-        try {
-          schema = await analysisSchema()
-        } catch (schemaError: unknown) {
-          return recoverCommerceFailure(schemaError, config)
-        }
-      }
-      const detail = JSON.stringify({ message: error.message, ...(schema === undefined ? {} : { schema }) }, null, 2)
-      return heldWithDetail(
-        `The analysis query was rejected by rule ${ruleId}: ${meaning}. Provider detail:`,
-        detail,
-        'Rewrite it as one read-only SELECT or WITH statement.',
-        config,
-      )
-    }
-    case 'analysis-timeout':
-      return held('The analysis query exceeded its time limit. Narrow it with filters, aggregation, or LIMIT, then retry.')
-    case 'analysis-output-too-large':
-      return held('The analysis query exceeded its output limit. Narrow it with filters, aggregation, or LIMIT, then retry.')
-    case 'import-invalid':
-      return heldWithDetail(
-        'The commerce import is invalid. Provider detail:',
-        error.message,
-        'Choose a supported CSV or XLSX file and a configured platform, then retry.',
-        config,
-      )
-    case 'source-invalid':
-      return held('The commerce source bound to this session can no longer be read. Import the files again in a new session.')
-    case 'source-missing':
-      return held('The commerce source bound to this session is no longer available. Import the files again in a new session.')
-    default:
-      throw error
-  }
-}
-
-async function holdRecoverableFailure(
-  operation: () => Promise<ToolOutcome>,
-  config: Config,
-  analysisSchema?: () => Promise<CommerceAnalysisSchema>,
-): Promise<ToolOutcome> {
-  try {
-    return await operation()
-  } catch (error: unknown) {
-    return recoverCommerceFailure(error, config, analysisSchema)
-  }
-}
-
-function directCall(exec: ToolRunContext): { outcome: ToolOutcome } | { agent: Agent } {
-  if (exec.parent !== undefined) {
-    return { outcome: held('Commerce tools run as direct calls. Call this tool directly instead of from run_code.') }
-  }
-  if (exec.agent === undefined) {
-    return { outcome: held('This commerce tool needs an active agent session. Start or resume a commerce session, then call it directly.') }
-  }
-  return { agent: exec.agent }
-}
-
-function unbound(): ToolOutcome {
-  return held('No commerce source is bound to this session. Call commerce_import_file or commerce_load_sample first.')
-}
-
-function ok(value: unknown, listingIds: readonly ListingId[], fullListing: boolean, config: Config): ToolOutcome {
-  const outcome: ToolOutcome = {
-    status: 'ok',
-    text: JSON.stringify(value, null, 2),
-    listingIds: [...new Set(listingIds)].slice(0, config.maxListingIds),
-    fullListing,
-  }
-  const meta = projectMeta(outcome)
-  if (Buffer.byteLength(JSON.stringify(meta), 'utf8') > config.maxMetaBytes) {
-    return held('The commerce result metadata exceeds the configured safety limit. Narrow the request and try again.')
-  }
-  return outcome
-}
-
-function projectMeta(value: ToolOutcome): { listingIds: ListingId[]; fullListing: boolean } | Record<string, never> {
-  return value.status === 'ok'
-    ? { listingIds: value.listingIds, fullListing: value.fullListing }
-    : {}
-}
-
-function render(value: ToolOutcome, config: Config): { type: 'text'; text: string }[] {
-  return [{
-    type: 'text',
-    text: value.status === 'held' ? boundText(value.message, config.maxResultChars) : renderCommerceText(value.text, config.maxResultChars),
-  }]
-}
-
-function binding(ctx: Context, agent: Agent) {
-  return ctx.sessionProjections.stateOf(agent.session, 'commerceBinding') ?? null
-}
 
 /**
- * Register the commerce projection and seven native tools on the current scope.
+ * Register the commerce projection with the import, read, staging, and export tools on the current scope.
  * A Host accepts one mount: a second `./tools` or `./preset` mount fails at load.
  * @param ctx - root or preset-scope context holding the injected services.
- * @param config - tool input, output, and provenance bounds.
+ * @param config - tool input, output, provenance, and staging bounds.
  */
 export function apply(ctx: Context, config: Config): void {
   // Scopes share the root service store, so the second mount's claim throws.
@@ -239,11 +83,7 @@ export function apply(ctx: Context, config: Config): void {
   }
   ctx.sessionProjections.register(commerceSessionProjectionDefinition)
 
-  const output = {
-    schema: outcomeSchema,
-    render: (_args: unknown, value: ToolOutcome) => render(value, config),
-    presentationMeta: (_args: unknown, value: ToolOutcome) => projectMeta(value),
-  }
+  const output = outputFor(config)
 
   ctx.tools.register(defineTool({
     name: 'commerce_import_file',
@@ -324,12 +164,10 @@ export function apply(ctx: Context, config: Config): void {
     isConcurrencySafe: () => true,
     async execute(args, exec) {
       return holdRecoverableFailure(async () => {
-        const direct = directCall(exec)
-        if ('outcome' in direct) return direct.outcome
-        const current = binding(ctx, direct.agent)
-        if (current === null) return unbound()
+        const session = boundSession(ctx, exec)
+        if ('outcome' in session) return session.outcome
         if (args.limit < 1) return held('The listing limit must be positive. Retry with a positive limit.')
-        const listings = await ctx.commerce.searchListings(current.sourceId, args, exec.signal)
+        const listings = await ctx.commerce.searchListings(session.sourceId, args, exec.signal)
         return ok(listings, listings.map(listing => listing.id), false, config)
       }, config)
     },
@@ -345,12 +183,10 @@ export function apply(ctx: Context, config: Config): void {
     isConcurrencySafe: () => true,
     async execute(args, exec) {
       return holdRecoverableFailure(async () => {
-        const direct = directCall(exec)
-        if ('outcome' in direct) return direct.outcome
-        const current = binding(ctx, direct.agent)
-        if (current === null) return unbound()
+        const session = boundSession(ctx, exec)
+        if ('outcome' in session) return session.outcome
         const listing = await ctx.commerce.getListing(
-          current.sourceId, ListingId(args.listing_id), exec.signal,
+          session.sourceId, ListingId(args.listing_id), exec.signal,
         )
         return ok(listing, [listing.id], true, config)
       }, config)
@@ -368,11 +204,9 @@ export function apply(ctx: Context, config: Config): void {
     isConcurrencySafe: () => true,
     async execute(args, exec) {
       return holdRecoverableFailure(async () => {
-        const direct = directCall(exec)
-        if ('outcome' in direct) return direct.outcome
-        const current = binding(ctx, direct.agent)
-        if (current === null) return unbound()
-        return ok(await ctx.commerce.salesSummary(current.sourceId, args, exec.signal), [], false, config)
+        const session = boundSession(ctx, exec)
+        if ('outcome' in session) return session.outcome
+        return ok(await ctx.commerce.salesSummary(session.sourceId, args, exec.signal), [], false, config)
       }, config)
     },
   }))
@@ -385,11 +219,9 @@ export function apply(ctx: Context, config: Config): void {
     isConcurrencySafe: () => true,
     async execute(_args, exec) {
       return holdRecoverableFailure(async () => {
-        const direct = directCall(exec)
-        if ('outcome' in direct) return direct.outcome
-        const current = binding(ctx, direct.agent)
-        if (current === null) return unbound()
-        const health = await ctx.commerce.inventoryHealth(current.sourceId, exec.signal)
+        const session = boundSession(ctx, exec)
+        if ('outcome' in session) return session.outcome
+        const health = await ctx.commerce.inventoryHealth(session.sourceId, exec.signal)
         return ok(health, health.items.map(item => item.listingId), false, config)
       }, config)
     },
@@ -404,15 +236,16 @@ export function apply(ctx: Context, config: Config): void {
     output,
     isConcurrencySafe: () => true,
     async execute(args, exec) {
-      const direct = directCall(exec)
-      if ('outcome' in direct) return direct.outcome
-      const current = binding(ctx, direct.agent)
-      if (current === null) return unbound()
-      const sourceId = current.sourceId
+      const session = boundSession(ctx, exec)
+      if ('outcome' in session) return session.outcome
+      const sourceId = session.sourceId
       return holdRecoverableFailure(async () => {
         const result = await ctx.commerce.runAnalysisQuery(sourceId, args.query, exec.signal)
         return ok(result, [], false, config)
       }, config, () => ctx.commerce.analysisSchema(sourceId, exec.signal))
     },
   }))
+
+  registerStagingTools(ctx, config)
+  registerExportTool(ctx, config)
 }

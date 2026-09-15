@@ -1,6 +1,6 @@
 /** Real Loader composition for commerce preset visibility and recorded provenance. */
 
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -27,6 +27,8 @@ import LlmRuntime, {
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
+import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
+import ApprovalService, { type ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 
@@ -79,6 +81,12 @@ class ScriptedAdapter extends LlmAdapter {
 }
 
 const adapter = new ScriptedAdapter()
+const approvalAnswer: { current: ApprovalOutcome } = { current: 'allowed-once' }
+const approver = {
+  name: 'commerce-test-approver',
+  inject: ['approval'],
+  apply(ctx: Context): void { ctx.on('approval/request', () => Promise.resolve(approvalAnswer.current)) },
+}
 const mockLlm = {
   name: 'commerce-test-llm',
   inject: ['llm'],
@@ -107,7 +115,7 @@ async function loadComposition(
   const rosterRows = mount !== 'root'
     ? ["- name: '@deepseek-ai/dsh-agent-presets'", '  config:', '    default: standard', '    roots: []', '    includeShippedRoot: false', '    includeUserRoot: true']
     : []
-  const toolBounds = '  config: { maxResultChars: 5000, maxListingIds: 20, maxMetaBytes: 2048, maxImportBytes: 1048576 }'
+  const toolBounds = '  config: { maxResultChars: 5000, maxListingIds: 20, maxMetaBytes: 4096, maxImportBytes: 1048576, maxStagedChanges: 20, guardrails: { maxItemsPerChange: 25, maxPriceDeltaPct: 20, maxPromotionDiscountPct: 50, maxRestockQuantity: 500, maxCampaignBudget: 10000, maxListingFieldChars: 2000, protectedFields: [listing_id, currency], priceBearingFields: [price], listingUpdateBlockedFields: [price, stock, available] } }'
   const mountRows = [
     ...mount === 'root' ? [] : ["- name: '@deepseek-ai/dsh-experimental-commerce-mode/preset'", toolBounds],
     ...mount === 'preset' ? [] : ["- name: '@deepseek-ai/dsh-experimental-commerce-mode/tools'", toolBounds],
@@ -124,6 +132,10 @@ async function loadComposition(
     "- name: '@deepseek-ai/dsh-fs-local'",
     `  config: { cwd: ${JSON.stringify(workspace)} }`,
     "- name: '@deepseek-ai/dsh-subprocess-local'",
+    "- name: '@deepseek-ai/dsh-user-approval'",
+    "- name: '@deepseek-ai/dsh-sandbox-policy'",
+    `  config: { mode: workspace-write, workspaceRoot: ${JSON.stringify(workspace)} }`,
+    '- name: commerce-test-approver',
     ...rosterRows,
     "- name: '@deepseek-ai/dsh-experimental-commerce-mode'",
     '  config:',
@@ -131,7 +143,7 @@ async function loadComposition(
     '    platforms:',
     '      sample:',
     '        orders: { order_id: order, listing_id: listing, quantity: quantity, gross_sales: sales, currency: currency, ordered_at: date }',
-    '        products: { listing_id: listing, title: title, sku: sku, status: status, parent_id: parent }',
+    '        products: { listing_id: listing, title: title, sku: sku, status: status, parent_id: parent, price: price, description: description }',
     '        inventory: { listing_id: listing, available: available, low_stock_threshold: threshold }',
     '    analysis: { maxRows: 20, maxOutputBytes: 65536, timeoutMs: 2000, graceMs: 100 }',
     '    lockWaitMs: 5000',
@@ -156,6 +168,9 @@ async function loadComposition(
     ['@deepseek-ai/dsh-agent-loop', AgentLoop],
     ['@deepseek-ai/dsh-fs-local', LocalFileSystem],
     ['@deepseek-ai/dsh-subprocess-local', LocalSubprocessRuntime],
+    ['@deepseek-ai/dsh-user-approval', ApprovalService],
+    ['@deepseek-ai/dsh-sandbox-policy', SandboxPolicyService],
+    ['commerce-test-approver', approver],
     ['@deepseek-ai/dsh-agent-presets', AgentPresets],
     ['@deepseek-ai/dsh-experimental-commerce-mode', CommerceMode],
     ['@deepseek-ai/dsh-experimental-commerce-mode/preset', CommercePreset],
@@ -188,7 +203,7 @@ describe('real commerce Loader composition', () => {
       setup: agentCtx => ctx.agentPresets.mount(agentCtx, 'commerce').then(() => undefined),
     })
     expect(ctx.tools.schemas(standard.agent).some(tool => tool.name.startsWith('commerce_'))).toBe(false)
-    expect(ctx.tools.schemas(commerce.agent).filter(tool => tool.name.startsWith('commerce_'))).toHaveLength(7)
+    expect(ctx.tools.schemas(commerce.agent).filter(tool => tool.name.startsWith('commerce_'))).toHaveLength(14)
 
     adapter.script.push(
       toolCall('load-sample', 'commerce_load_sample', {}),
@@ -220,12 +235,26 @@ describe('real commerce Loader composition', () => {
       sessionId: SessionId('bare-agent'), meta: { cwd: workspace },
       agentOptions: { provider: 'mock', model: 'mock' },
     })
-    expect(ctx.tools.schemas(bare.agent).filter(tool => tool.name.startsWith('commerce_'))).toHaveLength(7)
+    expect(ctx.tools.schemas(bare.agent).filter(tool => tool.name.startsWith('commerce_'))).toHaveLength(14)
 
-    adapter.script.push(toolCall('load-sample', 'commerce_load_sample', {}), textReply('Loaded.'))
-    bare.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Load the sample.' }], source: { kind: 'user' } }))
+    adapter.script.push(
+      toolCall('load-sample', 'commerce_load_sample', {}),
+      toolCall('search', 'commerce_search_listings', { query: 'Jasmine', limit: 5 }),
+      toolCall('stage', 'commerce_stage_price_change', {
+        summary: 'Raise the jasmine tea price', items: [{ listing_id: 'P-100', price: 21.9 }],
+      }),
+      textReply('Staged.'),
+    )
+    bare.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Load the sample and stage a price change.' }], source: { kind: 'user' } }))
     await bare.agent.whenIdle()
-    expect(bare.agent.session.snapshotEvents().some(event => event.type === 'commerce/bound')).toBe(true)
+    const events = bare.agent.session.snapshotEvents()
+    expect(events.some(event => event.type === 'commerce/bound')).toBe(true)
+    const live = ctx.sessionProjections.stateOf(bare.agent.session, 'commerceSession')
+    expect(live?.ledger).toEqual([{
+      id: 'chg-0001', kind: 'price-change', summary: 'Raise the jasmine tea price', status: 'staged',
+      items: [{ listingId: 'P-100', field: 'price', before: 19.9, after: 21.9 }],
+    }])
+    expect(ctx.sessionProjections.stateOf(Session.create(SessionId('bare-replay'), events), 'commerceSession')).toEqual(live)
 
     const row = [...ctx.loader.entries()].find(entry => entry.options.name === '@deepseek-ai/dsh-experimental-commerce-mode/tools')
     if (row?.fiber === undefined) throw new Error('commerce tools row was not loaded')
@@ -258,4 +287,34 @@ describe('real commerce Loader composition', () => {
     expect(events.some(event => event.type === 'commerce/bound')).toBe(false)
     await created.dispose()
   })
+
+  for (const [answer, written] of [['allowed-once', true], ['rejected', false]] as const) {
+    it(`${written ? 'writes' : 'does not write'} the export when approval is ${answer}`, { timeout: 30_000 }, async () => {
+      approvalAnswer.current = answer
+      const { ctx, workspace } = await loadComposition('root')
+      const created = await ctx.agents.create({
+        sessionId: SessionId(`export-${answer}`), meta: { cwd: workspace },
+        agentOptions: { provider: 'mock', model: 'mock' },
+      })
+      adapter.script.push(
+        toolCall('load-sample', 'commerce_load_sample', {}),
+        toolCall('search', 'commerce_search_listings', { query: 'Jasmine', limit: 5 }),
+        toolCall('stage', 'commerce_stage_price_change', { summary: 'Raise the jasmine tea price', items: [{ listing_id: 'P-100', price: 21.9 }] }),
+        toolCall('export', 'commerce_export_changes', { change_ids: ['chg-0001'], platform: 'sample' }),
+        textReply('Done.'),
+      )
+      created.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Stage and export a price change.' }], source: { kind: 'user' } }))
+      await created.agent.whenIdle()
+      const ledger = ctx.sessionProjections.stateOf(created.agent.session, 'commerceSession')?.ledger
+      expect(ledger?.map(change => change.status)).toEqual([written ? 'exported' : 'staged'])
+      const exportsDir = join(workspace, 'commerce-exports')
+      const files = await readdir(exportsDir).catch(() => [])
+      expect(files).toHaveLength(written ? 1 : 0)
+      if (written) {
+        const csv = await readFile(join(exportsDir, files[0] ?? ''), 'utf8')
+        expect(csv).toContain('chg-0001,price-change,P-100,21.9')
+      }
+      await created.dispose()
+    })
+  }
 })

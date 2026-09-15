@@ -36,7 +36,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-subagent` | `list_subagent_models`, `subagent` | `ctx.tools`, `ctx.subagents`, `ctx.systemPrompt`, `ctx.llm for model discovery and selected-route validation` | `tool/call`, `tool/result`, `child session events through the chosen provider` | `subagent`, `subagent_fork` | The registered delegation name is the load-time `toolName` config (default `subagent`); the default schema above has model selection off, while the discovery schema is shown as the fixed companion available in an enabled Session. Web presets sample the Plugins preference for each new top-level Session and preserve that decision for its child Sessions; `subagent_fork` remains fixed-route. Each instance independently controls whether it reads model-selection settings and its background behavior through `modelSelectionSettings`, `backgroundMode`, and `enableRunInBackground`. |
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`, `list_agents`, `send_message` | `ctx.tools`, `ctx.subagents`, `ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`, `tool/result`, `child session events through ctx.subagents` | - | The globally named control tools over continuable background subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries). |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
-| `@deepseek-ai/dsh-experimental-commerce-mode` | `commerce_analysis_query`, `commerce_get_listing`, `commerce_import_file`, `commerce_inventory_health`, `commerce_load_sample`, `commerce_sales_summary`, `commerce_search_listings` | `ctx.tools`, `ctx.commerce`, `ctx.fs`, `ctx.sessionProjections`, `a direct calling Agent` | `tool/call`, `commerce/bound on the first import`, `tool/result with read provenance metadata` | - | The `./preset` row mounts the seven tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import tools are exclusive; read tools are concurrency-safe and require a session binding created by an import. |
+| `@deepseek-ai/dsh-experimental-commerce-mode` | `commerce_analysis_query`, `commerce_discard_change`, `commerce_export_changes`, `commerce_get_listing`, `commerce_import_file`, `commerce_inventory_health`, `commerce_load_sample`, `commerce_sales_summary`, `commerce_search_listings`, `commerce_stage_campaign`, `commerce_stage_listing_update`, `commerce_stage_price_change`, `commerce_stage_promotion`, `commerce_stage_restock` | `ctx.tools`, `ctx.commerce`, `ctx.fs`, `ctx.sessionProjections`, `ctx.approval`, `ctx.sandboxPolicy`, `a direct calling Agent` | `tool/call`, `commerce/bound on the first import`, `approval/asked and approval/decided for an export`, `tool/result with read provenance or staged-change ledger metadata` | - | The `./preset` row mounts the commerce tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import, staging, discard, and export tools are exclusive; read tools are concurrency-safe. Read, staging, and export tools require a session binding created by an import; staging tools record changes in the session ledger, and the export tool writes a CSV file into the session workspace only after approval. |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`, `list_agents`, `propose_action`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `ctx.userQuestions`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
@@ -1764,6 +1764,63 @@ Run one read-only SELECT or WITH query against the commerce source bound to this
 
 Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
 
+### `commerce_discard_change`
+
+Discard one staged change so it is not exported. The change stays in the session ledger as discarded.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "change_id": {
+      "type": "string",
+      "description": "Change id returned by a staging tool."
+    }
+  },
+  "required": [
+    "change_id"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_export_changes`
+
+Write staged commerce changes to a CSV file in this session workspace after the merchant approves. Nothing is sent to a store; the merchant uploads the file.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "change_ids": {
+      "type": "array",
+      "description": "Staged change ids to export.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "platform": {
+      "type": "string",
+      "description": "Platform mapping whose column headers the CSV uses.",
+      "enum": [
+        "taobao",
+        "pinduoduo",
+        "douyin-shop",
+        "youzan",
+        "sample"
+      ]
+    }
+  },
+  "required": [
+    "change_ids",
+    "platform"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
 ### `commerce_get_listing`
 
 Read one complete product listing from the commerce source bound to this session.
@@ -1901,7 +1958,237 @@ Search product listings in the commerce source bound to this session.
 
 Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
 
-The `./preset` row mounts the seven tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import tools are exclusive; read tools are concurrency-safe and require a session binding created by an import.
+### `commerce_stage_campaign`
+
+Stage a new dated marketing campaign with a budget for merchant review. Staging changes nothing in the store.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "name": {
+      "type": "string",
+      "description": "Campaign name."
+    },
+    "budget": {
+      "type": "number",
+      "description": "Total campaign budget in the store currency."
+    },
+    "starts_on": {
+      "type": "string",
+      "description": "First campaign day, YYYY-MM-DD."
+    },
+    "ends_on": {
+      "type": "string",
+      "description": "Last campaign day, YYYY-MM-DD."
+    },
+    "listing_ids": {
+      "type": "array",
+      "description": "Listing ids the campaign promotes, returned by a commerce read; may be empty.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "name",
+    "budget",
+    "starts_on",
+    "ends_on",
+    "listing_ids"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_stage_listing_update`
+
+Stage a content edit to one product listing in the bound commerce source for merchant review. Staging changes nothing in the store.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "listing_id": {
+      "type": "string",
+      "description": "Listing id read in full with commerce_get_listing."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "fields": {
+      "type": "array",
+      "description": "One entry per listing field to change.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Listing field name, such as title or description."
+          },
+          "value": {
+            "type": "string",
+            "description": "New text for the field."
+          }
+        },
+        "required": [
+          "field",
+          "value"
+        ]
+      }
+    }
+  },
+  "required": [
+    "listing_id",
+    "summary",
+    "fields"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_stage_price_change`
+
+Stage new prices for listings in the bound commerce source for merchant review. Current prices come from the source; staging changes nothing in the store.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "items": {
+      "type": "array",
+      "description": "One line per listing.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "Listing id returned by a commerce read."
+          },
+          "price": {
+            "type": "number",
+            "description": "New price in the listing currency."
+          }
+        },
+        "required": [
+          "listing_id",
+          "price"
+        ]
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "items"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_stage_promotion`
+
+Stage a dated percentage discount on listings in the bound commerce source for merchant review. Promotion prices are computed from current source prices; staging changes nothing in the store.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "listing_ids": {
+      "type": "array",
+      "description": "Listing ids returned by a commerce read.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "discount_pct": {
+      "type": "number",
+      "description": "Discount off each current price, in percent."
+    },
+    "starts_on": {
+      "type": "string",
+      "description": "First promotion day, YYYY-MM-DD."
+    },
+    "ends_on": {
+      "type": "string",
+      "description": "Last promotion day, YYYY-MM-DD."
+    }
+  },
+  "required": [
+    "summary",
+    "listing_ids",
+    "discount_pct",
+    "starts_on",
+    "ends_on"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+### `commerce_stage_restock`
+
+Stage inventory additions for listings in the bound commerce source for merchant review. Current stock comes from the imported inventory table; staging changes nothing in the store.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One sentence the merchant reads when reviewing this change."
+    },
+    "items": {
+      "type": "array",
+      "description": "One line per listing.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "Listing id returned by a commerce read."
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Units to add to the current stock."
+          }
+        },
+        "required": [
+          "listing_id",
+          "quantity"
+        ]
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "items"
+  ]
+}
+```
+
+Source: [`packages/experimental/commerce-mode/src/tools/index.ts`](../packages/experimental/commerce-mode/src/tools/index.ts)
+
+The `./preset` row mounts the commerce tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import, staging, discard, and export tools are exclusive; read tools are concurrency-safe. Read, staging, and export tools require a session binding created by an import; staging tools record changes in the session ledger, and the export tool writes a CSV file into the session workspace only after approval.
 
 <a id="deepseek-aidsh-experimental-tool-agent-team"></a>
 

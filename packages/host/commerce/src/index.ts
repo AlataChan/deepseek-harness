@@ -6,13 +6,17 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { brandString, type Branded } from '@deepseek-ai/dsh-brand'
-import type { CommerceSourceId as CommerceSourceIdBrand } from './types.ts'
+import { brandString } from '@deepseek-ai/dsh-brand'
+import type {
+  ChangeId as ChangeIdBrand,
+  CommerceSourceId as CommerceSourceIdBrand,
+  ListingId as ListingIdBrand,
+} from './types.ts'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import { commerceBindingProjectionDefinition } from './session.ts'
-import type { CommerceBinding, CommerceDataKind } from './types.ts'
+import type { CommerceBinding, CommerceChangeKind, CommerceDataKind, CommerceValue } from './types.ts'
 
-export type { CommerceBinding, CommerceDataKind } from './types.ts'
+export type { CommerceBinding, CommerceChangeKind, CommerceDataKind, CommerceValue } from './types.ts'
 export { commerceBindingProjectionDefinition } from './session.ts'
 
 /** Stable identity of one provider-managed commerce source. */
@@ -28,7 +32,7 @@ export function CommerceSourceId(id: string): CommerceSourceId {
 }
 
 /** Stable identity of one listing in a commerce source. */
-export type ListingId = Branded<'ListingId'>
+export type ListingId = ListingIdBrand
 
 /**
  * Brand a string as a {@link ListingId}.
@@ -40,7 +44,7 @@ export function ListingId(id: string): ListingId {
 }
 
 /** Stable identity of one staged commerce change. */
-export type ChangeId = Branded<'ChangeId'>
+export type ChangeId = ChangeIdBrand
 
 /**
  * Brand a string as a {@link ChangeId}.
@@ -50,9 +54,6 @@ export type ChangeId = Branded<'ChangeId'>
 export function ChangeId(id: string): ChangeId {
   return brandString<ChangeId>(id)
 }
-
-/** Scalar value read from or rendered for a commerce source. */
-export type CommerceValue = string | number | boolean | null
 
 /** Provider-neutral commerce row keyed by source column or domain field. */
 export type CommerceRecord = Readonly<Record<string, CommerceValue>>
@@ -165,14 +166,6 @@ export interface CommerceAnalysisResult {
   readonly rows: readonly CommerceRecord[]
   readonly truncated: boolean
 }
-
-/** Staged operation families the Provider can render for platform export. */
-export type CommerceChangeKind =
-  | 'listing-update'
-  | 'price-change'
-  | 'promotion'
-  | 'restock'
-  | 'campaign'
 
 /** One grounded staged change supplied to {@link Commerce.renderExport}. */
 export interface CommerceChange {

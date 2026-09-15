@@ -1,10 +1,11 @@
 /** Commerce tool provenance projection behavior. */
 
 import { describe, expect, it } from 'vitest'
-import { CommerceSourceId } from '@deepseek-ai/dsh-host-commerce'
+import { ChangeId, CommerceSourceId, ListingId } from '@deepseek-ai/dsh-host-commerce'
 import { createToolResultMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { commerceSessionProjectionDefinition } from '../../src/tools/projection.ts'
 
 function fold(events: readonly SessionEvent[]) {
@@ -46,7 +47,7 @@ describe('commerceSession projection', () => {
       binding: { sourceId: CommerceSourceId('source-1'), displayName: 'Shop', kinds: ['products'] },
       readListingIds: ['listing-1', 'listing-2'],
       fullReadListingIds: ['listing-2'],
-      pendingCalls: {},
+      ledger: [], pendingCalls: {},
     })
   })
 
@@ -62,7 +63,7 @@ describe('commerceSession projection', () => {
       }),
     }, { surfaceOp: 'append' })
     expect(fold(session.snapshotEvents())).toEqual({
-      binding: null, readListingIds: [], fullReadListingIds: [], pendingCalls: {},
+      binding: null, readListingIds: [], fullReadListingIds: [], ledger: [], pendingCalls: {},
     })
   })
 
@@ -79,7 +80,37 @@ describe('commerceSession projection', () => {
       meta: { listingIds: ['X-1'], fullListing: false },
     }, { surfaceOp: 'append' })
     expect(fold(session.snapshotEvents())).toEqual({
-      binding: null, readListingIds: [], fullReadListingIds: [], pendingCalls: {},
+      binding: null, readListingIds: [], fullReadListingIds: [], ledger: [], pendingCalls: {},
     })
+  })
+
+  it('folds staged changes and discards into the ledger identically on replay', () => {
+    const session = Session.create(SessionId('commerce-ledger'))
+    const staged = {
+      id: 'chg-0001', kind: 'price-change', summary: 'Raise tea price', status: 'staged',
+      items: [{ listingId: 'P-1', field: 'price', before: 10, after: 11 }],
+    }
+    const record = (callId: string, name: string, meta: JsonValue) => {
+      session.append('tool/call', { turn: 1, step: 1, callId: ToolCallId(callId), name, arguments: '{}' })
+      session.append('tool/result', {
+        turn: 1, step: 1,
+        message: createToolResultMessage({ callId: ToolCallId(callId), content: [{ type: 'text', text: 'ok' }], isError: false }),
+        meta,
+      }, { surfaceOp: 'append' })
+    }
+    record('call-stage', 'commerce_stage_price_change', { listingIds: [], fullListing: false, staged })
+    record('call-read', 'commerce_search_listings', {
+      listingIds: [], fullListing: false, staged: { ...staged, id: 'chg-0009' },
+    })
+    record('call-discard', 'commerce_discard_change', { listingIds: [], fullListing: false, discardedChangeId: 'chg-0001' })
+
+    const events = session.snapshotEvents()
+    const state = fold(events)
+    expect(state).toEqual(fold(Session.create(SessionId('ledger-replay'), events).snapshotEvents()))
+    expect(state.ledger).toEqual([{
+      id: ChangeId('chg-0001'), kind: 'price-change', summary: 'Raise tea price', status: 'discarded',
+      items: [{ listingId: ListingId('P-1'), field: 'price', before: 10, after: 11 }],
+    }])
+    expect(commerceSessionProjectionDefinition.wire.view(state)).toMatchObject({ ledger: state.ledger })
   })
 })
