@@ -6,7 +6,7 @@ English | [中文](2026-09-03-agent-team-desktop-profile-plugin.zh.md)
 
 ## Problem
 
-Agent Team lived only under `packages/experimental/` and the headless/Web profile overlays. octopus_DSH DMG seeding reads [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json) and requires each pin to be a dual-face package (`dsh.bundle.patch` + `dsh.client` + `./client` on disk). `agent-team-profile` and `agent-team-web-profile` are Host-only patch bundles, so they fail seed validation and were never copied into `Resources/resources/profile-plugins/`. Users who installed the DMG therefore could not use the newly developed Team tools or roster UI.
+Agent Team lived only under `packages/experimental/` and the headless/Web profile overlays. octopus_DSH DMG seeding reads [scripts/desktop-profile-plugins.json](../../../../scripts/desktop-profile-plugins.json) and requires each pin to be a dual-face package (`dsh.bundle.patch` + `dsh.client` + `./client` on disk). `agent-team-profile` and `agent-team-web-profile` are Host-only patch bundles, so they fail seed validation and were never copied into `Resources/resources/profile-plugins/`. Users who installed the DMG therefore could not use the newly developed Team tools or roster UI.
 
 ## Decision
 

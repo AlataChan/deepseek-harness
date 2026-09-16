@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-Agent Team 只存在于 `packages/experimental/` 以及 headless/Web profile overlay。octopus_DSH DMG seeding 读取 [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json)，并要求每个 pin 都是 dual-face 包（`dsh.bundle.patch` + `dsh.client` + 磁盘上的 `./client`）。`agent-team-profile` 与 `agent-team-web-profile` 只是 Host patch bundle，无法通过 seed 校验，因此从未进入 `Resources/resources/profile-plugins/`。安装 DMG 的用户用不了新开发的 Team tools 与 roster UI。
+Agent Team 只存在于 `packages/experimental/` 以及 headless/Web profile overlay。octopus_DSH DMG seeding 读取 [scripts/desktop-profile-plugins.json](../../../../scripts/desktop-profile-plugins.json)，并要求每个 pin 都是 dual-face 包（`dsh.bundle.patch` + `dsh.client` + 磁盘上的 `./client`）。`agent-team-profile` 与 `agent-team-web-profile` 只是 Host patch bundle，无法通过 seed 校验，因此从未进入 `Resources/resources/profile-plugins/`。安装 DMG 的用户用不了新开发的 Team tools 与 roster UI。
 
 ## 决策
 
