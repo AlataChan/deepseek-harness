@@ -39,7 +39,11 @@ fi
 source "$VENV/bin/activate"
 info "Installing freeze dependencies..."
 python -m pip install --upgrade pip >/dev/null
-python -m pip install -q pyinstaller "markitdown[pdf]>=0.1" openpyxl
+# The kb package installs with --no-deps below, so the runtime dependencies it
+# declares are installed here explicitly. The freeze collects jsonschema,
+# pydantic, yaml and httpx as hidden imports only if this venv carries them.
+python -m pip install -q pyinstaller "markitdown[pdf]>=0.1" openpyxl \
+  "jsonschema>=4.18" "pydantic>=2.5" "pyyaml>=6.0" "httpx>=0.27"
 python -m pip install -q --force-reinstall --no-deps "$KB_DIR"
 
 info "Freezing octopus-kb-sidecar (onedir)..."

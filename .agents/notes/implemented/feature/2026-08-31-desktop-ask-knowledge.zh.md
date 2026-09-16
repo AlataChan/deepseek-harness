@@ -14,7 +14,7 @@ octopus_DSH 已经有问数。企业三件套还缺问知识：一份会变厚�
 
 propose 从 `ctx.credentials.resolve` 取 `DEEPSEEK_API_KEY`，只注入该次 sidecar 子进程。检索入口是 `terms[]`，不是整句。完整工具结果有界。入库走 `beginIngest` / `appendIngestChunk` / `finishIngest`，因为桌面 carrier 上限是 256KiB。仅本会话抽取走 `beginExtract` / `appendExtractChunk` / `finishExtract` 和 sidecar `convert-file`，不写户口本（[会话抽取](2026-09-01-session-document.zh.md)）。`removeLibrary` 先握 catalog，再握每会话互斥，最后握 library 锁；冷会话在复判仍为冷之后走 `sessionPersistence.append`。`attach` 在 recover 前放开 catalog，并在会话锁和 library 锁都释放之后才写 `lastUsedAt`。
 
-sidecar 运行时是可迁移的 PyInstaller 树，路径为 `Contents/Resources/resources/kb-runtime/`。`build-dmg.sh` 在 codesign 前写入，组装后再验证。octopus-kb 钉在 `d4852698caedbb37f4c370bc339da22a38db1367`，并带 MIT `LICENSE` 与 `SOURCE.txt`。
+sidecar 运行时是可迁移的 PyInstaller 树，路径为 `Contents/Resources/resources/kb-runtime/`。`build-dmg.sh` 在 codesign 前写入，组装后再验证。`build-kb-sidecar.sh` 以 `--no-deps` 安装 octopus-kb 本体，因此要显式安装该包声明的运行时依赖 —— `jsonschema`、`pydantic`、`pyyaml`、`httpx`：freeze 只有在构建 venv 里存在这些包时才能把它们作为 hidden import 收集，而冻结后的 self-test 会拒绝无法 import 它们的产物。octopus-kb 钉在 `d4852698caedbb37f4c370bc339da22a38db1367`，并带 MIT `LICENSE` 与 `SOURCE.txt`。
 
 ## Alternatives considered
 
