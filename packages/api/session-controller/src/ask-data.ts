@@ -3,17 +3,18 @@
  * @module @deepseek-ai/dsh-api-session-controller/ask-data
  */
 
-import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { AskDataError } from '@deepseek-ai/dsh-host-ask-data'
 import type { AskData, AskDataBindLease, AskDataSourceId } from '@deepseek-ai/dsh-host-ask-data'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
-import type { Workspace } from '@deepseek-ai/dsh-workspace'
 import type { ApiSessionAgentController } from './agent.ts'
 import { CommitFifo, SessionCallGate } from './session-gate.ts'
+import { compensateSessionCommit, isBlankSession, resolveCommitTarget } from './session-commit.ts'
+import { decodeBase64Payload } from './wire-bytes.ts'
+import { mapSeamFailure, type SeamFailureCodes } from './seam-error.ts'
 import {
   ASK_DATA_MAX_DECODED_BYTES,
   type SessionAskDataBinding,
@@ -200,7 +201,7 @@ export class SessionAskDataController {
         {},
       )
     }
-    if (existing == null && !this.isBlank(agent)) {
+    if (existing == null && !isBlankSession(this.ctx, agent)) {
       throw new RemoteError(
         'gateway/bad-request',
         `session "${sessionId}" is not blank and is not bound to this source`,
@@ -226,8 +227,9 @@ export class SessionAskDataController {
       agent.session.append('ask-data/bound', lease.binding)
       return { sessionId }
     } catch (error: unknown) {
-      await compensate({
-        lease,
+      const acquired = lease
+      await compensateSessionCommit({
+        ...acquired === undefined ? {} : { rollback: () => acquired.rollback() },
         changedPreset,
         previousPreset,
         agent,
@@ -235,7 +237,7 @@ export class SessionAskDataController {
         workspace: undefined,
         sessionId,
         created: false,
-        stillBlank: () => this.isBlank(agent),
+        stillBlank: () => isBlankSession(this.ctx, agent),
         ctx: this.ctx,
       })
       throw mapAskDataError(error, signal)
@@ -248,17 +250,7 @@ export class SessionAskDataController {
     workspaceId: SessionCommitAskDataRequest['workspaceId'],
     signal: AbortSignal,
   ): Promise<SessionCommitAskDataValue> {
-    let workspace: Workspace | undefined
-    if (workspaceId !== undefined) {
-      workspace = this.ctx.workspaceRegistry.get(workspaceId)
-      if (workspace === undefined) {
-        throw new RemoteError('workspace/not-found', `workspace "${workspaceId}" not found`, {
-          workspaceId,
-        })
-      }
-    }
-    const cwd = workspace?.path ?? this.defaultCwd
-    const sessionId = brandString<SessionId>(`session-${randomUUID()}`)
+    const { workspace, cwd, sessionId } = resolveCommitTarget(this.ctx, workspaceId, this.defaultCwd)
     const created = await this.agents.createOwnedSession(sessionId, cwd, 'data-agent')
     let attached = false
     let lease: AskDataBindLease | undefined
@@ -275,8 +267,9 @@ export class SessionAskDataController {
         created.agent.session.append('ask-data/bound', lease.binding)
         return { sessionId }
       } catch (error: unknown) {
-        await compensate({
-          lease,
+        const acquired = lease
+        await compensateSessionCommit({
+          ...acquired === undefined ? {} : { rollback: () => acquired.rollback() },
           changedPreset: false,
           previousPreset: 'standard',
           agent: created.agent,
@@ -291,56 +284,6 @@ export class SessionAskDataController {
     })
   }
 
-  private isBlank(agent: Agent): boolean {
-    const meta = this.ctx.sessionProjections.stateOf(agent.session, 'sessionListMetadata')
-    if (meta !== undefined) return meta.blank
-    const boundary = this.ctx.sessionProjections.stateOf(agent.session, 'turnBoundary')
-    if (boundary === undefined) return true
-    return boundary.openTurnStartSeq === null && boundary.lastTurn === 0
-  }
-}
-
-async function compensate(input: {
-  lease: AskDataBindLease | undefined
-  changedPreset: boolean
-  previousPreset: string
-  agent: Agent
-  handle: AgentHandle | undefined
-  workspace: { detachSession(sessionId: SessionId): Promise<void> } | undefined
-  sessionId: SessionId
-  created: boolean
-  stillBlank?: () => boolean
-  ctx: Context
-}): Promise<void> {
-  if (input.lease !== undefined) {
-    try {
-      await input.lease.rollback()
-    } catch {
-      // keep the original business error; continue compensation
-    }
-  }
-  if (input.changedPreset && input.stillBlank?.() === true) {
-    try {
-      const presets = input.ctx.get('agentPresets')
-      await presets?.select(input.agent, input.previousPreset)
-    } catch {
-      // keep the original business error
-    }
-  }
-  if (input.workspace !== undefined) {
-    try {
-      await input.workspace.detachSession(input.sessionId)
-    } catch {
-      // keep the original business error
-    }
-  }
-  if (input.created && input.handle !== undefined) {
-    try {
-      await input.handle.dispose()
-    } catch {
-      // keep the original business error; handle.dispose is best-effort
-    }
-  }
 }
 
 /**
@@ -349,29 +292,27 @@ async function compensate(input: {
  * @returns decoded bytes.
  */
 export function decodeCanonicalBase64(bytes: unknown): Uint8Array {
-  if (typeof bytes !== 'string') {
-    throw new RemoteError('gateway/bad-request', 'bytes must be a canonical base64 string', {})
-  }
-  if (bytes.length % 4 !== 0) {
-    throw new RemoteError('gateway/bad-request', 'bytes must be canonical base64', {})
-  }
-  const padding = bytes.endsWith('==') ? 2 : bytes.endsWith('=') ? 1 : 0
-  const decodedGuess = (bytes.length / 4) * 3 - padding
-  if (decodedGuess > ASK_DATA_MAX_DECODED_BYTES) {
-    throw new RemoteError(
-      'session/ask-data-failed',
-      `file exceeds ${ASK_DATA_MAX_DECODED_BYTES} bytes`,
-      { code: 'file-too-large', ruleId: 'file-size', limit: ASK_DATA_MAX_DECODED_BYTES },
-    )
-  }
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(bytes)) {
-    throw new RemoteError('gateway/bad-request', 'bytes must be canonical base64', {})
-  }
-  const buf = Buffer.from(bytes, 'base64')
-  if (buf.toString('base64') !== bytes) {
-    throw new RemoteError('gateway/bad-request', 'bytes must be canonical base64', {})
-  }
-  return new Uint8Array(buf)
+  return decodeBase64Payload(bytes, {
+    limit: ASK_DATA_MAX_DECODED_BYTES,
+    code: 'session/ask-data-failed',
+    ruleId: 'file-size',
+  })
+}
+
+/** How ask-data failures map onto Remote failure codes. */
+const ASK_DATA_SEAM: SeamFailureCodes = {
+  aborted: 'ask-data request was aborted',
+  unavailable: 'session/ask-data-unavailable',
+  unavailableSeamCode: 'ask-data-unavailable',
+  failed: 'session/ask-data-failed',
+  failureOf: error => error instanceof AskDataError
+    ? {
+      code: error.code,
+      message: error.message,
+      ruleId: error.details.ruleId,
+      limit: error.details.limit,
+    }
+    : undefined,
 }
 
 /**
@@ -381,21 +322,5 @@ export function decodeCanonicalBase64(bytes: unknown): Uint8Array {
  * @returns never; always throws.
  */
 export function mapAskDataError(error: unknown, signal: AbortSignal): never {
-  if (signal.aborted) throw new RemoteError('gateway/cancelled', 'ask-data request was aborted', {})
-  if (error instanceof RemoteError) throw error
-  if (error instanceof AskDataError) {
-    if (error.code === 'ask-data-unavailable') {
-      throw new RemoteError('session/ask-data-unavailable', error.message, {})
-    }
-    throw new RemoteError('session/ask-data-failed', error.message, {
-      code: error.code,
-      ...error.details.ruleId === undefined ? {} : { ruleId: error.details.ruleId },
-      ...error.details.limit === undefined ? {} : { limit: error.details.limit },
-    })
-  }
-  throw new RemoteError(
-    'gateway/internal',
-    error instanceof Error ? error.message : String(error),
-    {},
-  )
+  mapSeamFailure(error, signal, ASK_DATA_SEAM)
 }

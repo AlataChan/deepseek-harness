@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-experimental-commerce-mode` implements the [`ctx.commerce`](../../host/commerce/README.md) Provider over fixed `orders`, `products`, and `inventory` SQLite tables. It imports CSV or spreadsheet bytes through the supported Ask Data decoder entry, stores sources below the configured absolute `sourcesRoot`, serves fixed commerce reads, executes bounded read-only analysis queries, stages grounded, guardrail-checked changes in a session ledger, exports approved changes to a workspace CSV file, renders spreadsheet-safe CSV exports, and publishes two tool mounts: `./preset` installs the packaged `commerce` agent preset without replacing a user copy and mounts the native tools only in that preset's standing scope, while `./tools` mounts them at the Host root for a deployment without a preset roster. Its `./client` face renders cards for staging, discard, and export calls.
+`dsh-experimental-commerce-mode` implements the [`ctx.commerce`](../../host/commerce/README.md) Provider over fixed `orders`, `products`, and `inventory` SQLite tables. It imports CSV or spreadsheet bytes through the supported Ask Data decoder entry, stores sources below the configured absolute `sourcesRoot`, serves fixed commerce reads, executes bounded read-only analysis queries, stages grounded, guardrail-checked changes in a session ledger, exports approved changes to a workspace CSV file, renders spreadsheet-safe CSV exports, and publishes two tool mounts: `./preset` installs the packaged `commerce` agent preset without replacing a user copy and mounts the native tools only in that preset's standing scope, while `./tools` mounts them at the Host root for a deployment without a preset roster. Its `./client` face renders the 电商助手 source page and cards for staging, discard, and export calls.
 
 ## Table of Contents
 
@@ -80,6 +80,8 @@ The staging tools record grounded changes for merchant review; nothing is writte
 On load, the `./preset` row copies `preset/commerce/` to `.agent-presets/commerce` only when the target is absent. It never overwrites an edited preset; a copy failure is logged with the manual source and destination, and no tools are mounted. The packaged composition names release packages only and loads the four commerce skills from the installed preset's `skills/` directory. After resolving that preset, the row mounts the `./tools` Consumer in a scope keyed by `agentPresets.standingKeyFor('commerce')`; disposing the row disposes that scope and all tool registrations. `NOTICE` and `preset/commerce/LICENSE-APACHE-2.0.txt` carry the attribution for skill text adapted from Claude Commerce Agents.
 
 The `./client` face registers a `tool.call.toolview` card for each staging tool, `commerce_discard_change`, and `commerce_export_changes`, with zh and en dictionaries in the `commerce-mode` namespace. Web and desktop hosts load it through the package's `dsh.client` manifest row. A card derives from the call's logged arguments, result text, and result metadata: a staged change lists its listing, field, before, and after lines with the promotion dates or campaign, and an export names the written workspace file with an Open action that opens it through the Host. Staging, discard, and export results also show the ledger counts from the `commerceSession` projection. Metadata that fails validation leaves the card on its result text, and the other commerce tools keep the generic tool row.
+
+The same face registers the 电商助手 new-session chip on `conversation.hero.commerce` and its source gate on `conversation.commerce.gate`. The gate leads with the packaged sample, then offers one upload per table family with the platform that produced it, lists the imported sources, and enables 开始提问 once a source is chosen; that action calls the `commitCommerce` Remote, which binds the source to a blank or newly created Session on the `commerce` preset and opens it.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
@@ -166,7 +168,7 @@ Tool-call history is append-only and follows the reusable request prefix. This p
 - Discarded and exported changes stay in the ledger and count toward `maxStagedChanges`; a session that reaches the limit continues in a new commerce session.
 - An export file is named from its change ids, so exporting the same ids again is held while the earlier file exists.
 - A card's ledger line shows the session ledger as it is now, so an earlier card shows current counts rather than the counts right after that call.
-- This private experimental package is not in a released application dependency closure.
+- This private experimental package is not in a released application dependency closure. The octopus_DSH desktop build seeds it as a profile-plugin bundle instead, pinned in [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json); only `dsh-host-commerce` joins the application dependencies.
 
 <a id="dev-note"></a>
 ### Dev Note

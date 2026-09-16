@@ -131,7 +131,7 @@ function WidthHandle(props: {
 export function ConversationRoot({
   sessionId, useSession, useSessions, useSessionPendingInteraction,
   useWorkspaces, useConversation, useInput, useComposerBlock,
-  renderSlot, renderSlotChain, selectWorkspace, useAskDataGateOccupied, t,
+  renderSlot, renderSlotChain, selectWorkspace, useAskDataGateOccupied, useCommerceGateOccupied, t,
 }: ConversationRootProps) {
   const session = useSession(s => s)
   const pendingInteraction = useSessionPendingInteraction(snapshot =>
@@ -149,6 +149,7 @@ export function ConversationRoot({
   // send; its reason is already localized by whoever raised it.
   const composerBlock = useComposerBlock(block => block)
   const askDataGateOccupied = useAskDataGateOccupied(occupied => occupied)
+  const commerceGateOccupied = useCommerceGateOccupied(occupied => occupied)
 
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pendingWorkspaceId, setPendingWorkspaceId] = useState<WorkspaceId | undefined>()
@@ -316,6 +317,7 @@ export function ConversationRoot({
       {renderSlot('conversation.hero.agentPreset', {})}
       {renderSlot('conversation.hero.askData', {})}
       {renderSlot('conversation.hero.askKnowledge', {})}
+      {renderSlot('conversation.hero.commerce', {})}
     </div>
   )
 
@@ -353,12 +355,14 @@ export function ConversationRoot({
       {renderSlot('conversation.askKnowledge.picker', {})}
       {askDataGateOccupied
         ? renderSlot('conversation.askData.gate', {})
-        : (
-          <>
-            {zone !== undefined && renderSlot('conversation.input.dock', zone)}
-            {inputBar}
-          </>
-        )}
+        : commerceGateOccupied
+          ? renderSlot('conversation.commerce.gate', {})
+          : (
+            <>
+              {zone !== undefined && renderSlot('conversation.input.dock', zone)}
+              {inputBar}
+            </>
+          )}
     </div>
   )
 

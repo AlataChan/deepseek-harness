@@ -208,6 +208,13 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly ruleId?: string
       readonly limit?: number
     }
+    'session/commerce-unavailable': {}
+    'session/commerce-preset-unavailable': { readonly preset: string }
+    'session/commerce-failed': {
+      readonly code: string
+      readonly ruleId?: string
+      readonly limit?: number
+    }
     'session/ask-knowledge-unavailable': {}
     'session/ask-knowledge-unbound': { readonly sessionId: SessionId }
     'session/ask-knowledge-failed': {
@@ -462,6 +469,51 @@ export interface SessionAskDataBinding {
 
 /** Request the current ask-data bind of one Session. */
 export interface SessionAskDataBindingRequest {
+  readonly sessionId: SessionId
+}
+
+/** Decoded-byte cap for `importCommerceSpreadsheet`; matches the tools `maxImportBytes` default. */
+export const COMMERCE_MAX_DECODED_BYTES = 32 * 1024 * 1024
+
+/** One listed commerce source on the wire. */
+export interface SessionCommerceSource {
+  readonly id: string
+  readonly displayName: string
+  readonly kinds: readonly ('orders' | 'products' | 'inventory')[]
+}
+
+/** One imported commerce table as shown in preview. */
+export interface SessionCommerceTablePreview {
+  readonly kind: 'orders' | 'products' | 'inventory'
+  readonly rowCount: number
+  readonly columns: readonly string[]
+}
+
+/** Result of a commerce import Remote. */
+export interface SessionCommerceImportPreview {
+  readonly source: SessionCommerceSource
+  readonly tables: readonly SessionCommerceTablePreview[]
+  readonly warnings: readonly string[]
+}
+
+/** Commerce spreadsheet import request; `bytes` is canonical base64 of one table file. */
+export interface SessionImportCommerceSpreadsheetRequest {
+  readonly filename: string
+  readonly bytes: string
+  readonly kind: 'orders' | 'products' | 'inventory'
+  readonly platform: string
+  readonly sourceId?: string
+}
+
+/** Bind one commerce source to a Session; Host does not guess the current Session. */
+export interface SessionCommitCommerceRequest {
+  readonly sourceId: string
+  readonly sessionId?: SessionId
+  readonly workspaceId?: WorkspaceId
+}
+
+/** Identity of the Session that now carries the commerce bind. */
+export interface SessionCommitCommerceValue {
   readonly sessionId: SessionId
 }
 

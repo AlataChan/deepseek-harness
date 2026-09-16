@@ -23,6 +23,7 @@
     { "path": "../../core/session" },
     { "path": "../../host/commerce" },
     { "path": "../../session/session-projection" },
-    { "path": "../../util/brand" }
+    { "path": "../../util/brand" },
+    { "path": "../../util/crypto" }
   ]
 }

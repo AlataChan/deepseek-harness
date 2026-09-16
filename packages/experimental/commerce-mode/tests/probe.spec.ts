@@ -15,7 +15,7 @@ const fibers: Array<ReturnType<Context['plugin']>> = []
 
 afterEach(async () => {
   await Promise.allSettled(fibers.splice(0).map(fiber => fiber.dispose()))
-  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
+  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })))
 })
 
 async function fakeSqlite(version: string, unsafeProbe?: string): Promise<string> {

@@ -163,10 +163,14 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.askData': { kind: 'single'; scope: 'root'; owner: HeroAskDataOwnerProps }
     /** Ask-knowledge chip staged for a New Session. */
     'conversation.hero.askKnowledge': { kind: 'single'; scope: 'root'; owner: HeroAskKnowledgeOwnerProps }
+    /** Commerce chip staged for a New Session. */
+    'conversation.hero.commerce': { kind: 'single'; scope: 'root'; owner: HeroCommerceOwnerProps }
     /** Knowledge-library picker. Must not replace the sendable composer. */
     'conversation.askKnowledge.picker': { kind: 'single'; scope: 'root'; owner: AskKnowledgePickerOwnerProps }
     /** Full data-source gate that replaces the sendable composer while occupied. */
     'conversation.askData.gate': { kind: 'single'; scope: 'root'; owner: AskDataGateOwnerProps }
+    /** Full commerce-source gate that replaces the sendable composer while occupied. */
+    'conversation.commerce.gate': { kind: 'single'; scope: 'root'; owner: CommerceGateOwnerProps }
     /** Full-width entries above the composer card. */
     'conversation.input.dock': { kind: 'list'; scope: 'session'; owner: InputZone }
     /** Floating entries rendered inside the resident composer card. */
@@ -245,6 +249,18 @@ export interface AskDataGateOwnerProps {
   children?: never
 }
 
+/** Owner share of the Hero commerce chip. */
+export interface HeroCommerceOwnerProps {
+  /** Marker field: the occupant owns its opener. */
+  children?: never
+}
+
+/** Owner share of the commerce source gate. */
+export interface CommerceGateOwnerProps {
+  /** Marker field: the occupant owns remotes and cancel. */
+  children?: never
+}
+
 /** Owner share of the Hero ask-knowledge chip. */
 export interface HeroAskKnowledgeOwnerProps {
   /** Marker field: the occupant owns its opener. */
@@ -301,6 +317,8 @@ export interface ConversationInjected {
     composerBlock: ObservableSnapshot<ComposerBlock | undefined>
     /** True while an occupant is registered on `conversation.askData.gate`. */
     askDataGateOccupied: ObservableSnapshot<boolean>
+    /** True while an occupant is registered on `conversation.commerce.gate`. */
+    commerceGateOccupied: ObservableSnapshot<boolean>
   }
 }
 
@@ -424,7 +442,9 @@ export type ConversationSlotProps =
     | 'conversation.hero.agentPreset'
     | 'conversation.hero.askData'
     | 'conversation.hero.askKnowledge'
+    | 'conversation.hero.commerce'
     | 'conversation.askData.gate'
+    | 'conversation.commerce.gate'
     | 'conversation.askKnowledge.picker'
   >
   & InjectFace<ConversationInjected>

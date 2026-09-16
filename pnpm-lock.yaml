@@ -220,6 +220,9 @@ importers:
       '@deepseek-ai/dsh-hooks-codex':
         specifier: workspace:^
         version: link:../../packages/hooks/hooks-codex
+      '@deepseek-ai/dsh-host-commerce':
+        specifier: workspace:^
+        version: link:../../packages/host/commerce
       '@deepseek-ai/dsh-http-proxy':
         specifier: workspace:^
         version: link:../../packages/util/http-proxy
@@ -860,6 +863,9 @@ importers:
       '@deepseek-ai/dsh-host-ask-knowledge':
         specifier: workspace:^
         version: link:../../host/ask-knowledge
+      '@deepseek-ai/dsh-host-commerce':
+        specifier: workspace:^
+        version: link:../../host/commerce
       '@deepseek-ai/dsh-host-workspace-entries':
         specifier: workspace:^
         version: link:../../host/workspace-entries
@@ -4940,6 +4946,9 @@ importers:
       '@deepseek-ai/dsh-experimental-desktop-ask-data':
         specifier: workspace:^
         version: link:../desktop-ask-data
+      '@deepseek-ai/dsh-util-crypto':
+        specifier: workspace:^
+        version: link:../../util/crypto
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery

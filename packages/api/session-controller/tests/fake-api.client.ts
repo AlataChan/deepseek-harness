@@ -15,6 +15,8 @@ import type {
   SessionFollowRequest,
   SessionAskDataImportPreview,
   SessionAskDataSource,
+  SessionCommerceImportPreview,
+  SessionCommerceSource,
   SessionAskKnowledgeBinding,
   SessionAskKnowledgeBundle,
   SessionAskKnowledgeExtractResult,
@@ -173,6 +175,16 @@ export class FakeApiClient {
     () => Promise.resolve(ok({ sessionId: 'fk-ask' as SessionId }))
   onAskDataBinding: (payload: unknown) => Promise<RemoteResult<null>> =
     () => Promise.resolve(ok(null))
+  onListCommerceSources: (payload: unknown) => Promise<RemoteResult<readonly SessionCommerceSource[]>> =
+    () => Promise.resolve(ok([]))
+  onListCommercePlatforms: (payload: unknown) => Promise<RemoteResult<readonly string[]>> =
+    () => Promise.resolve(ok(['sample']))
+  onImportCommerceSpreadsheet: (payload: unknown) => Promise<RemoteResult<SessionCommerceImportPreview>> =
+    () => Promise.resolve(ok({ source: { id: 'src-c1', displayName: 'products.csv', kinds: ['products'] }, tables: [], warnings: [] }))
+  onImportCommerceSample: (payload: unknown) => Promise<RemoteResult<SessionCommerceImportPreview>> =
+    () => Promise.resolve(ok({ source: { id: 'src-cs', displayName: 'Fictional tea shop', kinds: ['orders', 'products', 'inventory'] }, tables: [], warnings: [] }))
+  onCommitCommerce: (payload: unknown) => Promise<RemoteResult<{ sessionId: SessionId }>> =
+    () => Promise.resolve(ok({ sessionId: 'fk-commerce' as SessionId }))
   onListAskKnowledgeLibraries: (payload: unknown) => Promise<RemoteResult<readonly SessionAskKnowledgeLibrary[]>> =
     () => Promise.resolve(ok([]))
   onCreateAskKnowledgeLibrary: (payload: unknown) => Promise<RemoteResult<SessionAskKnowledgeLibrary>> =
@@ -331,6 +343,31 @@ export class FakeApiClient {
           'session.askDataBinding',
           payload,
           this.onAskDataBinding(payload),
+        ),
+        listCommerceSources: payload => this.record(
+          'session.listCommerceSources',
+          payload,
+          this.onListCommerceSources(payload),
+        ),
+        listCommercePlatforms: () => this.record(
+          'session.listCommercePlatforms',
+          undefined,
+          this.onListCommercePlatforms(undefined),
+        ),
+        importCommerceSpreadsheet: payload => this.record(
+          'session.importCommerceSpreadsheet',
+          payload,
+          this.onImportCommerceSpreadsheet(payload),
+        ),
+        importCommerceSample: payload => this.record(
+          'session.importCommerceSample',
+          payload,
+          this.onImportCommerceSample(payload),
+        ),
+        commitCommerce: payload => this.record(
+          'session.commitCommerce',
+          payload,
+          this.onCommitCommerce(payload),
         ),
         listAskKnowledgeLibraries: payload => this.record(
           'session.listAskKnowledgeLibraries',

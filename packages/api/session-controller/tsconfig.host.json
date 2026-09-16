@@ -20,7 +20,11 @@
     "src/skill-catalog.ts",
     "src/ask-data.ts",
     "src/ask-knowledge.ts",
-    "src/session-gate.ts"
+    "src/session-gate.ts",
+    "src/commerce.ts",
+    "src/session-commit.ts",
+    "src/seam-error.ts",
+    "src/wire-bytes.ts"
   ],
   "references": [
     { "path": "../../../vendor/cordis" },
@@ -37,6 +41,7 @@
     { "path": "../../util/deque" },
     { "path": "../../util/native-command" },
     { "path": "../../host/workspace-entries" },
+    { "path": "../../host/commerce" },
     { "path": "../../host/ask-data" },
     { "path": "../../host/ask-knowledge" },
     { "path": "../../preset/agent-presets" },

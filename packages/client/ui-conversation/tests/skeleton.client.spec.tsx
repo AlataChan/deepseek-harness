@@ -121,6 +121,7 @@ function mount(
     composerBlock?: { reason: string }
     /** Occupy `conversation.askData.gate` and hide the sendable composer. */
     askDataGate?: boolean
+    commerceGate?: boolean
     /** Mutable view ledger used by registration-order regressions. */
     viewTabs?: ViewTab[]
   } = {},
@@ -304,6 +305,7 @@ function mount(
     renderSlotChain,
     selectWorkspace: retargetWorkspace,
     useAskDataGateOccupied: select => select(options.askDataGate === true),
+    useCommerceGateOccupied: select => select(options.commerceGate === true),
     t,
   }
   const view = render(<ConversationRoot {...props} />)

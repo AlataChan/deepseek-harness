@@ -67,7 +67,7 @@ export const config: CommerceTools.Config = {
 /** Dispose every bench context and remove every temporary root. */
 export async function disposeBenches(): Promise<void> {
   await Promise.allSettled(contexts.splice(0).map(ctx => ctx.fiber.dispose()))
-  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
+  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })))
 }
 
 /** In-memory commerce Provider with scripted failures and catalog records. */

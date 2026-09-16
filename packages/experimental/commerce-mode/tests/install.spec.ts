@@ -8,7 +8,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { installCommercePreset, packagedPresetDirectory } from '../src/install.ts'
 
 const roots: string[] = []
-afterEach(async () => Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))))
+afterEach(async () => Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }))))
 
 describe('commerce preset installer', () => {
   it('creates an absent preset with its four attributed skills and names only release packages', async () => {

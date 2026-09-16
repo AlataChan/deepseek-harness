@@ -300,6 +300,23 @@ while IFS= read -r dest; do
         bad "$dest is missing node_modules/exceljs — workspace pin must install third-party deps"
       fi
     fi
+    if [[ "$dest" == "@deepseek-ai/dsh-experimental-commerce-mode" ]]; then
+      if [[ -f "$plugin_dir/preset/commerce/agent.cordis.yml" && -f "$plugin_dir/preset/commerce/preset.yml" ]]; then
+        ok "$dest ships the packaged commerce preset"
+      else
+        bad "$dest is missing preset/commerce — the commerce preset cannot install on first run"
+      fi
+      if [[ -f "$plugin_dir/samples/orders.csv" && -f "$plugin_dir/samples/products.csv" && -f "$plugin_dir/samples/inventory.csv" ]]; then
+        ok "$dest ships the fictional commerce sample tables"
+      else
+        bad "$dest is missing samples/*.csv — the sample import has nothing to load"
+      fi
+      if [[ -f "$plugin_dir/NOTICE" ]]; then
+        ok "$dest carries its adapted-skill NOTICE"
+      else
+        bad "$dest is missing NOTICE — adapted skill text must ship its attribution"
+      fi
+    fi
   else
     bad "profile-plugins/$dest missing — overlay will not install on first run"
   fi

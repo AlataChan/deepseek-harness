@@ -23,6 +23,12 @@
       "path": "packages/experimental/desktop-ask-data"
     },
     {
+      "name": "@deepseek-ai/dsh-experimental-commerce-mode",
+      "version": "0.1.2-rc.1",
+      "source": "workspace",
+      "path": "packages/experimental/commerce-mode"
+    },
+    {
       "name": "@deepseek-ai/dsh-experimental-desktop-ask-knowledge",
       "version": "0.1.2-rc.1",
       "source": "workspace",

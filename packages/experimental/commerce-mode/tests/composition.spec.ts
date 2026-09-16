@@ -15,6 +15,7 @@ import CommerceMode from '@deepseek-ai/dsh-experimental-commerce-mode'
 import * as CommercePreset from '../src/preset/index.ts'
 import * as CommerceTools from '../src/tools/index.ts'
 import { writeFakeSqlite } from './helpers/fake-sqlite.ts'
+import { createSessionTestRemote } from '../../../api/session-controller/tests/test-remote.ts'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import LlmRuntime, {
   createUserMessage,
@@ -40,7 +41,7 @@ afterEach(async () => {
   await context?.fiber.dispose()
   context = undefined
   adapter.script.splice(0)
-  if (root !== undefined) await rm(root, { recursive: true, force: true })
+  if (root !== undefined) await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   root = undefined
   if (previousDshHome === undefined) delete process.env.DSH_HOME
   else process.env.DSH_HOME = previousDshHome
@@ -317,4 +318,63 @@ describe('real commerce Loader composition', () => {
       await created.dispose()
     })
   }
+  it('commits a commerce source onto a new session through the Session remotes', { timeout: 30_000 }, async () => {
+    const { ctx, workspace } = await loadComposition('preset')
+    ctx.provide('workspaceRegistry', { get: () => undefined } as never)
+    const remote = createSessionTestRemote(ctx, {
+      defaultModelSelection: () => ({ provider: 'mock', model: 'mock' }),
+      cwd: workspace,
+    })
+    const imported = await remote.importCommerceSample()
+    expect(imported.ok).toBe(true)
+    if (!imported.ok) return
+    const committed = await remote.commitCommerce({ sourceId: imported.value.source.id })
+    expect(committed.ok).toBe(true)
+    if (!committed.ok) return
+    const agent = ctx.agents.get(committed.value.sessionId)
+    if (agent === undefined) throw new Error('commit did not create a live agent')
+    expect(agent.session.snapshotEvents().some(event => event.type === 'commerce/bound')).toBe(true)
+    expect(ctx.sessionProjections.stateOf(agent.session, 'agentPreset')).toBe('commerce')
+    expect(ctx.sessionProjections.stateOf(agent.session, 'commerceBinding')).toMatchObject({
+      sourceId: imported.value.source.id,
+      kinds: ['orders', 'products', 'inventory'],
+    })
+    expect(ctx.tools.schemas(agent).filter(tool => tool.name.startsWith('commerce_'))).toHaveLength(14)
+
+    const live = ctx.agents.list().length
+    await expect(remote.commitCommerce({ sourceId: 'src-missing' })).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'session/commerce-failed', details: { code: 'source-missing' } },
+    })
+    expect(ctx.agents.list()).toHaveLength(live)
+
+    const started = await ctx.agents.create({
+      sessionId: SessionId('started-session'), meta: { cwd: workspace },
+      agentOptions: { provider: 'mock', model: 'mock' },
+      setup: agentCtx => ctx.agentPresets.mount(agentCtx, 'standard').then(() => undefined),
+    })
+    started.agent.session.append('turn/start', { turn: 1 })
+    await expect(remote.commitCommerce({
+      sourceId: imported.value.source.id,
+      sessionId: SessionId('started-session'),
+    })).resolves.toMatchObject({ ok: false, error: { code: 'gateway/bad-request' } })
+    await started.dispose()
+  })
+
+  it('refuses a commit in a composition without a preset roster', { timeout: 30_000 }, async () => {
+    const { ctx, workspace } = await loadComposition('root')
+    ctx.provide('workspaceRegistry', { get: () => undefined } as never)
+    const remote = createSessionTestRemote(ctx, {
+      defaultModelSelection: () => ({ provider: 'mock', model: 'mock' }),
+      cwd: workspace,
+    })
+    const imported = await remote.importCommerceSample()
+    expect(imported.ok).toBe(true)
+    if (!imported.ok) return
+    await expect(remote.commitCommerce({ sourceId: imported.value.source.id })).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'session/commerce-preset-unavailable', details: { preset: 'commerce' } },
+    })
+    expect(ctx.agents.list()).toHaveLength(0)
+  })
 })

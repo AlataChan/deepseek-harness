@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-experimental-commerce-mode` 在固定的 `orders`、`products` 与 `inventory` SQLite 表之上实现 [`ctx.commerce`](../../host/commerce/README.zh.md) Provider。它通过 Ask Data 支持的解码入口导入 CSV 或电子表格字节，将数据源保存到配置的绝对 `sourcesRoot` 下，提供固定电商读取，执行有界只读分析查询，在会话 ledger 中暂存有据可查、经 guardrail 检查的变更，把经批准的变更导出为 workspace 中的 CSV 文件，渲染可安全供电子表格打开的 CSV，并发布两种工具挂载：`./preset` 在不替换用户副本的前提下安装随包 `commerce` agent preset，并且只在该 preset 的 standing scope 中挂载原生工具；`./tools` 则为没有 preset 名册的部署在 Host 根部挂载这些工具。它的 `./client` 表面为暂存、丢弃与导出调用渲染卡片。
+`dsh-experimental-commerce-mode` 在固定的 `orders`、`products` 与 `inventory` SQLite 表之上实现 [`ctx.commerce`](../../host/commerce/README.zh.md) Provider。它通过 Ask Data 支持的解码入口导入 CSV 或电子表格字节，将数据源保存到配置的绝对 `sourcesRoot` 下，提供固定电商读取，执行有界只读分析查询，在会话 ledger 中暂存有据可查、经 guardrail 检查的变更，把经批准的变更导出为 workspace 中的 CSV 文件，渲染可安全供电子表格打开的 CSV，并发布两种工具挂载：`./preset` 在不替换用户副本的前提下安装随包 `commerce` agent preset，并且只在该 preset 的 standing scope 中挂载原生工具；`./tools` 则为没有 preset 名册的部署在 Host 根部挂载这些工具。它的 `./client` 表面渲染「电商助手」数据源页面，以及暂存、丢弃与导出调用的卡片。
 
 ## 目录
 
@@ -80,6 +80,8 @@ kind: "package-reference"
 加载时，`./preset` row 只在目标不存在时将 `preset/commerce/` 复制到 `.agent-presets/commerce`。它从不覆盖已编辑的 preset；复制失败会记录包含手工源路径与目标路径的日志，并且不挂载工具。随包 composition 只命名 release 包，并从已安装 preset 的 `skills/` 目录加载四个电商 skill。解析该 preset 后，该 row 在 `agentPresets.standingKeyFor('commerce')` 对应的 scope 中挂载 `./tools` Consumer；销毁该 row 会销毁该 scope 和全部工具注册。`NOTICE` 与 `preset/commerce/LICENSE-APACHE-2.0.txt` 为改编自 Claude Commerce Agents 的 skill 文本提供署名。
 
 `./client` 表面为每个暂存工具、`commerce_discard_change` 与 `commerce_export_changes` 注册一张 `tool.call.toolview` 卡片，并在 `commerce-mode` 命名空间中提供中文与英文词典。Web 与桌面 Host 通过包的 `dsh.client` 清单行加载它。卡片只依据调用的日志参数、结果文本与结果 metadata 生成：暂存变更列出商品、字段、改前与改后行，并附促销日期或活动；导出卡片给出写入的 workspace 文件，并提供经 Host 打开该文件的「打开」操作。暂存、丢弃与导出结果还会显示来自 `commerceSession` projection 的 ledger 计数。metadata 校验失败时，卡片保留结果文本；其他电商工具仍使用通用工具行。
+
+同一表面还在 `conversation.hero.commerce` 注册「电商助手」新会话 chip，并在 `conversation.commerce.gate` 注册数据源页面。页面先给出随包示例，再按订单、商品、库存分别上传并选择导出它的平台，列出已导入的数据源；选定数据源后「开始提问」可用，它调用 `commitCommerce` Remote，把数据源绑定到空白会话或新建的 `commerce` preset 会话并打开它。
 
 <a id="understand-the-implementation"></a>
 ## 了解实现
@@ -166,7 +168,7 @@ Parented 调用返回“Commerce tools run as direct calls. Call this tool direc
 - 已丢弃与已导出的变更仍保留在 ledger 中并计入 `maxStagedChanges`；达到上限的会话需在新的 commerce 会话中继续。
 - 导出文件名由变更 ID 决定，因此旧文件存在时再次导出相同 ID 会被 hold。
 - 卡片的 ledger 行显示会话 ledger 的当前状态，因此较早的卡片显示的是当前计数，而不是该次调用刚结束时的计数。
-- 这个私有实验包不在已发布应用的依赖闭包中。
+- 这个私有实验包不在已发布应用的依赖闭包中。octopus_DSH 桌面构建改为把它作为 profile-plugin bundle 种子安装，钉在 [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json) 中；进入应用依赖的只有 `dsh-host-commerce`。
 
 <a id="dev-note"></a>
 ### 开发备注

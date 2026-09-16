@@ -10,6 +10,7 @@ import {
 } from '@deepseek-ai/dsh-host-workspace-entries'
 import type {} from '@deepseek-ai/dsh-host-ask-data'
 import type {} from '@deepseek-ai/dsh-host-ask-knowledge'
+import type {} from '@deepseek-ai/dsh-host-commerce'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
 import type { SessionObservation } from '@deepseek-ai/dsh-session-query'
@@ -69,6 +70,11 @@ import type {
   SessionCommitAskDataRequest,
   SessionCommitAskDataValue,
   SessionImportAskDataSpreadsheetRequest,
+  SessionCommerceImportPreview,
+  SessionCommerceSource,
+  SessionCommitCommerceRequest,
+  SessionCommitCommerceValue,
+  SessionImportCommerceSpreadsheetRequest,
   SessionAskKnowledgeBinding,
   SessionAskKnowledgeBindingRequest,
   SessionAskKnowledgeBundle,
@@ -92,6 +98,7 @@ import type {
   SessionRenameAskKnowledgeLibraryRequest,
 } from './types.ts'
 import { SessionAskDataController } from './ask-data.ts'
+import { SessionCommerceController } from './commerce.ts'
 import { SessionAskKnowledgeController } from './ask-knowledge.ts'
 
 export type * from './types.ts'
@@ -154,6 +161,7 @@ export class SessionController extends TypertRemoteService {
   private readonly promotions = new Set<Promise<void>>()
   private readonly askData: SessionAskDataController
   private readonly askKnowledge: SessionAskKnowledgeController
+  private readonly commerce: SessionCommerceController
 
   /**
    * @param ctx - Host context containing the Session capability assembly.
@@ -171,6 +179,7 @@ export class SessionController extends TypertRemoteService {
       this.askData.gate,
       process.cwd(),
     )
+    this.commerce = new SessionCommerceController(ctx, this.agents, this.askData.gate, process.cwd())
     this.commands = new SessionCommandController(ctx, this.agents, process.cwd())
     const presets = ctx.get('agentPresets')
     if (presets !== undefined && 'admitSelect' in presets) {
@@ -472,6 +481,71 @@ export class SessionController extends TypertRemoteService {
   @Remote('askDataBinding')
   askDataBinding(request: SessionAskDataBindingRequest): SessionAskDataBinding | null {
     return this.askData.askDataBinding(request.sessionId)
+  }
+
+  /**
+   * List the commerce sources the provider stores.
+   * @param signal - caller lifetime; abort stops the listing.
+   * @returns listed sources.
+   * @throws RemoteError when the commerce capability is absent.
+   */
+  @Remote('listCommerceSources')
+  listCommerceSources(signal: AbortSignal): Promise<readonly SessionCommerceSource[]> {
+    return this.commerce.listSources(signal)
+  }
+
+  /**
+   * List the platform mapping ids this deployment configured. A Client picks
+   * one before importing a spreadsheet.
+   * @returns the configured platform ids.
+   * @throws RemoteError when the commerce capability is absent.
+   */
+  @Remote('listCommercePlatforms')
+  listCommercePlatforms(): readonly string[] {
+    return this.commerce.platforms()
+  }
+
+  /**
+   * Import or replace one commerce table from a spreadsheet. `bytes` is
+   * canonical base64 of the decoded file. Does not apply a preset or open a
+   * session.
+   * @param request - table family, platform mapping, filename, encoded bytes,
+   * and the source to extend.
+   * @param signal - caller lifetime; abort stops the import.
+   * @returns preview of the imported source.
+   */
+  @Remote('importCommerceSpreadsheet')
+  importCommerceSpreadsheet(
+    request: SessionImportCommerceSpreadsheetRequest,
+    signal: AbortSignal,
+  ): Promise<SessionCommerceImportPreview> {
+    return this.commerce.importSpreadsheet(request, signal)
+  }
+
+  /**
+   * Import the packaged fictional commerce sample as one source.
+   * @param signal - caller lifetime; abort stops the import.
+   * @returns preview of the imported sample.
+   */
+  @Remote('importCommerceSample')
+  importCommerceSample(signal: AbortSignal): Promise<SessionCommerceImportPreview> {
+    return this.commerce.importSample(signal)
+  }
+
+  /**
+   * Bind one commerce source to a Session. Host does not guess the current
+   * Session: pass `sessionId` only for a blank Session, or one already bound
+   * to this source.
+   * @param request - source and optional session / workspace.
+   * @param signal - caller lifetime; abort stops the commit.
+   * @returns the Session identity after bind + `commerce/bound`.
+   */
+  @Remote('commitCommerce')
+  commitCommerce(
+    request: SessionCommitCommerceRequest,
+    signal: AbortSignal,
+  ): Promise<SessionCommitCommerceValue> {
+    return this.commerce.commit(request, signal)
   }
 
   /**

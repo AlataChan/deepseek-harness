@@ -63,6 +63,11 @@ import type {
   SessionCommitAskDataRequest,
   SessionCommitAskDataValue,
   SessionImportAskDataSpreadsheetRequest,
+  SessionCommerceImportPreview,
+  SessionCommerceSource,
+  SessionCommitCommerceRequest,
+  SessionCommitCommerceValue,
+  SessionImportCommerceSpreadsheetRequest,
   SessionAskKnowledgeBinding,
   SessionAskKnowledgeBindingRequest,
   SessionAskKnowledgeBundle,
@@ -121,6 +126,17 @@ export interface TestSessionRemote {
   askDataBinding(
     request: SessionAskDataBindingRequest,
   ): Promise<RemoteResult<SessionAskDataBinding | null>>
+  listCommerceSources(signal?: AbortSignal): Promise<RemoteResult<readonly SessionCommerceSource[]>>
+  listCommercePlatforms(): Promise<RemoteResult<readonly string[]>>
+  importCommerceSpreadsheet(
+    request: SessionImportCommerceSpreadsheetRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionCommerceImportPreview>>
+  importCommerceSample(signal?: AbortSignal): Promise<RemoteResult<SessionCommerceImportPreview>>
+  commitCommerce(
+    request: SessionCommitCommerceRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionCommitCommerceValue>>
   listAskKnowledgeLibraries(
     signal?: AbortSignal,
   ): Promise<RemoteResult<readonly SessionAskKnowledgeLibrary[]>>
@@ -449,6 +465,23 @@ export function createSessionTestRemote(
       signal,
     ),
     askDataBinding: request => remoteResult(() => direct.askDataBinding(request)),
+    listCommerceSources: (signal = new AbortController().signal) => remoteResult(
+      () => direct.listCommerceSources(signal),
+      signal,
+    ),
+    listCommercePlatforms: () => remoteResult(() => direct.listCommercePlatforms()),
+    importCommerceSpreadsheet: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.importCommerceSpreadsheet(request, signal),
+      signal,
+    ),
+    importCommerceSample: (signal = new AbortController().signal) => remoteResult(
+      () => direct.importCommerceSample(signal),
+      signal,
+    ),
+    commitCommerce: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.commitCommerce(request, signal),
+      signal,
+    ),
     listAskKnowledgeLibraries: (signal = new AbortController().signal) => remoteResult(
       () => direct.listAskKnowledgeLibraries(signal),
       signal,
