@@ -99,6 +99,22 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
+.batch {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.batchFailed {
+  color: var(--dsw-alias-label-danger, #c00);
+}
+
 .error {
   margin: 8px 0 0;
   font-size: 12px;

@@ -3,7 +3,10 @@
  * Create and Add document show the upload panel. The choose-file control is a
  * transparent file input over the visible button so Tauri WebView can open the
  * native picker. The input omits HTML accept and listens on the element.
- * Catalog writes wait for a file or Skip. An existing row hangs
+ * It accepts several files and ingests them one at a time into the one
+ * library, because the Host serializes ingest per library and one file costs
+ * one carrier deadline; a failed file records its reason and the batch
+ * continues. Catalog writes wait for a file or Skip. An existing row hangs
  * on the name, or adds another document.
  */
 
@@ -32,6 +35,38 @@ export interface PickerIngestResult {
   readonly deferredCount?: number
   readonly rawRelPath?: string
   readonly error?: string
+}
+
+/** One file's place in the queued batch. */
+type BatchState = 'queued' | 'running' | 'done' | 'failed'
+
+/** One queued file with its own outcome. */
+interface BatchEntry {
+  readonly name: string
+  readonly state: BatchState
+  readonly reason?: string
+}
+
+// A new library, and a row still untitled, take the first SUCCESSFUL file's
+// stem; every later file in the batch leaves the name alone.
+function shouldNameFromStem(library: PickerLibrary | undefined, untitled: string): boolean {
+  return library === undefined || isDefaultLibraryName(library.displayName, untitled)
+}
+
+function updateBatchEntry(
+  entries: readonly BatchEntry[],
+  index: number,
+  patch: { state: BatchState; reason?: string },
+): readonly BatchEntry[] {
+  return entries.map((entry, at) => at === index ? { ...entry, ...patch } : entry)
+}
+
+function batchEntryText(entry: BatchEntry, t: (key: AskKnowledgeKey) => string): string {
+  /* v8 ignore next -- the driver writes every failed entry with its reason */
+  if (entry.state === 'failed') return entry.reason ?? t('ingest.failed')
+  if (entry.state === 'done') return t('batchDone')
+  if (entry.state === 'running') return t('batchRunning')
+  return t('batchQueued')
 }
 
 /** Remotes the picker needs. */
@@ -103,6 +138,7 @@ export function LibraryPicker({
   const [error, setError] = useState<string | undefined>()
   const [phase, setPhase] = useState<'list' | 'upload'>('list')
   const [ingesting, setIngesting] = useState(false)
+  const [batch, setBatch] = useState<readonly BatchEntry[]>([])
   const fileInputId = useId()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const draftRef = useRef<PickerLibrary | undefined>(undefined)
@@ -143,50 +179,79 @@ export function LibraryPicker({
     return createPromise.current
   }
 
-  const ingestFile = async (file: File) => {
+  const ingestOne = async (
+    file: File,
+    library: PickerLibrary,
+    nameFromStem: boolean,
+  ): Promise<string | undefined> => {
+    const begin = await beginIngest(library.id, file.name)
+    if (!begin.ok || begin.value === undefined) {
+      return begin.error?.message ?? t('ingest.failed')
+    }
+    const chunks = encodeIngestChunks(await readFileBytes(file))
+    for (const bytes of chunks) {
+      const appended = await appendIngestChunk(begin.value, bytes)
+      if (!appended.ok) return appended.error?.message ?? t('ingest.failed')
+    }
+    const finished = await finishIngest(begin.value)
+    if (!finished.ok || finished.value === undefined || finished.value.status === 'failed') {
+      return ingestFinishError(finished, t('ingest.failed'), t('ingest.timeout'))
+    }
+    if (nameFromStem) {
+      const stem = ingestFilenameStem(file.name)
+      await renameLibrary(library.id, unusedLibraryName(
+        rows.map(row => row.displayName),
+        stem === '' ? t('picker.create') : stem,
+      ))
+    }
+    return undefined
+  }
+
+  const ingestBatch = async (files: readonly File[]): Promise<void> => {
     setIngesting(true)
     setError(undefined)
+    setBatch(files.map(file => ({ name: file.name, state: 'queued' as const })))
+    let target = targetRef.current
+    let nameFromStem = shouldNameFromStem(target, t('picker.create'))
+    let boundId: string | undefined
     try {
-      if (!isAcceptedIngestExtension(ingestFilenameExtension(file.name))) {
-        setError(t('error.unsupportedType'))
-        return
-      }
-      const existing = targetRef.current
-      const library = existing ?? await ensureDraft()
-      if (library === undefined) return
-      const begin = await beginIngest(library.id, file.name)
-      if (!begin.ok || begin.value === undefined) {
-        setError(begin.error?.message ?? t('ingest.failed'))
-        return
-      }
-      const chunks = encodeIngestChunks(await readFileBytes(file))
-      for (const bytes of chunks) {
-        const appended = await appendIngestChunk(begin.value, bytes)
-        if (!appended.ok) {
-          setError(appended.error?.message ?? t('ingest.failed'))
-          return
+      for (const [index, file] of files.entries()) {
+        setBatch(current => updateBatchEntry(current, index, { state: 'running' }))
+        // Screen the name before any catalog write, so an unsupported file
+        // cannot leave an empty library behind.
+        if (!isAcceptedIngestExtension(ingestFilenameExtension(file.name))) {
+          setBatch(current => updateBatchEntry(current, index, {
+            state: 'failed',
+            reason: t('error.unsupportedType'),
+          }))
+          continue
+        }
+        if (target === undefined) {
+          target = await ensureDraft()
+          if (target === undefined) return
+        }
+        let reason: string | undefined
+        try {
+          reason = await ingestOne(file, target, nameFromStem)
+        } catch (error: unknown) {
+          // One unreadable file must not abort the rest of the queue.
+          reason = error instanceof Error ? error.message : t('ingest.failed')
+        }
+        if (reason === undefined) {
+          nameFromStem = false
+          boundId = target.id
+          setBatch(current => updateBatchEntry(current, index, { state: 'done' }))
+        } else {
+          setBatch(current => updateBatchEntry(current, index, { state: 'failed', reason }))
         }
       }
-      const finished = await finishIngest(begin.value)
-      if (!finished.ok || finished.value === undefined || finished.value.status === 'failed') {
-        setError(ingestFinishError(finished, t('ingest.failed'), t('ingest.timeout')))
-        return
-      }
-      if (existing === undefined || isDefaultLibraryName(library.displayName, t('picker.create'))) {
-        const stem = ingestFilenameStem(file.name)
-        const name = unusedLibraryName(
-          rows.map(row => row.displayName),
-          stem === '' ? t('picker.create') : stem,
-        )
-        await renameLibrary(library.id, name)
-      }
-      await hang(library.id)
     } finally {
       setIngesting(false)
     }
+    if (boundId !== undefined) await hang(boundId)
   }
-  const ingestFileRef = useRef(ingestFile)
-  ingestFileRef.current = ingestFile
+  const ingestBatchRef = useRef(ingestBatch)
+  ingestBatchRef.current = ingestBatch
 
   const skipEmpty = async () => {
     if (targetRef.current !== undefined) {
@@ -213,8 +278,8 @@ export function LibraryPicker({
         return
       }
       if (busy) return
-      const file = el.files?.[0]
-      if (file === undefined) {
+      const files = [...el.files ?? []]
+      if (files.length === 0) {
         if (ignoreEmpty) return
         setError(t('error.emptyPick'))
         return
@@ -223,7 +288,7 @@ export function LibraryPicker({
       ignoreEmpty = true
       el.value = ''
       queueMicrotask(() => { busy = false })
-      void ingestFileRef.current(file)
+      void ingestBatchRef.current(files)
     }
     const onReady = (): void => { ignoreEmpty = false }
     const onCancel = (): void => { cancelled = true }
@@ -299,6 +364,20 @@ export function LibraryPicker({
         <>
           <p className={css.lead}>{t('picker.uploadLead')}</p>
           {ingesting ? <p className={css.lead}>{t('ingest.applying')}</p> : null}
+          {batch.length > 0 && (
+            <ul className={css.batch}>
+              {batch.map((entry, index) => (
+                <li
+                  key={`${String(index)}-${entry.name}`}
+                  className={entry.state === 'failed' ? css.batchFailed : undefined}
+                >
+                  <span>{entry.name}</span>
+                  {' · '}
+                  <span>{batchEntryText(entry, t)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className={css.list}>
             <div className={css.chooseFile} data-file-pick="library">
               {t('picker.chooseFile')}
@@ -307,6 +386,7 @@ export function LibraryPicker({
                 ref={fileInputRef}
                 className={css.fileInputOverlay}
                 type="file"
+                multiple
                 disabled={ingesting}
               />
             </div>

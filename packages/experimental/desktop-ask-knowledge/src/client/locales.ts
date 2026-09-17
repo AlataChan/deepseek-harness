@@ -21,6 +21,9 @@ export type AskKnowledgeKey =
   | 'picker.uploadLead'
   | 'picker.chooseFile'
   | 'picker.skipEmpty'
+  | 'batchQueued'
+  | 'batchRunning'
+  | 'batchDone'
   | 'settings.section'
   | 'settings.remove'
   | 'settings.removeFailed'
@@ -54,6 +57,9 @@ const zh = {
   'picker.uploadLead': '选一份文档写进这个知识库。可以用 .md、.txt、.html、.pdf、.docx、.csv、.json、.xlsx。表格更适合走问数。',
   'picker.chooseFile': '选择本地文档',
   'picker.skipEmpty': '先空着，直接提问',
+  batchQueued: '排队中',
+  batchRunning: '正在处理',
+  batchDone: '已入库',
   'settings.section': '我的知识库',
   'settings.remove': '从名单移除',
   'settings.removeFailed': '没能从名单移除。',
@@ -88,6 +94,9 @@ const en = {
   'picker.uploadLead': 'Choose a document for this knowledge library. .md, .txt, .html, .pdf, .docx, .csv, .json, and .xlsx are accepted. Spreadsheets fit ask-data better.',
   'picker.chooseFile': 'Choose a local document',
   'picker.skipEmpty': 'Skip and ask with an empty library',
+  batchQueued: 'Queued',
+  batchRunning: 'Working',
+  batchDone: 'Added',
   'settings.section': 'My knowledge libraries',
   'settings.remove': 'Remove from the list',
   'settings.removeFailed': 'Could not remove the library from the list.',

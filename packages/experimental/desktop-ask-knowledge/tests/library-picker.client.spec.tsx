@@ -62,12 +62,24 @@ async function changeFile(view: ReturnType<typeof render>, file: File | undefine
   fireEvent.change(fileInput(view), { target: { files: file === undefined ? [] : [file] } })
 }
 
+async function changeFiles(view: ReturnType<typeof render>, names: readonly string[]) {
+  await waitFor(() => {
+    expect(fileInput(view)).toBeTruthy()
+  })
+  fireEvent.change(fileInput(view), {
+    target: { files: names.map(name => new File([new Uint8Array([97])], name)) },
+  })
+}
+
 describe('ask-knowledge picker', () => {
   it('keeps English ingest copy next to the Chinese dictionary', () => {
     expect(en['chip.unbound']).toBe('Knowledge')
     expect(en['picker.uploadTitle']).toBe('Upload a local document')
     expect(en['picker.chooseFile']).toBe('Choose a local document')
     expect(en['picker.skipEmpty']).toBe('Skip and ask with an empty library')
+    expect(en['batchQueued']).toBe('Queued')
+    expect(en['batchRunning']).toBe('Working')
+    expect(en['batchDone']).toBe('Added')
     expect(en['error.unsupportedType']).toBe('This file type cannot be ingested. Use .md, .txt, .html, .pdf, .docx, .csv, .json, or .xlsx.')
     expect(en['error.emptyPick']).toBe('The chosen file did not arrive. Choose it again.')
     expect(en['picker.uploadLead']).toContain('Spreadsheets fit ask-data better.')
@@ -492,6 +504,131 @@ describe('ask-knowledge picker', () => {
       expect(skipped.getByText('建不了')).toBeTruthy()
     })
     expect(skipAttach).not.toHaveBeenCalled()
+  })
+
+  it('accepts several files and ingests them one at a time into one library', async () => {
+    const close = vi.fn()
+    const createLibrary = vi.fn(async () => ({ ok: true as const, value: { id: '2', displayName: '未命名知识库' } }))
+    const renameLibrary = vi.fn(async () => ({ ok: true as const }))
+    const { view, remotes } = renderPicker({ close, createLibrary, renameLibrary })
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await waitFor(() => {
+      expect(fileInput(view)).toBeTruthy()
+    })
+    expect(fileInput(view).hasAttribute('multiple')).toBe(true)
+    await changeFiles(view, ['第一份.md', '第二份.md'])
+    await waitFor(() => {
+      expect(remotes.beginIngest).toHaveBeenCalledTimes(2)
+      expect(view.getAllByText('已入库')).toHaveLength(2)
+      expect(close).toHaveBeenCalled()
+    })
+    expect(remotes.beginIngest).toHaveBeenNthCalledWith(1, '2', '第一份.md')
+    expect(remotes.beginIngest).toHaveBeenNthCalledWith(2, '2', '第二份.md')
+    expect(createLibrary).toHaveBeenCalledTimes(1)
+    expect(renameLibrary).toHaveBeenCalledTimes(1)
+    expect(renameLibrary).toHaveBeenCalledWith('2', '第一份')
+  })
+
+  it('queues the next file while one is still working', async () => {
+    const pending: Array<() => void> = []
+    const finishIngest = vi.fn(() => new Promise<{ ok: true; value: { status: 'applied' } }>((resolve) => {
+      pending.push(() => { resolve({ ok: true, value: { status: 'applied' } }) })
+    }))
+    const { view } = renderPicker({ finishIngest })
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await changeFiles(view, ['第一份.md', '第二份.md'])
+    await waitFor(() => {
+      expect(pending).toHaveLength(1)
+    })
+    expect(view.getByText('正在处理')).toBeTruthy()
+    expect(view.getByText('排队中')).toBeTruthy()
+    pending.shift()?.()
+    await waitFor(() => {
+      expect(pending).toHaveLength(1)
+    })
+    pending.shift()?.()
+    await waitFor(() => {
+      expect(view.getAllByText('已入库')).toHaveLength(2)
+    })
+  })
+
+  it('keeps going after a failed file and reports that file alone', async () => {
+    const beginIngest = vi.fn(async (_libraryId: string, filename: string) => filename === '坏.pdf'
+      ? { ok: false as const, error: { message: '打不开' } }
+      : { ok: true as const, value: 'h1' })
+    const { view } = renderPicker({ beginIngest })
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await changeFiles(view, ['一.md', '坏.pdf', '三.md'])
+    await waitFor(() => {
+      expect(beginIngest).toHaveBeenCalledTimes(3)
+    })
+    expect(view.getAllByText('已入库')).toHaveLength(2)
+    expect(view.getByText('坏.pdf')).toBeTruthy()
+    expect(view.getByText('打不开')).toBeTruthy()
+  })
+
+  it('survives a thrown transport error and keeps the queue moving', async () => {
+    const beginIngest = vi.fn(async (_libraryId: string, filename: string) => {
+      if (filename === '炸.md') throw new Error('传输中断')
+      if (filename === '非错误.md') throw '连接被切断'
+      return { ok: true as const, value: 'h1' }
+    })
+    const { view } = renderPicker({ beginIngest })
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await changeFiles(view, ['一.md', '炸.md', '非错误.md', '四.md'])
+    await waitFor(() => {
+      expect(beginIngest).toHaveBeenCalledTimes(4)
+    })
+    expect(view.getAllByText('已入库')).toHaveLength(2)
+    expect(view.getByText('传输中断')).toBeTruthy()
+    // A thrown non-Error carries no trusted message, so it takes the generic copy.
+    expect(view.getByText('文档没有写进知识库。')).toBeTruthy()
+    expect(view.queryByText('连接被切断')).toBeNull()
+  })
+
+  it('treats a missing file list as no file chosen', async () => {
+    const { view } = renderPicker()
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await waitFor(() => {
+      expect(fileInput(view)).toBeTruthy()
+    })
+    fireEvent.change(fileInput(view), { target: { files: null } })
+    await waitFor(() => {
+      expect(view.getByText('没有读到所选文件，请再选一次。')).toBeTruthy()
+    })
+  })
+
+  it('stays open without binding when every queued file fails', async () => {
+    const attach = vi.fn(async () => ({ ok: true as const }))
+    const close = vi.fn()
+    const beginIngest = vi.fn(async () => ({ ok: false as const, error: { message: '挂了' } }))
+    const { view } = renderPicker({ attach, close, beginIngest })
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await changeFiles(view, ['一.md', '二.md'])
+    await waitFor(() => {
+      expect(beginIngest).toHaveBeenCalledTimes(2)
+    })
+    expect(view.getAllByText('挂了')).toHaveLength(2)
+    expect(attach).not.toHaveBeenCalled()
+    expect(close).not.toHaveBeenCalled()
   })
 
   it('rejects an unsupported type and surfaces ingest failures without closing', async () => {
