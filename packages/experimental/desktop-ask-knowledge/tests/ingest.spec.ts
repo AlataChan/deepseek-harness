@@ -10,7 +10,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import type { AskKnowledge } from '@deepseek-ai/dsh-host-ask-knowledge'
 import DesktopAskKnowledge from '../src/index.ts'
-import { healPageMetaRejections, isPageMetaRejection } from '../src/ingest.ts'
+import { healRejectedProposals, isPageMetaRejection, isPostLintRejection } from '../src/ingest.ts'
 import { withLibraryLock } from '../src/library-lock.ts'
 import { decodeIngestChunk, MAX_INGEST_CHUNK_BYTES } from '../src/upload-temp.ts'
 import { installFakeSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
@@ -223,6 +223,17 @@ describe('ask-knowledge ingest', () => {
     expect(result).toMatchObject({ status: 'deferred', deferredCount: 1 })
   })
 
+  it('names the lint rule and page when a proposal fails the post-apply lint', async () => {
+    const { capability } = await boot({
+      sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'rejected-post-lint' },
+    })
+    const library = await capability.createLibrary({ displayName: '词条冲突' })
+    const result = await ingestText(capability, library.id, '冲突.md', '# 冲突\n')
+    expect(result).toMatchObject({ status: 'failed', retryable: true })
+    expect(result.error).toContain('同一个别名指向了多个词条')
+    expect(result.error).toContain('wiki/a.md,wiki/b.md')
+  })
+
   it('rejects an oversized chunk and an unsupported type', async () => {
     const { capability } = await boot()
     const library = await capability.createLibrary({ displayName: '上限' })
@@ -271,6 +282,51 @@ describe('ask-knowledge ingest', () => {
     expect(isPageMetaRejection({ rule_id: 'schema.page_meta_invalid' })).toBe(true)
     expect(isPageMetaRejection({ rule_results: [null, 3] })).toBe(false)
     expect(isPageMetaRejection({ rule_results: [{ rule_id: 'schema.page_meta_invalid' }] })).toBe(true)
+    expect(isPostLintRejection({ reason: 'post-apply lint failed' })).toBe(true)
+    expect(isPostLintRejection({ rule_results: [{ rule_id: 'ALIAS_COLLISION' }] })).toBe(true)
+    expect(isPostLintRejection({ rule_id: 'schema.page_meta_invalid' })).toBe(false)
+    expect(isPostLintRejection({ rule_results: [{ rule_id: 'lint.broken_link' }] })).toBe(false)
+  })
+
+  it('drops tag-derived aliases from a post-lint rejection and re-applies it', async () => {
+    const { capability, root, sidecarHome } = await boot()
+    const library = await capability.createLibrary({ displayName: '救援' })
+    const octopus = join(root, 'knowledge-bases', 'libraries', library.id, '.octopus-kb')
+    await mkdir(join(octopus, 'proposals'), { recursive: true })
+    await mkdir(join(octopus, 'rejections'), { recursive: true })
+    const proposal = {
+      id: 'prop-alias',
+      status: 'pending',
+      operations: [{
+        op: 'create_page',
+        path: 'wiki/a.md',
+        frontmatter: {
+          title: 'A',
+          type: 'note',
+          lang: 'zh',
+          role: 'note',
+          layer: 'wiki',
+          summary: '摘要',
+          tags: ['多代理', '治理'],
+          aliases: ['多代理', '治理', '自己写的别名'],
+        },
+      }],
+    }
+    await writeFile(join(octopus, 'proposals', 'prop-alias.json'), JSON.stringify(proposal), 'utf8')
+    // The pre-fix record shape: a reason with no rule_results at all.
+    await writeFile(join(octopus, 'rejections', 'prop-alias.json'), JSON.stringify({
+      ...proposal,
+      decision_status: 'rejected_post_lint',
+      reason: 'post-apply lint failed',
+    }), 'utf8')
+
+    await healRejectedProposals({ sidecarRuntimePath: sidecarHome }, join(root, 'knowledge-bases', 'libraries', library.id))
+
+    const healed = JSON.parse(await readFile(join(octopus, 'proposals', 'prop-alias.json'), 'utf8')) as {
+      operations: Array<{ frontmatter: Record<string, unknown> }>
+    }
+    // Only the aliases that repeat a tag go; the model's own alias stays.
+    expect(healed.operations[0]!.frontmatter['aliases']).toEqual(['自己写的别名'])
   })
 
   it('heals page-meta rejections and leaves every other rejection alone', async () => {
@@ -308,7 +364,7 @@ describe('ask-knowledge ingest', () => {
     await write('rejections', 'prop-null.json', 'null')
     await write('rejections', 'notes.txt', 'ignored\n')
 
-    await healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, join(root, 'knowledge-bases', 'libraries', library.id))
+    await healRejectedProposals({ sidecarRuntimePath: sidecarHome }, join(root, 'knowledge-bases', 'libraries', library.id))
 
     const frontmatterOf = async (name: string) => {
       const parsed = JSON.parse(await readFile(join(octopus, 'proposals', name), 'utf8')) as {
@@ -328,7 +384,7 @@ describe('ask-knowledge ingest', () => {
     const { capability, root, sidecarHome } = await boot({ sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'fail' } })
     const bare = await capability.createLibrary({ displayName: '空' })
     const bareVault = join(root, 'knowledge-bases', 'libraries', bare.id)
-    await expect(healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, bareVault)).resolves.toBeUndefined()
+    await expect(healRejectedProposals({ sidecarRuntimePath: sidecarHome }, bareVault)).resolves.toBeUndefined()
 
     const library = await capability.createLibrary({ displayName: '失败' })
     const vault = join(root, 'knowledge-bases', 'libraries', library.id)
@@ -345,11 +401,11 @@ describe('ask-knowledge ingest', () => {
       ...JSON.parse(body) as object,
       rule_id: 'schema.page_meta_invalid',
     }), 'utf8')
-    await expect(healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, vault)).resolves.toBeUndefined()
+    await expect(healRejectedProposals({ sidecarRuntimePath: sidecarHome }, vault)).resolves.toBeUndefined()
 
     const controller = new AbortController()
     controller.abort()
-    await expect(healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, vault, controller.signal))
+    await expect(healRejectedProposals({ sidecarRuntimePath: sidecarHome }, vault, controller.signal))
       .rejects.toThrow()
   })
 
@@ -375,7 +431,7 @@ describe('ask-knowledge ingest', () => {
     const controller = new AbortController()
     const aborting = setTimeout(() => { controller.abort() }, 50)
     try {
-      await expect(healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, vault, controller.signal))
+      await expect(healRejectedProposals({ sidecarRuntimePath: sidecarHome }, vault, controller.signal))
         .rejects.toThrow()
     } finally {
       clearTimeout(aborting)

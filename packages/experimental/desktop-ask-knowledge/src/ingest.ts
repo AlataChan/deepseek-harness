@@ -11,7 +11,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { assertVaultDir, requireLibrary } from './catalog.ts'
 import { resolveProposeEnv } from './credentials-bridge.ts'
 import { withLibraryLock } from './library-lock.ts'
-import { rewriteInvalidCreatePageMeta, rewriteProposalPageMetaFile } from './proposal-page-meta.ts'
+import { rewriteInvalidCreatePageMeta, rewriteProposalPageMetaFile, rewriteTagDerivedAliases } from './proposal-page-meta.ts'
 import { runSidecar, type SidecarResponse } from './sidecar.ts'
 import type { AskKnowledgeHomeConfig } from './knowledge-home.ts'
 
@@ -116,15 +116,34 @@ export function isPageMetaRejection(rejection: unknown): boolean {
 }
 
 /**
- * Re-apply page-meta rejections so documents already under `raw/` become
- * searchable. Apply fills `role` / `layer` / `summary`; a `type` outside the
- * page-meta enum is rewritten first because apply evaluates it after that fill.
- * A proposal failing any other rule keeps its rejection and is not retried.
+ * Whether a rejection records a post-apply lint failure.
+ *
+ * A record written before the sidecar reported its findings carries only the
+ * reason; a newer one carries the rules it rejected on.
+ * @param rejection - parsed rejection JSON.
+ * @returns true when the sidecar wrote the proposal and then rolled it back.
+ */
+export function isPostLintRejection(rejection: unknown): boolean {
+  if (typeof rejection !== 'object' || rejection === null) return false
+  const record = rejection as Record<string, unknown>
+  if (record.reason === 'post-apply lint failed') return true
+  const results = record.rule_results
+  if (!Array.isArray(results)) return false
+  return results.some((row: unknown) => typeof row === 'object' && row !== null
+    && (row as Record<string, unknown>).rule_id === 'ALIAS_COLLISION')
+}
+
+/**
+ * Re-apply rejected proposals so documents already under `raw/` become
+ * searchable. Apply fills `role` / `layer` / `summary`, so an invalid `type` is
+ * rewritten first; a proposal rejected after the write also drops the aliases a
+ * retired fill copied from its own tags. A proposal failing any other rule keeps
+ * its rejection and is not retried.
  * @param config - sidecar home.
  * @param vault - absolute vault.
  * @param signal - caller lifetime.
  */
-export async function healPageMetaRejections(
+export async function healRejectedProposals(
   config: AskKnowledgeHomeConfig,
   vault: string,
   signal?: AbortSignal,
@@ -141,10 +160,14 @@ export async function healPageMetaRejections(
     if (!name.endsWith('.json')) continue
     signal?.throwIfAborted()
     const rejection = await readJsonObject(join(rejectionDir, name))
-    if (rejection === undefined || !isPageMetaRejection(rejection)) continue
+    if (rejection === undefined) continue
+    if (!isPageMetaRejection(rejection) && !isPostLintRejection(rejection)) continue
     const proposalPath = join(vault, '.octopus-kb', 'proposals', name)
     const proposal = await readJsonObject(proposalPath)
-    if (proposal === undefined || !rewriteInvalidCreatePageMeta(proposal)) continue
+    if (proposal === undefined) continue
+    const metaRewritten = rewriteInvalidCreatePageMeta(proposal)
+    const aliasesDropped = rewriteTagDerivedAliases(proposal)
+    if (!metaRewritten && !aliasesDropped) continue
     await writeFile(proposalPath, `${JSON.stringify(proposal, null, 2)}\n`, 'utf8')
     try {
       await runSidecar(config, { command: 'validate-apply', vault, proposal: proposalPath }, { signal })
@@ -240,7 +263,7 @@ export async function finishIngestPipeline(
           rawRelPath,
           undefined,
           { proposalId },
-          '整理词条没有写出可检索的页面。',
+          rejectedIngestCopy(applied),
         )
       }
       const deferredCount = typeof applied.deferred_count === 'number'
@@ -297,6 +320,54 @@ const SIDECAR_ERROR_ZH: Record<string, string> = {
   'proposal schema invalid': '模型给出的词条格式不对，请再试一次。',
   'propose failed': '整理词条失败。',
   'apply failed': '写入词条失败。',
+}
+
+/** Severe post-apply lint codes, in operator Chinese. */
+const LINT_RULE_ZH: Record<string, string> = {
+  SCHEMA_MISSING_FIELD: '词条缺少必填字段',
+  SCHEMA_INVALID_FIELD: '词条有字段不合法',
+  SCHEMA_INVALID_CONDITIONAL: '词条缺少该类型要求的字段',
+  BROKEN_LINK: '词条里的链接指向不存在的页',
+  DUPLICATE_CANONICAL_PAGE: '两个词条用了同一个规范名',
+  CANONICAL_ALIAS_COLLISION: '别名和别的词条的规范名相撞',
+  ALIAS_COLLISION: '同一个别名指向了多个词条',
+}
+
+const REJECTED_PAGE_FALLBACK = '整理词条没有写出可检索的页面。'
+
+/**
+ * Operator copy for a proposal the sidecar rejected.
+ *
+ * A post-apply lint rejection carries the rule and the path that tripped it, and
+ * without them the operator reads the same sentence for every cause. The wire
+ * detail stays verbatim after the mapped sentence because it names the page.
+ * @param applied - sidecar validate-apply response.
+ * @returns the message to show.
+ */
+function rejectedIngestCopy(applied: SidecarResponse): string {
+  const rule = firstRuleResult(applied)
+  if (rule === undefined) return REJECTED_PAGE_FALLBACK
+  const sentence = LINT_RULE_ZH[rule.ruleId] ?? REJECTED_PAGE_FALLBACK
+  return rule.detail === undefined ? sentence : `${sentence}（${rule.detail}）`
+}
+
+function firstRuleResult(
+  applied: SidecarResponse,
+): { readonly ruleId: string; readonly detail?: string } | undefined {
+  const results = applied.rule_results
+  if (!Array.isArray(results)) return undefined
+  for (const row of results) {
+    if (typeof row !== 'object' || row === null) continue
+    const record = row as Record<string, unknown>
+    const ruleId = record.rule_id
+    if (typeof ruleId !== 'string' || ruleId === '') continue
+    const reason = record.reason
+    return {
+      ruleId,
+      ...typeof reason === 'string' && reason !== '' ? { detail: reason } : {},
+    }
+  }
+  return undefined
 }
 
 function failedIngest(

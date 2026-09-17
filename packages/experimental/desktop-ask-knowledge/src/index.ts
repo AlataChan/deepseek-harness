@@ -31,7 +31,7 @@ import {
   withCatalogLock, withLibraryLock, withSessionLock, withSessionLocks,
 } from './library-lock.ts'
 import { renderAskKnowledgeRetrievePrompt } from './prompt-retrieve.ts'
-import { finishIngestPipeline, healPageMetaRejections, pendingAuditCount, recoverPendingAudits } from './ingest.ts'
+import { finishIngestPipeline, healRejectedProposals, pendingAuditCount, recoverPendingAudits } from './ingest.ts'
 import { lookupLibraryTerm, retrieveLibraryBundle } from './retrieve.ts'
 import { resolveResultBounds, type ResultBounds } from './result-bounds.ts'
 import { placeLibraryShortcut, revealLibraryVault } from './shortcut.ts'
@@ -263,7 +263,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
         }
         const vault = await assertVaultDir(home, row)
         await recoverPendingAudits(this.ctx, this.config, vault, signal)
-        await healPageMetaRejections(this.config, vault, signal)
+        await healRejectedProposals(this.config, vault, signal)
         const previous = this.ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')
         if (previous != null && previous.libraryId !== request.libraryId) {
           session.append('ask-knowledge/unbound', { libraryId: previous.libraryId })

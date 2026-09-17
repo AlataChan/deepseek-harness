@@ -75,11 +75,38 @@ class ObsidianStore:
     def markdown_by_path(self, pages: list[PageRecord]) -> dict[str, str]:
         return {page.path: self.read_markdown(page.path) for page in pages}
 
+    def _vault_spelling(self, rel_path: str) -> str:
+        """The vault's own spelling of a path it already holds under another case.
+
+        On a case-insensitive filesystem `wiki/log.md` and `wiki/LOG.md` are one
+        file, so an append must keep the spelling the vault already uses: staging
+        it under the other case makes the lint read a new page whose frontmatter
+        is the existing page's, and its pre-existing findings look introduced.
+        A path the vault does not hold is returned unchanged.
+        """
+        path = self.root / rel_path
+        if not path.exists():
+            return rel_path
+        try:
+            names = {entry.name for entry in path.parent.iterdir()}
+        except OSError:
+            return rel_path
+        if path.name in names:
+            return rel_path
+        match = next(
+            (name for name in names if name.casefold() == path.name.casefold()),
+            None,
+        )
+        if match is None:
+            return rel_path
+        parent = str(Path(rel_path).parent)
+        return rel_path if parent == "." else f"{parent}/{match}"
+
     def prepare_ops(self, ops: list[CanonicalOp]) -> PreparedWrite:
         content_by_path: dict[str, str] = {}
         for op in ops:
             if isinstance(op, AppendLogOp):
-                rel_path = require_obsidian_storage_ref(op.target).locator
+                rel_path = self._vault_spelling(require_obsidian_storage_ref(op.target).locator)
                 current = content_by_path.get(rel_path)
                 if current is None:
                     path = self.root / rel_path
@@ -95,7 +122,7 @@ class ObsidianStore:
                 continue
 
             if isinstance(op, AddAliasOp):
-                rel_path = require_obsidian_storage_ref(op.target).locator
+                rel_path = self._vault_spelling(require_obsidian_storage_ref(op.target).locator)
                 current = content_by_path.get(rel_path)
                 if current is None:
                     current = (self.root / rel_path).read_text(encoding="utf-8")

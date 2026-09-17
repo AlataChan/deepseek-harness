@@ -51,7 +51,10 @@ fill_create_page_frontmatter(filled)
 assert filled["operations"][0]["frontmatter"]["role"] == "concept"
 assert filled["operations"][0]["frontmatter"]["layer"] == "wiki"
 assert filled["operations"][0]["frontmatter"]["summary"] == "养老与托育政策。"
-assert "一老一小" in filled["operations"][0]["frontmatter"]["aliases"]
+# Tags stay tags: lookup reads them directly, and a tag promoted to an alias makes
+# one alias resolve to several pages as soon as two pages share it.
+assert filled["operations"][0]["frontmatter"]["tags"] == ["一老一小"]
+assert "aliases" not in filled["operations"][0]["frontmatter"]
 
 previous_root = os.environ.get("OCTOPUS_KB_ROOT")
 os.environ.pop("OCTOPUS_KB_ROOT", None)

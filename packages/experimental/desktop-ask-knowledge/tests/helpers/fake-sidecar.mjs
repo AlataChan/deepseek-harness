@@ -185,6 +185,18 @@ switch (request.command) {
       ok({ status: 'rejected' })
       break
     }
+    if (process.env.ASK_KNOWLEDGE_FAKE_APPLY === 'rejected-post-lint') {
+      ok({
+        status: 'rejected_post_lint',
+        verdict: 'pass',
+        rule_results: [{
+          rule_id: 'ALIAS_COLLISION',
+          verdict: 'reject',
+          reason: 'wiki/a.md,wiki/b.md: Alias `多代理` resolves to multiple pages',
+        }],
+      })
+      break
+    }
     if (process.env.ASK_KNOWLEDGE_FAKE_APPLY === 'deferred') {
       ok({ status: 'deferred', deferredCount: 1, deferred_count: 1 })
       break

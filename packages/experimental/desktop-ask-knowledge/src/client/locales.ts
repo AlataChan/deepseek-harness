@@ -72,7 +72,7 @@ const zh = {
   'ingest.proposing': '正在整理成词条',
   'ingest.applying': '正在写入知识库，可能需要几分钟。',
   'ingest.timeout': '整理这份文档超过了等待时间。请再试一次。',
-  'ingest.deferred': '有 N 条没入库，这次没有全部写进去。',
+  'ingest.deferred': '这次没有写进去，需要人工确认后才能入库。',
   'ingest.failed': '文档没有写进知识库。',
 } as const satisfies Record<AskKnowledgeKey, string>
 
@@ -109,7 +109,7 @@ const en = {
   'ingest.proposing': 'Organizing entries',
   'ingest.applying': 'Writing the knowledge library. This can take a few minutes.',
   'ingest.timeout': 'Organizing this document took longer than the wait. Try again.',
-  'ingest.deferred': 'N items were not ingested.',
+  'ingest.deferred': 'Nothing was written this time: the entries need a human confirmation first.',
   'ingest.failed': 'The document was not written into the knowledge library.',
 } as const satisfies Record<AskKnowledgeKey, string>
 

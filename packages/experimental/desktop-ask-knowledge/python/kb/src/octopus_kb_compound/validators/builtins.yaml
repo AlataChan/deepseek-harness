@@ -36,15 +36,6 @@ rules:
     verdict: reject
     reason_template: "an operation has confidence < 0.4"
 
-  - id: confidence.tier_gate_defer
-    description: Defer proposals containing medium confidence operations.
-    applies_to: [create_page, add_alias, append_log]
-    check:
-      any_op_confidence_below: 0.7
-    verdict: defer
-    human_overridable: true
-    reason_template: "an operation has confidence in [0.4, 0.7)"
-
   - id: conflict.canonical_overlap
     description: Reject proposed pages whose canonical identity already exists.
     applies_to: [create_page]

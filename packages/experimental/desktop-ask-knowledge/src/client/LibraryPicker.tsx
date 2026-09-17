@@ -47,6 +47,12 @@ interface BatchEntry {
   readonly reason?: string
 }
 
+/** What one file's ingest settled as. */
+type IngestOutcome =
+  | { readonly kind: 'applied' }
+  | { readonly kind: 'deferred' }
+  | { readonly kind: 'failed'; readonly reason: string }
+
 // A new library, and a row still untitled, take the first SUCCESSFUL file's
 // stem; every later file in the batch leaves the name alone.
 function shouldNameFromStem(library: PickerLibrary | undefined, untitled: string): boolean {
@@ -183,20 +189,23 @@ export function LibraryPicker({
     file: File,
     library: PickerLibrary,
     nameFromStem: boolean,
-  ): Promise<string | undefined> => {
+  ): Promise<IngestOutcome> => {
     const begin = await beginIngest(library.id, file.name)
     if (!begin.ok || begin.value === undefined) {
-      return begin.error?.message ?? t('ingest.failed')
+      return { kind: 'failed', reason: begin.error?.message ?? t('ingest.failed') }
     }
     const chunks = encodeIngestChunks(await readFileBytes(file))
     for (const bytes of chunks) {
       const appended = await appendIngestChunk(begin.value, bytes)
-      if (!appended.ok) return appended.error?.message ?? t('ingest.failed')
+      if (!appended.ok) {
+        return { kind: 'failed', reason: appended.error?.message ?? t('ingest.failed') }
+      }
     }
     const finished = await finishIngest(begin.value)
     if (!finished.ok || finished.value === undefined || finished.value.status === 'failed') {
-      return ingestFinishError(finished, t('ingest.failed'), t('ingest.timeout'))
+      return { kind: 'failed', reason: ingestFinishError(finished, t('ingest.failed'), t('ingest.timeout')) }
     }
+    if (finished.value.status === 'deferred') return { kind: 'deferred' }
     if (nameFromStem) {
       const stem = ingestFilenameStem(file.name)
       await renameLibrary(library.id, unusedLibraryName(
@@ -204,7 +213,7 @@ export function LibraryPicker({
         stem === '' ? t('picker.create') : stem,
       ))
     }
-    return undefined
+    return { kind: 'applied' }
   }
 
   const ingestBatch = async (files: readonly File[]): Promise<void> => {
@@ -230,20 +239,26 @@ export function LibraryPicker({
           target = await ensureDraft()
           if (target === undefined) return
         }
-        let reason: string | undefined
+        let outcome: IngestOutcome
         try {
-          reason = await ingestOne(file, target, nameFromStem)
+          outcome = await ingestOne(file, target, nameFromStem)
         } catch (error: unknown) {
           // One unreadable file must not abort the rest of the queue.
-          reason = error instanceof Error ? error.message : t('ingest.failed')
+          outcome = {
+            kind: 'failed',
+            reason: error instanceof Error ? error.message : t('ingest.failed'),
+          }
         }
-        if (reason === undefined) {
+        if (outcome.kind === 'applied') {
           nameFromStem = false
           boundId = target.id
           setBatch(current => updateBatchEntry(current, index, { state: 'done' }))
-        } else {
-          setBatch(current => updateBatchEntry(current, index, { state: 'failed', reason }))
+          continue
         }
+        // A deferred proposal wrote nothing: its entries wait in a queue no
+        // surface reviews, so the file has not landed and must not read as added.
+        const reason = outcome.kind === 'deferred' ? t('ingest.deferred') : outcome.reason
+        setBatch(current => updateBatchEntry(current, index, { state: 'failed', reason }))
       }
     } finally {
       setIngesting(false)

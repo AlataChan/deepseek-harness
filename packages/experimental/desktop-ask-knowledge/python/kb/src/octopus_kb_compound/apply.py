@@ -149,10 +149,19 @@ def apply_proposal(
             staged_target.parent.mkdir(parents=True, exist_ok=True)
             staged_target.write_text(content, encoding="utf-8")
 
-        if _introduces_severe_lint(root, prepared.content_by_path):
+        lint_findings = _introduced_severe_lint(root, prepared.content_by_path)
+        if lint_findings:
             shutil.rmtree(staging, ignore_errors=True)
-            _write_decision(root, "rejections", proposal, [], status="rejected_post_lint", reason="post-apply lint failed")
-            return ApplyResult(status="rejected_post_lint", verdict=verdict.final if verdict else None)
+            rule_results = _severe_lint_rule_results(lint_findings)
+            _write_decision(
+                root, "rejections", proposal, rule_results,
+                status="rejected_post_lint", reason="post-apply lint failed",
+            )
+            return ApplyResult(
+                status="rejected_post_lint",
+                verdict=verdict.final if verdict else None,
+                rule_results=rule_results,
+            )
 
         ledger = {
             "created": sorted(created),
@@ -218,11 +227,28 @@ def _build_vault_state(vault: Path) -> VaultState:
     return VaultState(canonical_keys=canonical_keys, page_titles=page_titles)
 
 
-def _introduces_severe_lint(vault: Path, staged_content: dict[str, str]) -> bool:
+def _introduced_severe_lint(
+    vault: Path,
+    staged_content: dict[str, str],
+) -> set[tuple[str, str, str]]:
+    """Severe lint findings the staged content adds to the vault.
+
+    Returns the findings rather than a flag: the caller rejects the proposal, and
+    the operator needs the rule and path that caused it, not just the fact of one.
+    """
     before = _severe_lint_signature(lint_pages(ObsidianStore(vault).list_page_records()))
     after_pages = _overlay_pages(vault, staged_content)
     after = _severe_lint_signature(lint_pages(after_pages))
-    return bool(after - before)
+    return after - before
+
+
+def _severe_lint_rule_results(
+    findings: set[tuple[str, str, str]],
+) -> list[dict[str, str]]:
+    return [
+        {"rule_id": code, "verdict": "reject", "reason": f"{path}: {message}"}
+        for code, path, message in sorted(findings)
+    ]
 
 
 def _overlay_pages(vault: Path, staged_content: dict[str, str]):

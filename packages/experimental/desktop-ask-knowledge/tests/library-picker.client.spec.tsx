@@ -87,7 +87,7 @@ describe('ask-knowledge picker', () => {
     expect(en['ingest.proposing']).toBe('Organizing entries')
     expect(en['ingest.applying']).toBe('Writing the knowledge library. This can take a few minutes.')
     expect(en['ingest.timeout']).toBe('Organizing this document took longer than the wait. Try again.')
-    expect(en['ingest.deferred']).toBe('N items were not ingested.')
+    expect(en['ingest.deferred']).toBe('Nothing was written this time: the entries need a human confirmation first.')
     expect(en['ingest.failed']).toBe('The document was not written into the knowledge library.')
     expect(en['picker.emptyCreate']).toBe('+ New knowledge library')
     expect(en['picker.addDocument']).toBe('Add document')
@@ -841,7 +841,7 @@ describe('ask-knowledge picker', () => {
     expect(createLibrary).not.toHaveBeenCalled()
   })
 
-  it('hangs a deferred ingest and ignores a file after create fails', async () => {
+  it('reports a deferred ingest as not written and ignores a file after create fails', async () => {
     const close = vi.fn()
     const attach = vi.fn(async () => ({ ok: true as const }))
     const { view } = renderPicker({
@@ -855,9 +855,11 @@ describe('ask-knowledge picker', () => {
     view.getByRole('button', { name: '+ 新建知识库' }).click()
     await changeFile(view, new File([new Uint8Array([97])], 'notes.md'))
     await waitFor(() => {
-      expect(attach).toHaveBeenCalledWith('2')
-      expect(close).toHaveBeenCalled()
+      expect(view.getByText('这次没有写进去，需要人工确认后才能入库。')).toBeTruthy()
     })
+    expect(view.queryByText('已入库')).toBeNull()
+    expect(attach).not.toHaveBeenCalled()
+    expect(close).not.toHaveBeenCalled()
     const beginIngest = vi.fn(async () => ({ ok: true as const, value: 'h1' }))
     const failed = renderPicker({
       createLibrary: async () => ({ ok: false, error: { message: '建不了' } }),

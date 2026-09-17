@@ -16,3 +16,8 @@ patches:
 - lookup resolves title/alias/tag/retrieve hit; retrieve folds NFKC and renders bodies
 - llm.py keeps model text on JSON parse failure and unwraps fenced objects
 - propose waits 180s and retries when finish_reason is length
+- propose no longer promotes tags into aliases: a tag shared by two pages made one alias resolve to several pages, and ALIAS_COLLISION rolled the whole proposal back. Tags stay tags; lookup reads them directly
+- alias-collision detection ignores source pages, because an ingested source and the wiki page digested from it share the document's name on purpose
+- apply returns the severe lint findings it rejects on, in the rejection record and in ApplyResult, so the operator reads the rule and path instead of "post-apply lint failed"
+- the obsidian store stages an append or alias op under the vault's own spelling of a path it already holds under another case, so `wiki/log.md` lands in the existing `wiki/LOG.md` instead of reading as a new page
+- builtins.yaml drops the `confidence.tier_gate_defer` rule: a deferral parks operations in an inbox this product has no surface to review, so a medium-confidence proposal now applies; the below-0.4 reject gate stays

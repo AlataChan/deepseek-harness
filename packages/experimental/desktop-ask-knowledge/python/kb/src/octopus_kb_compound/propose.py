@@ -139,7 +139,12 @@ _WIKI_ROLES = frozenset(
 
 
 def fill_create_page_frontmatter(proposal: dict[str, Any]) -> None:
-    """Fill role, layer, and wiki summary so apply is not rejected for missing page-meta."""
+    """Fill role, layer, and wiki summary so apply is not rejected for missing page-meta.
+
+    Tags stay tags. Lookup reads the `tags` frontmatter directly, whereas promoting
+    every tag into `aliases` made one alias resolve to several pages as soon as two
+    pages in one proposal shared a tag, and ALIAS_COLLISION rolls the proposal back.
+    """
     operations = proposal.get("operations")
     if not isinstance(operations, list):
         return
@@ -158,19 +163,6 @@ def fill_create_page_frontmatter(proposal: dict[str, Any]) -> None:
             title = str(frontmatter.get("title") or "").strip()
             body = str(op.get("body") or "").strip()
             frontmatter["summary"] = (body[:200] if body else title) or "entry"
-        tags = frontmatter.get("tags")
-        if isinstance(tags, list):
-            aliases = frontmatter.get("aliases")
-            if not isinstance(aliases, list):
-                aliases = []
-            seen = {str(item) for item in aliases}
-            for tag in tags:
-                name = str(tag).strip()
-                if name and name not in seen:
-                    aliases.append(name)
-                    seen.add(name)
-            if aliases:
-                frontmatter["aliases"] = aliases
 
 
 def clip_raw_body(raw_body: str, limit: int = RAW_PROPOSE_CHARS) -> str:

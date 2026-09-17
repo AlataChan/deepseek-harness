@@ -33,7 +33,7 @@ def frontmatter_aliases(page: PageRecord) -> list[str]:
 
 
 def find_alias_collisions(pages: list[PageRecord]) -> dict[str, list[str]]:
-    alias_targets = _collect_alias_targets(pages)
+    alias_targets = _collect_alias_targets(pages, include_sources=False)
     return {
         alias: titles
         for alias, titles in alias_targets.items()
@@ -102,9 +102,28 @@ def _path_aliases(path: str) -> list[str]:
     return aliases
 
 
-def _collect_alias_targets(pages: list[PageRecord]) -> dict[str, list[str]]:
+def _is_source_page(page: PageRecord) -> bool:
+    """Whether this page is an ingested source rather than a wiki page.
+
+    A source page and the wiki page digested from it share the document's name on
+    purpose, so their shared keys are resolution targets, not ambiguous aliases.
+    """
+    layer = page.frontmatter.get("layer")
+    if isinstance(layer, str) and layer.strip().casefold() == "source":
+        return True
+    role = page.frontmatter.get("role")
+    return isinstance(role, str) and role.strip().casefold() == "raw_source"
+
+
+def _collect_alias_targets(
+    pages: list[PageRecord],
+    *,
+    include_sources: bool = True,
+) -> dict[str, list[str]]:
     alias_targets: dict[str, list[str]] = {}
     for page in pages:
+        if not include_sources and _is_source_page(page):
+            continue
         for alias in _page_aliases(page):
             key = normalize_page_name(alias)
             if not key:
