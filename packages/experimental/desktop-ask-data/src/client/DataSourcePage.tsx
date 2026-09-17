@@ -8,6 +8,7 @@ import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import { encodeAskDataBytes, readFileBytes } from './bytes.ts'
 import type { AskDataKey } from './locales.ts'
 import { PreviewPanel, type PreviewTable } from './PreviewPanel.tsx'
+import { failureCopy, warningCopy } from './rule-copy.ts'
 import {
   ASK_DATA_TEMPLATE_CSV,
   offerAskDataTemplate,
@@ -66,16 +67,6 @@ export interface DataSourcePageProps extends DataSourcePageRemotes, DataSourcePa
   t: (key: AskDataKey) => string
 }
 
-const WARNING_KEYS: Record<string, AskDataKey> = {
-  'merged-cells': 'warningMerged',
-  'second-row-header': 'warningSecondHeader',
-  'header-empty': 'warningHeaderEmpty',
-  'header-duplicate': 'warningHeaderDuplicate',
-  'sparse-first-row': 'warningSparse',
-  'type-guess': 'warningTypeGuess',
-  'sheet-name': 'warningSheetName',
-}
-
 /**
  * Render the 选一份要问的数据 page.
  * @param props - remotes, cancel/commit, locale.
@@ -109,7 +100,7 @@ export function DataSourcePage({
   }, [])
 
   const fail = (result: Extract<RemoteResult<unknown>, { ok: false }>): void => {
-    setError(`${result.error.message} ${t('failureLimits')}`)
+    setError(failureCopy(result.error.code, result.error.details, result.error.message, t))
   }
 
   const run = async (task: () => Promise<void>): Promise<void> => {
@@ -169,7 +160,17 @@ export function DataSourcePage({
 
   return (
     <div className={css.page}>
-      <h2 className={css.title}>{t('title')}</h2>
+      <div className={css.header}>
+        <h2 className={css.title}>{t('title')}</h2>
+        <button
+          type="button"
+          className={css.close}
+          aria-label={t('close')}
+          onClick={() => { void cancel() }}
+        >
+          <span aria-hidden>×</span>
+        </button>
+      </div>
       <p className={css.lead}>{t('pageLead')}</p>
       <section className={css.section}>
         <h3 className={css.sectionTitle}>{t('pitfallsTitle')}</h3>
@@ -268,7 +269,7 @@ export function DataSourcePage({
           tables={preview.tables}
           warnings={preview.warnings}
           t={t}
-          warningText={id => t(WARNING_KEYS[id] ?? 'failureLimits')}
+          warningText={id => warningCopy(id, t)}
         />
       )}
       {error !== undefined && (

@@ -56,6 +56,17 @@ describe('overlay sources', () => {
     expect(again.source.lastUsedAt).toBe('2026-01-01T00:00:00.000Z')
   })
 
+  it('replaces a same-named import instead of listing a twin', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-data-twin-'))
+    const bytes = await readFile(new URL('../samples/sample-sales.csv', import.meta.url))
+    const first = await importSpreadsheetSource(home, 'dir/用户信息.csv', bytes)
+    const second = await importSpreadsheetSource(home, 'elsewhere/用户信息.csv', bytes)
+    expect(second.source.id).toBe(first.source.id)
+    const listed = await listAllSources(new Context(), home)
+    expect(listed).toHaveLength(1)
+    expect(listed[0]?.displayName).toBe('用户信息.csv')
+  })
+
   it('rejects replace of a missing source and abort during import', async () => {
     const home = await mkdtemp(join(tmpdir(), 'ask-data-miss-'))
     const bytes = await readFile(new URL('../samples/sample-sales.csv', import.meta.url))

@@ -15,6 +15,23 @@ export interface AskDataBinding {
   readonly readonly: boolean
 }
 
+/**
+ * Closed business code of one ask-data failure. Session Controller reports
+ * every seam failure as `session/ask-data-failed` and carries this code in the
+ * failure details, so client aggregates read it to pick operator copy.
+ */
+export type AskDataErrorCode =
+  | 'ask-data-unavailable'
+  | 'source-missing'
+  | 'source-invalid'
+  | 'sqlite3-missing'
+  | 'csv-encoding'
+  | 'file-too-large'
+  | 'too-many-rows'
+  | 'decoded-cell-budget'
+  | 'extension-rejected'
+  | 'bind-failed'
+
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /**

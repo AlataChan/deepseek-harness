@@ -95,6 +95,11 @@ function gate(slots: SlotRegistry): GateInjected {
   return (slots.entries('conversation.askData.gate')[0]!.inject as unknown as () => GateInjected)()
 }
 
+/** Flush the promise chain the chip's own void-returning toggle starts. */
+async function settle(): Promise<void> {
+  await new Promise((resolve) => { setTimeout(resolve, 0) })
+}
+
 describe('desktop-ask-data apply', () => {
   it('declares only the services it uses', () => {
     expect(inject).toEqual(['slots', 'remote', 'remote.session', 'locale'])
@@ -278,13 +283,26 @@ describe('desktop-ask-data apply', () => {
     await b.dispose()
   })
 
-  it('keeps the gate open when cancel is refused', async () => {
+  it('still leaves the gate when cancel is refused', async () => {
     const b = await bench()
     b.seat.select.mockResolvedValueOnce('busy')
     const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
     injected.openGate()
     await gate(b.slots).cancel()
-    expect(b.seat.clearStage).not.toHaveBeenCalled()
+    expect(b.seat.clearStage).toHaveBeenCalled()
+    expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
+    await b.dispose()
+  })
+
+  it('toggles the gate closed from the chip', async () => {
+    const b = await bench()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
+    injected.openGate()
+    expect(b.slots.entries('conversation.askData.gate')).toHaveLength(1)
+    injected.openGate()
+    await settle()
+    expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
+    injected.openGate()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(1)
     await b.dispose()
   })

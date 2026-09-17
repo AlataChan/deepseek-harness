@@ -88,7 +88,7 @@ export async function getStoredSource(
 }
 
 /**
- * Import a spreadsheet into a new or replaced overlay row.
+ * Import a spreadsheet into a new, same-named, or explicitly replaced row.
  * @param dataHome - resolved data-sources directory.
  * @param filename - user-visible name.
  * @param bytes - decoded file bytes.
@@ -111,8 +111,12 @@ export function importSpreadsheetSource(
       throw new AskDataError('sqlite3-missing', 'sqlite3 is not on PATH', { ruleId: 'sqlite3-missing' })
     }
     const document = await readManifest(dataHome)
+    const displayName = filename.split(/[/\\]/).pop() as string
+    // One file is one source: a second upload of one filename replaces that
+    // import row in place instead of adding a twin, so Recent cannot list the
+    // same file twice. An explicit replaceSourceId still wins.
     const existing = replaceSourceId === undefined
-      ? undefined
+      ? document.sources.find(item => item.kind === 'import' && item.displayName === displayName)
       : document.sources.find(item => item.id === replaceSourceId)
     if (replaceSourceId !== undefined && existing === undefined) {
       throw new AskDataError('source-missing', `data source "${replaceSourceId}" is not in the overlay manifest`)

@@ -11,6 +11,10 @@ import { PreviewPanel } from '../src/client/PreviewPanel.tsx'
 
 const t = (key: keyof typeof zh): string => zh[key]
 
+function expectNoRuleIds(text: string): void {
+  for (const id of ASK_DATA_RULE_IDS) expect(text).not.toContain(id)
+}
+
 afterEach(() => {
   cleanup()
 })
@@ -40,15 +44,36 @@ describe('DataSourcePage', () => {
     expect(helper.textContent).toContain('50MB')
     expect(helper.textContent).toContain('20')
     expect(view.container.textContent).not.toMatch(/SQLite/)
-    for (const id of ASK_DATA_RULE_IDS) {
-      expect(view.container.textContent).toContain(id)
-    }
+    // Rule ids stay internal: the model-visible paragraph names them, the page does not.
+    expectNoRuleIds(view.container.textContent ?? '')
     expect(view.getByText('自己的表请先避开这些坑，否则很难分析')).toBeTruthy()
     expect(view.getByText(/第一行只能是列名/)).toBeTruthy()
     expect(view.getByText('下载填写模板')).toBeTruthy()
     expect(view.getByText('连接已有数据库')).toBeTruthy()
     expect(view.getByText(/已经有现成数据库时用这个/)).toBeTruthy()
     expect(view.queryByText('开始提问')).toBeNull()
+  })
+
+  it('closes from the panel close control', async () => {
+    const cancel = vi.fn(async () => undefined)
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({ ok: true, value: [] })}
+        importSpreadsheet={vi.fn()}
+        importSample={vi.fn()}
+        commit={vi.fn()}
+        createAdvanced={vi.fn()}
+        cancel={cancel}
+        onCommitted={vi.fn()}
+        onAdvanced={vi.fn()}
+        t={t}
+      />,
+    )
+    await waitFor(() => {
+      expect(view.getByText('先用示例试一次')).toBeTruthy()
+    })
+    fireEvent.click(view.getByRole('button', { name: '关闭问数' }))
+    expect(cancel).toHaveBeenCalledTimes(1)
   })
 
   it('copies the fill-in template and says so', async () => {
@@ -183,20 +208,20 @@ describe('DataSourcePage', () => {
       />,
     )
     await waitFor(() => {
-      expect(view.getByText(/sqlite3-missing/)).toBeTruthy()
+      expect(view.getByText('这台电脑找不到 sqlite3，无法上传表格；仍可用示例。')).toBeTruthy()
     })
     expect((view.getByText('上传表格') as HTMLButtonElement).disabled).toBe(true)
     expect((view.getByText('先用示例试一次') as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('shows failure recovery that names the rule and offers the sample', async () => {
+  it('shows failure recovery as a sentence and offers the sample', async () => {
     const view = render(
       <DataSourcePage
         listSources={async () => ({ ok: true, value: [] })}
         importSpreadsheet={vi.fn()}
         importSample={async () => ({
           ok: false as const,
-          error: new RemoteError('session/ask-data-failed', 'csv-encoding', { code: 'csv-encoding' }),
+          error: new RemoteError('session/ask-data-failed', 'csv must be UTF-8 or GB18030', { code: 'csv-encoding' }),
         })}
         commit={vi.fn()}
         createAdvanced={vi.fn()}
@@ -210,10 +235,8 @@ describe('DataSourcePage', () => {
     await waitFor(() => {
       expect(view.getByText('改用示例')).toBeTruthy()
     })
-    expect(view.container.textContent).toContain('csv-encoding')
-    for (const id of ASK_DATA_RULE_IDS) {
-      expect(view.container.textContent).toContain(id)
-    }
+    expect(view.getByText('CSV 编码不支持，请另存为 UTF-8 或 GB18030 再上传。')).toBeTruthy()
+    expectNoRuleIds(view.container.textContent ?? '')
   })
 
   it('lists recent and missing sources and commits the picked row', async () => {
@@ -598,7 +621,7 @@ describe('DataSourcePage', () => {
     })
     fireEvent.click(view.getByText('开始提问'))
     await waitFor(() => {
-      expect(view.getByText(/bind-failed/)).toBeTruthy()
+      expect(view.getByText('把这份数据挂到会话上失败了，请再试一次。')).toBeTruthy()
     })
     fireEvent.click(view.getByText('改用示例'))
     await waitFor(() => {
@@ -649,7 +672,7 @@ describe('DataSourcePage', () => {
         filename: 'b.csv',
         replaceSourceId: 'src-miss',
       }))
-      expect(view.getByText(/merged-cells/)).toBeTruthy()
+      expect(view.getByText('有合并单元格，只取左上角。')).toBeTruthy()
       expect(view.getAllByText('开始提问')).toHaveLength(1)
     })
     fireEvent.click(view.getByText('开始提问'))
@@ -695,6 +718,7 @@ describe('DataSourcePage', () => {
     await waitFor(() => {
       expect(view.getByText('开始提问')).toBeTruthy()
     })
+    expect(view.getByText('unknown-warning')).toBeTruthy()
   })
 
   it('ignores a listSources result after unmount', async () => {

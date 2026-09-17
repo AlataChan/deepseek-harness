@@ -10,9 +10,9 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import { brandString, type Branded } from '@deepseek-ai/dsh-brand'
 import type { SessionId } from '@deepseek-ai/dsh-session'
-import type { AskDataBinding } from './types.ts'
+import type { AskDataBinding, AskDataErrorCode } from './types.ts'
 
-export type { AskDataBinding } from './types.ts'
+export type { AskDataBinding, AskDataErrorCode } from './types.ts'
 export { askDataBindingProjectionDefinition } from './session.ts'
 
 /** Stable id of one overlay-managed or listed data source. */
@@ -91,18 +91,6 @@ export interface AskDataBindLease {
 }
 
 /** Closed failure vocabulary of the ask-data primitives. */
-export type AskDataErrorCode =
-  | 'ask-data-unavailable'
-  | 'source-missing'
-  | 'source-invalid'
-  | 'sqlite3-missing'
-  | 'csv-encoding'
-  | 'file-too-large'
-  | 'too-many-rows'
-  | 'decoded-cell-budget'
-  | 'extension-rejected'
-  | 'bind-failed'
-
 /** Typed failure thrown by the seam so consumers can map wire codes. */
 export class AskDataError extends Error {
   /**

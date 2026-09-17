@@ -40,7 +40,6 @@ export {
   ASK_DATA_TEMPLATE_CSV, ASK_DATA_TEMPLATE_FILENAME, offerAskDataTemplate,
   type AskDataTemplateOffer,
 } from './template.ts'
-export { LIMIT_LOCALES, LIMIT_SURFACE_KEYS, limitSurface, requiredLimitIds } from './limits-copy.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -173,8 +172,19 @@ export function apply(ctx: ClientContext): void {
       gateDispose = undefined
     }
 
+    /**
+     * Leave the gate from the panel close control, its cancel button, or the
+     * chip. A refused preset revert still leaves: the ask-data chip's own seat
+     * reports that refusal, and a gate nobody can close is worse than a session
+     * that stays staged as data-agent.
+     */
+    const leaveGate = async (): Promise<void> => {
+      await seat.select(previousPreset)
+      seat.clearStage()
+      closeGate()
+    }
+
     const registerGate = (): void => {
-      if (gateDispose !== undefined) return
       gateDispose = scope.slots.register({
         name: 'conversation.askData.gate',
         locale: NS,
@@ -194,12 +204,7 @@ export function apply(ctx: ClientContext): void {
             ...current !== undefined && boundId !== undefined
               ? { currentBound: { sessionId: current.id, sourceId: boundId } }
               : {},
-            cancel: async () => {
-              const refusal = await seat.select(previousPreset)
-              if (refusal !== undefined) return
-              seat.clearStage()
-              closeGate()
-            },
+            cancel: leaveGate,
             onCommitted: (sessionId) => {
               seat.clearStage()
               closeGate()
@@ -216,7 +221,11 @@ export function apply(ctx: ClientContext): void {
       }, DataSourcePage)
     }
 
-    const openFromChip = (): void => {
+    const toggleFromChip = (): void => {
+      if (gateDispose !== undefined) {
+        void leaveGate()
+        return
+      }
       previousPreset = lastNonAskPreset
       seat.stage('data-agent', { hold: true })
       registerGate()
@@ -239,7 +248,7 @@ export function apply(ctx: ClientContext): void {
     const chip = scope.slots.register({
       name: 'conversation.hero.askData',
       locale: NS,
-      inject: (): AskDataChipInjected => ({ openGate: openFromChip }),
+      inject: (): AskDataChipInjected => ({ openGate: toggleFromChip }),
     }, AskDataChip)
 
     return () => {
