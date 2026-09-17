@@ -7,7 +7,7 @@ import type { AttachKnowledgeOwnerProps } from '@deepseek-ai/dsh-client-ui-conve
 
 /** Opener shared with the hero chip. */
 export interface AttachKnowledgeBridgeInjected {
-  /** Open the library picker. Does not occupy the ask-data gate. */
+  /** Open the library picker on the library list. Does not occupy the ask-data gate. */
   openPicker: () => void
 }
 

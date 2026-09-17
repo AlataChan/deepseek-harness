@@ -46,16 +46,9 @@ export interface LibraryPickerRemotes {
   finishIngest: (handle: string) => Promise<{ ok: boolean; value?: PickerIngestResult; error?: { message?: string } }>
 }
 
-/** First panel when the picker mounts. */
-export type LibraryPickerPhase = 'list' | 'upload'
-
 /** Injected actions and remotes. */
 export interface LibraryPickerInjected extends LibraryPickerRemotes {
   close: () => void
-  /**
-   * First panel. The hero chip uses list; the composer plus menu uses upload.
-   */
-  initialPhase?: LibraryPickerPhase
 }
 
 /** Picker props. */
@@ -104,12 +97,11 @@ export function LibraryPicker({
   appendIngestChunk,
   finishIngest,
   close,
-  initialPhase = 'list',
   t,
 }: LibraryPickerProps) {
   const [rows, setRows] = useState<readonly PickerLibrary[]>([])
   const [error, setError] = useState<string | undefined>()
-  const [phase, setPhase] = useState<LibraryPickerPhase>(initialPhase)
+  const [phase, setPhase] = useState<'list' | 'upload'>('list')
   const [ingesting, setIngesting] = useState(false)
   const fileInputId = useId()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -271,9 +263,14 @@ export function LibraryPicker({
 
   return (
     <div className={css.panel} role="dialog" aria-label={phase === 'upload' ? t('picker.uploadTitle') : t('picker.title')}>
+      <div className={css.header}>
+        <h2 className={css.title}>{phase === 'upload' ? t('picker.uploadTitle') : t('picker.title')}</h2>
+        <button type="button" className={css.close} aria-label={t('picker.close')} onClick={close}>
+          <span aria-hidden>×</span>
+        </button>
+      </div>
       {phase === 'list' ? (
         <>
-          <h2 className={css.title}>{t('picker.title')}</h2>
           <p className={css.lead}>{t('picker.leadAskData')}</p>
           <p className={css.lead}>{t('picker.leadLibrary')}</p>
           <p className={css.lead}>{t('picker.leadPreset')}</p>
@@ -300,7 +297,6 @@ export function LibraryPicker({
         </>
       ) : (
         <>
-          <h2 className={css.title}>{t('picker.uploadTitle')}</h2>
           <p className={css.lead}>{t('picker.uploadLead')}</p>
           {ingesting ? <p className={css.lead}>{t('ingest.applying')}</p> : null}
           <div className={css.list}>

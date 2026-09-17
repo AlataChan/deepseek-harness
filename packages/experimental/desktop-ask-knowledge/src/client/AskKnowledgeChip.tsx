@@ -7,7 +7,7 @@ import css from './AskKnowledgeChip.module.css'
 
 /** Actions the chip needs from the conversation-scoped seat. */
 export interface AskKnowledgeChipInjected {
-  /** Open the library picker. Does not occupy the ask-data gate. */
+  /** Toggle the library picker. Does not occupy the ask-data gate. */
   openPicker: () => void
   /** Hung library name, or undefined when unbound. */
   boundName?: string | undefined

@@ -1,6 +1,6 @@
 /** Ingest barrier, reuseRawPath, apply-failure re-propose, and upload caps. */
 
-import { mkdtemp, readFile, readdir } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -10,6 +10,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import type { AskKnowledge } from '@deepseek-ai/dsh-host-ask-knowledge'
 import DesktopAskKnowledge from '../src/index.ts'
+import { healPageMetaRejections, isPageMetaRejection } from '../src/ingest.ts'
 import { withLibraryLock } from '../src/library-lock.ts'
 import { decodeIngestChunk, MAX_INGEST_CHUNK_BYTES } from '../src/upload-temp.ts'
 import { installFakeSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
@@ -262,5 +263,122 @@ describe('ask-knowledge ingest', () => {
     expect(await capability.listLibraries()).toEqual([])
     await expect(readdir(join(root, 'knowledge-bases', 'libraries', library.id)))
       .rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('classifies only page-meta rejections as recoverable', () => {
+    expect(isPageMetaRejection('x')).toBe(false)
+    expect(isPageMetaRejection({ rule_id: 'lint.broken_link' })).toBe(false)
+    expect(isPageMetaRejection({ rule_id: 'schema.page_meta_invalid' })).toBe(true)
+    expect(isPageMetaRejection({ rule_results: [null, 3] })).toBe(false)
+    expect(isPageMetaRejection({ rule_results: [{ rule_id: 'schema.page_meta_invalid' }] })).toBe(true)
+  })
+
+  it('heals page-meta rejections and leaves every other rejection alone', async () => {
+    const { capability, root, sidecarHome } = await boot()
+    const library = await capability.createLibrary({ displayName: '修复' })
+    const octopus = join(root, 'knowledge-bases', 'libraries', library.id, '.octopus-kb')
+    await mkdir(join(octopus, 'proposals'), { recursive: true })
+    await mkdir(join(octopus, 'rejections'), { recursive: true })
+    const page = (id: string, type: string) => ({
+      id,
+      status: 'pending',
+      operations: [{ op: 'create_page', path: 'wiki/a.md', frontmatter: { title: 'A', type, lang: 'zh', role: type, layer: 'wiki', summary: '摘要' } }],
+    })
+    const rejection = (id: string, frontmatter: Record<string, unknown>, rule_id: string) => ({
+      ...page(id, String(frontmatter.type)),
+      rule_id,
+      rule_results: [{ rule_id, verdict: 'reject' }],
+    })
+    const write = async (dir: 'proposals' | 'rejections', name: string, body: string) => {
+      await writeFile(join(octopus, dir, name), body, 'utf8')
+    }
+    await write('proposals', 'prop-heal.json', JSON.stringify(page('prop-heal', 'wiki')))
+    await write('rejections', 'prop-heal.json', JSON.stringify(rejection('prop-heal', { type: 'wiki' }, 'schema.page_meta_invalid')))
+    await write('proposals', 'prop-array.json', JSON.stringify(page('prop-array', 'invoice')))
+    await write('rejections', 'prop-array.json', JSON.stringify({
+      ...page('prop-array', 'invoice'),
+      rule_results: [{ rule_id: 'other' }, { rule_id: 'schema.page_meta_invalid', verdict: 'reject' }],
+    }))
+    await write('proposals', 'prop-valid.json', JSON.stringify(page('prop-valid', 'note')))
+    await write('rejections', 'prop-valid.json', JSON.stringify(rejection('prop-valid', { type: 'note' }, 'schema.page_meta_invalid')))
+    await write('proposals', 'prop-other.json', JSON.stringify(page('prop-other', 'wiki')))
+    await write('rejections', 'prop-other.json', JSON.stringify(rejection('prop-other', { type: 'wiki' }, 'lint.broken_link')))
+    await write('rejections', 'prop-orphan.json', JSON.stringify(rejection('prop-orphan', { type: 'wiki' }, 'schema.page_meta_invalid')))
+    await write('rejections', 'prop-bad.json', '{not json')
+    await write('rejections', 'prop-null.json', 'null')
+    await write('rejections', 'notes.txt', 'ignored\n')
+
+    await healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, join(root, 'knowledge-bases', 'libraries', library.id))
+
+    const frontmatterOf = async (name: string) => {
+      const parsed = JSON.parse(await readFile(join(octopus, 'proposals', name), 'utf8')) as {
+        operations: Array<{ frontmatter: Record<string, unknown> }>
+      }
+      return parsed.operations[0]!.frontmatter
+    }
+    expect(await frontmatterOf('prop-heal.json')).toMatchObject({ type: 'note', role: 'note' })
+    expect(await frontmatterOf('prop-array.json')).toMatchObject({ type: 'note', role: 'note' })
+    expect(await frontmatterOf('prop-valid.json')).toMatchObject({ type: 'note' })
+    expect(await frontmatterOf('prop-other.json')).toMatchObject({ type: 'wiki' })
+    await expect(readFile(join(octopus, 'proposals', 'prop-orphan.json'), 'utf8'))
+      .rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('keeps a failed apply and an absent rejections directory harmless', async () => {
+    const { capability, root, sidecarHome } = await boot({ sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'fail' } })
+    const bare = await capability.createLibrary({ displayName: '空' })
+    const bareVault = join(root, 'knowledge-bases', 'libraries', bare.id)
+    await expect(healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, bareVault)).resolves.toBeUndefined()
+
+    const library = await capability.createLibrary({ displayName: '失败' })
+    const vault = join(root, 'knowledge-bases', 'libraries', library.id)
+    const octopus = join(vault, '.octopus-kb')
+    await mkdir(join(octopus, 'proposals'), { recursive: true })
+    await mkdir(join(octopus, 'rejections'), { recursive: true })
+    const body = JSON.stringify({
+      id: 'prop-fail',
+      status: 'pending',
+      operations: [{ op: 'create_page', path: 'wiki/a.md', frontmatter: { title: 'A', type: 'wiki', lang: 'zh', role: 'wiki' } }],
+    })
+    await writeFile(join(octopus, 'proposals', 'prop-fail.json'), body, 'utf8')
+    await writeFile(join(octopus, 'rejections', 'prop-fail.json'), JSON.stringify({
+      ...JSON.parse(body) as object,
+      rule_id: 'schema.page_meta_invalid',
+    }), 'utf8')
+    await expect(healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, vault)).resolves.toBeUndefined()
+
+    const controller = new AbortController()
+    controller.abort()
+    await expect(healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, vault, controller.signal))
+      .rejects.toThrow()
+  })
+
+  it('propagates an abort raised while a heal apply is in flight', async () => {
+    const { capability, root, sidecarHome } = await boot({
+      sidecarEnv: { ASK_KNOWLEDGE_FAKE_HOLD_MS: '1000' },
+    })
+    const library = await capability.createLibrary({ displayName: '中止' })
+    const vault = join(root, 'knowledge-bases', 'libraries', library.id)
+    const octopus = join(vault, '.octopus-kb')
+    await mkdir(join(octopus, 'proposals'), { recursive: true })
+    await mkdir(join(octopus, 'rejections'), { recursive: true })
+    const body = {
+      id: 'prop-abort',
+      status: 'pending',
+      operations: [{ op: 'create_page', path: 'wiki/a.md', frontmatter: { title: 'A', type: 'wiki', lang: 'zh', role: 'wiki' } }],
+    }
+    await writeFile(join(octopus, 'proposals', 'prop-abort.json'), JSON.stringify(body), 'utf8')
+    await writeFile(join(octopus, 'rejections', 'prop-abort.json'), JSON.stringify({
+      ...body,
+      rule_id: 'schema.page_meta_invalid',
+    }), 'utf8')
+    const controller = new AbortController()
+    const aborting = setTimeout(() => { controller.abort() }, 50)
+    try {
+      await expect(healPageMetaRejections({ sidecarRuntimePath: sidecarHome }, vault, controller.signal))
+        .rejects.toThrow()
+    } finally {
+      clearTimeout(aborting)
+    }
   })
 })

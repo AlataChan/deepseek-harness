@@ -80,6 +80,7 @@ describe('ask-knowledge picker', () => {
     expect(en['picker.emptyCreate']).toBe('+ New knowledge library')
     expect(en['picker.addDocument']).toBe('Add document')
     expect(en['picker.remove']).toBe('Delete')
+    expect(en['picker.close']).toBe('Close the knowledge library')
     expect(en['settings.removeFailed']).toBe('Could not remove the library from the list.')
     expect(en['picker.leadThicken']).toBe('Click a name to hang it. Add a document to put more material into that library. Delete removes it from the list.')
     expect(en['picker.leadDataMode']).toContain('data mode')
@@ -130,17 +131,46 @@ describe('ask-knowledge picker', () => {
     expect(source).toContain('border-radius: 16px')
   })
 
-  it('opens on the upload panel when the plus menu asks for a file', () => {
-    const { view } = renderPicker({ initialPhase: 'upload' })
-    expect(view.getByText('上传本地文档')).toBeTruthy()
+  it('shows the upload panel from the create control without an accept attribute', async () => {
+    const { view } = renderPicker()
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await waitFor(() => {
+      expect(view.getByText('上传本地文档')).toBeTruthy()
+    })
     const choose = view.getByText('选择本地文档')
     expect(choose.closest('[data-file-pick="library"]')?.contains(fileInput(view))).toBe(true)
     expect(getComputedStyle(fileInput(view)).display).not.toBe('none')
     expect(fileInput(view).hasAttribute('accept')).toBe(false)
   })
 
+  it('closes from the panel close control in both panels', async () => {
+    const close = vi.fn()
+    const { view } = renderPicker({ close })
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '关闭知识库' }).click()
+    expect(close).toHaveBeenCalledTimes(1)
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await waitFor(() => {
+      expect(view.getByText('上传本地文档')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '关闭知识库' }).click()
+    expect(close).toHaveBeenCalledTimes(2)
+  })
+
   it('toasts when the upload picker closes without a File', async () => {
-    const { view } = renderPicker({ initialPhase: 'upload' })
+    const { view } = renderPicker()
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await waitFor(() => {
+      expect(fileInput(view)).toBeTruthy()
+    })
     fireEvent.change(fileInput(view), { target: { files: [] } })
     await waitFor(() => {
       expect(view.getByText('没有读到所选文件，请再选一次。')).toBeTruthy()
@@ -149,10 +179,11 @@ describe('ask-knowledge picker', () => {
 
   it('does not toast emptyPick after a File arrives and the input clears', async () => {
     const beginIngest = vi.fn(async () => ({ ok: true as const, value: 'h1' }))
-    const { view } = renderPicker({
-      initialPhase: 'upload',
-      beginIngest,
+    const { view } = renderPicker({ beginIngest })
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
     })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
     await waitFor(() => {
       expect(fileInput(view)).toBeTruthy()
     })

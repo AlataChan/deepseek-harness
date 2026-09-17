@@ -14,6 +14,7 @@ export type AskKnowledgeKey =
   | 'picker.leadThicken'
   | 'picker.addDocument'
   | 'picker.remove'
+  | 'picker.close'
   | 'picker.emptyCreate'
   | 'picker.create'
   | 'picker.uploadTitle'
@@ -46,6 +47,7 @@ const zh = {
   'picker.leadThicken': '点库名挂到这个会话。点添加文档，往这个库再放一份材料。点删除，从名单去掉。',
   'picker.addDocument': '添加文档',
   'picker.remove': '删除',
+  'picker.close': '关闭知识库',
   'picker.emptyCreate': '+ 新建知识库',
   'picker.create': '未命名知识库',
   'picker.uploadTitle': '上传本地文档',
@@ -79,6 +81,7 @@ const en = {
   'picker.leadThicken': 'Click a name to hang it. Add a document to put more material into that library. Delete removes it from the list.',
   'picker.addDocument': 'Add document',
   'picker.remove': 'Delete',
+  'picker.close': 'Close the knowledge library',
   'picker.emptyCreate': '+ New knowledge library',
   'picker.create': 'Untitled knowledge library',
   'picker.uploadTitle': 'Upload a local document',

@@ -36,7 +36,7 @@ export type {
 } from './AttachSessionDocumentBridge.tsx'
 export { AttachSessionDocumentBridge } from './AttachSessionDocumentBridge.tsx'
 export type {
-  LibraryPickerInjected, LibraryPickerPhase, LibraryPickerProps, PickerIngestResult, PickerLibrary,
+  LibraryPickerInjected, LibraryPickerProps, PickerIngestResult, PickerLibrary,
 } from './LibraryPicker.tsx'
 export { LibraryPicker } from './LibraryPicker.tsx'
 export type { LibrarySettingsSectionProps, SettingsLibrary } from './LibrarySettingsSection.tsx'
@@ -106,17 +106,12 @@ export function apply(ctx: ClientContext): void {
       pickerDispose = undefined
     }
 
-    const openPicker = (start: 'list' | 'upload' = 'list'): void => {
-      if (pickerDispose !== undefined) {
-        if (start === 'list') return
-        closePicker()
-      }
+    const openPanel = (): void => {
       pickerDispose = scope.slots.register({
         name: 'conversation.askKnowledge.picker',
         locale: NS,
         inject: (): LibraryPickerInjected => ({
           ...remotesOf(scope),
-          initialPhase: start,
           attach: async (libraryId) => {
             const session = currentSession()
             const result = await scope.remote.session.attachAskKnowledge({
@@ -137,18 +132,31 @@ export function apply(ctx: ClientContext): void {
       }, LibraryPicker)
     }
 
+    const openPicker = (): void => {
+      if (pickerDispose !== undefined) return
+      openPanel()
+    }
+
+    const togglePicker = (): void => {
+      if (pickerDispose !== undefined) {
+        closePicker()
+        return
+      }
+      openPanel()
+    }
+
     const chip = scope.slots.register({
       name: 'conversation.hero.askKnowledge',
       locale: NS,
       inject: (): AskKnowledgeChipInjected => ({
-        openPicker: () => { openPicker('list') },
+        openPicker: togglePicker,
         ...boundName(currentSession()) === undefined ? {} : { boundName: boundName(currentSession()) },
       }),
     }, AskKnowledgeChip)
     const attach = scope.slots.inject('conversation.input.attachKnowledge', () => scope.slots.register({
       name: 'conversation.input.attachKnowledge',
       inject: (): AttachKnowledgeBridgeInjected => ({
-        openPicker: () => { openPicker('upload') },
+        openPicker,
       }),
     }, AttachKnowledgeBridge))
     const attachSessionDoc = scope.slots.inject('conversation.input.attachSessionDocument', () => scope.slots.register({

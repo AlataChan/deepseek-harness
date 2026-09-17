@@ -11,7 +11,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { assertVaultDir, requireLibrary } from './catalog.ts'
 import { resolveProposeEnv } from './credentials-bridge.ts'
 import { withLibraryLock } from './library-lock.ts'
-import { rewriteProposalPageMetaFile } from './proposal-page-meta.ts'
+import { rewriteInvalidCreatePageMeta, rewriteProposalPageMetaFile } from './proposal-page-meta.ts'
 import { runSidecar, type SidecarResponse } from './sidecar.ts'
 import type { AskKnowledgeHomeConfig } from './knowledge-home.ts'
 
@@ -95,6 +95,72 @@ export async function recoverPendingAudits(
           : ''
     if (id === '') continue
     await recoverIfPending(ctx, config, vault, id, signal)
+  }
+}
+
+const PAGE_META_RULE = 'schema.page_meta_invalid'
+
+/**
+ * Whether a rejection records only a page-meta schema failure.
+ * @param rejection - parsed rejection JSON.
+ * @returns true when the rejection is recoverable by rewriting page-meta.
+ */
+export function isPageMetaRejection(rejection: unknown): boolean {
+  if (typeof rejection !== 'object' || rejection === null) return false
+  const record = rejection as Record<string, unknown>
+  if (record.rule_id === PAGE_META_RULE) return true
+  const results = record.rule_results
+  if (!Array.isArray(results)) return false
+  return results.some((row: unknown) => typeof row === 'object' && row !== null
+    && (row as Record<string, unknown>).rule_id === PAGE_META_RULE)
+}
+
+/**
+ * Re-apply page-meta rejections so documents already under `raw/` become
+ * searchable. Apply fills `role` / `layer` / `summary`; a `type` outside the
+ * page-meta enum is rewritten first because apply evaluates it after that fill.
+ * A proposal failing any other rule keeps its rejection and is not retried.
+ * @param config - sidecar home.
+ * @param vault - absolute vault.
+ * @param signal - caller lifetime.
+ */
+export async function healPageMetaRejections(
+  config: AskKnowledgeHomeConfig,
+  vault: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const rejectionDir = join(vault, '.octopus-kb', 'rejections')
+  let names: string[]
+  try {
+    names = await readdir(rejectionDir)
+  } catch {
+    /* Without a rejections directory this vault rejected nothing. */
+    return
+  }
+  for (const name of names) {
+    if (!name.endsWith('.json')) continue
+    signal?.throwIfAborted()
+    const rejection = await readJsonObject(join(rejectionDir, name))
+    if (rejection === undefined || !isPageMetaRejection(rejection)) continue
+    const proposalPath = join(vault, '.octopus-kb', 'proposals', name)
+    const proposal = await readJsonObject(proposalPath)
+    if (proposal === undefined || !rewriteInvalidCreatePageMeta(proposal)) continue
+    await writeFile(proposalPath, `${JSON.stringify(proposal, null, 2)}\n`, 'utf8')
+    try {
+      await runSidecar(config, { command: 'validate-apply', vault, proposal: proposalPath }, { signal })
+    } catch (error: unknown) {
+      if (signal?.aborted === true) throw error
+      /* Apply records its own rejection or audit; a failed heal must not block the caller. */
+    }
+  }
+}
+
+async function readJsonObject(path: string): Promise<unknown> {
+  try {
+    return JSON.parse(await readFile(path, 'utf8')) as unknown
+  } catch {
+    /* Missing or unparsable file: no proposal to heal under this name. */
+    return undefined
   }
 }
 
