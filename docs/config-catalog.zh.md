@@ -33,7 +33,7 @@ export interface AcpConfig {
 
 依赖：`Stream`（`@agentclientprotocol/sdk`）
 
-来源：[`packages/acp/acp/src/index.ts:75`](../packages/acp/acp/src/index.ts)
+来源：[`packages/acp/acp/src/index.ts:77`](../packages/acp/acp/src/index.ts)
 
 <a id="deepseek-aidsh-agent-default-model"></a>
 
@@ -219,7 +219,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/api/session-controller/src/index.ts:110`](../packages/api/session-controller/src/index.ts)
+来源：[`packages/api/session-controller/src/index.ts:117`](../packages/api/session-controller/src/index.ts)
 
 <a id="deepseek-aidsh-api-settings-controller"></a>
 
@@ -570,6 +570,13 @@ export interface Config {
   readonly maxMessageBytes?: number
   /** Maximum milliseconds allowed for Team-owned runtime disposal. */
   readonly disposalTimeoutMs?: number
+  /**
+   * Absolute path of the institution-squad catalog JSON.
+   * Empty or omitted uses `$DSH_HOME/institution-squads.json`.
+   */
+  readonly institutionCatalogPath?: string
+  /** Continuable-subagent provider used when the Host provisions standing seats. */
+  readonly institutionFreshProvider?: string
 }
 ```
 

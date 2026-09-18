@@ -17,11 +17,31 @@ interface TeamMemberSnapshot {
   readonly provider: string
   readonly context: 'fresh' | 'fork'
   readonly phase: TeamMemberPhase
+  /** Child LLM model id when known; retained so inactive roster rows do not invent the Lead route. */
+  readonly model?: string
   readonly error?: string
 }
 ```
 
 每个 member 都从 `provisioning` 开始，并且只到达一个终态 roster phase：`active` 或 `failed`。运行时 `running`／`idle`／`inactive` 状态单独派生，绝不会重写该记录。
+
+三个机构小队是 Host 名册行，不是 Team 事件。`InstitutionSquadView` 是列表行；`leadSessionId` 是常驻 Lead。新话题是该 Session 上的 prompt。
+
+```ts type-equiv
+/** One institution squad on the Host catalog. */
+interface InstitutionSquadView {
+  readonly id: InstitutionSquadId
+  /** Chinese display name used as the default Session title. */
+  readonly displayName: string
+  /** English display name. */
+  readonly displayNameEn: string
+  /** Standing Lead Session when the squad has been provisioned and the log still exists. */
+  readonly leadSessionId?: SessionId
+  /** True when {@link leadSessionId} is set and the Session is still persisted. */
+  readonly established: boolean
+  readonly seats: readonly InstitutionSeatView[]
+}
+```
 
 ## 持久 mailbox
 

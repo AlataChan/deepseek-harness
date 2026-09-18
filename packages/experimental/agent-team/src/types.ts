@@ -191,6 +191,71 @@ export interface Config {
   readonly maxMessageBytes?: number
   /** Maximum milliseconds allowed for Team-owned runtime disposal. */
   readonly disposalTimeoutMs?: number
+  /**
+   * Absolute path of the institution-squad catalog JSON.
+   * Empty or omitted uses `$DSH_HOME/institution-squads.json`.
+   */
+  readonly institutionCatalogPath?: string
+  /** Continuable-subagent provider used when the Host provisions standing seats. */
+  readonly institutionFreshProvider?: string
+}
+
+/** Fixed institution-squad slug. The three squads are product constants. */
+export type InstitutionSquadId = 'document' | 'case' | 'comms'
+
+/** One seat in an institution squad, as shown to the Client. */
+export interface InstitutionSeatView {
+  /** Immutable lower-kebab teammate name. */
+  readonly name: string
+  /** Chinese role title stored in the 编制. */
+  readonly title: string
+  /** English role title stored in the 编制. */
+  readonly titleEn: string
+  /** Standing duty text used as the spawn description. */
+  readonly duty: string
+  /** Seat provider override from the catalog; omitted means inherit the Lead route. */
+  readonly provider?: string
+  /** Seat model override from the catalog or the live teammate when loaded. */
+  readonly model?: string
+}
+
+/** One institution squad on the Host catalog. */
+export interface InstitutionSquadView {
+  readonly id: InstitutionSquadId
+  /** Chinese display name used as the default Session title. */
+  readonly displayName: string
+  /** English display name. */
+  readonly displayNameEn: string
+  /** Standing Lead Session when the squad has been provisioned and the log still exists. */
+  readonly leadSessionId?: SessionId
+  /** True when {@link leadSessionId} is set and the Session is still persisted. */
+  readonly established: boolean
+  readonly seats: readonly InstitutionSeatView[]
+}
+
+/** Request to persist one seat's model route in the institution catalog. */
+export interface UpdateInstitutionSeatRequest {
+  readonly squadId: InstitutionSquadId
+  readonly name: string
+  readonly provider?: string
+  readonly model?: string
+}
+
+/** Request to provision missing seats on the caller's Lead Session. */
+export interface EnsureInstitutionSquadRequest {
+  readonly squadId: InstitutionSquadId
+  readonly seats?: readonly {
+    readonly name: string
+    readonly provider?: string
+    readonly model?: string
+  }[]
+}
+
+/** Result after the caller's Session is bound as the squad Lead and missing seats are spawned. */
+export interface EnsureInstitutionSquadResult {
+  readonly sessionId: SessionId
+  readonly squadId: InstitutionSquadId
+  readonly members: readonly TeamMemberView[]
 }
 
 /** Input for creating one durable teammate. */

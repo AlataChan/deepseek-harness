@@ -187,14 +187,14 @@ always override CCB memory.
 
 - 用户对话使用中文；桌面端用户可见文案优先中文
 - 本仓库更新推送到 github.com/AlataChan/deepseek-harness 与 Gitee 镜像，不向上游开 PR，分支可直接 merge
-- 桌面首次进入应直接到首页，不要先强迫选择 Node / workspace；设置项须对普通用户可理解；分发目标：新用户只需配置 API Key，安装器自动处理 Node 和运行时
-- 公益课期包与社区桌面外挂均不改官方 `apps/desktop`、`packages/bundle/desktop-app`、`desktop-companion` 的产品逻辑；默认助理保持 `standard`，「公益项目助手」只做新会话 chip 入口；本 fork 桌面产品名为 `octopus_DSH`，dock 用原创绿叶鲸鱼标，主页品牌位用自有黑白/白绿标（不用 DeepSeek 默认 logo），窗口内 `FishLogo` 保持原样
+- 桌面首次进入应直接到首页，不要先强迫选择 Node / workspace；第一屏须让人感到换了一代，可见升级落在首页信息架构，不要只藏在绑定后才出现的 Modal / chip；设置项须对普通用户可理解；分发目标：新用户只需配置 API Key，安装器自动处理 Node 和运行时
+- 公益课期包与社区桌面外挂均不改官方 `apps/desktop`、`packages/bundle/desktop-app`、`desktop-companion` 的产品逻辑；open-pstack 与 anywhere-labs/dsh-desktop 只作对标，不 fork 进官方桌面；默认助理保持 `standard`，「公益项目助手」只做新会话 chip 入口；本 fork 桌面产品名为 `octopus_DSH`，dock 用原创绿叶鲸鱼标，主页品牌位用自有黑白/白绿标（不用 DeepSeek 默认 logo），窗口内 `FishLogo` 保持原样
 - 社区插件市场与「让模型搜装第三方插件」只作可选设置入口，不写进开机默认组合
 - 不要只列命令或让用户当测试员：涉及构建/打包/分发的活自己跑完并自验后再交付，反复出现的低级错误要变成打包链路里的硬门禁检查项
 - fork 桌面功能以装盘版可正常开机可用为交付标准：须钉进 `desktop-profile-plugins` 并保证 harness 闭包可解析，不能只停在 experimental 源码；上游合入后要对齐 companion 与 harness 版本
 - 问数路径要对普通用户足够简单：先选或上传数据源，再点「开始提问」；提供示例表与脏表避坑提示；同一入口不要并列多个「开始提问」
 - 打包体积敏感：优先轻量依赖；问知识 PDF 入库值得加；表格类优先引导走问数，避免为 Excel 再引入沉重 extras
-- Agent Team 须对普通用户可自助使用：中文区分一次性任务与常驻队友；面板填入机构向启动话术（文书/案例/传播小队；队友 name 为英文 kebab、职责中文）；队友模型选择应对用户开放，且面板展示与实际选用一致
+- Agent Team 须对普通用户可自助使用：中文区分「现组」（会话内临时 spawn，已有能力）与「机构常驻」（编制先于对话的机构花名册，不是 pstack 工种→模型表）；面板填入机构向启动话术（文书/案例/传播小队；队友 name 为英文 kebab、职责中文）；队友模型选择应对用户开放，且面板展示与实际选用一致；后续常驻小队先抬首页/空白作曲栏入口，不要先做 pstack 设置页
 - Agent Team 协作可视化：实时互动用自建右侧可调宽协作舱（拓扑为主，任务/ops 在舱底；派发/回传可用轻量通讯光点）；舱打开时约 1.5s 软刷新（关闭即停）；消息边含已投递往来；Archify 经 `bundled-skills` 默认进桌面；任务完成后 CTA 一点发送，总结图页沙箱预览 HTML（失败则浏览器打开）；协作入口勿过深；实时层须控制开销
 
 ## Learned Workspace Facts

@@ -609,6 +609,7 @@ describe('ConversationRoot resident composer', () => {
     expect(b.slotCalls).toContain('conversation.hero.agentPreset')
     expect(b.slotCalls).toContain('conversation.hero.askData')
     expect(b.slotCalls).toContain('conversation.hero.askKnowledge')
+    expect(b.slotCalls).toContain('conversation.hero.agentTeam')
     expect(b.view.queryByText('问数')).toBeNull()
     expect(b.view.queryByText('知识库')).toBeNull()
   })

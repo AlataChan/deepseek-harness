@@ -197,6 +197,7 @@ export function apply(ctx: Context): void {
       'conversation.hero.askData': { kind: 'single', scope: 'root' },
       'conversation.hero.askKnowledge': { kind: 'single', scope: 'root' },
       'conversation.hero.commerce': { kind: 'single', scope: 'root' },
+      'conversation.hero.agentTeam': { kind: 'single', scope: 'root' },
       'conversation.askData.gate': { kind: 'single', scope: 'root' },
       'conversation.commerce.gate': { kind: 'single', scope: 'root' },
       'conversation.askKnowledge.picker': { kind: 'single', scope: 'root' },

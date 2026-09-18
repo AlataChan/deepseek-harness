@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包向 Web 会话页头添加「团队协作」入口（副标 Agent Team），让用户检查当前成员名单、管理共享任务板并打开常驻队友会话。面板用中文区分**常驻队友**与**临时子任务（子代理）**，提供「填入启动话术」按钮（只写入输入框、不自动发送），并提示在对话里指挥主助理组建团队，而不要求用户记住工具名。它通过生成的 `ctx.remote.agentTeams` contribution 读取权威 Team 状态，并让普通 child history 导航继续使用稳定的 addressed-subagent 路径。需要实验性源码 checkout Web profile 时选择本包；正式发布会排除它。这个浏览器 projection 不扩展稳定 API Proxy、不存储 Team 状态，也不注册面向模型的输入。
+本包向 Web 会话页头添加「团队协作」入口（副标 Agent Team），并在空白会话 Hero 上放三个机构常驻小队。用户检查成员名单、管理共享任务板并打开常驻队友会话。点 Hero 小队会创建或复用该队 Lead Session，按编制把座位 spawn 一次；新话题不再组一次队。面板区分机构常驻、对话里的现组与一次性子代理；启动话术按钮只调用 `inputActions.setDraft`（不自动发送）。它通过生成的 `ctx.remote.agentTeams` contribution 读取权威 Team 状态，并让普通 child history 导航继续使用稳定的 addressed-subagent 路径。需要实验性源码 checkout Web profile 时选择本包；正式发布会排除它。这个浏览器 projection 不扩展稳定 API Proxy、不存储 Team 状态，也不注册面向模型的输入。
 
 ## 目录
 
@@ -29,6 +29,10 @@ kind: "package-reference"
 
 octopus_DSH 桌面也会从 [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json) seed 本包。其 `cordis.patch.yml` 是 dual-face 桌面 bundle 文档：禁用重叠的全局 continuable-child 控件，插入 Host Team service 与 tools，再插入本包以挂载 Client half。Headless 与源码 Web 仍使用 `agent-team-profile` + `agent-team-web-profile`，不走这条 seed 路径。
 
+### 派活给机构常驻小队
+
+Hero 行占据 `conversation.hero.agentTeam`，用 `agentTeams/listInstitutionSquads` 列出文书组 / 案例组 / 传播部。派活时：名册还没有 Lead 就在已选工作区创建 Session 并命名，再调用 `agentTeams/ensureInstitutionSquad` 把缺失座位 spawn 一次，然后打开该 Lead。之后的话题是同一 Session 上的 prompt。座位模型下拉调用 `agentTeams/updateInstitutionSeat` 与 `session/modelCatalog`；展示的是编制路线，Lead 已加载时用现场 teammate model。
+
 ### 检查并导航 roster
 
 打开 panel 会调用 `agentTeams/view`。Roster row 展示持久 name、运行时 status、model 与 diagnostics。选择健康 teammate 时，系统刷新既有直接 child catalog，并打开普通的 `{ parentSessionId, childSessionId, mode: 'continuable' }` address。History 与后续人类 prompt 继续使用稳定 addressed-subagent 会话路径；本包不会添加 Team 专用 address 字段。
@@ -45,13 +49,14 @@ octopus_DSH 桌面也会从 [scripts/desktop-profile-plugins.json](../../../scri
 <details>
 <summary>实现细节——点击展开</summary>
 
-Client export 挂载来自 [`@deepseek-ai/dsh-experimental-agent-team/remote`](../agent-team/README.zh.md) 的生成式 `ctx.remote.agentTeams` contribution，然后通过 Cordis effect 注册 locale dictionary 与一个 conversation-header slot。Dispose plugin fiber 会移除这两项 registration。
+Client export 挂载来自 [`@deepseek-ai/dsh-experimental-agent-team/remote`](../agent-team/README.zh.md) 的生成式 `ctx.remote.agentTeams` contribution，然后通过 Cordis effect 注册 locale dictionary、会话页头协作舱与 Hero 机构常驻行。Dispose plugin fiber 会移除这些 registration。
 
 开始 create 或 update 会让更早的 refresh 失效。成功后会重新读取完整 Team view，使每个 task 的派生字段保持最新。`team-task-conflict` 结果仅在重新读取成功后显示状态陈旧提示；如果重新读取失败，则保留该错误。由于 Team service 把任务文本或 scope 编辑与 dependency 修改公开为独立 action，两者使用两个连续的 compare-and-set mutation。
 
 | 文件 | 职责 |
 |---|---|
 | [`src/client/mount.ts`](src/client/mount.ts) | 生成式 Remote、locale、导航与 slot registration |
+| [`src/client/InstitutionSquads.tsx`](src/client/InstitutionSquads.tsx) | Hero 常驻小队卡片 |
 | [`src/client/TeamAction.tsx`](src/client/TeamAction.tsx) | Roster 与任务板交互状态 |
 | [`src/client/locales.ts`](src/client/locales.ts) | 中英文 panel 文案 |
 | [`src/index.ts`](src/index.ts) | 不执行行为的 Host entry |
@@ -85,7 +90,7 @@ Client export 挂载来自 [`@deepseek-ai/dsh-experimental-agent-team/remote`](.
 
 - **Snapshot refresh**——panel 会在打开、显式 refresh 与 mutation 后刷新；它没有实时 event subscription 或 mailbox timeline。
 - **普通 child continuation**——导航后发送的人类消息使用稳定 addressed-subagent prompt 路径，而不是 Team peer mailbox。
-- **没有 lifecycle 或 workspace control**——panel 不能 spawn、rename、delete 或 interrupt teammate，write scope 仍只是提示性 metadata。
+- **Dock 不能 spawn**——页头协作舱仍不能创建、重命名、删除或中断 teammate。常驻座位由 Hero 机构行 provision。write scope 仍只是提示性 metadata。
 
 <a id="dev-note"></a>
 ### 开发备注

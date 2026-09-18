@@ -53,10 +53,14 @@ With the tools installed, the model does the rest on request — for example, "c
 | `maxPendingMessagesPerMember` | `64` | Maximum queued messages for one member |
 | `maxMessageBytes` | `65,536` | Maximum size of one sent message |
 | `disposalTimeoutMs` | `5,000` | Time allowed for shutdown cleanup |
+| `institutionCatalogPath` | `""` | Institution-squad catalog JSON; empty uses `$DSH_HOME/institution-squads.json` |
+| `institutionFreshProvider` | `spawn` | Continuable provider used when the Host provisions standing seats |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-experimental-agent-team) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Teammates
+
+Three institution squads (文书组 / 案例组 / 传播部) live in `$DSH_HOME/institution-squads.json` (or `institutionCatalogPath`). `listInstitutionSquads` returns those rows. `ensureInstitutionSquad` binds the calling Lead Session as that squad's standing Lead and spawns any missing baked-in seats once; a later topic is a prompt on the same Session. `updateInstitutionSeat` writes a seat's provider/model into the catalog without respawning an existing teammate. `institutionFreshProvider` (default `spawn`) is the continuable provider used for those seats.
 
 Ask the Lead to create a teammate: give it a unique lowercase name such as `reviewer` and describe its job. A teammate starts fresh with no memory of the Lead's conversation, or as a fork that inherits the Lead's completed turns; the creation request chooses which. Teammate names are permanent — even a teammate whose creation failed keeps its name, and no name is ever reused.
 
@@ -114,6 +118,7 @@ The [Agent Teams Agent Note](../../../.agents/notes/implemented/feature/2026-08-
 | File | Role |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Plugin entry: `Config` schema, service registration, recovery scheduling |
+| [`src/institution.ts`](src/institution.ts) | Standing institution catalog and seat definitions |
 | [`src/roster.ts`](src/roster.ts) | Team identity, membership resolution, provisioning, and roster teardown |
 | [`src/mailbox.ts`](src/mailbox.ts) | Durable queue, target-local dispatch, acknowledgement, and recovery |
 | [`src/task-board.ts`](src/task-board.ts) | Task CAS commands, DAG validation, and derived views |

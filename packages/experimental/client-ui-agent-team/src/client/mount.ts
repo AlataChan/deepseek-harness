@@ -1,14 +1,19 @@
 /** Source-safe Agent Teams browser registration and Remote mount lifecycle. */
 
 import type {
+  EnsureInstitutionSquadRequest,
+  EnsureInstitutionSquadResult,
+  InstitutionSquadView,
   TeamMemberView as TeamRosterMember,
   TeamView,
+  UpdateInstitutionSeatRequest,
 } from '@deepseek-ai/dsh-experimental-agent-team/client'
 import type {} from '@deepseek-ai/dsh-experimental-agent-team/remote'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -17,6 +22,9 @@ import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import {
   TeamAction, type TeamActionInjected, type TeamActionResult, type TeamTaskActionResult,
 } from './TeamAction.tsx'
+import {
+  InstitutionSquads, type InstitutionRemoteResult, type InstitutionSquadsInjected,
+} from './InstitutionSquads.tsx'
 import { en, NS, zh, type TeamKey } from './locales.ts'
 
 type AgentTeamClientContext = Omit<ClientContext, 'sessions'> & { readonly sessions: ISessions }
@@ -82,6 +90,40 @@ function registerUi(ctx: ClientContext): void {
       locale: NS,
       inject: () => actions,
     }, TeamAction),
+  )
+
+  type InstitutionTeamsRemote = {
+    listInstitutionSquads: () => Promise<InstitutionRemoteResult<InstitutionSquadView[]>>
+    updateInstitutionSeat: (
+      request: UpdateInstitutionSeatRequest,
+    ) => Promise<InstitutionRemoteResult<InstitutionSquadView[]>>
+    ensureInstitutionSquad: (
+      sessionId: SessionId,
+      request: EnsureInstitutionSquadRequest,
+    ) => Promise<InstitutionRemoteResult<EnsureInstitutionSquadResult>>
+  }
+  type SessionRenameRemote = {
+    rename: (request: { sessionId: SessionId; title: string }) => Promise<InstitutionRemoteResult<{ title: string }>>
+    modelCatalog: () => Promise<InstitutionRemoteResult<ModelCatalog>>
+  }
+  const teams = ctx.remote.agentTeams as InstitutionTeamsRemote
+  const sessionRemote = ctx.remote.session as SessionRenameRemote
+  const squads: InstitutionSquadsInjected = {
+    list: () => teams.listInstitutionSquads(),
+    updateSeat: request => teams.updateInstitutionSeat(request),
+    models: () => sessionRemote.modelCatalog(),
+    createSession: workspaceId => sessions.create({ workspaceId }),
+    renameSession: (sessionId, title) => sessionRemote.rename({ sessionId, title }),
+    ensure: (sessionId, request) => teams.ensureInstitutionSquad(sessionId, request),
+    openSession: (sessionId) => { sessions.open(sessionId) },
+  }
+  ctx.slots.inject(
+    'conversation.hero.agentTeam',
+    () => ctx.slots.register({
+      name: 'conversation.hero.agentTeam',
+      locale: NS,
+      inject: () => squads,
+    }, InstitutionSquads),
   )
 }
 

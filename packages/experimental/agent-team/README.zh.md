@@ -53,10 +53,14 @@ kind: "package-reference"
 | `maxPendingMessagesPerMember` | `64` | 单个成员最多可排队的消息数 |
 | `maxMessageBytes` | `65,536` | 单条发送消息的最大尺寸 |
 | `disposalTimeoutMs` | `5,000` | 关闭清理允许的时间 |
+| `institutionCatalogPath` | `""` | 机构小队名册 JSON；空则用 `$DSH_HOME/institution-squads.json` |
+| `institutionFreshProvider` | `spawn` | Host 补常驻座位时用的 continuable provider |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-experimental-agent-team)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 ### Teammate
+
+三个机构小队（文书组 / 案例组 / 传播部）记在 `$DSH_HOME/institution-squads.json`（或 `institutionCatalogPath`）。`listInstitutionSquads` 返回这些行。`ensureInstitutionSquad` 把调用方 Lead Session 绑成该队常驻 Lead，并把编制里还没有的座位 spawn 一次；之后的话题是同一 Session 上的 prompt。`updateInstitutionSeat` 把座位的 provider/model 写入名册，不会把已有 teammate 再 spawn 一次。`institutionFreshProvider`（默认 `spawn`）是这些座位用的 continuable provider。
 
 请 Lead 创建 teammate：给它一个唯一的小写名字（例如 `reviewer`）并描述其职责。teammate 可以 fresh 启动（不携带 Lead 对话的任何记忆），也可以作为 fork 启动（继承 Lead 已完成的轮次）；创建请求决定用哪种。teammate 名字是永久的——即使创建失败的 teammate 也保留其名字，任何名字都不会被复用。
 
@@ -114,6 +118,7 @@ Lead 可以停止 teammate 的当前轮次，而不会删除其排队的消息�
 | 文件 | 职责 |
 |---|---|
 | [`src/index.ts`](src/index.ts) | 插件入口：`Config` schema、服务注册、恢复调度 |
+| [`src/institution.ts`](src/institution.ts) | 机构常驻名册与座位定义 |
 | [`src/roster.ts`](src/roster.ts) | Team 身份、成员关系解析、provisioning 与 roster 拆除 |
 | [`src/mailbox.ts`](src/mailbox.ts) | 持久队列、目标本地投递、确认与恢复 |
 | [`src/task-board.ts`](src/task-board.ts) | 任务 CAS 命令、DAG 校验与派生视图 |

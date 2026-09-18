@@ -54,7 +54,7 @@ export type {
   ConversationInjected, ConversationSessionHeaderInjected, ConversationSessionHeaderSlotProps,
   ConversationSessionInjected, ConversationSessionSlotProps, ConversationSlotProps,
   ConversationStore, ConvViewOwnerProps, ConvViewProps, EmptyWorkspaceOwnerProps,
-  AskKnowledgePickerOwnerProps, HeroAgentPresetOwnerProps, HeroAskKnowledgeOwnerProps,
+  AskKnowledgePickerOwnerProps, HeroAgentPresetOwnerProps, HeroAgentTeamOwnerProps, HeroAskKnowledgeOwnerProps,
   HeroBrandMarkOwnerProps, HeroHeadlineOwnerProps,
   InputControlOwnerProps, InputZone, SessionDocumentExtractSettlement,
   MessageImageLoader, MessageImageSource, MessageImagesOwnerProps, RenderMessageImages, UseConversation,

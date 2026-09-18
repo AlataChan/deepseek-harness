@@ -2,6 +2,11 @@
 
 export type {
   CreateTeamTaskRequest,
+  EnsureInstitutionSquadRequest,
+  EnsureInstitutionSquadResult,
+  InstitutionSeatView,
+  InstitutionSquadId,
+  InstitutionSquadView,
   ReadHtmlPreviewRequest,
   ReadHtmlPreviewResult,
   TeamInteractionEdge,
@@ -13,5 +18,6 @@ export type {
   TeamTaskStatus,
   TeamTaskView,
   TeamView,
+  UpdateInstitutionSeatRequest,
   UpdateTeamTaskRequest,
 } from './types.ts'

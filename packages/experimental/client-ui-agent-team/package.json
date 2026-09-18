@@ -59,6 +59,7 @@
     "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
     "@deepseek-ai/dsh-experimental-agent-team": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
+    "@deepseek-ai/dsh-workspace": "workspace:^",
     "@deepseek-ai/dsh-typert-protocol": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
@@ -75,6 +76,7 @@
     "@deepseek-ai/dsh-experimental-agent-team": "workspace:^",
     "@deepseek-ai/dsh-experimental-tool-agent-team": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
+    "@deepseek-ai/dsh-workspace": "workspace:^",
     "@deepseek-ai/dsh-typert-protocol": "workspace:^",
     "@testing-library/react": "^16.1.0",
     "@types/react": "~18.3.1",

@@ -17,11 +17,31 @@ interface TeamMemberSnapshot {
   readonly provider: string
   readonly context: 'fresh' | 'fork'
   readonly phase: TeamMemberPhase
+  /** Child LLM model id when known; retained so inactive roster rows do not invent the Lead route. */
+  readonly model?: string
   readonly error?: string
 }
 ```
 
 Every member starts in `provisioning` and reaches exactly one terminal roster phase, `active` or `failed`. Runtime `running`/`idle`/`inactive` status is derived separately and never rewrites this record.
+
+Three institution squads are Host catalog rows, not Team events. `InstitutionSquadView` is the list row; `leadSessionId` is the standing Lead. A new topic is a prompt on that Session.
+
+```ts type-equiv
+/** One institution squad on the Host catalog. */
+interface InstitutionSquadView {
+  readonly id: InstitutionSquadId
+  /** Chinese display name used as the default Session title. */
+  readonly displayName: string
+  /** English display name. */
+  readonly displayNameEn: string
+  /** Standing Lead Session when the squad has been provisioned and the log still exists. */
+  readonly leadSessionId?: SessionId
+  /** True when {@link leadSessionId} is set and the Session is still persisted. */
+  readonly established: boolean
+  readonly seats: readonly InstitutionSeatView[]
+}
+```
 
 ## Durable mailbox
 

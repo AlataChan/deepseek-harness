@@ -165,6 +165,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.askKnowledge': { kind: 'single'; scope: 'root'; owner: HeroAskKnowledgeOwnerProps }
     /** Commerce chip staged for a New Session. */
     'conversation.hero.commerce': { kind: 'single'; scope: 'root'; owner: HeroCommerceOwnerProps }
+    /** Institution-standing squad cards staged for a New Session. */
+    'conversation.hero.agentTeam': { kind: 'single'; scope: 'root'; owner: HeroAgentTeamOwnerProps }
     /** Knowledge-library picker. Must not replace the sendable composer. */
     'conversation.askKnowledge.picker': { kind: 'single'; scope: 'root'; owner: AskKnowledgePickerOwnerProps }
     /** Full data-source gate that replaces the sendable composer while occupied. */
@@ -265,6 +267,12 @@ export interface CommerceGateOwnerProps {
 export interface HeroAskKnowledgeOwnerProps {
   /** Marker field: the occupant owns its opener. */
   children?: never
+}
+
+/** Owner share of the Hero institution-squad row. */
+export interface HeroAgentTeamOwnerProps {
+  /** Workspace already chosen on the Hero; omitted until the user picks one. */
+  workspaceId?: WorkspaceId
 }
 
 /** Owner share of the ask-knowledge library picker. */
@@ -443,6 +451,7 @@ export type ConversationSlotProps =
     | 'conversation.hero.askData'
     | 'conversation.hero.askKnowledge'
     | 'conversation.hero.commerce'
+    | 'conversation.hero.agentTeam'
     | 'conversation.askData.gate'
     | 'conversation.commerce.gate'
     | 'conversation.askKnowledge.picker'

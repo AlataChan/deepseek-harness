@@ -6,6 +6,7 @@ import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-fs'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { TeamActivity } from './activity.ts'
@@ -23,6 +24,9 @@ import { TeamId, TeamTaskId } from './types.ts'
 import type {
   Config,
   CreateTeamTaskRequest,
+  EnsureInstitutionSquadRequest,
+  EnsureInstitutionSquadResult,
+  InstitutionSquadView,
   ReadHtmlPreviewRequest,
   ReadHtmlPreviewResult,
   SendTeamMessageRequest,
@@ -34,13 +38,27 @@ import type {
   TeamTaskView,
   TeamView,
   TeamWaitResult,
+  UpdateInstitutionSeatRequest,
   UpdateTeamTaskRequest,
 } from './types.ts'
+import {
+  applySeatUpdate,
+  InstitutionCatalog,
+  INSTITUTION_SQUADS,
+  projectInstitutionSquad,
+  requireInstitutionSeat,
+  requireInstitutionSquad,
+  resolveInstitutionCatalogPath,
+  standingSeatPrompt,
+} from './institution.ts'
 
 export type * from './types.ts'
 export type { TeamMembership } from './roster.ts'
 export { TeamId, TeamMessageId, TeamTaskId } from './types.ts'
 export { TeamError } from './error.ts'
+export {
+  INSTITUTION_SQUAD_IDS, INSTITUTION_SQUADS, resolveInstitutionCatalogPath,
+} from './institution.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -74,10 +92,14 @@ export class TeamService extends TypertRemoteService {
     maxPendingMessagesPerMember: z.number().step(1).min(1).default(DEFAULT_MAX_PENDING_MESSAGES),
     maxMessageBytes: z.number().step(1).min(1).default(DEFAULT_MAX_MESSAGE_BYTES),
     disposalTimeoutMs: z.number().step(1).min(1).default(DEFAULT_DISPOSAL_TIMEOUT_MS),
+    institutionCatalogPath: z.string().default(''),
+    institutionFreshProvider: z.string().default('spawn'),
   })
 
   /** Validated deployment limits used by every Team operation. */
   private readonly config: Required<Config>
+  private readonly institutionCatalog: InstitutionCatalog
+  private readonly institutionFreshProvider: string
 
   private readonly activity: TeamActivity
   private readonly lifecycle: TeamRuntimeLifecycle
@@ -101,7 +123,13 @@ export class TeamService extends TypertRemoteService {
         'disposalTimeoutMs',
         config.disposalTimeoutMs ?? DEFAULT_DISPOSAL_TIMEOUT_MS,
       ),
+      institutionCatalogPath: config.institutionCatalogPath ?? '',
+      institutionFreshProvider: config.institutionFreshProvider ?? 'spawn',
     }
+    this.institutionFreshProvider = this.config.institutionFreshProvider
+    this.institutionCatalog = new InstitutionCatalog(
+      resolveInstitutionCatalogPath(this.config.institutionCatalogPath),
+    )
 
     this.activity = new TeamActivity()
     this.lifecycle = new TeamRuntimeLifecycle(this.config.disposalTimeoutMs)
@@ -291,6 +319,44 @@ export class TeamService extends TypertRemoteService {
   }
 
   /**
+   * List the three institution squads and their current Lead bindings.
+   * Stale Lead Session ids are dropped from the catalog when persistence no longer has them.
+   * @returns detached squad rows in product order.
+   */
+  @Remote('listInstitutionSquads')
+  async remoteListInstitutionSquads(): Promise<InstitutionSquadView[]> {
+    return await this.listInstitutionSquads()
+  }
+
+  /**
+   * Persist one seat's provider/model in the institution catalog.
+   * Already-spawned teammates keep the route recorded on their member snapshot.
+   * @param request - squad, seat name, and optional route.
+   * @returns the refreshed squad list.
+   */
+  @Remote('updateInstitutionSeat')
+  async remoteUpdateInstitutionSeat(request: UpdateInstitutionSeatRequest): Promise<InstitutionSquadView[]> {
+    requireInstitutionSeat(requireInstitutionSquad(request.squadId), request.name)
+    await this.institutionCatalog.update(file => applySeatUpdate(file, request))
+    return await this.listInstitutionSquads()
+  }
+
+  /**
+   * Bind the caller's Lead Session as the squad Lead and spawn any missing seats.
+   * A new topic is a later human prompt on this same Session, not another spawn.
+   * @param agent - exact live Lead Agent whose Session becomes the standing Lead.
+   * @param request - squad slug and optional seat-route overrides applied before spawn.
+   * @returns the bound Session and the current roster.
+   */
+  @Remote('ensureInstitutionSquad')
+  async remoteEnsureInstitutionSquad(
+    agent: Agent,
+    request: EnsureInstitutionSquadRequest,
+  ): Promise<EnsureInstitutionSquadResult> {
+    return await this.ensureInstitutionSquad(agent, request)
+  }
+
+  /**
    * Read one `.html` / `.htm` file for the Team dock sandboxed preview.
    * Paths resolve against the Lead session cwd when relative; absolute paths
    * must stay under that cwd when the Lead has one.
@@ -362,6 +428,113 @@ export class TeamService extends TypertRemoteService {
         },
       }
     }
+  }
+
+  /**
+   * List institution squads after dropping Lead bindings whose Sessions are gone.
+   * @returns detached squad rows in product order.
+   */
+  async listInstitutionSquads(): Promise<InstitutionSquadView[]> {
+    const file = await this.dropMissingLeads()
+    return INSTITUTION_SQUADS.map((squad) => {
+      const leadId = file.leads[squad.id]
+      const live = leadId === undefined ? undefined : this.ctx.agents.get(SessionId(leadId))
+      const liveModels: Record<string, string | undefined> = {}
+      if (live !== undefined) {
+        for (const member of this.listMembers(live)) {
+          if (member.role === 'teammate') liveModels[member.name] = member.model
+        }
+      }
+      return projectInstitutionSquad(squad, file, liveModels)
+    })
+  }
+
+  /**
+   * Bind the caller as the standing Lead and spawn seats that are not yet on the roster.
+   * @param caller - exact live Lead Agent.
+   * @param request - squad slug and optional seat-route overrides.
+   * @returns the bound Session and roster.
+   */
+  async ensureInstitutionSquad(
+    caller: Agent,
+    request: EnsureInstitutionSquadRequest,
+  ): Promise<EnsureInstitutionSquadResult> {
+    const squad = requireInstitutionSquad(request.squadId)
+    const membership = this.membership(caller)
+    if (membership.role !== 'lead') {
+      throw new TeamError('only the Team Lead can provision institution seats', 'TEAM_LEAD_REQUIRED')
+    }
+    if (request.seats !== undefined) {
+      for (const seat of request.seats) {
+        requireInstitutionSeat(squad, seat.name)
+        await this.institutionCatalog.update(file => applySeatUpdate(file, {
+          squadId: squad.id,
+          name: seat.name,
+          ...seat.provider === undefined ? {} : { provider: seat.provider },
+          ...seat.model === undefined ? {} : { model: seat.model },
+        }))
+      }
+    }
+    await this.institutionCatalog.update(file => ({
+      version: 1,
+      leads: { ...file.leads, [squad.id]: caller.session.id },
+      seats: { ...file.seats },
+    }))
+    const catalog = await this.institutionCatalog.read()
+    const bindings = catalog.seats[squad.id] ?? {}
+    const existing = new Set(
+      this.listMembers(caller).filter(member => member.role === 'teammate').map(member => member.name),
+    )
+    for (const seat of squad.seats) {
+      if (existing.has(seat.name)) continue
+      const binding = bindings[seat.name]
+      const agentOptions = binding === undefined
+        ? undefined
+        : {
+          ...binding.provider === undefined ? {} : { provider: binding.provider },
+          ...binding.model === undefined ? {} : { model: binding.model },
+        }
+      const hasOptions = agentOptions !== undefined
+        && (agentOptions.provider !== undefined || agentOptions.model !== undefined)
+      await this.spawnTeammate(caller, {
+        name: seat.name,
+        description: `${seat.title}：${seat.duty}`,
+        prompt: [{ type: 'text', text: standingSeatPrompt(squad, seat) }],
+        context: 'fresh',
+        provider: this.institutionFreshProvider,
+        ...hasOptions ? { agentOptions } : {},
+        signal: this.lifecycle.signal,
+      })
+    }
+    return {
+      sessionId: caller.session.id,
+      squadId: squad.id,
+      members: this.listMembers(caller),
+    }
+  }
+
+  /** Drop catalog Lead ids whose persisted Session no longer exists. */
+  private async dropMissingLeads(): Promise<Awaited<ReturnType<InstitutionCatalog['read']>>> {
+    const file = await this.institutionCatalog.read()
+    let nextLeads = { ...file.leads }
+    let changed = false
+    for (const id of INSTITUTION_SQUADS.map(squad => squad.id)) {
+      const leadId = nextLeads[id]
+      if (leadId === undefined) continue
+      const snapshot = await this.ctx.sessionPersistence.stat(SessionId(leadId))
+      if (snapshot === undefined) {
+        nextLeads = Object.fromEntries(
+          Object.entries(nextLeads).filter(([key]) => key !== id),
+        )
+        changed = true
+      }
+    }
+    if (!changed) return file
+    return await this.institutionCatalog.update(current => ({
+      version: 1,
+      leads: nextLeads,
+      seats: { ...current.seats },
+    }))
   }
 
   /** Queue one contained recovery pass after publication has unwound. */

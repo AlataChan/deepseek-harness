@@ -7,6 +7,7 @@ import type { TeamMemberView as TeamRosterMember, TeamTaskId } from '@deepseek-a
 import type {} from '@deepseek-ai/dsh-experimental-agent-team/remote'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
+import { InstitutionSquads, type InstitutionSquadsInjected } from '../src/client/InstitutionSquads.tsx'
 import { TeamAction, type TeamActionInjected } from '../src/client/TeamAction.tsx'
 import { inject, mountAgentTeamUi } from '../src/client/mount.ts'
 import { apply as nodeApply } from '../src/index.ts'
@@ -87,9 +88,21 @@ async function bench(options: {
       path: '/proj/out.html',
       html: '<!doctype html><title>ok</title>',
     }),
+    listInstitutionSquads: answer('agentTeams/listInstitutionSquads', []),
+    updateInstitutionSeat: answer('agentTeams/updateInstitutionSeat', []),
+    ensureInstitutionSquad: answer('agentTeams/ensureInstitutionSquad', {
+      sessionId: SESSION, squadId: 'document', members: [],
+    }),
   })
   ctx.provide('remote.session', {
     openWorkspacePath: answer('session/openWorkspacePath', { opened: true as const }),
+    rename: answer('session/rename', { title: '文书组' }),
+    modelCatalog: answer('session/modelCatalog', {
+      default: { provider: 'mock', model: 'mock' },
+      routableProviders: ['mock'],
+      groups: [],
+      failures: [],
+    }),
   })
   const navigation: unknown[] = []
   let current = options.addressed === true ? CHILD : SESSION
@@ -107,13 +120,18 @@ async function bench(options: {
       return options.refreshGate ?? Promise.resolve()
     },
     openSubagent: (address: unknown) => { navigation.push(['open', address]) },
+    create: () => Promise.resolve(SESSION),
+    open: (id: SessionId) => { navigation.push(['open-session', id]) },
   })
   ctx.provide('conversation', {})
   ctx.provide('locale', new LocaleRuntime(ctx))
   await ctx.plugin(SlotRegistry).await()
   const collapseHeader = ctx.slots.register({
     name: 'root',
-    children: { 'conversation.session.header.actions': { kind: 'list', scope: 'session' } },
+    children: {
+      'conversation.session.header.actions': { kind: 'list', scope: 'session' },
+      'conversation.hero.agentTeam': { kind: 'single', scope: 'root' },
+    },
   } as never, () => null)
   if (options.registrationFailure === true) {
     vi.spyOn(ctx.slots, 'inject').mockImplementationOnce(() => { throw new Error('slot registration failed') })
@@ -131,6 +149,8 @@ async function bench(options: {
   }
   const entry = () => ctx.slots.entries('conversation.session.header.actions')
     .find(candidate => candidate.component === TeamAction)
+  const hero = () => ctx.slots.entries('conversation.hero.agentTeam')
+    .find(candidate => candidate.component === InstitutionSquads)
   return {
     ctx,
     fiber,
@@ -139,6 +159,7 @@ async function bench(options: {
     navigation,
     remote,
     entry,
+    hero,
     collapseHeader,
     select: (sessionId: SessionId) => { current = sessionId },
   }
@@ -295,6 +316,32 @@ describe('ui-team browser plugin', () => {
     } as never, () => null)
     await Promise.resolve()
     expect(b.entry()).toBeDefined()
+  })
+
+  it('registers the hero institution row and opens a created Lead', async () => {
+    const b = await bench()
+    expect(b.hero()).toBeDefined()
+    const actions = (b.hero()!.inject as unknown as () => InstitutionSquadsInjected)()
+    expect((await actions.list()).ok).toBe(true)
+    expect((await actions.updateSeat({ squadId: 'document', name: 'archivist', model: 'fast' })).ok).toBe(true)
+    expect((await actions.models()).ok).toBe(true)
+    const created = await actions.createSession('ws' as never)
+    await actions.renameSession(created, '文书组')
+    await actions.ensure(created, { squadId: 'document' })
+    actions.openSession(created)
+    const header = (b.entry()!.inject as unknown as () => TeamActionInjected)()
+    await header.readHtmlPreview(SESSION, 'notes/out.html')
+    await header.openWorkspacePath('/proj/out.html')
+    expect(b.calls.map(call => call.method)).toEqual(expect.arrayContaining([
+      'agentTeams/listInstitutionSquads',
+      'agentTeams/updateInstitutionSeat',
+      'session/modelCatalog',
+      'session/rename',
+      'agentTeams/ensureInstitutionSquad',
+      'agentTeams/readHtmlPreview',
+      'session/openWorkspacePath',
+    ]))
+    expect(b.navigation).toContainEqual(['open-session', SESSION])
   })
 
   it('keeps the node half inert', () => {

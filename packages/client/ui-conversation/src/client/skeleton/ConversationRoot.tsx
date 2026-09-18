@@ -320,6 +320,10 @@ export function ConversationRoot({
       {renderSlot('conversation.hero.commerce', {})}
     </div>
   )
+  const squadWorkspaceId = pendingWorkspaceId ?? sessionWorkspace?.workspaceId
+  const heroSquadRow = renderSlot('conversation.hero.agentTeam', {
+    ...squadWorkspaceId === undefined ? {} : { workspaceId: squadWorkspaceId },
+  })
 
   // The placeholder chip ("Choose workspace") and the Workspace-trigger input travel
   // together: no workspace picked yet (cold start, no session at all), or a
@@ -352,6 +356,7 @@ export function ConversationRoot({
     <div className={clsx(css.composerStack, hero && css.composerHero)}>
       {hero && <HeroShell t={t} renderSlot={renderSlot} />}
       {hero && heroWorkspaceRow}
+      {hero && heroSquadRow}
       {renderSlot('conversation.askKnowledge.picker', {})}
       {askDataGateOccupied
         ? renderSlot('conversation.askData.gate', {})
