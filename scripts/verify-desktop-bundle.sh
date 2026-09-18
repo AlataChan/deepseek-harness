@@ -81,7 +81,8 @@ fi
 
 head_ "Smoke-testing companion module graph"
 SMOKE_HOME="$(mktemp -d "${TMPDIR:-/tmp}/dsh-bundle-smoke.XXXXXX")"
-COMPANION_OUT="$(HOME="$SMOKE_HOME" "$RES/node" "$HARNESS/lib/desktop-companion.js" --workspace-root "$SMOKE_HOME" 2>&1 | head -40 || true)"
+# A live octopus_DSH holds ~/.dsh. The smoke must not inherit the builder's DSH_HOME.
+COMPANION_OUT="$(HOME="$SMOKE_HOME" DSH_HOME="$SMOKE_HOME/.dsh" "$RES/node" "$HARNESS/lib/desktop-companion.js" --workspace-root "$SMOKE_HOME" 2>&1 | head -40 || true)"
 
 if grep -q "ERR_MODULE_NOT_FOUND" <<<"$COMPANION_OUT"; then
   MISSING="$(grep -o "Cannot find package '[^']*'" <<<"$COMPANION_OUT" | head -1)"
@@ -107,7 +108,7 @@ fi
 # Only a real handshake plus a hold period observes that.
 
 head_ "Driving a real companion handshake"
-if LIFECYCLE_OUT="$(HOME="$SMOKE_HOME" "$RES/node" "$REPO_ROOT/scripts/smoke-companion-lifecycle.mjs" "$APP" 6000 2>&1)"; then
+if LIFECYCLE_OUT="$(HOME="$SMOKE_HOME" DSH_HOME="$SMOKE_HOME/.dsh" "$RES/node" "$REPO_ROOT/scripts/smoke-companion-lifecycle.mjs" "$APP" 6000 2>&1)"; then
   ok "$(head -2 <<<"$LIFECYCLE_OUT" | tail -1)"
 else
   bad "Companion lifecycle FAILED"
