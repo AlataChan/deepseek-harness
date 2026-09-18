@@ -41,7 +41,7 @@ function remoteOk<T>(value: T) {
 }
 
 function props(overrides: Partial<InstitutionSquadsInjected> & {
-  workspaceId?: WorkspaceId
+  workspaceId?: WorkspaceId | undefined
   rows?: InstitutionSquadView[]
 } = {}): InstitutionSquadsProps {
   const rows = overrides.rows ?? [documentSquad, {
