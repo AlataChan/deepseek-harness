@@ -155,6 +155,7 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-agent-presets': ['presets'],
   // Ask Data copies its fictional sample database and CSV at runtime.
   '@deepseek-ai/dsh-experimental-desktop-ask-data': ['samples/**'],
+  '@deepseek-ai/dsh-experimental-desktop-hero-atmosphere': ['media/**'],
   // Commerce Mode ships its tool Consumer and preset mount as separate Loader
   // entries, installs its agent preset, imports its fictional sample CSV files,
   // and carries the NOTICE for adapted Apache-2.0 skill text.

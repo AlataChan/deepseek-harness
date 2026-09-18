@@ -1,0 +1,61 @@
+.plate {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 400ms ease;
+}
+
+.plate[data-visible='true'] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plate {
+    transition: none;
+  }
+}
+
+.poster,
+.drift,
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.drift {
+  opacity: 0;
+  animation: hero-drift 6s ease-in-out infinite alternate;
+}
+
+.plate[data-visible='false'] .drift {
+  animation: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@keyframes hero-drift {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.video {
+  z-index: 1;
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 48%, transparent);
+  pointer-events: none;
+}

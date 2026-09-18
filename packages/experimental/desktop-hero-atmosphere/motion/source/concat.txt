@@ -1,0 +1,2 @@
+file '/Users/apple/deepseek-harness/packages/experimental/desktop-hero-atmosphere/motion/source/forward.mp4'
+file '/Users/apple/deepseek-harness/packages/experimental/desktop-hero-atmosphere/motion/source/reverse.mp4'

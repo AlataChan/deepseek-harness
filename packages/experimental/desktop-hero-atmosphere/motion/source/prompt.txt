@@ -1,0 +1,21 @@
+Use the supplied first and last frames as the exact identity and design
+references for the shallow sandbar plate. Preserve the same silhouette, sand
+grain, water color, empty center, and proportions in every frame. The plate
+remains the same size and at the same anchored position throughout the shot.
+Do not add, remove, duplicate, or redesign any object, animal, shoreline,
+horizon, text, watermark, logo, or UI.
+
+Locked camera and locked framing. No camera pan, tilt, zoom, orbit, shake,
+reframing, perspective change, lens change, depth of field, or lighting change.
+The body and contact point remain fixed. Only refractive caustics and tiny
+surface ripples may move.
+
+The scene is a high-key overhead shallow sandbar with pale champagne sand
+visible through thin clear water, faint aqua and mint tint, and an empty
+center. Keep the environment, light direction, color temperature, ground
+contact, shadows, and depth of field identical and continuous across the
+entire shot. The background is part of the final picture: no chroma key, no
+flat color backdrop, no background replacement, and no transparency.
+
+Move once continuously from the supplied first frame to the supplied last
+frame. Do not pause at intermediate angles. End exactly on the last frame.

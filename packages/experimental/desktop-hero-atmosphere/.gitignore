@@ -1,0 +1,8 @@
+# Oil-motion compile intermediates. The shipped plate is media/.
+motion/source/blend/
+motion/source/frames/
+motion/source/*.mp4
+motion/source/K0.png
+motion/source/K1.png
+motion/build/compile/
+motion/final/

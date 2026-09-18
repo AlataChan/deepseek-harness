@@ -167,6 +167,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.commerce': { kind: 'single'; scope: 'root'; owner: HeroCommerceOwnerProps }
     /** Institution-standing squad cards staged for a New Session. */
     'conversation.hero.agentTeam': { kind: 'single'; scope: 'root'; owner: HeroAgentTeamOwnerProps }
+    /** Optional conversation-column atmosphere plate behind Hero chrome. */
+    'conversation.atmosphere': { kind: 'single'; scope: 'root'; owner: ConversationAtmosphereOwnerProps }
     /** Knowledge-library picker. Must not replace the sendable composer. */
     'conversation.askKnowledge.picker': { kind: 'single'; scope: 'root'; owner: AskKnowledgePickerOwnerProps }
     /** Full data-source gate that replaces the sendable composer while occupied. */
@@ -437,6 +439,12 @@ export interface HeroHeadlineOwnerProps {
   className?: string | undefined
 }
 
+/** Presentation props supplied to the conversation-column atmosphere plate. */
+export interface ConversationAtmosphereOwnerProps {
+  /** True while the resident shell shows the blank-session Hero. */
+  hero: boolean
+}
+
 /** Full props of the resident optional-Session Conversation shell. */
 export type ConversationSlotProps =
   PropsRuntime<'conversation'>
@@ -452,6 +460,7 @@ export type ConversationSlotProps =
     | 'conversation.hero.askKnowledge'
     | 'conversation.hero.commerce'
     | 'conversation.hero.agentTeam'
+    | 'conversation.atmosphere'
     | 'conversation.askData.gate'
     | 'conversation.commerce.gate'
     | 'conversation.askKnowledge.picker'

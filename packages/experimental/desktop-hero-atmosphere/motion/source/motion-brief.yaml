@@ -1,0 +1,30 @@
+concept_contract: source/concept-contract.yaml
+identity_bible: null
+parameter_space: circular
+media_access: sequential
+gesture_policy:
+  unit: continuous
+  inertia: coalesce
+  while_active: ignore
+  boundary: loop
+  programmatic_navigation: ignore
+storyboard:
+  - K0 empty high-key shallow water
+  - K1 same plate with caustics drifted
+clip_chain:
+  - K0 -> K1
+keyframes:
+  - id: K0
+    file: source/K0.png
+  - id: K1
+    file: source/K1.png
+rest_state: K0 poster when the Hero is hidden, reduced-motion is on, or the video fails
+loop: closed
+anchor: free
+scene_continuity: locked overhead daylight, same sandbar, empty center
+frame_policy: native
+target_fps: source
+quality_target: 1280x720 source plate, cover in the conversation column, DPR 2 via cover scale
+aspect_ratio: 16:9
+pixel_dimensions: 1280x720
+reduced_motion: static K0 poster

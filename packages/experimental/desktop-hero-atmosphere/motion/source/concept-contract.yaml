@@ -1,0 +1,19 @@
+subject_count: 0
+subjects: []
+style: high-key overhead shallow sandbar, pale champagne sand through thin clear water
+motion_intent: refractive caustics and tiny ripples drift across empty water; the plate stays a quiet desktop background
+background_owner: video
+scene: locked almost-overhead daylight on a shallow sandbar; empty center; no shoreline, animals, or sky
+driver: time
+input_semantics: event
+time_control: autonomous
+navigation: none
+clip_continuity: independent
+continuity:
+  - empty center 40 percent
+  - pale champagne sand visible through thin water
+  - faint aqua and mint tint
+  - no whales, fish, people, boats, rocks, horizon, text, or UI
+  - locked camera and locked framing
+aspect_ratio: 16:9
+destination: octopus_DSH desktop conversation column, blank-session Hero only, object-fit cover, max CSS about 1400x900

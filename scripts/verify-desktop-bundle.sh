@@ -301,6 +301,25 @@ while IFS= read -r dest; do
         bad "$dest is missing node_modules/exceljs — workspace pin must install third-party deps"
       fi
     fi
+    if [[ "$dest" == "@deepseek-ai/dsh-experimental-desktop-hero-atmosphere" ]]; then
+      if [[ -f "$plugin_dir/media/poster.jpg" && -f "$plugin_dir/media/k1.jpg" && -f "$plugin_dir/media/hero.mp4" ]]; then
+        ok "$dest includes poster.jpg, k1.jpg, and hero.mp4"
+      else
+        bad "$dest is missing media/poster.jpg, media/k1.jpg, or media/hero.mp4 — the Hero plate has nothing to play"
+      fi
+      if [[ -f "$plugin_dir/lib/index.js" && -f "$plugin_dir/lib/client.js" ]]; then
+        ok "$dest ships Host and Client faces"
+      else
+        bad "$dest missing lib/index.js or lib/client.js — run tsc -b then tsdown before packaging"
+      fi
+      if [[ -f "$plugin_dir/lib/client.js" ]] && grep -q 'require("url")' "$plugin_dir/lib/client.js"; then
+        bad "$dest Client rewrites import.meta.url to Node require(url) — inline media as data URLs"
+      elif [[ -f "$plugin_dir/lib/client.js" ]] && grep -q 'data:image/jpeg;base64,' "$plugin_dir/lib/client.js"; then
+        ok "$dest Client inlines the poster as a data URL"
+      else
+        bad "$dest Client missing inlined poster data URL — the WebView cannot load package-relative media"
+      fi
+    fi
     if [[ "$dest" == "@deepseek-ai/dsh-experimental-commerce-mode" ]]; then
       if [[ -f "$plugin_dir/preset/commerce/agent.cordis.yml" && -f "$plugin_dir/preset/commerce/preset.yml" ]]; then
         ok "$dest ships the packaged commerce preset"

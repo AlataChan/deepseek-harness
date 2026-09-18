@@ -34,8 +34,17 @@
   --dsh-composer-dock-inset: 8px;
 }
 
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .header {
   position: relative;
+  z-index: 1;
   flex: none;
   padding: 12px 28px 0 20px;
   padding-right: max(28px, var(--dsh-desktop-chrome-right, 28px));
@@ -320,6 +329,7 @@
    bottom edge at every header height. */
 .body {
   position: relative;
+  z-index: 1;
   display: flex;
   flex: 1;
   flex-direction: column;

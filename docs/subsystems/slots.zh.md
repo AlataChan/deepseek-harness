@@ -157,7 +157,8 @@ root
 │  ├─ conversation.hero.brand.mark
 │  ├─ conversation.hero.workspace
 │  │  └─ conversation.hero.workspace.directoryFlow
-│  └─ conversation.hero.agentPreset
+│  ├─ conversation.hero.agentPreset
+│  └─ conversation.atmosphere
 ├─ details
 │  └─ conversation.details.tool
 └─ shell.overlay

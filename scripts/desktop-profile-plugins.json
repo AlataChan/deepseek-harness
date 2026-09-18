@@ -39,6 +39,12 @@
       "version": "0.1.2-rc.1",
       "source": "workspace",
       "path": "packages/experimental/client-ui-agent-team"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-desktop-hero-atmosphere",
+      "version": "0.1.2-rc.1",
+      "source": "workspace",
+      "path": "packages/experimental/desktop-hero-atmosphere"
     }
   ]
 }

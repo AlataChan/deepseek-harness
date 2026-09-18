@@ -390,6 +390,9 @@ export function ConversationRoot({
 
   return (
     <div ref={rootResizeRef} className={css.root} data-phase={phase}>
+      <div className={css.atmosphere} data-conversation-atmosphere="" aria-hidden="true">
+        {renderSlot('conversation.atmosphere', { hero })}
+      </div>
       {sessionId === undefined ? null : renderSlot('conversation.session.header', {})}
       <div className={css.body}>
         <div className={css.scrollBody} data-conversation-scroll="">

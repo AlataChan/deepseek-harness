@@ -81,6 +81,7 @@
     { "path": "./packages/client/ui-reference" },
     { "path": "./packages/client/ui-subagent" },
     { "path": "./packages/experimental/client-ui-agent-team" },
+    { "path": "./packages/experimental/desktop-hero-atmosphere" },
     { "path": "./packages/experimental/desktop-files/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-ask-data/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-ask-knowledge/tsconfig.client.json" },
