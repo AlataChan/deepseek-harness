@@ -374,7 +374,7 @@ export function LibraryPicker({
       title={title}
       closeLabel={t('picker.close')}
       description={phase === 'upload' ? t('picker.uploadLead') : t('picker.summary')}
-      className={css.dialog}
+      {...css.dialog === undefined ? {} : { className: css.dialog }}
     >
       <div aria-describedby={error === undefined ? undefined : errorId}>
         {phase === 'list' ? (
@@ -412,8 +412,8 @@ export function LibraryPicker({
                           <SourceIdentity
                             name={row.displayName}
                             badge={t('picker.typeLibrary')}
-                            documentCount={row.documentCount}
                             countTemplate={t('picker.documentCount')}
+                            {...row.documentCount === undefined ? {} : { documentCount: row.documentCount }}
                           />
                         </button>
                         <button type="button" className={css.add} onClick={() => { startAdd(row) }}>

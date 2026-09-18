@@ -49,8 +49,8 @@ export function LibrarySettingsSection({ listLibraries, removeLibrary, t }: Libr
             <SourceIdentity
               name={row.displayName}
               badge={t('picker.typeLibrary')}
-              documentCount={row.documentCount}
               countTemplate={t('picker.documentCount')}
+              {...row.documentCount === undefined ? {} : { documentCount: row.documentCount }}
             />
             <button
               type="button"
