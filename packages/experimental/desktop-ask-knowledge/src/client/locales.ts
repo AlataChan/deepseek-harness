@@ -7,6 +7,12 @@
 export type AskKnowledgeKey =
   | 'chip.unbound'
   | 'picker.title'
+  | 'picker.summary'
+  | 'picker.rulesToggle'
+  | 'picker.empty'
+  | 'picker.loading'
+  | 'picker.typeLibrary'
+  | 'picker.documentCount'
   | 'picker.leadAskData'
   | 'picker.leadLibrary'
   | 'picker.leadPreset'
@@ -43,6 +49,12 @@ export type AskKnowledgeKey =
 const zh = {
   'chip.unbound': '知识库',
   'picker.title': '选一个知识库',
+  'picker.summary': '挂上一个可复用的文档库；表格请走问数。',
+  'picker.rulesToggle': '规则',
+  'picker.empty': '还没有知识库。新建一个，或先空着开始提问。',
+  'picker.loading': '正在加载知识库',
+  'picker.typeLibrary': '文档库',
+  'picker.documentCount': '{count} 篇',
   'picker.leadAskData': '问数是这一次问一张表，问完锁在这个会话。',
   'picker.leadLibrary': '知识库是问一套会变厚的材料，换会话还能用。',
   'picker.leadPreset': '挂上库不是换成另一种助理，默认仍是标准模式，只是多了检索工具。',
@@ -80,6 +92,12 @@ const zh = {
 const en = {
   'chip.unbound': 'Knowledge',
   'picker.title': 'Choose a knowledge library',
+  'picker.summary': 'Hang a reusable document library. Spreadsheets belong in ask-data.',
+  'picker.rulesToggle': 'Rules',
+  'picker.empty': 'No knowledge libraries yet. Create one, or skip and ask with an empty library.',
+  'picker.loading': 'Loading knowledge libraries',
+  'picker.typeLibrary': 'Document library',
+  'picker.documentCount': '{count} docs',
   'picker.leadAskData': 'Ask-data asks one table in this session and stays locked here.',
   'picker.leadLibrary': 'A knowledge library thickens over time and can be reused in other sessions.',
   'picker.leadPreset': 'Hanging a library does not change the assistant. Standard mode stays; retrieve tools are added.',

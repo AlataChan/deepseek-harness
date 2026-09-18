@@ -1,47 +1,42 @@
-/* Geometry matches HeroShell .workspace and AskDataChip .chip. */
-.chip {
+.identity {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  max-width: min(100%, 240px);
-  min-height: 28px;
-  padding: 0 8px;
-  border: none;
-  border-radius: 16px;
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 500;
-  white-space: nowrap;
+  gap: 8px;
+  min-width: 0;
+  font: var(--dsw-font-xxs-12);
+}
+
+.name {
   overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-s-strong-14);
   text-overflow: ellipsis;
-  cursor: pointer;
+  white-space: nowrap;
 }
 
-.chip:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-.mark,
-.avatar {
+.count,
+.badge {
   flex: 0 0 auto;
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xxs-12);
+}
+
+.badge {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
 }
 
 .avatar {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   font: var(--dsw-font-xxxs-11);
   line-height: 1;
-}
-
-.label {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .hue0 {

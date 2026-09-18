@@ -22,3 +22,12 @@
 .chip:hover {
   background: var(--dsw-alias-interactive-bg-hover);
 }
+
+.mark {
+  flex: 0 0 auto;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react'
 import { AskKnowledgeChip } from '../src/client/AskKnowledgeChip.tsx'
 import { encodeAskKnowledgeBytes } from '../src/client/bytes.ts'
 import {
@@ -17,7 +17,9 @@ import {
   unusedLibraryName,
 } from '../src/client/ingest-file.ts'
 import { ingestFinishError, LibraryPicker, type LibraryPickerProps } from '../src/client/LibraryPicker.tsx'
+import { formatDocumentCount, libraryHueIndex, libraryInitial } from '../src/client/library-initial.ts'
 import { LibrarySettingsSection } from '../src/client/LibrarySettingsSection.tsx'
+import { SourceIdentity } from '../src/client/SourceIdentity.tsx'
 import { en, zh } from '../src/client/locales.ts'
 const t = (key: keyof typeof zh) => zh[key]
 
@@ -35,7 +37,7 @@ function ingestRemotes() {
 
 function renderPicker(overrides: Partial<LibraryPickerProps> = {}) {
   const remotes = ingestRemotes()
-  const view = render(
+  const rendered = render(
     <LibraryPicker
       listLibraries={async () => ({ ok: true, value: [{ id: '1', displayName: '制度 A' }] })}
       createLibrary={async () => ({ ok: true, value: { id: '2', displayName: '新' } })}
@@ -48,21 +50,31 @@ function renderPicker(overrides: Partial<LibraryPickerProps> = {}) {
       {...overrides}
     />,
   )
-  return { view, remotes }
+  const dialogs = rendered.baseElement.querySelectorAll<HTMLElement>('[role="dialog"]')
+  const root = dialogs.item(dialogs.length - 1) ?? rendered.baseElement
+  const queries = within(root)
+  return {
+    view: {
+      ...queries,
+      unmount: rendered.unmount,
+      container: root,
+    },
+    remotes,
+  }
 }
 
-function fileInput(view: ReturnType<typeof render>) {
+function fileInput(view: { container: HTMLElement }) {
   return view.container.querySelector('input[type="file"]') as HTMLInputElement
 }
 
-async function changeFile(view: ReturnType<typeof render>, file: File | undefined) {
+async function changeFile(view: { container: HTMLElement }, file: File | undefined) {
   await waitFor(() => {
     expect(fileInput(view)).toBeTruthy()
   })
   fireEvent.change(fileInput(view), { target: { files: file === undefined ? [] : [file] } })
 }
 
-async function changeFiles(view: ReturnType<typeof render>, names: readonly string[]) {
+async function changeFiles(view: { container: HTMLElement }, names: readonly string[]) {
   await waitFor(() => {
     expect(fileInput(view)).toBeTruthy()
   })
@@ -93,6 +105,12 @@ describe('ask-knowledge picker', () => {
     expect(en['picker.addDocument']).toBe('Add document')
     expect(en['picker.remove']).toBe('Delete')
     expect(en['picker.close']).toBe('Close the knowledge library')
+    expect(en['picker.summary']).toBe('Hang a reusable document library. Spreadsheets belong in ask-data.')
+    expect(en['picker.rulesToggle']).toBe('Rules')
+    expect(en['picker.empty']).toBe('No knowledge libraries yet. Create one, or skip and ask with an empty library.')
+    expect(en['picker.loading']).toBe('Loading knowledge libraries')
+    expect(en['picker.typeLibrary']).toBe('Document library')
+    expect(en['picker.documentCount']).toBe('{count} docs')
     expect(en['settings.removeFailed']).toBe('Could not remove the library from the list.')
     expect(en['picker.leadThicken']).toBe('Click a name to hang it. Add a document to put more material into that library. Delete removes it from the list.')
     expect(en['picker.leadDataMode']).toContain('data mode')
@@ -124,10 +142,11 @@ describe('ask-knowledge picker', () => {
 
   it('shows 知识库 when unbound and the library name when bound', () => {
     const unbound = render(<AskKnowledgeChip openPicker={() => {}} t={t} />)
-    expect(unbound.getByRole('button').textContent).toBe('知识库')
+    expect(unbound.getByRole('button', { name: '知识库' })).toBeTruthy()
     unbound.unmount()
     const bound = render(<AskKnowledgeChip openPicker={() => {}} boundName="制度 A" t={t} />)
-    expect(bound.getByRole('button').textContent).toBe('制度 A')
+    expect(bound.getByRole('button', { name: '制度 A' })).toBeTruthy()
+    expect(bound.getByText('制')).toBeTruthy()
     bound.unmount()
   })
 
@@ -189,6 +208,42 @@ describe('ask-knowledge picker', () => {
     })
   })
 
+  it('ignores a File that arrives after the native picker reports cancel', async () => {
+    const beginIngest = vi.fn(async () => ({ ok: true as const, value: 'h1' }))
+    const { view } = renderPicker({ beginIngest })
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await waitFor(() => {
+      expect(fileInput(view)).toBeTruthy()
+    })
+    const input = fileInput(view)
+    fireEvent.click(input)
+    fireEvent(input, new Event('cancel', { bubbles: true }))
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array([97])], 'notes.md')] } })
+    expect(beginIngest).not.toHaveBeenCalled()
+  })
+
+  it('drops a second change while the first File is still being accepted', async () => {
+    const beginIngest = vi.fn(async () => ({ ok: true as const, value: 'h1' }))
+    const { view } = renderPicker({ beginIngest })
+    await waitFor(() => {
+      expect(view.getByText('制度 A')).toBeTruthy()
+    })
+    view.getByRole('button', { name: '+ 新建知识库' }).click()
+    await waitFor(() => {
+      expect(fileInput(view)).toBeTruthy()
+    })
+    const input = fileInput(view)
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array([97])], '第一份.md')] } })
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array([98])], '第二份.md')] } })
+    await waitFor(() => {
+      expect(beginIngest).toHaveBeenCalledTimes(1)
+      expect(beginIngest).toHaveBeenCalledWith('2', '第一份.md')
+    })
+  })
+
   it('does not toast emptyPick after a File arrives and the input clears', async () => {
     const beginIngest = vi.fn(async () => ({ ok: true as const, value: 'h1' }))
     const { view } = renderPicker({ beginIngest })
@@ -214,12 +269,62 @@ describe('ask-knowledge picker', () => {
     const listLibraries = vi.fn(async () => ({ ok: true as const, value: [{ id: '1', displayName: '制度 A' }] }))
     const { view } = renderPicker({ listLibraries })
     await waitFor(() => {
-      expect(view.getByText('问数是这一次问一张表，问完锁在这个会话。')).toBeTruthy()
+      expect(view.getByText('挂上一个可复用的文档库；表格请走问数。')).toBeTruthy()
     })
+    expect(view.container.getAttribute('role')).toBe('dialog')
+    expect(view.getByRole('heading', { name: '选一个知识库' })).toBeTruthy()
+    view.getByText('规则').click()
+    expect(view.getByText('问数是这一次问一张表，问完锁在这个会话。')).toBeTruthy()
     expect(view.getByText('知识库是问一套会变厚的材料，换会话还能用。')).toBeTruthy()
     expect(view.getByText('挂上库不是换成另一种助理，默认仍是标准模式，只是多了检索工具。')).toBeTruthy()
     expect(view.getByText('点库名挂到这个会话。点添加文档，往这个库再放一份材料。点删除，从名单去掉。')).toBeTruthy()
     expect(view.getAllByText('制度 A').length).toBeGreaterThan(0)
+    expect(view.getByText('文档库')).toBeTruthy()
+  })
+
+  it('prints a document count on a picker row', async () => {
+    const { view } = renderPicker({
+      listLibraries: async () => ({ ok: true, value: [{ id: '1', displayName: '制度 A', documentCount: 12 }] }),
+    })
+    await waitFor(() => {
+      expect(view.getByText('12 篇')).toBeTruthy()
+    })
+    expect(libraryInitial('制度 A')).toBe('制')
+    expect(libraryInitial('')).toBe('?')
+    expect(libraryHueIndex('制度 A')).toBe(libraryHueIndex('制度 A'))
+    expect(formatDocumentCount('{count} docs', 3)).toBe('3 docs')
+  })
+
+  it('omits the document count when the template is missing', () => {
+    const view = render(<SourceIdentity name="制度 A" badge="文档库" documentCount={3} />)
+    expect(view.queryByText('3')).toBeNull()
+    expect(view.queryByText('3 篇')).toBeNull()
+    expect(view.getByText('制')).toBeTruthy()
+    expect(view.getByText('文档库')).toBeTruthy()
+    view.unmount()
+  })
+
+  it('shows a loading skeleton then an empty catalog', async () => {
+    let resolveList: ((value: { ok: true; value: [] }) => void) | undefined
+    const { view } = renderPicker({
+      listLibraries: () => new Promise((resolve) => { resolveList = resolve }),
+    })
+    expect(view.getByLabelText('正在加载知识库')).toBeTruthy()
+    resolveList?.({ ok: true, value: [] })
+    await waitFor(() => {
+      expect(view.getByText('还没有知识库。新建一个，或先空着开始提问。')).toBeTruthy()
+    })
+    expect(view.queryByLabelText('正在加载知识库')).toBeNull()
+  })
+
+  it('closes the modal on Escape', async () => {
+    const close = vi.fn()
+    const { view } = renderPicker({ close })
+    await waitFor(() => {
+      expect(view.container.getAttribute('role')).toBe('dialog')
+    })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(close).toHaveBeenCalledTimes(1)
   })
 
   it('keeps same-named libraries distinct from the create control', async () => {
@@ -243,7 +348,7 @@ describe('ask-knowledge picker', () => {
     const removeLibrary = vi.fn(async () => ({ ok: true as const }))
     const view = render(
       <LibrarySettingsSection
-        listLibraries={async () => ({ ok: true, value: [{ id: '1', displayName: '制度 A' }] })}
+        listLibraries={async () => ({ ok: true, value: [{ id: '1', displayName: '制度 A', documentCount: 2 }] })}
         removeLibrary={removeLibrary}
         t={t}
       />,
@@ -251,6 +356,8 @@ describe('ask-knowledge picker', () => {
     await waitFor(() => {
       expect(view.getByText('我的知识库')).toBeTruthy()
     })
+    expect(view.getByText('文档库')).toBeTruthy()
+    expect(view.getByText('2 篇')).toBeTruthy()
     view.getByRole('button', { name: '从名单移除' }).click()
     await waitFor(() => {
       expect(removeLibrary).toHaveBeenCalledWith('1')
@@ -860,6 +967,7 @@ describe('ask-knowledge picker', () => {
     expect(view.queryByText('已入库')).toBeNull()
     expect(attach).not.toHaveBeenCalled()
     expect(close).not.toHaveBeenCalled()
+    view.unmount()
     const beginIngest = vi.fn(async () => ({ ok: true as const, value: 'h1' }))
     const failed = renderPicker({
       createLibrary: async () => ({ ok: false, error: { message: '建不了' } }),

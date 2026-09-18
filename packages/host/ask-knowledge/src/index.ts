@@ -59,6 +59,8 @@ export interface AskKnowledgeLibrary {
   readonly missing: boolean
   readonly deleting: boolean
   readonly hasWorkspaceShortcut?: boolean
+  /** Ingested `raw/*.md` files in the vault, when the Provider counts them. */
+  readonly documentCount?: number
 }
 
 /** Same-process undo of one {@link AskKnowledge.attach}. */

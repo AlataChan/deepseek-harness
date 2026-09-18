@@ -4,7 +4,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, realpath, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, realpath, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { z } from 'zod'
 import { AskKnowledgeError, AskKnowledgeLibraryId } from '@deepseek-ai/dsh-host-ask-knowledge'
@@ -342,6 +342,23 @@ async function toListRow(
     lastUsedAt: row.lastUsedAt,
     missing,
     deleting: row.deleting === true,
+    documentCount: missing ? 0 : await countRawDocuments(join(knowledgeBasesRoot(knowledgeHome), row.vaultRelPath)),
+  }
+}
+
+/**
+ * Count ingested source files under `raw/`.
+ * @param vault - absolute vault directory.
+ * @returns markdown files in `raw/`, or 0 when that directory is absent.
+ */
+async function countRawDocuments(vault: string): Promise<number> {
+  try {
+    const names = await readdir(join(vault, 'raw'))
+    return names.filter(name => name.endsWith('.md')).length
+  } catch (error: unknown) {
+    if (isNotFound(error)) return 0
+    /* v8 ignore next -- readdir fails only when the vault path is not a directory */
+    throw error
   }
 }
 

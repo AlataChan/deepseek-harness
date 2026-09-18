@@ -14,7 +14,7 @@ A library appeared to hold one document. Two mechanisms caused it. The composer 
 
 ## Decision
 
-The picker carries a close control in both panels, and the hero chip toggles: a second click on 知识库 closes the panel. The plus-menu bridge keeps an idempotent open, so a request to add a document never closes an open panel. `LibraryPicker` no longer accepts `initialPhase` and `LibraryPickerPhase` is no longer exported, because no entry opens the upload panel directly.
+The picker is a `Modal`; Escape and the Modal close control dismiss both phases, and the hero chip toggles: a second click on 知识库 closes the picker. The plus-menu bridge keeps an idempotent open, so a request to add a document never closes an open panel. `LibraryPicker` no longer accepts `initialPhase` and `LibraryPickerPhase` is no longer exported, because no entry opens the upload panel directly.
 
 The composer plus entry opens the picker on the library list. A document then lands in the library the user picks through 添加文档, or in a new one through 新建知识库 ([picker entry](../feature/2026-08-31-composer-plus-attach.md) owns the plus menu itself).
 

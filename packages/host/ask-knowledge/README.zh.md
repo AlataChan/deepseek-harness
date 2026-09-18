@@ -6,7 +6,7 @@ Web GUI Host 的知识库目录、入库、仅本会话抽取、挂接与检索�
 
 Client 聚合通过 `@deepseek-ai/dsh-host-ask-knowledge/client` 取得 `askKnowledgeBinding` 投影合并；该出口转述 `./types`，不加载 Host `AskKnowledge` 服务。
 
-`listLibraries` 只读 `catalog.json`，不跑 recover。`createLibrary` 写空 vault 与目录行。`beginIngest` / `appendIngestChunk` / `finishIngest` 是上传路径；单条 Remote 不得携带整文件。失败的 `finishIngest` 可以带 `error`。`beginExtract` / `appendExtractChunk` / `finishExtract` 把一份文件转成文字给本会话看，不写户口本；`finishExtract` 最多返回 `ASK_KNOWLEDGE_EXTRACT_MAX_CHARS` 个码点。`attach({ libraryId, sessionId })` 在目标 Session 已存在之后运行，返回同进程 `AskKnowledgeAttachLease`。`ask-knowledge/bound` 与 `ask-knowledge/unbound` 在此合并进 `SessionEventMap`（无 `@mode`）；`askKnowledgeBinding` 投影由 Provider 注册。
+`listLibraries` 只读 `catalog.json`，不跑 recover。名单行可带 `documentCount`，表示 Provider 数过的已入库 `raw/*.md` 篇数。`createLibrary` 写空 vault 与目录行。`beginIngest` / `appendIngestChunk` / `finishIngest` 是上传路径；单条 Remote 不得携带整文件。失败的 `finishIngest` 可以带 `error`。`beginExtract` / `appendExtractChunk` / `finishExtract` 把一份文件转成文字给本会话看，不写户口本；`finishExtract` 最多返回 `ASK_KNOWLEDGE_EXTRACT_MAX_CHARS` 个码点。`attach({ libraryId, sessionId })` 在目标 Session 已存在之后运行，返回同进程 `AskKnowledgeAttachLease`。`ask-knowledge/bound` 与 `ask-knowledge/unbound` 在此合并进 `SessionEventMap`（无 `@mode`）；`askKnowledgeBinding` 投影由 Provider 注册。
 
 抽词 schema、错误码和中性错误数据由本包导出（`ASK_KNOWLEDGE_TERMS_SCHEMA`、`ask-knowledge/terms-invalid`、`ask-knowledge/no-hit`）。overlay 只映射中文文案。
 

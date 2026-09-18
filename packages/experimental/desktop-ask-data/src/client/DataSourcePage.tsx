@@ -2,7 +2,7 @@
  * Root-scope data-source gate: sample first, then upload, then existing-database connect.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import { encodeAskDataBytes, readFileBytes } from './bytes.ts'
@@ -14,6 +14,7 @@ import {
   offerAskDataTemplate,
   type AskDataTemplateOffer,
 } from './template.ts'
+import { SourceIdentity } from './SourceIdentity.tsx'
 import css from './DataSourcePage.module.css'
 
 const PITFALL_KEYS = ['pitfall1', 'pitfall2', 'pitfall3', 'pitfall4', 'pitfall5'] as const
@@ -78,6 +79,7 @@ export function DataSourcePage({
   sqlite3Missing, t,
 }: DataSourcePageProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const errorId = useId()
   const [sources, setSources] = useState<readonly ListedSource[]>([])
   const [preview, setPreview] = useState<ListedPreview | undefined>()
   const [error, setError] = useState<string | undefined>()
@@ -153,13 +155,12 @@ export function DataSourcePage({
   const selectedId = resolveSelectedId(pickedId, preview, listed)
 
   const selectRow = (row: ListedSource): void => {
-    if (row.missing) return
     setPickedId(row.id)
     if (preview !== undefined && preview.source.id !== row.id) setPreview(undefined)
   }
 
   return (
-    <div className={css.page}>
+    <div className={css.page} aria-describedby={error === undefined && sqlite3Missing !== true ? undefined : errorId}>
       <div className={css.header}>
         <h2 className={css.title}>{t('title')}</h2>
         <button
@@ -171,8 +172,10 @@ export function DataSourcePage({
           <span aria-hidden>×</span>
         </button>
       </div>
-      <p className={css.lead}>{t('pageLead')}</p>
-      <section className={css.section}>
+      <p className={css.lead}>{t('pageSummary')}</p>
+      <details className={css.rules}>
+        <summary>{t('rulesToggle')}</summary>
+        <p className={css.lead}>{t('pageLead')}</p>
         <h3 className={css.sectionTitle}>{t('pitfallsTitle')}</h3>
         <ul className={css.pitfalls}>
           {PITFALL_KEYS.map(key => (
@@ -180,9 +183,9 @@ export function DataSourcePage({
           ))}
         </ul>
         <p className={css.helper}>{t('templateHint')}</p>
-      </section>
+      </details>
       <p className={css.helper}>{t('uploadHelper')}</p>
-      {sqlite3Missing === true && <p className={css.error}>{t('sqlite3Missing')}</p>}
+      {sqlite3Missing === true && <p id={errorId} className={css.error} role="alert">{t('sqlite3Missing')}</p>}
       <div className={css.actions}>
         <Button
           variant="primary"
@@ -274,7 +277,13 @@ export function DataSourcePage({
       )}
       {error !== undefined && (
         <div className={css.section}>
-          <p className={css.error}>{error}</p>
+          <p
+            id={sqlite3Missing === true ? undefined : errorId}
+            className={css.error}
+            role="alert"
+          >
+            {error}
+          </p>
           <Button
             variant="primary"
             disabled={busy}
@@ -355,8 +364,15 @@ function resolveSelectedId(
   if (pickedId === undefined) return undefined
   if (preview?.source.id === pickedId) return pickedId
   const row = listed.find(item => item.id === pickedId)
-  if (row !== undefined && !row.missing) return pickedId
-  return undefined
+  /* v8 ignore next -- listed omits a missing row; showPreview keeps preview aligned with pickedId */
+  if (row === undefined || row.missing) return undefined
+  return pickedId
+}
+
+function sourceBadge(kind: ListedSource['kind'], t: (key: AskDataKey) => string): string {
+  if (kind === 'sample') return t('typeSample')
+  if (kind === 'saved') return t('typeSaved')
+  return t('typeTable')
 }
 
 function SourceRow({
@@ -368,12 +384,14 @@ function SourceRow({
   onSelect: () => void
   onReselect: () => void
 }) {
+  const identity = <SourceIdentity name={row.displayName} badge={sourceBadge(row.kind, t)} />
   return (
     <div className={selected ? `${css.row} ${css.rowSelected}` : css.row}>
       {row.missing
         ? (
           <span className={css.missing}>
-            {row.displayName}
+            <span className={css.missingMark} aria-hidden>!</span>
+            {identity}
             {` · ${t('missing')}`}
           </span>
         )
@@ -381,10 +399,11 @@ function SourceRow({
           <button
             type="button"
             className={css.rowPick}
+            aria-label={row.displayName}
             aria-pressed={selected}
             onClick={onSelect}
           >
-            {row.displayName}
+            {identity}
           </button>
         )}
       {row.missing

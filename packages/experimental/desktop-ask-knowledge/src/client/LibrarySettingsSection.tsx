@@ -4,11 +4,14 @@
 
 import { useEffect, useState } from 'react'
 import type { AskKnowledgeKey } from './locales.ts'
+import { SourceIdentity } from './SourceIdentity.tsx'
+import css from './LibrarySettingsSection.module.css'
 
 /** One catalog row on the management page. */
 export interface SettingsLibrary {
   readonly id: string
   readonly displayName: string
+  readonly documentCount?: number
 }
 
 /** Remotes the settings section needs. */
@@ -38,14 +41,20 @@ export function LibrarySettingsSection({ listLibraries, removeLibrary, t }: Libr
   }, [listLibraries])
 
   return (
-    <section>
-      <h2>{t('settings.section')}</h2>
-      <ul>
+    <section className={css.section}>
+      <h2 className={css.title}>{t('settings.section')}</h2>
+      <ul className={css.list}>
         {rows.map(row => (
-          <li key={row.id}>
-            <span>{row.displayName}</span>
+          <li key={row.id} className={css.row}>
+            <SourceIdentity
+              name={row.displayName}
+              badge={t('picker.typeLibrary')}
+              documentCount={row.documentCount}
+              countTemplate={t('picker.documentCount')}
+            />
             <button
               type="button"
+              className={css.remove}
               onClick={() => {
                 void removeLibrary(row.id).then((result) => {
                   if (result.ok) {
@@ -62,7 +71,7 @@ export function LibrarySettingsSection({ listLibraries, removeLibrary, t }: Libr
           </li>
         ))}
       </ul>
-      {error !== undefined && <p>{error}</p>}
+      {error !== undefined && <p className={css.error} role="alert">{error}</p>}
     </section>
   )
 }

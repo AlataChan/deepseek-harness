@@ -14,7 +14,7 @@ Status: implemented
 
 ## Decision
 
-面板两个状态都带关闭控件，hero chip 变成开关：再点一次「知识库」收起面板。加号菜单那座桥保持幂等的「打开」，所以「添加文档」的请求不会把已打开的面板关掉。`LibraryPicker` 不再接 `initialPhase`，`LibraryPickerPhase` 也不再导出，因为没有入口会直接打开上传面板。
+选择器是 `Modal`；Escape 和 Modal 关闭控件会关掉两个阶段，hero chip 变成开关：再点一次「知识库」收起选择器。加号菜单那座桥保持幂等的「打开」，所以「添加文档」的请求不会把已打开的面板关掉。`LibraryPicker` 不再接 `initialPhase`，`LibraryPickerPhase` 也不再导出，因为没有入口会直接打开上传面板。
 
 加号入口改为在选库名单上打开选择器。文档随后进入用户点「添加文档」选中的库，或经「新建知识库」进入新库（加号菜单本身由[选库入口](../feature/2026-08-31-composer-plus-attach.zh.md)负责）。
 

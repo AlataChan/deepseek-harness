@@ -7,6 +7,24 @@
   color: var(--dsw-alias-label-primary);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .page {
+    animation: workbench-enter 120ms ease-out;
+  }
+}
+
+@keyframes workbench-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .title,
 .sectionTitle {
   color: var(--dsw-alias-label-primary);
@@ -21,7 +39,7 @@
 
 .title {
   margin: 0;
-  font-size: 20px;
+  font: var(--dsw-font-l-20);
   font-weight: 600;
 }
 
@@ -37,7 +55,7 @@
   border-radius: 50%;
   background: transparent;
   color: var(--dsw-alias-label-secondary);
-  font-size: 16px;
+  font: var(--dsw-font-base-16);
   line-height: 1;
   cursor: pointer;
 }
@@ -46,15 +64,31 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
+.close:focus-visible,
+.rowPick:focus-visible,
+.rules summary:focus-visible {
+  box-shadow: 0 0 0 2px var(--dsw-alias-border-l3);
+}
+
 .lead,
 .helper,
 .limits,
 .pitfalls,
-.warnings {
+.warnings,
+.rules {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
+  font: var(--dsw-font-xs-13);
   color: var(--dsw-alias-label-secondary);
+}
+
+.rules summary {
+  cursor: pointer;
+}
+
+.rules .lead,
+.rules .helper,
+.rules .pitfalls {
+  margin-top: 8px;
 }
 
 .actions {
@@ -75,8 +109,7 @@
 
 .sectionTitle {
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
+  font: var(--dsw-font-xs-strong-13);
 }
 
 .row {
@@ -100,16 +133,32 @@
 }
 
 .rowPick:hover {
-  border-color: var(--dsw-alias-border-primary, #3d3d3d);
+  border-color: var(--dsw-alias-border-l2);
 }
 
 .rowSelected .rowPick {
-  border-color: var(--dsw-alias-border-brand, #4d8dff);
-  background: var(--dsw-alias-fill-brand-soft, rgb(77 141 255 / 12%));
+  border-color: var(--dsw-alias-state-business-primary);
+  background: var(--dsw-alias-state-business-tertiary);
 }
 
 .missing {
-  color: var(--dsw-alias-text-danger, #b42318);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.missingMark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  border-radius: 50%;
+  font: var(--dsw-font-xxxs-11);
+  line-height: 1;
 }
 
 .warnings,
@@ -120,8 +169,8 @@
 
 .error {
   margin: 0;
-  color: var(--dsw-alias-text-danger, #b42318);
-  font-size: 13px;
+  color: var(--dsw-alias-state-error-primary);
+  font: var(--dsw-font-xs-13);
 }
 
 .templateBody {
@@ -131,10 +180,10 @@
   margin: 0;
   padding: 8px;
   color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-bg-elevated, transparent);
-  border: 1px solid var(--dsw-alias-border-l2, rgb(255 255 255 / 14%));
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  font: var(--dsw-font-xxs-12);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
   line-height: 1.45;
   resize: vertical;
 }

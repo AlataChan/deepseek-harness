@@ -5,6 +5,7 @@ import { DataSourcePage } from '../src/client/DataSourcePage.tsx'
 import { AskDataChip } from '../src/client/AskDataChip.tsx'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { zh } from '../src/client/locales.ts'
+import { sourceHueIndex, sourceInitial } from '../src/client/source-initial.ts'
 import { ASK_DATA_RULE_IDS } from '../src/limits.ts'
 import { encodeAskDataBytes, readFileBytes } from '../src/client/bytes.ts'
 import { PreviewPanel } from '../src/client/PreviewPanel.tsx'
@@ -38,6 +39,8 @@ describe('DataSourcePage', () => {
       expect(view.getByText('先用示例试一次')).toBeTruthy()
     })
     expect(view.getByText('选一份要问的数据')).toBeTruthy()
+    expect(view.getByText('先选数据再提问。先用示例，或下载模板填好再上传。')).toBeTruthy()
+    expect(view.getByText('上传规则与避坑')).toBeTruthy()
     const helper = view.getByText(/上传前请确认/)
     expect(helper.textContent).toContain('表头')
     expect(helper.textContent).toContain('.xlsx')
@@ -214,6 +217,90 @@ describe('DataSourcePage', () => {
     expect((view.getByText('先用示例试一次') as HTMLButtonElement).disabled).toBe(false)
   })
 
+  it('keeps the sqlite3 alert id when a later import error appears', async () => {
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({ ok: true, value: [] })}
+        importSpreadsheet={vi.fn()}
+        importSample={async () => ({
+          ok: false as const,
+          error: new RemoteError('session/ask-data-failed', 'csv must be UTF-8 or GB18030', { code: 'csv-encoding' }),
+        })}
+        commit={vi.fn()}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={vi.fn()}
+        onAdvanced={vi.fn()}
+        sqlite3Missing
+        t={t}
+      />,
+    )
+    await waitFor(() => {
+      expect(view.getByText('这台电脑找不到 sqlite3，无法上传表格；仍可用示例。')).toBeTruthy()
+    })
+    const sqlite3 = view.getByText('这台电脑找不到 sqlite3，无法上传表格；仍可用示例。')
+    const sqlite3Id = sqlite3.getAttribute('id')
+    expect(sqlite3Id).toBeTruthy()
+    fireEvent.click(view.getByText('先用示例试一次'))
+    await waitFor(() => {
+      expect(view.getByText('改用示例')).toBeTruthy()
+    })
+    expect(view.getByText('CSV 编码不支持，请另存为 UTF-8 或 GB18030 再上传。').getAttribute('id')).toBeNull()
+    expect(view.container.firstElementChild?.getAttribute('aria-describedby')).toBe(sqlite3Id)
+  })
+
+  it('clears a preview when a different listed source is picked', async () => {
+    const view = render(
+      <DataSourcePage
+        listSources={async () => ({
+          ok: true,
+          value: [
+            {
+              id: 'src-s',
+              displayName: '示例：销售明细',
+              kind: 'sample',
+              lastUsedAt: '2026-01-02T00:00:00.000Z',
+              missing: false,
+              warnings: [],
+            },
+            { id: 'src-2', displayName: 'other.csv', kind: 'import', missing: false, warnings: [] },
+          ],
+        })}
+        importSpreadsheet={vi.fn()}
+        importSample={async () => ({
+          ok: true as const,
+          value: {
+            source: {
+              id: 'src-s',
+              displayName: '示例：销售明细',
+              kind: 'sample' as const,
+              missing: false,
+              warnings: [],
+            },
+            tables: [{ name: '销售明细', rowCount: 1, columns: ['preview-col'] }],
+            warnings: [],
+          },
+        })}
+        commit={vi.fn()}
+        createAdvanced={vi.fn()}
+        cancel={async () => undefined}
+        onCommitted={vi.fn()}
+        onAdvanced={vi.fn()}
+        t={t}
+      />,
+    )
+    fireEvent.click(view.getByText('先用示例试一次'))
+    await waitFor(() => {
+      expect(view.getByText(/将按同一套规则入库/)).toBeTruthy()
+      expect(view.getByText(/preview-col/)).toBeTruthy()
+    })
+    fireEvent.click(view.getByText('other.csv'))
+    await waitFor(() => {
+      expect(view.queryByText(/将按同一套规则入库/)).toBeNull()
+      expect(view.getAllByText('开始提问')).toHaveLength(1)
+    })
+  })
+
   it('shows failure recovery as a sentence and offers the sample', async () => {
     const view = render(
       <DataSourcePage
@@ -266,6 +353,7 @@ describe('DataSourcePage', () => {
       expect(view.getByText(/找不到这份表/)).toBeTruthy()
     })
     expect(view.getAllByText('sales.csv')).toHaveLength(1)
+    expect(view.getAllByText('表格').length).toBeGreaterThan(0)
     expect(view.getByText('全部数据源')).toBeTruthy()
     expect(view.queryByText('开始提问')).toBeNull()
     fireEvent.click(view.getByText('sales.csv'))
@@ -286,6 +374,7 @@ describe('DataSourcePage', () => {
           ok: true,
           value: [
             { id: 'src-rest', displayName: 'archive.csv', kind: 'import', missing: false, warnings: [] },
+            { id: 'src-db', displayName: 'finance.db', kind: 'saved', missing: false, warnings: [] },
             { id: 'src-miss', displayName: 'gone.csv', kind: 'import', missing: true, warnings: [] },
           ],
         })}
@@ -302,6 +391,7 @@ describe('DataSourcePage', () => {
     await waitFor(() => {
       expect(view.getByText('全部数据源')).toBeTruthy()
     })
+    expect(view.getByText('已保存')).toBeTruthy()
     expect(view.queryByText('开始提问')).toBeNull()
     fireEvent.click(view.getByText('archive.csv'))
     fireEvent.click(view.getByText('开始提问'))
@@ -346,6 +436,7 @@ describe('DataSourcePage', () => {
       expect(view.getByText('全部数据源')).toBeTruthy()
     })
     expect(view.getAllByText('示例：销售明细')).toHaveLength(1)
+    expect(view.getByText('示例')).toBeTruthy()
     expect(view.getAllByText('other.csv')).toHaveLength(1)
     expect(view.queryByText('开始提问')).toBeNull()
     expect(view.getByText(/点名单选一份/)).toBeTruthy()
@@ -769,8 +860,11 @@ describe('AskDataChip', () => {
   it('opens the gate', () => {
     const openGate = vi.fn()
     const view = render(<AskDataChip openGate={openGate} t={t} />)
-    fireEvent.click(view.getByText('问数'))
+    fireEvent.click(view.getByRole('button', { name: '问数' }))
     expect(openGate).toHaveBeenCalled()
+    expect(sourceInitial('sales.csv')).toBe('s')
+    expect(sourceInitial('')).toBe('?')
+    expect(sourceHueIndex('sales.csv')).toBe(sourceHueIndex('sales.csv'))
   })
 })
 

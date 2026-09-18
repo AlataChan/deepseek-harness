@@ -528,6 +528,8 @@ export interface SessionAskKnowledgeLibrary {
   readonly lastUsedAt: string
   readonly missing: boolean
   readonly deleting: boolean
+  /** Ingested `raw/*.md` files, when the Provider counted them. */
+  readonly documentCount?: number
 }
 
 /** Create a library; Host does not guess the current Session. */

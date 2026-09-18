@@ -1,6 +1,6 @@
 /**
  * Library picker. Occupies conversation.askKnowledge.picker, never askData.gate.
- * Create and Add document show the upload panel. The choose-file control is a
+ * Rendered as ui-primitives Modal. Create and Add document show the upload panel. The choose-file control is a
  * transparent file input over the visible button so Tauri WebView can open the
  * native picker. The input omits HTML accept and listens on the element.
  * It accepts several files and ingests them one at a time into the one
@@ -11,6 +11,13 @@
  */
 
 import { useEffect, useId, useRef, useState } from 'react'
+import {
+  IconCheckOutline16,
+  IconCloseOutline16,
+  IconLoadingOutline16,
+  IconQueueOutline14,
+  Modal,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import { readFileBytes } from './bytes.ts'
 import {
   encodeIngestChunks,
@@ -21,12 +28,14 @@ import {
   unusedLibraryName,
 } from './ingest-file.ts'
 import type { AskKnowledgeKey } from './locales.ts'
+import { SourceIdentity } from './SourceIdentity.tsx'
 import css from './LibraryPicker.module.css'
 
 /** One catalog row the picker can hang. */
 export interface PickerLibrary {
   readonly id: string
   readonly displayName: string
+  readonly documentCount?: number
 }
 
 /** Result of `finishAskKnowledgeIngest` as the picker reads it. */
@@ -65,6 +74,18 @@ function updateBatchEntry(
   patch: { state: BatchState; reason?: string },
 ): readonly BatchEntry[] {
   return entries.map((entry, at) => at === index ? { ...entry, ...patch } : entry)
+}
+
+function BatchGlyph({ state }: { state: BatchState }) {
+  const className = state === 'running' ? `${css.batchGlyph} ${css.batchSpin}` : css.batchGlyph
+  const Icon = state === 'queued'
+    ? IconQueueOutline14
+    : state === 'running'
+      ? IconLoadingOutline16
+      : state === 'done'
+        ? IconCheckOutline16
+        : IconCloseOutline16
+  return <span className={className} aria-hidden><Icon size={14} /></span>
 }
 
 function batchEntryText(entry: BatchEntry, t: (key: AskKnowledgeKey) => string): string {
@@ -141,11 +162,13 @@ export function LibraryPicker({
   t,
 }: LibraryPickerProps) {
   const [rows, setRows] = useState<readonly PickerLibrary[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | undefined>()
   const [phase, setPhase] = useState<'list' | 'upload'>('list')
   const [ingesting, setIngesting] = useState(false)
   const [batch, setBatch] = useState<readonly BatchEntry[]>([])
   const fileInputId = useId()
+  const errorId = useId()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const draftRef = useRef<PickerLibrary | undefined>(undefined)
   const targetRef = useRef<PickerLibrary | undefined>(undefined)
@@ -157,6 +180,7 @@ export function LibraryPicker({
       if (cancelled) return
       if (result.ok && result.value !== undefined) setRows(result.value)
       else setError(result.error?.message ?? t('error.noKey'))
+      setLoading(false)
     })
     return () => { cancelled = true }
   }, [listLibraries, t])
@@ -280,6 +304,7 @@ export function LibraryPicker({
   useEffect(() => {
     if (phase !== 'upload') return
     const el = fileInputRef.current
+    /* v8 ignore next -- Modal mounts the file input before this upload-phase effect */
     if (el === null) return
     let cancelled = false
     let ignoreEmpty = false
@@ -341,77 +366,109 @@ export function LibraryPicker({
     setRows(current => current.filter(item => item.id !== row.id))
   }
 
+  const title = phase === 'upload' ? t('picker.uploadTitle') : t('picker.title')
   return (
-    <div className={css.panel} role="dialog" aria-label={phase === 'upload' ? t('picker.uploadTitle') : t('picker.title')}>
-      <div className={css.header}>
-        <h2 className={css.title}>{phase === 'upload' ? t('picker.uploadTitle') : t('picker.title')}</h2>
-        <button type="button" className={css.close} aria-label={t('picker.close')} onClick={close}>
-          <span aria-hidden>×</span>
-        </button>
-      </div>
-      {phase === 'list' ? (
-        <>
-          <p className={css.lead}>{t('picker.leadAskData')}</p>
-          <p className={css.lead}>{t('picker.leadLibrary')}</p>
-          <p className={css.lead}>{t('picker.leadPreset')}</p>
-          <p className={css.lead}>{t('picker.leadDataMode')}</p>
-          <p className={css.lead}>{t('picker.leadThicken')}</p>
-          <div className={css.list}>
-            {rows.map(row => (
-              <div key={row.id} className={css.libraryRow}>
-                <button type="button" className={css.row} onClick={() => { void hang(row.id) }}>
-                  {row.displayName}
-                </button>
-                <button type="button" className={css.add} onClick={() => { startAdd(row) }}>
-                  {t('picker.addDocument')}
-                </button>
-                <button type="button" className={css.remove} onClick={() => { void removeRow(row) }}>
-                  {t('picker.remove')}
-                </button>
+    <Modal
+      open
+      onClose={close}
+      title={title}
+      closeLabel={t('picker.close')}
+      description={phase === 'upload' ? t('picker.uploadLead') : t('picker.summary')}
+      className={css.dialog}
+    >
+      <div aria-describedby={error === undefined ? undefined : errorId}>
+        {phase === 'list' ? (
+          <>
+            <details className={css.rules}>
+              <summary>{t('picker.rulesToggle')}</summary>
+              <p>{t('picker.leadAskData')}</p>
+              <p>{t('picker.leadLibrary')}</p>
+              <p>{t('picker.leadPreset')}</p>
+              <p>{t('picker.leadDataMode')}</p>
+              <p>{t('picker.leadThicken')}</p>
+            </details>
+            {loading
+              ? (
+                <div className={css.skeleton} aria-busy="true" aria-label={t('picker.loading')}>
+                  <div className={css.skeletonBar} />
+                  <div className={css.skeletonBar} />
+                  <div className={css.skeletonBar} />
+                </div>
+              )
+              : (
+                <>
+                  {rows.length === 0 && error === undefined
+                    ? <p className={css.empty}>{t('picker.empty')}</p>
+                    : null}
+                  <div className={css.list}>
+                    {rows.map(row => (
+                      <div key={row.id} className={css.libraryRow}>
+                        <button
+                          type="button"
+                          className={css.row}
+                          aria-label={row.displayName}
+                          onClick={() => { void hang(row.id) }}
+                        >
+                          <SourceIdentity
+                            name={row.displayName}
+                            badge={t('picker.typeLibrary')}
+                            documentCount={row.documentCount}
+                            countTemplate={t('picker.documentCount')}
+                          />
+                        </button>
+                        <button type="button" className={css.add} onClick={() => { startAdd(row) }}>
+                          {t('picker.addDocument')}
+                        </button>
+                        <button type="button" className={css.remove} onClick={() => { void removeRow(row) }}>
+                          {t('picker.remove')}
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" className={css.create} onClick={startCreate}>
+                      {t('picker.emptyCreate')}
+                    </button>
+                  </div>
+                </>
+              )}
+          </>
+        ) : (
+          <>
+            {ingesting ? <p className={css.lead}>{t('ingest.applying')}</p> : null}
+            {batch.length > 0 && (
+              <ul className={css.batch}>
+                {batch.map((entry, index) => (
+                  <li
+                    key={`${String(index)}-${entry.name}`}
+                    className={entry.state === 'failed' ? css.batchFailed : undefined}
+                  >
+                    <BatchGlyph state={entry.state} />
+                    <span>{entry.name}</span>
+                    {' · '}
+                    <span>{batchEntryText(entry, t)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className={css.list}>
+              <div className={css.chooseFile} data-file-pick="library">
+                {t('picker.chooseFile')}
+                <input
+                  id={fileInputId}
+                  ref={fileInputRef}
+                  className={css.fileInputOverlay}
+                  type="file"
+                  multiple
+                  disabled={ingesting}
+                />
               </div>
-            ))}
-            <button type="button" className={css.create} onClick={startCreate}>
-              {t('picker.emptyCreate')}
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <p className={css.lead}>{t('picker.uploadLead')}</p>
-          {ingesting ? <p className={css.lead}>{t('ingest.applying')}</p> : null}
-          {batch.length > 0 && (
-            <ul className={css.batch}>
-              {batch.map((entry, index) => (
-                <li
-                  key={`${String(index)}-${entry.name}`}
-                  className={entry.state === 'failed' ? css.batchFailed : undefined}
-                >
-                  <span>{entry.name}</span>
-                  {' · '}
-                  <span>{batchEntryText(entry, t)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className={css.list}>
-            <div className={css.chooseFile} data-file-pick="library">
-              {t('picker.chooseFile')}
-              <input
-                id={fileInputId}
-                ref={fileInputRef}
-                className={css.fileInputOverlay}
-                type="file"
-                multiple
-                disabled={ingesting}
-              />
+              <button type="button" className={css.row} disabled={ingesting} onClick={() => { void skipEmpty() }}>
+                {t('picker.skipEmpty')}
+              </button>
             </div>
-            <button type="button" className={css.row} disabled={ingesting} onClick={() => { void skipEmpty() }}>
-              {t('picker.skipEmpty')}
-            </button>
-          </div>
-        </>
-      )}
-      {error !== undefined && <p className={css.error}>{error}</p>}
-    </div>
+          </>
+        )}
+        {error !== undefined && <p id={errorId} className={css.error} role="alert">{error}</p>}
+      </div>
+    </Modal>
   )
 }

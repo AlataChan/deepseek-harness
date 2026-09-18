@@ -1,6 +1,6 @@
 /** Catalog create, list, rename, remove, escape, and concurrent writes. */
 
-import { mkdir, readFile, symlink } from 'node:fs/promises'
+import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -28,6 +28,31 @@ describe('ask-knowledge catalog', () => {
     expect(config).toBe(BOOTSTRAP_CONFIG_TOML)
     expect(config).not.toContain('11434')
     expect(config).not.toContain('qwen')
+    expect(listed.find(row => row.id === first.id)?.documentCount).toBe(0)
+    await writeFile(join(home, 'knowledge-bases', 'libraries', first.id, 'raw', '制度.md'), '# 制度\n', 'utf8')
+    const counted = await listCatalog(home)
+    expect(counted.find(row => row.id === first.id)?.documentCount).toBe(1)
+  })
+
+  it('counts zero documents when raw/ is absent or the vault is missing', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-knowledge-noraw-'))
+    const created = await createCatalogLibrary(home, '空 raw')
+    await rm(join(home, 'knowledge-bases', 'libraries', created.id, 'raw'), { recursive: true })
+    const withoutRaw = await listCatalog(home)
+    expect(withoutRaw.find(row => row.id === created.id)?.documentCount).toBe(0)
+    const vanished = AskKnowledgeLibraryId('00000000-0000-0000-0000-000000000002')
+    await writeCatalog(home, {
+      version: 1,
+      libraries: [{
+        id: vanished,
+        displayName: '失踪',
+        createdAt: '2026-09-17T00:00:00.000Z',
+        lastUsedAt: '2026-09-17T00:00:00.000Z',
+        vaultRelPath: `libraries/${vanished}`,
+      }],
+    })
+    const listed = await listCatalog(home)
+    expect(listed).toEqual([expect.objectContaining({ id: vanished, missing: true, documentCount: 0 })])
   })
 
   it('renames and removes a library including a deleting resume', async () => {

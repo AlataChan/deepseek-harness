@@ -1,52 +1,67 @@
-.panel {
-  min-width: 280px;
-  max-width: 360px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-primary));
-  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+.dialog {
+  width: min(420px, 100%);
 }
 
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+@media (prefers-reduced-motion: no-preference) {
+  .dialog {
+    animation: workbench-enter 120ms ease-out;
+  }
+}
+
+@keyframes workbench-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rules {
   margin: 0 0 8px;
-}
-
-.title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.close {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
+  font: var(--dsw-font-xxs-12);
   color: var(--dsw-alias-label-secondary);
-  font-size: 14px;
-  line-height: 1;
+}
+
+.rules summary {
   cursor: pointer;
+  list-style: disclosure-closed;
 }
 
-.close:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+.rules[open] summary {
+  list-style: disclosure-open;
 }
 
-.lead {
+.rules summary:focus-visible,
+.empty:focus-visible {
+  box-shadow: 0 0 0 2px var(--dsw-alias-border-l3);
+}
+
+.rules p {
+  margin: 8px 0 0;
+}
+
+.lead,
+.empty {
   margin: 0 0 6px;
-  font-size: 12px;
-  line-height: 18px;
+  font: var(--dsw-font-xxs-12);
   color: var(--dsw-alias-label-secondary);
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.skeletonBar {
+  height: 28px;
+  border-radius: 16px;
+  background: var(--dsw-alias-bg-skeleton);
 }
 
 .list {
@@ -81,22 +96,37 @@
   cursor: pointer;
 }
 
+.row {
+  min-width: 0;
+}
+
 .add,
 .remove {
   flex: 0 0 auto;
   color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
+  font: var(--dsw-font-xxs-12);
 }
 
 .remove {
-  color: var(--dsw-alias-label-danger, #c00);
+  color: var(--dsw-alias-state-error-primary);
 }
 
 .row:hover,
 .create:hover,
-.add:hover,
-.remove:hover {
+.add:hover {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.remove:hover {
+  background: var(--dsw-alias-interactive-bg-hover-danger);
+}
+
+.row:focus-visible,
+.create:focus-visible,
+.add:focus-visible,
+.remove:focus-visible,
+.chooseFile:focus-within {
+  box-shadow: 0 0 0 2px var(--dsw-alias-border-l3);
 }
 
 .batch {
@@ -106,19 +136,43 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 12px;
-  line-height: 18px;
+  font: var(--dsw-font-xxs-12);
   color: var(--dsw-alias-label-secondary);
 }
 
 .batchFailed {
-  color: var(--dsw-alias-label-danger, #c00);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.batch li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.batchGlyph {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .batchSpin {
+    animation: batch-spin 800ms linear infinite;
+  }
+}
+
+@keyframes batch-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error {
   margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--dsw-alias-label-danger, #c00);
+  font: var(--dsw-font-xxs-12);
+  color: var(--dsw-alias-state-error-primary);
 }
 
 .chooseFile {
