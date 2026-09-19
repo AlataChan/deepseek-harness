@@ -115,7 +115,7 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('sidebar.brand.mark', () =>
     ctx.slots.register({ name: 'sidebar.brand.mark' }, OctopusMark))
   ctx.slots.inject('sidebar.brand.name', () =>
-    ctx.slots.register({ name: 'sidebar.brand.name' }, OctopusBrandName))
+    ctx.slots.register({ name: 'sidebar.brand.name', locale: NS }, OctopusBrandName))
   ctx.slots.inject('conversation.hero.brand.mark', () =>
     ctx.slots.register({ name: 'conversation.hero.brand.mark' }, OctopusMark))
   ctx.slots.inject('conversation.hero.headline', () =>

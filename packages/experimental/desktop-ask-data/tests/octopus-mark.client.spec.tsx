@@ -27,8 +27,8 @@ describe('OctopusMark', () => {
 })
 
 describe('OctopusBrandName', () => {
-  it('prints the product name', () => {
-    expect(render(<OctopusBrandName />).getByText('octopus_DSH')).toBeTruthy()
+  it('prints the overlay window brand', () => {
+    expect(render(<OctopusBrandName t={t} />).getByText('小绿鲸')).toBeTruthy()
   })
 })
 

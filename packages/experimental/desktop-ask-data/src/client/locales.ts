@@ -9,6 +9,7 @@ export type AskDataKey = keyof typeof zh
 
 /** Chinese desktop copy. */
 export const zh = {
+  brandName: '小绿鲸',
   chip: '问数',
   heroHeadline: '先选工作文件夹，再提问',
   'workspaceFolder.title': '工作文件夹',
@@ -73,6 +74,7 @@ export const zh = {
 
 /** English fallback. */
 export const en = {
+  brandName: '小绿鲸',
   chip: 'Ask data',
   heroHeadline: 'Choose a folder, then ask',
   'workspaceFolder.title': 'Working folder',
