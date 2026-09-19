@@ -58,3 +58,10 @@ export function fetchWorkspacePlugin(plugin: PluginPin, outDir: string): string
 export function productionInstallDependencies(
   deps?: Record<string, string>,
 ): Record<string, string>
+
+export function isSeedPayloadPath(
+  relativePath: string,
+  options?: { includeModules?: boolean },
+): boolean
+
+export function pruneSeedModuleBins(dir: string): void

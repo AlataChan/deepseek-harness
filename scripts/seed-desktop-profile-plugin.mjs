@@ -377,13 +377,6 @@ export function isSeedPayloadPath(relativePath, options = {}) {
 }
 
 /**
- * Copy a package tree. `includeModules` keeps a fetched npm pin's production
- * install; workspace copies still skip `node_modules`.
- * @param {string} src
- * @param {string} dest
- * @param {{ includeModules?: boolean }} [options]
- */
-/**
  * Drop `node_modules/.bin` after a staged npm install. Those stubs are
  * absolute links into the deleted `dsh-seed-deps-` tempdir; first-launch
  * `copy_dir_recursive` then fails on them and leaves the live profile
@@ -414,6 +407,13 @@ export function pruneSeedModuleBins(dir) {
   }
 }
 
+/**
+ * Copy a package tree. `includeModules` keeps a fetched npm pin's production
+ * install; workspace copies still skip `node_modules`.
+ * @param {string} src
+ * @param {string} dest
+ * @param {{ includeModules?: boolean }} [options]
+ */
 function copyPackageTree(src, dest, options = {}) {
   mkdirSync(dirname(dest), { recursive: true })
   cpSync(src, dest, {
