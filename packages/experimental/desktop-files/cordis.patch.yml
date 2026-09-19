@@ -1,7 +1,19 @@
 # Overlay row for octopus_DSH desktop file listing. Dual-face: this Host
-# insert is the only patch line; the Client half is discovered from
-# `dsh.client` after the Host fiber is live. Do not add a second insert.
+# insert is the only new Host row; the Client half is discovered from
+# `dsh.client` after the Host fiber is live.
 
 - insert:
     - id: desktop-files
       name: '@deepseek-ai/dsh-experimental-desktop-files'
+
+# connection-desktop answers control/ready as soon as its injects resolve.
+# session/control then requires a live sessionController. When workspaceRoot
+# is $HOME, workspaceRegistry (and therefore sessionController) can still be
+# pending. The companion treats that throw as gateway-failure and exits; the
+# window reconnects and repeats. Restate config: a patch replaces the row's
+# whole config object.
+- id: connection-desktop
+  name: '@deepseek-ai/dsh-client-connection-desktop'
+  inject: [desktopStartup, connection, clientModules, typertGateway, sessionController]
+  config:
+    workspaceRoot: !!js ctx.desktopStartup.workspaceRoot

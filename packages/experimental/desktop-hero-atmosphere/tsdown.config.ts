@@ -10,6 +10,16 @@ const preset = clientBundle(
 )
 
 /**
+ * Client-face tsdown reads `lib/types/media-urls.js` (tsc emit). A source-only
+ * `load` miss lets CJS rewrite `import.meta.url` to Node `require("url")`.
+ */
+function isHeroMediaModule(id: string): boolean {
+  const normalized = (id.replaceAll('\\', '/').split('?')[0] ?? '')
+  return normalized.endsWith('/src/media-urls.ts')
+    || normalized.endsWith('/lib/types/media-urls.js')
+}
+
+/**
  * Inline the packaged plate as `data:` URLs. The dynamic Client factory is
  * CJS and would otherwise rewrite `import.meta.url` to Node `require("url")`.
  */
@@ -17,7 +27,7 @@ function inlineHeroMedia() {
   return {
     name: 'inline-hero-media',
     load(id: string) {
-      if (!id.replaceAll('\\', '/').endsWith('/src/media-urls.ts')) return null
+      if (!isHeroMediaModule(id)) return null
       const poster = readFileSync(resolve(packageRoot, 'media/poster.jpg')).toString('base64')
       const drift = readFileSync(resolve(packageRoot, 'media/k1.jpg')).toString('base64')
       const video = readFileSync(resolve(packageRoot, 'media/hero.mp4')).toString('base64')

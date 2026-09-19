@@ -35,8 +35,51 @@ if [[ ! -d "$APP_BUNDLE" ]]; then
   fail "Tauri app bundle not found at $APP_BUNDLE — run 'pnpm tauri build' first"
 fi
 
+# Tauri can leave a Contents tree that has Resources and Info.plist but no
+# MacOS executable. Embedding then spends minutes only to fail the readiness
+# gate. Restore from the cargo release binary when that skeleton is hollow.
+CARGO_BIN="$REPO_ROOT/apps/desktop/src-tauri/target/release/dsh-desktop"
+MACOS_DIR="$APP_BUNDLE/Contents/MacOS"
+MACOS_BIN="$MACOS_DIR/dsh-desktop"
+if [[ ! -x "$MACOS_BIN" ]]; then
+  [[ -x "$CARGO_BIN" ]] \
+    || fail "Tauri binary missing at $MACOS_BIN and $CARGO_BIN — run 'cd apps/desktop && cargo tauri build'"
+  info "Restoring Contents/MacOS/dsh-desktop from cargo release binary"
+  mkdir -p "$MACOS_DIR"
+  cp "$CARGO_BIN" "$MACOS_BIN"
+  chmod +x "$MACOS_BIN"
+fi
+[[ -x "$MACOS_BIN" ]] || fail "Contents/MacOS/dsh-desktop is not executable after restore"
+
 RESOURCES="$APP_BUNDLE/Contents/Resources/resources"
 mkdir -p "$RESOURCES"
+
+# Runtime accepts nested or flat CLI; the readiness gate requires nested.
+CLI_NESTED="$RESOURCES/installed-runtime-cli.js"
+if [[ ! -f "$CLI_NESTED" ]]; then
+  CLI_FLAT="$APP_BUNDLE/Contents/Resources/installed-runtime-cli.js"
+  CLI_GENERATED="$REPO_ROOT/apps/desktop/src-tauri/resources/installed-runtime-cli.js"
+  CLI_SOURCE="$REPO_ROOT/packages/boot/installed-runtime/lib/cli.js"
+  if [[ -f "$CLI_FLAT" ]]; then
+    cp "$CLI_FLAT" "$CLI_NESTED"
+  elif [[ -f "$CLI_GENERATED" ]]; then
+    cp "$CLI_GENERATED" "$CLI_NESTED"
+  elif [[ -f "$CLI_SOURCE" ]]; then
+    cp "$CLI_SOURCE" "$CLI_NESTED"
+  else
+    fail "installed-runtime-cli.js missing — build packages/boot/installed-runtime"
+  fi
+fi
+[[ -f "$CLI_NESTED" ]] || fail "installed-runtime-cli.js missing at $CLI_NESTED"
+
+ICON_SRC="$REPO_ROOT/apps/desktop/src-tauri/icons/icon.icns"
+ICON_DST="$APP_BUNDLE/Contents/Resources/icon.icns"
+if [[ ! -f "$ICON_DST" ]]; then
+  [[ -f "$ICON_SRC" ]] || fail "icon.icns missing at $ICON_SRC"
+  info "Restoring Contents/Resources/icon.icns"
+  cp "$ICON_SRC" "$ICON_DST"
+fi
+[[ -f "$ICON_DST" ]] || fail "Contents/Resources/icon.icns missing after restore"
 
 # ── 1. Download Node.js ─────────────────────────────────────────────────────
 

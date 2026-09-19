@@ -25,13 +25,27 @@ head_ "Checking $APP"
 
 # ── 1. Bundle skeleton ──────────────────────────────────────────────────────
 
-[[ -x "$APP/Contents/MacOS/dsh-desktop" ]] \
-  && ok "Tauri binary present and executable" \
-  || bad "Tauri binary missing at Contents/MacOS/dsh-desktop"
+if [[ -x "$APP/Contents/MacOS/dsh-desktop" ]]; then
+  ok "Tauri binary present and executable"
+elif [[ -e "$APP/Contents/MacOS/dsh-desktop" ]]; then
+  bad "Tauri binary exists at Contents/MacOS/dsh-desktop but is not executable"
+else
+  bad "Tauri binary missing at Contents/MacOS/dsh-desktop"
+fi
 
-[[ -f "$RES/installed-runtime-cli.js" ]] \
-  && ok "installed-runtime-cli.js bundled" \
-  || bad "installed-runtime-cli.js missing"
+if [[ -f "$RES/installed-runtime-cli.js" ]]; then
+  ok "installed-runtime-cli.js bundled"
+elif [[ -f "$APP/Contents/Resources/installed-runtime-cli.js" ]]; then
+  bad "installed-runtime-cli.js is flat under Contents/Resources/ — expected Contents/Resources/resources/"
+else
+  bad "installed-runtime-cli.js missing"
+fi
+
+if [[ -f "$APP/Contents/Resources/icon.icns" ]]; then
+  ok "icon.icns bundled"
+else
+  bad "icon.icns missing at Contents/Resources/icon.icns"
+fi
 
 # ── 2. Embedded Node ────────────────────────────────────────────────────────
 
@@ -302,6 +316,11 @@ while IFS= read -r dest; do
       fi
     fi
     if [[ "$dest" == "@deepseek-ai/dsh-experimental-desktop-hero-atmosphere" ]]; then
+      if [[ -d "$plugin_dir/motion" ]]; then
+        bad "$dest ships motion/ compile intermediates — seed must copy media/ only"
+      else
+        ok "$dest omits motion/ compile intermediates"
+      fi
       if [[ -f "$plugin_dir/media/poster.jpg" && -f "$plugin_dir/media/k1.jpg" && -f "$plugin_dir/media/hero.mp4" ]]; then
         ok "$dest includes poster.jpg, k1.jpg, and hero.mp4"
       else
@@ -345,6 +364,37 @@ import { readFileSync } from "node:fs"
 const pin = JSON.parse(readFileSync(process.argv[1], "utf8"))
 for (const plugin of pin.plugins) console.log(plugin.name)
 ' "$PIN")
+
+DANGLING="$(find "$RES/profile-plugins" -type l ! -exec test -e {} \; -print 2>/dev/null | head -8 || true)"
+if [[ -n "$DANGLING" ]]; then
+  bad "profile-plugins contain dangling symlinks — first launch copy fails and drops package.json"
+  printf '\033[0;90m%s\033[0m\n' "$DANGLING"
+else
+  ok "profile-plugins have no dangling npm bin stubs"
+fi
+
+# Default workspaceRoot is $HOME. Handshake must wait for sessionController,
+# or the first session/control open kills the companion and the window
+# reconnects forever. Official desktop-app does not take this inject.
+assert_connection_waits_for_session_controller() {
+  local patch="$1"
+  local label="$2"
+  if [[ -f "$patch" ]] \
+    && grep -A8 'id: connection-desktop' "$patch" | grep -q 'sessionController'
+  then
+    ok "$label connection-desktop injects sessionController"
+  else
+    bad "$label connection-desktop does not inject sessionController — session/control at handshake exits the companion"
+  fi
+}
+assert_connection_waits_for_session_controller \
+  "$REPO_ROOT/packages/experimental/desktop-files/cordis.patch.yml" \
+  "source desktop-files patch"
+if [[ -f "$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-files/cordis.patch.yml" ]]; then
+  assert_connection_waits_for_session_controller \
+    "$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-files/cordis.patch.yml" \
+    "bundled desktop-files patch"
+fi
 
 # Agent Team Host packages are inserted by the client-ui-agent-team patch but
 # are not copied into profile-plugins (workspace: deps are dropped). They must

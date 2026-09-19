@@ -22,8 +22,11 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  statSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -243,6 +246,7 @@ export function fetchPlugin(plugin, outDir, options = {}) {
     rmSync(dest, { recursive: true, force: true })
     copyPackageTree(unpacked, dest)
     installProductionDependencies(dest)
+    pruneSeedModuleBins(dest)
     validatePluginDir(dest, plugin)
     return dest
   } finally {
@@ -271,6 +275,7 @@ export function fetchWorkspacePlugin(plugin, outDir) {
   rmSync(dest, { recursive: true, force: true })
   copyPackageTree(src, dest)
   installProductionDependencies(dest)
+  pruneSeedModuleBins(dest)
   validatePluginDir(dest, plugin)
   return dest
 }
@@ -298,29 +303,37 @@ export function productionInstallDependencies(deps = {}) {
  * ships `schemastery` / `zod` / ECharts as own dependencies; the ask-data
  * workspace pin ships `exceljs` / `zod` the same way. Without those copies
  * the first-launch tree cannot import.
+ *
+ * npm must not run inside `…/@scope/name`: arborist treats that folder as an
+ * already-installed package and replaces the copied payload (lib, patch,
+ * samples) with lockfile + node_modules.
  * @param {string} dir
  */
 function installProductionDependencies(dir) {
   const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
   const thirdParty = productionInstallDependencies(manifest.dependencies)
   if (Object.keys(thirdParty).length === 0) return
-  // A production dep that is also listed under `devDependencies` is dropped
-  // by `npm install --omit=dev` (data-agent does this with `schemastery`).
-  // Strip the unused faces for the install only; restore the published
-  // manifest afterward so validate still sees the original package.json.
-  const installManifest = { ...manifest, dependencies: thirdParty }
-  delete installManifest.devDependencies
-  delete installManifest.peerDependencies
-  delete installManifest.peerDependenciesMeta
-  writeFileSync(join(dir, 'package.json'), `${JSON.stringify(installManifest, undefined, 2)}\n`)
+  const staging = mkdtempSync(join(tmpdir(), 'dsh-seed-deps-'))
   try {
+    writeFileSync(join(staging, 'package.json'), `${JSON.stringify({
+      name: 'dsh-seed-deps',
+      private: true,
+      dependencies: thirdParty,
+    }, undefined, 2)}\n`)
     execFileSync('npm', [
       'install',
       '--ignore-scripts',
       '--legacy-peer-deps',
-    ], { cwd: dir, stdio: 'inherit' })
+    ], { cwd: staging, stdio: 'inherit' })
+    const stagedModules = join(staging, 'node_modules')
+    if (existsSync(stagedModules)) {
+      const destModules = join(dir, 'node_modules')
+      rmSync(destModules, { recursive: true, force: true })
+      cpSync(stagedModules, destModules, { recursive: true })
+      pruneSeedModuleBins(dir)
+    }
   } finally {
-    writeFileSync(join(dir, 'package.json'), `${JSON.stringify(manifest, undefined, 2)}\n`)
+    rmSync(staging, { recursive: true, force: true })
   }
   const leakedPeers = join(dir, 'node_modules', '@deepseek-ai')
   if (existsSync(leakedPeers)) {
@@ -339,6 +352,30 @@ function shouldCopyProductionModules(src) {
   return !existsSync(join(modules, '.pnpm'))
 }
 
+const SEED_SKIP_DIRS = new Set(['src', 'tests', 'motion', 'coverage', '.git', '.bin'])
+const SEED_SKIP_FILES = new Set(['tsdown.config.ts', '.gitignore', '.DS_Store'])
+
+/**
+ * Whether a path relative to a pin root belongs in the DMG payload.
+ * Workspace copies omit `node_modules` (third-party deps are installed
+ * afterwards). Compile intermediates such as `motion/` and Host/Client
+ * sources stay in the checkout; the seeded tree loads `lib/` and `media/`.
+ * @param {string} relativePath
+ * @param {{ includeModules?: boolean }} [options]
+ * @returns {boolean}
+ */
+export function isSeedPayloadPath(relativePath, options = {}) {
+  const parts = relativePath.split(sep).filter(Boolean)
+  if (parts.length === 0) return true
+  if (parts.includes('node_modules')) return options.includeModules === true
+  if (parts.some(part => SEED_SKIP_DIRS.has(part))) return false
+  const base = parts[parts.length - 1] ?? ''
+  if (SEED_SKIP_FILES.has(base)) return false
+  if (base.startsWith('tsconfig') && base.endsWith('.json')) return false
+  if (base.endsWith('.map') || base.endsWith('.tsbuildinfo')) return false
+  return true
+}
+
 /**
  * Copy a package tree. `includeModules` keeps a fetched npm pin's production
  * install; workspace copies still skip `node_modules`.
@@ -346,14 +383,44 @@ function shouldCopyProductionModules(src) {
  * @param {string} dest
  * @param {{ includeModules?: boolean }} [options]
  */
+/**
+ * Drop `node_modules/.bin` after a staged npm install. Those stubs are
+ * absolute links into the deleted `dsh-seed-deps-` tempdir; first-launch
+ * `copy_dir_recursive` then fails on them and leaves the live profile
+ * without `package.json`.
+ * @param {string} dir
+ */
+export function pruneSeedModuleBins(dir) {
+  const stack = [join(dir, 'node_modules')]
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (current === undefined || !existsSync(current)) continue
+    for (const name of readdirSync(current)) {
+      const path = join(current, name)
+      const info = lstatSync(path)
+      if (info.isDirectory()) {
+        if (name === '.bin') rmSync(path, { recursive: true, force: true })
+        else stack.push(path)
+        continue
+      }
+      if (!info.isSymbolicLink()) continue
+      try {
+        statSync(path)
+      } catch {
+        // Dangling npm bin / peer link: the target was the staging tree.
+        unlinkSync(path)
+      }
+    }
+  }
+}
+
 function copyPackageTree(src, dest, options = {}) {
   mkdirSync(dirname(dest), { recursive: true })
   cpSync(src, dest, {
     recursive: true,
     filter: (from) => {
       const relative = from.startsWith(src) ? from.slice(src.length) : from
-      if (options.includeModules === true) return true
-      return !relative.split(sep).includes('node_modules')
+      return isSeedPayloadPath(relative, options)
     },
   })
 }

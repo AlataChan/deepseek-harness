@@ -12,7 +12,7 @@ octopus_DSH 桌面的空白会话 Hero 是平坦的一列。动态背景必须�
 
 官方 [`ui-conversation`](../../../../packages/client/ui-conversation/README.zh.md) 将 `conversation.atmosphere` 声明为 root `single` 孔位。`ConversationRoot` 把它画在 header 与 body 后方的绝对定位、不接收指针的座位上（仅在 shell 处于空白会话 Hero 时 `hero: true`）。官方 web 让该孔位保持为空。
 
-占座是私有 overlay [`@deepseek-ai/dsh-experimental-desktop-hero-atmosphere`](../../../../packages/experimental/desktop-hero-atmosphere/README.zh.md)。补丁只插入一行 Host；`dsh.client` 发现 Client 面。Client 注入内联的 `data:` URL（K0 海报、K1 漂移静帧、六秒 GOP 循环：`media/poster.jpg`、`media/k1.jpg`、`media/hero.mp4`）。Client 工厂不计算 Node 的 `import.meta.url`。播放静音、循环且 `playsInline`。`prefers-reduced-motion: reduce` 时只保留 K0。`play()` 被拒绝或被 CSP 拦截时卸载 video，留下 K0/K1 交叉淡化。透明度随 `hero` 过渡。48% 的 `bg-base` 纱保持 composer 对比度。
+占座是私有 overlay [`@deepseek-ai/dsh-experimental-desktop-hero-atmosphere`](../../../../packages/experimental/desktop-hero-atmosphere/README.zh.md)。补丁只插入一行 Host；`dsh.client` 发现 Client 面。Client 注入内联的 `data:` URL（K0 海报、K1 漂移静帧、六秒 GOP 循环：`media/poster.jpg`、`media/k1.jpg`、`media/hero.mp4`）。Client 面 tsdown 的 `load` 钩子同时匹配 `src/media-urls.ts` 和 `lib/types/media-urls.js`；只匹配源文件会让 `lib/client.js` 留下 CJS 的 `require("url")`。Client 工厂不计算 Node 的 `import.meta.url`。播放静音、循环且 `playsInline`。`prefers-reduced-motion: reduce` 时只保留 K0。`play()` 被拒绝或被 CSP 拦截时卸载 video，留下 K0/K1 交叉淡化。透明度随 `hero` 过渡。48% 的 `bg-base` 纱保持 composer 对比度。
 
 播种遵循 [`scripts/desktop-profile-plugins.json`](../../../../scripts/desktop-profile-plugins.json)（`source: "workspace"`）。官方 `desktop-app` 与 `PROFILE_TEMPLATES.desktop` 不点名该 overlay。
 

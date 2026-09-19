@@ -17,7 +17,7 @@ Client 面通过 `ctx.slots.inject('sidebar.files', …)` 注册。树的根是�
     maxEntries: 1000
 ```
 
-`cordis.patch.yml` 只插入这一行 Host。Client 半侧在 Host fiber 活着之后由 `dsh.client` 发现。
+`cordis.patch.yml` 插入这一行 Host，并重写 `connection-desktop`，让它也 inject `sessionController`。握手会等到 Session control stream 有活服务；否则第一次打开 `session/control` 会让 companion 退出，窗口永远重连。Client 半侧在 Host fiber 活着之后由 `dsh.client` 发现。
 
 ## 模型体验
 

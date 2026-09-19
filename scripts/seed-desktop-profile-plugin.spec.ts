@@ -7,6 +7,7 @@ import {
   fetchWorkspacePlugin,
   healDesktopProfileManifest,
   installPluginIntoProfile,
+  isSeedPayloadPath,
   mergeProfileManifest,
   productionInstallDependencies,
   validatePluginDir,
@@ -122,6 +123,70 @@ describe('seed-desktop-profile-plugin', () => {
     expect(dest).toBe(join(root, 'out', '@deepseek-ai', 'dsh-experimental-desktop-files'))
     expect(validatePluginDir(dest).name).toBe(name)
     expect(existsSync(join(dest, 'node_modules'))).toBe(false)
+  })
+
+  it('keeps a scoped pin payload when installing a third-party file: dep', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-seed-scoped-deps-'))
+    fixtures.push(root)
+    const name = '@deepseek-ai/dsh-experimental-desktop-ask-data'
+    const plugin = writePlugin(root, name, '0.1.2-rc.1')
+    const dep = join(root, 'tiny-dep')
+    mkdirSync(dep)
+    writeFileSync(join(dep, 'package.json'), `${JSON.stringify({
+      name: 'tiny-dep',
+      version: '1.0.0',
+      bin: { 'tiny-dep': 'index.js' },
+    }, undefined, 2)}\n`)
+    writeFileSync(join(dep, 'index.js'), 'module.exports = {}\n')
+    const manifest = JSON.parse(readFileSync(join(plugin, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+    }
+    manifest.dependencies = { 'tiny-dep': `file:${dep}` }
+    writeFileSync(join(plugin, 'package.json'), `${JSON.stringify(manifest, undefined, 2)}\n`)
+    const dest = fetchWorkspacePlugin(
+      { name, version: '0.1.2-rc.1', source: 'workspace', path: plugin },
+      join(root, 'out'),
+    )
+    expect(existsSync(join(dest, 'cordis.patch.yml'))).toBe(true)
+    expect(existsSync(join(dest, 'lib', 'client.js'))).toBe(true)
+    expect(existsSync(join(dest, 'node_modules', 'tiny-dep'))).toBe(true)
+    expect(existsSync(join(dest, 'node_modules', '.bin'))).toBe(false)
+    expect(validatePluginDir(dest).name).toBe(name)
+  })
+
+  it('omits compile intermediates and sources from a workspace pin', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-seed-slim-'))
+    fixtures.push(root)
+    const name = '@deepseek-ai/dsh-experimental-desktop-hero-atmosphere'
+    const plugin = writePlugin(root, name, '0.1.2-rc.1')
+    mkdirSync(join(plugin, 'src'))
+    writeFileSync(join(plugin, 'src', 'media-urls.ts'), 'export {}\n')
+    mkdirSync(join(plugin, 'tests'))
+    writeFileSync(join(plugin, 'tests', 'apply.spec.ts'), 'export {}\n')
+    mkdirSync(join(plugin, 'motion', 'source'), { recursive: true })
+    writeFileSync(join(plugin, 'motion', 'source', 'K0.png'), 'nope\n')
+    mkdirSync(join(plugin, 'media'))
+    writeFileSync(join(plugin, 'media', 'poster.jpg'), 'k0\n')
+    writeFileSync(join(plugin, 'lib', 'client.js.map'), '{}\n')
+    const dest = fetchWorkspacePlugin(
+      { name, version: '0.1.2-rc.1', source: 'workspace', path: plugin },
+      join(root, 'out'),
+    )
+    expect(existsSync(join(dest, 'src'))).toBe(false)
+    expect(existsSync(join(dest, 'tests'))).toBe(false)
+    expect(existsSync(join(dest, 'motion'))).toBe(false)
+    expect(existsSync(join(dest, 'lib', 'client.js.map'))).toBe(false)
+    expect(existsSync(join(dest, 'media', 'poster.jpg'))).toBe(true)
+    expect(validatePluginDir(dest).name).toBe(name)
+  })
+
+  it('keeps media and lib while skipping motion and src in path checks', () => {
+    expect(isSeedPayloadPath('/media/poster.jpg')).toBe(true)
+    expect(isSeedPayloadPath('/lib/client.js')).toBe(true)
+    expect(isSeedPayloadPath('/motion/source/K0.png')).toBe(false)
+    expect(isSeedPayloadPath('/src/media-urls.ts')).toBe(false)
+    expect(isSeedPayloadPath('/node_modules/exceljs/package.json')).toBe(false)
+    expect(isSeedPayloadPath('/node_modules/exceljs/package.json', { includeModules: true })).toBe(true)
   })
 
   it('drops workspace: specs so npm can install third-party overlay deps', () => {

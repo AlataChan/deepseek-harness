@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-18-desktop-hero-atmosphere.md
-2026-09-18-desktop-hero-atmosphere.md: 0570c978261b5757c856408b10df2a8cdd4efc03
-2026-09-18-desktop-hero-atmosphere.zh.md: de1c6246a0e41e7a51c1f4a0953bd0ff23b485a7
+2026-09-18-desktop-hero-atmosphere.md: d889ebec06a684aff2abd5e1e5b6ec83c7bc037c
+2026-09-18-desktop-hero-atmosphere.zh.md: 14ecfe9900ef334269cda25345335da21aa54c69

@@ -17,7 +17,7 @@ The Client face registers through `ctx.slots.inject('sidebar.files', …)`. The 
     maxEntries: 1000
 ```
 
-`cordis.patch.yml` inserts this one Host row. The Client half is discovered from `dsh.client` after the Host fiber is live.
+`cordis.patch.yml` inserts this Host row and restates `connection-desktop` so that row also injects `sessionController`. Handshake then waits until the Session control stream has a live service; otherwise the companion exits on the first `session/control` open and the window reconnects forever. The Client half is discovered from `dsh.client` after the Host fiber is live.
 
 ## Model Experience
 
