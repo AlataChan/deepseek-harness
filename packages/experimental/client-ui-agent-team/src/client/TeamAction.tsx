@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   TeamMemberView as TeamRosterMember,
@@ -530,10 +531,11 @@ export function TeamAction({
           </span>
         )}
       </button>
-      {open && !pinned && (
-        <div className={css.dockBackdrop} data-team-dock-backdrop onClick={closeDock} />
+      {open && !pinned && createPortal(
+        <div className={css.dockBackdrop} data-team-dock-backdrop onClick={closeDock} />,
+        document.body,
       )}
-      {open && (
+      {open && createPortal(
         <div
           className={css.dock}
           role="dialog"
@@ -827,7 +829,8 @@ export function TeamAction({
               )}
             </div>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

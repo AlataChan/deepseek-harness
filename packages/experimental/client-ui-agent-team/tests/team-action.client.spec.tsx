@@ -12,7 +12,7 @@ import {
   TeamAction, type TeamActionInjected, type TeamActionProps, type TeamActionResult,
   type TeamTaskActionResult,
 } from '../src/client/TeamAction.tsx'
-import { zh } from '../src/client/locales.ts'
+import { en, zh } from '../src/client/locales.ts'
 
 afterEach(() => {
   cleanup()
@@ -217,8 +217,22 @@ describe('TeamAction', () => {
     expect(setDraft).toHaveBeenCalledWith(zh['template.document.body'])
     expect(zh['template.document.body']).toMatch(/name=archivist/)
     expect(zh['template.document.body']).toMatch(/资料员/)
+    expect(zh['template.document.body']).toMatch(/全程用中文回复和思考/)
+    expect(zh['template.case.body']).toMatch(/不要向用户追问每个工种的文件路径/)
+    expect(en['template.case.body']).toMatch(/Reply and think in Chinese/)
+    expect(en['template.case.body']).toMatch(/Do not ask the user for a per-seat file path/)
     expect(screen.getByRole('dialog')).toBeTruthy()
     expect(screen.getByRole('dialog').hasAttribute('data-team-dock')).toBe(true)
+  })
+
+  it('portals the dock and backdrop onto document.body so the transcript cannot paint over them', async () => {
+    const rendered = render(<TeamAction {...props(actions())} />)
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
+
+    const dock = await screen.findByRole('dialog')
+    expect(dock.parentElement).toBe(document.body)
+    expect(rendered.container.querySelector('[data-team-dock]')).toBeNull()
+    expect(document.querySelector('[data-team-dock-backdrop]')?.parentElement).toBe(document.body)
   })
 
   it('shows an Archify CTA after all shared tasks complete and fills the prompt', async () => {
