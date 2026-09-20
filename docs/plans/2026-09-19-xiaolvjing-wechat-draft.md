@@ -1,7 +1,5 @@
 # 微信推文草稿：元公益「小绿鲸」开源发布
 
-状态：通讯草稿，非正式产品文档。窗内品牌写「小绿鲸」；对外可写「公益小绿鲸」。不要写「绿章鱼」。不要写成 DeepSeek 官方桌面。
-
 标题：写文书、整案例、问表格：小绿鲸开源给公益同行
 
 建议封面：绿叶鲸鱼标 + 浅色桌面首页，不要用 DeepSeek 默认 logo。
@@ -100,16 +98,3 @@ xattr -cr /Applications/octopus_DSH.app
 https://gitee.com/jasonchan0754/octopus_DSH
 
 小绿鲸是工作台，不是代写机器。材料仍是你们的，判断仍是你们的。它负责把重复的整理、核对、成稿，从夜里挪回白天。
-
-——元公益
-
----
-
-## 编辑备忘（不进正文）
-
-- 安装包实际文件名、Gatekeeper 提示以当前 `scripts/dmg-payload/安装说明.txt` 为准。
-- 公益项目助手 preset 在课期包，不在官方 `packages/skill`。推文不要写成「打开即是公益助手」。
-- 不要承诺 Windows / 公证 / 应用商店。
-- 不要写用户量、节省工时、准确率。
-- 配图可用首页浅海、侧栏「小绿鲸」、问数数据源页、案例组编制。勿用 DeepSeek 默认鱼标当主视觉。
-- 对外源码写 Gitee：https://gitee.com/jasonchan0754/octopus_DSH 。GitHub 镜像是 https://github.com/AlataChan/deepseek-harness ，正文不写。
