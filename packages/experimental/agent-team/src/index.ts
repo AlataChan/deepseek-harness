@@ -26,6 +26,7 @@ import type {
   CreateTeamTaskRequest,
   EnsureInstitutionSquadRequest,
   EnsureInstitutionSquadResult,
+  InstitutionSquadId,
   InstitutionSquadView,
   ReadHtmlPreviewRequest,
   ReadHtmlPreviewResult,
