@@ -60,7 +60,7 @@ kind: "package-reference"
 
 ### Teammate
 
-三个机构小队（文书组 / 案例组 / 传播部）记在 `$DSH_HOME/institution-squads.json`（或 `institutionCatalogPath`）。`listInstitutionSquads` 返回这些行。`ensureInstitutionSquad` 把调用方 Lead Session 绑成该队常驻 Lead，并把编制里还没有的座位 spawn 一次；之后的话题是同一 Session 上的 prompt。`updateInstitutionSeat` 把座位的 provider/model 写入名册，不会把已有 teammate 再 spawn 一次。`institutionFreshProvider`（默认 `spawn`）是这些座位用的 continuable provider。
+三个机构小队（文书组 / 案例组 / 传播部）记在 `$DSH_HOME/institution-squads.json`（或 `institutionCatalogPath`）。`listInstitutionSquads` 返回这些行。`ensureInstitutionSquad` 把调用方 Lead Session 绑成该队常驻 Lead，并把编制里还没有的座位 spawn 一次；之后的话题是同一 Session 上的 prompt。新座位的第一条提示是 `standingSeatPrompt`；`standingSquadFor` 与 `standingLeadPrompt` 给已绑定的主控一份中文编制说明。`updateInstitutionSeat` 把座位的 provider/model 写入名册，不会把已有 teammate 再 spawn 一次。`institutionFreshProvider`（默认 `spawn`）是这些座位用的 continuable provider。
 
 请 Lead 创建 teammate：给它一个唯一的小写名字（例如 `reviewer`）并描述其职责。teammate 可以 fresh 启动（不携带 Lead 对话的任何记忆），也可以作为 fork 启动（继承 Lead 已完成的轮次）；创建请求决定用哪种。teammate 名字是永久的——即使创建失败的 teammate 也保留其名字，任何名字都不会被复用。
 

@@ -5,7 +5,7 @@ import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { AgentOptions } from '@deepseek-ai/dsh-agent'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import { TeamError, TeamTaskId } from '@deepseek-ai/dsh-experimental-agent-team'
+import { standingLeadPrompt, TeamError, TeamTaskId } from '@deepseek-ai/dsh-experimental-agent-team'
 import type { ProposedAction, TeamMemberView } from '@deepseek-ai/dsh-experimental-agent-team'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { InferValue, ValueSchemaSpec } from '@deepseek-ai/dsh-tools'
@@ -45,7 +45,9 @@ The Team Lead and all teammates share the same working directory and filesystem.
 
 Prefer read/edit/write for file changes. If a file operation returns FS_STALE_VERSION, read the current file, rebase your intended change onto the new content, and retry. Bash, formatters, code generators, and scripts are not fully protected by the filesystem version guard; coordinate them explicitly and have the Lead review the final diff and run tests.
 
-send_message steers a running target at its nearest step boundary, starts an idle target, and cold-resumes an inactive teammate. A delivered peer item starts with its stable message id and sender name. A successful send is already durable even when its result says queued; do not resend it. Shared-task workflow is list, get, claim with the current revision, perform the work, then complete. Task readiness never starts an owner. Before wait_agent, use list_agents and make sure another required member is running or provisioning; use send_message first when the required member is inactive. wait_agent observes only changes after that call starts, never wakes a member, and returns noProgress immediately when no other member can produce a change. Re-list after wakeup or timeout. The Lead must wait for required teammates before giving the final answer.`
+send_message steers a running target at its nearest step boundary, starts an idle target, and cold-resumes an inactive teammate. A delivered peer item starts with its stable message id and sender name. A successful send is already durable even when its result says queued; do not resend it. Shared-task workflow is list, get, claim with the current revision, perform the work, then complete. Task readiness never starts an owner. Before wait_agent, use list_agents and make sure another required member is running or provisioning; use send_message first when the required member is inactive. wait_agent observes only changes after that call starts, never wakes a member, and returns noProgress immediately when no other member can produce a change. Re-list after wakeup or timeout. The Lead must wait for required teammates before giving the final answer.
+
+回复和思考过程一律用中文，除非用户本轮明确改用其他语言。不要向用户追问每个工种的文件路径；材料由用户贴进本会话。禁止编造成效数字。`
 
 const ACTIVE_WAIT_STATUSES: ReadonlySet<TeamMemberView['status']> = new Set(['running', 'provisioning'])
 const NO_ACTIVE_PEER_MESSAGE = 'No other Team member is running or provisioning. wait_agent cannot make progress or wake inactive teammates. Re-list with list_agents and team_task_list, then use send_message to wake each required inactive teammate before waiting again.'
@@ -241,7 +243,9 @@ function install(agent: Agent, scoped: Context, teamCtx: Context, config: Requir
       order: scoped.systemPrompt.getSectionOrder('TEAM_POLICY'),
       text: () => {
         const membership = teamCtx.agentTeams.membership(agent)
-        return `${POLICY}\n\nYour Team role is ${membership.role}; your Team name is ${membership.name}; Team id is ${membership.id}.`
+        const standing = teamCtx.agentTeams.standingSquadFor(agent)
+        const standingBlock = standing === undefined ? '' : `\n\n${standingLeadPrompt(standing)}`
+        return `${POLICY}${standingBlock}\n\nYour Team role is ${membership.role}; your Team name is ${membership.name}; Team id is ${membership.id}.`
       },
     }))
 

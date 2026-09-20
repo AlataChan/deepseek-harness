@@ -125,7 +125,7 @@ Read these pages when the package-level contract is not enough. They move from t
 
 #### What the model sees
 
-One stable policy section states the exact Team role/name/id, the explicit-delegation requirement, shared-cwd behavior, filesystem stale-version recovery, Bash/formatter/codegen risk, task and write-scope coordination, Steer delivery, the no-retry mailbox rule, and the Lead's duty to wait before answering. The nine Team schemas from `spawn_teammate` through `team_task_update` appear only in Team member scopes.
+One stable policy section states the exact Team role/name/id, the explicit-delegation requirement, shared-cwd behavior, filesystem stale-version recovery, Bash/formatter/codegen risk, task and write-scope coordination, Steer delivery, the no-retry mailbox rule, and the Lead's duty to wait before answering. It also requires Chinese replies and thinking unless the user switches language, and forbids asking the user for a per-seat file path. A bound institution Lead also receives that squad's `standingLeadPrompt`. The nine Team schemas from `spawn_teammate` through `team_task_update` appear only in Team member scopes.
 
 #### Token effect
 

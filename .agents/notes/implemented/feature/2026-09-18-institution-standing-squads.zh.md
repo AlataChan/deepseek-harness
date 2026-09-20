@@ -10,7 +10,7 @@ Agent Teams 已经能把可续跑的队友留在 Lead Session 上，但用户入
 
 ## Decision
 
-Host 用文件名册（`$DSH_HOME/institution-squads.json`，或 `institutionCatalogPath`）保存三个产品常量小队。每行可选记录 Lead `SessionId` 以及座位上的 provider/model。`listInstitutionSquads` 在 persistence 里已经没有该 Session 时丢掉 Lead id。`ensureInstitutionSquad` 绑定调用方 Lead Session，并把编制里还没有的座位 spawn 一次。之后的话题是同一 Session 上的人类 prompt。
+Host 用文件名册（`$DSH_HOME/institution-squads.json`，或 `institutionCatalogPath`）保存三个产品常量小队。每行可选记录 Lead `SessionId` 以及座位上的 provider/model。`listInstitutionSquads` 在 persistence 里已经没有该 Session 时丢掉 Lead id。`ensureInstitutionSquad` 绑定调用方 Lead Session，并把编制里还没有的座位 spawn 一次。之后的话题是同一 Session 上的人类 prompt。新座位的第一条提示词是中文（`standingSeatPrompt`）：机器 kebab `name`、中文职务与职责、等主控派活、不编造事实，回复和思考一律用中文。已绑定小队的主控还会在 `TEAM_POLICY` 里收到 `standingLeadPrompt`；每个 Team 成员的策略都要求中文回复和思考，并禁止向用户追问每个工种的文件路径。
 
 Client 用 `conversation.hero.agentTeam` 放三张小队卡片。派活时：未绑定就在 Hero 工作区创建 Session、命名、补齐座位并打开 Lead。座位下拉写入名册；Lead 已加载时必须显示现场 teammate model。页头舱仍是协作视图；底部启动按钮仍是现组路径，而且只填入输入框。
 

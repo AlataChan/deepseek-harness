@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-三枚填入按钮改为 `document` / `case` / `comms`。正文使用英文 kebab 的 `name=` 与中文职责，要求共享任务串行、禁止编造指标，主控只分派收口不写终稿。实时图与 Archify 仍为独立层；Archify 仅可选安装 `@tt-a1i/archify-dsh`，不进桌面默认种子。
+三枚填入按钮改为 `document` / `case` / `comms`。正文使用英文 kebab 的 `name=` 与中文职责，要求共享任务串行、禁止编造指标，主控只分派收口不写终稿，回复和思考用中文，也不向用户追问每个工种的文件路径。实时图与 Archify 仍为独立层；Archify 仅可选安装 `@tt-a1i/archify-dsh`，不进桌面默认种子。
 
 ## 备选
 

@@ -10,6 +10,7 @@ import {
   projectInstitutionSquad,
   requireInstitutionSquad,
   resolveInstitutionCatalogPath,
+  standingLeadPrompt,
   standingSeatPrompt,
 } from '../src/institution.ts'
 
@@ -54,7 +55,15 @@ describe('institution catalog file', () => {
       (error: unknown) => error instanceof TeamError && error.code === 'TEAM_INSTITUTION_CATALOG',
     )
     expect(() => requireInstitutionSquad('sales')).toThrowError(TeamError)
-    expect(standingSeatPrompt(INSTITUTION_SQUADS[0]!, INSTITUTION_SQUADS[0]!.seats[0]!)).toContain('archivist')
+    const prompt = standingSeatPrompt(INSTITUTION_SQUADS[0]!, INSTITUTION_SQUADS[0]!.seats[0]!)
+    expect(prompt).toContain('archivist')
+    expect(prompt).toContain('资料员')
+    expect(prompt).toContain('回复和思考过程一律用中文')
+    expect(prompt).toContain('不要向用户追问本工种的文件路径')
+    const leadPrompt = standingLeadPrompt(INSTITUTION_SQUADS[1]!)
+    expect(leadPrompt).toContain('案例组')
+    expect(leadPrompt).toContain('notetaker→redactor→case-writer→librarian')
+    expect(leadPrompt).toContain('不要向用户追问每个工种的文件路径')
   })
 
   it('clears a seat route and rejects a wrong catalog version', async () => {

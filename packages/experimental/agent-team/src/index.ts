@@ -50,6 +50,7 @@ import {
   requireInstitutionSquad,
   resolveInstitutionCatalogPath,
   standingSeatPrompt,
+  type InstitutionSquadDefinition,
 } from './institution.ts'
 
 export type * from './types.ts'
@@ -58,6 +59,7 @@ export { TeamId, TeamMessageId, TeamTaskId } from './types.ts'
 export { TeamError } from './error.ts'
 export {
   INSTITUTION_SQUAD_IDS, INSTITUTION_SQUADS, resolveInstitutionCatalogPath,
+  standingLeadPrompt, standingSeatPrompt,
 } from './institution.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -100,6 +102,7 @@ export class TeamService extends TypertRemoteService {
   private readonly config: Required<Config>
   private readonly institutionCatalog: InstitutionCatalog
   private readonly institutionFreshProvider: string
+  private standingLeadBySession = new Map<string, InstitutionSquadId>()
 
   private readonly activity: TeamActivity
   private readonly lifecycle: TeamRuntimeLifecycle
@@ -168,6 +171,30 @@ export class TeamService extends TypertRemoteService {
       }
     }, 'agentTeams.runtimeLifecycle()')
     for (const agent of ctx.agents.list()) this.scheduleRecovery(agent)
+    void this.institutionCatalog.read().then(
+      (file) => { this.rememberStandingLeads(file) },
+      () => {
+        // Absent or invalid catalog: listInstitutionSquads is the loud path.
+      },
+    )
+  }
+
+  /**
+   * Return the baked-in squad when this Agent is that squad's standing Lead.
+   * @param agent - exact live Agent.
+   * @returns the squad, or `undefined` when this Session is not a standing Lead.
+   */
+  standingSquadFor(agent: Agent): InstitutionSquadDefinition | undefined {
+    const id = this.standingLeadBySession.get(agent.session.id)
+    return id === undefined ? undefined : requireInstitutionSquad(id)
+  }
+
+  private rememberStandingLeads(file: Awaited<ReturnType<InstitutionCatalog['read']>>): void {
+    this.standingLeadBySession.clear()
+    for (const squad of INSTITUTION_SQUADS) {
+      const lead = file.leads[squad.id]
+      if (lead !== undefined) this.standingLeadBySession.set(lead, squad.id)
+    }
   }
 
   /**
@@ -436,6 +463,7 @@ export class TeamService extends TypertRemoteService {
    */
   async listInstitutionSquads(): Promise<InstitutionSquadView[]> {
     const file = await this.dropMissingLeads()
+    this.rememberStandingLeads(file)
     return INSTITUTION_SQUADS.map((squad) => {
       const leadId = file.leads[squad.id]
       const live = leadId === undefined ? undefined : this.ctx.agents.get(SessionId(leadId))
@@ -481,6 +509,7 @@ export class TeamService extends TypertRemoteService {
       seats: { ...file.seats },
     }))
     const catalog = await this.institutionCatalog.read()
+    this.rememberStandingLeads(catalog)
     const bindings = catalog.seats[squad.id] ?? {}
     const existing = new Set(
       this.listMembers(caller).filter(member => member.role === 'teammate').map(member => member.name),

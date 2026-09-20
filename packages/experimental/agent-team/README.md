@@ -60,7 +60,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 ### Teammates
 
-Three institution squads (文书组 / 案例组 / 传播部) live in `$DSH_HOME/institution-squads.json` (or `institutionCatalogPath`). `listInstitutionSquads` returns those rows. `ensureInstitutionSquad` binds the calling Lead Session as that squad's standing Lead and spawns any missing baked-in seats once; a later topic is a prompt on the same Session. `updateInstitutionSeat` writes a seat's provider/model into the catalog without respawning an existing teammate. `institutionFreshProvider` (default `spawn`) is the continuable provider used for those seats.
+Three institution squads (文书组 / 案例组 / 传播部) live in `$DSH_HOME/institution-squads.json` (or `institutionCatalogPath`). `listInstitutionSquads` returns those rows. `ensureInstitutionSquad` binds the calling Lead Session as that squad's standing Lead and spawns any missing baked-in seats once; a later topic is a prompt on the same Session. New seats start with `standingSeatPrompt`; `standingSquadFor` plus `standingLeadPrompt` brief the bound Lead. `updateInstitutionSeat` writes a seat's provider/model into the catalog without respawning an existing teammate. `institutionFreshProvider` (default `spawn`) is the continuable provider used for those seats.
 
 Ask the Lead to create a teammate: give it a unique lowercase name such as `reviewer` and describe its job. A teammate starts fresh with no memory of the Lead's conversation, or as a fork that inherits the Lead's completed turns; the creation request chooses which. Teammate names are permanent — even a teammate whose creation failed keeps its name, and no name is ever reused.
 

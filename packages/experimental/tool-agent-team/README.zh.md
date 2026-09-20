@@ -125,7 +125,7 @@ member scope 上的一个 `team:policy` 段落教每个成员自己的角色与�
 
 #### 模型看到什么
 
-一段稳定策略会说明确切 Team role／name／id、显式 delegation 要求、共享 cwd 行为、文件 stale-version 恢复、Bash／formatter／codegen 风险、task／write-scope 协调、Steer 投递、mailbox 不重试规则，以及 Lead 必须在回答前等待。`spawn_teammate` 到 `team_task_update` 的九个 Team schema 只出现在 Team member scope。
+一段稳定策略会说明确切 Team role／name／id、显式 delegation 要求、共享 cwd 行为、文件 stale-version 恢复、Bash／formatter／codegen 风险、task／write-scope 协调、Steer 投递、mailbox 不重试规则，以及 Lead 必须在回答前等待。策略还要求用中文回复和思考（除非用户改用其他语言），并禁止向用户追问每个工种的文件路径。已绑定的机构小队主控还会收到该队的 `standingLeadPrompt`。`spawn_teammate` 到 `team_task_update` 的九个 Team schema 只出现在 Team member scope。
 
 #### Token 影响
 

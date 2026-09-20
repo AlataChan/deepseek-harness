@@ -90,7 +90,7 @@ export const zh = {
     + '- name=drafter（文书员）：按模板出结构完整初稿；无来源章节只写「缺失项清单」\n'
     + '- name=metric-checker（指标核对员）：对照原始表核数字/单位/目标达成，出差异清单\n'
     + '- name=reviewer（审核员）：查对外承诺、财务敏感、口径风险；不替机构提交资方\n'
-    + '我是主控：先问清立项书/结项/资助信，再建共享任务（依赖 + 写入范围），按 archivist→drafter→metric-checker→reviewer 串行。你负责分派与收口，不要自己写终稿；禁止估算或编造预算、人数、成效。建好后列出队友状态，等我提供材料再开工。',
+    + '我是主控：先问清立项书/结项/资助信，再建共享任务（依赖 + 写入范围），按 archivist→drafter→metric-checker→reviewer 串行。你负责分派与收口，不要自己写终稿；禁止估算或编造预算、人数、成效。全程用中文回复和思考。不要向用户追问每个工种的文件路径；用户会把材料直接贴进本会话。建好后列出队友状态，等我提供材料再开工。',
   'template.case.label': '组案例档案组',
   'template.case.body':
     '用团队协作，按机构「案例档案组」组建常驻队友（name 用英文 kebab，括号为中文职责）：\n'
@@ -98,7 +98,7 @@ export const zh = {
     + '- name=redactor（脱敏员）：去姓名手机身份证，地址不超过区县\n'
     + '- name=case-writer（案例萃取员）：做成标准案例卡（背景-行动-结果-手法）\n'
     + '- name=librarian（入库审核员）：五分类归档并更新索引，缺字段标待补\n'
-    + '主控按 notetaker→redactor→case-writer→librarian 建共享任务依赖；脱敏未完成前禁止对外传播口径。数字与事实只来自材料。建好后列队友，等我丢原始笔记再开工。',
+    + '主控按 notetaker→redactor→case-writer→librarian 建共享任务依赖；脱敏未完成前禁止对外传播口径。数字与事实只来自材料。全程用中文回复和思考。不要向用户追问每个工种的文件路径；用户会把原始笔记直接贴进本会话。建好后列队友，等我丢原始笔记再开工。',
   'template.comms.label': '组传播协作组',
   'template.comms.body':
     '用团队协作，按机构「传播部」组建常驻队友（name 用英文 kebab，括号为中文职责）：\n'
@@ -106,7 +106,7 @@ export const zh = {
     + '- name=outliner（结构员）：定标题/提纲/段落结构\n'
     + '- name=copywriter（写作员）：出「说人话」初稿，不编成效数字\n'
     + '- name=compliance-reviewer（审核员）：发布前审校敏感信息与过度承诺；不代发微信/平台\n'
-    + '主控先确认活动复盘推文、招募包或节点宣发，再按 sourcer→outliner→copywriter→compliance-reviewer 派共享任务。你分派与收口，不写终稿。建好后列队友，等我给活动材料再开工。',
+    + '主控先确认活动复盘推文、招募包或节点宣发，再按 sourcer→outliner→copywriter→compliance-reviewer 派共享任务。你分派与收口，不写终稿。全程用中文回复和思考。不要向用户追问每个工种的文件路径；用户会把活动材料直接贴进本会话。建好后列队友，等我给活动材料再开工。',
   tasks: '共享任务',
   model: '模型',
   open: '打开队友会话',
@@ -232,7 +232,7 @@ export const en = {
     + '- name=drafter (文书员): draft from the template; missing sources go to a gap list\n'
     + '- name=metric-checker (指标核对员): reconcile numbers/units/targets against source tables\n'
     + '- name=reviewer (审核员): check external promises and financial sensitivity; do not submit to funders\n'
-    + 'I am Lead: clarify proposal vs closure vs grant letter, then create shared tasks with dependencies and write scopes in order archivist→drafter→metric-checker→reviewer. You coordinate and close out; do not write the final draft yourself; never invent budget, headcount, or outcomes. List teammates when ready and wait for my materials.',
+    + 'I am Lead: clarify proposal vs closure vs grant letter, then create shared tasks with dependencies and write scopes in order archivist→drafter→metric-checker→reviewer. You coordinate and close out; do not write the final draft yourself; never invent budget, headcount, or outcomes. Reply and think in Chinese. Do not ask the user for a per-seat file path; they paste materials into this session. List teammates when ready and wait for my materials.',
   'template.case.label': 'Case archive squad',
   'template.case.body':
     'Use Team. Form a case-archive squad (lower-kebab-case names; Chinese roles in parentheses):\n'
@@ -240,7 +240,7 @@ export const en = {
     + '- name=redactor (脱敏员): strip PII; address no finer than district\n'
     + '- name=case-writer (案例萃取员): standard case card (context-action-result-method)\n'
     + '- name=librarian (入库审核员): five-way archive + index; mark missing fields\n'
-    + 'Lead: shared tasks notetaker→redactor→case-writer→librarian; no external messaging before redaction. Facts only from materials. List teammates and wait for raw notes.',
+    + 'Lead: shared tasks notetaker→redactor→case-writer→librarian; no external messaging before redaction. Facts only from materials. Reply and think in Chinese. Do not ask the user for a per-seat file path; they paste raw notes into this session. List teammates and wait for raw notes.',
   'template.comms.label': 'Comms squad',
   'template.comms.body':
     'Use Team. Form a communications squad (lower-kebab-case names; Chinese roles in parentheses):\n'
@@ -248,7 +248,7 @@ export const en = {
     + '- name=outliner (结构员): title, outline, section plan\n'
     + '- name=copywriter (写作员): plain-language draft; no invented outcome numbers\n'
     + '- name=compliance-reviewer (审核员): pre-publish review; do not post to WeChat/platforms\n'
-    + 'Lead: confirm recap post vs recruit pack vs calendar campaign, then tasks sourcer→outliner→copywriter→compliance-reviewer. Coordinate only; do not write the final draft. List teammates and wait for activity materials.',
+    + 'Lead: confirm recap post vs recruit pack vs calendar campaign, then tasks sourcer→outliner→copywriter→compliance-reviewer. Coordinate only; do not write the final draft. Reply and think in Chinese. Do not ask the user for a per-seat file path; they paste activity materials into this session. List teammates and wait for activity materials.',
   tasks: 'Shared tasks',
   model: 'Model',
   open: 'Open teammate conversation',

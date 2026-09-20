@@ -10,7 +10,7 @@ The Team panel filled generic `researcher` / `writer` / list starters. NGO and i
 
 ## Decision
 
-Replace the three fill templates with `document`, `case`, and `comms`. Each body assigns English kebab `name=` ids and Chinese duty text, requires shared-task ordering, forbids invented metrics, and keeps the Lead as coordinator (not final-draft author). Live topology and Archify remain separate layers; Archify stays opt-in via `@tt-a1i/archify-dsh` and is not a default desktop seed.
+Replace the three fill templates with `document`, `case`, and `comms`. Each body assigns English kebab `name=` ids and Chinese duty text, requires shared-task ordering, forbids invented metrics, keeps the Lead as coordinator (not final-draft author), requires Chinese replies and thinking, and forbids asking the user for a per-seat file path. Live topology and Archify remain separate layers; Archify stays opt-in via `@tt-a1i/archify-dsh` and is not a default desktop seed.
 
 ## Alternatives considered
 

@@ -149,6 +149,8 @@ describe('dsh-tool-team', () => {
     expect(leadPrompt).toContain('Task readiness never starts an owner')
     expect(leadPrompt).toContain('returns noProgress immediately')
     expect(leadPrompt).toContain('Your Team role is lead')
+    expect(leadPrompt).toContain('回复和思考过程一律用中文')
+    expect(leadPrompt).toContain('不要向用户追问每个工种的文件路径')
 
     const spawned = await execute(ctx, lead, 'spawn_teammate', {
       name: 'tool-worker',

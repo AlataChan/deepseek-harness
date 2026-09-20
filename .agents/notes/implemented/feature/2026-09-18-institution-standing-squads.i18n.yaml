@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-18-institution-standing-squads.md
-2026-09-18-institution-standing-squads.md: 421bd5dc23c315d5cd52d979b674f827f9e425c3
-2026-09-18-institution-standing-squads.zh.md: bf3d6851a2fffc4db8eb01fb845a7cfdbd061283
+2026-09-18-institution-standing-squads.md: 9fb45dad9769739eb4e02c36554d4d429dbbd999
+2026-09-18-institution-standing-squads.zh.md: 3f76180a1b9aaa9d7a6f3cee174aac1161e93423

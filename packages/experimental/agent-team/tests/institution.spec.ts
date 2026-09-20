@@ -99,6 +99,7 @@ describe('institution squads', () => {
     })
     expect(listed.find(row => row.id === 'document')?.seats.find(seat => seat.name === 'archivist')?.model)
       .toBeDefined()
+    expect(ctx.agentTeams.standingSquadFor(lead)?.id).toBe('document')
     const second = await ctx.agentTeams.ensureInstitutionSquad(lead, { squadId: 'document' })
     expect(second.members.filter(member => member.role === 'teammate').map(member => member.name)).toEqual(
       first.members.filter(member => member.role === 'teammate').map(member => member.name),
