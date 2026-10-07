@@ -17,6 +17,10 @@ Ship the Archify skill to octopus_DSH desktop users by default through `Resource
 - **Profile-plugin pin.** Rejected: `validatePluginDir` requires `dsh.client.platform === 'web'`.
 - **Keep Archify opt-in only.** Rejected for this fork: distributed users would never see the skill.
 
+## Consequences
+
+Installed desktop users receive Archify without a separate plugin action. The skill adds bundled files and an npm-source pin to the installer, but it does not join the default agent composition or run on task settlement.
+
 ## Verification
 
 ```bash

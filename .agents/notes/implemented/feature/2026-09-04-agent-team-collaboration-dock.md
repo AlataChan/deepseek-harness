@@ -17,6 +17,10 @@ Present live Team topology in a Client-only right overlay dock (default ~40vw, d
 - **True split pane in `ui-conversation`.** Deferred: higher layout-contract cost.
 - **Keep the dropdown panel only.** Rejected: map too small to read.
 
+## Consequences
+
+The topology remains visible without reserving a permanent chat column. Opening the dock overlays conversation content, and users may resize or close it when they need that space.
+
 ## Verification
 
 ```bash

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-agent-team-archify-autofill-preview.md
-2026-09-04-agent-team-archify-autofill-preview.md: c8714ac999e6c5f0ff372d0ae3bc4db7420a70ef
-2026-09-04-agent-team-archify-autofill-preview.zh.md: 4585310cf66cfaebbbff4da6587a3d8576f0b7a6
+2026-09-04-agent-team-archify-autofill-preview.md: bbe3c22bcb4625331ea173cff86a087ec5a35b3f
+2026-09-04-agent-team-archify-autofill-preview.zh.md: 8e4c81ecddcd372454c8afd3c1c46628915ac652
