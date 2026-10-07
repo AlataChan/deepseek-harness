@@ -2,7 +2,89 @@
 
 Written 2026-10-07 by the agent that did the work, at the owner's request after the owner lost confidence in it. Read this as a damage report, not a status report: it separates **verified** from **claimed but unverified**, lists the mistakes that caused the loss of trust, and names every plan item left open.
 
-Companion document: [`2026-10-06-upstream-selective-upgrade.md`](2026-10-06-upstream-selective-upgrade.md) — the approved plan. Where this document and the plan disagree, **the plan is authority**.
+Companion document: [`2026-10-06-upstream-selective-upgrade.md`](2026-10-06-upstream-selective-upgrade.md) — the plan. Where this document and the plan disagree, **the plan is authority**, except that §0 corrects the plan on the points it lists.
+
+Two independent reviews of the plan, the branch, and this handover were run on 2026-10-07 (an Oz review and a Codex review). Their findings are folded into §0. **Where §0 and §1–§10 differ, §0 wins.**
+
+---
+
+## 0. Review addendum (2026-10-07)
+
+### 0.1 Verdict
+
+The work is recoverable and the checkpoint is sound: hop 1 and hop 2 are real merges, the tree is clean, no conflict markers remain, and the class-C paths are absent. The execution did not honour the plan's own acceptance criteria. **Do not merge hop 3 yet.** Run the repair checkpoint in §0.5 first.
+
+Evidence labels used below: **verified** means a reviewer ran the check against this repository; **reported** means a reviewer relied on the handover or on the other review and did not reproduce it.
+
+### 0.2 Requirement, evidence, remaining work
+
+This table replaces the status prose in §3, §4 and §7 where they conflict.
+
+| Requirement | Evidence today | Remaining work |
+|---|---|---|
+| Hop 1 and hop 2 merged cleanly | verified: both tags are ancestors of `HEAD`, `git status` empty, no conflict markers outside `vendor/` and `*.md` | none |
+| Class-C paths absent | verified: `apps/desktop-host`, `packages/telemetry`, `packages/host/product-telemetry-otel`, `packages/client/product-analytics` do not exist | none |
+| Telemetry default is off | verified: `bundle/base/cordis.patch.yml` resolves `mode` to `DISABLED` and has no endpoint default | add a test that fails if an endpoint default returns (§0.3 item 2) |
+| `pnpm run test` green | **not met**: 15 failures, reported | per-test table with name, error, master result, disposition (§0.3 item 3); owner decides the acceptance wording |
+| Intake gate enforces patch completeness and E-class decisions | **not met**: those rules run only when `changedUpstreamFiles` is supplied, and nothing supplies it | wire the input, then fill the E-class dispositions (§0.3 item 2) |
+| Intake gate rejects an upstream-endpoint telemetry row | **not met**: mount check tests registration only; `FORBIDDEN_ENDPOINTS` is declared and never referenced | resolve each mounted row's endpoint and mode, and fail on a forbidden one |
+| Fork session events survive v0 → current | partial: the four events are patched into the `v0-to-v1` inventory, which `v1-to-v2` and `v2-to-v3` derive from (§0.3 item 1); v3 → v4 is **unpatched and will refuse them** | patch `RELEASED_V3_EVENT_TYPES` at hop 3 and prove it with a real log |
+| Real legacy data migrates | **not run**: no shipped-DMG fixture, no upstream-authored fixture, no copied-profile run | §0.5 step 2 |
+| Pre-migration guard owner named | **open** (decision 9) | owner decides; recommendation is the persistence layer |
+| E-class dispositions (`e2b`, `code-runtime`, `runtime-diagnostics`) | **open**: all `undefined` | owner decides per package |
+| `ignorable` finding recorded | **open**: inspected, not in the registry | write it into `scripts/upstream-intake-registry.ts` |
+| Phase 0 exit gate met before Phase 1 | **not met**: decision 9 and the backup layer were open when hops 1–2 ran | owner records authorisation for hops 1–2, or marks them provisional |
+| Phase 3, 4, 5 | not started | after Phase 2 |
+
+### 0.3 Findings added by review
+
+1. **v3 → v4 refuses the fork's four events (verified at tag `dsh-v0.1.7-alpha.1`; not yet executed).**
+   - `packages/session/session-format-v3-to-v4/src/extension-identities.ts` hard-codes `RELEASED_V3_EVENT_TYPES`. Its comment says the list "must not inherit additions or removals from the current Session event list". None of `ask-data`, `ask-knowledge`, `commerce` appears in it.
+   - The edge's README says the stage rejects unknown *required* V3 events before interpreting payloads or consulting V4 vocabulary, "including names V4 already knows". Only unknown *ignorable* events are namespaced and kept.
+   - §4.3 established that the fork's events are written **without** `ignorable: true` (152 real logs). So they are required events, and hop 3 will refuse them. §6 lists only `admitSelect`; this is the larger hop-3 item.
+   - Confirm at `migration.ts:97` (`if (!RELEASED_V3_EVENT_TYPES.has(event.type))`) and with a test before relying on the README.
+2. **The intake gate is weaker than §3 states (verified).** `changedUpstreamFiles` is optional and the patch-completeness check runs only when it is present; no caller supplies it. `FORBIDDEN_ENDPOINTS` (`scripts/upstream-intake-registry.ts`) is referenced nowhere else under `scripts/`, so a registered telemetry row could regain an upstream collector default and still pass. The 20 passing specs prove the seeded-violation cases they contain, not these two.
+3. **"No failure master doesn't also have" is not an acceptance bar (reported).** The same file can fail with different tests on the two trees. The comparison is useful diagnostics; acceptance needs each failing test's name, error text, master's result under matching environment, and a disposition. Neither review reproduced the 15 failures.
+4. **The fork baseline is larger than four events (verified).** The main checkout has five uncommitted `media/*` session events in `packages/core/session/src/known-event-types.ts` (`media/approval`, `media/artifact`, `media/request`, `media/stop`, `media/task`), with their Agent Notes and the `conversation-media-creation` skill. The branch carries none of this. If that work lands, the v0 inventory patch, the v3 → v4 patch, and every fixture must cover nine events, not four. Owner decides: commit it to `master` before hop 3, or defer it explicitly.
+5. **The main checkout's 97 uncommitted files include product work (verified by area).** They cover `packages/api/session-controller` (10 files), `vendor/*`, `tsconfig.{base,host,client}.json`, `snapshots/session/*`, and Agent Notes. `session-controller/src/index.ts` is a registered A-class patch; merging back to `master` with those edits uncommitted will conflict or lose them. Owner commits or stashes them before the final merge.
+6. **The branch's `AGENTS.md` changed the session-data rule (verified).** After hop 2 it reads "Pre-stable APIs and released Session data": released Session JSONL migrates by adjacent version-named successors, committed generations are never moved, overwritten or deleted, and predecessors imply neither fallback nor downgrade support. This replaces the plan's "Reconciliation with the pre-release stance" section and changes the Phase 2 backup and rollback design, because the predecessor generation already stays on disk. Read `.agents/notes/implemented/architecture/2026-08-31-released-session-format-migrations.md` before redesigning step 5 and step 6 of Phase 2.
+7. **Handover instructions had operational errors (verified by reading).** §8 step 3 called the 48 `apps/desktop*` conflicts "`UD`-adjacent"; they are `DU` (§6 says so). §9's last command chained `git merge … && git status …`; a conflicted merge exits nonzero, so the status command would not run. Both are fixed below.
+8. **The plan is stale and exists twice (verified).** Its status line does not record hops 1–2, and identical copies sit in the main checkout and the worktree. The branch copy is the single authority from now on; do not edit the `master` copy.
+9. **The intake registry is TypeScript, not the plan's markdown ledger.** Accept the deviation and update the plan, or add the ledger as a generated view. Pick one.
+
+### 0.4 Corrections to the plan and to the earlier review
+
+- **One patch covers v0 → v3, not one per edge (verified).** `RELEASED_V2_EVENT_DISPOSITIONS` is built from `RELEASED_V0_EVENT_DISPOSITIONS` with an exclusion filter. `v1-to-v2` refuses by consulting the V0 table, and `v2-to-v3` consults the V2 table. The patch in `session-format-v0-to-v1/src/dispositions.ts` therefore reaches `v1-to-v2` and `v2-to-v3`. The plan's "one registered patch per refusing edge" and the earlier review's "three edges need patching" are both wrong. The correct registry shape is one patch on the v0 table plus one patch on `RELEASED_V3_EVENT_TYPES` at hop 3.
+- **The plan's "v3 → v4 is permissive" correction holds only for ignorable events.** For the fork's non-ignorable events it refuses (item 1 above).
+- **The "fork-v0 is a superset of upstream-v0" argument still holds**, but its premise (four events) is stale while the `media/*` work is uncommitted (item 4).
+- **Hop-1 and hop-2 snapshot fixtures prove less than they appear to.** The `commerce-*` v2 and v3 files were produced by replaying hand-written v0 scripts under `DSH_SNAPSHOT=refresh`. They exercise the patched v0 table; they are not shipped-DMG logs and say nothing about v3 → v4.
+
+### 0.5 Repair checkpoint before hop 3
+
+Do these in order. Hop 3 does not start until all five pass.
+
+1. **Make the intake gate enforce its rules.**
+   - Have the command compute `changedUpstreamFiles` (changes against the pinned upstream tag) and pass it in.
+   - Resolve each mounted telemetry row's endpoint and mode from the composed `cordis` config and check them against `FORBIDDEN_ENDPOINTS`.
+   - Add specs that fail for: an unregistered patched file, a telemetry row with an upstream collector default, and an `undefined` E-class disposition.
+   - Then record the E-class dispositions; they will fail the gate until you do.
+2. **Establish migration evidence on the hop-2 build.**
+   - Copy `~/.dsh/sessions` (152 v0 logs) into a temporary `$DSH_HOME`. Migrate, list and open every session. Record the count that opens.
+   - Record the `ignorable` finding in the registry.
+   - Add a captured real log as a sanitised fixture, and an upstream-authored v0 fixture.
+   - Implement the guard at the layer the owner names for decision 9, with a test that startup stops when the backup fails.
+   - Before merging hop 3, add the four events to `RELEASED_V3_EVENT_TYPES` on a scratch branch off the hop-3 tag and prove a fork-event log migrates to v4.
+3. **Tabulate the 15 test failures.** One row each: test name, error, master result, disposition. Run the two timing-sensitive files alone to confirm they pass in isolation.
+4. **Correct this document and the plan.** Done in the commit that adds this section: the plan's Phase 2 patch count and v3 → v4 statement, its stance-reconciliation section, its status line, its registry, checklist and risk rows, and open questions 10–12 are updated. The duplicate on `master` (`db435dd4d6`) is not deleted; the plan header marks it superseded, because removing it needs a commit on `master` while the main checkout still holds 97 uncommitted files. Still open: redesign Phase 2 steps 5–6 after reading the adjacent-migration note.
+5. **Owner decisions.** Answer: decision 9; the acceptance wording for the 15 failures; `media/*` in or out of scope; authorisation for hops 1–2; commit or stash the 97 files in the main checkout.
+
+### 0.6 Operating constraints for the next operator
+
+- Stage with explicit pathspecs only. Never `git add -u`, `git add -A`, or `git rm --force` over a computed path set.
+- Print the full list of paths and read it before any bulk or destructive Git command. Mistake 5 in §5 happened because a filter matched the whole conflict set.
+- Use `;` not `&&` after `git merge` when conflicts are expected. Abort with `git merge --abort` and confirm `git status --short` is empty.
+- Do not touch `/Users/apple/.codex/worktrees/upstream-integration/deepseek-harness`, and do not edit the `master` copy of the plan.
+- This branch carries its own five commits: `adca40d510`, `81fa25867d`, `57f8c5271d`, `31d9791091`, and the handover commit `509fc1e999`.
 
 ---
 
@@ -116,12 +198,12 @@ The owner asked me to reconcile my proposals against the plan. This is that reco
 | Phase 5 — verification, size, release | Phase 5 | Not started |
 
 ## 8. Recommended order for the next operator
+The plan's order is correct; what went wrong was my execution of it. Run the §0.5 repair checkpoint first, then restore the order:
 
-The plan's order is correct; what went wrong was my execution of it. Restore the order:
-
+1. **Phase 0 remainder**
 1. **Phase 0 remainder** — decision 9, the backup owner, E-class dispositions, record the `ignorable` finding, write the provenance Agent Note and the `AGENTS.md` facts.
 2. **Phase 2's hop-independent items** — a captured real v0 log as a fixture, an upstream-authored v0 fixture, the backup test at whatever layer step 1 names.
-3. **Hop 3** — merge, apply class C (48 `UD`-adjacent deletions), resolve the 109 `UU`, port `admitSelect` into `agent-preset-registry`, rebuild, `DSH_SNAPSHOT=refresh`, gates.
+3. **Hop 3** — merge, keep the 48 `DU` paths under `apps/desktop*` deleted (class C), resolve the 3 `UD` and 109 `UU`, port `admitSelect` into `agent-preset-registry`, patch `RELEASED_V3_EVENT_TYPES` for the fork's events (§0.3 item 1), rebuild, `DSH_SNAPSHOT=refresh`, gates.
 4. **Phase 2's exit gate** — on a *copied* legacy profile: sessions listed, sessions open, backup created and non-empty, rollback tested. Owner signs off. The stop condition applies: **if a genuine legacy log cannot be read, stop.**
 5. **Hop 4** — `dsh-v0.2.1-alpha.1`, no format change, engine/client catch-up.
 6. **Phase 3** — the client patches back onto official slots. This, plus step 4, is where "can existing users accept this" is actually answered.
@@ -139,10 +221,10 @@ pnpm run test:snapshot             # expect 136 passed
 pnpm run verify-upstream-intake    # expect pass
 rg -A3 REMOVALS scripts/upstream-intake-registry.ts # expect three undefined dispositions
 rg -i ignorable scripts/upstream-intake-registry.ts # expect nothing
-git merge --no-edit dsh-v0.1.7-alpha.1 && git status --porcelain | awk '{print $1}' | sort | uniq -c
+git merge --no-edit dsh-v0.1.7-alpha.1 ; git status --porcelain | awk '{print $1}' | sort | uniq -c
 ```
 
-The last command reproduces hop 3's conflict shape. Abort with `git merge --abort` when done; the tree must stay clean.
+The last command reproduces hop 3's conflict shape; it uses `;` because a conflicted merge exits nonzero. Abort with `git merge --abort` when done; the tree must stay clean.
 
 ## 10. Two things I would not do again
 

@@ -3,13 +3,15 @@
 Mode: integrate
 Space: upstream-selective-upgrade
 Created: 2026-10-06
-Revised: 2026-10-06 (round 2 review integrated)
+Revised: 2026-10-07 (round 3 execution review integrated)
 Architect: pi (draft for owner review)
-Status: **DECISIONS 1, 2, 8 TAKEN (2026-10-06); Phase 0 tooling landed. Phase 1 onward still requires owner sign-off.**
+Status: **DECISIONS 1, 2, 8 TAKEN (2026-10-06). Hops 1–2 (`dsh-v0.1.3-alpha.1`, `dsh-v0.1.5-alpha.1`) are merged on branch `upstream-upgrade/2026-10-06`; they did not meet the Phase 0 or Phase 1 exit gates. Hop 3 is blocked on the repair checkpoint in the [handover](2026-10-06-upstream-upgrade-handover.md) §0.5.**
+Authority: this branch copy is the only authoritative copy of the plan. The copy on `master` (`db435dd4d6`) is superseded and not edited.
 
 Plan Review:
 - Round 1 (fable, Reviewer): 13 findings. 9 accepted, 2 corrected with evidence, 1 escalated (which reversed this plan's own staging recommendation).
-- Round 2 (fable, Reviewer): 4 blocking + 6 significant/minor. All accepted; 1 detail corrected (v3→v4 does not refuse unknown ignorable events — it namespaces and retains them). One blocking finding escalated into a product decision about the fork's **currently shipped** telemetry default.
+- Round 2 (fable, Reviewer): 4 blocking + 6 significant/minor. All accepted; 1 detail corrected (v3→v4 does not refuse unknown ignorable events — it namespaces and retains them; round 3 narrows this to ignorable events only). One blocking finding escalated into a product decision about the fork's **currently shipped** telemetry default.
+- Round 3 (Oz and Codex, execution review of the branch after hop 2): 7 findings, all accepted. Two correct round 2: one patch covers v0→v3, and v3→v4 refuses the fork's non-ignorable events.
 
 **Goal:** Bring the useful parts of upstream `origin/master` (5755 commits ahead; last fork sync 2026-09-03) into octopus_DSH, keep the fork's Tauri desktop and its product layer intact, and use the same pass to retire the fork's structural defects: undocumented patch debt against upstream, and a hand-rolled DMG pipeline that duplicates upstream's own packaging pipeline.
 
@@ -40,11 +42,25 @@ This plan does not overrule that decision. But the fork's stated product premise
 
 **2 — Class D: `ssh`, `browser-use` and `computer-use` enter the default composition.** This is a fork composition addition, not an upstream default: upstream mounts none of the three in `bundle/base` or `bundle/web-app`. Verified consequence for the size concern that motivated the earlier recommendation against it: `@deepseek-ai/dsh-browser-use` and `@deepseek-ai/dsh-computer-use` declare no runtime dependencies, and `@deepseek-ai/dsh-fs-ssh` declares only `schemastery` and `zod`. No browser engine, media runtime, or other heavyweight payload enters the DMG, so the fork's size-sensitivity rule is not breached. Two obligations follow: each becomes a registry mount row rather than a silent addition, and each needs fork-owned coverage, because upstream exercises none of them in a default profile.
 
-**8 — Telemetry: default `DISABLED`.** Chosen over a self-hosted default because there is no collector the fork controls, and a default endpoint nobody runs is not a default. `FEEDBACK_ONLY` remains fully functional as an explicit opt-in for operators who set `DSH_TELEMETRY_MODE` and point `DSH_TELEMETRY_OTLP_URL` at their own collector. The reasoning that decides it: the 2026-08-25 note justified feedback-gated uploading as making a `/feedback` report diagnosable, which is true only when the receiver serves the people who can act on it. Here the receiver is upstream's collector, which this fork's maintainers cannot read, so the upload produces no diagnostic benefit and does expose raw session records. `DISABLED` is therefore the default, and it restores the earlier [default-off decision](../../.agents/notes/implemented/feature/2026-08-10-telemetry-default-off.md) for the fork's own deployment. Superseding the 2026-08-25 note is an explicit Phase 1 task, not a side effect.
+**8 — Telemetry: default `DISABLED`.** Chosen over a self-hosted default because there is no collector the fork controls, and a default endpoint nobody runs is not a default. `FEEDBACK_ONLY` remains fully functional as an explicit opt-in for operators who set `DSH_TELEMETRY_MODE` and point `DSH_TELEMETRY_OTLP_URL` at their own collector. The reasoning that decides it: the 2026-08-25 note justified feedback-gated uploading as making a `/feedback` report diagnosable, which is true only when the receiver serves the people who can act on it. Here the receiver is upstream's collector, which this fork's maintainers cannot read, so the upload produces no diagnostic benefit and does expose raw session records. `DISABLED` is therefore the default, and it restores the earlier [default-off decision](../../.agents/notes/archived/feature/2026-08-10-telemetry-default-off.md) (now archived history) for the fork's own deployment. Superseding the 2026-08-25 note is an explicit Phase 1 task, not a side effect.
 
-**3–7, 9 — still open.** They gate Phase 3 (3, 4), Phase 4 (5), and Phase 2's guard (9). Decision 7 has a recommendation: option (a).
+**3–7, 9–12 — still open.** They gate Phase 3 (3, 4), Phase 4 (5), Phase 2's guard (9), and hop 3 (10, 11, 12). Decision 7 has a recommendation: option (a).
 
 ## Review Integration
+
+### Round 3 — execution review (2026-10-07)
+
+Two independent reviews (Oz and Codex) checked the branch after hop 2 against this plan. Full evidence and the repair checkpoint are in the [handover](2026-10-06-upstream-upgrade-handover.md) §0.
+
+| # | Finding | Disposition |
+|---|---|---|
+| C1 | One patch covers v0→v3, not one per edge | **Accepted; corrects round 2 B1.** `v1-to-v2` refuses against the v0→v1 table and `v2-to-v3` against a table derived from it. The patch landed in `57f8c5271d` on the v0→v1 table suffices through v3. |
+| C2 | v3→v4 refuses the fork's non-ignorable events | **Accepted; corrects the round 2 detail on B1.** Hard-coded `RELEASED_V3_EVENT_TYPES` does not list the events, and 152 real logs show they are not ignorable. Hop 3 needs a second patch. |
+| C3 | The intake gate's merge-time rules never ran | **Accepted.** `changedUpstreamFiles` is never supplied and `FORBIDDEN_ENDPOINTS` is unused. The Phase 1 gate section now requires every rule to run. |
+| C4 | Hops 1–2 ran with the Phase 0 and Phase 1 exit gates unmet | **Accepted.** Decision 9 and the backup layer were open; `pnpm run test` has 15 failures. Open questions 11 and 12. |
+| C5 | The session-data stance in `AGENTS.md` changed | **Accepted.** Phase 2 now reconciles against adjacent migration; backup and rollback steps are to be redesigned against it. |
+| C6 | The fork baseline is larger than four events | **Accepted.** Five uncommitted `media/*` events sit in the main checkout. Open question 10. |
+| C7 | The plan exists twice | **Accepted.** This branch copy is the only authority; the `master` copy (`db435dd4d6`) is superseded and not edited. |
 
 ### Round 2
 
@@ -62,6 +78,8 @@ This plan does not overrule that decision. But the fork's stated product premise
 | S10 | A-new lists telemetry as C | **Fixed** — moved out of A-new entirely; covered by B4. |
 
 **Detail corrected in B1.** The reviewer stated that v3→v4 also refuses unknown events. It does not. Its README says it "namespaces unknown ignorable event types and retains each admitted source event's time, message identities, and all fields outside those conversions"; unknown *ignorable* events "retain opaque payload and surface metadata; only their envelope sequence is renumbered." The three refusing edges are v0→v1, v1→v2 and v2→v3. v3→v4 is permissive toward ignorable unknowns. This matters because it is the only edge where the fork's events might pass unmodified — and it depends on whether fork-written logs carry `ignorable: true`, which must be read off a real log rather than inferred.
+
+**Superseded by round 3 (C2).** The read-off found the fork's events are not ignorable, and v3→v4 refuses unknown *required* events. Only the ignorable half of the Round 2 detail above holds.
 
 ### Round 1
 
@@ -93,7 +111,7 @@ Read from this repository on 2026-10-06.
 | **Session format per tag** | `≤dsh-v0.1.2-rc.1` → **v0**; `dsh-v0.1.3-alpha.1/2` → **v2**; `dsh-v0.1.5-alpha.1` … `dsh-v0.1.6-alpha.2` → **v3**; `dsh-v0.1.7-alpha.1` … `dsh-v0.2.1-alpha.1` → **v4** | `git grep 'SESSION_FORMAT_VERSION = '` per tag |
 | Hop tags are after the merge base | `dsh-v0.1.3-alpha.1` (09-04), `dsh-v0.1.5-alpha.1` (09-08), `dsh-v0.1.7-alpha.1` (09-22) are all **not** ancestors of the merge base | `git merge-base --is-ancestor` |
 | No tag at v1 | v0→v1 and v1→v2 land together within the `dsh-v0.1.3-alpha.*` cycle | tag scan above |
-| Fork custom session events | `ask-data/bound`, `ask-knowledge/bound`, `ask-knowledge/unbound`, `commerce/bound` | `packages/core/session/src/known-event-types.ts`; the only session-event delta in the fork is those four lines |
+| Fork custom session events | `ask-data/bound`, `ask-knowledge/bound`, `ask-knowledge/unbound`, `commerce/bound` | `packages/core/session/src/known-event-types.ts`; in committed state the only session-event delta in the fork is those four lines. The main checkout also holds five uncommitted `media/*` events (open question 10) |
 | Fork data root (Tauri app data) | identifier `studio.octopus.dsh`, productName `octopus_DSH` → `~/Library/Application Support/studio.octopus.dsh` | `apps/desktop/src-tauri/tauri.conf.json` |
 | Fork data root (Harness home) | `DSH_HOME_DIR_NAME = '.dsh'`, default `join(homedir(), '.dsh')`, overridable by `$DSH_HOME` → `~/.dsh` | `packages/util/home-paths/src/index.ts` |
 | Fork telemetry mount | `bundle/base/cordis.patch.yml` mounts `session-telemetry-otel`, mode `FEEDBACK_ONLY`, endpoint default `https://harness-telemetry.deepseeksvc.com/v1/logs` | the bundle file; decision recorded in the 2026-08-25 Agent Note |
@@ -146,7 +164,7 @@ Two hard boundaries that round 2 proved necessary:
 - **Experimental dependency rule.** Release packages, apps, and harness-resolved preset rows name no `packages/experimental/*` package.
 - **Desktop shell is retained, not migrated**, with the Phase 4 porting carve-out as the single exception.
 - **C-class invariants are mechanically checked.**
-- **Pre-release stance applies** — with the Phase 2 caveat that "no compatibility shims" governs formats *between harness versions*, while data already written by a shipped DMG is still the user's data and must be readable.
+- **Released Session data stays readable.** `AGENTS.md` governs: released Session JSONL migrates by adjacent version-named successors and never moves, overwrites or deletes a committed generation. Data already written by a shipped DMG is still the user's data and must be readable.
 
 ---
 
@@ -198,33 +216,35 @@ Two hard boundaries that round 2 proved necessary:
 3. **Patch registry completeness.** Every file the fork edits relative to upstream appears in the registry with a reason.
 4. **E-class decisions.** Every registry entry for a package upstream deleted carries a decision.
 
+**The command must run every rule.** It computes the changed-file list against the pinned tag and passes it in; rule 2 resolves each mounted row's endpoint and mode from the composed config and checks it against `FORBIDDEN_ENDPOINTS`. Specs prove rejection of an unregistered patched file, an upstream-endpoint telemetry row, and an `undefined` E-class disposition. A gate whose merge-time rules never run does not satisfy the Phase 1 exit gate.
+
 ## Phase 2 — Session format `v0 → v4` with the fork's custom events
 
 The only phase that can destroy user data, and the one both review rounds found understated.
 
 ### The problem, stated precisely
 
-Upstream's migration is a chain of **four independently frozen packages**, each with its own event inventory and its own disposition for unknown events. Verified from each package's README:
+Upstream's migration is a chain of four frozen packages. **Three of them consult one event inventory, the v0→v1 table; the fourth has its own hard-coded set.** Verified from the source and each package's README:
 
 | Edge | Package | Unknown-event disposition |
 |---|---|---|
 | v0 → v1 | `session-format-v0-to-v1` | "refuses every event type outside its frozen inventory, **including an unknown event marked `ignorable: true`**"; known limits: "**Closed first-party inventory** — unknown external-plugin events refuse migration" |
-| v1 → v2 | `session-format-v1-to-v2` | "**Closed first-party source inventory** — an unknown v1 event refuses migration, including an event marked `ignorable: true`" |
-| v2 → v3 | `session-format-v2-to-v3` | "Unknown events, even ignorable ones, and unaudited members at checked records are refused" |
-| v3 → v4 | `session-format-v3-to-v4` | **Permissive**: "namespaces unknown ignorable event types and retains each admitted source event's time, message identities, and all fields outside those conversions"; unknown ignorable events "retain opaque payload and surface metadata; only their envelope sequence is renumbered" |
+| v1 → v2 | `session-format-v1-to-v2` | "**Closed first-party source inventory** — an unknown v1 event refuses migration, including an event marked `ignorable: true`". The refusal in `src/migration.ts` consults `RELEASED_V0_EVENT_DISPOSITIONS`, the v0→v1 table |
+| v2 → v3 | `session-format-v2-to-v3` | "Unknown events, even ignorable ones, and unaudited members at checked records are refused". `src/payload.ts` consults `RELEASED_V2_EVENT_DISPOSITIONS`, which `session-format-v1-to-v2/src/dispositions.ts` builds from the v0→v1 table with four entries replaced |
+| v3 → v4 | `session-format-v3-to-v4` | **Refuses unknown required events; keeps unknown ignorable ones.** `RELEASED_V3_EVENT_TYPES` (`src/extension-identities.ts`) is a hard-coded set whose comment says it "must not inherit additions or removals from the current Session event list". The README says the stage rejects unknown required V3 events before consulting V4 vocabulary, "including names V4 already knows"; only unknown *ignorable* events are namespaced ("namespaces unknown ignorable event types…") and retained |
 
-The source inventories live in each package (v0→v1 in `src/dispositions.ts` with `payload-validation.ts` and `relationships.ts`; the later edges carry their own equivalents). The fork's four events appear **nowhere** in `packages/session/*` upstream.
+The v0→v1 table lives in `src/dispositions.ts`, with `payload-validation.ts` and `relationships.ts`. A patch to it reaches v1→v2 and v2→v3. The v3→v4 set is separate. The fork's four events appear **nowhere** in `packages/session/*` upstream before the fork's patch.
 
-So: **three edges refuse the fork's events outright, and the fourth may accept them.** Whether v3→v4 accepts them depends on whether fork-written logs carry `ignorable: true` — the fork's events are declared as ordinary required-on-read `SessionEventMap` members in `packages/host/ask-data/src/types.ts` and `packages/host/commerce/src/types.ts`, while `ignorable?: true` is an optional envelope flag set by the writer. **This must be read off a real fork-written log, not inferred from the type declarations.** That is a Phase 2 inspection step, and it decides how many packages need patching: three, or four.
+So: **no edge admits the fork's events without a patch.** The events are ordinary required-on-read `SessionEventMap` members (`packages/host/ask-data/src/types.ts`, `packages/host/commerce/src/types.ts`), and `ignorable?: true` is an optional envelope flag set by the writer. Inspection of 152 real fork-written v0 logs shows envelope keys of exactly `type, seq, time, data`: the four events are **not** ignorable. v3→v4 therefore refuses them, and exactly two patches are needed — the v0→v1 table (applied in `57f8c5271d`) and `RELEASED_V3_EVENT_TYPES` (due at hop 3). The inspection result is still to be recorded in the registry.
 
 ### Decision point 7 — answer, with the round-2 argument
 
 Round 2 supplies the fact that settles this. The fork's **only** session-event delta against the merge base is the four added event types — nothing else in the fork's session vocabulary diverges. Therefore **fork-v0 is upstream-v0 plus four events**, i.e. a *superset*. A decoder whose inventory is a superset of upstream's frozen inventory accepts both log families with **no routing**.
 
-- **Option (a) — recommended.** Patch the refusing upstream packages to admit the four events. One decoder per edge. Because fork-v0 ⊃ upstream-v0, it reads upstream-authored logs as well, so nothing is lost.
-- **Option (b) — rejected.** A fork-owned `v0-fork → v1` edge would have to decide *which* logs are fork logs before it can route them. Since fork-v0 and upstream-v0 are distinguished only by the presence of four optional events, that routing decision is content-sniffing on the data path — strictly worse than a superset inventory, and it does not solve the v1→v2 and v2→v3 problems at all, because those edges would still refuse the events in a log that arrived at v1.
+- **Option (a) — recommended.** Patch the upstream inventories to admit the four events: the v0→v1 table, and at hop 3 `RELEASED_V3_EVENT_TYPES`. Because fork-v0 ⊃ upstream-v0, the patched decoders read upstream-authored logs as well, so nothing is lost.
+- **Option (b) — rejected.** A fork-owned `v0-fork → v1` edge would have to decide *which* logs are fork logs before it can route them. Since fork-v0 and upstream-v0 are distinguished only by the presence of four optional events, that routing decision is content-sniffing on the data path — strictly worse than a superset inventory, and it does not solve the later edges, because v1→v2, v2→v3 and v3→v4 would still refuse the events in a log that arrived at v1.
 
-Registry consequence: (a) is **one registered A-class patch per refusing edge**, on the data path. Each entry names the file and the reason, and the registry must be re-checked on every upstream merge.
+Registry consequence: (a) is **two registered A-class patches** on the data path — the v0→v1 table (with `payload-validation.ts`) and `RELEASED_V3_EVENT_TYPES`. Each entry names the file and the reason, and the registry must be re-checked on every upstream merge.
 
 ### The residual ambiguity, and the fixture rule
 
@@ -233,28 +253,29 @@ Upstream's frozen inventory is a decoder for **upstream's released v0**, which i
 1. A fixture hand-authored from the current type declarations proves nothing. **The fork-v0 fixture must be generated by an actual shipped DMG build of octopus_DSH** — a real session log written by the released app, containing the four events.
 2. An upstream-authored v0 fixture is also required, so the superset claim is tested rather than assumed.
 
-### Reconciliation with the pre-release stance
+### Reconciliation with the released-data rule
 
-`AGENTS.md` prefers correct foundations over compatibility shims and permits rejecting old on-disk formats. That governs formats *between harness versions*. It does not license discarding data already written by a DMG users installed. If the two conflict, reading the user's existing data wins, and the conflict is recorded as an Agent Note rather than resolved silently.
+After the hop-2 merge, `AGENTS.md` carries "Pre-stable APIs and released Session data": public APIs are pre-stable, and released Session JSONL follows adjacent migration. Body reads may add a version-named successor but never move, overwrite or delete a committed generation, and a predecessor implies neither fallback nor downgrade support. The fork's data already written by a shipped DMG is released Session data under that rule and must be readable. If a fork decision ever conflicts with it, reading the user's existing data wins, and the conflict is recorded as an Agent Note rather than resolved silently.
 
 ### Actions
 
 1. Adopt upstream's migration chain through the pinned tag (or staged hops — decision point 1).
-2. **Inspect a real fork-written v0 log** to determine whether its four events carry `ignorable: true`, and therefore how many edges need patching.
-3. Patch the refusing edges as registered A-class patches: `dispositions.ts` on v0→v1, the equivalent inventory on v1→v2 and v2→v3, plus `payload-validation.ts` wherever the four payloads need structural validation.
+2. **Inspect a real fork-written v0 log** to determine whether its four events carry `ignorable: true`. Done on 152 real logs: they do not. Record the result in the registry.
+3. Patch the inventories as registered A-class patches: the v0→v1 table (`dispositions.ts`, plus `payload-validation.ts` for the four payloads), which reaches v1→v2 and v2→v3; and `RELEASED_V3_EVENT_TYPES` in `session-format-v3-to-v4/src/extension-identities.ts` at hop 3.
 4. Regenerate the persistence catalog and `packages/core/session/src/known-event-types.ts`; `verify-persistence-catalog` gates this.
 5. Back up **both** data roots before the new Host first opens old data, at the layer named in Phase 0:
    - `~/Library/Application Support/studio.octopus.dsh`
    - `~/.dsh` (or `$DSH_HOME`)
-   Startup stops if the backup fails. See F2 for the scope limit.
-6. Retain a rollback path and test it.
+   Startup stops if the backup fails. See F2 for the scope limit. Design this step against the adjacent-migration rule in `AGENTS.md`: persistence appends a version-named successor and never moves, overwrites or deletes the predecessor generation, so the backup's remaining job is the data the migration does not own.
+6. Retain a rollback path and test it. Read `.agents/notes/implemented/architecture/2026-08-31-released-session-format-migrations.md` first; it defines what an older build can and cannot read after a successor exists.
 
 ### Checklist
 
 | Item | Gate |
 |---|---|
 | `v0 → v1 → v2 → v3 → v4` chain reaches `currentVersion` | `packages/session/session-format-catalog` specs |
-| Each of the four fork events survives **every** edge | new specs, one per edge |
+| Each of the four fork events survives **every** edge | one spec per distinct inventory: the v0→v1 table (covers v0→v3) and `RELEASED_V3_EVENT_TYPES` (v3→v4) |
+| A fork-event log migrates to v4 on the hop-3 build | scratch-branch proof before the hop-3 merge, then a spec |
 | A **genuine fork-v0 log written by a shipped DMG** migrates | new spec using a captured real log, not a hand-authored fixture |
 | A **genuine upstream-authored v0 log** migrates | new spec, proving the superset claim |
 | Whether fork events carry `ignorable: true` is recorded | inspection result in the registry |
@@ -441,7 +462,8 @@ Each decision records what replaces the package upstream (if anything) and wheth
 | `packages/client/ui-conversation/src/client/skeleton/{ConversationRoot.tsx,EmptyHero.tsx}` | +28/−6 | **B** | migrate; Hero becomes an occupant |
 | `packages/client/ui-sidebar/src/client/{SidebarRoot.tsx,contract/slots.ts,index.ts}` | +86/−10 | **B** | migrate to `ui-sidebar-right` / `ui-dockkit` |
 | `packages/client/ui-agent-preset/src/client/seat-store.ts` | +20/−2 | **B** | migrate to upstream's `ui-agent-preset` |
-| `packages/session/session-format-v0-to-v1/src/dispositions.ts` (+ `payload-validation.ts`) | pending | **A** | **Phase 2 data path** — one entry per refusing edge (v0→v1, v1→v2, v2→v3), decided in Phase 2 step 2 |
+| `packages/session/session-format-v0-to-v1/src/{dispositions.ts,payload-validation.ts}` | applied (`57f8c5271d`) | **A** | **Phase 2 data path** — admits the four fork events; reaches v1→v2 and v2→v3 because both consult this table |
+| `packages/session/session-format-v3-to-v4/src/extension-identities.ts` (`RELEASED_V3_EVENT_TYPES`) | pending, due at hop 3 | **A** | **Phase 2 data path** — the fork's events are required, so this edge refuses them until listed |
 | `packages/bundle/base/package.json`, `bundle/base/cordis.patch.yml` | pending | **A** | telemetry mount and dependency — resolved by decision point 8 |
 | `packages/bundle/web-app/package.json`, `bundle/web-app/cordis.patch.yml` | pending | **A** | same |
 | `packages/fs/fs/src/{index.ts,invariant.ts}`, `fs-observation-policy/src/index.ts` | +40/−3 | A | keep; reason required |
@@ -463,7 +485,9 @@ Each decision records what replaces the package upstream (if anything) and wheth
 | Risk | Severity | Detection | Response |
 |---|---|---|---|
 | Old sessions unreadable after migration | **critical** | a real legacy-profile copy fails to list or open sessions | **STOP.** Never resolve by declaring the old format unsupported |
-| A refusing edge silently rejects fork-written logs | **critical** | a fork-v0 fixture fails while an upstream-v0 fixture passes | Patch the refusing edges; both fixtures are required gates |
+| A refusing edge silently rejects fork-written logs | **critical** | a fork-v0 fixture fails while an upstream-v0 fixture passes | Patch the inventories; both fixtures are required gates |
+| v3 → v4 refuses the fork's non-ignorable events at hop 3 | **critical** | a real fork-event log fails to migrate on the hop-3 build | Add the events to `RELEASED_V3_EVENT_TYPES`; prove it on a scratch branch off the hop-3 tag before merging |
+| The intake gate passes while its merge-time rules never run | high | `changedUpstreamFiles` unsupplied; `FORBIDDEN_ENDPOINTS` unused | Phase 1 gate section: the command must run every rule, with specs that reject each violation |
 | The v0 fixture proves nothing because it was hand-authored | **high** | fixture not produced by a shipped DMG build | Fixture rule in Phase 2; a captured real log or no gate credit |
 | Rollback impossible once data is migrated | **high** | migrated session opened by the previous release | Keep the pre-migration backup of both roots; document and test the rollback |
 | C-class mount imported unnoticed | high | intake gate rule 2, by mount and endpoint | Fail the gate; drop the mount |
@@ -528,8 +552,14 @@ Staging therefore **does** buy incremental session validation: three separate ve
 
 **6. Agent Note scope.** Recommendation: two notes — one for provenance plus taxonomy, one for the session migration.
 
-**7. Session migration path — answered, pending owner confirmation.** Patch the refusing edges (option (a)), because fork-v0 is a strict superset of upstream-v0 and a superset decoder needs no routing. Requires the captured-real-log fixture. Confirm, or explain what would make (b) preferable.
+**7. Session migration path — answered; implemented through hop 2; owner confirmation outstanding.** Patch the inventories (option (a)), because fork-v0 is a superset of upstream-v0 and a superset decoder needs no routing. Two patches: the v0→v1 table (landed in `57f8c5271d`, reaches v1→v2 and v2→v3) and `RELEASED_V3_EVENT_TYPES` (due at hop 3). Requires the captured-real-log fixture. Confirm, or explain what would make (b) preferable.
 
 **8. Telemetry endpoint and consent — ANSWERED, option (b), applied.** The fork shipped `FEEDBACK_ONLY` pointed at `https://harness-telemetry.deepseeksvc.com/v1/logs`, which uploaded raw session records — message text, tool arguments and results, workspace paths — to a collector its maintainers cannot read, with the disclosure shown after the release. The base now resolves an unset `DSH_TELEMETRY_MODE` to `DISABLED` and carries no endpoint default; an upload mode is an explicit opt-in that must name an endpoint, and one without an endpoint fails at plugin load. `FEEDBACK_ONLY` is unchanged as a mode. Recorded in the [fork-telemetry-default Agent Note](../../.agents/notes/implemented/feature/2026-10-06-fork-telemetry-disabled-default.md), with the registry rows updated from outstanding to applied. Option (c) — pre-upload confirmation — stays available as a later refinement for an operator who wants diagnosable reports and accepts an external receiver.
 
 **9. Which layer owns the pre-migration guard.** A guard at companion boot misses the `dsh` CLI and the Python SDK, which resolve the same `~/.dsh` through `packages/util/home-paths`. Either put the guard in the persistence layer (covers every opener) or accept and document the limitation. Recommendation: persistence layer — the guard's job is to protect the data, not to protect one entry point.
+
+**10. Scope of the `media/*` events.** The main checkout carries five uncommitted session events (`media/approval`, `media/artifact`, `media/request`, `media/stop`, `media/task`) with their Agent Notes and the `conversation-media-creation` skill; this branch carries none of it. Commit that work to `master` before hop 3, or defer it explicitly. If it lands, both inventory patches and every fixture cover nine events, not four.
+
+**11. Acceptance wording for `pnpm run test`.** The Phase 1 exit gate says green. Hops 1–2 have 15 failures, none shown to be merge-introduced. Either keep the gate and fix them, or rewrite it as "no failing test that master does not also fail, listed per test name, error text and disposition". Rewriting an approved criterion is the owner's decision, not the operator's.
+
+**12. Authorisation of hops 1–2.** They ran while decision 9 and the backup layer, both Phase 0 exit-gate items, were open. Record that the owner authorised them, or treat both hops as provisional until the repair checkpoint passes.
