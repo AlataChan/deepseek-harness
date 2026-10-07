@@ -30,7 +30,10 @@ async function isolateFakeSqlite3(
   await withPath(dir, task)
 }
 
-describe('sqlite-write', () => {
+// Every case here shells out to sqlite3; under a loaded parallel suite the
+// default 5s ceiling measured a 2ms overrun on a real runner, so the file
+// declares its own ceiling instead of failing on scheduler jitter.
+describe('sqlite-write', { timeout: 20_000 }, () => {
   it('quotes identifiers and values', () => {
     expect(quoteIdent('a"b')).toBe('"a""b"')
     expect(quoteValue("it's")).toBe("'it''s'")

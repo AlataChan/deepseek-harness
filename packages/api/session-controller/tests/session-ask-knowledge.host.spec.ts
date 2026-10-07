@@ -129,6 +129,7 @@ function stubAgent(session: Session): Agent {
     id: session.id,
     session,
     status: 'idle',
+    inbox: { nextTurn: [], nextStep: [] },
     followup: () => undefined,
     steer: () => undefined,
   } as unknown as Agent

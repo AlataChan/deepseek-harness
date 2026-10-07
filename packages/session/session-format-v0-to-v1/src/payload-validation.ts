@@ -42,6 +42,19 @@ export function assertReleasedPayloadSemantics(event: SessionFormatEvent, versio
       literalValue(data['policy'], ['ask', 'never'], `${label} policy`)
       if (data['source'] !== undefined) literalValue(data['source'], ['delegation'], `${label} source`)
       return
+    case 'ask-data/bound':
+      nonEmptyString(data['sourceId'], `${label} sourceId`)
+      nonEmptyString(data['connectionRef'], `${label} connectionRef`)
+      nonEmptyString(data['displayName'], `${label} displayName`)
+      booleanValue(data['readonly'], `${label} readonly`)
+      return
+    case 'ask-knowledge/bound':
+      nonEmptyString(data['libraryId'], `${label} libraryId`)
+      nonEmptyString(data['displayName'], `${label} displayName`)
+      return
+    case 'ask-knowledge/unbound':
+      nonEmptyString(data['libraryId'], `${label} libraryId`)
+      return
     case 'assistant/chunk':
       coordinatePair(data, label)
       streamChunkValue(data['chunk'], `${label} chunk`)
@@ -66,6 +79,13 @@ export function assertReleasedPayloadSemantics(event: SessionFormatEvent, versio
       literalValue(source['kind'], ['user'], `${label} source kind`)
       return
     }
+    case 'commerce/bound':
+      nonEmptyString(data['sourceId'], `${label} sourceId`)
+      nonEmptyString(data['displayName'], `${label} displayName`)
+      arrayValue(data['kinds'], `${label} kinds`, (value, memberLabel) => {
+        nonEmptyString(value, memberLabel)
+      })
+      return
     case 'compaction/start':
     case 'compaction/end':
       nonEmptyString(data['compactionId'], `${label} compactionId`)

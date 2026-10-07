@@ -43,6 +43,9 @@ export const RELEASED_V0_EVENT_DISPOSITIONS: Readonly<Record<string, ReleasedV0P
   'approval/asked': disposition(['id', 'toolName'], ['callId', 'reason']),
   'approval/decided': disposition(['id', 'outcome']),
   'approval/policy': disposition(['policy'], ['source']),
+  'ask-data/bound': disposition(['sourceId', 'connectionRef', 'displayName', 'readonly']),
+  'ask-knowledge/bound': disposition(['libraryId', 'displayName']),
+  'ask-knowledge/unbound': disposition(['libraryId']),
   'assistant/chunk': disposition(['turn', 'step', 'chunk']),
   'assistant/message': disposition(
     ['turn', 'step', 'message'],
@@ -50,6 +53,7 @@ export const RELEASED_V0_EVENT_DISPOSITIONS: Readonly<Record<string, ReleasedV0P
   ),
   'command/done': disposition(['commandId', 'kind'], ['text', 'sourceEventSeq']),
   'command/run': disposition(['commandId', 'name', 'source'], ['args']),
+  'commerce/bound': disposition(['sourceId', 'displayName', 'kinds']),
   'compaction/end': disposition(['compactionId', 'turn'], ['sourceCommandId', 'error']),
   'compaction/prune': disposition(['shadowedRange', 'shadowedSeqs', 'shadowedTokenCount']),
   'compaction/start': disposition(['compactionId', 'turn'], ['sourceCommandId']),

@@ -1,7 +1,6 @@
 /** Registers the target-neutral Conversation assembly, shell, input, and docks. */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import { createSnapshotStore, type BoundActions } from '@deepseek-ai/dsh-client-store'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -19,7 +18,6 @@ import type {
 import type { InputNotice } from './contract/input.ts'
 import { createConversationStore, readConversationViewPreference } from './stores.ts'
 import { ConversationController, UnsupportedImageMediaTypeError } from './service.ts'
-import type { IConversation } from './service.ts'
 import { ComposerBlockRegistry } from './input/blocks.ts'
 import type { ComposerBlock } from './contract/composer-blocks.ts'
 import { InputHub } from './input/hub.ts'
@@ -87,17 +85,6 @@ interface WorkspaceNavigation {
   connectWorkspace(
     workspaceId: Parameters<ConversationInjected['selectWorkspace']>[0],
   ): Promise<SessionId>
-}
-
-/** Resolve the session-scoped Conversation action face, failing loud. */
-function scopedConversation(sessions: ISessions, id: SessionId): IConversation {
-  const scoped = sessions.scope(id)
-  if (scoped === undefined) throw new Error(`ui-conversation: session "${id}" resolved no scope`)
-  const conversation = scoped.get('conversation')
-  if (conversation === undefined) {
-    throw new Error('ui-conversation: conversation service unavailable through the session scope')
-  }
-  return conversation
 }
 
 /** Resolve package-internal attachment operations from the public service. */
@@ -223,12 +210,29 @@ export function apply(ctx: Context, config: Config = Config({})): void {
       'conversation.composer.bar': { kind: 'single', scope: 'session-maybe' },
       'conversation.input.dock': { kind: 'list', scope: 'session' },
       'conversation.hero.brand.mark': { kind: 'single', scope: 'root' },
+      'conversation.hero.headline': { kind: 'single', scope: 'root' },
       'conversation.hero.workspace': { kind: 'single', scope: 'root' },
       'conversation.hero.agentPreset': { kind: 'single', scope: 'root' },
+      'conversation.hero.askData': { kind: 'single', scope: 'root' },
+      'conversation.hero.askKnowledge': { kind: 'single', scope: 'root' },
+      'conversation.hero.commerce': { kind: 'single', scope: 'root' },
+      'conversation.hero.agentTeam': { kind: 'single', scope: 'root' },
+      'conversation.atmosphere': { kind: 'single', scope: 'root' },
+      'conversation.askData.gate': { kind: 'single', scope: 'root' },
+      'conversation.commerce.gate': { kind: 'single', scope: 'root' },
+      'conversation.askKnowledge.picker': { kind: 'single', scope: 'root' },
     },
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
       hooks: {
         composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
+        askDataGateOccupied: {
+          getSnapshot: () => slots.entries('conversation.askData.gate').length > 0,
+          subscribe: listener => slots.subscribe('conversation.askData.gate', listener),
+        },
+        commerceGateOccupied: {
+          getSnapshot: () => slots.entries('conversation.commerce.gate').length > 0,
+          subscribe: listener => slots.subscribe('conversation.commerce.gate', listener),
+        },
       },
       selectWorkspace: async (workspaceId) => {
         const nextId = await workspaceNavigation.connectWorkspace(workspaceId)
@@ -296,6 +300,8 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     locale: NS,
     children: {
       'conversation.input.attachments': { kind: 'single', scope: 'session-maybe' },
+      'conversation.input.attachKnowledge': { kind: 'single', scope: 'session-maybe' },
+      'conversation.input.attachSessionDocument': { kind: 'single', scope: 'session-maybe' },
       'conversation.input.overlay': { kind: 'list', scope: 'session' },
       'conversation.input.left': { kind: 'list', scope: 'session' },
       'conversation.input.plan': { kind: 'single', scope: 'session' },
@@ -314,6 +320,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
           resolveSubmitMode: (running, gesture, steeringAvailable) =>
             submissionPolicy.resolve(running, gesture, steeringAvailable),
           toggleCommandMenu: undefined,
+          toggleReferenceMenu: undefined,
           stop: undefined,
           command: undefined,
           hooks: {
@@ -327,6 +334,20 @@ export function apply(ctx: Context, config: Config = Config({})): void {
       const conversation = concreteConversation(ctx)
       const shell = inputHub.shell(sessionId)
       const inputTriggers = inputHub.inputTriggers(sessionId)
+      const toggleTrigger = inputTriggers === undefined
+        ? undefined
+        : (source: 'command' | 'reference', trigger: '/' | '@') =>
+          (selection: { start: number; end: number }) => {
+            shell.dismissPopup()
+            const snapshot = shell.snapshot
+            inputTriggers.toggleSource(source, {
+              trigger,
+              query: '',
+              quoted: false,
+              position: snapshot.draft.slice(0, selection.start).trim() === '' ? 'leading' : 'inline',
+              span: { ...selection, draftRev: snapshot.draftRev },
+            })
+          }
       return {
         keyboard: shell,
         addFiles: (files) => {
@@ -351,23 +372,10 @@ export function apply(ctx: Context, config: Config = Config({})): void {
         },
         resolveSubmitMode: (running, gesture, steeringAvailable) =>
           submissionPolicy.resolve(running, gesture, steeringAvailable),
-        toggleCommandMenu: inputTriggers === undefined
-          ? undefined
-          : (selection) => {
-            shell.dismissPopup()
-            const snapshot = shell.snapshot
-            inputTriggers.toggleSource('command', {
-              trigger: '/',
-              query: '',
-              quoted: false,
-              position: snapshot.draft.slice(0, selection.start).trim() === '' ? 'leading' : 'inline',
-              span: { ...selection, draftRev: snapshot.draftRev },
-            })
-          },
+        toggleCommandMenu: toggleTrigger?.('command', '/'),
+        toggleReferenceMenu: toggleTrigger?.('reference', '@'),
         stop: () => {
-          scopedConversation(sessions, sessionId).cancel().catch(() => {
-            // Stop failure is published through Session promptError.
-          })
+          void sessions.binding(sessionId)?.session.cancel()
         },
         command: async (line) => {
           const session = sessions.binding(sessionId)?.session

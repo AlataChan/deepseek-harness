@@ -123,8 +123,8 @@ function props(
     ...actions,
     inputActions: {
       setDraft: vi.fn(),
-      addImages: () => true,
-      removeImage: () => {},
+      addAttachments: () => false,
+      removeAttachment: () => {},
       pruneAttachments: () => {},
       submit: () => {},
     },
@@ -204,8 +204,8 @@ describe('TeamAction', () => {
       ...props(injected),
       inputActions: {
         setDraft,
-        addImages: () => true,
-        removeImage: () => {},
+        addAttachments: () => false,
+        removeAttachment: () => {},
         pruneAttachments: () => {},
         submit: () => {},
       },
@@ -247,8 +247,8 @@ describe('TeamAction', () => {
       ...props(actions({ load })),
       inputActions: {
         setDraft,
-        addImages: () => true,
-        removeImage: () => {},
+        addAttachments: () => false,
+        removeAttachment: () => {},
         pruneAttachments: () => {},
         submit,
       },

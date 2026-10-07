@@ -35,10 +35,14 @@ const validPayloads: Readonly<Record<string, SessionFormatJsonValue>> = {
   'approval/asked': { id: 'approval-1', toolName: 'bash', callId: 'call-1', reason: 'needed' },
   'approval/decided': { id: 'approval-1', outcome: 'allowed-once' },
   'approval/policy': { policy: 'ask', source: 'delegation' },
+  'ask-data/bound': { sourceId: 'source-1', connectionRef: 'conn-1', displayName: 'Sales', readonly: false },
+  'ask-knowledge/bound': { libraryId: 'library-1', displayName: 'Handbook' },
+  'ask-knowledge/unbound': { libraryId: 'library-1' },
   'assistant/chunk': { turn: 1, step: 0, chunk: { type: 'text-delta', index: 0, text: 'x' } },
   'assistant/message': { turn: 1, step: 0, message: assistantMessage, usage: { inputTokens: 1, outputTokens: 1 } },
   'command/done': { commandId: 'command-1', kind: 'success', sourceEventSeq: 0 },
   'command/run': { commandId: 'command-1', name: 'compact', args: ' now', source: { kind: 'user' } },
+  'commerce/bound': { sourceId: 'source-1', displayName: 'Shop', kinds: ['orders'] },
   'compaction/end': { compactionId: 'compact-1', turn: null },
   'compaction/prune': { shadowedRange: { start: 0, end: 1 }, shadowedSeqs: [0, 1], shadowedTokenCount: 2 },
   'compaction/start': { compactionId: 'compact-1', turn: 1 },
@@ -210,7 +214,7 @@ function replaceAtPath(value: SessionFormatJsonValue, path: string, replacement:
 describe('released event and payload inventory', () => {
   it('has an executable valid fixture for every frozen released-v0 event type', () => {
     expect(Object.keys(validPayloads).sort()).toEqual([...RELEASED_V0_EVENT_TYPES].sort())
-    expect(RELEASED_V0_EVENT_TYPES).toHaveLength(51)
+    expect(RELEASED_V0_EVENT_TYPES).toHaveLength(55)
     expect(RELEASED_V0_EVENT_TYPES
       .filter(type => type !== 'assistant/chunk')
       .every(type => KNOWN_SESSION_EVENT_TYPES.has(type))).toBe(true)

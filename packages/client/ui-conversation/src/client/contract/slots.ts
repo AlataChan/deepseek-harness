@@ -409,8 +409,8 @@ export interface ComposerBarInjected {
     steeringAvailable: boolean,
   ) => InputSubmitMode
   toggleCommandMenu: ((selection: EditSelection) => void) | undefined
-  /** Open or close the `@` workspace-file / session menu at the caret. */
-  toggleReferenceMenu: ((selection: EditSelection) => void) | undefined
+  /** Open or close the `@` workspace-file / session menu at the caret. Absent when no occupant offers it. */
+  toggleReferenceMenu?: ((selection: EditSelection) => void) | undefined
   stop: (() => void) | undefined
   command: ((line: string) => Promise<boolean>) | undefined
   hooks: {
