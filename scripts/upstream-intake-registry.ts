@@ -201,7 +201,7 @@ export const MOUNTS: readonly MountEntry[] = [
     composition: 'packages/bundle/base/cordis.patch.yml',
     row: 'session-telemetry-otel',
     packageName: '@deepseek-ai/dsh-session-telemetry-otel',
-    requiredChange: 'Default the mode to DISABLED and remove the upstream collector default, so an upload mode requires an explicitly configured endpoint.',
+    requiredChange: 'Applied 2026-10-06: the mode default is DISABLED and the exporter URL has no default, so an upload mode requires an explicitly configured endpoint. Any upstream collector default reintroduced by a merge is a violation.',
   },
 ]
 

@@ -14,6 +14,8 @@ The shared dsh base resolves an unset or empty `DSH_TELEMETRY_MODE` to `FEEDBACK
 
 This supersedes the session-backend default of the [default-off decision](2026-08-10-telemetry-default-off.md), accepting the user's explicit feedback action as the release authorization that note required a deployment setting for. That note's hard opt-out and its launcher-feed history remain current, and the [default-mount decision](2026-07-31-web-telemetry-default-mount.md) continues to own the endpoint, batching cadence, and exit-drain settings.
 
+**Superseded as a shared default by [octopus_DSH ships session telemetry DISABLED by default](2026-10-06-fork-telemetry-disabled-default.md).** This note justified feedback-gated uploading as making a `/feedback` report diagnosable, which holds only where the receiver serves the people who can act on the report. A distribution whose maintainers cannot read the collector restores the default-off decision's default. Everything else here — the `FEEDBACK_ONLY` mode itself, the sharing vocabulary, the hard opt-out, and the endpoint-owning decision above — remains current, and `FEEDBACK_ONLY` stays available as an explicit opt-in.
+
 ## Alternatives considered
 
 **Keep `DISABLED` and instruct reporters to re-run with `DSH_TELEMETRY_MODE=FEEDBACK_ONLY`.** Rejected: the session that exhibited the problem is the one worth uploading, and re-running loses it.

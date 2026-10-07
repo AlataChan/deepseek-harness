@@ -14,6 +14,8 @@ Status: implemented
 
 本决定取代[默认关闭决定](2026-08-10-telemetry-default-off.zh.md)中会话后端的默认值，把用户显式的反馈动作接受为该决定原本要求由部署设置提供的释放授权。该决定的强制关闭开关和 launcher 上报历史仍然有效，端点、批处理节奏和退出排空设置仍由[默认挂载决定](2026-07-31-web-telemetry-default-mount.zh.md)持有。
 
+**作为共享默认值，本决定已被 [octopus_DSH 默认以 DISABLED 发布会话遥测](2026-10-06-fork-telemetry-disabled-default.zh.md) 取代。** 本 note 把反馈门控上传的正当性建立在「让 `/feedback` 报告可被诊断」上，而这仅在接收方服务于能够据此行动的人时成立。维护者读不到该 collector 的发行版，恢复默认关闭决定的默认值。此处的其余内容——`FEEDBACK_ONLY` 模式本身、共享状态词汇、强制关闭开关、以及上文持有端点的决定——仍然有效，`FEEDBACK_ONLY` 仍可作为显式的加入选项使用。
+
 ## 考虑过的替代方案
 
 **保持 `DISABLED`，让报告者带着 `DSH_TELEMETRY_MODE=FEEDBACK_ONLY` 重跑。** 否决：值得上传的正是出现问题的那个会话，重跑会丢掉它。

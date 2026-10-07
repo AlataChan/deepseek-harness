@@ -1,7 +1,8 @@
-// Keyless assembled-browser coverage for the shipped FEEDBACK_ONLY default
-// over the Web bundles and the real host wire. The scaffold mounts the
-// shipped telemetry row in FEEDBACK_ONLY mode against this suite's own
-// loopback mock collector, so the default release path is real: /feedback
+// Keyless assembled-browser coverage for the opt-in FEEDBACK_ONLY mode over
+// the Web bundles and the real host wire. FEEDBACK_ONLY is no longer the
+// shipped default (the base row resolves DISABLED), so the scaffold opts in:
+// it mounts the shipped telemetry row in FEEDBACK_ONLY mode against this
+// suite's own loopback mock collector, so that release path is real: /feedback
 // releases the session records through that event (exactly one OTLP request,
 // carrying the drive prompt and the feedback text), the acknowledgement pins
 // the feedback-gated disclosure sentence, and a second feedback releases only

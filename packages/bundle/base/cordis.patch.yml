@@ -165,18 +165,20 @@
         writeEveryEvents: 200
         writeIntervalMs: 5000
 
-    # Session telemetry defaults to feedback-gated sharing: FEEDBACK_ONLY
-    # uploads only when the user records /feedback, releasing the session
-    # records since the last handoff through that event (a resumed session
-    # shares only its current lifecycle). DSH_TELEMETRY_MODE overrides to
-    # FULL or DISABLED; uploading mirrors session-log records onto OTLP/HTTP
-    # logs with no session-telemetry/record redaction rule, so exports are
-    # the raw captured copy. The deployment stance, env seams, and follow-ups
-    # are pinned in the feedback-gated-default Agent Note.
-    # DSH_TELEMETRY_OTLP_URL overrides the production endpoint. A non-empty
-    # DSH_TELEMETRY_DISABLED — any value, including '0'/'false' — opts the
-    # process out (the launchers patch the row disabled; config cannot disable
-    # a row). Exports carry the harness home's anonymous user id ($DSH_HOME/.anonymous-user-id,
+    # Session telemetry is DISABLED by default: nothing is uploaded, and a
+    # recorded /feedback stays local with a warning that says so.
+    # DSH_TELEMETRY_MODE opts a deployment in, either FEEDBACK_ONLY (upload only
+    # when the user records /feedback, releasing the session records since the
+    # last handoff through that event; a resumed session shares only its current
+    # lifecycle) or FULL. There is deliberately no default endpoint: an opted-in
+    # deployment must set DSH_TELEMETRY_OTLP_URL, and an upload mode without an
+    # endpoint fails at plugin load rather than sending session records anywhere
+    # this fork did not choose. Uploading mirrors session-log records onto
+    # OTLP/HTTP logs with no session-telemetry/record redaction rule, so exports
+    # are the raw captured copy. A non-empty DSH_TELEMETRY_DISABLED — any value,
+    # including '0'/'false' — remains the authoritative pre-load opt-out (the
+    # launchers patch the row disabled; config cannot disable a row). Exports
+    # carry the harness home's anonymous user id ($DSH_HOME/.anonymous-user-id,
     # random UUID; delete the file to reset the identity) as the Resource's
     # user.id. The exporter/processor values normally bound the shutdown drain
     # to ~1s against an unreachable collector: exporter.timeoutMillis is both
@@ -190,10 +192,10 @@
     - id: session-telemetry-otel
       name: '@deepseek-ai/dsh-session-telemetry-otel'
       config:
-        mode: !!js process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'
+        mode: !!js process.env.DSH_TELEMETRY_MODE || 'DISABLED'
         shutdownTimeoutMillis: 3000
         exporter:
-          url: !!js process.env.DSH_TELEMETRY_OTLP_URL ?? 'https://harness-telemetry.deepseeksvc.com/v1/logs'
+          url: !!js process.env.DSH_TELEMETRY_OTLP_URL
           compression: gzip
           timeoutMillis: 1000
         processor:
