@@ -1,5 +1,5 @@
 ---
-description: "Package map for the web GUI host half: the HTTP and SPA servers, workspace-directory picking implementations, and the plugin inventory projection."
+description: "Package map for the web GUI host half: the HTTP and SPA servers, workspace-directory picking implementations, the open-in-app launch routes, and the plugin inventory projection."
 kind: "package-group"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `host/` group provides the web GUI's plain HTTP server, the SPA dist server that serves the built Web shell, the workspace-directory picking seam with its native, browse, and adaptive composition packages, the one-level workspace file listing seam, the ask-data listing/import/bind seam, the commerce source/import/bind/read/analysis seam, the ask-knowledge catalog/ingest/attach/retrieve seam, and the read-only plugin inventory projection. All eleven packages are product packages; the browser transport lives in [`client/`](../client/README.md), and the composed application is [`apps/cli`](../../apps/cli/README.md) booting the [`dsh-base` bundle](../bundle/base/cordis.patch.yml) that serves the web app under `apps/web/`. The picker backends replace one another behind the shared seam.
+The `host/` group provides the web GUI's plain HTTP server, the SPA dist server that serves the built Web shell, the workspace-directory picking seam with its native, browse, and adaptive composition packages, the open-in-app application probe and launch routes, the one-level workspace file listing seam, the ask-data listing/import/bind seam, the commerce source/import/bind/read/analysis seam, the ask-knowledge catalog/ingest/attach/retrieve seam, and the read-only plugin inventory projection. All twelve packages are product packages; the browser transport lives in [`client/`](../client/README.md), and the composed application is [`apps/cli`](../../apps/cli/README.md) booting the [`dsh-base` bundle](../bundle/base/cordis.patch.yml) that serves the web app under `apps/web/`. The picker backends replace one another behind the shared seam.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ The `host/` group provides the web GUI's plain HTTP server, the SPA dist server 
 <a id="packages"></a>
 ## Packages
 
-Eleven packages play the host roles; each package README owns its contract and configuration.
+Twelve packages play the host roles; each package README owns its contract and configuration.
 
 | Package | Role | ctx key |
 |---|---|---|
@@ -36,6 +36,7 @@ Eleven packages play the host roles; each package README owns its contract and c
 | [`ask-data/`](ask-data/README.md) | Ask-data listing, import, and Session bind seam | `ctx.askData` |
 | [`commerce/`](commerce/README.md) | Commerce source, import, Session bind, read, analysis, and export-rendering seam | `ctx.commerce` |
 | [`ask-knowledge/`](ask-knowledge/README.md) | Ask-knowledge catalog, ingest, attach, and retrieve seam | `ctx.askKnowledge` |
+| [`open-in-app/`](open-in-app/README.md) | Application probe, icon, and launch routes opening the workspace directory in an installed application | consumes `ctx.webServer` |
 | [`plugin-inventory/`](plugin-inventory/README.md) | Read-only projection of current Loader entries | Remote `pluginInventory/list` |
 
 -----

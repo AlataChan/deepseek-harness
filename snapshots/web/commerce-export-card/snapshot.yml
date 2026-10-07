@@ -6,4 +6,4 @@ recording: authored
 header:
   class: acp-commerce
 session:
-  source: ../../acp/commerce-export-approved/session.v2.jsonl
+  source: ../../acp/commerce-export-approved/session.v3.jsonl

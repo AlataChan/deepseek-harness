@@ -16,7 +16,7 @@ The [feedback-gated default](../feature/2026-08-25-feedback-gated-telemetry-defa
 
 **`FEEDBACK_ONLY` is kept, not removed.** It remains the right mode for a deployment that runs its own collector and wants a `/feedback` report to carry the session it describes. The seam, the sharing vocabulary, `DSH_TELEMETRY_DISABLED` as the pre-load hard opt-out, the anonymous user id, and the shutdown-drain bounds are unchanged; only the default and the endpoint change.
 
-**A recorded `/feedback` stays local and says so.** The plugin already picks `DISABLED_FEEDBACK_WARNING` in this mode, so the user learns that nothing was shared instead of assuming it was. This is the behaviour the [default-off decision](2026-08-10-telemetry-default-off.md) established, and it is the default this fork ships again.
+**A recorded `/feedback` stays local and says so.** The plugin already picks `DISABLED_FEEDBACK_WARNING` in this mode, so the user learns that nothing was shared instead of assuming it was. This is the behaviour the [default-off decision](../../archived/feature/2026-08-10-telemetry-default-off.md) established, and it is the default this fork ships again.
 
 ## Consequences
 

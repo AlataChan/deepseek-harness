@@ -9,7 +9,7 @@ describe('desktop runtime glue', () => {
   it('orients the model to the selected desktop workspace and Host opener', async () => {
     const ctx = new Context()
     apply(ctx, new Config({ workspaceRoot: '/workspace/project', surfaceContext: true }))
-    await ctx.plugin(SystemPrompt, { persona: '' })
+    await ctx.plugin(SystemPrompt, { personaPrefix: '' })
     const assembly = await ctx.systemPrompt.assemble()
     const section = assembly.sections.find(entry => entry.name === 'app:desktop-surface')
     expect(section?.text).toContain('desktop application')
@@ -23,7 +23,7 @@ describe('desktop runtime glue', () => {
   it('registers no model-visible sections when surface context is disabled', async () => {
     const ctx = new Context()
     apply(ctx, new Config({ workspaceRoot: '/workspace/project', surfaceContext: false }))
-    await ctx.plugin(SystemPrompt, { persona: '' })
+    await ctx.plugin(SystemPrompt, { personaPrefix: '' })
     const assembly = await ctx.systemPrompt.assemble()
     expect(assembly.sections.some(entry => entry.name === 'app:desktop-surface')).toBe(false)
     expect(assembly.sections.some(entry => entry.name === 'harness:source')).toBe(false)

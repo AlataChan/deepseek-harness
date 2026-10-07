@@ -18,7 +18,7 @@ The Team spawn executor enforces the user-authorized allowlist against the calli
 
 Team state does not persist a second route copy. The subagent descriptor owns the durable `agentProvider`/`agentModel`/`agentReasoningEffort` values for cold resume, `TeamMemberSnapshot` carries no model copy, and `TeamMemberView.model` remains a live read from the agent.
 
-The Lead/CEO model override is deliberately not added to the Team `Config`. The Lead is an ordinary root Session whose model is already decided by the session model selector and the default-model picker ([web session model selector](2026-07-24-web-session-model-selector.md), [default model follows the picker](2026-08-07-default-model-follows-the-picker.md)), and the Team plugin sees the Lead only after its Agent is already created, so a Team `Config` field has no legal path to change an existing Agent's options.
+The Lead/CEO model override is deliberately not added to the Team `Config`. The Lead is an ordinary root Session whose model is already decided by the session model selector and the default-model picker ([web session model selector](../../archived/feature/2026-07-24-web-session-model-selector.md), [default model follows the picker](../../archived/feature/2026-08-07-default-model-follows-the-picker.md)), and the Team plugin sees the Lead only after its Agent is already created, so a Team `Config` field has no legal path to change an existing Agent's options.
 
 ## Alternatives considered
 

@@ -174,10 +174,11 @@ describe('lifecycle', () => {
     expect(getSectionOrder).toHaveBeenCalledWith('EXTERNAL_DATA')
     expect((await ctx.systemPrompt.assemble()).sections.map(section => section.name)).toEqual([
       'harness:identity',
-      'deployment:persona',
+      'deployment:persona-prefix',
       'test:before-fence',
       'guard:external-data',
       'test:after-fence',
+      'deployment:persona-suffix',
     ])
   })
 
@@ -193,10 +194,11 @@ describe('lifecycle', () => {
     }))
     expect(before.sections.map(section => section.name)).toEqual([
       'harness:identity',
-      'deployment:persona',
+      'deployment:persona-prefix',
       'test:before-fence',
       'guard:external-data',
       'test:after-fence',
+      'deployment:persona-suffix',
     ])
     expect(textOf((await ctx.tools.execute(call('web_fetch'))).content)).toContain('&lt;tool>')
 

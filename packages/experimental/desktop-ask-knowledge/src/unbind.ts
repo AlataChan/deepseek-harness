@@ -52,7 +52,7 @@ export async function listBoundSessionIds(
       if (sessions?.get(sessionId) !== undefined) continue
       const handle = await persistence.open(sessionId, 'read')
       try {
-        const binding = foldAskKnowledgeBinding(await handle.read())
+        const binding = foldAskKnowledgeBinding((await handle.read()).events)
         if (binding?.libraryId === libraryId) ids.add(sessionId)
       } finally {
         await handle.close()
@@ -93,7 +93,7 @@ export async function unbindSession(
       appendUnbound(stillLive, libraryId)
       return
     }
-    const events = await handle.read()
+    const { events } = await handle.read()
     const last = events.at(-1)
     const seq = last === undefined ? SessionSeq(0) : SessionSeq(last.seq + 1)
     const event = {

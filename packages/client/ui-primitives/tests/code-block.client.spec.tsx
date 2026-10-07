@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { CodeBlock as LocalizedCodeBlock } from '../src/markdown/CodeBlock.tsx'
-import { highlightToHtml } from '../src/markdown/highlight.ts'
+import { highlightToHtml, subscribeGrammarLoaded } from '../src/markdown/highlight.ts'
 import { markdownLabels } from './labels.client.ts'
 
 function CodeBlock(props: Omit<ComponentProps<typeof LocalizedCodeBlock>, 'copyLabel' | 'copiedLabel'>) {
@@ -17,7 +17,8 @@ beforeEach(() => {
   vi.useRealTimers()
 })
 
-describe('highlightToHtml', () => {
+// Syntax highlighting loads lazily; see the CodeBlock suite below.
+describe('highlightToHtml', { timeout: 30_000 }, () => {
   it('highlights a registered grammar into css-variables token spans', () => {
     const html = highlightToHtml('const x: number = 1', 'typescript')
     expect(html).toContain('pre class="shiki css-variables"')
@@ -43,16 +44,24 @@ describe('highlightToHtml', () => {
   ]
 
   it('lazily loads every read-card grammar: plain first, highlighted after load', async () => {
-    // First touch returns the plain fallback (undefined) and starts the import.
-    for (const alias of LAZY_ALIASES) expect(highlightToHtml('x', alias)).toBeUndefined()
-    // Once every grammar has registered, the same call highlights.
-    await vi.waitFor(() => {
-      for (const alias of LAZY_ALIASES) expect(highlightToHtml('x', alias)).toContain('shiki')
-    }, { timeout: 5_000 })
+    const registered = Promise.withResolvers<undefined>()
+    // Registration notifications, not a private polling deadline, establish readiness.
+    const stop = subscribeGrammarLoaded(() => {
+      if (LAZY_ALIASES.every(alias => highlightToHtml('x', alias) !== undefined)) registered.resolve(undefined)
+    })
+    try {
+      for (const alias of LAZY_ALIASES) expect(highlightToHtml('x', alias), alias).toBeUndefined()
+      await registered.promise
+      for (const alias of LAZY_ALIASES) expect(highlightToHtml('x', alias), alias).toContain('shiki')
+    } finally {
+      stop()
+    }
   })
 })
 
-describe('CodeBlock', () => {
+// Syntax highlighting loads lazily; the default 5s ceiling fails on a loaded
+// suite while the highlight itself takes milliseconds.
+describe('CodeBlock', { timeout: 30_000 }, () => {
   it('renders the highlighted tree for TypeScript', () => {
     const view = render(<CodeBlock code={'const a = 1\n'} lang="ts" />)
     const pre = view.container.querySelector('pre.shiki')

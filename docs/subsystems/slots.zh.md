@@ -142,7 +142,8 @@ root
 │  ├─ conversation.session.header
 │  │  ├─ conversation.session.header.lineage
 │  │  ├─ conversation.session.header.actions
-│  │  └─ conversation.session.header.utilities
+│  │  ├─ conversation.session.header.utilities
+│  │  └─ conversation.session.header.corner
 │  ├─ conversation.composer
 │  │  └─ conversation.approval.detail
 │  ├─ conversation.composer.bar
@@ -161,6 +162,11 @@ root
 │  └─ conversation.atmosphere
 ├─ details
 │  └─ conversation.details.tool
+├─ rightbar
+│  ├─ sidebar.right.pane.tab
+│  │  └─ sidebar.right.tab.guide
+│  ├─ sidebar.right.pane.tab.title
+│  └─ sidebar.right.tab.menu.item
 └─ shell.overlay
 ```
 

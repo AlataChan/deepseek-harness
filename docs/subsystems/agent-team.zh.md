@@ -2,7 +2,7 @@
 
 [English](agent-team.md) | 中文
 
-实验性隐式 Root Team 领域、模型工具与宿主适配器共享的类型。[Agent Teams Agent Note](../../.agents/notes/implemented/feature/2026-08-05-agent-teams.zh.md)负责身份、mailbox、task 与共享 checkout 决策；[Team Steer 消息 Agent Note](../../.agents/notes/implemented/simplification/2026-08-30-team-send-message-steer.zh.md)负责消息调度；本页记录 [`packages/experimental/agent-team/src/types.ts`](../../packages/experimental/agent-team/src/types.ts) 中的字面持久形式。
+实验性隐式 Root Team 领域、模型工具与宿主适配器共享的类型。[Agent Teams Agent Note](../../.agents/notes/implemented/feature/2026-08-05-agent-teams.zh.md)负责身份、mailbox、task 与共享 checkout 决策；本页记录 [`packages/experimental/agent-team/src/types.ts`](../../packages/experimental/agent-team/src/types.ts) 中的字面持久形式。
 
 ## 身份与 roster
 
@@ -113,6 +113,13 @@ Agent Teams service backed by the exact live Lead Session log.
 
 ```ts cordis-catalog
 /**
+ * Return the baked-in squad when this Agent is that squad's standing Lead.
+ * @param agent - exact live Agent.
+ * @returns the squad, or `undefined` when this Session is not a standing Lead.
+ */
+standingSquadFor(agent: Agent): InstitutionSquadDefinition | undefined
+
+/**
  * Resolve one exact live Agent's Team role.
  * @param agent - exact live Agent used as the authority credential.
  * @returns its root, Team identity, role, and model-facing name.
@@ -219,6 +226,54 @@ tryMembership(agent: Agent): TeamMembership | undefined
  * @returns the committed task or a typed Team rejection.
  */
 @Remote('updateTask') remoteUpdateTask(agent: Agent, request: UpdateTeamTaskRequest): Promise<TeamTaskMutationResult>
+
+/**
+ * List the three institution squads and their current Lead bindings.
+ * Stale Lead Session ids are dropped from the catalog when persistence no longer has them.
+ * @returns detached squad rows in product order.
+ */
+@Remote('listInstitutionSquads') async remoteListInstitutionSquads(): Promise<InstitutionSquadView[]>
+
+/**
+ * Persist one seat's provider/model in the institution catalog.
+ * Already-spawned teammates keep the route recorded on their member snapshot.
+ * @param request - squad, seat name, and optional route.
+ * @returns the refreshed squad list.
+ */
+@Remote('updateInstitutionSeat') async remoteUpdateInstitutionSeat(request: UpdateInstitutionSeatRequest): Promise<InstitutionSquadView[]>
+
+/**
+ * Bind the caller's Lead Session as the squad Lead and spawn any missing seats.
+ * A new topic is a later human prompt on this same Session, not another spawn.
+ * @param agent - exact live Lead Agent whose Session becomes the standing Lead.
+ * @param request - squad slug and optional seat-route overrides applied before spawn.
+ * @returns the bound Session and the current roster.
+ */
+@Remote('ensureInstitutionSquad') async remoteEnsureInstitutionSquad( agent: Agent, request: EnsureInstitutionSquadRequest, ): Promise<EnsureInstitutionSquadResult>
+
+/**
+ * Read one `.html` / `.htm` file for the Team dock sandboxed preview.
+ * Paths resolve against the Lead session cwd when relative; absolute paths
+ * must stay under that cwd when the Lead has one.
+ * @param agent - exact live Team member used as the authority credential.
+ * @param request - path to the HTML file.
+ * @returns absolute path and UTF-8 HTML body.
+ */
+@Remote('readHtmlPreview') async remoteReadHtmlPreview( agent: Agent, request: ReadHtmlPreviewRequest, ): Promise<ReadHtmlPreviewResult>
+
+/**
+ * List institution squads after dropping Lead bindings whose Sessions are gone.
+ * @returns detached squad rows in product order.
+ */
+async listInstitutionSquads(): Promise<InstitutionSquadView[]>
+
+/**
+ * Bind the caller as the standing Lead and spawn seats that are not yet on the roster.
+ * @param caller - exact live Lead Agent.
+ * @param request - squad slug and optional seat-route overrides.
+ * @returns the bound Session and roster.
+ */
+async ensureInstitutionSquad( caller: Agent, request: EnsureInstitutionSquadRequest, ): Promise<EnsureInstitutionSquadResult>
 ```
 
 Types: [Agent](core.zh.md)

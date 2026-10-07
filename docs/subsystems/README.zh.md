@@ -54,8 +54,14 @@
 | [web-client.md](web-client.zh.md) | 浏览器架构：启动、Remote 通信、配对的 Client model、UI adapter、Conversation 组装、Slots 与重连语义 |
 | [client-modules.md](client-modules.zh.md) | Web 插件表：`dsh.client` 声明、`WebBootGraph` 线上组合、bundle 路由与 index 转换 |
 | [slots.md](slots.zh.md) | 类型化 Web UI 组合：声明所有权、cardinality 与 scope、框架与功能注入、props 推导及当前层级 |
+| [client-resources.md](client-resources.zh.md) | 客户端资源模型：`dsh-resource://<type>/…` 地址、协议提供方与 `ResourceProtocolMap`、`useResource` 全局 hook 及其状态、钉住与释放 |
+| [sidebar-right.md](sidebar-right.zh.md) | 右侧 Sidebar：资源地址与导航地址、tab 类型注册与路由、`ctx.sidebarRight` 导航服务、pane-tab slot 与 owner props、资源模型及 Workspace Files 服务 |
 | [conversation.md](conversation.zh.md) | target-neutral Session event 组装：Context identity、Location data、replay 路径、view builder 与 target 自有 render node |
 | [session-projection.md](session-projection.zh.md) | 投影 seam：`SessionProjectionMap`、纯函数 `ProjectionDefinition` 单元、`ProjectionSnapshot` 的一致切面、变更馈送 |
 | [session-telemetry.md](session-telemetry.zh.md) | 对外会话上报能力 seam：`SessionTelemetryRecord`/`SessionTelemetrySeverity`、`SessionTelemetrySink` 约定和 `session-telemetry/record` 脱敏 waterfall |
+| [ask-data.md](ask-data.zh.md) | 关系型数据接缝：已配置数据源列表、电子表格导入,以及把会话指向某个数据源的 Session 绑定 |
+| [ask-knowledge.md](ask-knowledge.zh.md) | 文档库接缝：库目录、入库句柄、基于词项的检索,以及把某个库挂到会话上的 Session 绑定 |
+| [commerce.md](commerce.zh.md) | 商务数据接缝：店铺数据源列表、电子表格导入、`commerce` preset 上的 Session 绑定,以及对导入表的读取与分析查询 |
+| [desktop-app.md](desktop-app.zh.md) | 桌面运行时胶水层：外壳在 Host 启动前解析出的 `ctx.desktopStartup` 值及其携带的工作区根 |
 
 > 这些页面上的类型声明及其 JSDoc 与源码等价，并由 `pnpm run verify-type-equiv` 检查漂移（见 [development.md](../development.zh.md#documenting-types-verbatim-ts-type-equiv)）。普通块保留完整声明；`public-api` 块保留去除实现体的公开 class 声明。Cordis 服务与事件使用每页生成的 **Cordis API** 小节。

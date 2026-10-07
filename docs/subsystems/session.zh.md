@@ -54,6 +54,19 @@ interface SessionEventMap {
    */
   'user/message': UserMessage
   /**
+   * The rendered system prompt on the model-visible surface. The loop appends
+   * the first one as surface node 0 before the step's first `user/message`.
+   * A prepared in-history route can append nonempty changes in a continuing
+   * series. An incapable route or new series normalizes text to the first system
+   * node. Normalization empties nonempty later nodes, then rewrites the head if
+   * needed, through logged per-node replacements. An empty rendering always
+   * clears all active system nodes, leaving no older instructions model-visible.
+   * Empty later nodes are dormant and project to no message; an empty head with
+   * no active later node records "no system prompt". Restored nonempty text follows
+   * the same route and series rule; empty nodes never restore older text.
+   */
+  'system/message': { turn: number; step: number; message: SystemMessage }
+  /**
    * Assembled assistant message for one step (derived history uses this).
    * Carries the step's `usage` when the adapter reported token accounting, so
    * the model output and its accounting travel together (there is no separate
@@ -99,6 +112,7 @@ interface SessionEventMap {
     turn: number
     step: number
     message: ToolResultMessage
+    /** Optional failure identity; allowed only when the tool-result block has `isError: true`. */
     error?: { name: string; code: string }
     meta?: JsonValue
   }
@@ -113,8 +127,10 @@ interface SessionEventMap {
     startsSeries?: true
   }
   /**
-   * Route metadata for the next request, logged only when the route or capacity
-   * changes. It does not participate in request reconstruction or header equality.
+   * Route metadata for the next request, logged only when the route, capacity,
+   * or system prompt update mode changes. It does not participate in request
+   * reconstruction or header equality. Prompt admission uses the bound prepared
+   * call's capability, not this snapshot from an earlier request.
    */
   'request/context': RequestContext
   /**
@@ -149,12 +165,13 @@ interface SessionEventMap {
 
 ### 请求头事件：`request/header`
 
-请求信封（即 `EpochHeader`：调用配置 + 适配器所提供默认值的标记 + 渲染后的系统提示词 + 已组装的工具 schema）会作为会话状态写入日志，因此每个对话请求都是日志的纯函数（见可重建性 Agent Note）。带有 reason `'initial'` 或 `'resume'` 的完整 `request/header` 快照记录每个 agent loop 实例的边界；请求变化时会追加 reason 为 `'change'` 的快照；未变的信封显式开启消息序列或跟随 surface 替换时，会追加 reason 为 `'series'` 的快照。如果发生变化的快照所属请求同时开启序列，它会携带 `startsSeries: true`。普通的仅追加后续 Turn，以及同一模型消息序列内的后续 Step 与重试沿用最新快照。`foldRequestHeader(events)` 通过选择最新快照重建请求头。该事件不是 `SurfaceEventType`，不产生 LLM 消息。
+请求信封（即 `EpochHeader`：调用配置 + 适配器所提供默认值的标记 + 已组装的工具 schema）会作为会话状态写入日志，因此每个对话请求都是日志的纯函数（见可重建性 Agent Note）。渲染后的系统提示词不属于请求头：它是派生历史，即 surface 第 0 号节点上的 `system/message` 事件以及任何后续的历史内系统节点（[决策](../../.agents/notes/implemented/architecture/2026-09-02-system-prompt-as-surface-node.zh.md)），因此提示词变更替换或追加一个系统节点，而请求头保持不变。带有 reason `'initial'` 或 `'resume'` 的完整 `request/header` 快照记录每个 agent loop 实例的边界；请求变化时会追加 reason 为 `'change'` 的快照；未变的信封显式开启消息序列或跟随 surface 替换时，会追加 reason 为 `'series'` 的快照。如果发生变化的快照所属请求同时开启序列，它会携带 `startsSeries: true`。普通的仅追加后续 Turn，以及同一模型消息序列内的后续 Step 与重试沿用最新快照。`foldRequestHeader(events)` 通过选择最新快照重建请求头。该事件不是 `SurfaceEventType`，不产生 LLM 消息。
 
 ```ts type-equiv
 /**
- * Logged request state outside derived history: call config, system prompt, and
- * tools. The latest full `request/header` snapshot reconstructs it; canonical
+ * Logged request state outside derived history: call config and tools. The
+ * system prompt is derived history — surface node 0, a `system/message` event.
+ * The latest full `request/header` snapshot reconstructs the header; canonical
  * empty optional fields are absent.
  */
 interface EpochHeader {
@@ -162,18 +179,16 @@ interface EpochHeader {
   config: LlmCallConfig
   /** Effective config fields materialized from the exact adapter rather than proposed by a caller. */
   adapterDefaults?: LlmCallConfigAdapterDefaults
-  /** Rendered system prompt text; absent for a system-less request. */
-  system?: string
   /** Assembled tool schemas; absent for a tool-less request. */
   tools?: ToolSchema[]
 }
 ```
 
-规范形式：空系统提示词和空工具列表都表示为字段缺失，与请求构建方式一致。包含旧版 `request/header-delta` 事件或完整快照原因为 `fallback` 的旧版 v0 日志，会在 seed、append 和持久化加载边界被拒绝，而不会以不完整方式回放。
+当前事件接纳要求 `request/header.header` 为规范形式：禁止任何 `system` 字段，必须省略 `tools: []` 与 `adapterDefaults: {}`。仅含空白的系统消息内容、`config.stop: []` 与嵌套扩展保持不变。seed、append 与当前持久化读取拒绝非规范 header，而不会静默规范化；[V3 信封决策](../../.agents/notes/implemented/architecture/2026-09-06-v3-canonical-session-envelopes.zh.md)负责历史转换。包含旧版 `request/header-delta` 事件或完整快照原因为 `fallback` 的旧版 v0 日志，会被拒绝，而不会以不完整方式回放。
 
 ### 路由容量事件：`request/context`
 
-请求所解析到的路由的上下文元数据是独立的已记录状态，在同一步骤内紧随 `request/header` 追加，且仅在提供方、模型或容量与上一条记录不同时追加。它保持在 `EpochHeader` 之外，因为该类型是 `headerEquals` 逐字段比较的重建约定。容量描述的是路由，不是请求输入，把它折叠进去会让一次容量变化被登记为请求信封的 `change`，也会把适配器元数据拉进 loop 的重建不变式。与 `request/header` 一样，它不是 `SurfaceEventType`，也不产生 LLM 消息。`session.requestContext()` 以增量方式归并最新一条记录。适配器不公布容量的路由会以缺失 `contextWindow` 的形式记录，因此新记录可以清除较早路由的容量。
+请求所解析到的路由的上下文元数据是独立的已记录状态，在同一步骤内紧随 `request/header` 追加，且仅在提供方、模型、容量或 `systemPromptUpdate` 模式与上一条记录不同时追加。它保持在 `EpochHeader` 之外，因为该类型是 `headerEquals` 逐字段比较的重建约定。容量与更新模式描述的是路由，不是请求输入，把它们折叠进去会让一次路由变化被登记为请求信封的 `change`，也会把适配器元数据拉进 loop 的重建不变式。与 `request/header` 一样，它不是 `SurfaceEventType`，也不产生 LLM 消息。`session.requestContext()` 以增量方式归并最新一条记录；agent loop 在决定变化后的系统提示词是替换最新的系统节点还是追加到已缓存历史之后时，读取该记录的 `systemPromptUpdate`（[决策规则](../../packages/core/agent-loop/README.zh.md#understand-the-implementation)）。适配器不公布容量的路由会以缺失 `contextWindow` 的形式记录，因此新记录可以清除较早路由的容量；未声明更新模式的路由同样会清除较早路由的 `systemPromptUpdate`。
 
 ```ts type-equiv
 /** Registration-bound metadata for one resolved model route. */
@@ -184,6 +199,8 @@ interface RequestContext {
   model: string
   /** Maximum combined request and response context in tokens, when advertised. */
   contextWindow?: number
+  /** `'in-history'` when the route reads the latest `system` message at any position as the effective system prompt. */
+  systemPromptUpdate?: SystemPromptUpdate
 }
 ```
 
@@ -221,7 +238,7 @@ type OptionalSessionSeq = SessionSeq | null
  * unions), so `switch (event.type)` narrows `event.data` without casts.
  *
  * The {@link sourceEventSeqs} and {@link surfaceOp} fields are conditional:
- * they only exist on {@link SurfaceEventType} variants (`user/message`,
+ * they only exist on {@link SurfaceEventType} variants (`system/message`, `user/message`,
  * `assistant/message`, `tool/result`).
  * Non-surface events (boundary markers, attempts, errors) never carry
  * surface metadata — the compiler enforces this at `Session.append()`
@@ -246,28 +263,22 @@ type SessionEvent<T extends SessionEventType = SessionEventType> = {
      * inconvenience) rather than silently resuming a gutted session.
      */
     ignorable?: true
-  } & (K extends SurfaceEventType ? {
-    /**
-     * Seq numbers of earlier events that this event cites as sources, such as
-     * the surface nodes shadowed by a compaction replacement. A v2
-     * `assistant/message` embeds its provider stream and cannot carry this field.
-     */
-    sourceEventSeqs?: SessionSeq[]
-    /** How this event entered the surface; absent for non-surface events. */
-    surfaceOp?: SurfaceOp
-  } : object)
+  } & (K extends SurfaceEventType ? SurfaceIntent<K> : {
+    surfaceOp?: never
+    sourceEventSeqs?: never
+  })
 }[T]
 ```
 
 `SessionEventType = keyof SessionEventMap`。由于 `SessionEventMap` 可通过合并扩展，对 `SessionEvent` 的 switch 语句禁止使用 `assertNever`：插件添加的变体是合法的未知值；处理已知 case 后在 `default` 中放行。
 
-V2 `assistant/message` 嵌入 provider stream，不能携带 `sourceEventSeqs`。User 与 tool surface event 可以在 provenance 或 replacement operation 需要时引用完整且非空的唯一较早 event 集合。
+每个 surface 事件都要求 `surfaceOp`；已知仅日志事件禁止两个 surface 元数据字段。原生未知或已退役的可忽略信封保持不透明。`assistant/message` 嵌入其提供方 stream，并禁止 `sourceEventSeqs`。System、user 与 tool surface 事件可以在来源或替换操作需要时引用完整、非空且唯一的较早事件集合。`tool/result` 仅在工具结果块带有 `isError: true` 时可以携带 `data.error`；失败结果的失败身份仍可省略。
 
 <a id="surface-types"></a>
 
 ## Surface 类型
 
-三种产生消息的类型（`SurfaceEventType`：`user/message`、`assistant/message`、`tool/result`）携带 surface 元数据，用来声明它们如何加入有序的派生 surface。见 [session surface Agent Note](../../.agents/notes/implemented/architecture/2026-06-18-session-surface.zh.md)。
+四种产生消息的类型（`SurfaceEventType`：`system/message`、`user/message`、`assistant/message`、`tool/result`）携带 surface 元数据，用来声明它们如何加入有序的派生 surface。`system/message` 承载渲染后的系统提示词：循环把第一条追加为 surface 第 0 号节点，并在提示词变化时恰好替换最新的系统节点，或在历史内路由上追加一条新的；surface 折叠拒绝任何其他覆盖第 0 号节点 `system/message` 的替换，而后续系统节点是普通历史，压缩替换可以遮蔽它。见 [session surface Agent Note](../../.agents/notes/implemented/architecture/2026-06-18-session-surface.zh.md)。
 
 ### `SurfaceEventType`：事件类型中产生消息的子集
 
@@ -275,10 +286,11 @@ V2 `assistant/message` 嵌入 provider stream，不能携带 `sourceEventSeqs`�
 /**
  * The subset of {@link SessionEventType} values whose events produce LLM
  * messages and are eligible to appear on the ordered surface. Only these
- * event types may carry {@link SurfaceOp}; user and tool events may also cite
+ * event types may carry {@link SurfaceOp}; system, user, and tool events may also cite
  * earlier sources through {@link SessionEvent.sourceEventSeqs}.
  */
 type SurfaceEventType =
+  | 'system/message'
   | 'user/message'
   | 'assistant/message'
   | 'tool/result'
@@ -293,19 +305,19 @@ type SurfaceEventType =
  *
  * - `'append'`: added to the tail — normal path for user/assistant/tool
  *   messages.
- * - `{ op: 'replace', start, end }`: replaces surface nodes from `start`
- *   (inclusive) through `end` (inclusive) with this node. Both must exist as
- *   surface nodes in the current surface. `start === end` replaces a single
+ * - `{ op: 'replace', startSeq, endSeq }`: replaces surface nodes from `startSeq`
+ *   (inclusive) through `endSeq` (inclusive) with this node. Both must exist as
+ *   surface nodes in the current surface. `startSeq === endSeq` replaces a single
  *   node. The node's {@link SessionEvent.sourceEventSeqs} must include every
  *   shadowed surface node. Used by compaction; any surface-replacing producer
  *   may use it.
  */
 type SurfaceOp =
   | 'append'
-  | { op: 'replace'; start: SessionSeq; end: SessionSeq }
+  | { op: 'replace'; startSeq: SessionSeq; endSeq: SessionSeq }
 ```
 
-`'append'` 是常规的尾部追加路径。`replace` 会遮蔽从 `start` 到 `end`（含两端）的 surface 条目（两者都必须是有效的 surface seq；`start === end` 时仅替换单个条目），并在原位置插入新事件。
+`'append'` 是常规的尾部追加路径。`replace` 恰好包含 `op`、`startSeq` 和 `endSeq`，不接受别名或额外键。它遮蔽这两个当前 surface 事件序号之间的闭区间，并在原位置插入新事件；相同端点仅替换一个条目。端点必须早于替换事件，但它们的相对顺序按 surface 顺序而非数值序号顺序确定。
 
 ### `SurfaceIntent`：`session.append()` 的参数
 
@@ -317,7 +329,7 @@ type SurfaceOp =
 type SurfaceIntent<T extends SurfaceEventType = SurfaceEventType> = {
   surfaceOp: SurfaceOp
 } & (T extends 'assistant/message' ? {
-  /** V2 Assistant messages embed their provider stream instead of citing source events. */
+  /** Assistant messages embed their provider stream instead of citing source events. */
   sourceEventSeqs?: never
 } : {
   /** Complete non-empty set of known earlier source-event seqs. */
@@ -442,13 +454,16 @@ declare class Session {
     inheritedEventCount?: SessionLogOffset,
   ): Session;
   /**
-   * Restore a detached session by taking ownership of fresh persistence values.
-   * The storage format, event envelopes, sequence continuity, surface transitions,
-   * and header fields are validated before the restored objects are frozen.
+   * Restore a detached session by adopting an independently owned or deeply frozen seed.
+   * Runtime-required event fields, event envelopes, sequence continuity, surface
+   * transitions, and header fields are validated without copying or freezing events.
+   * Embedded Assistant streams remain opaque until a stream consumer or storage
+   * verifier reads them.
    * @param id - restored session identity.
-   * @param seed - fresh detached events whose ownership is transferred.
-   * @param header - fresh detached metadata whose ownership is transferred.
+   * @param seed - independently owned or deeply frozen events.
+   * @param header - independently owned storage metadata.
    * @param inheritedEventCount - exact fork-inherited prefix length decoded from storage.
+   * @param eventState - aliasing state carried from the operation that produced the seed.
    * @returns a restored detached session.
    */
   static fromRestore(
@@ -456,6 +471,7 @@ declare class Session {
     seed: readonly SessionEvent[],
     header: SessionHeader,
     inheritedEventCount: SessionLogOffset,
+    eventState: SessionSeedEventState,
   ): Session;
   /**
    * Return the immutable event stored at one exact sequence number.
@@ -514,6 +530,7 @@ declare class Session {
    *   (BigInt, function, symbol, undefined, negative zero, non-finite number,
    *   circular reference, sparse array, or an exotic object such as
    *   Map/Set/Date/class instance), or when the candidate violates the
+   *   request-header empty-field or tool-error consistency rules, or the
    *   canonical surface contract (marker shape and eligibility, unique
    *   earlier source-event references, positional replacement validity, and complete
    *   shadowed-node coverage). One iterative pass reads, validates, and
@@ -655,7 +672,7 @@ interface TurnEndReasonMap {
 
 如果同一个插件事件族中的多条事件要组装成一个 Web Client Conversation Node，该事件族中的每条 start、update、result、resource 或 interruption 事件都必须携带或独立推导出同一个稳定业务 id。此要求只约束需要关联的 Node 事件族，并不要求每条 Session 事件都有业务 id；Client 因此无须根据相邻关系猜测归属，也无须扫描历史。参见 [Conversation 子系统](conversation.zh.md)。
 
-钩子桥接层的 `hook/invoked` / `hook/result` 对（来自 `@deepseek-ai/dsh-hook-protocol`）通过 `handlerId` 关联。`UserPromptSubmit`、`PreToolUse`、`PostToolUse` 与 `Stop` 在 loop 已打开的轮次内触发，因此其 `hook/*` 记录天然位于轮次之内。`SessionStart` 不生成 `hook/*` 记录，因为它在轮次 1 之前运行；其上下文会在 inbox 中保持待处理，直到唤醒交付打开一个轮次（见[钩子桥接 Agent Note](../../.agents/notes/implemented/feature/2026-06-30-hook-bridges.zh.md)）。
+钩子桥接层的 `hook/invoked` / `hook/result` 对（来自 `@deepseek-ai/dsh-hook-protocol`）通过 `handlerId` 关联。`UserPromptSubmit`、`PreToolUse`、`PostToolUse` 与 `Stop` 在 loop 已打开的轮次内触发，因此其 `hook/*` 记录天然位于轮次之内。`SessionStart` 不生成 `hook/*` 记录，因为它在轮次 1 之前运行；其上下文会在 inbox 中保持待处理，直到唤醒交付打开一个轮次。
 
 ## 持久性约定
 
@@ -749,6 +766,219 @@ inspect( sessionId: SessionId, signal?: AbortSignal, ): Promise<SessionInspectio
  * @throws RemoteError when the request is invalid, cancelled, or the opener fails.
  */
 @Remote('openWorkspacePath') async openWorkspacePath( request: SessionOpenWorkspacePathRequest, signal: AbortSignal, ): Promise<SessionOpenWorkspacePathValue>
+
+/**
+ * List one directory under a Session's project cwd. The Host derives the
+ * fence from the Session header; the Client must not send a root.
+ * @param request - Session identity and optional absolute list path.
+ * @param signal - caller lifetime; abort stops the filesystem scan.
+ * @returns one fenced directory level.
+ * @throws RemoteError when the capability is absent, the Session has no cwd,
+ * the path leaves the fence, or the scan fails.
+ */
+@Remote('listEntries') async listEntries( request: SessionListEntriesRequest, signal: AbortSignal, ): Promise<SessionListEntriesValue>
+
+/**
+ * List overlay-managed sources plus unmatched data-agent connections.
+ * @param signal - caller lifetime; abort stops the listing.
+ * @returns listed sources.
+ * @throws RemoteError when the ask-data capability is absent.
+ */
+@Remote('listAskDataSources') listAskDataSources(signal: AbortSignal): Promise<readonly SessionAskDataSource[]>
+
+/**
+ * Import one `.xlsx` / `.csv`. `bytes` is canonical base64 of the decoded file.
+ * Does not apply a preset or open a session.
+ * @param request - filename, encoded bytes, optional replace target.
+ * @param signal - caller lifetime; abort stops the import.
+ * @returns preview read from the written sqlite.
+ */
+@Remote('importAskDataSpreadsheet') importAskDataSpreadsheet( request: SessionImportAskDataSpreadsheetRequest, signal: AbortSignal, ): Promise<SessionAskDataImportPreview>
+
+/**
+ * Copy the packaged sample sqlite. Does not need host `sqlite3`.
+ * @param signal - caller lifetime; abort stops the copy.
+ * @returns preview of the copied sqlite.
+ */
+@Remote('importAskDataSample') importAskDataSample(signal: AbortSignal): Promise<SessionAskDataImportPreview>
+
+/**
+ * Bind one source to a Session. Host does not guess the current Session.
+ * Pass `sessionId` only when the caller already has a blank (or already
+ * bound-to-this-source) Session.
+ * @param request - source and optional session / workspace.
+ * @param signal - caller lifetime; abort stops the commit.
+ * @returns the Session identity after bind + `ask-data/bound`.
+ */
+@Remote('commitAskData') commitAskData( request: SessionCommitAskDataRequest, signal: AbortSignal, ): Promise<SessionCommitAskDataValue>
+
+/**
+ * Read the current ask-data bind of a live Session.
+ * @param request - Session identity.
+ * @returns the bind, or null before one.
+ */
+@Remote('askDataBinding') askDataBinding(request: SessionAskDataBindingRequest): SessionAskDataBinding | null
+
+/**
+ * List the commerce sources the provider stores.
+ * @param signal - caller lifetime; abort stops the listing.
+ * @returns listed sources.
+ * @throws RemoteError when the commerce capability is absent.
+ */
+@Remote('listCommerceSources') listCommerceSources(signal: AbortSignal): Promise<readonly SessionCommerceSource[]>
+
+/**
+ * List the platform mapping ids this deployment configured. A Client picks
+ * one before importing a spreadsheet.
+ * @returns the configured platform ids.
+ * @throws RemoteError when the commerce capability is absent.
+ */
+@Remote('listCommercePlatforms') listCommercePlatforms(): readonly string[]
+
+/**
+ * Import or replace one commerce table from a spreadsheet. `bytes` is
+ * canonical base64 of the decoded file. Does not apply a preset or open a
+ * session.
+ * @param request - table family, platform mapping, filename, encoded bytes,
+ * and the source to extend.
+ * @param signal - caller lifetime; abort stops the import.
+ * @returns preview of the imported source.
+ */
+@Remote('importCommerceSpreadsheet') importCommerceSpreadsheet( request: SessionImportCommerceSpreadsheetRequest, signal: AbortSignal, ): Promise<SessionCommerceImportPreview>
+
+/**
+ * Import the packaged fictional commerce sample as one source.
+ * @param signal - caller lifetime; abort stops the import.
+ * @returns preview of the imported sample.
+ */
+@Remote('importCommerceSample') importCommerceSample(signal: AbortSignal): Promise<SessionCommerceImportPreview>
+
+/**
+ * Bind one commerce source to a Session. Host does not guess the current
+ * Session: pass `sessionId` only for a blank Session, or one already bound
+ * to this source.
+ * @param request - source and optional session / workspace.
+ * @param signal - caller lifetime; abort stops the commit.
+ * @returns the Session identity after bind + `commerce/bound`.
+ */
+@Remote('commitCommerce') commitCommerce( request: SessionCommitCommerceRequest, signal: AbortSignal, ): Promise<SessionCommitCommerceValue>
+
+/**
+ * List overlay-managed knowledge libraries.
+ * @param signal - caller lifetime; abort stops the listing.
+ * @returns catalog rows.
+ */
+@Remote('listAskKnowledgeLibraries') listAskKnowledgeLibraries(signal: AbortSignal): Promise<readonly SessionAskKnowledgeLibrary[]>
+
+/**
+ * Create an empty knowledge library.
+ * @param request - display name and optional workspace shortcut.
+ * @param signal - caller lifetime; abort stops the create.
+ * @returns the new catalog row.
+ */
+@Remote('createAskKnowledgeLibrary') createAskKnowledgeLibrary( request: SessionCreateAskKnowledgeLibraryRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeLibrary>
+
+/**
+ * Rename a knowledge library.
+ * @param request - library id and new display name.
+ * @param signal - caller lifetime; abort stops the rename.
+ * @returns the updated row.
+ */
+@Remote('renameAskKnowledgeLibrary') renameAskKnowledgeLibrary( request: SessionRenameAskKnowledgeLibraryRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeLibrary>
+
+/**
+ * Remove a knowledge library and unbind live and cold sessions.
+ * @param request - library id.
+ * @param signal - caller lifetime; abort stops the remove.
+ */
+@Remote('removeAskKnowledgeLibrary') removeAskKnowledgeLibrary( request: SessionRemoveAskKnowledgeLibraryRequest, signal: AbortSignal, ): Promise<void>
+
+/**
+ * Hang a library on a Session. Host does not guess the current Session.
+ * Omit `sessionId` to create a standard Session, then attach.
+ * A named data-agent Session with an ask-data bind creates a new standard
+ * Session instead, because data-agent denies retrieve tools.
+ * @param request - library and optional session / workspace.
+ * @param signal - caller lifetime; abort stops the attach.
+ * @returns the Session identity after bind.
+ */
+@Remote('attachAskKnowledge') attachAskKnowledge( request: SessionAttachAskKnowledgeRequest, signal: AbortSignal, ): Promise<SessionAttachAskKnowledgeValue>
+
+/**
+ * Clear the library bind on a live Session.
+ * @param request - Session identity.
+ * @param signal - caller lifetime; abort stops the detach.
+ */
+@Remote('detachAskKnowledge') detachAskKnowledge( request: SessionDetachAskKnowledgeRequest, signal: AbortSignal, ): Promise<void>
+
+/**
+ * Open an ingest upload. `bytes` chunks follow on append.
+ * @param request - library and original filename.
+ * @param signal - caller lifetime; abort stops the begin.
+ * @returns the ingest handle.
+ */
+@Remote('beginAskKnowledgeIngest') beginAskKnowledgeIngest( request: SessionBeginAskKnowledgeIngestRequest, signal: AbortSignal, ): Promise<string>
+
+/**
+ * Append one canonical-base64 chunk. Decoded size must be ≤ 160KiB.
+ * @param request - handle and encoded bytes.
+ * @param signal - caller lifetime; abort stops the append.
+ */
+@Remote('appendAskKnowledgeIngestChunk') appendAskKnowledgeIngestChunk( request: SessionAppendAskKnowledgeIngestChunkRequest, signal: AbortSignal, ): Promise<void>
+
+/**
+ * Assemble chunks and run ingest → propose → apply.
+ * @param request - handle and optional raw reuse path.
+ * @param signal - caller lifetime; abort stops the finish.
+ * @returns applied, deferred, or failed ingest status.
+ */
+@Remote('finishAskKnowledgeIngest') finishAskKnowledgeIngest( request: SessionFinishAskKnowledgeIngestRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeIngestResult>
+
+/**
+ * Open a session-only extract upload. Does not write catalog.
+ * @param request - original filename.
+ * @param signal - caller lifetime; abort stops the begin.
+ * @returns the extract handle.
+ */
+@Remote('beginAskKnowledgeExtract') beginAskKnowledgeExtract( request: SessionBeginAskKnowledgeExtractRequest, signal: AbortSignal, ): Promise<string>
+
+/**
+ * Append one canonical-base64 chunk to a session-only extract upload.
+ * @param request - handle and encoded bytes.
+ * @param signal - caller lifetime; abort stops the append.
+ */
+@Remote('appendAskKnowledgeExtractChunk') appendAskKnowledgeExtractChunk( request: SessionAppendAskKnowledgeExtractChunkRequest, signal: AbortSignal, ): Promise<void>
+
+/**
+ * Convert the assembled file to text. Does not write catalog or vault.
+ * @param request - handle.
+ * @param signal - caller lifetime; abort stops the finish.
+ * @returns extracted text and whether it was truncated.
+ */
+@Remote('finishAskKnowledgeExtract') finishAskKnowledgeExtract( request: SessionFinishAskKnowledgeExtractRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeExtractResult>
+
+/**
+ * Retrieve pages for the Session's hung library.
+ * @param request - Session identity and terms.
+ * @param signal - caller lifetime; abort stops the retrieve.
+ * @returns a bounded bundle.
+ */
+@Remote('askKnowledgeRetrieve') askKnowledgeRetrieve( request: SessionAskKnowledgeRetrieveRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeBundle>
+
+/**
+ * Look up one term on the Session's hung library.
+ * @param request - Session identity and term.
+ * @param signal - caller lifetime; abort stops the lookup.
+ * @returns lookup fields plus optional text.
+ */
+@Remote('askKnowledgeLookup') askKnowledgeLookup( request: SessionAskKnowledgeLookupRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeLookup>
+
+/**
+ * Read the current ask-knowledge bind of a live Session.
+ * @param request - Session identity.
+ * @returns the bind, or null before one.
+ */
+@Remote('askKnowledgeBinding') askKnowledgeBinding(request: SessionAskKnowledgeBindingRequest): SessionAskKnowledgeBinding | null
 
 /**
  * Rename one Session after explicitly resuming it.
@@ -865,10 +1095,9 @@ create(id?: SessionId, options?: CreateSessionOptions): Session
  *
  * @param id - the session id; omitted, the store mints `session-<n>`.
  * @param options - seed events and/or creation metadata for the header. With
- *   `seedSource: 'persistence'`, metadata and events must be fresh detached
- *   graphs whose ownership transfers to this call: they are validated and
- *   frozen in place through {@link Session.fromRestore}, so the caller must
- *   retain no mutable aliases.
+ *   `eventState`, every seed event is either independently owned or any
+ *   shared value is deeply frozen; {@link Session.fromRestore} validates and
+ *   adopts those values without copying or freezing them.
  * @returns the constructed session, NOT yet in the store.
  * @throws if a session with `id` already exists, metadata is not a plain
  *   lossless-JSON record with valid scalar fields, or `meta.cwd` is a

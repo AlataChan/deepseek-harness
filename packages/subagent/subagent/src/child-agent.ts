@@ -194,23 +194,25 @@ export const SUBAGENT_DELEGATION_CONTEXT
  * unrepresentable at the call sites.
  * @param childCtx - the child agent's scoped creation context.
  * @param parent - the delegating parent whose composition the child joins.
+ * @param child - the child agent whose identity names its delegation section.
  * @param composition - the per-child persona and tool filter to install.
  */
 export function applyChildComposition(
   childCtx: Context,
   parent: Agent,
+  child: Agent,
   composition: ChildComposition,
 ): void {
   childCtx.get('agentPresets')?.composeFrom(childCtx, parent.ctx)
   childCtx.systemPrompt.context({
-    name: `subagent:delegation:${(childCtx.agent as Agent).id}`,
+    name: `subagent:delegation:${child.id}`,
     order: childCtx.systemPrompt.getContextOrder('SUBAGENT_DELEGATION'),
     text: SUBAGENT_DELEGATION_CONTEXT,
   })
   if (composition.persona !== undefined) {
     childCtx.systemPrompt.section({
-      name: 'deployment:persona',
-      order: childCtx.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA'),
+      name: 'deployment:persona-prefix',
+      order: childCtx.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA_PREFIX'),
       text: composition.persona,
     })
   }

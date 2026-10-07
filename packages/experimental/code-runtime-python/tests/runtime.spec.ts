@@ -97,7 +97,9 @@ afterEach(() => {
   for (const file of tempFiles.splice(0)) rmSync(file, { force: true })
 })
 
-describe('PythonCodeRuntime — seam descriptors and misuse', () => {
+// Every case here starts a real Python interpreter; the default 5s ceiling
+// measures interpreter startup rather than the behaviour under test.
+describe('PythonCodeRuntime — seam descriptors and misuse', { timeout: 30_000 }, () => {
   it('registers the seam descriptors', async () => {
     const { runtime } = await setup()
     expect(runtime.language).toBe('python')
@@ -737,7 +739,7 @@ describe('PythonCodeRuntime — seam descriptors and misuse', () => {
   }, 15_000)
 })
 
-describe('PythonCodeRuntime — process identity', () => {
+describe('PythonCodeRuntime — process identity', { timeout: 30_000 }, () => {
   it('reads a live process start time and distinguishes it from an absent pid', () => {
     // The teardown guard signals `-child.pid` with a RAW `process.kill`, which
     // (unlike `child.kill()`) has no handle check, so it would reach a recycled
@@ -770,7 +772,7 @@ describe('PythonCodeRuntime — process identity', () => {
   })
 })
 
-describe('PythonCodeRuntime — inherited resource limits', () => {
+describe('PythonCodeRuntime — inherited resource limits', { timeout: 30_000 }, () => {
   // Darwin deliberately does not apply RLIMIT_AS, and its shell rejects `ulimit -v`.
   it.skipIf(process.platform === 'darwin')('runs under an inherited hard limit tighter than addressSpaceMb', async () => {
     // An unprivileged process may lower a hard rlimit but never raise it. Under
@@ -1014,7 +1016,7 @@ describe('PythonCodeRuntime — inherited resource limits', () => {
   }, 20_000)
 })
 
-describe('PythonCodeRuntime — programs and bindings', () => {
+describe('PythonCodeRuntime — programs and bindings', { timeout: 30000 }, () => {
   it('runs a top-level script, captures print output, and returns `result`', async () => {
     const { runtime } = await setup()
     const result = await runtime.run({
@@ -3096,7 +3098,7 @@ describe('PythonCodeRuntime — programs and bindings', () => {
   })
 })
 
-describe('PythonCodeRuntime — budgets, termination, disposal', () => {
+describe('PythonCodeRuntime — budgets, termination, disposal', { timeout: 30000 }, () => {
   it('kills a wall-clock runaway program via SIGTERM/SIGKILL and reports timeout', async () => {
     const { runtime } = await setup({ maxWallMs: 500, graceMs: 200 })
     const start = Date.now()
@@ -3846,7 +3848,7 @@ describe('PythonCodeRuntime — budgets, termination, disposal', () => {
   }, 20_000)
 })
 
-describe('PythonCodeRuntime — hostile peer', () => {
+describe('PythonCodeRuntime — hostile peer', { timeout: 30000 }, () => {
   it('drops garbage bytes and unknown-shape frames posted directly to fd 3', async () => {
     // The model program can reach fd 3 and write anything. We inject a
     // non-JSON line, a valid JSON but unknown-shape frame, and a broken done

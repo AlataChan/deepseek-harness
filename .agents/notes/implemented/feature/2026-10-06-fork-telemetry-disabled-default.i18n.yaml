@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-10-06-fork-telemetry-disabled-default.md
-2026-10-06-fork-telemetry-disabled-default.md: 57d64f07b65236121dc3996faf96611b76aed995
-2026-10-06-fork-telemetry-disabled-default.zh.md: da8094a2e2f5d259dc8daf07fd15a67f6ca333a1
+2026-10-06-fork-telemetry-disabled-default.md: 004ac1ba3254b3ed2d53b53be3468bdfe0a97cbf
+2026-10-06-fork-telemetry-disabled-default.zh.md: 4099c809b2ee349b7a8f7a9feead675c66ca05ee

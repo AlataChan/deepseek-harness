@@ -17,5 +17,5 @@ export default defineConfig({
   target: 'es2024',
   fixedExtension: false,
   dts: false,
-  clean: false,
+  clean: ['lib/*.js'],
 })

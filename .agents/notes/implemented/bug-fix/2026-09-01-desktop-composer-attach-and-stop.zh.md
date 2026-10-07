@@ -18,7 +18,7 @@ Status: implemented
 
 **扩展图片附件或为仅本会话文档新增 ContentBlock。** 否决：仅本会话正文已经走 `user/message` 的 `{ type: 'text' }`。
 
-**只在空草稿主按钮上保留 Stop。** 否决：抽出文档会变成可发送芯片并藏掉取消。见[运行中草稿取得主 Send](2026-08-20-running-draft-primary-send.zh.md)。
+**只在空草稿主按钮上保留 Stop。** 否决：抽出文档会变成可发送芯片并藏掉取消。见[运行中草稿取得主 Send](../../archived/bug-fix/2026-08-20-running-draft-primary-send.md)。
 
 **对每个 RPC 路径段做 `encodeURIComponent`。** 否决：`$` 在 Connection 的 `ENDPOINT_SEGMENT_PATTERN` 里合法。编码后 `$events/result` 会 404，并拆掉 gateway。
 

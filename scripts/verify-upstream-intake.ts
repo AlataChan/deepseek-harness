@@ -15,7 +15,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import {
   FORBIDDEN_DEPENDENCIES,
@@ -226,10 +226,15 @@ export function neverMergeFileList(root: string, registry: IntakeRegistry): stri
   for (const directory of registry.upstreamOnlyDirectories) {
     const prefix = directory.replace(/\/$/, '')
     try {
-      for (const child of readdirSync(resolve(root, prefix), { recursive: true, encoding: 'utf8' })) {
-        const relative = `${prefix}/${child}`.replaceAll('\\', '/')
-        if (relative.endsWith('/')) continue
-        files.push(relative)
+      for (const child of readdirSync(resolve(root, prefix), {
+        recursive: true,
+        encoding: 'utf8',
+        withFileTypes: true,
+      })) {
+        if (!child.isFile()) continue
+        const absolute = resolve(child.parentPath, child.name)
+        const relativePath = `${prefix}/${relative(resolve(root, prefix), absolute)}`
+        files.push(relativePath.replaceAll('\\', '/'))
       }
     } catch {
       // A missing directory is absence of the never-merge surface, not a failure.

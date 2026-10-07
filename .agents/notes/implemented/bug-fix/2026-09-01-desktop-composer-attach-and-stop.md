@@ -18,7 +18,7 @@ Plus-menu image and session-document rows keep a visible choose control whose cl
 
 **Expand image attachment or a new ContentBlock for session documents.** Rejected: session-only text already travels in `user/message` `{ type: 'text' }`.
 
-**Keep Stop only on the empty-draft primary.** Rejected: extracting a document fills a sendable chip and hid cancellation. See [running-draft primary Send](2026-08-20-running-draft-primary-send.md).
+**Keep Stop only on the empty-draft primary.** Rejected: extracting a document fills a sendable chip and hid cancellation. See [running-draft primary Send](../../archived/bug-fix/2026-08-20-running-draft-primary-send.md).
 
 **Encode every RPC path segment with `encodeURIComponent`.** Rejected: `$` is legal in Connection's `ENDPOINT_SEGMENT_PATTERN`. Encoding it 404s `$events/result` and takes down the gateway.
 

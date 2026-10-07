@@ -6,10 +6,9 @@ import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import { ReasoningEffortId, ToolCallId } from '@deepseek-ai/dsh-llm'
 import { scopeOf } from '@deepseek-ai/dsh-scope'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SessionQueryEngine from '@deepseek-ai/dsh-session-query'
 import SubagentService from '@deepseek-ai/dsh-subagent'
@@ -59,7 +58,6 @@ afterEach(() => {
 async function setup(script: ConstructorParameters<typeof MockAdapter>[0], legacyControl = false) {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
-  await ctx.plugin(SessionProjectionRegistry)
   const storageRoot = mkdtempSync(join(tmpdir(), 'dsh-tool-team-'))
   roots.push(storageRoot)
   await ctx.plugin(JsonlSessionPersistence, { root: storageRoot })
@@ -364,7 +362,10 @@ describe('dsh-tool-team', () => {
 
   it('passes authorized child model selections to fresh teammates', async () => {
     const { ctx, lead } = await setup(['hang'])
-    ctx.llm.registerAdapter(['alpha'], new MockAdapter([textResponse('routed done')]))
+    ctx.llm.registerAdapter(['alpha'], new MockAdapter([textResponse('routed done')], {
+      efforts: [{ id: ReasoningEffortId('medium'), name: 'Medium' }],
+      defaultEffort: ReasoningEffortId('medium'),
+    }))
     const startContinuable = vi.spyOn(ctx.subagents, 'startContinuable')
     lead.session.append('subagent/model-selection-policy', { allowedModels: ALLOWED_MODELS })
 

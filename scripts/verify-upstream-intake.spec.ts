@@ -1,8 +1,12 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { IntakeRegistry } from './upstream-intake-registry.ts'
 import {
   forbiddenDependencyViolations,
   mountRecordingViolations,
+  neverMergeFileList,
   neverMergeViolations,
   patchRegistryViolations,
   removalDispositionViolations,
@@ -84,6 +88,23 @@ describe('rule 2 — the collided desktop path has not become Electron', () => {
     const files = new Map([['apps/desktop/package.json', '{ not json']])
     expect(forbiddenDependencyViolations(fixtureRegistry(), path => files.get(path)))
       .toHaveLength(1)
+  })
+})
+
+describe('rule 1 — the disk walk reports files, never directories', () => {
+  it('skips a leftover empty directory under an upstream-only path', () => {
+    // The walk feeds rule 1, so a directory entry with no file beneath it must
+    // not surface as upstream surface that leaked into the tree.
+    const root = mkdtempSync(join(tmpdir(), 'intake-walk-'))
+    mkdirSync(join(root, 'apps/desktop-host/src'), { recursive: true })
+    writeFileSync(join(root, 'apps/desktop-host/package.json'), '{}')
+    try {
+      expect(neverMergeFileList(root, fixtureRegistry()).sort()).toEqual([
+        'apps/desktop-host/package.json',
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })
 

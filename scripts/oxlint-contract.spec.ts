@@ -45,7 +45,9 @@ async function writeContractConfig(suffix: string): Promise<string> {
   return path
 }
 
-describe('Oxlint executable contract', () => {
+// Each case here spawns the oxlint binary, which measures seconds rather than
+// milliseconds; the default 5s ceiling fails on scheduler jitter alone.
+describe('Oxlint executable contract', { timeout: 30_000 }, () => {
   it('discovers the owning TypeScript project for every file class', async () => {
     const suffix = randomUUID()
     const configPath = await writeContractConfig(suffix)

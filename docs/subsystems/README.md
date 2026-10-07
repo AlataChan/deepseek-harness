@@ -54,8 +54,14 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [web-client.md](web-client.md) | the browser architecture: boot, Remote communication, paired Client models, UI adapters, Conversation assembly, Slots, and reconnect semantics |
 | [client-modules.md](client-modules.md) | the web plugin table: `dsh.client` declarations, `WebBootGraph` wire composition, the bundle route and index tap |
 | [slots.md](slots.md) | typed Web UI composition: declaration ownership, cardinality and scope, framework and feature injection, props derivation, and the shipped hierarchy |
+| [client-resources.md](client-resources.md) | the client resource model: `dsh-resource://<type>/…` addresses, protocol providers and `ResourceProtocolMap`, the `useResource` global hook and its states, pins and release |
+| [sidebar-right.md](sidebar-right.md) | the right Sidebar: resource and navigation addresses, tab-type registration and routing, the `ctx.sidebarRight` navigation service, the pane-tab slots and owner props, the resource model, and the Workspace Files service |
 | [conversation.md](conversation.md) | target-neutral Session-event assembly: Context identity, Location data, replay paths, view builders, and target-owned render nodes |
 | [session-projection.md](session-projection.md) | the projection seam: `SessionProjectionMap`, the pure `ProjectionDefinition` unit, `ProjectionSnapshot`'s consistent cut, the change feed |
 | [session-telemetry.md](session-telemetry.md) | the outbound session-reporting capability seam: `SessionTelemetryRecord`/`SessionTelemetrySeverity`, the `SessionTelemetrySink` contract, and the `session-telemetry/record` redact waterfall |
+| [ask-data.md](ask-data.md) | the relational-data seam: configured source listing, spreadsheet import, and the Session binding that points a conversation at one source |
+| [ask-knowledge.md](ask-knowledge.md) | the document-library seam: the library catalog, ingest handles, term-based retrieval, and the Session binding that hangs a library on a conversation |
+| [commerce.md](commerce.md) | the commerce-data seam: store source listing, spreadsheet import, the Session binding on the `commerce` preset, and read and analysis queries over the imported tables |
+| [desktop-app.md](desktop-app.md) | the desktop runtime glue: `ctx.desktopStartup` values the shell resolves before the Host boots, and the workspace root they carry |
 
 > Type declarations and their JSDoc on these pages are source-equivalent and drift-checked by `pnpm run verify-type-equiv` (see [development.md](../development.md#documenting-types-verbatim-ts-type-equiv)). Ordinary blocks preserve complete declarations; `public-api` blocks preserve body-stripped public class declarations. Cordis services and events use each page's generated **Cordis API** section.

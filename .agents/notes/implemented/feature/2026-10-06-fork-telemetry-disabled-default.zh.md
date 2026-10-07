@@ -16,7 +16,7 @@ Status: implemented
 
 **`FEEDBACK_ONLY` 保留，不删除。** 对于自建 collector、并希望 `/feedback` 报告携带其所描述会话的部署，它仍然是正确的模式。接缝、共享状态词汇、`DSH_TELEMETRY_DISABLED` 这一加载前硬退出、匿名用户 id、以及关闭时的排空上界均未改动；改的只是默认值与端点。
 
-**录制 `/feedback` 保持本地，并明确告知。** 插件在该模式下已经会选择 `DISABLED_FEEDBACK_WARNING`，因此用户会得知没有共享任何内容，而不是误以为已经共享。这正是 [default-off 决定](2026-08-10-telemetry-default-off.zh.md)确立的行为，也是本 fork 重新发布的默认值。
+**录制 `/feedback` 保持本地，并明确告知。** 插件在该模式下已经会选择 `DISABLED_FEEDBACK_WARNING`，因此用户会得知没有共享任何内容，而不是误以为已经共享。这正是 [default-off 决定](../../archived/feature/2026-08-10-telemetry-default-off.md)确立的行为，也是本 fork 重新发布的默认值。
 
 ## Consequences
 

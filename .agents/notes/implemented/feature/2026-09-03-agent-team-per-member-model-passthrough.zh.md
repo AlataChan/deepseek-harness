@@ -18,7 +18,7 @@ Team spawn 执行器针对调用方 Lead Session 已记录的 `subagent/model-se
 
 Team 状态不持久化第二份路由副本。subagent descriptor 拥有冷恢复所需的持久 `agentProvider`/`agentModel`/`agentReasoningEffort` 值，`TeamMemberSnapshot` 不携带模型副本，`TeamMemberView.model` 保持从 live agent 读取。
 
-Lead/CEO 模型覆盖刻意不加到 Team `Config`。Lead 是普通根 Session，其模型已由 session 模型选择器与默认模型 picker 决定（[Web session 模型选择器](2026-07-24-web-session-model-selector.zh.md)、[默认模型跟随 picker](2026-08-07-default-model-follows-the-picker.zh.md)），且 Team 插件看到 Lead 时其 Agent 已创建，因此 Team `Config` 字段没有合法路径去改一个已存在 Agent 的选项。
+Lead/CEO 模型覆盖刻意不加到 Team `Config`。Lead 是普通根 Session，其模型已由 session 模型选择器与默认模型 picker 决定（[Web session 模型选择器](../../archived/feature/2026-07-24-web-session-model-selector.md)、[默认模型跟随 picker](../../archived/feature/2026-08-07-default-model-follows-the-picker.md)），且 Team 插件看到 Lead 时其 Agent 已创建，因此 Team `Config` 字段没有合法路径去改一个已存在 Agent 的选项。
 
 ## 备选方案
 
