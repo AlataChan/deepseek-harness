@@ -14,7 +14,7 @@ export interface DecodedBytesPolicy {
   /** Maximum decoded bytes this Remote accepts. */
   readonly limit: number
   /** Remote failure code raised for an oversized payload. */
-  readonly code: 'session/ask-data-failed' | 'session/commerce-failed'
+  readonly code: 'session/ask-data-failed' | 'session/commerce-failed' | 'session/media-failed'
   /** Rule id reported with the oversize failure. */
   readonly ruleId: string
 }

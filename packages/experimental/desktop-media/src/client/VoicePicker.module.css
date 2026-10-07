@@ -1,0 +1,60 @@
+.picker {
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.picker h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.picker ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.add {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.add button,
+.fileLabel {
+  justify-self: start;
+}
+
+.fileLabel {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 8px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.fileLabel input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  /* WKWebView drops the File when a clipped or fully transparent input opens. */
+  opacity: 0.01;
+  font-size: 100px;
+  cursor: pointer;
+  border: 0;
+}
+
+.hint {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}

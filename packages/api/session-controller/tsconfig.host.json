@@ -20,6 +20,7 @@
     "src/skill-catalog.ts",
     "src/ask-data.ts",
     "src/ask-knowledge.ts",
+    "src/session-media.ts",
     "src/session-gate.ts",
     "src/commerce.ts",
     "src/session-commit.ts",

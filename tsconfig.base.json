@@ -257,6 +257,8 @@
       "@deepseek-ai/dsh-host-commerce/*": ["./packages/host/commerce/src/*"],
       "@deepseek-ai/dsh-host-commerce/types": ["./packages/host/commerce/src/types.ts"],
       "@deepseek-ai/dsh-host-commerce/client": ["./packages/host/commerce/src/client.ts"],
+      "@deepseek-ai/dsh-experimental-desktop-media": ["./packages/experimental/desktop-media/src"],
+      "@deepseek-ai/dsh-experimental-desktop-media/*": ["./packages/experimental/desktop-media/src/*"],
       "@deepseek-ai/dsh-experimental-desktop-ask-knowledge": ["./packages/experimental/desktop-ask-knowledge/src"],
       "@deepseek-ai/dsh-experimental-desktop-ask-knowledge/*": ["./packages/experimental/desktop-ask-knowledge/src/*"],
       "@deepseek-ai/dsh-experimental-desktop-ask-knowledge/client": ["./packages/experimental/desktop-ask-knowledge/src/client"],

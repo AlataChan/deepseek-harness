@@ -222,6 +222,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly ruleId?: string
       readonly limit?: number
     }
+    'session/media-unavailable': {}
+    'session/media-failed': {
+      readonly code: string
+      readonly ruleId?: string
+      readonly limit?: number
+    }
     'subagent/not-found': {
       readonly parentSessionId: SessionId
       readonly childSessionId: SessionId
@@ -232,6 +238,60 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly reason: 'corrupt' | 'unsupported' | 'unavailable'
     }
   }
+}
+
+/** Decoded-byte cap for `importMediaBytes`; matches overlay `maxFileBytes` default. */
+export const MEDIA_MAX_DECODED_BYTES = 20 * 1024 * 1024
+
+/** One retained work on the wire. */
+export interface SessionMediaWork {
+  readonly artifactId: string
+  readonly requestId: string
+  readonly kind: 'video' | 'speech' | 'composed' | 'import'
+  readonly name: string
+  readonly sessionId: string
+  readonly workspaceId?: string
+  readonly createdAt: string
+  readonly durationSeconds?: number
+}
+
+/** One voice catalogue row on the wire. */
+export interface SessionMediaVoice {
+  readonly voiceId: string
+  readonly label: string
+  readonly system: boolean
+}
+
+/** User-runtime status for composition. */
+export interface SessionMediaRuntimeStatus {
+  readonly ready: boolean
+  readonly guidance: string
+}
+
+/** Optional workspace or session filter for Works. */
+export interface SessionListMediaWorksRequest {
+  readonly workspaceId?: string
+  readonly sessionId?: string
+}
+
+/** Artifact addressed by an opaque catalogue id. */
+export interface SessionMediaWorkRequest {
+  readonly artifactId: string
+}
+
+/** Client-selected bytes for media import. `bytes` is canonical base64. */
+export interface SessionImportMediaBytesRequest {
+  readonly filename: string
+  readonly bytes: string
+  readonly sessionId: SessionId
+  readonly workspaceId?: string
+}
+
+/** Copy a registered work into a user-chosen directory. */
+export interface SessionSaveMediaWorkAsRequest {
+  readonly artifactId: string
+  readonly directory: string
+  readonly filename: string
 }
 
 /** Session-addressed request for the human-invocable skill catalog. */

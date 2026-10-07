@@ -1,0 +1,92 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 720px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 16px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+}
+
+.description,
+.hint,
+.status,
+.locked,
+.error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.description,
+.hint {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.status[data-configured] {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.locked,
+.error {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-primary);
+  color: inherit;
+  font: inherit;
+}
+
+.input:disabled {
+  opacity: 0.6;
+}
+
+.save {
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 16px;
+  background: transparent;
+  color: inherit;
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+}
+
+.save:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.save:focus-visible,
+.input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-alias-border-l3);
+}

@@ -1,0 +1,6 @@
+# Headless composition that mounts the conversation-media overlay so the
+# creation skill and identifier-only media tools are present. Paid MiniMax
+# calls stay out of this scenario; the task loads the skill and pins wording.
+- insert:
+    - id: desktop-media
+      name: '@deepseek-ai/dsh-experimental-desktop-media'

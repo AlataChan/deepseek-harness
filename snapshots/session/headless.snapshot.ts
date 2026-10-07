@@ -53,6 +53,10 @@ const commerceSalesAnalysisSkill = join(
   repoRoot,
   'packages/experimental/commerce-mode/preset/commerce/skills/commerce-sales-analysis/SKILL.md',
 )
+const conversationMediaCreationSkill = join(
+  repoRoot,
+  '.agents/skills/conversation-media-creation/SKILL.md',
+)
 
 type SnapshotMode = 'replay' | 'record' | 'refresh'
 
@@ -410,6 +414,11 @@ const workspaceSetups: Record<string, (cwd: string) => Promise<void>> = {
     const target = join(cwd, '.dsh', 'skills', 'commerce-sales-analysis', 'SKILL.md')
     await mkdir(dirname(target), { recursive: true })
     await copyFile(commerceSalesAnalysisSkill, target)
+  },
+  async 'conversation-media-creation-skill'(cwd) {
+    const target = join(cwd, '.dsh', 'skills', 'conversation-media-creation', 'SKILL.md')
+    await mkdir(dirname(target), { recursive: true })
+    await copyFile(conversationMediaCreationSkill, target)
   },
   async 'editing-cordis-skill'(cwd) {
     const target = join(cwd, '.dsh', 'skills', 'editing-cordis-compositions', 'SKILL.md')

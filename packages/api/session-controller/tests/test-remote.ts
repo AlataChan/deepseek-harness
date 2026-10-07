@@ -89,6 +89,13 @@ import type {
   SessionFinishAskKnowledgeIngestRequest,
   SessionRemoveAskKnowledgeLibraryRequest,
   SessionRenameAskKnowledgeLibraryRequest,
+  SessionImportMediaBytesRequest,
+  SessionListMediaWorksRequest,
+  SessionMediaRuntimeStatus,
+  SessionMediaVoice,
+  SessionMediaWork,
+  SessionMediaWorkRequest,
+  SessionSaveMediaWorkAsRequest,
 } from '../src/types.ts'
 
 /** Direct test face matching the generated `ctx.remote.session` unary methods. */
@@ -195,6 +202,29 @@ export interface TestSessionRemote {
   askKnowledgeBinding(
     request: SessionAskKnowledgeBindingRequest,
   ): Promise<RemoteResult<SessionAskKnowledgeBinding | null>>
+  listMediaWorks(
+    request: SessionListMediaWorksRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<readonly SessionMediaWork[]>>
+  listMediaVoices(signal?: AbortSignal): Promise<RemoteResult<readonly SessionMediaVoice[]>>
+  mediaRuntimeStatus(signal?: AbortSignal): Promise<RemoteResult<SessionMediaRuntimeStatus>>
+  openMediaWork(
+    request: SessionMediaWorkRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<{ requested: true }>>
+  revealMediaWork(
+    request: SessionMediaWorkRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<{ requested: true }>>
+  copyMediaWorkPath(request: SessionMediaWorkRequest): Promise<RemoteResult<{ path: string }>>
+  importMediaBytes(
+    request: SessionImportMediaBytesRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionMediaWork>>
+  saveMediaWorkAs(
+    request: SessionSaveMediaWorkAsRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<{ path: string }>>
   page(request: SessionPageRequest, signal?: AbortSignal): Promise<RemoteResult<SessionPage>>
   follow(request: SessionFollowRequest, signal?: AbortSignal): AsyncIterable<SessionFollowFrame>
   control(signal?: AbortSignal): AsyncIterable<SessionControlFrame>
@@ -539,6 +569,35 @@ export function createSessionTestRemote(
       signal,
     ),
     askKnowledgeBinding: request => remoteResult(() => direct.askKnowledgeBinding(request)),
+    listMediaWorks: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.listMediaWorks(request, signal),
+      signal,
+    ),
+    listMediaVoices: (signal = new AbortController().signal) => remoteResult(
+      () => direct.listMediaVoices(signal),
+      signal,
+    ),
+    mediaRuntimeStatus: (signal = new AbortController().signal) => remoteResult(
+      () => direct.mediaRuntimeStatus(signal),
+      signal,
+    ),
+    openMediaWork: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.openMediaWork(request, signal),
+      signal,
+    ),
+    revealMediaWork: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.revealMediaWork(request, signal),
+      signal,
+    ),
+    copyMediaWorkPath: request => remoteResult(() => direct.copyMediaWorkPath(request)),
+    importMediaBytes: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.importMediaBytes(request, signal),
+      signal,
+    ),
+    saveMediaWorkAs: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.saveMediaWorkAs(request, signal),
+      signal,
+    ),
     page: (request, signal = new AbortController().signal) => remoteResult(
       () => direct.page(request, signal),
       signal,

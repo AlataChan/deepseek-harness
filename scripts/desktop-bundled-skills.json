@@ -10,6 +10,10 @@
       "package": "@tt-a1i/archify-dsh",
       "version": "0.1.0",
       "skillSubpath": "skills/archify"
+    },
+    {
+      "name": "conversation-media-creation",
+      "path": ".agents/skills/conversation-media-creation"
     }
   ]
 }

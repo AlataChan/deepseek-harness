@@ -24,6 +24,9 @@ import type {
   SessionAskKnowledgeLibrary,
   SessionAskKnowledgeLookup,
   SessionListEntriesValue,
+  SessionMediaRuntimeStatus,
+  SessionMediaVoice,
+  SessionMediaWork,
   SessionPage,
   SessionPageRequest,
   SessionProjectionBaseline,
@@ -229,6 +232,29 @@ export class FakeApiClient {
     () => Promise.resolve(ok({ term: '报销', warnings: [] }))
   onAskKnowledgeBinding: (payload: unknown) => Promise<RemoteResult<SessionAskKnowledgeBinding | null>> =
     () => Promise.resolve(ok(null))
+  onListMediaWorks: (payload: unknown) => Promise<RemoteResult<readonly SessionMediaWork[]>> =
+    () => Promise.resolve(ok([]))
+  onListMediaVoices: (payload: unknown) => Promise<RemoteResult<readonly SessionMediaVoice[]>> =
+    () => Promise.resolve(ok([]))
+  onMediaRuntimeStatus: (payload: unknown) => Promise<RemoteResult<SessionMediaRuntimeStatus>> =
+    () => Promise.resolve(ok({ ready: false, guidance: 'run scripts/install-media-runtime.sh' }))
+  onOpenMediaWork: (payload: unknown) => Promise<RemoteResult<{ requested: true }>> =
+    () => Promise.resolve(ok({ requested: true }))
+  onRevealMediaWork: (payload: unknown) => Promise<RemoteResult<{ requested: true }>> =
+    () => Promise.resolve(ok({ requested: true }))
+  onCopyMediaWorkPath: (payload: unknown) => Promise<RemoteResult<{ path: string }>> =
+    () => Promise.resolve(ok({ path: '/tmp/work.mp4' }))
+  onImportMediaBytes: (payload: unknown) => Promise<RemoteResult<SessionMediaWork>> =
+    () => Promise.resolve(ok({
+      artifactId: 'a_1',
+      requestId: 'r_1',
+      kind: 'import',
+      name: 'sample.mp3',
+      sessionId: 's-1',
+      createdAt: '2026-09-20T00:00:00.000Z',
+    }))
+  onSaveMediaWorkAs: (payload: unknown) => Promise<RemoteResult<{ path: string }>> =
+    () => Promise.resolve(ok({ path: '/tmp/saved.mp4' }))
 
   private readonly followConns = new Map<SessionId, ValueStreamConn<SessionFollowFrame>[]>()
   private readonly controlConns: ValueStreamConn<SessionControlFrame>[] = []
@@ -443,6 +469,46 @@ export class FakeApiClient {
           'session.askKnowledgeBinding',
           payload,
           this.onAskKnowledgeBinding(payload),
+        ),
+        listMediaWorks: payload => this.record(
+          'session.listMediaWorks',
+          payload,
+          this.onListMediaWorks(payload),
+        ),
+        listMediaVoices: payload => this.record(
+          'session.listMediaVoices',
+          payload,
+          this.onListMediaVoices(payload),
+        ),
+        mediaRuntimeStatus: payload => this.record(
+          'session.mediaRuntimeStatus',
+          payload,
+          this.onMediaRuntimeStatus(payload),
+        ),
+        openMediaWork: payload => this.record(
+          'session.openMediaWork',
+          payload,
+          this.onOpenMediaWork(payload),
+        ),
+        revealMediaWork: payload => this.record(
+          'session.revealMediaWork',
+          payload,
+          this.onRevealMediaWork(payload),
+        ),
+        copyMediaWorkPath: payload => this.record(
+          'session.copyMediaWorkPath',
+          payload,
+          this.onCopyMediaWorkPath(payload),
+        ),
+        importMediaBytes: payload => this.record(
+          'session.importMediaBytes',
+          payload,
+          this.onImportMediaBytes(payload),
+        ),
+        saveMediaWorkAs: payload => this.record(
+          'session.saveMediaWorkAs',
+          payload,
+          this.onSaveMediaWorkAs(payload),
         ),
         page: request => this.page(request),
         follow: (request, signal) => this.openFollow(request, signal),

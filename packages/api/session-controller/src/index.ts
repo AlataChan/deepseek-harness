@@ -96,10 +96,18 @@ import type {
   SessionFinishAskKnowledgeIngestRequest,
   SessionRemoveAskKnowledgeLibraryRequest,
   SessionRenameAskKnowledgeLibraryRequest,
+  SessionImportMediaBytesRequest,
+  SessionListMediaWorksRequest,
+  SessionMediaRuntimeStatus,
+  SessionMediaVoice,
+  SessionMediaWork,
+  SessionMediaWorkRequest,
+  SessionSaveMediaWorkAsRequest,
 } from './types.ts'
 import { SessionAskDataController } from './ask-data.ts'
 import { SessionCommerceController } from './commerce.ts'
 import { SessionAskKnowledgeController } from './ask-knowledge.ts'
+import { SessionMediaController } from './session-media.ts'
 
 export type * from './types.ts'
 export { ApiSessionNotFound } from './agent.ts'
@@ -162,6 +170,7 @@ export class SessionController extends TypertRemoteService {
   private readonly askData: SessionAskDataController
   private readonly askKnowledge: SessionAskKnowledgeController
   private readonly commerce: SessionCommerceController
+  private readonly media: SessionMediaController
 
   /**
    * @param ctx - Host context containing the Session capability assembly.
@@ -180,6 +189,7 @@ export class SessionController extends TypertRemoteService {
       process.cwd(),
     )
     this.commerce = new SessionCommerceController(ctx, this.agents, this.askData.gate, process.cwd())
+    this.media = new SessionMediaController(ctx)
     this.commands = new SessionCommandController(ctx, this.agents, process.cwd())
     const presets = ctx.get('agentPresets')
     if (presets !== undefined && 'admitSelect' in presets) {
@@ -546,6 +556,107 @@ export class SessionController extends TypertRemoteService {
     signal: AbortSignal,
   ): Promise<SessionCommitCommerceValue> {
     return this.commerce.commit(request, signal)
+  }
+
+  /**
+   * List retained media works without activating a session.
+   * @param request - optional workspace or session filter.
+   * @param signal - caller lifetime; abort stops the listing.
+   * @returns catalogue rows.
+   * @throws RemoteError when the desktop-media overlay is absent.
+   */
+  @Remote('listMediaWorks')
+  listMediaWorks(
+    request: SessionListMediaWorksRequest,
+    signal: AbortSignal,
+  ): Promise<readonly SessionMediaWork[]> {
+    return this.media.listWorks(request, signal)
+  }
+
+  /**
+   * List system and cloned voices.
+   * @param signal - caller lifetime; abort stops the listing.
+   * @returns catalogue rows.
+   */
+  @Remote('listMediaVoices')
+  listMediaVoices(signal: AbortSignal): Promise<readonly SessionMediaVoice[]> {
+    return this.media.listVoices(signal)
+  }
+
+  /**
+   * Whether user FFmpeg is recorded and has the V1 encoders.
+   * @param signal - caller lifetime; abort stops the probe.
+   * @returns ready flag and install guidance.
+   */
+  @Remote('mediaRuntimeStatus')
+  mediaRuntimeStatus(signal: AbortSignal): Promise<SessionMediaRuntimeStatus> {
+    return this.media.runtimeStatus(signal)
+  }
+
+  /**
+   * Open a registered work in the system default application.
+   * @param request - artifact id.
+   * @param signal - caller lifetime; abort stops the open.
+   * @returns confirmation that the system opener was requested.
+   */
+  @Remote('openMediaWork')
+  openMediaWork(
+    request: SessionMediaWorkRequest,
+    signal: AbortSignal,
+  ): Promise<{ requested: true }> {
+    return this.media.openWork(request, signal)
+  }
+
+  /**
+   * Reveal a registered work in the file manager.
+   * @param request - artifact id.
+   * @param signal - caller lifetime; abort stops the reveal.
+   * @returns confirmation that the file manager was requested.
+   */
+  @Remote('revealMediaWork')
+  revealMediaWork(
+    request: SessionMediaWorkRequest,
+    signal: AbortSignal,
+  ): Promise<{ requested: true }> {
+    return this.media.revealWork(request, signal)
+  }
+
+  /**
+   * Copyable absolute path for a registered work.
+   * @param request - artifact id.
+   * @returns absolute path.
+   */
+  @Remote('copyMediaWorkPath')
+  copyMediaWorkPath(request: SessionMediaWorkRequest): Promise<{ path: string }> {
+    return this.media.copyWorkPath(request, new AbortController().signal)
+  }
+
+  /**
+   * Admit selected media bytes. Does not activate an Agent.
+   * @param request - filename, encoded bytes, and owning session.
+   * @param signal - caller lifetime; abort stops the import.
+   * @returns committed work row.
+   */
+  @Remote('importMediaBytes')
+  importMediaBytes(
+    request: SessionImportMediaBytesRequest,
+    signal: AbortSignal,
+  ): Promise<SessionMediaWork> {
+    return this.media.importBytes(request, signal)
+  }
+
+  /**
+   * Copy a registered work into a user-chosen directory.
+   * @param request - artifact, destination directory, and basename.
+   * @param signal - caller lifetime; abort stops the copy.
+   * @returns written path.
+   */
+  @Remote('saveMediaWorkAs')
+  saveMediaWorkAs(
+    request: SessionSaveMediaWorkAsRequest,
+    signal: AbortSignal,
+  ): Promise<{ path: string }> {
+    return this.media.saveWorkAs(request, signal)
   }
 
   /**
