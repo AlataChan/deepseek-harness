@@ -114,19 +114,45 @@ else
   printf '\033[0;90m%s\033[0m\n' "$(head -8 <<<"$COMPANION_OUT")"
 fi
 
-# ── 5. Companion lifecycle (the check that catches "Broken pipe") ───────────
+# ── 5. Companion lifecycle with every pinned overlay installed ───────────
 #
 # Module resolution is not liveness: a companion can import everything, answer
 # `control/ready`, and then exit, at which point the shell's next stdin write
 # fails and the window reports "companion stdin write failed: Broken pipe".
-# Only a real handshake plus a hold period observes that.
+# A clean DSH_HOME also hides overlay boot failures: the real app copies
+# Resources/profile-plugins into ~/.dsh/profiles/desktop, then boots that
+# profile. Seed the same overlays here or a pending inject (for example
+# Cordis waiting on a service named "optional") passes this gate and then
+# times out the user's handshake.
 
-head_ "Driving a real companion handshake"
+head_ "Driving a real companion handshake with pinned overlays"
+SMOKE_PROFILE="$SMOKE_HOME/.dsh/profiles/desktop"
+mkdir -p "$SMOKE_PROFILE"
+PIN="$REPO_ROOT/scripts/desktop-profile-plugins.json"
+while IFS= read -r dest; do
+  [[ -z "$dest" ]] && continue
+  plugin_dir="$RES/profile-plugins/$dest"
+  if [[ -d "$plugin_dir" ]]; then
+    if ! "$RES/node" "$REPO_ROOT/scripts/seed-desktop-profile-plugin.mjs" install \
+      --from "$plugin_dir" --profile-dir "$SMOKE_PROFILE" >/dev/null; then
+      bad "could not install $dest into the smoke desktop profile"
+    fi
+  fi
+done < <(node --input-type=module -e '
+import { readFileSync } from "node:fs"
+const pin = JSON.parse(readFileSync(process.argv[1], "utf8"))
+for (const plugin of pin.plugins) console.log(plugin.name)
+' "$PIN")
 if LIFECYCLE_OUT="$(HOME="$SMOKE_HOME" DSH_HOME="$SMOKE_HOME/.dsh" "$RES/node" "$REPO_ROOT/scripts/smoke-companion-lifecycle.mjs" "$APP" 6000 2>&1)"; then
-  ok "$(head -2 <<<"$LIFECYCLE_OUT" | tail -1)"
+  if grep -qE 'did not activate|waiting for service:' <<<"$LIFECYCLE_OUT"; then
+    bad "Companion became ready but an overlay did not activate"
+    printf '\033[0;90m%s\033[0m\n' "$(head -12 <<<"$LIFECYCLE_OUT")"
+  else
+    ok "$(head -2 <<<"$LIFECYCLE_OUT" | tail -1)"
+  fi
 else
-  bad "Companion lifecycle FAILED"
-  printf '\033[0;90m%s\033[0m\n' "$(head -12 <<<"$LIFECYCLE_OUT")"
+  bad "Companion lifecycle FAILED with pinned overlays installed"
+  printf '\033[0;90m%s\033[0m\n' "$(head -16 <<<"$LIFECYCLE_OUT")"
 fi
 rm -rf "$SMOKE_HOME"
 
@@ -253,6 +279,13 @@ if [[ -d "$RES/bundled-skills/archify" \
 else
   bad "bundled-skills/archify incomplete — desktop users will not get Archify"
 fi
+if [[ -d "$RES/bundled-skills/conversation-media-creation" \
+   && -f "$RES/bundled-skills/conversation-media-creation/SKILL.md" ]] \
+   && grep -q '已请求系统打开文件' "$RES/bundled-skills/conversation-media-creation/SKILL.md"; then
+  ok "bundled-skills/conversation-media-creation present with no-playback wording"
+else
+  bad "bundled-skills/conversation-media-creation incomplete — desktop users will not get the creation skill"
+fi
 
 DIRTY_PROFILE=$(mktemp -d)
 printf '%s\n' '{
@@ -339,6 +372,22 @@ while IFS= read -r dest; do
         bad "$dest Client missing inlined poster data URL — the WebView cannot load package-relative media"
       fi
     fi
+    if [[ "$dest" == "@deepseek-ai/dsh-experimental-desktop-media" ]]; then
+      # Do not import this Host file here: seed drops workspace: peers, so a
+      # bare `import()` fails even when Cordis can load the plugin in-profile.
+      # Object-form `inject.optional` is a service name, not optional deps.
+      if [[ ! -f "$plugin_dir/lib/index.js" ]]; then
+        bad "$dest missing lib/index.js — run tsc -b && tsdown before packaging"
+      elif grep -q 'const inject = {' "$plugin_dir/lib/index.js" \
+        && grep -A6 'const inject = {' "$plugin_dir/lib/index.js" | grep -q 'optional:'; then
+        bad "$dest Host inject uses object key optional — Cordis waits for that service and handshake dies. Run tsc -b && tsdown"
+      elif grep -A8 'const inject = \[' "$plugin_dir/lib/index.js" | grep -q '"tools"' \
+        && grep -A8 'const inject = \[' "$plugin_dir/lib/index.js" | grep -q '"sessions"'; then
+        ok "$dest Host inject is a Cordis service-name array"
+      else
+        bad "$dest Host inject is missing the tools/sessions array — run tsc -b && tsdown"
+      fi
+    fi
     if [[ "$dest" == "@deepseek-ai/dsh-experimental-commerce-mode" ]]; then
       if [[ -f "$plugin_dir/preset/commerce/agent.cordis.yml" && -f "$plugin_dir/preset/commerce/preset.yml" ]]; then
         ok "$dest ships the packaged commerce preset"
@@ -412,6 +461,22 @@ if [[ -d "$RES/profile-plugins/@deepseek-ai/dsh-experimental-client-ui-agent-tea
   done
 fi
 
+# desktop-media Host packages are workspace: deps dropped from the seed.
+# They must resolve from the harness collect closure or companion load fails.
+if [[ -d "$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-media" ]]; then
+  for pkg in \
+    "@deepseek-ai/dsh-brand" \
+    "@deepseek-ai/dsh-credentials" \
+    "@deepseek-ai/dsh-native-command"
+  do
+    if [[ -f "$HARNESS/node_modules/$pkg/package.json" ]]; then
+      ok "harness includes $pkg for desktop-media Host"
+    else
+      bad "harness missing $pkg — move it to apps/cli dependencies so collect-runtime-deps embeds it"
+    fi
+  done
+fi
+
 # session.listEntries lives on the generated Session Remote face. A stale
 # session-controller client makes every file-tree listing look unreadable.
 head_ "Checking session-controller client knows listEntries"
@@ -430,6 +495,34 @@ if [[ -f "$SESSION_CLIENT" ]] && grep -q 'askKnowledgeRetrieve' "$SESSION_CLIENT
   ok "bundled session-controller remote face includes askKnowledgeRetrieve"
 else
   bad "bundled session-controller remote face missing askKnowledgeRetrieve — rebuild that Host face before packaging"
+fi
+if [[ -f "$SESSION_CLIENT" ]] && grep -q 'listMediaWorks' "$SESSION_CLIENT"; then
+  ok "bundled session-controller remote face includes listMediaWorks"
+else
+  bad "bundled session-controller remote face missing listMediaWorks — rebuild that Host face before packaging"
+fi
+
+MEDIA_CLIENT="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-media/lib/client.js"
+if [[ -f "$MEDIA_CLIENT" ]] \
+  && grep -q '做视频' "$MEDIA_CLIENT" \
+  && grep -q '做配音' "$MEDIA_CLIENT" \
+  && grep -q '还没有作品，在会话中选择' "$MEDIA_CLIENT" \
+  && grep -q '不要把它加成上面的对话模型' "$MEDIA_CLIENT" \
+  && grep -q '克隆声音' "$MEDIA_CLIENT"; then
+  ok "bundled desktop-media Client has Chinese shortcuts, Works empty state, and MiniMax key card"
+else
+  bad "bundled desktop-media Client missing Chinese creation or MiniMax key copy — run tsdown before packaging"
+fi
+if [[ -f "$MEDIA_CLIENT" ]] \
+  && ! grep -q 'require("module")' "$MEDIA_CLIENT"; then
+  ok "bundled desktop-media Client does not require Node module"
+else
+  bad "bundled desktop-media Client requires Node module — a Host-only dep leaked into lib/client.js"
+fi
+if [[ -n "$(find "$RES" \( -name ffmpeg -o -name ffprobe \) -type f 2>/dev/null | head -1)" ]]; then
+  bad "bundle contains ffmpeg/ffprobe — V1 must not embed the media runtime"
+else
+  ok "bundle does not embed ffmpeg or ffprobe"
 fi
 
 # Host beginIngest reads ACCEPTED_INGEST_EXTENSIONS from the profile plugin
