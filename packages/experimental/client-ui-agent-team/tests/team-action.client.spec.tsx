@@ -125,7 +125,7 @@ function props(
       setDraft: vi.fn(),
       addImages: () => true,
       removeImage: () => {},
-      pruneImages: () => {},
+      pruneAttachments: () => {},
       submit: () => {},
     },
     useConversation: (select: (value: typeof conversation) => unknown) => select(
@@ -206,7 +206,7 @@ describe('TeamAction', () => {
         setDraft,
         addImages: () => true,
         removeImage: () => {},
-        pruneImages: () => {},
+        pruneAttachments: () => {},
         submit: () => {},
       },
     }} />)
@@ -249,7 +249,7 @@ describe('TeamAction', () => {
         setDraft,
         addImages: () => true,
         removeImage: () => {},
-        pruneImages: () => {},
+        pruneAttachments: () => {},
         submit,
       },
     }} />)

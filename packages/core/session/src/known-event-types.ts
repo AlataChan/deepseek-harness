@@ -28,7 +28,7 @@ export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'ask-data/bound',
   'ask-knowledge/bound',
   'ask-knowledge/unbound',
-  'assistant/chunk',
+  'assistant/attempt',
   'assistant/message',
   'command/done',
   'command/run',

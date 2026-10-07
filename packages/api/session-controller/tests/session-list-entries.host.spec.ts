@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
 import { WorkspaceEntries, WorkspaceEntriesError } from '@deepseek-ai/dsh-host-workspace-entries'
 import type { WorkspaceEntriesListing, WorkspaceEntriesListRequest } from '@deepseek-ai/dsh-host-workspace-entries'
 import { createSessionTestRemote, testSessionPersistence } from './test-remote.ts'
@@ -38,7 +38,7 @@ function requireBackend(backend: StubEntries | undefined): StubEntries {
 async function harness(options: {
   persistence?: {
     list: (signal?: AbortSignal) => Promise<Array<{
-      version: 0
+      version: typeof SESSION_FORMAT_VERSION
       id: SessionId
       createdAt: number
       isSeeded: boolean
@@ -156,7 +156,7 @@ describe('session/listEntries', () => {
     const { remote, ctx, backend } = await harness({
       persistence: {
         list: () => Promise.resolve([{
-          version: 0 as const, id: cold, createdAt: 1, isSeeded: false, cwd: '/stored',
+          version: SESSION_FORMAT_VERSION, id: cold, createdAt: 1, isSeeded: false, cwd: '/stored',
         }]),
       },
     })
@@ -171,7 +171,7 @@ describe('session/listEntries', () => {
     const { remote, backend } = await harness({
       persistence: {
         list: () => Promise.resolve([{
-          version: 0 as const, id: cold, createdAt: 1, isSeeded: false,
+          version: SESSION_FORMAT_VERSION, id: cold, createdAt: 1, isSeeded: false,
         }]),
       },
     })

@@ -226,7 +226,7 @@ export function neverMergeFileList(root: string, registry: IntakeRegistry): stri
   for (const directory of registry.upstreamOnlyDirectories) {
     const prefix = directory.replace(/\/$/, '')
     try {
-      for (const child of readdirSync(resolve(root, prefix), { recursive: true })) {
+      for (const child of readdirSync(resolve(root, prefix), { recursive: true, encoding: 'utf8' })) {
         const relative = `${prefix}/${child}`.replaceAll('\\', '/')
         if (relative.endsWith('/')) continue
         files.push(relative)

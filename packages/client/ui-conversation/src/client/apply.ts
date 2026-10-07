@@ -1,5 +1,7 @@
 /** Registers the target-neutral Conversation assembly, shell, input, and docks. */
 import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
+import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import { createSnapshotStore, type BoundActions } from '@deepseek-ai/dsh-client-store'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -12,11 +14,12 @@ import { UiConversation } from './conversation/assembly.ts'
 import type { ViewTab } from './contract/views.ts'
 import type {
   ComposerBarInjected, ConversationInjected, ConversationSessionHeaderInjected,
-  ConversationSessionInjected,
+  ConversationSessionInjected, DraftFileUploads,
 } from './contract/slots.ts'
 import type { InputNotice } from './contract/input.ts'
 import { createConversationStore, readConversationViewPreference } from './stores.ts'
 import { ConversationController, UnsupportedImageMediaTypeError } from './service.ts'
+import type { IConversation } from './service.ts'
 import { ComposerBlockRegistry } from './input/blocks.ts'
 import type { ComposerBlock } from './contract/composer-blocks.ts'
 import { InputHub } from './input/hub.ts'
@@ -41,8 +44,19 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 /** Services required by the Conversation plugin. */
 export const inject = [
-  'slots', 'sessions', 'uiSession', 'uiWorkspace', 'locale', 'settingsScope',
+  'slots', 'sessions', 'fileUpload', 'uiSession', 'uiWorkspace', 'locale', 'settingsScope',
 ]
+
+/** Conversation runtime configuration. */
+export interface Config {
+  /** Maximum generic-file uploads allowed to run concurrently in browser Workers. */
+  maxConcurrentFileUploads?: number
+}
+
+/** Validated Conversation runtime configuration. */
+export const Config: z<Config> = z.object({
+  maxConcurrentFileUploads: z.natural().min(1).default(2),
+})
 
 // Stable no-session sources keep the renderer's observable-hook cache and
 // hook order unchanged across current-Session transitions.
@@ -63,11 +77,27 @@ const ABSENT_MENU_LAUNCHER = {
   getSnapshot: (): string | null => null,
   subscribe: () => () => {},
 }
+const EMPTY_FILE_UPLOADS: DraftFileUploads = {}
+const ABSENT_FILE_UPLOADS = {
+  getSnapshot: () => EMPTY_FILE_UPLOADS,
+  subscribe: () => () => {},
+}
 
 interface WorkspaceNavigation {
   connectWorkspace(
     workspaceId: Parameters<ConversationInjected['selectWorkspace']>[0],
   ): Promise<SessionId>
+}
+
+/** Resolve the session-scoped Conversation action face, failing loud. */
+function scopedConversation(sessions: ISessions, id: SessionId): IConversation {
+  const scoped = sessions.scope(id)
+  if (scoped === undefined) throw new Error(`ui-conversation: session "${id}" resolved no scope`)
+  const conversation = scoped.get('conversation')
+  if (conversation === undefined) {
+    throw new Error('ui-conversation: conversation service unavailable through the session scope')
+  }
+  return conversation
 }
 
 /** Resolve package-internal attachment operations from the public service. */
@@ -81,9 +111,11 @@ function concreteConversation(ctx: Context): ConversationController {
  * Mount the Conversation core and target-neutral presentation.
  * @param ctx - Client root context.
  */
-export function apply(ctx: Context): void {
+export function apply(ctx: Context, config: Config = Config({})): void {
   const sessions = ctx.sessions
   const slots = ctx.slots
+  // Schemastery's field default is materialized before Cordis calls apply.
+  const maxConcurrentFileUploads = config.maxConcurrentFileUploads as number
   const workspaceNavigation = ctx.get('uiWorkspace') as unknown as WorkspaceNavigation
   const uiConversation = new UiConversation(ctx, sessions)
 
@@ -191,44 +223,31 @@ export function apply(ctx: Context): void {
       'conversation.composer.bar': { kind: 'single', scope: 'session-maybe' },
       'conversation.input.dock': { kind: 'list', scope: 'session' },
       'conversation.hero.brand.mark': { kind: 'single', scope: 'root' },
-      'conversation.hero.headline': { kind: 'single', scope: 'root' },
       'conversation.hero.workspace': { kind: 'single', scope: 'root' },
       'conversation.hero.agentPreset': { kind: 'single', scope: 'root' },
-      'conversation.hero.askData': { kind: 'single', scope: 'root' },
-      'conversation.hero.askKnowledge': { kind: 'single', scope: 'root' },
-      'conversation.hero.commerce': { kind: 'single', scope: 'root' },
-      'conversation.hero.agentTeam': { kind: 'single', scope: 'root' },
-      'conversation.atmosphere': { kind: 'single', scope: 'root' },
-      'conversation.askData.gate': { kind: 'single', scope: 'root' },
-      'conversation.commerce.gate': { kind: 'single', scope: 'root' },
-      'conversation.askKnowledge.picker': { kind: 'single', scope: 'root' },
     },
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
       hooks: {
         composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
-        askDataGateOccupied: {
-          getSnapshot: () => slots.entries('conversation.askData.gate').length > 0,
-          subscribe: listener => slots.subscribe('conversation.askData.gate', listener),
-        },
-        commerceGateOccupied: {
-          getSnapshot: () => slots.entries('conversation.commerce.gate').length > 0,
-          subscribe: listener => slots.subscribe('conversation.commerce.gate', listener),
-        },
       },
       selectWorkspace: async (workspaceId) => {
         const nextId = await workspaceNavigation.connectWorkspace(workspaceId)
         if (sessionId !== undefined && nextId !== sessionId) {
           const from = inputHub.shell(sessionId)
           const draft = from.snapshot.draft
-          const imageIds = from.snapshot.imageIds
+          const attachmentIds = from.snapshot.attachmentIds
           const next = inputHub.shell(nextId)
-          if (imageIds.length === 0 || next.addImages(imageIds)) {
+          if (attachmentIds.length === 0 || next.addAttachments(attachmentIds)) {
+            if (sessions.binding(nextId) === undefined) {
+              throw new Error(`ui-conversation: session "${nextId}" resolved no binding`)
+            }
+            concreteConversation(ctx).rebindDraftFiles(nextId, attachmentIds)
             if (draft !== '') {
               next.setDraft(draft)
               from.setDraft('')
             }
-            if (imageIds.length > 0) {
-              for (const id of imageIds) from.removeImage(id)
+            if (attachmentIds.length > 0) {
+              for (const id of attachmentIds) from.removeAttachment(id)
             }
           }
         }
@@ -277,8 +296,6 @@ export function apply(ctx: Context): void {
     locale: NS,
     children: {
       'conversation.input.attachments': { kind: 'single', scope: 'session-maybe' },
-      'conversation.input.attachKnowledge': { kind: 'single', scope: 'session-maybe' },
-      'conversation.input.attachSessionDocument': { kind: 'single', scope: 'session-maybe' },
       'conversation.input.overlay': { kind: 'list', scope: 'session' },
       'conversation.input.left': { kind: 'list', scope: 'session' },
       'conversation.input.plan': { kind: 'single', scope: 'session' },
@@ -290,16 +307,17 @@ export function apply(ctx: Context): void {
       if (sessionId === undefined) {
         return {
           keyboard: undefined,
-          addImages: undefined,
-          removeImage: undefined,
-          draftImages: undefined,
+          addFiles: undefined,
+          removeAttachment: undefined,
+          resolveDraftAttachments: undefined,
+          retryFileUpload: undefined,
           resolveSubmitMode: (running, gesture, steeringAvailable) =>
             submissionPolicy.resolve(running, gesture, steeringAvailable),
           toggleCommandMenu: undefined,
-          toggleReferenceMenu: undefined,
           stop: undefined,
           command: undefined,
           hooks: {
+            fileUploads: ABSENT_FILE_UPLOADS,
             notices: ABSENT_NOTICES,
             lexicon: ABSENT_LEXICON,
             menuLauncher: ABSENT_MENU_LAUNCHER,
@@ -309,27 +327,14 @@ export function apply(ctx: Context): void {
       const conversation = concreteConversation(ctx)
       const shell = inputHub.shell(sessionId)
       const inputTriggers = inputHub.inputTriggers(sessionId)
-      const toggleTrigger = inputTriggers === undefined
-        ? undefined
-        : (source: 'command' | 'reference', trigger: '/' | '@') =>
-          (selection: { start: number; end: number }) => {
-            shell.dismissPopup()
-            const snapshot = shell.snapshot
-            inputTriggers.toggleSource(source, {
-              trigger,
-              query: '',
-              quoted: false,
-              position: snapshot.draft.slice(0, selection.start).trim() === '' ? 'leading' : 'inline',
-              span: { ...selection, draftRev: snapshot.draftRev },
-            })
-          }
       return {
         keyboard: shell,
-        addImages: (files) => {
+        addFiles: (files) => {
+          if (sessions.binding(sessionId) === undefined) return t('file.sessionUnavailable')
           try {
-            const images = conversation.createDraftImages(files)
-            if (!shell.addImages(images.map(image => image.id))) {
-              conversation.releaseDraftImages(images)
+            const drafts = conversation.createDrafts(sessionId, files)
+            if (!shell.addAttachments(drafts.map(draft => draft.id))) {
+              conversation.releaseDraftAttachments(drafts)
             }
             return null
           } catch (error: unknown) {
@@ -337,17 +342,32 @@ export function apply(ctx: Context): void {
             return error instanceof Error ? error.message : String(error)
           }
         },
-        removeImage: (id) => {
-          conversation.releaseDraftImage(id)
-          shell.removeImage(id)
+        removeAttachment: (id) => {
+          if (shell.removeAttachment(id)) conversation.releaseDraftAttachment(id)
         },
-        draftImages: ids => conversation.draftImages(ids),
+        resolveDraftAttachments: ids => conversation.resolveDraftAttachments(ids),
+        retryFileUpload: (id) => {
+          if (sessions.binding(sessionId) !== undefined) conversation.retryFileUpload(sessionId, id)
+        },
         resolveSubmitMode: (running, gesture, steeringAvailable) =>
           submissionPolicy.resolve(running, gesture, steeringAvailable),
-        toggleCommandMenu: toggleTrigger?.('command', '/'),
-        toggleReferenceMenu: toggleTrigger?.('reference', '@'),
+        toggleCommandMenu: inputTriggers === undefined
+          ? undefined
+          : (selection) => {
+            shell.dismissPopup()
+            const snapshot = shell.snapshot
+            inputTriggers.toggleSource('command', {
+              trigger: '/',
+              query: '',
+              quoted: false,
+              position: snapshot.draft.slice(0, selection.start).trim() === '' ? 'leading' : 'inline',
+              span: { ...selection, draftRev: snapshot.draftRev },
+            })
+          },
         stop: () => {
-          void sessions.binding(sessionId)?.session.cancel()
+          scopedConversation(sessions, sessionId).cancel().catch(() => {
+            // Stop failure is published through Session promptError.
+          })
         },
         command: async (line) => {
           const session = sessions.binding(sessionId)?.session
@@ -356,6 +376,7 @@ export function apply(ctx: Context): void {
           return result.ok && result.value.matched
         },
         hooks: {
+          fileUploads: conversation.fileUploads,
           notices: shell.notices,
           lexicon: shell.lexicon,
           menuLauncher: inputTriggers?.launcher ?? ABSENT_MENU_LAUNCHER,
@@ -371,7 +392,11 @@ export function apply(ctx: Context): void {
     yield registerComposerBar()
   })
 
-  ctx.plugin(ConversationController, { input: inputHub, blocks: composerBlocks })
+  ctx.plugin(ConversationController, {
+    input: inputHub,
+    blocks: composerBlocks,
+    maxConcurrentFileUploads,
+  })
   ctx.plugin(todoDockEntry)
   ctx.plugin(queueDockEntry)
 }

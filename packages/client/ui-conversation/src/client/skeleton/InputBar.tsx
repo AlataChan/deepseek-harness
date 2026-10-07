@@ -14,12 +14,11 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import type { ChangeEvent, CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import clsx from 'clsx'
 import {
-  IconCloseFill14, IconPlusOutline16, IconWarningOutline16, Menu, Toast, Tooltip,
+  IconPaperclipOutline16, IconPlusOutline16, IconWarningOutline16, Toast, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 // Type-only: the `plan` projection key merge (the TodoDock posture — the
 // composer reads a host-computed value; the domain owns the key).
 import type {} from '@deepseek-ai/dsh-plan-mode/client'
@@ -34,47 +33,17 @@ import { ComposerContentEditable } from '../input/editor/ComposerContentEditable
 import { DecoratorPortals } from '../input/editor/DecoratorPortals.tsx'
 import { registerComposerKeymap } from '../input/editor/keymap.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
-import {
-  appendSessionDocument,
-  bindNativeFileChange,
-  frameSessionDocument,
-  readSessionDocumentText,
-  isSessionDocumentConvertExtension,
-  isSessionDocumentSpreadsheet,
-  isSessionDocumentPlainExtension,
-  sessionDocumentExtension,
-} from '../session-document.ts'
-import type { SessionDocumentExtractSettlement } from '../contract/slots.ts'
 import { ContextMeter } from './ContextMeter.tsx'
 import { PermissionSelect } from './PermissionSelect.tsx'
 import css from './InputBar.module.css'
 
 export type InputBarProps = ComposerBarProps
 
-/** Native picker accept list when the host has not projected imageLimits yet. */
-const DEFAULT_IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif'
-
-/** Plus-menu path that still needs a visible next step after the menu closes. */
-type AttachChooser = 'image' | 'sessionDoc' | 'reference'
-
-/** Extracted session-only document held as a composer chip until send. */
-interface SessionDocPayload {
-  readonly filename: string
-  readonly text: string
-}
-
-function StopIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-      <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
-    </svg>
-  )
-}
-
 export const InputBar = memo(function InputBar({
-  useSession, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
-  resolveSubmitMode, toggleCommandMenu, toggleReferenceMenu, stop, command, t,
-  renderSlot, useNotices, useLexicon, useMenuLauncher,
+  useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments,
+  retryFileUpload,
+  resolveSubmitMode, toggleCommandMenu, stop, command, t,
+  renderSlot, useFileUploads, useNotices, useLexicon, useMenuLauncher,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
   placeholder, accessory,
@@ -98,8 +67,15 @@ export const InputBar = memo(function InputBar({
   const draft = input?.draft ?? ''
   const editor = keyboard?.editor ?? null
   const attachments = useMemo(
-    () => input === undefined || draftImages === undefined ? [] : draftImages(input.imageIds),
-    [draftImages, input?.imageIds],
+    () => input === undefined || resolveDraftAttachments === undefined ? [] : resolveDraftAttachments(input.attachmentIds),
+    [resolveDraftAttachments, input?.attachmentIds],
+  )
+  const empty = draft.trim() === '' && attachments.length === 0
+  const uploads = useFileUploads(snapshot => snapshot)
+  // Send waits for every picked file: uploading and failed drafts both hold
+  // the gate (a failed upload is retried or removed, never silently dropped).
+  const uploadsPending = attachments.some(
+    attachment => attachment.kind === 'file' && uploads[attachment.id]?.status !== 'ready',
   )
   // Transient error banner (machine notices, image-intake rejections, and
   // prompt failures): the seq keys the Toast so an identical repeated message
@@ -111,14 +87,6 @@ export const InputBar = memo(function InputBar({
     setToast({ seq: toastSeq.current, text })
   }, [])
   const dismissToast = useCallback(() => { setToast(null) }, [])
-  const [attachOpen, setAttachOpen] = useState(false)
-  const [attachChooser, setAttachChooser] = useState<AttachChooser | null>(null)
-  const [sessionDocPayload, setSessionDocPayload] = useState<SessionDocPayload | null>(null)
-  const [knowledgeOpenRequest, setKnowledgeOpenRequest] = useState(0)
-  const [knowledgeReady, setKnowledgeReady] = useState(false)
-  const [sessionDocReady, setSessionDocReady] = useState(false)
-  const [sessionDocFile, setSessionDocFile] = useState<File | null>(null)
-  const empty = draft.trim() === '' && attachments.length === 0 && sessionDocPayload === null
   // The deployment's image-intake limits (absent while no attachment service
   // is composed — the pre-check below then defers entirely to the host).
   const imageLimits = useProjection('imageLimits')
@@ -142,7 +110,6 @@ export const InputBar = memo(function InputBar({
   }, [notice, showToast])
   const cardRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // The Access seat's data: the host-computed permissions projection
   // (undefined = capability absent → the chip renders nothing).
@@ -176,10 +143,10 @@ export const InputBar = memo(function InputBar({
 
   useEffect(() => {
     if (input === undefined || inputActions === undefined) return
-    if (attachments.length !== input.imageIds.length) {
-      inputActions.pruneImages(attachments.map(attachment => attachment.id))
+    if (attachments.length !== input.attachmentIds.length) {
+      inputActions.pruneAttachments(attachments.map(attachment => attachment.id))
     }
-  }, [attachments, input?.imageIds, inputActions])
+  }, [attachments, input?.attachmentIds, inputActions])
 
   // Scroll the draft scrollport the minimum that brings the selection focus
   // into view — the browser's own behavior for typing, performed for the
@@ -252,69 +219,55 @@ export const InputBar = memo(function InputBar({
     return () => { el.removeEventListener('wheel', onWheel) }
   }, [])
 
-  // Intake pre-check: an addition that would break
-  // a projected limit is refused as a whole batch, announced immediately, and
-  // never enters the rail — no more submit-time failure rolling the rail
-  // back. The host enforces the same limits at submit for callers that bypass
+  // Intake pre-check: an addition that would break a projected image limit is
+  // refused as a whole batch, announced immediately, and never enters the
+  // rail. Only the image subset is limit-checked: generic files carry no
+  // client-side size or count limit and upload as soon as they are picked.
+  // The host enforces the same image limits at submit for callers that bypass
   // this composer.
-  const intakeImages = useCallback((files: readonly File[]): void => {
-    if (addImages === undefined || files.length === 0) return
+  const intakeFiles = useCallback((files: readonly File[]): void => {
+    if (subagent !== null || addFiles === undefined || files.length === 0) return
     const rejected = ((): string | null => {
       if (imageLimits !== undefined) {
-        // Format precedes limits: a batch with
-        // a non-image must announce the format problem, not a count or size
-        // it could never pass anyway — addImages rejects it authoritatively.
-        if (files.some(file => !(imageLimits.mediaTypes as readonly string[]).includes(file.type))) {
-          return addImages(files)
-        }
-        if (attachments.length + files.length > imageLimits.maxImagesPerMessage) {
+        const mediaTypes = imageLimits.mediaTypes as readonly string[]
+        const images = files.filter(file => mediaTypes.includes(file.type))
+        const imageAttachments = attachments.filter(attachment => attachment.kind === 'image')
+        if (imageAttachments.length + images.length > imageLimits.maxImagesPerMessage) {
           return t('image.tooMany', { count: imageLimits.maxImagesPerMessage })
         }
-        if (files.some(file => file.size > imageLimits.maxImageBytes)) {
+        if (images.some(file => file.size > imageLimits.maxImageBytes)) {
           return t('image.fileTooLarge', { size: imageSizeText(imageLimits.maxImageBytes) })
         }
-        const total = attachments.reduce((sum, attachment) => sum + attachment.file.size, 0)
-          + files.reduce((sum, file) => sum + file.size, 0)
+        const total = imageAttachments.reduce((sum, attachment) => sum + attachment.file.size, 0)
+          + images.reduce((sum, file) => sum + file.size, 0)
         if (total > imageLimits.maxMessageImageBytes) {
           return t('image.totalTooLarge', { size: imageSizeText(imageLimits.maxMessageImageBytes) })
         }
       }
-      return addImages(files)
+      return addFiles(files)
     })()
     if (rejected !== null) showToast(rejected)
-  }, [addImages, attachments, imageLimits, showToast, t])
+  }, [subagent, addFiles, attachments, imageLimits, showToast, t])
 
-  const canAcceptDrop = !locked && !machineBusy && addImages !== undefined
+  const canAcceptDrop = subagent === null && !locked && !machineBusy && addFiles !== undefined
 
-  const applySessionDocument = useCallback((filename: string, body: string, hostTruncated: boolean) => {
-    const framed = frameSessionDocument(filename, body)
-    setSessionDocPayload({ filename, text: body })
-    setAttachChooser(null)
-    showToast(
-      hostTruncated || framed.truncated
-        ? t('input.attachSessionDocumentTruncated')
-        : t('input.attachSessionDocumentReady'),
-    )
-  }, [showToast, t])
-
-  const flushSessionDocument = useCallback((): string | null => {
-    if (sessionDocPayload === null || inputActions === undefined) return null
-    const framed = frameSessionDocument(sessionDocPayload.filename, sessionDocPayload.text)
-    const next = appendSessionDocument(draft, framed.text)
-    inputActions.setDraft(next)
-    setSessionDocPayload(null)
-    return next
-  }, [draft, inputActions, sessionDocPayload])
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const onPickFiles = (e: ChangeEvent<HTMLInputElement>): void => {
+    const picked = e.target.files === null ? [] : [...e.target.files]
+    // Reset so picking the same file again re-fires the change event.
+    e.target.value = ''
+    if (picked.length > 0) intakeFiles(picked)
+  }
 
   // The keymap handlers read live bar state through this ref so the editor
   // registration survives re-renders without re-arming per keystroke.
   const gate = useRef({
-    locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode, intakeImages,
-    flushSessionDocument,
+    locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode,
+    intakeFiles, uploadsPending, showToast, t,
   })
   gate.current = {
-    locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode, intakeImages,
-    flushSessionDocument,
+    locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode,
+    intakeFiles, uploadsPending, showToast, t,
   }
 
   useEffect(() => {
@@ -336,14 +289,17 @@ export const InputBar = memo(function InputBar({
           keyboard.steerQueue()
           return
         }
-        const flushed = g.flushSessionDocument()
+        if (g.uploadsPending) {
+          g.showToast(g.t('file.stillUploading'))
+          return
+        }
         keyboard.submit(g.resolveSubmitMode(
           g.running,
           accelerated ? 'accelerated' : 'enter',
           g.subagent === null,
-        ), flushed ?? undefined)
+        ))
       },
-      intakeFiles: (files) => { gate.current.intakeImages(files) },
+      intakeFiles: (files) => { gate.current.intakeFiles(files) },
       pasteText: (text) => {
         if (gate.current.machineBusy || gate.current.locked) return
         keyboard.paste(text)
@@ -364,112 +320,6 @@ export const InputBar = memo(function InputBar({
     if (keyboard !== undefined) toggleCommandMenu?.(keyboard.caretSpan())
   }
 
-  const onAttach = (): void => {
-    if (locked) return
-    setAttachOpen(open => !open)
-  }
-
-  const ingestSessionDocument = useCallback((file: File) => {
-    const extension = sessionDocumentExtension(file.name)
-    if (isSessionDocumentSpreadsheet(extension)) {
-      showToast(t('input.attachSessionDocumentSpreadsheet'))
-      return
-    }
-    if (isSessionDocumentPlainExtension(extension)) {
-      void readSessionDocumentText(file).then((body) => {
-        if (body.trim() === '') {
-          showToast(t('input.attachSessionDocumentEmpty'))
-          return
-        }
-        applySessionDocument(file.name, body, false)
-      }, () => {
-        showToast(t('input.attachSessionDocumentReadFailed'))
-      })
-      return
-    }
-    if (isSessionDocumentConvertExtension(extension)) {
-      if (!sessionDocReady) {
-        showToast(t('input.attachSessionDocumentHint'))
-        return
-      }
-      showToast(t('input.attachSessionDocumentWorking'))
-      setSessionDocFile(file)
-      return
-    }
-    showToast(t('input.attachSessionDocumentUnsupported'))
-  }, [applySessionDocument, sessionDocReady, showToast, t])
-
-  const onSessionDocumentSettled = useCallback((result: SessionDocumentExtractSettlement) => {
-    setSessionDocFile(null)
-    if (!result.ok) {
-      showToast(result.error)
-      return
-    }
-    if (result.text.trim() === '') {
-      showToast(t('input.attachSessionDocumentEmpty'))
-      return
-    }
-    applySessionDocument(result.filename, result.text, result.truncated)
-  }, [applySessionDocument, showToast, t])
-
-  const onAttachSelect = (id: string): void => {
-    setAttachOpen(false)
-    if (id === 'image') {
-      setAttachChooser('image')
-      return
-    }
-    if (id === 'sessionDoc') {
-      setAttachChooser('sessionDoc')
-      return
-    }
-    if (id === 'file') {
-      setAttachChooser('reference')
-      if (keyboard !== undefined) toggleReferenceMenu?.(keyboard.caretSpan())
-      return
-    }
-    setAttachChooser(null)
-    if (knowledgeReady) setKnowledgeOpenRequest(n => n + 1)
-    else showToast(t('input.attachKnowledgeHint'))
-  }
-
-  useEffect(() => {
-    if (!locked) return
-    setAttachOpen(false)
-    setAttachChooser(null)
-  }, [locked])
-
-  const onPickedImages = useCallback((files: readonly File[]): void => {
-    if (files.length === 0) {
-      showToast(t('input.attachFileMissed'))
-      return
-    }
-    setAttachChooser(null)
-    intakeImages(files)
-    editor?.getRootElement()?.focus({ preventScroll: true })
-  }, [editor, intakeImages, showToast, t])
-
-  const onPickedSessionDoc = useCallback((files: readonly File[]): void => {
-    const file = files[0]
-    if (file === undefined) {
-      showToast(t('input.attachFileMissed'))
-      return
-    }
-    setAttachChooser(null)
-    ingestSessionDocument(file)
-    editor?.getRootElement()?.focus({ preventScroll: true })
-  }, [editor, ingestSessionDocument, showToast, t])
-
-  useEffect(() => {
-    return bindNativeFileChange(fileInputRef.current, (files) => {
-      if (attachChooser === 'image') onPickedImages(files)
-      else if (attachChooser === 'sessionDoc') onPickedSessionDoc(files)
-    })
-  }, [attachChooser, onPickedImages, onPickedSessionDoc])
-
-  const imageAccept = imageLimits === undefined
-    ? DEFAULT_IMAGE_ACCEPT
-    : imageLimits.mediaTypes.join(',')
-
   // The no-session Workspace trigger: the resident editable div acts as the
   // picker trigger for keyboard users (no editor is bound in this state).
   const onWorkspaceKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
@@ -480,13 +330,11 @@ export const InputBar = memo(function InputBar({
     }
   }
 
-  // An ordinary running session keeps Stop as the primary while the composer
-  // is empty or owner-blocked; an actionable draft gets Queue Send. An
-  // independent Stop stays visible so a filled draft cannot hide cancellation.
-  // A continuable child keeps Send primary and exposes Stop independently.
+  // An ordinary running session keeps Stop while the composer is empty or
+  // owner-blocked; an actionable draft gets the existing Queue action. A
+  // continuable child keeps Send primary and exposes Stop independently.
   const primaryStops = running && subagent === null && (empty || blocked !== undefined)
   const interruptible = running && continuable
-  const independentStop = running && subagent === null && !primaryStops
   const primaryLabel = primaryStops ? t('input.stop') : t('input.send')
   const onPrimary = (): void => {
     if (primaryStops) {
@@ -494,10 +342,8 @@ export const InputBar = memo(function InputBar({
       return
     }
     if (inputActions === undefined) return // absent machine: the button is disabled
-    /* v8 ignore next -- defensive: the primary button is disabled while empty||disabled, so a click cannot reach the false arm. */
-    if (!empty && !disabled && !machineBusy) {
-      inputActions.submit(flushSessionDocument() ?? undefined)
-    }
+    /* v8 ignore next -- defensive: the primary button is disabled for empty, disabled, and pending-upload states. */
+    if (!empty && !disabled && !machineBusy && !uploadsPending) inputActions.submit()
   }
 
   // The Access seat: the projection-fed permission chip (renders nothing
@@ -573,78 +419,15 @@ export const InputBar = memo(function InputBar({
         {renderSlot('conversation.input.attachments', {
           attachments,
           canAcceptDrop,
-          onAddImages: intakeImages,
-          onRemoveImage: (id) => { removeImage?.(id) },
+          onAddFiles: intakeFiles,
+          onRemoveAttachment: (id) => { removeAttachment?.(id) },
+          uploads,
+          onRetryFile: (id) => { retryFileUpload?.(id) },
           dropLimits: imageLimits === undefined ? undefined : {
             count: imageLimits.maxImagesPerMessage,
             size: imageSizeText(imageLimits.maxImageBytes),
           },
         })}
-        {attachChooser !== null && (
-          <div className={css.attachChooser} data-attach-chooser={attachChooser} role="region">
-            {attachChooser === 'reference' ? (
-              <p className={css.attachChooserHint}>{t('input.attachFileHint')}</p>
-            ) : (
-              <>
-                <div
-                  className={css.attachChooserAction}
-                  data-file-pick={attachChooser}
-                >
-                  {attachChooser === 'image'
-                    ? t('input.attachImageChoose')
-                    : t('input.attachSessionDocumentChoose')}
-                  <input
-                    ref={fileInputRef}
-                    className={css.fileInputOverlay}
-                    type="file"
-                    {...(attachChooser === 'image' ? { accept: imageAccept, multiple: true } : {})}
-                    tabIndex={-1}
-                    disabled={attachChooser === 'image' && !canAcceptDrop}
-                    data-session-document={attachChooser === 'sessionDoc' ? '' : undefined}
-                  />
-                </div>
-                <p className={css.attachChooserHint}>{t('input.attachChooserHint')}</p>
-              </>
-            )}
-            <button
-              type="button"
-              className={css.attachChooserDismiss}
-              onMouseDown={keepFocus}
-              onClick={() => { setAttachChooser(null) }}
-            >
-              {t('input.attachChooserDismiss')}
-            </button>
-          </div>
-        )}
-        {(sessionDocFile !== null || sessionDocPayload !== null) && (
-          <div className={css.sessionDocRail} data-session-document-chip>
-            <div
-              className={css.sessionDocCard}
-              role="status"
-              aria-label={sessionDocPayload === null
-                ? undefined
-                : t('input.attachSessionDocumentChip', { name: sessionDocPayload.filename })}
-            >
-              <span className={css.sessionDocThumb} aria-hidden />
-              <span className={css.sessionDocName}>
-                {sessionDocFile !== null
-                  ? t('input.attachSessionDocumentWorking')
-                  : sessionDocPayload?.filename}
-              </span>
-              {sessionDocPayload !== null && (
-                <button
-                  type="button"
-                  className={css.sessionDocRemove}
-                  aria-label={t('input.attachSessionDocumentRemove', { name: sessionDocPayload.filename })}
-                  onMouseDown={keepFocus}
-                  onClick={() => { setSessionDocPayload(null) }}
-                >
-                  <IconCloseFill14 size={12} />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
         {/* One scrollport, one text surface: the contenteditable grows with
             its content and .scroll — capped at 14 lines in CSS — is the only
             thing that scrolls. Chips are decorator portals inside the same
@@ -678,60 +461,40 @@ export const InputBar = memo(function InputBar({
         </div>
         <div className={css.row}>
           <div className={css.tools}>
-            <div className={css.leadingActions}>
-              <Tooltip label={t('input.attach')} side="top" delayMs={500}>
-                <Menu
-                  open={attachOpen}
-                  items={([
-                    { id: 'image', label: t('input.attachImage'), disabled: !canAcceptDrop },
-                    { id: 'sessionDoc', label: t('input.attachSessionDocument') },
-                    { id: 'file', label: t('input.attachFile'), disabled: toggleReferenceMenu === undefined },
-                    { id: 'knowledge', label: t('input.attachKnowledge') },
-                  ]) satisfies MenuEntry[]}
-                  onSelect={onAttachSelect}
-                  onClose={() => { setAttachOpen(false) }}
-                  side="top"
-                  portal
-                  anchor={
-                    <button
-                      type="button"
-                      className={css.add}
-                      aria-label={t('input.attach')}
-                      aria-haspopup="menu"
-                      aria-expanded={attachOpen}
-                      disabled={locked}
-                      onMouseDown={keepFocus}
-                      onClick={onAttach}
-                    >
-                      <IconPlusOutline16 size={14} />
-                    </button>
-                  }
-                />
-              </Tooltip>
-              {renderSlot('conversation.input.attachKnowledge', {
-                openRequest: knowledgeOpenRequest,
-                onReady: setKnowledgeReady,
-              })}
-              {renderSlot('conversation.input.attachSessionDocument', {
-                file: sessionDocFile,
-                onReady: setSessionDocReady,
-                onSettled: onSessionDocumentSettled,
-              })}
-              <Tooltip label={t('input.commands')} side="top" delayMs={500}>
-                <button
-                  type="button"
-                  className={css.add}
-                  aria-label={t('input.commands')}
-                  aria-haspopup="listbox"
-                  aria-expanded={commandMenuOpen}
-                  disabled={locked || toggleCommandMenu === undefined}
-                  onMouseDown={keepFocus}
-                  onClick={onToggleCommandMenu}
-                >
-                  <span aria-hidden className={css.slashGlyph}>/</span>
-                </button>
-              </Tooltip>
-            </div>
+            <Tooltip label={t('input.commands')} side="top" delayMs={500}>
+              <button
+                type="button"
+                className={css.add}
+                aria-label={t('input.commands')}
+                aria-haspopup="listbox"
+                aria-expanded={commandMenuOpen}
+                disabled={locked || toggleCommandMenu === undefined}
+                onMouseDown={keepFocus}
+                onClick={onToggleCommandMenu}
+              >
+                <IconPlusOutline16 size={14} />
+              </button>
+            </Tooltip>
+            <Tooltip label={t('file.attach')} side="top" delayMs={500}>
+              <button
+                type="button"
+                className={css.add}
+                aria-label={t('file.attach')}
+                disabled={subagent !== null || locked || machineBusy || addFiles === undefined}
+                onMouseDown={keepFocus}
+                onClick={() => { fileInputRef.current?.click() }}
+              >
+                <IconPaperclipOutline16 size={14} />
+              </button>
+            </Tooltip>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              disabled={subagent !== null}
+              hidden
+              onChange={onPickFiles}
+            />
             <div className={css.modes}>
               {accessSelect}
               {sessionId === undefined ? null : renderSlot('conversation.input.plan', { locked })}
@@ -746,7 +509,7 @@ export const InputBar = memo(function InputBar({
               : renderSlot('conversation.input.right', {})}
             {sessionId === undefined ? null : renderSlot('conversation.input.model', { locked: modelSeatLocked })}
             <ContextMeter useProjection={useProjection} t={t} />
-            {(interruptible || independentStop) && (
+            {interruptible && (
               <Tooltip label={t('input.stop')} side="top" delayMs={500}>
                 <button
                   type="button"
@@ -756,7 +519,9 @@ export const InputBar = memo(function InputBar({
                   onMouseDown={keepFocus}
                   onClick={stop}
                 >
-                  <StopIcon />
+                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+                    <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
+                  </svg>
                 </button>
               </Tooltip>
             )}
@@ -765,12 +530,14 @@ export const InputBar = memo(function InputBar({
                 type="button"
                 className={css.primary}
                 aria-label={primaryLabel}
-                disabled={primaryStops ? stop === undefined : empty || disabled || machineBusy}
+                disabled={primaryStops ? stop === undefined : empty || disabled || machineBusy || uploadsPending}
                 onMouseDown={keepFocus}
                 onClick={onPrimary}
               >
                 {primaryStops ? (
-                  <StopIcon />
+                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+                    <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
+                  </svg>
                 ) : (
                   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
                     <path d="M8.3125 0.980183C8.66767 1.0531 8.97902 1.20418 9.2627 1.43233C9.48724 1.61297 9.73029 1.85793 9.97949 2.10714L14.707 6.83468L13.293 8.24874L9 3.95577V15.0417H7V3.95577L2.70703 8.24874L1.29297 6.83468L6.02051 2.10714C6.26971 1.85793 6.51277 1.61297 6.7373 1.43233C6.97662 1.23986 7.28445 1.04402 7.6875 0.980183C7.8973 0.947006 8.1031 0.95516 8.3125 0.980183Z" fill="currentColor" />

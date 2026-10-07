@@ -25,7 +25,7 @@ import {
   type CommerceSourceDescription,
 } from '@deepseek-ai/dsh-host-commerce'
 import { createToolResultMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
+import { SESSION_FORMAT_VERSION, Session, SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
@@ -180,7 +180,7 @@ export async function bench(overrides: Partial<CommerceTools.Config> & { readonl
   const owner = {
     id: SessionId(`agent-${roots.length}`),
     session: Session.create(SessionId(`agent-${roots.length}`), undefined, {
-      version: 0, id: SessionId(`agent-${roots.length}`), createdAt: 1, isSeeded: false, cwd: root,
+      version: SESSION_FORMAT_VERSION, id: SessionId(`agent-${roots.length}`), createdAt: 1, isSeeded: false, cwd: root,
     }),
     ctx,
     status: 'idle',

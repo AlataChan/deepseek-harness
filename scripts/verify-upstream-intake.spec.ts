@@ -67,7 +67,7 @@ describe('rule 1 — never-merge paths', () => {
 })
 
 describe('rule 2 — the collided desktop path has not become Electron', () => {
-  const manifest = (deps: Record<string, string>): string => JSON.stringify({ name: 'dsh-desktop', ...deps })
+  const manifest = (deps: Record<string, Record<string, string>>): string => JSON.stringify({ name: 'dsh-desktop', ...deps })
 
   it('accepts a manifest with no Electron runtime', () => {
     const files = new Map([['apps/desktop/package.json', manifest({ dependencies: { '@tauri-apps/api': '^2' } })]])

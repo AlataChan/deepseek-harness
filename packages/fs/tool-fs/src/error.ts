@@ -1,42 +1,43 @@
 /**
- * Model-facing remediation for guarded-mutation failures. The provider's
- * `FS_STALE_VERSION` and `FS_NOT_OBSERVED` messages state the condition but
- * not the only correct recovery (re-read / read the file), so this package
- * appends the remedy at the model boundary; provider messages stay
- * machine-oriented and unchanged.
+ * Model-facing diagnostics for guarded-mutation failures. Providers and
+ * policies retain operation-specific causes, while this package owns the
+ * stable message shown to the model.
  * @module @deepseek-ai/dsh-tool-fs/src/error
  */
 
 import { FsError } from '@deepseek-ai/dsh-fs'
 import type { Context } from '@deepseek-ai/cordis'
-import type { FsErrorCode, FsErrorRemedyRequest, FsMutationOperation, FsTarget } from '@deepseek-ai/dsh-fs'
-
-/** The remedy appended to each remediable failure code's message. */
-const REMEDIES: Partial<Record<FsErrorCode, string>> = {
-  FS_STALE_VERSION: 're-read the file, then retry',
-  FS_NOT_OBSERVED: 'read the file, then retry',
-}
+import type { FsErrorRemedyRequest, FsMutationOperation, FsTarget } from '@deepseek-ai/dsh-fs'
 
 /**
- * Append the correct recovery instruction to a guarded-mutation failure's
- * message. `FS_STALE_VERSION` (the file changed since this session's last
- * observation, including a missing target) recovers only by re-reading;
- * `FS_NOT_OBSERVED` (no prior read by this session) by reading. The `FsError`
- * code is preserved so retry/permission/UI layers keep routing on it, and the
- * original error chains as `cause`. Anything else passes through untouched.
+ * Render the stable model-facing diagnostic for a guarded-mutation failure.
+ * `FS_STALE_VERSION` keeps the provider's reason and appends its re-read
+ * remedy. `FS_NOT_OBSERVED` replaces operation-specific policy/provider text
+ * with one path-aware reason and read remedy. The original error remains the
+ * cause, and both diagnostics preserve its code for machine routing. Anything
+ * else passes through untouched.
  * @param error - the caught value from a write/edit execution.
+ * @param displayPath - the resolved target path shown to the model.
  * @returns a remediated `FsError` for the two guarded-mutation codes, else the original value.
  */
-export function remediateFsError(error: unknown): unknown {
+export function remediateFsError(error: unknown, displayPath: string): unknown {
   if (!(error instanceof FsError)) return error
-  const remedy = REMEDIES[error.code]
-  if (!remedy) return error
-  return new FsError(`${error.message} — ${remedy}`, error.code, { cause: error })
+  if (error.code === 'FS_NOT_OBSERVED') {
+    return new FsError(
+      `cannot modify "${displayPath}": file has not been read — read the file, then retry`,
+      error.code,
+      { cause: error },
+    )
+  }
+  if (error.code === 'FS_STALE_VERSION') {
+    return new FsError(`${error.message} — re-read the file, then retry`, error.code, { cause: error })
+  }
+  return error
 }
 
 /**
- * Consult filesystem error-remedy listeners before appending the default
- * guarded-mutation recovery instruction.
+ * Consult filesystem error-remedy listeners before applying the default
+ * guarded-mutation diagnostic.
  * @param ctx - tool execution context for the waterfall dispatch.
  * @param error - the caught value from a write/edit execution after sandbox mapping.
  * @param target - the resolved target that was being mutated.
@@ -53,7 +54,7 @@ export async function remediateFsToolError(
 ): Promise<unknown> {
   if (!(error instanceof FsError)) return error
   const request: FsErrorRemedyRequest = { error, target, operation, actor }
-  const remedy = await ctx.waterfall('fs/error-remedy', request, () => REMEDIES[error.code])
-  if (remedy === undefined) return error
+  const remedy = await ctx.waterfall('fs/error-remedy', request, () => undefined)
+  if (remedy === undefined) return remediateFsError(error, target.displayPath)
   return new FsError(`${error.message} — ${remedy}`, error.code, { cause: error })
 }
