@@ -3,10 +3,21 @@
     ".agents/notes/AGENTS.md",
     ".agents/notes/implemented/AGENTS.md",
     ".agents/notes/implemented/CLAUDE.md",
+    "apps/desktop/README.md",
+    "apps/desktop/src-tauri/icons/README.md",
     "docs/AGENTS.md",
     "docs/cordis-api/inherited.md",
     "docs/i18n/style-samples.md",
     "docs/i18n/terminology.md",
-    "docs/i18n/translation-prompt.md"
+    "docs/i18n/translation-prompt.md",
+    "docs/plans/2026-09-04-agent-team-dock-and-archify-seed.md",
+    "docs/plans/2026-09-04-agent-team-institutional-starters.md",
+    "docs/plans/2026-09-19-xiaolvjing-wechat-draft.md",
+    "docs/plans/2026-10-06-upstream-selective-upgrade.md",
+    "packages/boot/installed-runtime/README.md",
+    "packages/client/connection-desktop/README.md",
+    "packages/client/connection-process/README.md",
+    "packages/experimental/desktop-ask-knowledge/python/kb/prompts/obsidian-graph/README.md",
+    "packages/experimental/desktop-ask-knowledge/python/kb/schemas/README.md"
   ]
 }
