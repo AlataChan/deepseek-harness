@@ -1,6 +1,6 @@
 ---
 description: "Use and debug the experimental Web Agent Teams roster, shared task board, and teammate navigation panel."
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-experimental-client-ui-agent-team

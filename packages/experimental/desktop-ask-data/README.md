@@ -1,6 +1,15 @@
+---
+description: "octopus_DSH desktop ask-data overlay: pick or import a data source before asking, keep spreadsheets in SQLite, and bind one source to a session through ctx.askData."
+kind: "package-bundle"
+---
+
 # @deepseek-ai/dsh-experimental-desktop-ask-data
 
 English | [中文](README.zh.md)
+
+## Summary
+
+`desktop-ask-data` is the private desktop overlay where a user picks or imports a data source before asking: it provides `ctx.askData`, occupies the 问数 Hero and gate slots, and owns the spreadsheet decoder that other workspace packages import. Source rows come from the overlay store plus unmatched data-agent connections, and only 开始提问 commits a source to a session.
 
 Private octopus_DSH overlay: the Provider for [`ctx.askData`](../../host/ask-data/README.md) plus the Client occupant of `conversation.hero.askData` and `conversation.askData.gate`. It also occupies `sidebar.brand.mark`, `sidebar.brand.name`, `conversation.hero.brand.mark`, and `conversation.hero.headline` so the window wordmark reads as 小绿鲸 with 「先选工作文件夹，再提问」. Client 设置 General includes a 工作文件夹 row that opens the hidden desktop settings panel. The 问数 chip uses the same chip geometry as the workspace and preset controls, plus a data icon. Official `dsh-desktop-app` and the default `standard` assistant do not name this package. The desktop profile seed copies the built tree (`source: "workspace"` in [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json)).
 
@@ -8,10 +17,22 @@ The path is data first. 「问数」stages `data-agent` with `hold` and opens th
 
 Hard limits live in `src/limits.ts` and name themselves in the model-visible paragraph only: the page, the helper beside upload, the preview, and failure recovery read sentences, and `rule-copy.ts` maps each rule id and each preview warning id onto one. `RULE_EXPLANATIONS` is keyed by the closed rule-id set, so a new rule cannot ship without operator copy, and no operator-facing string carries a rule id. Session Controller reports every ask-data failure as `session/ask-data-failed` with the seam code in the details, so the failure sentence is resolved from that code and falls back to the wire message for a code this overlay does not know. Missing host `sqlite3` disables upload only; `importSample` copies `samples/sample-sales.sqlite`. Asking that file still needs data-agent's `sqlite3` CLI.
 
+## Table of Contents
+
+- [Reuse spreadsheet import](#reuse-spreadsheet-import)
+- [Config](#config)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
+
+-----
+
+<a id="reuse-spreadsheet-import"></a>
 ## Reuse spreadsheet import
 
 Other workspace packages import `@deepseek-ai/dsh-experimental-desktop-ask-data/spreadsheet` instead of source paths. This supported entry exposes spreadsheet parsing, extension detection, SQLite table writing and preview reads, SQL identifier quoting, the `ParsedWorkbook` and `ImportedTable` types, and the accepted-extension, decoded-file, total-row, and decoded-cell limits. Parsing and SQLite failures remain `AskDataError` values with the codes declared by [`dsh-host-ask-data`](../../host/ask-data/README.md); the exported constants are Ask Data's decoder limits rather than Consumer-specific configuration.
 
+<a id="config"></a>
 ## Config
 
 ```yaml
@@ -23,6 +44,7 @@ Other workspace packages import `@deepseek-ai/dsh-experimental-desktop-ask-data/
 
 Empty `dataHome` uses `{dshHome}/profiles/desktop/data-sources`. `cordis.patch.yml` inserts this one Host row. The Client half is discovered from `dsh.client` after the Host fiber is live.
 
+<a id="model-experience"></a>
 ## Model Experience
 
 When `askDataBinding` is set, a dynamic `ask-data:limits` system-prompt section states the same rule ids. Cold resume sees it on the first assemble. Spreadsheet bytes never enter the session log.
@@ -31,8 +53,14 @@ When `askDataBinding` is set, a dynamic `ask-data:limits` system-prompt section 
 
 The section text is stable for a bound session, so it does not churn the prefix after bind.
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **No `.xls`, Numbers, Google Sheets, join, or ETL**
 - **No empty SQLite on 问数 click**
 - **No rewrite of leftover `dsh-context` user profiles** — companion boot must fail visibly
+
+<a id="dev-note"></a>
+## Dev Note
+
+`RULE_EXPLANATIONS` is keyed by the closed rule-id set, so a new limit or preview warning ships only together with its operator sentence; no user-facing string carries a rule id, and every ask-data failure reaches the window through the `session/ask-data-failed` details code. Other workspace packages import the supported `/spreadsheet` entry rather than source paths, and its exported `AskDataError` codes must stay aligned with `dsh-host-ask-data`.

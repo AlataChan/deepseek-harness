@@ -1,6 +1,15 @@
+---
+description: "octopus_DSH 问知识 overlay：Tauri app-data 下的文档库、Python sidecar 流水线，以及 conversation.hero.askKnowledge 的 Client 占位。"
+kind: "package-bundle"
+---
+
 # @deepseek-ai/dsh-experimental-desktop-ask-knowledge
 
 [English](README.md) | 中文
+
+## 概述
+
+`desktop-ask-knowledge` 是文档库的私有桌面 overlay：提供 `ctx.askKnowledge`，为入库、propose 与抽取运行随包的 octopus-kb sidecar，并占用 `conversation.hero.askKnowledge`。`catalog.json` 是唯一户口本；工作区 symlink 可选，绝不是索引。
 
 私有 octopus_DSH overlay：[`ctx.askKnowledge`](../../host/ask-knowledge/README.zh.md) 的 Provider，以及 `conversation.hero.askKnowledge` 的 Client 占位。官方 `dsh-desktop-app` 和默认 `standard` 助理不点名本包。桌面 profile 种子复制构建树（[scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json) 里 `source: "workspace"`）。
 
@@ -8,6 +17,16 @@
 
 缺少 `OCTOPUS_APP_DATA` 或 `OCTOPUS_SIDECAR_HOME` 时，只有问知识方法失败。companion 聊天仍能启动。octopus-kb 放在 `python/`，并带 MIT `LICENSE` 与 `SOURCE.txt`。冻二进制的 propose/apply 按 `OCTOPUS_KB_ROOT`、源码树、onedir 上一级解析 `prompts/` 和 `schemas/`。
 
+## 目录
+
+- [配置](#config)
+- [模型体验](#model-experience)
+- [已知限制与延后工作](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
+
+-----
+
+<a id="config"></a>
 ## Config
 
 ```yaml
@@ -20,6 +39,7 @@
 
 空的 `knowledgeHome` 使用 `OCTOPUS_APP_DATA`。空的 `sidecarRuntimePath` 使用 `OCTOPUS_SIDECAR_HOME`。`cordis.patch.yml` 插入这一行 Host。Client 半边在 Host fiber 就绪后从 `dsh.client` 发现。
 
+<a id="model-experience"></a>
 ## 模型体验
 
 ### 挂库后的检索提示
@@ -62,6 +82,7 @@ ask_knowledge_retrieve 的返回里已有命中页的正文。先根据这些正
 
 工具集不变时前缀稳定。HMR dispose 会摘掉两个 schema，可能从第一处变化的 schema token 起让复用失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
 - **扫描件 PDF 抽不出字** — 文字 PDF 走 markitdown[pdf]；纯图页不做 OCR
@@ -69,3 +90,8 @@ ask_knowledge_retrieve 的返回里已有命中页的正文。先根据这些正
 - **不接受老 .doc** — Word 须是 `.docx`。Host 只读 `word/document.xml`；其它 zip 段里的页眉、页脚、批注不会抽出
 - **没有收件箱审核台，也没有 ingest-url**
 - **不改官方 desktop-app 组合** — 本 overlay 是 profile pin
+
+<a id="dev-note"></a>
+## 开发备注
+
+`catalog.json` 是唯一户口本；`DEEPSEEK_API_KEY` 只注入 sidecar 子进程这一次；缺少 `OCTOPUS_APP_DATA` 或 `OCTOPUS_SIDECAR_HOME` 只能让问知识方法失败，不能让 companion 聊天失败。浏览器侧上传队列以窗口为界，Host 对每个库串行入库，所以关窗会丢掉排队文件；`builtins.yaml` 有意删掉 `confidence.tier_gate_defer`，让中等置信度提案直接入库，而不是停进没人审核的收件箱。

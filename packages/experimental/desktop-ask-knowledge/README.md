@@ -1,6 +1,15 @@
+---
+description: "octopus_DSH ask-knowledge overlay: document libraries under the Tauri app-data directory, a Python sidecar pipeline, and the conversation.hero.askKnowledge Client seat."
+kind: "package-bundle"
+---
+
 # @deepseek-ai/dsh-experimental-desktop-ask-knowledge
 
 English | [中文](README.zh.md)
+
+## Summary
+
+`desktop-ask-knowledge` is the private desktop overlay for document libraries: it provides `ctx.askKnowledge`, runs the vendored octopus-kb sidecar for ingest, propose, and extract, and occupies `conversation.hero.askKnowledge`. `catalog.json` is the only directory of record; the workspace symlink is optional and never an index.
 
 Private octopus_DSH overlay: the Provider for [`ctx.askKnowledge`](../../host/ask-knowledge/README.md) plus the Client occupant of `conversation.hero.askKnowledge`. Official `dsh-desktop-app` and the default `standard` assistant do not name this package. The desktop profile seed copies the built tree (`source: "workspace"` in [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json)).
 
@@ -8,6 +17,16 @@ Vaults live under Tauri `app_data_dir` (`OCTOPUS_APP_DATA` / `knowledgeHome`). `
 
 Missing `OCTOPUS_APP_DATA` or `OCTOPUS_SIDECAR_HOME` fails only ask-knowledge methods. Companion chat still starts. octopus-kb is vendored under `python/` with its MIT `LICENSE` and `SOURCE.txt`. Frozen propose/apply resolve `prompts/` and `schemas/` from `OCTOPUS_KB_ROOT`, then the source tree, then the onedir parent.
 
+## Table of Contents
+
+- [Config](#config)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
+
+-----
+
+<a id="config"></a>
 ## Config
 
 ```yaml
@@ -20,6 +39,7 @@ Missing `OCTOPUS_APP_DATA` or `OCTOPUS_SIDECAR_HOME` fails only ask-knowledge me
 
 Empty `knowledgeHome` uses `OCTOPUS_APP_DATA`. Empty `sidecarRuntimePath` uses `OCTOPUS_SIDECAR_HOME`. `cordis.patch.yml` inserts this one Host row. The Client half is discovered from `dsh.client` after the Host fiber is live.
 
+<a id="model-experience"></a>
 ## Model Experience
 
 ### Bound retrieve prompt
@@ -62,6 +82,7 @@ Schema cost is fixed while the tools stay registered. Results are data-dependent
 
 Prefix-stable while the tool set is unchanged. HMR dispose removes both schemas and may invalidate reuse from the first changed schema token.
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **Scanned PDF is empty** — text PDFs go through markitdown[pdf]; image-only pages do not OCR
@@ -69,3 +90,8 @@ Prefix-stable while the tool set is unchanged. HMR dispose removes both schemas 
 - **No legacy .doc** — Word must be `.docx`. Host reads `word/document.xml` only; headers, footers, and comments in other zip parts are omitted
 - **No inbox review desk or ingest-url**
 - **No official desktop-app composition change** — this overlay is a profile pin
+
+<a id="dev-note"></a>
+## Dev Note
+
+`catalog.json` is the only directory of record, and the sidecar child receives `DEEPSEEK_API_KEY` for that one process only; missing `OCTOPUS_APP_DATA` or `OCTOPUS_SIDECAR_HOME` must fail only ask-knowledge methods, never companion chat. The browser-side upload queue is per-window and the Host serializes ingest per library, so a closed window drops queued files; `builtins.yaml` intentionally drops `confidence.tier_gate_defer` so a medium-confidence proposal applies instead of parking in an inbox no surface reviews.

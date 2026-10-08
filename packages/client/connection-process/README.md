@@ -1,8 +1,25 @@
+---
+description: "Static process-carrier library shared by the VS Code and desktop surfaces: bounded wire protocol, codec, Node IPC channel, and Host gateway."
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-client-connection-process`
+
+## Summary
+
+`connection-process` is the static process-carrier library shared by the VS Code and desktop surfaces: it owns the bounded wire protocol, codec, Node IPC channel, the Host gateway, and the IDE-optional `ProcessApiClient`. Surfaces inline the browser-safe face; it is not a `dsh.client` row.
 
 Static process-carrier library shared by the VS Code and desktop surfaces. It owns the bounded wire protocol, codec, Node IPC channel, Host gateway, and the IDE-optional `ProcessApiClient`. It is not a `dsh.client` row; surface plugins inline the browser-safe face.
 
 The Host `apply` mounts one companion gateway on a connected `NodeIpcPort`. The client face constructs `ProcessApiClient` with an optional `GenerationPort`. Desktop passes no generation port; VS Code wraps IDE `runtime.state` events.
+
+## Table of Contents
+
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
+
+-----
 
 ## Model Experience
 
@@ -19,3 +36,7 @@ None; this package neither assembles nor sends a provider request.
 - **Installed-runtime IPC by default** — Host apply uses an injected port, else the current process channel. Desktop claims stdio before apply.
 - **`session/finishAskKnowledgeIngest` waits 180s** — that unary runs sidecar convert, LLM propose, and apply.
 - **`session/finishAskKnowledgeExtract` waits 90s** — that unary runs sidecar `convert-file` only. Other methods keep the 30s default.
+
+## Dev Note
+
+One fragmented message per direction is the decoder's ceiling: a second start or inline frame closes that decoder instead of queuing unbounded work, and a fragment reserves its declared byte length before receiving chunks. Host apply uses an injected `NodeIpcPort`, else the current process channel; the carrier owns the unary deadlines (`finishAskKnowledgeIngest` 180s, `finishAskKnowledgeExtract` 90s, otherwise 30s).

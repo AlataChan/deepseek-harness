@@ -1,6 +1,6 @@
 ---
 description: "实验性文件型电商 Provider：表格导入、有界只读 SQLite 分析、CSV 渲染与非破坏性 preset 安装。"
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-experimental-commerce-mode

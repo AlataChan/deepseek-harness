@@ -1,6 +1,6 @@
 ---
 description: "使用并排查实验性 Web Agent Teams roster、共享任务板与 teammate 导航面板。"
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-experimental-client-ui-agent-team

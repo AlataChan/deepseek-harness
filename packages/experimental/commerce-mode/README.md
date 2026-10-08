@@ -1,6 +1,6 @@
 ---
 description: "Experimental file-backed commerce Provider: spreadsheet import, bounded read-only SQLite analysis, CSV rendering, and non-destructive preset installation."
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-experimental-commerce-mode
