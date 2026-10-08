@@ -26,12 +26,17 @@ describe('gen-tool-catalog collectToolCatalog', () => {
     const catalog = await collectToolCatalog()
     const names = catalog.flatMap(entry => entry.schemas.map(s => s.name)).sort()
     expect(names).toEqual([
-      'ask_user_question', 'bash', 'bash', 'cordis_inspect_list',
+      'ask_user_question', 'bash', 'bash',
+      'commerce_analysis_query', 'commerce_discard_change', 'commerce_export_changes',
+      'commerce_get_listing', 'commerce_import_file', 'commerce_inventory_health',
+      'commerce_load_sample', 'commerce_sales_summary', 'commerce_search_listings',
+      'commerce_stage_campaign', 'commerce_stage_listing_update', 'commerce_stage_price_change',
+      'commerce_stage_promotion', 'commerce_stage_restock', 'cordis_inspect_list',
       'cordis_inspect_query',
       'create_goal', 'edit', 'exit_plan_mode', 'get_goal', 'glob', 'grep',
       'interrupt_agent', 'interrupt_agent', 'job_kill', 'job_list', 'job_output',
       'list_agents', 'list_agents', 'list_mcp_resource_templates', 'list_mcp_resources',
-      'list_subagent_models', 'load_workspace_dependencies', 'lsp', 'plugin_manager', 'present', 'pwsh', 'pwsh', 'ralph',
+      'list_subagent_models', 'load_workspace_dependencies', 'lsp', 'plugin_manager', 'present', 'propose_action', 'pwsh', 'pwsh', 'ralph',
       'read', 'read_image', 'read_mcp_resource', 'run_code', 'schedule_create', 'schedule_delete',
       'schedule_list', 'send_message', 'send_message', 'session_event_read', 'session_event_search',
       'session_event_trace', 'session_search', 'session_trace', 'skill', 'spawn_teammate',

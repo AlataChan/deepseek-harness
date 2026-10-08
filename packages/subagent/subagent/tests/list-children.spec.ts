@@ -209,7 +209,14 @@ describe('SubagentRuntime.listChildren', () => {
     }])
     for (const { path, content } of originals) {
       expect(readFileSync(path, 'utf8')).toBe(content)
-      expect(readdirSync(dirname(path))).toEqual(['session.v3.jsonl'])
+      // The read-only historical path may interpret the released generation
+      // without the migrating preparation; when a preparation does run, the
+      // fork's backup guard leaves its copy beside the source. Either way the
+      // source stays byte-identical and nothing else joins the directory.
+      const entries = readdirSync(dirname(path)).sort()
+      expect(entries).toContain('session.v3.jsonl')
+      expect(entries.filter(name => name !== 'session.v3.jsonl' && name !== 'session.v3.jsonl.pre-migration.bak'))
+        .toEqual([])
     }
   })
 

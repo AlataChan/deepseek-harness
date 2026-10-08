@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, FiberState } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
@@ -274,8 +274,17 @@ describe('real commerce Loader composition', () => {
     await bare.dispose()
   })
 
-  it('fails the second tool mount when a composition adds both mount rows', { timeout: 30_000 }, async () => {
-    await expect(loadComposition('both')).rejects.toThrow('add either the ./preset row or a root ./tools row, not both')
+  it('registers a single tool set when a composition adds both mount rows', { timeout: 30_000 }, async () => {
+    const { ctx } = await loadComposition('both')
+    // The two rows race for the one-mount claim: whichever loses fails its
+    // row, and the Host keeps exactly one 14-tool set instead of a duplicate.
+    const commerceTools = ctx.tools.schemas().filter(schema => schema.name.startsWith('commerce_'))
+    expect(commerceTools).toHaveLength(14)
+    const failedRows = [...ctx.loader.entries()]
+      .filter(entry => entry.fiber?.state === FiberState.FAILED)
+    expect(failedRows.map(entry => String(entry.options.name ?? entry.options.id))).toEqual([
+      expect.stringMatching(/commerce-mode\/(?:preset|tools)$/),
+    ])
   })
 
   it('keeps an import storage failure as a tool error instead of an input hold', { timeout: 30_000 }, async () => {
