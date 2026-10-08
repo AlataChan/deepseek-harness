@@ -683,6 +683,74 @@ describe('released event and payload inventory', () => {
     }
   })
 
+  it('admits agent-team v2 payloads alongside the v1 shapes', () => {
+    const memberV2 = {
+      id: 'eabce6e6-6946-4f7c-b9c3-52d609fc048b', name: 'archivist', description: 'index source material',
+      provider: 'spawn', context: 'fresh', phase: 'active', model: 'auto',
+    }
+    expect(() => { assertPayload('team/member', { version: 2, teamId: 'team-1', member: memberV2 }) }).not.toThrow()
+    expect(() => {
+      assertPayload('team/member', {
+        version: 2, teamId: 'team-1',
+        member: {
+          id: 'aaf044c2-a621-484e-b034-d3a73c1562cd', name: 'drafter', description: 'draft',
+          provider: 'spawn', context: 'fresh', phase: 'failed', error: 'provisioning failed',
+        },
+      })
+    }).not.toThrow()
+    expect(() => {
+      assertPayload('team/message/queued', {
+        version: 2, teamId: 'team-1',
+        message: {
+          id: 'team-message-53aa5a28', senderId: 'session-lead', senderName: 'lead',
+          targetId: '1eb9a6a2-a061-4b12-95f3-df30d9e7cec6', content: [{ type: 'text', text: 'start' }],
+        },
+      })
+    }).not.toThrow()
+    expect(() => {
+      assertPayload('team/message/delivered', { version: 2, teamId: 'team-1', messageId: 'message-1', targetId: 'member-1' })
+    }).not.toThrow()
+    expect(() => {
+      assertPayload('team/task', {
+        version: 2, teamId: 'team-1',
+        task: {
+          id: 'task-1', revision: 1, subject: 'subject', description: 'description', status: 'pending',
+          blockedBy: [], writeScopes: ['/work'],
+        },
+      })
+    }).not.toThrow()
+  })
+
+  it('keeps agent-team version-conditional fields exclusive to their schema generation', () => {
+    const memberV1 = {
+      id: 'member-1', name: 'worker', description: 'work', provider: 'in-process', context: 'fresh', phase: 'active',
+    }
+    expect(() => {
+      assertPayload('team/member', { version: 1, teamId: 'team-1', member: { ...memberV1, model: 'auto' } })
+    }).toThrow(/unexpected member/)
+    expect(() => {
+      assertPayload('team/message/queued', {
+        version: 1, teamId: 'team-1',
+        message: { id: 'message-1', senderId: 'lead', senderName: 'lead', targetId: 'member-1', content: [textBlock] },
+      })
+    }).toThrow(/lacks required member/)
+    expect(() => {
+      assertPayload('team/message/queued', {
+        version: 2, teamId: 'team-1',
+        message: {
+          id: 'message-1', senderId: 'lead', senderName: 'lead', targetId: 'member-1',
+          delivery: 'quiet', content: [textBlock],
+        },
+      })
+    }).toThrow(/unexpected member/)
+    expect(() => {
+      assertPayload('team/member', { version: 2, teamId: 'team-1', member: { ...memberV1, model: '' } })
+    }).toThrow(/model must be a non-empty string/)
+    expect(() => {
+      assertPayload('team/member', { version: 3, teamId: 'team-1', member: memberV1 })
+    }).toThrow(/version must be one of 1, 2/)
+  })
+
   it('refuses every relationship-specific invalid payload branch', () => {
     const cases: Array<[string, SessionFormatJsonValue]> = [
       ['command/done', { commandId: 'c', kind: 'success', sourceEventSeq: 3 }],

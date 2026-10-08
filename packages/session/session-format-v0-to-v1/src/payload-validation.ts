@@ -250,19 +250,21 @@ export function assertReleasedPayloadSemantics(event: SessionFormatEvent, versio
     case 'subagent/model-selection-policy':
       allowedModelsValue(data['allowedModels'], `${label} allowedModels`)
       return
-    case 'team/member':
-      teamSelector(data, label)
-      teamMemberValue(data['member'], `${label} member`)
+    case 'team/member': {
+      const teamVersion = teamSelector(data, label)
+      teamMemberValue(data['member'], `${label} member`, teamVersion)
       return
+    }
     case 'team/message/delivered':
       teamSelector(data, label)
       nonEmptyString(data['messageId'], `${label} messageId`)
       nonEmptyString(data['targetId'], `${label} targetId`)
       return
-    case 'team/message/queued':
-      teamSelector(data, label)
-      teamMessageValue(data['message'], `${label} message`, version)
+    case 'team/message/queued': {
+      const teamVersion = teamSelector(data, label)
+      teamMessageValue(data['message'], `${label} message`, version, teamVersion)
       return
+    }
     case 'team/task':
       teamSelector(data, label)
       teamTaskValue(data['task'], `${label} task`)
@@ -1035,19 +1037,26 @@ function allowedModelsValue(value: SessionFormatJsonValue | undefined, label: st
   if (routes.length === 0) throw new SessionFormatError(`${label} must be non-empty`)
 }
 
-function teamSelector(data: JsonRecord, label: string): void {
-  literalValue(data['version'], [1], `${label} version`)
+function teamSelector(data: JsonRecord, label: string): number {
+  literalValue(data['version'], [1, 2], `${label} version`)
   nonEmptyString(data['teamId'], `${label} teamId`)
+  return data['version'] as number
 }
 
-function teamMemberValue(value: SessionFormatJsonValue | undefined, label: string): void {
-  const member = exactRecord(value, label, ['id', 'name', 'description', 'provider', 'context', 'phase'], ['error'])
+function teamMemberValue(value: SessionFormatJsonValue | undefined, label: string, teamVersion: number): void {
+  const member = exactRecord(
+    value,
+    label,
+    ['id', 'name', 'description', 'provider', 'context', 'phase'],
+    teamVersion >= 2 ? ['model', 'error'] : ['error'],
+  )
   nonEmptyString(member['id'], `${label} id`)
   stringValue(member['name'], `${label} name`)
   stringValue(member['description'], `${label} description`)
   stringValue(member['provider'], `${label} provider`)
   literalValue(member['context'], ['fresh', 'fork'], `${label} context`)
   literalValue(member['phase'], ['provisioning', 'active', 'failed'], `${label} phase`)
+  if (member['model'] !== undefined) nonEmptyString(member['model'], `${label} model`)
   if (member['error'] !== undefined) stringValue(member['error'], `${label} error`)
 }
 
@@ -1068,11 +1077,22 @@ function teamTaskValue(value: SessionFormatJsonValue | undefined, label: string)
   arrayValue(task['writeScopes'], `${label} writeScopes`, stringValue)
 }
 
-function teamMessageValue(value: SessionFormatJsonValue | undefined, label: string, version: number): void {
-  const message = exactRecord(value, label, ['id', 'senderId', 'senderName', 'targetId', 'delivery', 'content'])
+function teamMessageValue(
+  value: SessionFormatJsonValue | undefined,
+  label: string,
+  version: number,
+  teamVersion: number,
+): void {
+  const message = exactRecord(
+    value,
+    label,
+    teamVersion >= 2
+      ? ['id', 'senderId', 'senderName', 'targetId', 'content']
+      : ['id', 'senderId', 'senderName', 'targetId', 'delivery', 'content'],
+  )
   for (const key of ['id', 'senderId', 'targetId'] as const) nonEmptyString(message[key], `${label} ${key}`)
   stringValue(message['senderName'], `${label} senderName`)
-  literalValue(message['delivery'], ['quiet', 'wakeup'], `${label} delivery`)
+  if (teamVersion < 2) literalValue(message['delivery'], ['quiet', 'wakeup'], `${label} delivery`)
   contentBlocksValue(message['content'], `${label} content`, version)
 }
 
