@@ -3,6 +3,9 @@
 import type { SessionFormatEvent } from '@deepseek-ai/dsh-session-format'
 
 // This historical list must not inherit additions or removals from the current Session event list.
+// Fork addition (AlataChan desktop): ask-data/ask-knowledge/commerce/media event types were
+// released by this fork while V3 was current and appear as required (non-ignorable) events in
+// real fork logs; each is a deliberate frozen-list extension, not an inherited current-list entry.
 /* jscpd:ignore-start */
 /** First-party event names understood by the released V3 reader, independent of the installed writer. */
 export const RELEASED_V3_EVENT_TYPES: ReadonlySet<string> = new Set([
@@ -11,10 +14,14 @@ export const RELEASED_V3_EVENT_TYPES: ReadonlySet<string> = new Set([
   'approval/asked',
   'approval/decided',
   'approval/policy',
+  'ask-data/bound',
+  'ask-knowledge/bound',
+  'ask-knowledge/unbound',
   'assistant/attempt',
   'assistant/message',
   'command/done',
   'command/run',
+  'commerce/bound',
   'compaction/end',
   'compaction/prune',
   'compaction/start',
@@ -29,6 +36,11 @@ export const RELEASED_V3_EVENT_TYPES: ReadonlySet<string> = new Set([
   'image/offload',
   'llm/retry',
   'llm/retry-started',
+  'media/approval',
+  'media/artifact',
+  'media/request',
+  'media/stop',
+  'media/task',
   'model/selection',
   'permission/preset',
   'plan/mode',
