@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { generationLogPath } from '../src/format.ts'
+import { generationLogFilename, generationLogPath } from '../src/format.ts'
 import { prepareCatalogFacts } from '../src/catalog-migration.ts'
 import { compressZstdFrame } from '../src/zstd.ts'
 
@@ -236,8 +236,9 @@ describe.each(['none', 'zstd'] as const)('historical catalog publication (%s)', 
     const child = await f.ctx.sessionPersistence.open(SessionId('child'), 'read')
     try { expect((await child.read()).events).toEqual(events) } finally { await child.close() }
     expect(await Promise.all([readFile(parentPath), readFile(childPath)])).toEqual(original)
+    const released = generationLogFilename(3, compression)
     expect((await readdir(dirname(parentPath))).filter(name => name !== 'session.lock').sort())
-      .toEqual(compression === 'none' ? ['session.v3.jsonl', 'session.v4.jsonl'] : ['session.v3.jsonl.zstd', 'session.v4.jsonl.zstd'])
+      .toEqual([released, `${released}.pre-migration.bak`, generationLogFilename(4, compression)].sort())
   })
 
   it.each([false, true])('omits an unsupported child generation (prepared=%s)', async (prepared) => {
@@ -308,8 +309,9 @@ describe.each(['none', 'zstd'] as const)('historical catalog publication (%s)', 
     await f.write('child', [f.descriptor], true)
     await expect(f.ctx.sessionPersistence.open(f.parent, 'write')).rejects.toThrow(childPath)
     const parentPath = generationLogPath(f.root, undefined, f.parent, 3, compression)
-    expect((await readdir(dirname(parentPath))).filter(name => name !== 'session.lock'))
-      .toEqual([compression === 'none' ? 'session.v3.jsonl' : 'session.v3.jsonl.zstd'])
+    const released = generationLogFilename(3, compression)
+    expect((await readdir(dirname(parentPath))).filter(name => name !== 'session.lock').sort())
+      .toEqual([released, `${released}.pre-migration.bak`].sort())
     expect(await f.read()).toMatchObject([{ type: 'subagent/catalog', data: { childId: 'child', label: 'old child' } }])
     const writer = await f.ctx.sessionPersistence.open(f.parent, 'write')
     await writer.close()
@@ -358,7 +360,9 @@ describe.each(['none', 'zstd'] as const)('historical catalog publication (%s)', 
     const writer = await f.ctx.sessionPersistence.open(f.parent, 'write')
     await writer.close()
     expect(await Promise.all([readFile(parentPath), readFile(childPath)])).toEqual(before)
-    expect((await readdir(dirname(parentPath))).filter(name => name !== 'session.lock')).toHaveLength(2)
+    const source = generationLogFilename(version, compression)
+    expect((await readdir(dirname(parentPath))).filter(name => name !== 'session.lock').sort())
+      .toEqual([source, `${source}.pre-migration.bak`, generationLogFilename(4, compression)].sort())
   })
 
   it('lists historical headers, prepares read-only membership, and publishes an unchanged-prefix successor', async () => {
@@ -392,7 +396,9 @@ describe.each(['none', 'zstd'] as const)('historical catalog publication (%s)', 
       expect(expected).toEqual([{ type: 'subagent/catalog', seq: 0, time: 1, data: {
         version: 0, childId: child, childCreatedAt: 2, mode: 'one-shot', label: 'old child',
       } }])
-      expect(await readdir(dirname(sourcePaths[0]!))).toEqual([compression === 'none' ? 'session.v3.jsonl' : 'session.v3.jsonl.zstd'])
+      const released = generationLogFilename(3, compression)
+      expect((await readdir(dirname(sourcePaths[0]!))).sort())
+        .toEqual([released, `${released}.pre-migration.bak`].sort())
     } finally { await reader.close() }
     const writer = await ctx.sessionPersistence.open(parent, 'write')
     try { expect((await writer.read()).events).toEqual(expected) } finally { await writer.close() }

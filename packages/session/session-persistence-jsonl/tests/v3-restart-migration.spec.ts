@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { generationLogPath } from '../src/format.ts'
+import { generationLogFilename, generationLogPath } from '../src/format.ts'
 import { compressZstdFrame } from '../src/zstd.ts'
 
 const roots: string[] = []
@@ -56,7 +56,7 @@ describe.each(['none', 'zstd'] as const)('V3 interrupted-turn publication (%s)',
     const f = await fixture()
     const original = await identity(f.path)
     const directory = dirname(f.path)
-    const files = await readdir(directory)
+    const released = generationLogFilename(3, compression)
     const ctx = await f.mount()
     const reader = await ctx.sessionPersistence.open(f.id, 'read')
     let prepared: readonly SessionEvent[]
@@ -70,14 +70,15 @@ describe.each(['none', 'zstd'] as const)('V3 interrupted-turn publication (%s)',
       await reader.close()
     }
     expect(await identity(f.path)).toEqual(original)
-    expect(await readdir(directory)).toEqual(files)
+    expect((await readdir(directory)).sort()).toEqual([released, `${released}.pre-migration.bak`].sort())
     const writer = await ctx.sessionPersistence.open(f.id, 'write')
     try { expect((await writer.read()).events).toEqual(prepared) } finally { await writer.close() }
     expect(await identity(f.path)).toEqual(original)
     expect((await readdir(directory)).filter(name => name !== 'session.lock').sort()).toEqual([
-      compression === 'none' ? 'session.v3.jsonl' : 'session.v3.jsonl.zstd',
-      compression === 'none' ? 'session.v4.jsonl' : 'session.v4.jsonl.zstd',
-    ])
+      released,
+      `${released}.pre-migration.bak`,
+      generationLogFilename(4, compression),
+    ].sort())
     const independent = await f.mount()
     const reopened = await independent.sessionPersistence.open(f.id, 'read')
     try { expect((await reopened.read()).events).toEqual(prepared) } finally { await reopened.close() }
@@ -92,8 +93,10 @@ describe.each(['none', 'zstd'] as const)('V3 interrupted-turn publication (%s)',
       await expect(ctx.sessionPersistence.open(f.id, access)).rejects.toThrow('turn/start does not open the expected turn')
     }
     expect(await identity(f.path)).toEqual(original)
-    expect((await readdir(dirname(f.path))).filter(name => name !== 'session.lock')).toEqual([
-      compression === 'none' ? 'session.v3.jsonl' : 'session.v3.jsonl.zstd',
-    ])
+    const released = generationLogFilename(3, compression)
+    expect((await readdir(dirname(f.path))).filter(name => name !== 'session.lock').sort()).toEqual([
+      released,
+      `${released}.pre-migration.bak`,
+    ].sort())
   })
 })

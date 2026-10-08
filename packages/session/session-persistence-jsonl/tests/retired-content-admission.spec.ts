@@ -44,7 +44,8 @@ describe.each(modes)('retired content in JSONL ($compression, $access)', ({ comp
     await expect(opened).rejects.toBeInstanceOf(version === 3 ? SessionFormatUnsupportedError : SessionPersistenceCorruptionError)
     await expect(opened).rejects.toThrow(/released tool-result wrapper/)
     expect(await readFile(path)).toEqual(bytes)
-    expect((await readdir(dirname(path))).filter(name => name !== 'session.lock')).toEqual([basename(path)])
+    expect((await readdir(dirname(path))).filter(name => name !== 'session.lock' && !name.endsWith('.pre-migration.bak')))
+      .toEqual([basename(path)])
   })
 
   it.each([3, 4] as const)('preserves an unknown ignorable V%s payload without interpreting its content', async (version) => {
