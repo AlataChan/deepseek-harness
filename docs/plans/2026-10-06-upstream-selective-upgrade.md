@@ -3,9 +3,9 @@
 Mode: integrate
 Space: upstream-selective-upgrade
 Created: 2026-10-06
-Revised: 2026-10-07 (round 3 execution review integrated)
+Revised: 2026-10-07 (round 3 execution review and repair-checkpoint record integrated)
 Architect: pi (draft for owner review)
-Status: **DECISIONS 1, 2, 8 TAKEN (2026-10-06). Hops 1–2 (`dsh-v0.1.3-alpha.1`, `dsh-v0.1.5-alpha.1`) are merged on branch `upstream-upgrade/2026-10-06`; they did not meet the Phase 0 or Phase 1 exit gates. Hop 3 is blocked on the repair checkpoint in the [handover](2026-10-06-upstream-upgrade-handover.md) §0.5.**
+Status: **REPAIR CHECKPOINT PASSED (2026-10-07) on branch `upstream-upgrade/repair-2026-10-07` — the `master` rebaseline merge `e0064c17df` plus eight commits: `bd112611c5`, `790a447cd6`, `ce5f4f430b`, `fd45067654`, `a5f8db13f2`, `1124954ae1`, `60684b5c60`, `774a4b3f6a`. Hops 1–2 (`dsh-v0.1.3-alpha.1`, `dsh-v0.1.5-alpha.1`) are retroactively authorised (owner, 2026-10-07, on checkpoint pass). Decision 9 is closed (persistence layer); the E-class dispositions are recorded (follow-upstream-deletion ×3). Hop 3 is unblocked pending owner go; its first work item is re-applying the proven v3→v4 patch to `RELEASED_V3_EVENT_TYPES`. Full record: [handover](2026-10-06-upstream-upgrade-handover.md) §0.0.**
 Authority: this branch copy is the only authoritative copy of the plan. The copy on `master` (`db435dd4d6`) is superseded and not edited.
 
 Plan Review:
@@ -44,7 +44,9 @@ This plan does not overrule that decision. But the fork's stated product premise
 
 **8 — Telemetry: default `DISABLED`.** Chosen over a self-hosted default because there is no collector the fork controls, and a default endpoint nobody runs is not a default. `FEEDBACK_ONLY` remains fully functional as an explicit opt-in for operators who set `DSH_TELEMETRY_MODE` and point `DSH_TELEMETRY_OTLP_URL` at their own collector. The reasoning that decides it: the 2026-08-25 note justified feedback-gated uploading as making a `/feedback` report diagnosable, which is true only when the receiver serves the people who can act on it. Here the receiver is upstream's collector, which this fork's maintainers cannot read, so the upload produces no diagnostic benefit and does expose raw session records. `DISABLED` is therefore the default, and it restores the earlier [default-off decision](../../.agents/notes/archived/feature/2026-08-10-telemetry-default-off.md) (now archived history) for the fork's own deployment. Superseding the 2026-08-25 note is an explicit Phase 1 task, not a side effect.
 
-**3–7, 9–12 — still open.** They gate Phase 3 (3, 4), Phase 4 (5), Phase 2's guard (9), and hop 3 (10, 11, 12). Decision 7 has a recommendation: option (a).
+**3–7 — still open.** They gate Phase 3 (3, 4) and Phase 4 (5). Decision 7 has a recommendation: option (a).
+
+**9–12 — taken 2026-10-07 with the repair checkpoint.** 9 closed: persistence layer, guard at the head of `prepareStoredMigration` (`60684b5c60`). 10 resolved by the rebaseline: the `media/*` baseline landed on `master` (`bc7dd22f35` + follow-ups, shipped in a DMG) and entered through merge `e0064c17df`; nine fork events are in scope. 11 answered: the per-test failure table is the accepted standard. 12 answered: hops 1–2 retroactively authorised on checkpoint pass. The three E-class dispositions are recorded as follow-upstream-deletion in the registry (`fd45067654`).
 
 ## Review Integration
 
@@ -440,11 +442,11 @@ The fork may adopt the **ideas** behind the release rows — update journal, sig
 
 Confirmed by set difference between the merge base and `origin/master`.
 
-| Package | Fork status | Decision required |
+| Package | Fork status | Decision (2026-10-07) |
 |---|---|---|
-| `packages/e2b` | present in fork | follow the deletion / keep as fork-owned / move to `experimental/` |
-| `packages/code-runtime` | present in fork | same |
-| `packages/runtime-diagnostics` | present in fork | same |
+| `packages/e2b` | present in fork | **follow-upstream-deletion**, recorded in the registry (`fd45067654`) |
+| `packages/code-runtime` | present in fork | **follow-upstream-deletion**, recorded in the registry (`fd45067654`) |
+| `packages/runtime-diagnostics` | present in fork | **follow-upstream-deletion**, recorded in the registry (`fd45067654`) |
 
 Each decision records what replaces the package upstream (if anything) and whether the fork still has a caller.
 
@@ -463,7 +465,7 @@ Each decision records what replaces the package upstream (if anything) and wheth
 | `packages/client/ui-sidebar/src/client/{SidebarRoot.tsx,contract/slots.ts,index.ts}` | +86/−10 | **B** | migrate to `ui-sidebar-right` / `ui-dockkit` |
 | `packages/client/ui-agent-preset/src/client/seat-store.ts` | +20/−2 | **B** | migrate to upstream's `ui-agent-preset` |
 | `packages/session/session-format-v0-to-v1/src/{dispositions.ts,payload-validation.ts}` | applied (`57f8c5271d`) | **A** | **Phase 2 data path** — admits the four fork events; reaches v1→v2 and v2→v3 because both consult this table |
-| `packages/session/session-format-v3-to-v4/src/extension-identities.ts` (`RELEASED_V3_EVENT_TYPES`) | pending, due at hop 3 | **A** | **Phase 2 data path** — the fork's events are required, so this edge refuses them until listed |
+| `packages/session/session-format-v3-to-v4/src/extension-identities.ts` (`RELEASED_V3_EVENT_TYPES`) | proven on a scratch branch off `dsh-v0.1.7-alpha.1` (2026-10-07); re-apply as hop 3's first work item | **A** | **Phase 2 data path** — the fork's events are required, so this edge refuses them until listed |
 | `packages/bundle/base/package.json`, `bundle/base/cordis.patch.yml` | pending | **A** | telemetry mount and dependency — resolved by decision point 8 |
 | `packages/bundle/web-app/package.json`, `bundle/web-app/cordis.patch.yml` | pending | **A** | same |
 | `packages/fs/fs/src/{index.ts,invariant.ts}`, `fs-observation-policy/src/index.ts` | +40/−3 | A | keep; reason required |
@@ -556,10 +558,10 @@ Staging therefore **does** buy incremental session validation: three separate ve
 
 **8. Telemetry endpoint and consent — ANSWERED, option (b), applied.** The fork shipped `FEEDBACK_ONLY` pointed at `https://harness-telemetry.deepseeksvc.com/v1/logs`, which uploaded raw session records — message text, tool arguments and results, workspace paths — to a collector its maintainers cannot read, with the disclosure shown after the release. The base now resolves an unset `DSH_TELEMETRY_MODE` to `DISABLED` and carries no endpoint default; an upload mode is an explicit opt-in that must name an endpoint, and one without an endpoint fails at plugin load. `FEEDBACK_ONLY` is unchanged as a mode. Recorded in the [fork-telemetry-default Agent Note](../../.agents/notes/implemented/feature/2026-10-06-fork-telemetry-disabled-default.md), with the registry rows updated from outstanding to applied. Option (c) — pre-upload confirmation — stays available as a later refinement for an operator who wants diagnosable reports and accepts an external receiver.
 
-**9. Which layer owns the pre-migration guard.** A guard at companion boot misses the `dsh` CLI and the Python SDK, which resolve the same `~/.dsh` through `packages/util/home-paths`. Either put the guard in the persistence layer (covers every opener) or accept and document the limitation. Recommendation: persistence layer — the guard's job is to protect the data, not to protect one entry point.
+**9. Which layer owns the pre-migration guard.** A guard at companion boot misses the `dsh` CLI and the Python SDK, which resolve the same `~/.dsh` through `packages/util/home-paths`. Either put the guard in the persistence layer (covers every opener) or accept and document the limitation. Recommendation: persistence layer — the guard's job is to protect the data, not to protect one entry point. **CLOSED (2026-10-07): persistence layer.** The guard sits at the head of `prepareStoredMigration` in `packages/session/session-persistence-jsonl` (`60684b5c60`), so every opener — companion, `dsh` CLI, Python SDK — passes it; a test proves startup stops when the backup fails, and on real data 152/152 backups were `cmp`-identical with originals byte-identical.
 
-**10. Scope of the `media/*` events.** The main checkout carries five uncommitted session events (`media/approval`, `media/artifact`, `media/request`, `media/stop`, `media/task`) with their Agent Notes and the `conversation-media-creation` skill; this branch carries none of it. Commit that work to `master` before hop 3, or defer it explicitly. If it lands, both inventory patches and every fixture cover nine events, not four.
+**10. Scope of the `media/*` events.** The main checkout carries five uncommitted session events (`media/approval`, `media/artifact`, `media/request`, `media/stop`, `media/task`) with their Agent Notes and the `conversation-media-creation` skill; this branch carries none of it. Commit that work to `master` before hop 3, or defer it explicitly. If it lands, both inventory patches and every fixture cover nine events, not four. **Resolved (2026-10-07): committed.** The work landed on `master` (`bc7dd22f35` plus follow-ups, shipped in a DMG) and entered this branch through the rebaseline merge `e0064c17df`; both inventory patches and the fixtures cover nine events.
 
-**11. Acceptance wording for `pnpm run test`.** The Phase 1 exit gate says green. Hops 1–2 have 15 failures, none shown to be merge-introduced. Either keep the gate and fix them, or rewrite it as "no failing test that master does not also fail, listed per test name, error text and disposition". Rewriting an approved criterion is the owner's decision, not the operator's.
+**11. Acceptance wording for `pnpm run test`.** The Phase 1 exit gate says green. Hops 1–2 have 15 failures, none shown to be merge-introduced. Either keep the gate and fix them, or rewrite it as "no failing test that master does not also fail, listed per test name, error text and disposition". Rewriting an approved criterion is the owner's decision, not the operator's. **Answered (2026-10-07): the per-test table is the accepted standard.** The repair run recorded 16 failed / 22162 passed on the rebaselined tree, then each failing file alone on both trees: 14 pre-existing-on-master, 2 load-sensitive, 0 merge-introduced regressions (handover §0.0).
 
-**12. Authorisation of hops 1–2.** They ran while decision 9 and the backup layer, both Phase 0 exit-gate items, were open. Record that the owner authorised them, or treat both hops as provisional until the repair checkpoint passes.
+**12. Authorisation of hops 1–2.** They ran while decision 9 and the backup layer, both Phase 0 exit-gate items, were open. Record that the owner authorised them, or treat both hops as provisional until the repair checkpoint passes. **Answered (2026-10-07): retroactively authorised.** The owner authorised hops 1–2 once the repair checkpoint passed; the Phase 0 items that were open when they ran are closed on `upstream-upgrade/repair-2026-10-07`.

@@ -10,9 +10,44 @@ Two independent reviews of the plan, the branch, and this handover were run on 2
 
 ## 0. Review addendum (2026-10-07)
 
+### 0.0 Repair checkpoint executed (2026-10-07)
+
+Executed and passed on branch `upstream-upgrade/repair-2026-10-07` (HEAD `774a4b3f6a`), forked from `upstream-upgrade/2026-10-06` after a rebaseline onto `master`. Everything below was run against this repository by the checkpoint (**verified**); the per-step logs, the S7 failure table, and the verbatim S8 patch are recorded in the main checkout at `.plans/upstream-upgrade-repair/findings.md`.
+
+The branch carries the rebaseline merge `e0064c17df` plus eight commits: `bd112611c5`, `790a447cd6`, `ce5f4f430b`, `fd45067654`, `a5f8db13f2`, `1124954ae1`, `60684b5c60`, `774a4b3f6a`.
+
+**§0.5 item → outcome.**
+
+| §0.5 item | Outcome | Commit |
+|---|---|---|
+| Rebaseline onto `master` (deviation; see below) | `master` had moved past the handover's merge base: `bc7dd22f35` ships five `media/*` session events in a DMG, plus three follow-ups. The event baseline is therefore nine fork events, not four. Merged; desktop-media tests typed for the host and client aggregates; `conversation-media-creation` snapshot re-recorded on Session v3 | `e0064c17df`, `bd112611c5`, `790a447cd6` |
+| 1 — intake gate enforces its rules | The gate computes `changedUpstreamFiles` against `upstreamPin` (`dsh-v0.1.5-alpha.1`) itself. New rule 6 resolves every mounted telemetry row's endpoint and mode from the composed `cordis` config and fails on a `FORBIDDEN_ENDPOINTS` hit. Three failing-case specs: unregistered patched file, upstream-endpoint telemetry row, `undefined` E-class disposition. E-class dispositions recorded: follow-upstream-deletion ×3. 13 previously unrecorded fork edits registered in `PATCHES`. The `ignorable` inspection is typed registry data: 9 events, 152 real logs, required-not-ignorable | `fd45067654` |
+| 2 — migration evidence | Frozen v0 inventory extended to all nine fork events; team v2 admitted (deviation; see below). Real data: 152/152 sessions migrate, list, open, publish v3, and reopen. Backup guard at the persistence layer — head of `prepareStoredMigration`, covering companion, `dsh` CLI, and Python SDK — with a test that startup stops when the backup fails. On real data: 152/152 backups `cmp`-identical, originals byte-identical throughout (shasum manifest `c5e1df91…`). Scrubbed real `ask-data` log added as the whole-log replay fixture `released-v0-fork-ask-data.jsonl`; upstream-authored v0 coverage is the chain's own v0 corpus plus `released-v0-real-shapes.jsonl`. v3→v4 proven ahead of hop 3: see below | `ce5f4f430b`, `774a4b3f6a`, `60684b5c60` |
+| 3 — tabulate the failures | Full suite on the rebaselined tree: 16 failed / 22162 passed / 130 skipped. Each failing file then run alone on both trees: 14 pre-existing-on-master, 2 load-sensitive, 0 merge-introduced regressions. Table in the findings file | evidence only |
+| 4 — correct this document and the plan | This section, plus the plan's status line and decision list. Left uncommitted for owner review | this change |
+| 5 — owner decisions | Taken 2026-10-07: rebaseline first on the new branch; follow-upstream-deletion ×3; persistence-layer guard (decision 9 closed); hops 1–2 retroactively authorised once the checkpoint passed; the per-test failure table accepted as the standard | owner record |
+
+**Deviations from §0.5, recorded as deviations.**
+
+1. **The rebaseline.** §0.5 assumed the branch as it stood; the owner instead confirmed a `master` merge first (merge `e0064c17df` plus the two fix commits), so the nine-event baseline is defined once instead of patched twice.
+2. **Team-v2 admission, discovered during item 2.** Real logs carry `team/member` schema v2 payloads. The event type was already admitted; the v0→v1 payload validator needed the v2 shape (`774a4b3f6a`).
+3. **Catalog follow-ups.** The rebaseline brought the media surface into the merged tree, which required classifying it in the cordis catalog (`a5f8db13f2`; 0 violations — master still reports 2, a blind spot there) and regenerating the slot catalog for the merged client slots (`1124954ae1`).
+
+**v3 → v4 proven on a scratch branch (item 2, last bullet).** Off `dsh-v0.1.7-alpha.1`: all nine fork event types are missing from `RELEASED_V3_EVENT_TYPES`; `team/*`, including v2 payloads, is already admitted upstream. One 125-line patch on the shared constant covers both the migration stage and historical V3 reads; both real fixtures migrate with every type surviving; the package suite passes 384/384. The patch is recorded verbatim in the findings file; the scratch worktree was removed. **Re-applying that patch is hop 3's first work item.**
+
+**Closed by this checkpoint:** decision 9 (persistence layer); the three E-class dispositions (follow-upstream-deletion); the `ignorable` finding; Phase 2's hop-independent items (fixtures, backup test, real profile run). Phase 2's exit gate is effectively met at 152/152.
+
+**Still open:**
+
+- **Owner sign-off on the migration** — Phase 2's exit gate requires it explicitly; the evidence above awaits it.
+- **Hop 3** — unblocked, pending owner go. Merge `dsh-v0.1.7-alpha.1`; first work item: re-apply the S8 patch; then port `admitSelect` (§6) and keep the 48 `DU` class-C paths deleted.
+- **Phases 3, 4, 5** — not started.
+
 ### 0.1 Verdict
 
 The work is recoverable and the checkpoint is sound: hop 1 and hop 2 are real merges, the tree is clean, no conflict markers remain, and the class-C paths are absent. The execution did not honour the plan's own acceptance criteria. **Do not merge hop 3 yet.** Run the repair checkpoint in §0.5 first.
+
+Update, later on 2026-10-07: the §0.5 checkpoint has been executed and passed on `upstream-upgrade/repair-2026-10-07`; see §0.0. Hop 3 stays unmerged pending the owner's go.
 
 Evidence labels used below: **verified** means a reviewer ran the check against this repository; **reported** means a reviewer relied on the handover or on the other review and did not reproduce it.
 
@@ -24,16 +59,16 @@ This table replaces the status prose in §3, §4 and §7 where they conflict.
 |---|---|---|
 | Hop 1 and hop 2 merged cleanly | verified: both tags are ancestors of `HEAD`, `git status` empty, no conflict markers outside `vendor/` and `*.md` | none |
 | Class-C paths absent | verified: `apps/desktop-host`, `packages/telemetry`, `packages/host/product-telemetry-otel`, `packages/client/product-analytics` do not exist | none |
-| Telemetry default is off | verified: `bundle/base/cordis.patch.yml` resolves `mode` to `DISABLED` and has no endpoint default | add a test that fails if an endpoint default returns (§0.3 item 2) |
-| `pnpm run test` green | **not met**: 15 failures, reported | per-test table with name, error, master result, disposition (§0.3 item 3); owner decides the acceptance wording |
-| Intake gate enforces patch completeness and E-class decisions | **not met**: those rules run only when `changedUpstreamFiles` is supplied, and nothing supplies it | wire the input, then fill the E-class dispositions (§0.3 item 2) |
-| Intake gate rejects an upstream-endpoint telemetry row | **not met**: mount check tests registration only; `FORBIDDEN_ENDPOINTS` is declared and never referenced | resolve each mounted row's endpoint and mode, and fail on a forbidden one |
-| Fork session events survive v0 → current | partial: the four events are patched into the `v0-to-v1` inventory, which `v1-to-v2` and `v2-to-v3` derive from (§0.3 item 1); v3 → v4 is **unpatched and will refuse them** | patch `RELEASED_V3_EVENT_TYPES` at hop 3 and prove it with a real log |
-| Real legacy data migrates | **not run**: no shipped-DMG fixture, no upstream-authored fixture, no copied-profile run | §0.5 step 2 |
-| Pre-migration guard owner named | **open** (decision 9) | owner decides; recommendation is the persistence layer |
-| E-class dispositions (`e2b`, `code-runtime`, `runtime-diagnostics`) | **open**: all `undefined` | owner decides per package |
-| `ignorable` finding recorded | **open**: inspected, not in the registry | write it into `scripts/upstream-intake-registry.ts` |
-| Phase 0 exit gate met before Phase 1 | **not met**: decision 9 and the backup layer were open when hops 1–2 ran | owner records authorisation for hops 1–2, or marks them provisional |
+| Telemetry default is off | verified: `bundle/base/cordis.patch.yml` resolves `mode` to `DISABLED` and has no endpoint default | none — gate rule 6 resolves mounted rows' endpoints and modes from the composed config and fails on a forbidden one (`fd45067654`) |
+| `pnpm run test` green | 16 failed / 22162 passed on the rebaselined tree; per-test isolation on both trees: 14 pre-existing-on-master, 2 load-sensitive, 0 regressions (§0.0) | none — the per-test failure table is the owner-accepted standard (2026-10-07) |
+| Intake gate enforces patch completeness and E-class decisions | verified: gate computes `changedUpstreamFiles` itself; 13 previously unrecorded fork edits registered (`fd45067654`) | none (`fd45067654`) |
+| Intake gate rejects an upstream-endpoint telemetry row | verified: rule 6, with a failing-case spec (`fd45067654`) | none (`fd45067654`) |
+| Fork session events survive v0 → current | verified: v0 inventory covers all nine fork events plus team v2 (`ce5f4f430b`, `774a4b3f6a`); v3→v4 proven on a scratch branch off the hop-3 tag, patch recorded verbatim in the findings file (§0.0) | re-apply the proven `RELEASED_V3_EVENT_TYPES` patch as hop 3's first work item |
+| Real legacy data migrates | verified: 152/152 real logs migrate, list, open, publish v3, and reopen; originals byte-identical throughout (§0.0) | owner sign-off |
+| Pre-migration guard owner named | closed: persistence layer, guard at the head of `prepareStoredMigration` with a stop-on-failed-backup test (`60684b5c60`) | none |
+| E-class dispositions (`e2b`, `code-runtime`, `runtime-diagnostics`) | closed: follow-upstream-deletion ×3, recorded in the registry (`fd45067654`) | none |
+| `ignorable` finding recorded | closed: typed registry data — 9 events, 152 real logs, required-not-ignorable (`fd45067654`) | none |
+| Phase 0 exit gate met before Phase 1 | closed: the owner retroactively authorised hops 1–2 once the repair checkpoint passed (2026-10-07) | none |
 | Phase 3, 4, 5 | not started | after Phase 2 |
 
 ### 0.3 Findings added by review
