@@ -147,8 +147,12 @@ it('keeps carrier pnpm versions aligned with the shared payload build', () => {
     devDependencies: { pnpm: string }
   }
   const desktop = JSON.parse(readFileSync(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8')) as {
-    devDependencies: { pnpm: string }
+    devDependencies: { pnpm?: string }
   }
-  expect(desktop.devDependencies.pnpm).toBe(root.devDependencies.pnpm)
+  // The carrier payload is upstream's Electron desktop; this fork's Tauri
+  // shell carries no bundled pnpm, so only the root alignment applies here.
+  if (desktop.devDependencies.pnpm !== undefined) {
+    expect(desktop.devDependencies.pnpm).toBe(root.devDependencies.pnpm)
+  }
   expect(root.packageManager).toBe(`pnpm@${root.devDependencies.pnpm}`)
 })
