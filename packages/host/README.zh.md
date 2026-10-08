@@ -9,7 +9,7 @@ kind: "package-group"
 
 ## 概述
 
-`host/` 组提供 Web GUI 的普通 HTTP 服务器、服务已构建 Web 壳的 SPA dist 服务器、带原生／浏览／自适应组合包的工作区目录选择 seam、open-in-app 的应用探测与启动路由、单层工作区文件列表 seam、问数列表／导入／绑定 seam、商务数据源／导入／绑定／读取／分析 seam、问知识目录／入库／挂接／检索 seam，以及只读的插件清单投影。这十二个包都是产品包；浏览器传输位于 [`client/`](../client/README.zh.md)，组合应用是 [`apps/cli`](../../apps/cli/README.zh.md)，它启动 [`dsh-base` 组合包](../bundle/base/cordis.patch.yml) 来提供 `apps/web/` 下的 Web 应用。选择器后端可在共享 seam 后互相替换。
+`host/` 组提供 Web GUI 的普通 HTTP 服务器、服务已构建 Web 壳的 SPA dist 服务器、带原生／浏览／自适应组合包的工作区目录选择 seam、open-in-app 探测与启动路由、单层工作区文件列表 seam、问数 list/import/bind seam、商务 source/import/bind/read/analysis seam、问知识 catalog/ingest/attach/retrieve seam，以及只读的插件清单投影。这十二个包都是产品包；浏览器传输位于 [`client/`](../client/README.zh.md)，而 [`apps/cli`](../../apps/cli/README.zh.md) 启动 [`dsh-base` 组合包](../bundle/base/cordis.patch.yml) 以提供 `apps/web/`。
 
 ## 目录
 

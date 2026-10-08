@@ -182,31 +182,22 @@ Docs accompany every code change: update affected README and JSDoc contracts tog
 <!-- CCB-TEAM-ROUTING:START -->
 ## CCB Team Role Routing
 
-This section applies only to CCB-managed agents for this project. Ordinary
-Codex, Cursor, Claude, or other sessions outside this project's CCB runtime
-must ignore it.
+This section applies only to CCB-managed agents for this project. Ordinary Codex, Cursor, Claude, or other sessions outside this project's CCB runtime must ignore it.
 
 Activate the routing only when at least one of these conditions is true:
 
 - `CCB_CALLER_ACTOR` is exactly `opus`, `sol`, or `grok`; or
-- the effective `HOME` path is below this project's
-  `.ccb/agents/<agent>/provider-state/` directory and `<agent>` is exactly
-  `opus`, `sol`, or `grok`.
+- the effective `HOME` path is below this project's `.ccb/agents/<agent>/provider-state/` directory and `<agent>` is exactly `opus`, `sol`, or `grok`.
 
 At the beginning of a CCB-managed task:
 
-1. Determine the logical agent from `CCB_CALLER_ACTOR`. If unavailable,
-   inspect `HOME` and extract the agent name only from the managed path shape
-   above.
+1. Determine the logical agent from `CCB_CALLER_ACTOR`. If unavailable, inspect `HOME` and extract the agent name only from the managed path shape above.
 2. Read `.ccb/ccb_memory.md`.
-3. Read only the matching private memory:
-   `.ccb/agents/<agent>/memory.md`.
+3. Read only the matching private memory: `.ccb/agents/<agent>/memory.md`.
 4. Apply the shared contract and that one private role for the current task.
 5. Do not load or impersonate another CCB agent's private role.
 
-If identity cannot be established by these rules, do not guess and do not
-activate a CCB role. The current user request and higher-priority instructions
-always override CCB memory.
+If identity cannot be established by these rules, do not guess and do not activate a CCB role. The current user request and higher-priority instructions always override CCB memory.
 <!-- CCB-TEAM-ROUTING:END -->
 
 ## Learned User Preferences
@@ -239,5 +230,5 @@ always override CCB memory.
 - "Ask knowledge" is overlay `experimental/desktop-ask-knowledge`: library directory defaults to `<app_data_dir>/knowledge-bases` (workspace holds shortcuts); Python sidecar is built into the DMG by `scripts/build-kb-sidecar.sh`; routes between ingestion and "session-only document view".
 - Homepage atmosphere is overlay `experimental/desktop-hero-atmosphere`, occupying the official `conversation.atmosphere` slot; only plays the beach loop (K0 poster + short GOP) on blank Hero, fades when conversation starts, `prefers-reduced-motion` keeps only K0; seeded via `desktop-profile-plugins`, not written into official `desktop-app`.
 - Upstream selective upgrade runs on staged hops on branch `upstream-upgrade/repair-2026-10-07` in worktree `/Users/apple/octopus-upstream-upgrade` (the only authoritative plan copy: `docs/plans/2026-10-06-upstream-selective-upgrade.md`); hops 1–2 merged (`dsh-v0.1.3-alpha.1`, `dsh-v0.1.5-alpha.1`), the 2026-10-07 repair checkpoint passed (real-data migration 152/152, intake gate enforcing, 0 test regressions); hop 3 (`dsh-v0.1.7-alpha.1`) is unblocked pending owner go, with the 125-line `RELEASED_V3_EVENT_TYPES` patch recorded verbatim in the plan docs as its first work item, then the `admitSelect` port into `agent-preset-registry` (upstream removed the hook; the fork's ask-data select gate would silently no-op without it).
-- Fork provenance against upstream lives as machine-checked data in `scripts/upstream-intake-registry.ts` (patches, never-merge, dispositions, mounts, forbidden endpoints, the ignorable inspection over 152 real logs, `UPSTREAM_PIN`); `pnpm run verify-upstream-intake` computes its own pin diff and fails on unregistered edits, undefined dispositions, or telemetry resolving to forbidden endpoints — register new fork edits there at every hop.
+- The fork's recorded deltas against upstream live as machine-checked data in `scripts/upstream-intake-registry.ts` (patches, never-merge, dispositions, mounts, forbidden endpoints, the ignorable inspection over 152 real logs, `UPSTREAM_PIN`); `pnpm run verify-upstream-intake` computes its own pin diff and fails on unregistered edits, undefined dispositions, or telemetry resolving to forbidden endpoints — register new fork edits there at every hop.
 - Released session logs migrate under a backup-or-stop guard at `prepareStoredMigration` in `packages/session/session-persistence-jsonl` (`<source>.pre-migration.bak`, fsync, size-verified, idempotent; `JsonlMigrationBackupError`): the fork's 9 session events (4 bound + 5 `media/*`) and team/member v2 are required (not ignorable) in real logs and are admitted by the frozen v0 inventory; extending that inventory (version-conditional validation) is the pattern for any future fork event or schema bump.

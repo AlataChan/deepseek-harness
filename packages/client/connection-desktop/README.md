@@ -32,6 +32,6 @@ None; this package neither assembles nor sends a provider request.
 - **Claimed stdio only** — Host apply uses the process-wide claimed stdio port; this plugin does not construct a second `StdioLinePort`.
 - **Launch-time workspace only** — the companion reads `--workspace-root` once; Client directory-picker rows do not restart it.
 
-## Dev Note
+### Dev Note
 
 Wire changes belong in `dsh-client-connection-process`, not here — this package only re-exports its Host apply and owns no protocol. Host apply uses the process-wide claimed stdio port, so it must not construct a second `StdioLinePort`, and the companion reads `--workspace-root` once at launch.

@@ -13,6 +13,17 @@ const organizationUrl = new RegExp(`\\bgithub\\.com/${organization}(?![a-z0-9-])
 const kitRepositoryUrl = new RegExp(`\\bgithub\\.com/${organization}/libreoffice-kit(?:\\.git)?(?=/|[^a-zA-Z0-9_.-]|$)`, 'g')
 const commitCandidate = /(?<![a-z0-9])[\da-f]{7,40}(?![a-z0-9])/gi
 const excludedPrefixes = ['vendor/', '.agents/notes/archived/']
+/**
+ * Fork upgrade records whose subject IS the commit trail: the staged-upgrade
+ * plan, its handover, and the repair-checkpoint note pair cite the branch's
+ * commits as their evidence, and the S8 re-application steps depend on them.
+ */
+const excludedRecords = [
+  'docs/plans/2026-10-06-upstream-selective-upgrade.md',
+  'docs/plans/2026-10-06-upstream-upgrade-handover.md',
+  '.agents/notes/implemented/process/2026-10-07-upstream-upgrade-repair-checkpoint.md',
+  '.agents/notes/implemented/process/2026-10-07-upstream-upgrade-repair-checkpoint.zh.md',
+]
 const gitOutputLimit = 64 * 1024 * 1024
 
 /** One prohibited reference in a maintained source file. */
@@ -26,7 +37,7 @@ export interface RepositoryReference {
 }
 
 function isMaintained(file: string): boolean {
-  return !excludedPrefixes.some(prefix => file.startsWith(prefix))
+  return !excludedPrefixes.some(prefix => file.startsWith(prefix)) && !excludedRecords.includes(file)
 }
 
 /**

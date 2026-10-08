@@ -9,13 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-`desktop-ask-data` 是私有桌面 overlay：先选或导入数据源，再开始提问。它提供 `ctx.askData`、占用问数 Hero 与 gate 孔位，并拥有其他 workspace 包复用的表格解码器；数据源行来自 overlay 账本与未匹配的 data-agent 连接，只有「开始提问」才会把数据源提交到会话。
-
-octopus_DSH 私有 overlay：[`ctx.askData`](../../host/ask-data/README.zh.md) 的 Provider，以及 `conversation.hero.askData` 与 `conversation.askData.gate` 的 Client 占位。同时占用 `sidebar.brand.mark`、`sidebar.brand.name`、`conversation.hero.brand.mark` 和 `conversation.hero.headline`，窗内品牌位显示为「小绿鲸」，首页口号是「先选工作文件夹，再提问」。侧栏「设置」的通用页有「工作文件夹」一行，用来打开隐藏的桌面设置面板。问数 chip 与工作区、模式控件同一套几何，并带数据图标。官方 `dsh-desktop-app` 与默认 `standard` 助理不点名本包。桌面 profile 种子会复制构建后的目录（[scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json) 中 `source: "workspace"`）。
-
-路径是先有数据。点「问数」会 `hold` 住 `data-agent` 并打开数据源页；再点一次 chip、页面自带的关闭控件、以及「取消」都能退出，而且退出不等 preset 回退成功 —— preset 被拒由 preset 座位自己报出来。 空白页先给一行摘要，上传规则与避坑收进披露。主按钮仍是 **先用示例试一次**，另有 **下载填写模板**，其次上传 `.xlsx` / `.csv`，再次 **连接已有数据库**。模板按钮会复制 CSV（Tauri WebView 没有下载栏）并提示已复制，或给出可复制文本。**连接已有数据库** 会关掉数据源页并打开数据模式会话，好让工作台按钮露出来；该会话不会自动再打开数据源页。用户保存连接后，再点「问数」，从名单里选这份库。导入只把 sqlite 写到已解析的 profile home `data-sources/`，不开会话。同名文件再次上传会就地替换那一行，所以一份文件始终是一个数据源，「最近使用」不会出现重复行。名单行只负责点选，行上没有「开始提问」。每行有字母头像和「示例 / 表格 / 已保存」徽章。用户点选一行，或用示例/上传导入之后，页上才出现唯一的「开始提问」，并且只提交这份源。`commitAskData` 只在当前会话空白且未绑定时带上 `sessionId`；当前已绑另一份源时会新建会话；点到当前已绑的那份源则直接打开该会话。绑定后启动 Catalog 扫描，避免第一次 `catalog-search` 因目录为空报错。最近用过的行不会在「全部数据源」里再出现；名单里的行如果都已在最近使用中，就不画全部数据源这一段。普通用户在顺畅路径上不用输入 SQLite 路径。
-
-硬限制集中在 `src/limits.ts`，只在模型可见段落里点名：页首、上传旁、预览和失败恢复读的是句子，由 `rule-copy.ts` 把每条规则 id 和每个预览告警 id 映射过去。`RULE_EXPLANATIONS` 以封闭的规则 id 集合作键，所以新规则不配好文案就编译不过，而且任何面向用户的字符串都不含规则 id。Session Controller 把所有 ask-data 失败都报成 `session/ask-data-failed`，seam 自己的 code 放在 details 里，所以失败句子按那个 code 解析，遇到本 overlay 不认识的 code 就回落到线上原文。本机没有 `sqlite3` 时只禁用上传；`importSample` 复制 `samples/sample-sales.sqlite`。向该文件提问仍需要 data-agent 的 `sqlite3` CLI。
+`desktop-ask-data` 是私有桌面 overlay：先选或导入数据源，再开始提问。它提供 `ctx.askData`、占用问数 Hero、gate 与窗内品牌孔位，并拥有其他 workspace 包复用的表格解码器；数据源行来自 overlay 账本与未匹配的 data-agent 连接，只有「开始提问」才会把数据源提交到会话。桌面 profile 种子会安装本包；官方 `dsh-desktop-app` 与默认 `standard` 助理不点名它。
 
 ## 目录
 
@@ -47,7 +41,15 @@ octopus_DSH 私有 overlay：[`ctx.askData`](../../host/ask-data/README.zh.md) �
 <a id="model-experience"></a>
 ## 模型体验
 
+### 绑定限制段
+
+#### 模型看到的内容
+
 已有 `askDataBinding` 时，动态 `ask-data:limits` system-prompt 段写出同一套规则 id。冷恢复在第一次 assemble 就能看到。表格字节不会进入会话日志。
+
+#### Token 影响
+
+会话保持绑定时，一段固定规则 id 常驻提示词；未绑定的会话不出现该段。
 
 #### KV Cache 影响
 
@@ -61,6 +63,6 @@ octopus_DSH 私有 overlay：[`ctx.askData`](../../host/ask-data/README.zh.md) �
 - **不改写仍列出 `dsh-context` 的用户 profile** — companion 启动必须把失败亮给窗口
 
 <a id="dev-note"></a>
-## 开发备注
+### 开发备注
 
 `RULE_EXPLANATIONS` 以封闭规则 id 集合作键，所以新增限制或预览告警必须同时补上用户文案；面向用户的字符串不带规则 id，ask-data 失败都经 `session/ask-data-failed` 的 details code 到达窗口。其他 workspace 包走受支持的 `/spreadsheet` 入口而不是源码路径，其导出的 `AskDataError` 错误码必须与 `dsh-host-ask-data` 保持一致。

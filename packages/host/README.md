@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `host/` group provides the web GUI's plain HTTP server, the SPA dist server that serves the built Web shell, the workspace-directory picking seam with its native, browse, and adaptive composition packages, the open-in-app application probe and launch routes, the one-level workspace file listing seam, the ask-data listing/import/bind seam, the commerce source/import/bind/read/analysis seam, the ask-knowledge catalog/ingest/attach/retrieve seam, and the read-only plugin inventory projection. All twelve packages are product packages; the browser transport lives in [`client/`](../client/README.md), and the composed application is [`apps/cli`](../../apps/cli/README.md) booting the [`dsh-base` bundle](../bundle/base/cordis.patch.yml) that serves the web app under `apps/web/`. The picker backends replace one another behind the shared seam.
+The `host/` group provides the web GUI's plain HTTP server, the SPA dist server for the built Web shell, the workspace-directory picking seam with its native, browse, and adaptive composition packages, the open-in-app probe and launch routes, the one-level workspace file listing seam, the ask-data list/import/bind seam, the commerce source/import/bind/read/analysis seam, the ask-knowledge catalog/ingest/attach/retrieve seam, and the read-only plugin inventory projection. All twelve packages are product packages; the browser transport lives in [`client/`](../client/README.md), and [`apps/cli`](../../apps/cli/README.md) boots the [`dsh-base` bundle](../bundle/base/cordis.patch.yml) that serves `apps/web/`.
 
 ## Table of Contents
 

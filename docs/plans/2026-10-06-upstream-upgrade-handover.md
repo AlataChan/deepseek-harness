@@ -12,6 +12,8 @@ Two independent reviews of the plan, the branch, and this handover were run on 2
 
 ### 0.0 Repair checkpoint executed (2026-10-07)
 
+**Hop 3 executed and verified (2026-10-08).** `dsh-v0.1.7-alpha.1` merged as `c5c753a3c9` (3269 commits, session format v3 → v4), followed by `f7d70c7137` (57 fork call sites adapted), `899f836b97` (the S8 patch replayed: nine fork events into `RELEASED_V3_EVENT_TYPES`, 384/384), `1cba5bdc2b` (`admitSelect` ported into `agent-preset-registry` and re-wired through session-controller), `7f988367cf` (catalog + `TeamTaskMutationResult`), `a3feb5b842` (hop-3 renames in links; `verify-md-links` exemption for the class-C-deleted desktop surface), `994e45b608` (pin advanced to hop 3; four newly registered fork edits), `40fe7da3f2` (corpus re-recorded on v4), and the triage set `ea96eb58bf` → `e8fc115f85`. Verification: build, both compiler faces, `test:snapshot` 179 passed, intake gate, md-links (2329 files), translation pairing (1161 pairs); the unit suite passes 34827 tests, and every residual failure is a load-induced timeout whose file passes in isolation (the 10-file isolated batch runs 497/498, the last one fixed in `e8fc115f85`). Four silent fork-feature losses were found and fixed during triage: the desktop-companion tsdown entry (companion never built — caught by the assembled-handshake test), three payload rules in `check-workspace-constraints`, the `openTeammate` navigation guard, and the Agent Teams release fields from upstream `63187de80f`. **Remaining: hop 4 (`dsh-v0.2.1-alpha.1`, no format change) pending owner go; owner's migration sign-off; then Phases 3–5.**
+
 Executed and passed on branch `upstream-upgrade/repair-2026-10-07` (HEAD `774a4b3f6a`), forked from `upstream-upgrade/2026-10-06` after a rebaseline onto `master`. Everything below was run against this repository by the checkpoint (**verified**); the per-step logs, the S7 failure table, and the verbatim S8 patch are recorded in the main checkout at `.plans/upstream-upgrade-repair/findings.md`.
 
 The branch carries the rebaseline merge `e0064c17df` plus eight commits: `bd112611c5`, `790a447cd6`, `ce5f4f430b`, `fd45067654`, `a5f8db13f2`, `1124954ae1`, `60684b5c60`, `774a4b3f6a`.
@@ -226,7 +228,7 @@ The owner asked me to reconcile my proposals against the plan. This is that reco
 | Backup test at the named layer | Phase 2 checklist | **Absent** |
 | Real legacy profile copy opens and lists every session | Phase 2 checklist / Phase 4 exit gate | **Never run** |
 | Owner sign-off on the migration | Phase 2 exit gate | **Not obtained** |
-| Provenance Agent Note; `AGENTS.md` Learned Workspace Facts | Phase 0 actions 3–4 | **Not committed.** The `AGENTS.md` line is an uncommitted edit in the main checkout; no Agent Note exists. |
+| Intake-registry Agent Note; `AGENTS.md` Learned Workspace Facts | Phase 0 actions 3–4 | **Not committed.** The `AGENTS.md` line is an uncommitted edit in the main checkout; no Agent Note exists. |
 | Intake registry as a *document* (`docs/plans/2026-10-06-upstream-intake-registry.md`) | Phase 0 action 2 | Deliberate deviation: built as machine-checked data in `scripts/upstream-intake-registry.ts` instead. The plan names a markdown ledger; decide whether to accept the deviation. |
 | Phase 3 — 36 client patches onto official slots | Phase 3 | Not started. Needed slots (`ui-sidebar-right`, `ui-dockkit`, `ui-brand-official`, `ui-agent-preset`) are present as of hop 2. |
 | Phase 4 — Tauri retained, packaging convergence, legacy upgrade | Phase 4 | Not started |
@@ -236,7 +238,7 @@ The owner asked me to reconcile my proposals against the plan. This is that reco
 The plan's order is correct; what went wrong was my execution of it. Run the §0.5 repair checkpoint first, then restore the order:
 
 1. **Phase 0 remainder**
-1. **Phase 0 remainder** — decision 9, the backup owner, E-class dispositions, record the `ignorable` finding, write the provenance Agent Note and the `AGENTS.md` facts.
+1. **Phase 0 remainder** — decision 9, the backup owner, E-class dispositions, record the `ignorable` finding, write the intake-registry Agent Note and the `AGENTS.md` facts.
 2. **Phase 2's hop-independent items** — a captured real v0 log as a fixture, an upstream-authored v0 fixture, the backup test at whatever layer step 1 names.
 3. **Hop 3** — merge, keep the 48 `DU` paths under `apps/desktop*` deleted (class C), resolve the 3 `UD` and 109 `UU`, port `admitSelect` into `agent-preset-registry`, patch `RELEASED_V3_EVENT_TYPES` for the fork's events (§0.3 item 1), rebuild, `DSH_SNAPSHOT=refresh`, gates.
 4. **Phase 2's exit gate** — on a *copied* legacy profile: sessions listed, sessions open, backup created and non-empty, rollback tested. Owner signs off. The stop condition applies: **if a genuine legacy log cannot be read, stop.**

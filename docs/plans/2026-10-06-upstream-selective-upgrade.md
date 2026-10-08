@@ -1,11 +1,19 @@
 # Upstream Selective Upgrade Plan (fork master → upstream dsh-v0.2.1-alpha.1)
 
 Mode: integrate
+
 Space: upstream-selective-upgrade
+
 Created: 2026-10-06
-Revised: 2026-10-07 (round 3 execution review and repair-checkpoint record integrated)
+
+Revised: 2026-10-08 (hop 3 executed and verified)
+
 Architect: pi (draft for owner review)
-Status: **REPAIR CHECKPOINT PASSED (2026-10-07) on branch `upstream-upgrade/repair-2026-10-07` — the `master` rebaseline merge `e0064c17df` plus eight commits: `bd112611c5`, `790a447cd6`, `ce5f4f430b`, `fd45067654`, `a5f8db13f2`, `1124954ae1`, `60684b5c60`, `774a4b3f6a`. Hops 1–2 (`dsh-v0.1.3-alpha.1`, `dsh-v0.1.5-alpha.1`) are retroactively authorised (owner, 2026-10-07, on checkpoint pass). Decision 9 is closed (persistence layer); the E-class dispositions are recorded (follow-upstream-deletion ×3). Hop 3 is unblocked pending owner go; its first work item is re-applying the proven v3→v4 patch to `RELEASED_V3_EVENT_TYPES`. Full record: [handover](2026-10-06-upstream-upgrade-handover.md) §0.0.**
+
+Status: **HOP 3 MERGED AND VERIFIED (2026-10-08) on branch `upstream-upgrade/repair-2026-10-07`.** `dsh-v0.1.7-alpha.1` (3269 commits, session format v3 → v4) is merged as `c5c753a3c9`, followed by the adaptation and verification set: `f7d70c7137` (57 fork call sites), `899f836b97` (the proven v3→v4 patch: nine fork events into `RELEASED_V3_EVENT_TYPES`), `1cba5bdc2b` (the `admitSelect` hook ported into `agent-preset-registry` — the silent-loss hazard is closed), `7f988367cf` (catalog), `a3feb5b842` (hop-3 renames and the deleted-surface link exemption), `994e45b608` (pin to hop 3 + four newly registered fork edits), `40fe7da3f2` (corpus re-recorded on v4), plus the triage set (see the handover §0.0 record). Verified: build, both compiler faces, `test:snapshot` 179 passed, intake gate, md-links 2329 files, translation pairing 1161 pairs; the unit suite passes 34827 tests with the residual timeouts classified as load-only (each file green in isolation). Hop 3's triage surfaced and fixed four silent fork-feature losses: the desktop-companion tsdown entry, three payload rules in the workspace-constraint helper, the `openTeammate` navigation guard, and the Agent Teams release fields. **Next: hop 4 (`dsh-v0.2.1-alpha.1`, no format change), pending owner go.**
+
+Prior status: **REPAIR CHECKPOINT PASSED (2026-10-07)** — the `master` rebaseline merge `e0064c17df` plus eight commits: `bd112611c5`, `790a447cd6`, `ce5f4f430b`, `fd45067654`, `a5f8db13f2`, `1124954ae1`, `60684b5c60`, `774a4b3f6a`. Hops 1–2 (`dsh-v0.1.3-alpha.1`, `dsh-v0.1.5-alpha.1`) are retroactively authorised (owner, 2026-10-07). Decision 9 is closed (persistence layer); the E-class dispositions are recorded (follow-upstream-deletion ×3). Full record: [handover](2026-10-06-upstream-upgrade-handover.md) §0.0.
+
 Authority: this branch copy is the only authoritative copy of the plan. The copy on `master` (`db435dd4d6`) is superseded and not edited.
 
 Plan Review:
@@ -85,7 +93,7 @@ Two independent reviews (Oz and Codex) checked the branch after hop 2 against th
 
 ### Round 1
 
-Accepted and integrated: the frozen-inventory problem (1); the `packages/feedback` contradiction (2); Checklist A provenance (3); the missing label for upstream deletions (4); the Phase 4 / C-table inconsistency (5); unclassified `apps/desktop-host` and `packages/host/*` (6); the architecture-vs-Phase-1 wording conflict (7); the client patch count (8); the gate script convention (9); the unnamed data directories (10); the overstated Agent Note claim (11); and finding 12, which escalated.
+Accepted and integrated: the frozen-inventory problem (1); the `packages/feedback` contradiction (2); Checklist A intake records (3); the missing label for upstream deletions (4); the Phase 4 / C-table inconsistency (5); unclassified `apps/desktop-host` and `packages/host/*` (6); the architecture-vs-Phase-1 wording conflict (7); the client patch count (8); the gate script convention (9); the unnamed data directories (10); the overstated Agent Note claim (11); and finding 12, which escalated.
 
 **Correction C — round 1, finding 5.** The reviewer stated "no `prepare-runtime` exists". It does: `apps/desktop/scripts/prepare-runtime.ts` and `prepare-runtime-manifests.ts`. Round 2's S5 supersedes this row's fix entirely by replacing the list with an import audit.
 
@@ -172,14 +180,14 @@ Two hard boundaries that round 2 proved necessary:
 
 # Phases
 
-## Phase 0 — Ledger, provenance, and the two product decisions
+## Phase 0 — Ledger, intake records, and the two product decisions
 
 **Actions**
 
 1. This document, reviewed and approved.
 2. `docs/plans/2026-10-06-upstream-intake-registry.md` — the working ledger: every C-class mount and path, every B-class slot mapping, every registered patch with a reason and an owner, every E-class decision, and every telemetry mount with its resolved endpoint.
-3. An Agent Note **recording the `apps/desktop` provenance finding** (not a reversal — `AGENTS.md` carries the Tauri fact without reasoning; the note supplies the reasoning so the question is not reopened).
-4. `AGENTS.md` "Learned Workspace Facts" updated with the same provenance.
+3. An Agent Note **recording the `apps/desktop` path-collision finding** (not a reversal — `AGENTS.md` carries the Tauri fact without reasoning; the note supplies the reasoning so the question is not reopened).
+4. `AGENTS.md` "Learned Workspace Facts" updated with the same facts.
 5. Resolve **decision point 8** (telemetry endpoint and consent) and **decision point 9** (which layer owns the pre-migration guard). Records become registry entries.
 6. Decide which process owns the Phase 2 backup-or-stop. The honest scope limit is F2: a guard at companion boot does **not** cover the `dsh` CLI or the Python SDK opening the same home. Either move the guard to the persistence layer, or record the limitation explicitly.
 
@@ -265,10 +273,7 @@ After the hop-2 merge, `AGENTS.md` carries "Pre-stable APIs and released Session
 2. **Inspect a real fork-written v0 log** to determine whether its four events carry `ignorable: true`. Done on 152 real logs: they do not. Record the result in the registry.
 3. Patch the inventories as registered A-class patches: the v0→v1 table (`dispositions.ts`, plus `payload-validation.ts` for the four payloads), which reaches v1→v2 and v2→v3; and `RELEASED_V3_EVENT_TYPES` in `session-format-v3-to-v4/src/extension-identities.ts` at hop 3.
 4. Regenerate the persistence catalog and `packages/core/session/src/known-event-types.ts`; `verify-persistence-catalog` gates this.
-5. Back up **both** data roots before the new Host first opens old data, at the layer named in Phase 0:
-   - `~/Library/Application Support/studio.octopus.dsh`
-   - `~/.dsh` (or `$DSH_HOME`)
-   Startup stops if the backup fails. See F2 for the scope limit. Design this step against the adjacent-migration rule in `AGENTS.md`: persistence appends a version-named successor and never moves, overwrites or deletes the predecessor generation, so the backup's remaining job is the data the migration does not own.
+5. Back up **both** data roots (`~/Library/Application Support/studio.octopus.dsh` and `~/.dsh` or `$DSH_HOME`) before the new Host first opens old data, at the layer named in Phase 0. Startup stops if the backup fails. See F2 for the scope limit. Design this step against the adjacent-migration rule in `AGENTS.md`: persistence appends a version-named successor and never moves, overwrites or deletes the predecessor generation, so the backup's remaining job is the data the migration does not own.
 6. Retain a rollback path and test it. Read `.agents/notes/implemented/architecture/2026-08-31-released-session-format-migrations.md` first; it defines what an older build can and cannot read after a successor exists.
 
 ### Checklist
@@ -522,8 +527,8 @@ Each decision records what replaces the package upstream (if anything) and wheth
 # Deliverables
 
 1. This plan and the intake registry, approved.
-2. An Agent Note recording the `apps/desktop` provenance finding and the intake taxonomy.
-3. `AGENTS.md` "Learned Workspace Facts" corrected on `apps/desktop` provenance.
+2. An Agent Note recording the `apps/desktop` path-collision finding and the intake taxonomy.
+3. `AGENTS.md` "Learned Workspace Facts" corrected on the `apps/desktop` path collision.
 4. `scripts/verify-upstream-intake.ts` + spec, wired into the hygiene gate group, proven to reject a seeded violation and confirmed to pass on the real post-merge tree.
 5. A green merge on `master`, pushed to `fork` and the Gitee mirror.
 6. A DMG built, verified against `verify-desktop-bundle.sh`, and tested against a copied legacy profile.
@@ -552,7 +557,7 @@ Staging therefore **does** buy incremental session validation: three separate ve
 
 **5. Knowledge sidecar.** Confirm `desktop-ask-knowledge`'s Python sidecar stays in scope through Phase 4.
 
-**6. Agent Note scope.** Recommendation: two notes — one for provenance plus taxonomy, one for the session migration.
+**6. Agent Note scope.** Recommendation: two notes — one for the intake registry plus taxonomy, one for the session migration.
 
 **7. Session migration path — answered; implemented through hop 2; owner confirmation outstanding.** Patch the inventories (option (a)), because fork-v0 is a superset of upstream-v0 and a superset decoder needs no routing. Two patches: the v0→v1 table (landed in `57f8c5271d`, reaches v1→v2 and v2→v3) and `RELEASED_V3_EVENT_TYPES` (due at hop 3). Requires the captured-real-log fixture. Confirm, or explain what would make (b) preferable.
 

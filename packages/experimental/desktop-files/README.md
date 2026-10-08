@@ -9,13 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`desktop-files` is the private desktop overlay for the session `cwd` file tree: the Host half implements `ctx.workspaceEntries` with a fully-qualified, lexical, and `realpath` fence, and the Client half occupies `sidebar.files`. File clicks open through `session.openWorkspacePath`; there is no in-app editor, Git, or terminal surface.
-
-Private octopus_DSH overlay: the Provider for [`ctx.workspaceEntries`](../../host/workspace-entries/README.md) plus the Client occupant of `sidebar.files`. Official `dsh-desktop-app` and `PROFILE_TEMPLATES.desktop` do not name this package. The desktop profile seed copies the built tree (`source: "workspace"` in [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json)).
-
-The Host default export is `DesktopWorkspaceEntries`. `list({ root, path? }, signal)` lists one directory level inside `root`. The fence is fully-qualified paths, lexical containment (including Windows cross-drive `path.relative`), and `realpath` containment; `opendir` uses the canonical directory. One level is bound at `config.maxEntries` (default 1000) and then `truncated`. Names `{ node_modules, .git, dist, coverage }` are omitted. Directory symlinks whose `realpath` leaves `realpath(root)` fail as `entries-outside-root` and do not list the outside tree.
-
-The Client face registers through `ctx.slots.inject('sidebar.files', …)`. The tree root is the current session `cwd` via `session.listEntries({ sessionId, path? })` — the client never sends a `root`. File clicks call `session.openWorkspacePath`. Broken symlinks stay red and do not open. Hidden rows are a client-only filter. Official web leaves `sidebar.files` empty; occupancy (not `renderSlot` truthiness) is what draws the 会话 / 文件 switch.
+`desktop-files` is the private desktop overlay for the session `cwd` file tree: the Host half implements `ctx.workspaceEntries` with a fully-qualified, lexical, and `realpath` fence, and the Client half occupies `sidebar.files`. File clicks open through `session.openWorkspacePath`; there is no in-app editor, Git, or terminal surface. The desktop profile seed installs it; official `dsh-desktop-app` and `PROFILE_TEMPLATES.desktop` do not name it, and official web instead leaves `sidebar.files` empty.
 
 ## Table of Contents
 
@@ -38,7 +32,6 @@ The Client face registers through `ctx.slots.inject('sidebar.files', …)`. The 
 
 `cordis.patch.yml` inserts this Host row and restates `connection-desktop` so that row also injects `sessionController`. Handshake then waits until the Session control stream has a live service; otherwise the companion exits on the first `session/control` open and the window reconnects forever. The Client half is discovered from `dsh.client` after the Host fiber is live.
 
-<a id="model-experience"></a>
 ## Model Experience
 
 None, as the overlay serves the GUI file tree; nothing here reaches a model request.
@@ -47,13 +40,11 @@ None, as the overlay serves the GUI file tree; nothing here reaches a model requ
 
 None; this package neither assembles nor sends a provider request.
 
-<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **No in-app editor or preview** — a file click uses the system default application.
 - **No Git, terminal, or float windows** — v1 is the session-cwd tree only.
 
-<a id="dev-note"></a>
-## Dev Note
+### Dev Note
 
 The fence is three checks in one — fully-qualified paths, lexical containment, and `realpath` containment — and a directory symlink that leaves the root must fail as `entries-outside-root` instead of listing the outside tree. `cordis.patch.yml` also restates the `connection-desktop` row to inject `sessionController`; dropping that restatement makes the companion exit on the first `session/control` open and the window reconnect forever.

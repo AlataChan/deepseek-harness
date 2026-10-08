@@ -9,13 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`workspace-entries` is the capability seam for one-level project-file listing in the web GUI host: the abstract `WorkspaceEntries` service exposes `list({ root, path? }, signal)`, providers own the filesystem fence and row kinds, and official `session.listEntries` consumes it. Clients never send a root, and every returned row path is an absolute Host path.
-
-The web GUI host's one-level project-file listing is a capability seam. The abstract `WorkspaceEntries` service (`ctx.workspaceEntries`) is its Service Definition. Its only method, `list({ root, path? }, signal)`, lists one directory level inside a Host-owned project root. Providers implement the filesystem fence and row kinds (`file` / `directory` / `broken-symlink`). The Consumer is official `session.listEntries`: it derives `root` from the named session's `cwd` and maps `WorkspaceEntriesError` onto the wire. An absent service fails as `session/entries-unavailable`. Clients never send a root.
-
-Listing failures throw the typed `WorkspaceEntriesError` (`entries-unreadable` / `entries-outside-root`). Row `hidden` is the POSIX dot-prefix convention; display policy stays client-side. Every row `path` is an absolute Host path.
-
-The octopus_DSH desktop file tree is the experimental Provider plus Client occupant (`@deepseek-ai/dsh-experimental-desktop-files`). Official web compositions omit that package, so `sidebar.files` stays empty and the 文件 tab is not drawn.
+`workspace-entries` is the capability seam for the web GUI host's one-level project-file listing: the abstract `WorkspaceEntries` service (`ctx.workspaceEntries`) is the Service Definition whose only method, `list({ root, path? }, signal)`, lists one directory level inside a Host-owned project root; providers own the filesystem fence and row kinds. Official `session.listEntries` derives `root` from the named session's `cwd` and is the only Consumer. Clients never send a root, every returned row path is an absolute Host path, and a missing service fails as `session/entries-unavailable`.
 
 ## Table of Contents
 
@@ -25,7 +19,6 @@ The octopus_DSH desktop file tree is the experimental Provider plus Client occup
 
 -----
 
-<a id="model-experience"></a>
 ## Model Experience
 
 None, as the seam serves the GUI host's file tree; nothing here reaches a model request.
@@ -34,13 +27,11 @@ None, as the seam serves the GUI host's file tree; nothing here reaches a model 
 
 None; this package neither assembles nor sends a provider request.
 
-<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **No in-app editor or preview** — clicking a file uses the existing `host.openPath` native opener.
 - **One level per call** — expansion is a later `list` of that row's absolute path, still fenced to the same session `cwd`.
 
-<a id="dev-note"></a>
-## Dev Note
+### Dev Note
 
 Clients never send `root`: the Consumer derives it from the named session's `cwd`, and the provider must keep every returned row path absolute and inside the `realpath`-checked root. Row `hidden` is the POSIX dot-prefix fact while display policy stays client-side, and both error codes (`entries-unreadable`, `entries-outside-root`) are wire-visible — extend the closed set only together with the Consumer.

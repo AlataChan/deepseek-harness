@@ -9,11 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-`desktop-media` 是会话驱动的私有桌面媒体 overlay：Host 半面注册 MiniMax 工具、`media` 任务生产者、会话事件/投影以及 `$DSH_HOME/media` 下的目录，Client 半面占用 composer 与 tool-view 孔位。DMG 不随包媒体运行时；只有用户自装的 FFmpeg 或必需编码器缺失时，合成才会失败。
-
-私有 octopus_DSH overlay，用于会话驱动的多媒体制作。Host 半注册 MiniMax 工具、`media` 任务生产者、会话事件／投影、`$DSH_HOME/media` 目录，以及系统打开／定位。Client 半占用 `conversation.input.left`、`tool.call.toolview`、`sidebar.footer.action`、`shell.overlay` 和 `settings.models.footer`（MiniMax 密钥，不是对话提供方）。官方 `dsh-desktop-app` 与 `PROFILE_TEMPLATES.desktop` 不点名本包；桌面 profile 种子会装上它。
-
-不发布 `./invariant` companion。目录和会话事件是所属记录；没有可以与这些写入分叉的独立观察关系。
+`desktop-media` 是会话驱动的私有桌面媒体 overlay：Host 半面注册 MiniMax 工具、`media` 任务生产者、会话事件/投影以及 `$DSH_HOME/media` 下的目录，Client 半面占用 composer、tool-view、sidebar-footer、overlay 与 settings-footer 孔位。DMG 不随包媒体运行时；只有用户自装的 FFmpeg 或必需编码器缺失时，合成才会失败。桌面 profile 种子会安装本包；官方 `dsh-desktop-app` 与 `PROFILE_TEMPLATES.desktop` 不点名它。
 
 ## 目录
 
@@ -81,6 +77,6 @@ Indirectly, through registered media tools and a creation system-prompt section 
 - **目录** — `$DSH_HOME/media/catalog` 下的原子 JSON，不是 `ctx.storage.domain`。
 
 <a id="dev-note"></a>
-## 开发备注
+### 开发备注
 
 付费调用缺少 `userQuestions` 时必须失败关闭；没有媒体运行时也不能让 companion 启动失败——失败的是 `composeAudiovisual`。目录是 `$DSH_HOME/media/catalog` 下的原子 JSON，会话事件就是所属记录，因此本包不发布 `./invariant` 伴生；`openNativePath` 有意不设工作区围栏，媒体产物不要改走 `session.openWorkspacePath`。

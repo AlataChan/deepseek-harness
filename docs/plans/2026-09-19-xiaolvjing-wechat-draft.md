@@ -3,8 +3,11 @@
 标题：写文书、整案例、问表格：小绿鲸开源给公益同行
 
 建议封面：绿叶鲸鱼标 + 浅色桌面首页，不要用 DeepSeek 默认 logo。
+
 建议作者：元公益
+
 建议摘要：装好只需填 API Key。问数、问知识、机构小队都在一个窗口里。源码在 Gitee 公开。
+
 源码：https://gitee.com/jasonchan0754/octopus_DSH
 
 ---

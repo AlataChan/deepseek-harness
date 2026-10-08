@@ -586,7 +586,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
     dir: 'commerce-mode',
     source: 'packages/experimental/commerce-mode/src/tools/index.ts',
     requires: ['ctx.tools', 'ctx.commerce', 'ctx.fs', 'ctx.sessionProjections', 'ctx.approval', 'ctx.sandboxPolicy', 'a direct calling Agent'],
-    writes: ['tool/call', 'commerce/bound on the first import', 'approval/asked and approval/decided for an export', 'tool/result with read provenance or staged-change ledger metadata'],
+    writes: ['tool/call', 'commerce/bound on the first import', 'approval/asked and approval/decided for an export', 'tool/result with the listing-read record or staged-change ledger metadata'],
     async mount(ctx) {
       await ctx.plugin(LocalFileSystem, { cwd: root })
       ctx.provide('commerce', {

@@ -37,6 +37,6 @@ None; this package neither assembles nor sends a provider request.
 - **No package-manager execution** — a `.cmd` or `.ps1` Node path is refused; only recognized `dsh` shims are parsed as package clues.
 - **Declared companion only** — the selected `dsh.companions.*` entry must be a JavaScript module that stays inside the installed package after `realpath`.
 
-## Dev Note
+### Dev Note
 
 The resolver ranks candidates by the package names callers accept and by the companion key the caller declares, so a second installation of the harness on the same machine cannot capture another host's launch. Extend the accepted-name list at the caller, not here; the CLI treats an unrecognized shim as a clue, never as authority.

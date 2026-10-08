@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package adds a Team roster action to the Web conversation header (Chinese trigger「团队协作」, English「Team」, brand subtitle Agent Team) and the three institution-standing squads on the blank-session Hero. Users inspect members, manage the shared task board, and open durable teammate conversations. Opening a Hero squad creates or reuses that squad's Lead Session, provisions the baked-in seats once, and does not spawn a new team for a new topic. The panel copy contrasts standing institution teammates with ad-hoc in-chat teams and one-shot subagents; starter-prompt fill buttons only call `inputActions.setDraft` (no auto-send). It reads authoritative Team state through the generated `ctx.remote.agentTeams` contribution and keeps ordinary child-history navigation on the stable addressed-subagent path. Choose it for the experimental source-checkout Web profile; official releases exclude it. The browser projection does not extend the stable API Proxy, store Team state, or register model-facing input.
+This package adds a Team roster action to the Web conversation header (Chinese trigger「团队协作」, English「Team」, brand subtitle Agent Team) and the three institution-standing squads on the blank-session Hero. Users inspect members, manage the shared task board, and open durable teammate conversations; opening a Hero squad creates or reuses that squad's Lead Session and provisions the baked-in seats once, rather than spawning a team per topic. It reads Team state through `ctx.remote.agentTeams` and ships only in the experimental source-checkout Web profile; official releases exclude it.
 
 ## Table of Contents
 

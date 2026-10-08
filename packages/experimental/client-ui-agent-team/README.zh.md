@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-本包向 Web 会话页头添加「团队协作」入口（副标 Agent Team），并在空白会话 Hero 上放三个机构常驻小队。用户检查成员名单、管理共享任务板并打开常驻队友会话。点 Hero 小队会创建或复用该队 Lead Session，按编制把座位 spawn 一次；新话题不再组一次队。面板区分机构常驻、对话里的现组与一次性子代理；启动话术按钮只调用 `inputActions.setDraft`（不自动发送）。它通过生成的 `ctx.remote.agentTeams` contribution 读取权威 Team 状态，并让普通 child history 导航继续使用稳定的 addressed-subagent 路径。需要实验性源码 checkout Web profile 时选择本包；正式发布会排除它。这个浏览器 projection 不扩展稳定 API Proxy、不存储 Team 状态，也不注册面向模型的输入。
+本包向 Web 会话页头添加「团队协作」入口（英文「Team」，副标 Agent Team），并在空白会话 Hero 上放三个机构常驻小队。用户检查成员名单、管理共享任务板并打开常驻队友会话；点 Hero 小队会创建或复用该队 Lead Session，并按编制把座位 spawn 一次，而不是每个话题重组一队。它通过 `ctx.remote.agentTeams` 读取权威 Team 状态，且只随实验性源码 checkout Web profile 发布；正式发布会排除它。
 
 ## 目录
 
