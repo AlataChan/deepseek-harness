@@ -183,7 +183,7 @@
         "properties": {
           "target": {
             "type": "string",
-            "description": "Teammate target returned by spawn_teammate or list_agents."
+            "description": "Teammate name."
           }
         },
         "required": [
@@ -245,10 +245,41 @@
     },
     {
       "name": "list_agents",
-      "description": "List the Lead and every durable teammate with an addressable target and current availability. inactive means no turn is executing, not a task result. provisioning and failed describe member creation.",
+      "description": "List the Lead and every durable teammate with current runtime status.",
       "parameters": {
         "type": "object",
         "properties": {}
+      }
+    },
+    {
+      "name": "propose_action",
+      "description": "Propose worker output for human approval before execution. Team Lead only. Use when a teammate produced a patch, command, or follow-up task that should be reviewed before applying.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action_kind": {
+            "type": "string",
+            "description": "Type of action: patch (a diff to apply), command (a shell command to run), or followup (a follow-up task prompt).",
+            "enum": [
+              "patch",
+              "command",
+              "followup"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "What this action does and why it should be approved."
+          },
+          "content": {
+            "type": "string",
+            "description": "The patch diff, shell command, or follow-up prompt content."
+          }
+        },
+        "required": [
+          "action_kind",
+          "description",
+          "content"
+        ]
       }
     },
     {
@@ -293,13 +324,13 @@
     },
     {
       "name": "send_message",
-      "description": "Send one durable message to another Team member. A running target receives it at the nearest step boundary; an inactive target starts or resumes a turn.",
+      "description": "Send one durable message to another Team member. A running target receives it at the nearest step boundary; an idle target starts a turn; an inactive teammate cold-resumes.",
       "parameters": {
         "type": "object",
         "properties": {
           "target": {
             "type": "string",
-            "description": "Member target returned by spawn_teammate or list_agents, including lead."
+            "description": "Team member name, or lead."
           },
           "message": {
             "type": "string",
@@ -353,6 +384,18 @@
               "fresh",
               "fork"
             ]
+          },
+          "provider": {
+            "type": "string",
+            "description": "Child LLM provider id. Must be supplied together with model. Requires the Lead Session to have a model-selection policy."
+          },
+          "model": {
+            "type": "string",
+            "description": "Child LLM model id. Must be supplied together with provider. Requires the Lead Session to have a model-selection policy."
+          },
+          "reasoning_effort": {
+            "type": "string",
+            "description": "Child reasoning effort override. Requires the Lead Session to have a model-selection policy."
           }
         },
         "required": [
@@ -430,7 +473,7 @@
           },
           "owner": {
             "type": "string",
-            "description": "Optional member target from spawn_teammate or list_agents, matching ownerName; use unowned for tasks without an owner."
+            "description": "Optional member-name filter; use unowned for tasks without an owner."
           },
           "ready": {
             "type": "boolean",
@@ -499,7 +542,7 @@
           },
           "owner": {
             "type": "string",
-            "description": "Member target from spawn_teammate or list_agents for Lead-only reassign; omit to unassign."
+            "description": "Member name for Lead-only reassign; omit to unassign."
           }
         },
         "required": [
