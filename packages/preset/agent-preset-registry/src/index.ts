@@ -58,6 +58,7 @@ export class AgentPresetRegistry extends TypertRemoteService {
   private readonly generations = new Map<ScopeKey, Generation>()
   private readonly bindings = new WeakMap<ScopeKey, Binding>()
   private readonly switches = new Map<string, Promise<unknown>>()
+  private readonly admitSelectHooks = new Set<(agent: Agent, agentPreset: string) => void | Promise<void>>()
 
   constructor(ctx: Context, public config: Config) {
     super(ctx, 'agentPresets')
@@ -296,6 +297,15 @@ export class AgentPresetRegistry extends TypertRemoteService {
     return preset
   }
 
+  /** Register a hook that runs before every preset swap, including a direct Remote `select`. The disposer removes the hook.
+   * @param hook - called with the live agent and the requested preset id.
+   * @returns disposer.
+   */
+  admitSelect(hook: (agent: Agent, agentPreset: string) => void | Promise<void>): () => void {
+    this.admitSelectHooks.add(hook)
+    return () => { this.admitSelectHooks.delete(hook) }
+  }
+
   /** Select a preset before a session starts its first turn.
    * @param agent Target Agent.
    * @param agentPreset Requested identity.
@@ -308,6 +318,7 @@ export class AgentPresetRegistry extends TypertRemoteService {
       if (boundary !== undefined && (boundary.openTurnStartSeq !== null || boundary.lastTurn > 0)) {
         throw new RemoteError('agent-preset/locked', 'This session has already started', { sessionId: agent.id, agentPreset })
       }
+      for (const hook of this.admitSelectHooks) await hook(agent, agentPreset)
       const preset = await this.recompose(agent.ctx, agentPreset)
       agent.session.append('agent-preset/selected', { agentPreset: preset.id })
       return preset.id

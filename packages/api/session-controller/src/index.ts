@@ -210,6 +210,13 @@ export class SessionController extends TypertRemoteService {
     this.commerce = new SessionCommerceController(ctx, this.agents, this.askData.gate, process.cwd())
     this.media = new SessionMediaController(ctx)
     this.commands = new SessionCommandController(ctx, this.agents, process.cwd())
+    const presets = ctx.get('agentPresets')
+    if (presets !== undefined && 'admitSelect' in presets) {
+      ctx.effect(
+        () => presets.admitSelect((agent, next) => { this.askData.assertSelectAllowed(agent, next) }),
+        'session-controller.ask-data.admitSelect',
+      )
+    }
     ctx.effect(() => ctx.fileUploads.registerAgentResolver(async (sessionId) => {
       const result = await this.agents.resolveAgent(sessionId)
       if ('error' in result) throw result.error
