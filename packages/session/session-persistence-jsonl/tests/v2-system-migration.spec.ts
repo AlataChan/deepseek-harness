@@ -136,7 +136,8 @@ describe('V2 system prompts through current Session and JSONL persistence', () =
       await reader.close()
     }
     expect(await observeFile(sourcePath)).toEqual(original)
-    expect(await readdir(directory)).toEqual(directoryBefore)
+    // The read open added only the backup-or-stop guard's verified backup.
+    expect((await readdir(directory)).sort()).toEqual([...directoryBefore, 'session.v2.jsonl.pre-migration.bak'].sort())
     const independent = await mount()
     const independentReader = await independent.sessionPersistence.open(id, 'read')
     try {
@@ -146,7 +147,8 @@ describe('V2 system prompts through current Session and JSONL persistence', () =
       await independentReader.close()
     }
     expect(await observeFile(sourcePath)).toEqual(original)
-    expect(await readdir(directory)).toEqual(directoryBefore)
+    // The read open added only the backup-or-stop guard's verified backup.
+    expect((await readdir(directory)).sort()).toEqual([...directoryBefore, 'session.v2.jsonl.pre-migration.bak'].sort())
 
     const writer = await ctx.sessionPersistence.open(id, 'write')
     try {
@@ -212,7 +214,7 @@ describe('V2 system prompts through current Session and JSONL persistence', () =
       await reader.close()
     }
     expect(await observeFile(sourcePath)).toEqual(original)
-    expect(await readdir(dirname(sourcePath))).toEqual(['session.v2.jsonl'])
+    expect(await readdir(dirname(sourcePath))).toEqual(['session.v2.jsonl', 'session.v2.jsonl.pre-migration.bak'])
 
     const writer = await ctx.sessionPersistence.open(id, 'write')
     let expected: readonly SessionEvent[]
@@ -265,7 +267,7 @@ describe('V2 system prompts through current Session and JSONL persistence', () =
     expect(await observeFile(sourcePath)).toEqual(original)
     expect(await observeFile(lowerPath)).toEqual(lower)
     expect((await readdir(dirname(sourcePath))).filter(name => name !== 'session.lock').sort())
-      .toEqual(['session.v1.jsonl', 'session.v2.jsonl'])
+      .toEqual(['session.v1.jsonl', 'session.v2.jsonl', 'session.v2.jsonl.pre-migration.bak'])
   })
 
   it('persists native V3 system appends after the protected head without converting them to user messages', async () => {

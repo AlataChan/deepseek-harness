@@ -208,7 +208,7 @@ describe.each([0, 1] as const)('V%s multi-edge durable publication', (version) =
     assertMigrated(prepared)
     await ctx.sessionPersistence.flush()
     expect(await observe(path)).toEqual(source)
-    expect(await readdir(dirname(path))).toEqual([basename(path)])
+    expect(await readdir(dirname(path))).toEqual([basename(path), `${basename(path)}.pre-migration.bak`])
 
     const written = await readSession(ctx, 'write')
     assertMigrated(written)
@@ -217,7 +217,7 @@ describe.each([0, 1] as const)('V%s multi-edge durable publication', (version) =
     contexts.splice(contexts.indexOf(ctx), 1)
     const successor = generationLogPath(root, undefined, id, 3, compression)
     expect((await readdir(dirname(path))).filter(name => name !== 'session.lock').sort())
-      .toEqual([basename(path), basename(successor)].sort())
+      .toEqual([basename(path), `${basename(path)}.pre-migration.bak`, basename(successor)].sort())
     expect(await publishedRows(successor, compression)).toEqual([{ type: 'session', ...prepared.header }, ...prepared.events])
     expect(await observe(path)).toEqual(source)
     const published = await observe(successor)
@@ -256,7 +256,8 @@ describe.each([0, 1] as const)('V%s multi-edge durable publication', (version) =
     const changed = await observe(path)
     expect(changed.bytes).toEqual(Buffer.concat([source.bytes, appended]))
     expect(changed).toMatchObject({ dev: source.dev, ino: source.ino })
-    expect((await readdir(dirname(path))).filter(name => name !== 'session.lock')).toEqual([basename(path)])
+    expect((await readdir(dirname(path))).filter(name => name !== 'session.lock'))
+      .toEqual([basename(path), `${basename(path)}.pre-migration.bak`])
 
     const retried = await readSession(ctx, 'write')
     const expected = [...prepared.events, { ...tail, seq: 23 }]
@@ -266,7 +267,7 @@ describe.each([0, 1] as const)('V%s multi-edge durable publication', (version) =
     const successor = generationLogPath(root, undefined, id, 3, compression)
     expect(await publishedRows(successor, compression)).toEqual([{ type: 'session', ...prepared.header }, ...expected])
     expect((await readdir(dirname(path))).filter(name => name !== 'session.lock').sort())
-      .toEqual([basename(path), basename(successor)].sort())
+      .toEqual([basename(path), `${basename(path)}.pre-migration.bak`, basename(successor)].sort())
     await ctx.fiber.dispose()
     contexts.splice(contexts.indexOf(ctx), 1)
     const reopened = await mount(root, compression)
@@ -295,7 +296,8 @@ describe.each([0, 1] as const)('V%s multi-edge durable publication', (version) =
       await expect(failure).rejects.toThrow(/outside an open step/)
       await ctx.sessionPersistence.flush()
       expect(await observe(path)).toEqual(source)
-      expect((await readdir(dirname(path))).filter(name => name !== 'session.lock')).toEqual([basename(path)])
+      expect((await readdir(dirname(path))).filter(name => name !== 'session.lock'))
+        .toEqual([basename(path), `${basename(path)}.pre-migration.bak`])
     }
   })
 })

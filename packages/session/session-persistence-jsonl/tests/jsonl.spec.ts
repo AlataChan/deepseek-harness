@@ -730,7 +730,7 @@ describe('JsonlSessionPersistence: immutable format generations', () => {
     expect(await readFile(sourcePath)).toEqual(source)
     await expect(readFile(currentPath)).rejects.toMatchObject({ code: 'ENOENT' })
     expect((await readdir(dirname(sourcePath))).filter(name => name.startsWith('session')).sort())
-      .toEqual(['session.jsonl'])
+      .toEqual(['session.jsonl', 'session.jsonl.pre-migration.bak'].sort())
   })
 
   it('resolves absent, current, and historical current-generation paths', async () => {
@@ -896,8 +896,51 @@ describe('JsonlSessionPersistence: immutable format generations', () => {
       .toEqual({ dev: before.dev, ino: before.ino, size: before.size, mtimeNs: before.mtimeNs, ctimeNs: before.ctimeNs })
     expect(await readFile(sourcePath)).toEqual(source)
     await expect(readFile(currentPath)).rejects.toMatchObject({ code: 'ENOENT' })
-    expect((await readdir(dirname(sourcePath))).filter(name => name !== 'session.lock'))
-      .toEqual(['session.jsonl'])
+    // The backup-or-stop guard ran before the refusing edge, so its verified
+    // backup remains beside the unchanged source.
+    expect((await readdir(dirname(sourcePath))).filter(name => name !== 'session.lock').sort())
+      .toEqual(['session.jsonl', 'session.jsonl.pre-migration.bak'].sort())
+  })
+
+  it.each(['read', 'write'] as const)('migrates the frozen fork ask-data V0 fixture on %s open', async (access) => {
+    const id = SessionId('released-v0-fork-ask-data')
+    const sourcePath = historicalLogPath(root, '/work', id)
+    const currentPath = rawLogPath(root, '/work', id)
+    const backupPath = `${sourcePath}.pre-migration.bak`
+    const source = await readFile(resolve(
+      'packages/session/session-persistence-jsonl/tests/fixtures/released-v0-fork-ask-data.jsonl',
+    ))
+    await mkdir(dirname(sourcePath), { recursive: true })
+    await writeFile(sourcePath, source)
+
+    const restored = await readAll(ctx.sessionPersistence, id)
+    expect(restored.meta).toMatchObject({ id, version: SESSION_FORMAT_VERSION })
+    expect(restored.events.map(event => event.type)).toEqual([
+      'permission/preset', 'sandbox/mode', 'approval/policy', 'ask-data/bound',
+    ])
+    const bound = restored.events.find(event => event.type === 'ask-data/bound')
+    expect(bound).toMatchObject({
+      data: {
+        sourceId: 'source-1',
+        connectionRef: 'ask-data:source-1',
+        displayName: 'user-data.csv',
+        readonly: true,
+      },
+    })
+
+    expect(await readFile(sourcePath)).toEqual(source)
+    expect(await readFile(backupPath)).toEqual(source)
+    if (access === 'write') {
+      const writer = await ctx.sessionPersistence.open(id, 'write')
+      await writer.close()
+      await ctx.sessionPersistence.flush()
+      const published = scanLog(await readFile(currentPath))
+      expect(published.events).toEqual(restored.events)
+    } else {
+      await expect(readFile(currentPath)).rejects.toMatchObject({ code: 'ENOENT' })
+    }
+    expect(await readFile(sourcePath)).toEqual(source)
+    expect(await readFile(backupPath)).toEqual(source)
   })
 
   it.each(['read', 'write'] as const)('restores canonical replacement envelopes from valid V2 chronology on %s open', async (access) => {
@@ -961,7 +1004,7 @@ describe('JsonlSessionPersistence: immutable format generations', () => {
     expect(await readFile(sourcePath)).toEqual(source)
     await expect(readFile(currentPath)).rejects.toMatchObject({ code: 'ENOENT' })
     expect((await readdir(dirname(sourcePath))).filter(name => name.startsWith('session')).sort())
-      .toEqual(['session.v1.jsonl'])
+      .toEqual(['session.v1.jsonl', 'session.v1.jsonl.pre-migration.bak'].sort())
   })
 
   it('selects v1 from a v0/v1 directory, then v3 from the retained three-generation set', async () => {
@@ -980,8 +1023,8 @@ describe('JsonlSessionPersistence: immutable format generations', () => {
     await writer.close()
     expect((await readdir(directory)).filter(name => name.startsWith('session')).sort())
       .toEqual(process.platform === 'win32'
-        ? ['session.jsonl', 'session.v1.jsonl', 'session.v3.jsonl']
-        : ['session.jsonl', 'session.lock', 'session.v1.jsonl', 'session.v3.jsonl'])
+        ? ['session.jsonl', 'session.v1.jsonl', 'session.v1.jsonl.pre-migration.bak', 'session.v3.jsonl']
+        : ['session.jsonl', 'session.lock', 'session.v1.jsonl', 'session.v1.jsonl.pre-migration.bak', 'session.v3.jsonl'])
 
     await writeFile(v0Path, 'corrupt lower v0\n')
     await writeFile(v1Path, 'corrupt lower v1\n')

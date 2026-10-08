@@ -146,8 +146,11 @@ async function expectRefusal(ctx: Context, access: 'read' | 'write', path: strin
 
 async function expectOnlyGenerations(paths: readonly string[]) {
   const directory = dirname(paths[0]!)
-  // A released write lease keeps session.lock; every other extra entry is forbidden.
-  expect((await readdir(directory)).filter(name => name !== 'session.lock').sort())
+  // A released write lease keeps session.lock, and the backup-or-stop guard
+  // deliberately leaves its verified backup beside the source; every other
+  // extra entry is forbidden.
+  expect((await readdir(directory)).filter(name =>
+    name !== 'session.lock' && !name.endsWith('.pre-migration.bak')).sort())
     .toEqual(paths.map(path => basename(path)).sort())
 }
 

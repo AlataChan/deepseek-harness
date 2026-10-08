@@ -157,8 +157,11 @@ async function observe(path: string) {
 }
 
 async function expectOnlyGenerations(paths: readonly string[]) {
-  // A released write lease may leave session.lock, but no staged or published prefix may remain.
-  expect((await readdir(dirname(paths[0]!))).filter(name => name !== 'session.lock').sort())
+  // A released write lease may leave session.lock, the backup-or-stop guard
+  // deliberately leaves its verified backup, but no staged or published prefix
+  // may remain.
+  expect((await readdir(dirname(paths[0]!))).filter(name =>
+    name !== 'session.lock' && !name.endsWith('.pre-migration.bak')).sort())
     .toEqual(paths.map(path => basename(path)).sort())
 }
 

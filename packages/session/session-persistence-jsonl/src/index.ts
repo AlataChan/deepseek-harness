@@ -13,7 +13,7 @@ import {
   sessionFormatCatalog,
 } from '@deepseek-ai/dsh-session-format-catalog'
 import { readdirSync, type Dirent } from 'node:fs'
-import { open, mkdir, readdir, realpath, link, rm, stat, truncate } from 'node:fs/promises'
+import { copyFile, open, mkdir, readdir, realpath, link, rm, stat, truncate } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { scheduler } from 'node:timers/promises'
@@ -97,6 +97,39 @@ export interface Config {
   /** Physical encoding; defaults to checksummed Zstandard frames. */
   compression?: JsonlCompression
 }
+
+/**
+ * A pre-migration backup of a released generation could not be established, so
+ * the backend stopped the migration before any of it ran. The source
+ * generation is never modified by this refusal.
+ */
+export class JsonlMigrationBackupError extends Error {
+  override readonly name = 'JsonlMigrationBackupError'
+
+  /**
+   * @param sourcePath - the released generation whose backup failed.
+   * @param backupPath - the backup filename that failed verification or creation.
+   * @param reason - the underlying backup failure.
+   */
+  constructor(
+    readonly sourcePath: string,
+    readonly backupPath: string,
+    readonly reason: unknown,
+  ) {
+    super(
+      `refusing to migrate session generation "${sourcePath}" without a verified `
+      + `backup at "${backupPath}": ${reason instanceof Error ? reason.message : String(reason)}`,
+      { cause: reason },
+    )
+  }
+}
+
+/**
+ * Filename suffix of the pre-migration backup required beside every released
+ * generation this backend migrates. Not a canonical generation name, so
+ * discovery never selects it.
+ */
+const PRE_MIGRATION_BACKUP_SUFFIX = '.pre-migration.bak'
 
 /** One stored event graph whose producer has established immutable sharing. */
 interface FrozenStoredEvents extends SessionHandleReadResult {
@@ -601,6 +634,7 @@ class JsonlSessionPersistence extends SessionPersistence {
     selected: ResolvedJsonlGeneration,
     signal: AbortSignal,
   ): Promise<PreparedStoredLog> {
+    await this.backupSourceGeneration(selected, signal)
     let prepared: Awaited<ReturnType<typeof prepareJsonlMigration>>
     try {
       prepared = await prepareJsonlMigration({
@@ -637,6 +671,51 @@ class JsonlSessionPersistence extends SessionPersistence {
     }
     this.memoizeStoredLog(id, stored)
     return stored
+  }
+
+  /**
+   * Backup-or-stop guard: before any migration of a released generation runs,
+   * establish a durable non-empty backup beside the source, or stop loudly.
+   * Migration itself never modifies the source generation; the backup is the
+   * recoverable copy the guard requires before the format chain may touch the
+   * released log at all. A complete earlier backup of the same byte size
+   * satisfies the guard idempotently across processes and re-preparations.
+   * @param selected - the immutable historical generation about to migrate.
+   * @param signal - optional cancellation before each filesystem step.
+   * @returns nothing once the verified backup exists.
+   * @throws {@link JsonlMigrationBackupError} when the backup cannot be
+   *   established or verified; the caller's open fails and nothing migrates.
+   */
+  private async backupSourceGeneration(
+    selected: ResolvedJsonlGeneration,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    signal?.throwIfAborted()
+    const sourcePath = selected.sourcePath
+    const backupPath = `${sourcePath}${PRE_MIGRATION_BACKUP_SUFFIX}`
+    const sourceSize = (await stat(sourcePath)).size
+    signal?.throwIfAborted()
+    if (await this.exists(backupPath)) {
+      const backupSize = (await stat(backupPath)).size
+      if (backupSize > 0 && backupSize === sourceSize) return
+    }
+    try {
+      await copyFile(sourcePath, backupPath)
+      const handle = await open(backupPath, 'r')
+      try {
+        await handle.sync()
+      } finally {
+        await handle.close()
+      }
+      const backupSize = (await stat(backupPath)).size
+      if (backupSize === 0 || backupSize !== sourceSize) {
+        throw new Error(`backup holds ${backupSize} bytes of the ${sourceSize}-byte source`)
+      }
+      /* v8 ignore next -- Windows has no POSIX directory fsync; its copied backup is complete without one. */
+      if (process.platform !== 'win32') await this.syncDirPosix(dirname(backupPath))
+    } catch (error: unknown) {
+      throw new JsonlMigrationBackupError(sourcePath, backupPath, error)
+    }
   }
 
   /** Publish a prepared historical log before granting write access. */

@@ -1,0 +1,5 @@
+{"type":"session","version":0,"id":"released-v0-fork-ask-data","createdAt":1788161851519,"cwd":"/work","delegationDepth":0,"agentPreset":"data-agent"}
+{"type":"permission/preset","seq":0,"time":1788161851524,"data":{"preset":"workspace-write"}}
+{"type":"sandbox/mode","seq":1,"time":1788161851525,"data":{"mode":"workspace-write"}}
+{"type":"approval/policy","seq":2,"time":1788161851525,"data":{"policy":"ask"}}
+{"type":"ask-data/bound","seq":3,"time":1788161851598,"data":{"sourceId":"source-1","connectionRef":"ask-data:source-1","displayName":"user-data.csv","readonly":true}}
