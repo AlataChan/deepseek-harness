@@ -228,6 +228,23 @@ describe('rule 6 — telemetry rows resolve from the composed config', () => {
     expect(telemetryEndpointViolations(fixtureRegistry(), path => files.get(path)))
       .toEqual([expect.stringContaining('has a mode or endpoint expression the gate cannot resolve')])
   })
+
+  it('rejects an exporter written as one unresolvable !!js expression hiding the upstream collector', () => {
+    const jsExporterRow = `
+- insert:
+    - id: session-telemetry-otel
+      name: '@deepseek-ai/dsh-session-telemetry-otel'
+      config:
+        mode: !!js process.env.DSH_TELEMETRY_MODE || 'DISABLED'
+        exporter: !!js "({ url: process.env.DSH_TELEMETRY_OTLP_URL || 'https://harness-telemetry.deepseeksvc.com/v1/logs' })"
+`
+    const files = new Map([[composition, jsExporterRow]])
+    expect(telemetryEndpointViolations(fixtureRegistry(), path => files.get(path)))
+      .toEqual([
+        expect.stringContaining('row session-telemetry-otel composes the forbidden endpoint harness-telemetry.deepseeksvc.com'),
+        expect.stringContaining('has a mode or endpoint expression the gate cannot resolve'),
+      ])
+  })
 })
 
 describe('the command supplies the pin diff to the merge-time rules', () => {
@@ -248,6 +265,29 @@ describe('the command supplies the pin diff to the merge-time rules', () => {
       expect(changedUpstreamFiles).toEqual(['packages/llm/provider/src/index.ts'])
       expect(upstreamIntakeViolations({ root, registry: fixtureRegistry(), files: [], readFile: () => undefined, changedUpstreamFiles }))
         .toEqual(['packages/llm/provider/src/index.ts: edits an upstream file with no registry entry'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects an unregistered composition-surface edit surfaced by the pin diff', () => {
+    const root = mkdtempSync(join(tmpdir(), 'intake-pin-'))
+    try {
+      execFileSync('git', ['-C', root, 'init', '-q'])
+      mkdirSync(join(root, 'packages/llm/provider'), { recursive: true })
+      writeFileSync(join(root, 'packages/llm/provider/package.json'), '{"name":"x"}\n')
+      writeFileSync(join(root, 'packages/llm/provider/tsconfig.json'), '{}\n')
+      const commit = ['-C', root, '-c', 'user.email=fixture@test.invalid', '-c', 'user.name=fixture']
+      execFileSync('git', [...commit, 'add', '-A'])
+      execFileSync('git', [...commit, 'commit', '-qm', 'pin state'])
+      execFileSync('git', ['-C', root, 'tag', 'intake-pin'])
+      writeFileSync(join(root, 'packages/llm/provider/package.json'), '{"name":"x","dependencies":{"@deepseek-ai/dsh-host-commerce":"workspace:^"}}\n')
+      writeFileSync(join(root, 'packages/llm/provider/tsconfig.json'), '{"strict":true}\n')
+      const changedUpstreamFiles = changedUpstreamFilesAgainstPin(root, fixtureRegistry())
+      // package.json is composition surface; tsconfig.json is deliberately filtered out.
+      expect(changedUpstreamFiles).toEqual(['packages/llm/provider/package.json'])
+      expect(upstreamIntakeViolations({ root, registry: fixtureRegistry(), files: [], readFile: () => undefined, changedUpstreamFiles }))
+        .toEqual(['packages/llm/provider/package.json: edits an upstream file with no registry entry'])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

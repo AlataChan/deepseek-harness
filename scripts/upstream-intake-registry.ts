@@ -195,6 +195,8 @@ export const NEVER_MERGE: readonly NeverMergeEntry[] = [
 
 /** Upstream files the fork edits. Phase 3 works the `B` rows down to zero. */
 export const PATCHES: readonly PatchEntry[] = [
+  { path: 'apps/cli/package.json', klass: 'A', reason: 'Fork harness assembly: the desktop companion entry and the fork workspace Host dependencies (desktop-app, agent-team, commerce) must be dependencies here to bundle into the harness.' },
+  { path: 'packages/acp/acp/package.json', klass: 'A', reason: 'cordis-plugin-loader peer for the fork ACP initialize fix, which answers only after the Loader tree settles.' },
   { path: 'packages/acp/acp/src/index.ts', klass: 'A', reason: 'Fork ACP initialize fix: answer only after the Loader tree settles.' },
   { path: 'packages/api/session-controller/src/index.ts', klass: 'A', reason: "The fork's ask-data, ask-knowledge and commerce remotes." },
   { path: 'packages/api/session-controller/src/agent.ts', klass: 'A', reason: 'Companion agent surface for the fork remotes.' },
@@ -202,6 +204,7 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/api/session-controller/src/ask-knowledge.ts', klass: 'A', reason: 'Ask-knowledge remote implementation.' },
   { path: 'packages/api/session-controller/src/commerce.ts', klass: 'A', reason: 'Commerce remote implementation.' },
   { path: 'packages/api/session-controller/src/types.ts', klass: 'A', reason: 'Fork remote and media error codes in the Typert protocol declaration.' },
+  { path: 'packages/api/session-controller/package.json', klass: 'A', reason: "The fork's ask-data, ask-knowledge and commerce remotes need their Host packages as optional peers." },
   { path: 'packages/extensions/cordis-client-runner/src/client/slot-catalog.ts', klass: 'B', reason: 'Fork slots declared in the upstream catalog instead of as overlay registrations.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/InputBar.tsx', klass: 'B', reason: 'Fork input surface, pending an official conversation slot.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/InputBar.module.css', klass: 'B', reason: 'Styling for the fork input surface.' },
@@ -226,6 +229,7 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/session/session-format-v0-to-v1/src/dispositions.ts', klass: 'A', reason: "Frozen released-v0 inventory must admit this fork's four events (ask-data/bound, ask-knowledge/bound, ask-knowledge/unbound, commerce/bound), or the fork's own v0 fixtures refuse to migrate." },
   { path: 'packages/session/session-format-v0-to-v1/src/payload-validation.ts', klass: 'A', reason: 'Nested payload semantics for the same four events; the released validator refuses an event with no case.' },
   { path: 'packages/session/session-format-v0-to-v1/tests/validation.spec.ts', klass: 'A', reason: 'Valid fixture and inventory count for the four admitted events.' },
+  { path: 'packages/session/session-persistence-jsonl/src/index.ts', klass: 'A', reason: 'Fork data-safety rule: a released session generation migrates only after a verified pre-migration backup exists beside it.' },
   { path: 'packages/fs/fs/src/index.ts', klass: 'A', reason: 'Fork filesystem policy behaviour.' },
   { path: 'packages/fs/fs/src/invariant.ts', klass: 'A', reason: 'Fork filesystem invariant.' },
   { path: 'packages/fs/fs-observation-policy/src/index.ts', klass: 'A', reason: 'Fork observation policy.' },

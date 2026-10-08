@@ -226,8 +226,8 @@ export function removalDispositionViolations(registry: IntakeRegistry): string[]
  * the patch text: each row's `!!js` expressions are resolved the way the
  * Loader resolves them with an unset environment, which yields the shipped
  * default. The gate fails on a forbidden endpoint anywhere in the row's
- * composed config, and on a default that is not `DISABLED` while an endpoint
- * default exists.
+ * composed config — including the raw text of expressions it cannot resolve —
+ * and on a default that is not `DISABLED` while an endpoint default exists.
  *
  * @param registry - registry tables.
  * @param readFile - file reader, given repository-relative paths.
@@ -295,18 +295,21 @@ function cordisEntries(value: unknown, out: Array<Record<string, unknown>> = [])
 }
 
 /**
- * Every literal and resolvable `!!js` string in a row's composed config.
+ * Every literal string and every `!!js` expression's raw text in a row's
+ * composed config. The raw text is scanned rather than only the resolved
+ * default, because an expression the gate cannot resolve can still hide a
+ * forbidden host in its fallback, and a resolvable expression's fallback is
+ * always a substring of that text.
  *
  * @param value - the row's config value.
- * @param out - accumulator for resolved strings.
- * @returns resolved string leaves, at any depth.
+ * @param out - accumulator for collected strings.
+ * @returns string leaves and expression texts, at any depth.
  */
 function composedStrings(value: unknown, out: string[] = []): string[] {
   if (typeof value === 'string') {
     out.push(value)
   } else if (isJsExpr(value)) {
-    const resolved = resolveComposedValue(value)
-    if (resolved.resolved && typeof resolved.value === 'string') out.push(resolved.value)
+    out.push(value.__jsExpr)
   } else if (Array.isArray(value)) {
     for (const item of value) composedStrings(item, out)
   } else if (typeof value === 'object' && value !== null) {
@@ -316,7 +319,27 @@ function composedStrings(value: unknown, out: string[] = []): string[] {
 }
 
 /**
+ * Whether any `!!js` expression in the value has a shape the gate cannot
+ * resolve, so the composed value cannot be inspected.
+ *
+ * @param value - a composed config value.
+ * @returns whether an unresolvable expression is present, at any depth.
+ */
+function containsUnresolvableJsExpr(value: unknown): boolean {
+  if (isJsExpr(value)) return !resolveComposedValue(value).resolved
+  if (Array.isArray(value)) return value.some(containsUnresolvableJsExpr)
+  if (typeof value === 'object' && value !== null) {
+    return Object.values(value as Record<string, unknown>).some(containsUnresolvableJsExpr)
+  }
+  return false
+}
+
+/**
  * Check one mounted telemetry row's composed config.
+ *
+ * The exporter subtree fails closed: an exporter that is itself an
+ * unresolvable expression, or holds one anywhere inside, is a violation,
+ * because the gate cannot see which endpoint the row would compose.
  *
  * @param registry - registry tables, for the forbidden endpoints.
  * @param mount - the mounted row being checked.
@@ -335,10 +358,13 @@ function telemetryRowViolations(registry: IntakeRegistry, mount: MountEntry, con
     }
   }
   const record = typeof config === 'object' && config !== null ? config as Record<string, unknown> : {}
-  const exporter = typeof record.exporter === 'object' && record.exporter !== null ? record.exporter as Record<string, unknown> : {}
+  const exporterValue = record.exporter
+  const exporter = typeof exporterValue === 'object' && exporterValue !== null && !isJsExpr(exporterValue)
+    ? exporterValue as Record<string, unknown>
+    : {}
   const mode = resolveComposedValue(record.mode)
   const url = resolveComposedValue(exporter.url)
-  if (!mode.resolved || !url.resolved) {
+  if (!mode.resolved || !url.resolved || containsUnresolvableJsExpr(exporterValue)) {
     violations.push(`${mount.composition}: row ${mount.row} has a mode or endpoint expression the gate cannot resolve`)
     return violations
   }
@@ -396,13 +422,29 @@ export function neverMergeFileList(root: string, registry: IntakeRegistry): stri
 }
 
 /**
+ * A composition surface rule 4 must see outside `src/`: dependency manifests
+ * and Cordis compositions under `packages/` and `apps/`, at any depth. These
+ * files decide what the harness mounts — the fork's workspace Host
+ * dependencies live in `apps/cli/package.json`, and each package's
+ * `package.json` and `cordis.yml` / `cordis.patch.yml` can add or reorder
+ * plugins. `tsconfig.json` is deliberately excluded: no registered patch
+ * edits one, so it is build configuration, not composition surface.
+ */
+function isCompositionSurface(path: string): boolean {
+  if (!path.startsWith('packages/') && !path.startsWith('apps/')) return false
+  return path.endsWith('/package.json') || path.endsWith('/cordis.yml') || path.endsWith('/cordis.patch.yml')
+}
+
+/**
  * Rule 4's input: the upstream files the working tree edits, read from
  * `git diff --name-only --diff-filter=M` against the registry's upstream pin.
  * Modified files only — an addition is a fork-authored file (rules 1–3 govern
  * those) and a deletion is a removal decision (rule 5 and the never-merge
- * tables). The patch surface is the `src/` tree plus the release composition
- * manifests, matching what the registry's patch table records: behaviour and
- * composition edits, not docs, tests, or generated files.
+ * tables). The patch surface is the `src/` tree, the release composition
+ * manifests, and every `package.json` / `cordis.yml` / `cordis.patch.yml`
+ * under `packages/` and `apps/` (see {@link isCompositionSurface}), matching
+ * what the registry's patch table records: behaviour and composition edits,
+ * not docs, tests, or generated files.
  *
  * @param root - repository root.
  * @param registry - registry tables, for the pin and the composition manifests.
@@ -413,7 +455,7 @@ export function changedUpstreamFilesAgainstPin(root: string, registry: IntakeReg
   const output = execFileSync('git', ['-C', root, 'diff', '--name-only', '--diff-filter=M', registry.upstreamPin], { encoding: 'utf8' })
   return output.split('\n')
     .filter(path => path !== '')
-    .filter(path => path.includes('/src/') || registry.releaseCompositions.includes(path))
+    .filter(path => path.includes('/src/') || isCompositionSurface(path) || registry.releaseCompositions.includes(path))
 }
 
 /**
