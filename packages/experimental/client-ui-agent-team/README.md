@@ -25,9 +25,9 @@ This package adds a Team roster action to the Web conversation header (Chinese t
 <a id="use-this-package"></a>
 ## Use this package
 
-Install the package through [`@deepseek-ai/dsh-experimental-agent-team-web-profile`](../agent-team-web-profile/README.md) after the stable Web bundle and the Host-side Agent Teams profile. The Web Client loader mounts the `/client` export; the root Host export is inert, and the package has no user configuration fields.
+Install the package through [`@deepseek-ai/dsh-experimental-agent-team-profile`](../agent-team-profile/README.md) after the stable Web bundle and the Host-side Agent Teams profile. The Web Client loader mounts the `/client` export; the root Host export is inert, and the package has no user configuration fields.
 
-octopus_DSH desktop also seeds this package from [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json). Its `cordis.patch.yml` is the dual-face desktop bundle document: it disables the overlapping global continuable-child controls, inserts the Host Team service and tools, then inserts this package so the Client half mounts. Headless and source Web keep using `agent-team-profile` + `agent-team-web-profile` instead of this seed path.
+octopus_DSH desktop also seeds this package from [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json). Its `cordis.patch.yml` is the dual-face desktop bundle document: it disables the overlapping global continuable-child controls, inserts the Host Team service and tools, then inserts this package so the Client half mounts. Headless and source Web keep using `agent-team-profile` instead of this seed path.
 
 ### Dispatch a standing institution squad
 
@@ -68,7 +68,7 @@ Starting a create or update invalidates older refreshes. Success reloads the com
 <a id="further-exploration"></a>
 ## Further Exploration
 
-- [Agent Teams Web profile](../agent-team-web-profile/README.md) — the source-checkout bundle that mounts this Client plugin.
+- [Agent Teams Web profile](../agent-team-profile/README.md) — the source-checkout bundle that mounts this Client plugin.
 - [Agent Teams service](../agent-team/README.md) — authoritative roster, task, and Remote behavior.
 - [Conversation UI](../../client/ui-conversation/README.md) — the stable header slot and addressed-subagent navigation surface.
 - [Experimental packages](../README.md) — incubation status and release exclusion.

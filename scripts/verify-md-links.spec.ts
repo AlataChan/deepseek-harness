@@ -9,7 +9,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { anchorCache, documentAnchors, findViolations, githubSlug, markdownLinkSourcePaths } from './verify-md-links.ts'
+import { anchorCache, documentAnchors, exemptDeletedSurfaceNoteViolations, findViolations, githubSlug, markdownLinkSourcePaths } from './verify-md-links.ts'
 
 const roots: string[] = []
 afterEach(() => {
@@ -136,5 +136,32 @@ describe('findViolations fragments', () => {
   it('still rejects a missing target file, reported as target not anchor', () => {
     const root = layout({ 'a.md': '# A\n\n[ghost](missing.md#anything)\n' })
     expect(violationsIn(root, 'a.md')).toEqual([{ url: 'missing.md#anything', reason: 'target' }])
+  })
+})
+
+describe('deleted-upstream-surface note exemption', () => {
+  it('exempts Agent Note links into the class-C deleted desktop surface, per violation', () => {
+    const root = layout({
+      '.agents/notes/implemented/electron-note.md':
+        '[electron file](../../../apps/desktop/scripts/prepare-dsh.ts)\n[real gap](../../../docs/missing.md)\n',
+    })
+    const all = findViolations(join(root, '.agents/notes/implemented/electron-note.md'), anchorCache(), root)
+    expect(exemptDeletedSurfaceNoteViolations(all, root).map(({ url }) => url))
+      .toEqual(['../../../docs/missing.md'])
+  })
+
+  it('keeps reporting an instruction file that links into the same surface', () => {
+    const root = layout({ 'AGENTS.md': '[signing](apps/desktop/README.md#windows-ev-signing)\n' })
+    const all = findViolations(join(root, 'AGENTS.md'), anchorCache(), root)
+    expect(exemptDeletedSurfaceNoteViolations(all, root)).toHaveLength(1)
+  })
+
+  it('keeps reporting a note anchor that misses a surviving page', () => {
+    const root = layout({
+      'apps/cli/reference/README.md': '# Reference\n',
+      '.agents/notes/implemented/cli-note.md': '[dump](../../../apps/cli/reference/README.md#config-schema-dump)\n',
+    })
+    const all = findViolations(join(root, '.agents/notes/implemented/cli-note.md'), anchorCache(), root)
+    expect(exemptDeletedSurfaceNoteViolations(all, root)).toHaveLength(1)
   })
 })

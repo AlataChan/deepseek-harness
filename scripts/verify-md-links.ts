@@ -40,7 +40,7 @@ export function markdownLinkSourcePaths(scanRoot: string = root): string[] {
 }
 
 /** A broken relative link: a missing target path or a missing anchor on it. */
-interface Violation {
+export interface Violation {
   file: string
   /** 1-based line where the link/image/definition node starts. */
   line: number
@@ -205,10 +205,49 @@ export function findViolations(
   return out
 }
 
+/**
+ * Upstream product surface this fork deletes at merge time (the class-C paths
+ * in `scripts/upstream-intake-registry.ts`): upstream's Electron desktop and
+ * its signing patch tree collide with this fork's Tauri shell, so their files
+ * never exist here.
+ */
+export const DELETED_UPSTREAM_SURFACE: readonly string[] = [
+  'apps/desktop/',
+  'apps/desktop-host/',
+  'patches/@electron',
+]
+
+/**
+ * Drop Agent Note violations whose broken target resolves into the deleted
+ * upstream surface. Upstream historically documents its Electron desktop in
+ * Notes; those links cannot resolve in this fork, and the Notes stay as the
+ * upstream record. The exemption is deliberately narrow: only sources under
+ * `.agents/notes/`, only targets inside {@link DELETED_UPSTREAM_SURFACE}, and
+ * only per violation — a Note's link to a surviving page, or an instruction
+ * file's link anywhere, stays reported.
+ * @param violations - broken links as {@link findViolations} reports them.
+ * @param scanRoot - repository root the source paths are relative to.
+ * @returns the violations that still demand a fix.
+ */
+export function exemptDeletedSurfaceNoteViolations(
+  violations: readonly Violation[],
+  scanRoot: string = root,
+): Violation[] {
+  return violations.filter((violation) => {
+    if (!violation.file.startsWith('.agents/notes/')) return true
+    const resolved = resolve(dirname(resolve(scanRoot, violation.file)), pathPart(violation.url))
+    const target = relative(scanRoot, resolved).replaceAll('\\', '/')
+    return !DELETED_UPSTREAM_SURFACE.some(prefix => target.startsWith(prefix))
+  })
+}
+
 if (process.argv[1] && import.meta.filename === resolve(process.argv[1])) {
   const files = markdownLinkSourcePaths(root)
   const anchorsOf = anchorCache()
-  const all = files.flatMap(file => findViolations(resolve(root, file), anchorsOf))
+  const all = exemptDeletedSurfaceNoteViolations(
+    files.flatMap(file => findViolations(resolve(root, file), anchorsOf)),
+    root,
+  )
   const checked = files.length
 
   if (all.length === 0) {

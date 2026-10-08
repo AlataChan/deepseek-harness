@@ -25,9 +25,9 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在稳定 Web bundle 与 Host-side Agent Teams profile 之后，通过 [`@deepseek-ai/dsh-experimental-agent-team-web-profile`](../agent-team-web-profile/README.zh.md) 安装本包。Web Client loader 挂载 `/client` export；root Host export 不执行行为，本包也没有用户配置字段。
+在稳定 Web bundle 与 Host-side Agent Teams profile 之后，通过 [`@deepseek-ai/dsh-experimental-agent-team-profile`](../agent-team-profile/README.zh.md) 安装本包。Web Client loader 挂载 `/client` export；root Host export 不执行行为，本包也没有用户配置字段。
 
-octopus_DSH 桌面也会从 [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json) seed 本包。其 `cordis.patch.yml` 是 dual-face 桌面 bundle 文档：禁用重叠的全局 continuable-child 控件，插入 Host Team service 与 tools，再插入本包以挂载 Client half。Headless 与源码 Web 仍使用 `agent-team-profile` + `agent-team-web-profile`，不走这条 seed 路径。
+octopus_DSH 桌面也会从 [scripts/desktop-profile-plugins.json](../../../scripts/desktop-profile-plugins.json) seed 本包。其 `cordis.patch.yml` 是 dual-face 桌面 bundle 文档：禁用重叠的全局 continuable-child 控件，插入 Host Team service 与 tools，再插入本包以挂载 Client half。Headless 与源码 Web 仍使用 `agent-team-profile`，不走这条 seed 路径。
 
 ### 派活给机构常驻小队
 
@@ -68,7 +68,7 @@ Client export 挂载来自 [`@deepseek-ai/dsh-experimental-agent-team/remote`](.
 <a id="further-exploration"></a>
 ## 进一步探索
 
-- [Agent Teams Web profile](../agent-team-web-profile/README.zh.md)——挂载本 Client plugin 的源码 checkout bundle。
+- [Agent Teams Web profile](../agent-team-profile/README.zh.md)——挂载本 Client plugin 的源码 checkout bundle。
 - [Agent Teams service](../agent-team/README.zh.md)——权威 roster、task 与 Remote 行为。
 - [会话 UI](../../client/ui-conversation/README.zh.md)——稳定 header slot 与 addressed-subagent 导航表层。
 - [实验性包](../README.zh.md)——孵化状态与发布排除规则。

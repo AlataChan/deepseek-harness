@@ -35,4 +35,4 @@ human 只与 Lead 打交道；worker 不直接对人。晋升清单记录在 `ag
 - `TeamMemberView.result` 是派生只读视图；不携带持久状态，每次 `list()` / `memberView()` 调用重建。inactive teammate 在 session 未加载时不产生 result，直到 session 被加载或冷读。
 - `propose_action` 工具在 human 回答前阻塞 Lead；长时间审阅会占用 Lead 的 turn。工具不向 `ask()` 传 `exec.signal`——问题在回答前一直存活。
 - `agent-team` README Dev Note 中的晋升清单是活文档；记录维护者把实验包移到产品角色组前必须满足的 8 项门禁。
-- Team Web UI 仍是实验性，可能同时暴露 Team roster 与遗留子控件；Team-aware Web preset 被推迟（[Web profile README](../../../../packages/experimental/agent-team-web-profile/README.zh.md#known-limitations-and-deferred-work) 拥有当前限制）。
+- Team Web UI 仍是实验性，可能同时暴露 Team roster 与遗留子控件；Team-aware Web preset 被推迟（[Web profile README](../../../../packages/experimental/agent-team-profile/README.zh.md#known-limitations-and-deferred-work) 拥有当前限制）。
