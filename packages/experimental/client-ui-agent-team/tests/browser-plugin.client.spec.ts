@@ -106,8 +106,12 @@ async function bench(options: {
   })
   const navigation: unknown[] = []
   let current = options.addressed === true ? CHILD : SESSION
+  ctx.provide('uiWorkspace', {
+    openSession: (target: SessionId | object) => {
+      navigation.push(typeof target === 'string' ? ['open-session', target] : ['open', target])
+    },
+  } as never)
   ctx.provide('sessions', {
-    list: { getSnapshot: () => ({ current }) },
     subagentAddress: (id: SessionId) => options.addressed === true && id === CHILD
       ? {
         parentSessionId: SESSION,
@@ -115,15 +119,19 @@ async function bench(options: {
         mode: 'continuable' as const,
       }
       : undefined,
-    refreshSubagents: (id: SessionId) => {
+    refreshProjections: (id: SessionId) => {
       navigation.push(['refresh', id])
       return options.refreshGate ?? Promise.resolve()
     },
-    openSubagent: (address: unknown) => { navigation.push(['open', address]) },
+    retainInfo: (id: SessionId) => ({
+      getSnapshot: () => ({
+        referenceCount: id === current ? 1 : 0,
+        retainedBy: id === current ? { mainView: 1 } : {},
+      }),
+      subscribe: () => () => {},
+    }),
     create: () => Promise.resolve(SESSION),
-    open: (id: SessionId) => { navigation.push(['open-session', id]) },
   })
-  ctx.provide('conversation', {})
   ctx.provide('locale', new LocaleRuntime(ctx))
   await ctx.plugin(SlotRegistry).await()
   const collapseHeader = ctx.slots.register({
@@ -168,7 +176,7 @@ async function bench(options: {
 describe('ui-team browser plugin', () => {
   it('registers one disposable header action with RPC-backed task operations', async () => {
     const b = await bench()
-    expect(inject).toEqual(['sessions', 'remote', 'remote.session', 'slots', 'locale'])
+    expect(inject).toEqual(['sessions', 'remote', 'remote.session', 'slots', 'locale', 'uiWorkspace'])
     expect(b.entry()).toMatchObject({
       options: { id: 'agent-team', order: 20 },
       locale: 'agent-team',

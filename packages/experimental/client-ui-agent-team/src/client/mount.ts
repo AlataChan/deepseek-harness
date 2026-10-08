@@ -66,6 +66,7 @@ function registerUi(ctx: ClientContext): void {
       if (member.role !== 'teammate') return
       const parentSessionId = leadSessionId(sessionId)
       await sessions.refreshProjections(parentSessionId)
+      if ((sessions.retainInfo(sessionId).getSnapshot().retainedBy.mainView ?? 0) === 0) return
       ctx.uiWorkspace.openSession({ parentSessionId, childSessionId: member.id, mode: 'continuable' })
     },
     async readHtmlPreview(sessionId, path) {
