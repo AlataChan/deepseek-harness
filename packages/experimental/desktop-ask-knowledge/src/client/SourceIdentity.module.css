@@ -35,6 +35,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
+  corner-shape: round;
   font: var(--dsw-font-xxxs-11);
   line-height: 1;
 }
