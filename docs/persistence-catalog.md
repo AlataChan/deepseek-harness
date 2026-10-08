@@ -587,6 +587,73 @@ Source: [`packages/llm/llm-retry/src/types.ts:9`](../packages/llm/llm-retry/src/
 
 Source: [`packages/llm/llm-retry/src/types.ts:11`](../packages/llm/llm-retry/src/types.ts)
 
+### `media/*`
+
+<a id="mediaapproval--log-only"></a>
+
+#### `media/approval` — log-only
+
+```ts persistence-catalog
+/** Pilot or spend approval bound to hashes. */
+'media/approval': {
+  readonly version: 1
+  readonly requestId: MediaRequestId
+  readonly inputHashes: readonly string[]
+  readonly promptHash: string
+  readonly estimatedYuan: number
+}
+```
+
+Source: [`packages/experimental/desktop-media/src/types.ts:82`](../packages/experimental/desktop-media/src/types.ts)
+
+<a id="mediaartifact--log-only"></a>
+
+#### `media/artifact` — log-only
+
+```ts persistence-catalog
+/** Committed local artifact. */
+'media/artifact': { readonly version: 1; readonly artifact: MediaArtifactRecord }
+```
+
+Source: [`packages/experimental/desktop-media/src/types.ts:96`](../packages/experimental/desktop-media/src/types.ts)
+
+<a id="mediarequest--log-only"></a>
+
+#### `media/request` — log-only
+
+```ts persistence-catalog
+/** Whole creation-request snapshot. */
+'media/request': { readonly version: 1; readonly request: MediaRequestRecord }
+```
+
+Source: [`packages/experimental/desktop-media/src/types.ts:80`](../packages/experimental/desktop-media/src/types.ts)
+
+<a id="mediastop--log-only"></a>
+
+#### `media/stop` — log-only
+
+```ts persistence-catalog
+/** Explicit stop so recovery does not restart the request. */
+'media/stop': { readonly version: 1; readonly requestId: MediaRequestId }
+```
+
+Source: [`packages/experimental/desktop-media/src/types.ts:98`](../packages/experimental/desktop-media/src/types.ts)
+
+<a id="mediatask--log-only"></a>
+
+#### `media/task` — log-only
+
+```ts persistence-catalog
+/** Provider task id after a paid submission. */
+'media/task': {
+  readonly version: 1
+  readonly requestId: MediaRequestId
+  readonly providerTaskId: string
+}
+```
+
+Source: [`packages/experimental/desktop-media/src/types.ts:90`](../packages/experimental/desktop-media/src/types.ts)
+
 ### `model/*`
 
 <a id="modelselection--log-only"></a>

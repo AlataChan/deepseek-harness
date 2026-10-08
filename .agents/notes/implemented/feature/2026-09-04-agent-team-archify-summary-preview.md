@@ -17,6 +17,10 @@ Keep Archify as a user-confirmed post-hoc step (dock CTA fills and sends the pro
 - **Auto-run Archify on task settle.** Rejected: token cost and surprise.
 - **Browser-only open, no iframe.** Deferred as fallback only; primary ask was in-dock preview.
 
+## Consequences
+
+The user can inspect generated HTML in the dock after the explicit Archify action. The sandbox limits preview execution; a read or render failure sends the user to the workspace file-opening path.
+
 ## Verification
 
 ```bash

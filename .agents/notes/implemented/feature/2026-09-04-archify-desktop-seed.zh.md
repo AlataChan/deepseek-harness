@@ -17,6 +17,10 @@ Status: implemented
 - **Profile-plugin 钉包。** 否决：校验要求 `dsh.client`。
 - **继续纯 opt-in。** 否决：分发用户看不到 skill。
 
+## Consequences
+
+安装版桌面用户无需单独添加插件即可获得 Archify。该 skill 增加了随包文件和 npm 来源版本钉定，但不会进入默认 agent 组合，也不会在任务完成时自动运行。
+
 ## 验证
 
 ```bash

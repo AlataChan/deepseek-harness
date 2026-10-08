@@ -17,6 +17,10 @@ While the Team dock is open, soft-refresh `TeamView` about every 1.5s (silent); 
 - **Session-event push without interval.** Deferred until this panel is wired to streaming projections.
 - **Keep pending-only edges.** Rejected: users usually saw nodes with no lines.
 
+## Consequences
+
+An open dock makes periodic projection reads, while a closed dock makes none. Delivered-message edges remain visible without exposing message bodies, so the graph reflects recent exchanges as well as pending hops.
+
 ## Verification
 
 ```bash

@@ -17,6 +17,10 @@ Keep Archify as an explicit CTA (no silent generate). Treat HTML on disk + `ARCH
 - **Host RPC to scan the session log.** Deferred: the Chat snapshot is already in the Client Conversation binding.
 - **Patch upstream Archify Chrome flags.** Out of scope for this product loop; prompt guidance covers the failure narrative.
 
+## Consequences
+
+The user still starts Archify explicitly. A path present in the Chat snapshot opens the preview without a second paste or click; output without that marker still requires manual selection. Chrome visual-check failure does not invalidate an HTML file that Archify wrote successfully.
+
 ## Verification
 
 ```bash

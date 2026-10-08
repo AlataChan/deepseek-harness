@@ -17,6 +17,10 @@ Status: implemented
 - **Host RPC 扫会话日志。** 延后：Client Conversation 已有 Chat 快照。
 - **改上游 Archify Chrome 参数。** 本次不做；话术覆盖失败叙事。
 
+## Consequences
+
+用户仍须显式启动 Archify。Chat 快照包含路径时，预览无需再次粘贴或点击；缺少该标记的结果仍需手动选择。Chrome 可视检查失败不否定已成功写出的 HTML 文件。
+
 ## Verification
 
 ```bash

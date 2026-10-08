@@ -34,6 +34,8 @@ Client adapter 提供 `SessionEventStream`，即绑定到一个普通 Session �
 
 四个电商 Remote 在 `ctx.commerce` 之上沿用同一套模式：`listCommerceSources`、`importCommerceSpreadsheet` 与 `importCommerceSample` 不打开任何 Session；`commitCommerce` 把一个数据源绑定到空白会话或新建会话，并让它运行 `commerce` preset，绑定失败时恢复原 preset 并销毁自己创建的会话。没有电商能力的 Host 返回 `session/commerce-unavailable`，没有 `commerce` preset 的 Host 返回 `session/commerce-preset-unavailable`。
 
+媒体 Remote 对 `ctx.desktopMedia` 做鸭子类型调用，因此本官方包不导入实验 overlay：`listMediaWorks`、`listMediaVoices`、`mediaRuntimeStatus`、`openMediaWork`、`revealMediaWork`、`copyMediaWorkPath`、`importMediaBytes` 和 `saveMediaWorkAs` 都不会激活 Agent。没有 overlay 的 Host 返回 `session/media-unavailable`。
+
 Session 对象还承载本地提交回显：`session.beginSubmission` 在调用方序列化与 prompt 之前，同步把一条回显写入 `SessionSnapshot.pendingSubmissions`，会话 UI 因此能在点击提交的当帧显示消息。回显按顺序存放图片预览与持久文件引用。Session 根据当前运行状态与请求的投递模式推导其 `transcript`、`queued` 或 `steering` 位置，并在序列化期间保留该位置。prompt 的 `requestId` 是关联标识：Host 把它回显为 durable user source 的 `rpcId`，queue occurrence 也把它投影为 `SessionQueuedItem.rpcId`。回显在观察到其 durable event 或 queue occurrence 后延迟一个动画帧退休，带标识的 prompt 失败或被放弃时立即退休，销毁时按 failed 退休。每次退休恰好触发一次 `onRetire`；observed 退休还会携带有序的持久附件引用，让 composer 释放成功卡片并保留失败草稿。回显只存在于 Client 内存；刷新与重连只从 durable event 重建会话。
 
 
