@@ -913,8 +913,11 @@ it('applies watched configuration while pnpm installation is still running', asy
   expect(ctx.get('managedProbe')).toBeUndefined()
 })
 
-it('installs and removes with the bundled pnpm when PATH contains no pnpm', async () => {
-  const pnpm = fileURLToPath(new URL('../../../../apps/desktop/node_modules/pnpm/bin/pnpm.mjs', import.meta.url))
+// The bundled pnpm is upstream's Electron-app artifact; this fork's Tauri
+// desktop ships none, so the case runs only where that tree exists.
+const bundledPnpm = fileURLToPath(new URL('../../../../apps/desktop/node_modules/pnpm/bin/pnpm.mjs', import.meta.url))
+it.skipIf(!existsSync(bundledPnpm))('installs and removes with the bundled pnpm when PATH contains no pnpm', async () => {
+  const pnpm = bundledPnpm
   const { manager, dir } = await fixture('startup', false, undefined, { pnpmCommand: 'must-not-be-used' }, {
     command: process.execPath, args: ['--expose-internals', pnpm], env: { PATH: '', ELECTRON_RUN_AS_NODE: '1' },
   })

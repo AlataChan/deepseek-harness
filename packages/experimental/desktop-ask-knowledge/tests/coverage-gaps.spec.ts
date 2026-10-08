@@ -405,6 +405,7 @@ describe('unbind leftover', () => {
     const live = {
       id: SessionId('live'),
       events: [{ type: 'ask-knowledge/bound', data: { libraryId: 'lib', displayName: 'L' } }],
+      snapshotEvents: () => live.events,
       append: vi.fn(),
     }
     ctx.provide('sessions', {
@@ -413,11 +414,15 @@ describe('unbind leftover', () => {
     })
     ctx.provide('sessionProjections', { stateOf: () => ({ libraryId: 'lib', displayName: 'L' }) })
     ctx.provide('sessionPersistence', {
-      list: async () => [{ id: SessionId('cold') }, { id: live.id }],
-      load: async () => ({
-        events: [{ type: 'ask-knowledge/bound', data: { libraryId: 'lib', displayName: 'L' } }],
+      list: async () => [{ header: { id: SessionId('cold') } }, { header: { id: live.id } }],
+      open: async () => ({
+        read: async () => ({
+          events: [{ type: 'ask-knowledge/bound', data: { libraryId: 'lib', displayName: 'L' } }],
+        }),
+        append: vi.fn(),
+        flush: async () => {},
+        close: async () => {},
       }),
-      append: vi.fn(),
     })
     const ids = await listBoundSessionIds(ctx, AskKnowledgeLibraryId('lib'))
     expect(ids).toContain(live.id)
@@ -433,6 +438,7 @@ describe('unbind leftover', () => {
     const other = {
       id: SessionId('other'),
       events: [{ type: 'ask-knowledge/bound', data: { libraryId: 'other', displayName: 'O' } }],
+      snapshotEvents: () => other.events,
       append: vi.fn(),
     }
     folded.provide('sessions', {
@@ -440,16 +446,20 @@ describe('unbind leftover', () => {
       get: (id: string) => id === other.id ? other : undefined,
     })
     folded.provide('sessionPersistence', {
-      list: async () => [{ id: other.id }, { id: SessionId('fold-cold') }, { id: SessionId('other-cold') }],
-      load: async (id: string) => ({
-        events: [{
-          type: 'ask-knowledge/bound',
-          data: id === 'other-cold'
-            ? { libraryId: 'other', displayName: 'O' }
-            : { libraryId: 'lib', displayName: 'L' },
-        }],
+      list: async () => [{ header: { id: other.id } }, { header: { id: SessionId('fold-cold') } }, { header: { id: SessionId('other-cold') } }],
+      open: async (id: string) => ({
+        read: async () => ({
+          events: [{
+            type: 'ask-knowledge/bound',
+            data: id === 'other-cold'
+              ? { libraryId: 'other', displayName: 'O' }
+              : { libraryId: 'lib', displayName: 'L' },
+          }],
+        }),
+        append: vi.fn(),
+        flush: async () => {},
+        close: async () => {},
       }),
-      append: vi.fn(),
     })
     const foldedIds = await listBoundSessionIds(folded, AskKnowledgeLibraryId('lib'))
     expect(foldedIds).toContain(SessionId('fold-cold'))
@@ -462,8 +472,12 @@ describe('unbind leftover', () => {
     const append = vi.fn()
     ctx.provide('sessionPersistence', {
       list: async () => [],
-      load: async () => ({ events: [] }),
-      append,
+      open: async () => ({
+        read: async () => ({ events: [] }),
+        append,
+        flush: async () => {},
+        close: async () => {},
+      }),
     })
     await unbindSession(ctx, SessionId('cold'), AskKnowledgeLibraryId('lib'))
     expect(append).toHaveBeenCalled()
@@ -471,18 +485,22 @@ describe('unbind leftover', () => {
     const appendSeq = vi.fn()
     sequenced.provide('sessionPersistence', {
       list: async () => [],
-      load: async () => ({ events: [{ type: 'session/title', seq: 3, data: { title: 'x' } }] }),
-      append: appendSeq,
+      open: async () => ({
+        read: async () => ({ events: [{ type: 'session/title', seq: 3, data: { title: 'x' } }] }),
+        append: appendSeq,
+        flush: async () => {},
+        close: async () => {},
+      }),
     })
     await unbindSession(sequenced, SessionId('seq'), AskKnowledgeLibraryId('lib'))
-    expect(appendSeq).toHaveBeenCalledWith(SessionId('seq'), [
+    expect(appendSeq).toHaveBeenCalledWith([
       expect.objectContaining({ type: 'ask-knowledge/unbound', seq: 4 }),
     ])
   })
 
   it('switches a raced live session onto Session.append', async () => {
     const ctx = new Context()
-    const live = { id: SessionId('race'), append: vi.fn(), events: [] }
+    const live = { id: SessionId('race'), append: vi.fn(), events: [], snapshotEvents: () => [] }
     let reads = 0
     ctx.provide('sessions', {
       get: () => {
@@ -492,9 +510,13 @@ describe('unbind leftover', () => {
       list: () => [],
     })
     ctx.provide('sessionPersistence', {
-      list: async () => [{ id: live.id }],
-      load: async () => ({ events: [] }),
-      append: vi.fn(),
+      list: async () => [{ header: { id: live.id } }],
+      open: async () => ({
+        read: async () => ({ events: [] }),
+        append: vi.fn(),
+        flush: async () => {},
+        close: async () => {},
+      }),
     })
     await unbindSession(ctx, live.id, AskKnowledgeLibraryId('lib'))
     expect(live.append).toHaveBeenCalled()
@@ -508,9 +530,13 @@ describe('unbind leftover', () => {
       list: () => [],
     })
     late.provide('sessionPersistence', {
-      list: async () => [{ id: live.id }],
-      load: async () => ({ events: [] }),
-      append: vi.fn(),
+      list: async () => [{ header: { id: live.id } }],
+      open: async () => ({
+        read: async () => ({ events: [] }),
+        append: vi.fn(),
+        flush: async () => {},
+        close: async () => {},
+      }),
     })
     await unbindSession(late, live.id, AskKnowledgeLibraryId('lib'))
     expect(live.append).toHaveBeenCalledTimes(2)

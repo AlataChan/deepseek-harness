@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionEvent, SessionId as Sid } from '@deepseek-ai/dsh-session'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { bootOverlay } from './helpers/boot.ts'
 
 const cleanups: Array<() => Promise<void> | void> = []
@@ -71,18 +71,22 @@ describe('ask-knowledge attach', () => {
     const coldId = SessionId('cold-only')
     const appended: SessionEvent[] = []
     ctx.provide('sessionPersistence', {
-      list: async () => [{ id: coldId }],
-      load: async () => ({
-        events: [{
-          type: 'ask-knowledge/bound',
-          seq: 0,
-          time: 1,
-          data: { libraryId: library.id, displayName: '冷' },
-        }],
+      list: async () => [{ header: { id: coldId } }],
+      open: async () => ({
+        read: async () => ({
+          events: [{
+            type: 'ask-knowledge/bound',
+            seq: 0,
+            time: 1,
+            data: { libraryId: library.id, displayName: '冷' },
+          }],
+        }),
+        append: async (events: SessionEvent[]) => {
+          appended.push(...events)
+        },
+        flush: async () => {},
+        close: async () => {},
       }),
-      append: async (_id: Sid, events: SessionEvent[]) => {
-        appended.push(...events)
-      },
     } as never)
     await ctx.askKnowledge.removeLibrary({ libraryId: library.id })
     expect(appended.some(event => event.type === 'ask-knowledge/unbound')).toBe(true)

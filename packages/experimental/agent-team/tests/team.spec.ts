@@ -415,7 +415,7 @@ describe('Team identity and provisioning', () => {
 
     expect(ctx.agentTeams.listMembers(lead)[1]).toMatchObject({
       name: 'idle-worker',
-      status: 'idle',
+      status: 'inactive',
       result: { outcome: 'completed', summary: 'final answer from worker' },
     })
   })
