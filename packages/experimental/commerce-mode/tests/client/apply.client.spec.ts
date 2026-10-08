@@ -12,6 +12,7 @@ import { en, zh } from '../../src/client/locales.ts'
 interface ListedSession {
   id: string
   blank?: boolean
+  retainedBy?: Record<string, number | undefined>
   projectionValues?: { agentPreset?: string; commerceBinding?: unknown }
 }
 
@@ -49,7 +50,12 @@ async function bench(initial?: { current?: string; byId?: Record<string, ListedS
   const open = vi.fn()
   ctx.provide('sessions', {
     list: {
-      getSnapshot: () => state,
+      getSnapshot: () => ({
+        byId: Object.fromEntries(Object.entries(state.byId).map(([id, row]) => [
+          id,
+          id === state.current ? { ...row, retainedBy: { ...row.retainedBy, mainView: 1 } } : row,
+        ])),
+      }),
       subscribe: (fn: () => void) => {
         listener = fn
         return () => { listener = undefined }
@@ -57,10 +63,11 @@ async function bench(initial?: { current?: string; byId?: Record<string, ListedS
     },
     open,
   })
+  ctx.provide('uiWorkspace', { openSession: open })
   ctx.provide('conversation', {})
   const seat = { stage: vi.fn(), select: vi.fn(async () => undefined as string | undefined), clearStage: vi.fn() }
   ctx.provide('agentPresetSeat', seat)
-  const fiber = ctx.plugin({ inject: [...inject, 'conversation', 'sessions', 'agentPresetSeat'], apply })
+  const fiber = ctx.plugin({ inject: [...inject, 'conversation', 'sessions', 'uiWorkspace', 'agentPresetSeat'], apply })
   await fiber.await()
   return {
     ctx, slots, locale, seat, open, remotes, state, fiber,

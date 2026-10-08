@@ -342,6 +342,8 @@ function mount(
       useWorkspaces: bindSnapshotSelector(workspaces),
       useProjection: (() => undefined),
       useComposerBlock: select => select(options.composerBlock),
+      useAskDataGateOccupied: select => select(options.askDataGate === true),
+      useCommerceGateOccupied: select => select(options.commerceGate === true),
       useInput,
       inputActions,
       renderSlot,
@@ -373,12 +375,6 @@ function mount(
     useProjection: (() => undefined),
     useInput,
     inputActions,
-    renderSlot,
-    renderSlotChain,
-    selectWorkspace: retargetWorkspace,
-    useAskDataGateOccupied: select => select(options.askDataGate === true),
-    useCommerceGateOccupied: select => select(options.commerceGate === true),
-    t,
   }
   const props: ConversationSlotProps = { ...runtimeProps, renderSlot, renderFactorySlot }
   const view = render(<ConversationMainPanel {...props} />)

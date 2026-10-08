@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { execa } from 'execa'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  composeEntries, readProfileManifest, resolveBundleDir, writeProfileManifest,
+  composeEntries, readProfileManifest, resolveBundleDir,
 } from '@deepseek-ai/dsh-app-boot'
 import { resolveExampleLaunch } from '@deepseek-ai/dsh-loader-smoke'
 import { runPlugin } from '../src/plugin.ts'
@@ -98,13 +98,6 @@ async function linkedProfile(): Promise<{ home: string; profileDir: string }> {
   const code = runPlugin(PROFILE, ['add', `link:${commerceModeDir}`])
   expect(code).toBe(0)
   const profileDir = join(home, 'profiles', PROFILE)
-  // One deterministic mount: a custom profile defaults to live patch reload,
-  // which re-applies the tree when the watcher starts.
-  const manifest = readProfileManifest('test', profileDir)
-  writeProfileManifest(profileDir, {
-    ...manifest,
-    dsh: { ...manifest.dsh, profile: { ...manifest.dsh?.profile, patchReload: 'startup' } },
-  })
   return { home, profileDir }
 }
 

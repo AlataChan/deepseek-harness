@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react'
-import { DisclosureRow, IconPlayOutline16, IconSparkle16, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { DisclosureRow, IconPlayOutlineRegular, IconSparkleRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -58,8 +58,8 @@ export function MediaCard({
         icon={model.state === 'error'
           ? <StateDot state="error" />
           : toolName === 'media_synthesize_speech' || toolName === 'media_clone_voice'
-            ? <IconSparkle16 />
-            : <IconPlayOutline16 />}
+            ? <IconSparkleRegular />
+            : <IconPlayOutlineRegular />}
         title={title}
         open={expanded}
         expandable

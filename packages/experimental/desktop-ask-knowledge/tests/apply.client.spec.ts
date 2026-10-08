@@ -11,6 +11,7 @@ import type { LibrarySettingsRemotes } from '../src/client/LibrarySettingsSectio
 
 interface SessionRow {
   id: string
+  retainedBy?: Record<string, number | undefined> | undefined
   projectionValues?: { askKnowledgeBinding?: unknown } | undefined
 }
 
@@ -44,11 +45,18 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
     byId: initial?.byId ?? {},
   }
   const list = {
-    getSnapshot: () => state,
+    getSnapshot: () => ({
+      byId: Object.fromEntries(Object.entries(state.byId).map(([id, row]) => [
+        id,
+        id === state.current ? { ...row, retainedBy: { ...row.retainedBy, mainView: 1 } } : row,
+      ])),
+    }),
     subscribe: () => () => {},
   }
-  const sessions = { list, open: vi.fn() }
+  const openSession = vi.fn()
+  const sessions = { list, open: openSession }
   ctx.provide('sessions', sessions)
+  ctx.provide('uiWorkspace', { openSession })
   ctx.provide('conversation', {})
   const slots = ctx.get('slots') as SlotRegistry
   slots.register(
@@ -77,11 +85,11 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
     },
   } as never, () => null)
   const fiber = ctx.plugin({
-    inject: [...inject, 'conversation', 'sessions'],
+    inject: [...inject, 'conversation', 'sessions', 'uiWorkspace'],
     apply,
   })
   await fiber.await()
-  return { ctx, slots, remotes, sessions, state, dispose: () => fiber.dispose() }
+  return { ctx, slots, remotes, sessions, openSession, state, dispose: () => fiber.dispose() }
 }
 
 describe('desktop-ask-knowledge apply', () => {
@@ -182,7 +190,7 @@ describe('desktop-ask-knowledge apply', () => {
       libraryId: '1',
       sessionId: 's-data',
     })
-    expect(b.sessions.open).toHaveBeenCalledWith('s-knowledge')
+    expect(b.openSession).toHaveBeenCalledWith('s-knowledge')
     await b.dispose()
   })
 

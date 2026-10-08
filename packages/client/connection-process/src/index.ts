@@ -48,6 +48,9 @@ function packageVersion(): string {
   return manifest.version
 }
 
+/** An immediately-exhausted iterable: the carrier protocol delivers no Client-to-Host stream items. */
+async function* emptyUplink(): AsyncGenerator<unknown> {}
+
 /** Injectable process facts used by tests and the published companion entry. */
 export interface CompanionRuntimePorts {
   /** Connected Node IPC port; absent selects the current process channel. */
@@ -72,7 +75,10 @@ export function apply(ctx: Context, config: Config, runtime: CompanionRuntimePor
   const channelReady = Promise.withResolvers<VsCodeIpcChannel>()
   const gateway = new VsCodeHostGateway({
     apiFetchHandler: ctx.connection.createSharedFetchHandler('/api'),
-    openStream: (endpoint, payload, signal) => ctx.typertGateway.wireStream.open(endpoint, payload, signal),
+    // The carrier protocol carries no Client-to-Host stream items, so every
+    // stream opens with an empty uplink; the companion speaks for the operator.
+    openStream: (endpoint, payload, signal) => ctx.typertGateway.wireStream.open(
+      endpoint, payload, emptyUplink(), undefined, signal),
     clientModules: ctx.clientModules,
     expectedWorkspaceRoot: runtime.workspaceRoot ?? config.workspaceRoot ?? process.cwd(),
     runtimeVersion: runtime.runtimeVersion ?? packageVersion(),

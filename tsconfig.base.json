@@ -72,6 +72,8 @@
       "@deepseek-ai/cordis": ["./vendor/cordis/src"],
       "@deepseek-ai/cosmokit": ["./vendor/cosmokit/src"],
       "@deepseek-ai/schemastery": ["./vendor/schemastery/src"],
+      "cosmokit": ["./vendor/cosmokit/src"],
+      "schemastery": ["./vendor/schemastery/src"],
       "@deepseek-ai/cordis-plugin-loader": ["./vendor/loader/src"],
       "@deepseek-ai/cordis-plugin-include": ["./vendor/include/src"],
       "@deepseek-ai/cordis-plugin-group": ["./vendor/group/src"],

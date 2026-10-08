@@ -13,6 +13,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { AskKnowledgeChip } from './AskKnowledgeChip.tsx'
 import type { AskKnowledgeChipInjected } from './AskKnowledgeChip.tsx'
 import { AttachKnowledgeBridge } from './AttachKnowledgeBridge.tsx'
@@ -56,6 +57,7 @@ const NS = 'desktop-ask-knowledge'
 /** One row from `sessions.list` as read by the ask-knowledge occupant. */
 interface ListedSession {
   id: string
+  retainedBy?: Record<string, number | undefined>
   projectionValues?: {
     askKnowledgeBinding?: unknown
   }
@@ -90,15 +92,14 @@ export function apply(ctx: ClientContext): void {
     label: zh['settings.section'],
     inject: (): LibrarySettingsRemotes => remotesOf(ctx),
   }, LibrarySettingsSection))
-  ctx.inject(['conversation', 'sessions'], (scope: ClientContext) => {
+  ctx.inject(['conversation', 'sessions', 'uiWorkspace'], (scope: ClientContext) => {
     let pickerDispose: (() => void) | undefined
 
     const currentSession = (): ListedSession | undefined => {
       const state = scope.sessions.list.getSnapshot() as {
-        current?: string
         byId: Record<string, ListedSession>
       }
-      return state.current === undefined ? undefined : state.byId[state.current]
+      return Object.values(state.byId).find(row => (row.retainedBy?.mainView ?? 0) > 0)
     }
 
     const closePicker = (): void => {
@@ -123,7 +124,7 @@ export function apply(ctx: ClientContext): void {
               && result.value?.sessionId !== undefined
               && result.value.sessionId !== session?.id
             ) {
-              scope.sessions.open(SessionId(result.value.sessionId))
+              scope.uiWorkspace.openSession(SessionId(result.value.sessionId))
             }
             return result
           },

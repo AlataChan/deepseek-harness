@@ -16,7 +16,7 @@ import type {
 } from '@deepseek-ai/dsh-host-ask-knowledge'
 import { askKnowledgeBindingProjectionDefinition } from '@deepseek-ai/dsh-host-ask-knowledge'
 import { askDataBindingProjectionDefinition } from '@deepseek-ai/dsh-host-ask-data'
-import { agentPresetProjectionDefinition } from '@deepseek-ai/dsh-agent-presets'
+import { agentPresetProjectionDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { createSessionTestRemote } from './test-remote.ts'
 import { ASK_KNOWLEDGE_MAX_CHUNK_BYTES } from '../src/types.ts'

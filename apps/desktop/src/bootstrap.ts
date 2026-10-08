@@ -116,11 +116,15 @@ function installModuleLoaderQueue(): void {
         throw new Error(`client-modules: HTML did not preload ${CLIENT_MODULES_ID}/client.js`)
       }
       pendingQueue.splice(index, 1)
-      const exports = registration.factory((specifier) => {
+      const earlyRequire = (specifier: string): never => {
         throw new Error(
           `client-modules: ${CLIENT_MODULES_ID}/client.js requested external "${specifier}" before the module system existed`,
         )
-      })
+      }
+      earlyRequire.async = (specifier: string): Promise<never> => Promise.reject(new Error(
+        `client-modules: ${CLIENT_MODULES_ID}/client.js requested async chunk "${specifier}" before the module system existed`,
+      ))
+      const exports = registration.factory(earlyRequire)
       const create = (exports as {
         createClientModuleSystem?: (
           next: ClientModuleLoaderTarget,

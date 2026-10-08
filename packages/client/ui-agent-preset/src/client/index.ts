@@ -168,7 +168,7 @@ export function apply(ctx: ClientContext): void {
       stage: (id, opts) => { (mainBlankSeat() ?? unboundSeat).stage(id, opts as never) },
       select: id => (mainBlankSeat() ?? unboundSeat).select(id),
       clearStage: () => { (mainBlankSeat() ?? unboundSeat).clearStage() },
-      apply: () => (mainBlankSeat() ?? unboundSeat).apply(),
+      apply: async () => { await (mainBlankSeat() ?? unboundSeat).apply() },
     }
     scope.provide('agentPresetSeat', seatFace)
 

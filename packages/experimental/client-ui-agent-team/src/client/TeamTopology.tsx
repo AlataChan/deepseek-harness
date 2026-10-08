@@ -51,7 +51,6 @@ function writeReduceMotion(enabled: boolean): void {
 function memberStatusKey(status: TeamRosterMember['status']): TeamKey {
   switch (status) {
     case 'running': return 'memberStatus.running'
-    case 'idle': return 'memberStatus.idle'
     case 'inactive': return 'memberStatus.inactive'
     case 'provisioning': return 'memberStatus.provisioning'
     case 'failed': return 'memberStatus.failed'
@@ -63,7 +62,6 @@ function statusDot(status: TeamRosterMember['status']): 'done' | 'warning' | 'on
     case 'running': return 'ongoing'
     case 'provisioning': return 'warning'
     case 'failed': return 'error'
-    case 'idle':
     case 'inactive':
       return 'done'
   }

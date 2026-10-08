@@ -17,6 +17,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 // Type-only: the Session Remote namespace carrying the commerce remotes.
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+// Type-only: the uiWorkspace service merge (ctx.uiWorkspace).
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { CommerceChangeRow } from './CommerceChangeRow.tsx'
 import { CommerceChip, type CommerceChipInjected } from './CommerceChip.tsx'
 import { CommercePage, type CommercePageProps, type CommercePageRemotes } from './CommercePage.tsx'
@@ -54,6 +56,7 @@ interface CommercePresetSeat {
 interface ListedSession {
   id: string
   blank?: boolean
+  retainedBy?: Record<string, number | undefined>
   projectionValues?: {
     agentPreset?: string
     commerceBinding?: unknown
@@ -89,7 +92,7 @@ export function apply(ctx: ClientContext): void {
     ))
   }
 
-  ctx.inject(['conversation', 'sessions', 'agentPresetSeat'], (scope: ClientContext) => {
+  ctx.inject(['conversation', 'sessions', 'uiWorkspace', 'agentPresetSeat'], (scope: ClientContext) => {
     const seat = scope.get('agentPresetSeat') as CommercePresetSeat
     let gateDispose: (() => void) | undefined
     let previousPreset = 'standard'
@@ -100,10 +103,9 @@ export function apply(ctx: ClientContext): void {
    may not value-import another plugin's ./client */
     const currentSession = (): ListedSession | undefined => {
       const state = scope.sessions.list.getSnapshot() as {
-        current?: string
         byId: Record<string, ListedSession>
       }
-      return state.current === undefined ? undefined : state.byId[state.current]
+      return Object.values(state.byId).find(row => (row.retainedBy?.mainView ?? 0) > 0)
     }
     /* jscpd:ignore-end */
 
@@ -151,7 +153,7 @@ export function apply(ctx: ClientContext): void {
             onCommitted: (sessionId) => {
               seat.clearStage()
               closeGate()
-              scope.sessions.open(SessionId(sessionId))
+              scope.uiWorkspace.openSession(SessionId(sessionId))
             },
             /* jscpd:ignore-end */
           }

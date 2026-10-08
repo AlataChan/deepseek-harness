@@ -11,7 +11,7 @@ const LEAD = 'lead-session' as SessionId
 const WORKER = 'worker-session' as SessionId
 
 const members: TeamMemberView[] = [
-  { id: LEAD, name: 'lead', role: 'lead', status: 'idle', diagnostics: [] },
+  { id: LEAD, name: 'lead', role: 'lead', status: 'inactive', diagnostics: [] },
   { id: WORKER, name: 'drafter', role: 'teammate', status: 'running', diagnostics: [] },
 ]
 

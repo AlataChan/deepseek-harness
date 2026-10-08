@@ -12,12 +12,12 @@ import type {} from '@deepseek-ai/dsh-experimental-agent-team/remote'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
-import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import {
   TeamAction, type TeamActionInjected, type TeamActionResult, type TeamTaskActionResult,
@@ -37,7 +37,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 /** Required browser services for RPC, navigation, slots, and localized copy. */
-export const inject = ['sessions', 'remote', 'remote.session', 'slots', 'locale']
+export const inject = ['sessions', 'remote', 'remote.session', 'slots', 'locale', 'uiWorkspace']
 
 function registerUi(ctx: ClientContext): void {
   const clientCtx = ctx as unknown as AgentTeamClientContext
@@ -65,13 +65,8 @@ function registerUi(ctx: ClientContext): void {
     async openTeammate(sessionId: SessionId, member: TeamRosterMember): Promise<void> {
       if (member.role !== 'teammate') return
       const parentSessionId = leadSessionId(sessionId)
-      await sessions.refreshSubagents(parentSessionId)
-      if (sessions.list.getSnapshot().current !== sessionId) return
-      sessions.openSubagent({
-        parentSessionId,
-        childSessionId: member.id,
-        mode: 'continuable',
-      })
+      await sessions.refreshProjections(parentSessionId)
+      ctx.uiWorkspace.openSession({ parentSessionId, childSessionId: member.id, mode: 'continuable' })
     },
     async readHtmlPreview(sessionId, path) {
       return await ctx.remote.agentTeams.readHtmlPreview(leadSessionId(sessionId), { path })
@@ -115,7 +110,7 @@ function registerUi(ctx: ClientContext): void {
     createSession: workspaceId => sessions.create({ workspaceId }),
     renameSession: (sessionId, title) => sessionRemote.rename({ sessionId, title }),
     ensure: (sessionId, request) => teams.ensureInstitutionSquad(sessionId, request),
-    openSession: (sessionId) => { sessions.open(sessionId) },
+    openSession: (sessionId) => { ctx.uiWorkspace.openSession(sessionId) },
   }
   ctx.slots.inject(
     'conversation.hero.agentTeam',

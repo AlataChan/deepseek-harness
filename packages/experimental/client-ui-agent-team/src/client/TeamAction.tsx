@@ -12,8 +12,8 @@ import type {
 } from '@deepseek-ai/dsh-experimental-agent-team/client'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import {
-  IconCheckOutline14, IconCloseOutline16, IconEditOutline16, IconPlusOutline16,
-  IconRefreshOutline14, IconTrashOutline16, IconUserOutline16, StateDot,
+  IconCheckOutlineRegular, IconCloseOutlineRegular, IconEditOutlineRegular, IconPlusOutlineRegular,
+  IconRefreshOutlineRegular, IconTrashOutlineRegular, IconUserOutlineRegular, StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -176,7 +176,6 @@ function statusKey(status: TeamTask['status']): TeamKey {
 function memberStatusKey(status: TeamRosterMember['status']): TeamKey {
   switch (status) {
     case 'running': return 'memberStatus.running'
-    case 'idle': return 'memberStatus.idle'
     case 'inactive': return 'memberStatus.inactive'
     case 'provisioning': return 'memberStatus.provisioning'
     case 'failed': return 'memberStatus.failed'
@@ -523,7 +522,7 @@ export function TeamAction({
           openPanel()
         }}
       >
-        <IconUserOutline16 size={14} />
+        <IconUserOutlineRegular size={14} />
         <span>{t('trigger')}</span>
         {teammates.length > 0 && (
           <span className={`${css.count}${runningCount > 0 ? ` ${css.countLive}` : ''}`}>
@@ -574,10 +573,10 @@ export function TeamAction({
               {pinned ? t('unpin') : t('pin')}
             </button>
             <button type="button" className={css.iconButton} aria-label={t('refresh')} onClick={() => { void refresh() }}>
-              <IconRefreshOutline14 />
+              <IconRefreshOutlineRegular size={14} />
             </button>
             <button type="button" className={css.iconButton} aria-label={t('close')} onClick={closeDock}>
-              <IconCloseOutline16 size={14} />
+              <IconCloseOutlineRegular size={14} />
             </button>
           </div>
           {error !== null && <div className={css.error} role="alert">{error}</div>}
@@ -716,7 +715,7 @@ export function TeamAction({
                       <div className={css.sectionTitle}>
                         <h3>{t('tasks')}</h3>
                         <button type="button" className={css.smallButton} onClick={() => { setCreating(true) }}>
-                          <IconPlusOutline16 size={13} /> {t('create')}
+                          <IconPlusOutlineRegular size={13} /> {t('create')}
                         </button>
                       </div>
                       {creating && (
@@ -781,7 +780,7 @@ export function TeamAction({
                                 </label>
                                 {(task.status === 'pending' || task.status === 'in_progress') && (
                                   <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => { startEdit(task) }}>
-                                    <IconEditOutline16 size={13} /> {t('edit')}
+                                    <IconEditOutlineRegular size={13} /> {t('edit')}
                                   </button>
                                 )}
                                 {task.status === 'in_progress' && (
@@ -789,7 +788,7 @@ export function TeamAction({
                                     void settleTask(task.id, () => updateTask(sessionId, {
                                       taskId: task.id, expectedRevision: task.revision, action: 'complete',
                                     }))
-                                  }}><IconCheckOutline14 size={13} /> {t('complete')}</button>
+                                  }}><IconCheckOutlineRegular size={13} /> {t('complete')}</button>
                                 )}
                                 {task.status === 'completed' && (
                                   <button type="button" disabled={pendingTasks.has(task.id)} onClick={() => {
@@ -802,7 +801,7 @@ export function TeamAction({
                                   void settleTask(task.id, () => updateTask(sessionId, {
                                     taskId: task.id, expectedRevision: task.revision, action: 'delete',
                                   }))
-                                }}><IconTrashOutline16 size={13} /> {t('delete')}</button>
+                                }}><IconTrashOutlineRegular size={13} /> {t('delete')}</button>
                               </div>
                             </article>
                           ))}

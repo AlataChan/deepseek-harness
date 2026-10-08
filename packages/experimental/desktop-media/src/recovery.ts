@@ -58,7 +58,7 @@ export function recoverMediaJobs(
     try {
       ids.push(startMediaJob({
         jobs,
-        owner,
+        owner: owner.session.id,
         label: request.label,
         work: signal => work(request, signal),
         ...onStop === undefined ? {} : { onStop: () => onStop(request) },

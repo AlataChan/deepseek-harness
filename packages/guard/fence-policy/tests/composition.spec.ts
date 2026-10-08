@@ -210,7 +210,7 @@ async function loadComposition(spillStore = '@deepseek-ai/dsh-spill-test-store')
 
 function resultText(event: SessionEvent): string {
   if (event.type !== 'tool/result') throw new Error(`expected tool/result, got ${event.type}`)
-  return event.data.message.content[0].content
+  return event.data.message.content
     .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
     .map(block => block.text)
     .join('')
@@ -264,7 +264,7 @@ describe('real Loader composition', () => {
     expect(Buffer.byteLength(resultText(mixed))).toBeLessThanOrEqual(100)
     expect(resultText(mixed)).toContain('[truncated]')
     if (mixed.type !== 'tool/result') throw new Error('expected mixed tool/result')
-    expect(mixed.data.message.content[0].content.some(block => block.type === 'image')).toBe(true)
+    expect(mixed.data.message.content.some(block => block.type === 'image')).toBe(true)
   })
 
   it('keeps an oversized fenced plain-text result inline when spill storage rejects', { timeout: 30_000 }, async () => {
@@ -273,7 +273,7 @@ describe('real Loader composition', () => {
     if (result.type !== 'tool/result') throw new Error('expected tool/result')
 
     const text = resultText(result)
-    expect(result.data.message.content[0].isError).toBe(false)
+    expect(result.data.message.isError).toBe(false)
     expect(text).toBe([
       '<external-data>',
       'Fetched https://example.test/large (HTTP 200)',

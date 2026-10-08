@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { createUserMessage, ToolCallId, type ContentBlock } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, ToolCallId, type ContentBlock, type ContextFormed } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, {
   defineContentToolFixture,
@@ -10,6 +10,12 @@ import ToolRuntime, {
   type ToolExecutionToken,
 } from '@deepseek-ai/dsh-tools'
 import * as FencePolicy from '../src/index.ts'
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'test': { kind: 'test' } & ContextFormed
+  }
+}
 
 const signal = new AbortController().signal
 
@@ -135,7 +141,7 @@ describe('post-execute policy', () => {
     const { ctx } = await setup()
     const context = createUserMessage({
       content: [{ type: 'text', text: 'context' }],
-      source: { kind: 'plugin', plugin: 'test' },
+      source: { kind: 'test' },
     })
     ctx.on('tools/post-execute', async (): Promise<PostToolDecision> => ({ kind: 'accept', additionalContexts: [context] }))
     ctx.tools.register(textTool('web_fetch', [{ type: 'text', text: '<tool>' }]))

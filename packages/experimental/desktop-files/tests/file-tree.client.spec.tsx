@@ -43,13 +43,11 @@ function sessions(current?: string, cwd?: string): SessionListState {
           running: false,
           blank: false,
           updatedAt: 0,
+          retainedBy: { mainView: 1 },
         },
       },
-    current: current as never,
     phase: 'ready',
-    subagentsByParent: {},
-    jobsBySession: {},
-    currentAddress: undefined,
+    projectionsBySession: {},
   }
 }
 

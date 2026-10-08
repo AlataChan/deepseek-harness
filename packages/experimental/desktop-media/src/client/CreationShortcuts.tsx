@@ -7,7 +7,7 @@ import { useState, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { IconPlayOutline16, IconSparkle16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconPlayOutlineRegular, IconSparkleRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { NS, type MediaKey } from './locales.ts'
 import type { MediaSessionRemotes } from './remotes.ts'
 import {
@@ -113,7 +113,7 @@ export function CreationShortcuts({
         aria-label={t('shortcut.video')}
         onClick={() => { send('prompt.video') }}
       >
-        <IconPlayOutline16 size={14} />
+        <IconPlayOutlineRegular size={14} />
         <span>{t('shortcut.video')}</span>
       </button>
       <button
@@ -122,11 +122,11 @@ export function CreationShortcuts({
         aria-label={t('shortcut.speech')}
         onClick={() => { send('prompt.speech') }}
       >
-        <IconSparkle16 size={14} />
+        <IconSparkleRegular size={14} />
         <span>{t('shortcut.speech')}</span>
       </button>
       <label className={css.chip}>
-        <IconSparkle16 size={14} />
+        <IconSparkleRegular size={14} />
         <span>{t('shortcut.clone')}</span>
         <input
           className={css.fileHit}

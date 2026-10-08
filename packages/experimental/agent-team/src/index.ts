@@ -156,7 +156,7 @@ export class TeamService extends TypertRemoteService {
       const enriched = this.attribution.remedy(request)
       return Promise.resolve(enriched === undefined ? next() : enriched)
     })
-    ctx.on('agent/session-start', ({ agent }) => { this.scheduleRecovery(agent) })
+    ctx.on('agent/created', ({ agent }) => { this.scheduleRecovery(agent) })
     ctx.on('agent/status', ({ agent }) => {
       const membership = this.roster.tryMembership(agent)
       if (membership !== undefined) this.activity.notify(membership.id)

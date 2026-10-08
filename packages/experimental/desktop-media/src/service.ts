@@ -575,7 +575,7 @@ export class DesktopMedia extends Service {
     try {
       return startMediaJob({
         jobs,
-        owner,
+        owner: owner.session.id,
         label,
         work,
         onStop: () => appendMediaEvent(owner, 'media/stop', { version: 1, requestId }, this.sessionFlush()),

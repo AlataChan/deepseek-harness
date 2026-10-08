@@ -3,7 +3,7 @@
  * Geometry matches the workspace and agent-preset chips in the same row.
  */
 
-import { IconDataOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconDataOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AskDataKey } from './locales.ts'
 import css from './AskDataChip.module.css'
 
@@ -27,7 +27,7 @@ export function AskDataChip({ openGate, t }: AskDataChipProps) {
   const label = t('chip')
   return (
     <button type="button" className={css.chip} aria-label={label} onClick={openGate}>
-      <IconDataOutline16 size={14} className={css.mark} />
+      <IconDataOutlineRegular size={14} className={css.mark} />
       <span className={css.label}>{label}</span>
     </button>
   )

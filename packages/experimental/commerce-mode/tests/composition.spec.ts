@@ -10,7 +10,8 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import AgentPresets from '@deepseek-ai/dsh-agent-presets'
+import AgentPreset from '@deepseek-ai/dsh-agent-preset'
+import AgentPresetRegistry from '@deepseek-ai/dsh-agent-preset-registry'
 import CommerceMode from '@deepseek-ai/dsh-experimental-commerce-mode'
 import * as CommercePreset from '../src/preset/index.ts'
 import * as CommerceTools from '../src/tools/index.ts'
@@ -110,11 +111,19 @@ async function loadComposition(
   const presetRoot = join(process.env.DSH_HOME, '.agent-presets')
   const workspace = join(root, 'workspace')
   const sourcesRoot = join(root, 'sources')
-  await Promise.all([mkdir(workspace), writePreset(presetRoot, 'standard'), writePreset(presetRoot, 'commerce')])
+  // A pre-seeded commerce directory keeps the packaged installer a no-op and
+  // supplies the empty composition the preset plugin registers from.
+  await Promise.all([mkdir(workspace), writePreset(presetRoot, 'commerce')])
   const configPath = join(root, 'cordis.yml')
   const sqlite3Path = options.failingSqlite === true ? await writeFakeSqlite(join(root, 'bin'), '3.51.0') : 'sqlite3'
   const rosterRows = mount !== 'root'
-    ? ["- name: '@deepseek-ai/dsh-agent-presets'", '  config:', '    default: standard', '    roots: []', '    includeShippedRoot: false', '    includeUserRoot: true']
+    ? [
+      "- name: '@deepseek-ai/dsh-agent-preset-registry'",
+      '  config: { default: standard }',
+      '- id: preset-standard',
+      "  name: '@deepseek-ai/dsh-agent-preset'",
+      '  config: { id: standard, plugins: [] }',
+    ]
     : []
   const toolBounds = '  config: { maxResultChars: 5000, maxListingIds: 20, maxMetaBytes: 4096, maxImportBytes: 1048576, maxStagedChanges: 20, guardrails: { maxItemsPerChange: 25, maxPriceDeltaPct: 20, maxPromotionDiscountPct: 50, maxRestockQuantity: 500, maxCampaignBudget: 10000, maxListingFieldChars: 2000, protectedFields: [listing_id, currency], priceBearingFields: [price], listingUpdateBlockedFields: [price, stock, available] } }'
   const mountRows = [
@@ -172,7 +181,8 @@ async function loadComposition(
     ['@deepseek-ai/dsh-user-approval', ApprovalService],
     ['@deepseek-ai/dsh-sandbox-policy', SandboxPolicyService],
     ['commerce-test-approver', approver],
-    ['@deepseek-ai/dsh-agent-presets', AgentPresets],
+    ['@deepseek-ai/dsh-agent-preset-registry', AgentPresetRegistry],
+    ['@deepseek-ai/dsh-agent-preset', AgentPreset],
     ['@deepseek-ai/dsh-experimental-commerce-mode', CommerceMode],
     ['@deepseek-ai/dsh-experimental-commerce-mode/preset', CommercePreset],
     ['@deepseek-ai/dsh-experimental-commerce-mode/tools', CommerceTools],
@@ -283,8 +293,7 @@ describe('real commerce Loader composition', () => {
     await created.agent.whenIdle()
     const events = created.agent.session.snapshotEvents()
     const result = events.find(event => event.type === 'tool/result')
-    const block = result?.type === 'tool/result' ? result.data.message.content[0] : undefined
-    expect(block?.type === 'tool-result' ? block.isError : undefined).toBe(true)
+    expect(result?.type === 'tool/result' ? result.data.message.isError : undefined).toBe(true)
     expect(events.some(event => event.type === 'commerce/bound')).toBe(false)
     await created.dispose()
   })

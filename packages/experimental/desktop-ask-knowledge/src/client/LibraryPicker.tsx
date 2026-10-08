@@ -12,10 +12,10 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import {
-  IconCheckOutline16,
-  IconCloseOutline16,
-  IconLoadingOutline16,
-  IconQueueOutline14,
+  IconCheckOutlineRegular,
+  IconCloseOutlineRegular,
+  IconLoadingOutlineRegular,
+  IconQueueOutlineRegular,
   Modal,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { readFileBytes } from './bytes.ts'
@@ -79,12 +79,12 @@ function updateBatchEntry(
 function BatchGlyph({ state }: { state: BatchState }) {
   const className = state === 'running' ? `${css.batchGlyph} ${css.batchSpin}` : css.batchGlyph
   const Icon = state === 'queued'
-    ? IconQueueOutline14
+    ? IconQueueOutlineRegular
     : state === 'running'
-      ? IconLoadingOutline16
+      ? IconLoadingOutlineRegular
       : state === 'done'
-        ? IconCheckOutline16
-        : IconCloseOutline16
+        ? IconCheckOutlineRegular
+        : IconCloseOutlineRegular
   return <span className={className} aria-hidden><Icon size={14} /></span>
 }
 

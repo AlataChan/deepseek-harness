@@ -15,7 +15,7 @@ import type {
   AskDataSource,
 } from '@deepseek-ai/dsh-host-ask-data'
 import { askDataBindingProjectionDefinition } from '@deepseek-ai/dsh-host-ask-data'
-import { agentPresetProjectionDefinition } from '@deepseek-ai/dsh-agent-presets'
+import { agentPresetProjectionDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { createSessionTestRemote } from './test-remote.ts'

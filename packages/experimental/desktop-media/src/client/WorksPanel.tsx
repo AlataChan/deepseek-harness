@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react'
-import { IconCloseOutline16, IconCopyOutline16, IconDownloadOutline16, IconFolderOpenOutline16, IconPlayOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCloseOutlineRegular, IconCopyOutlineRegular, IconDownloadOutlineRegular, IconFolderOpenOutlineRegular, IconPlayOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { NS } from './locales.ts'
@@ -88,7 +88,7 @@ export function WorksPanel({
         <header className={css.header}>
           <h2>{t('works.title')}</h2>
           <button type="button" className={css.icon} aria-label={t('works.close')} onClick={close}>
-            <IconCloseOutline16 />
+            <IconCloseOutlineRegular />
           </button>
         </header>
         <div className={css.filters}>
@@ -117,11 +117,11 @@ export function WorksPanel({
                     </div>
                     <div className={css.actions}>
                       <button type="button" onClick={() => { void remotes.openMediaWork({ artifactId: work.artifactId }) }}>
-                        <IconPlayOutline16 size={14} />
+                        <IconPlayOutlineRegular size={14} />
                         {t('works.open')}
                       </button>
                       <button type="button" onClick={() => { void remotes.revealMediaWork({ artifactId: work.artifactId }) }}>
-                        <IconFolderOpenOutline16 size={14} />
+                        <IconFolderOpenOutlineRegular size={14} />
                         {t('works.reveal')}
                       </button>
                       <button
@@ -132,7 +132,7 @@ export function WorksPanel({
                           })
                         }}
                       >
-                        <IconCopyOutline16 size={14} />
+                        <IconCopyOutlineRegular size={14} />
                         {t('works.copyPath')}
                       </button>
                       {pickDirectory === undefined
@@ -145,7 +145,7 @@ export function WorksPanel({
                               setSaveName(work.name)
                             }}
                           >
-                            <IconDownloadOutline16 size={14} />
+                            <IconDownloadOutlineRegular size={14} />
                             {t('works.saveAs')}
                           </button>
                         )}

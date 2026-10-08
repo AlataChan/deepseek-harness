@@ -17,7 +17,7 @@ import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { SidebarFilesOwnerProps } from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import {
-  IconCodeOutline16, IconFolderClose16, IconFolderOpen16, IconRefreshOutline16, IconWarningOutline16,
+  IconCodeOutlineRegular, IconFolderCloseRegular, IconFolderOpenRegular, IconRefreshOutlineRegular, IconWarningOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { FilesKey } from './locales.ts'
 import css from './FileTree.module.css'
@@ -53,9 +53,12 @@ type LevelState =
 export function FileTree({
   wide, expandSidebar, selectFiles, listEntries, openPath, useSessions, t,
 }: FileTreeProps) {
-  const current = useSessions(s => s.current)
+  const current = useSessions((s) => {
+    const row = Object.values(s.byId).find(summary => (summary.retainedBy.mainView ?? 0) > 0)
+    return row === undefined ? undefined : row.id
+  })
   const cwd = useSessions((s) => {
-    const id = s.current
+    const id = Object.values(s.byId).find(summary => (summary.retainedBy.mainView ?? 0) > 0)?.id
     return id === undefined ? undefined : s.byId[id]?.cwd
   })
   const [showHidden, setShowHidden] = useState(false)
@@ -118,7 +121,7 @@ export function FileTree({
           expandSidebar()
         }}
       >
-        <IconCodeOutline16 size={18} />
+        <IconCodeOutlineRegular size={18} />
       </button>
     )
   }
@@ -142,7 +145,7 @@ export function FileTree({
             load(current, undefined, rootKey)
           }}
         >
-          <IconRefreshOutline16 size={16} />
+          <IconRefreshOutlineRegular size={16} />
         </button>
         <button
           type="button"
@@ -246,10 +249,10 @@ function RowView({
         onClick={() => { onToggle(row.path, row.kind) }}
       >
         {row.kind === 'directory'
-          ? (open ? <IconFolderOpen16 size={16} /> : <IconFolderClose16 size={16} />)
+          ? (open ? <IconFolderOpenRegular size={16} /> : <IconFolderCloseRegular size={16} />)
           : row.kind === 'broken-symlink'
-            ? <IconWarningOutline16 size={16} />
-            : <IconCodeOutline16 size={16} />}
+            ? <IconWarningOutlineRegular size={16} />
+            : <IconCodeOutlineRegular size={16} />}
         <span>{row.name}</span>
       </button>
       {row.kind === 'directory' && open && (

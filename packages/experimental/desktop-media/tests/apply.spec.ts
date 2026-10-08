@@ -57,14 +57,14 @@ describe('host apply', () => {
     expect(sections[0]?.text()).toBe(MEDIA_CREATION_PROMPT)
 
     const owner = { session: { id: 's-1' } } as unknown as Agent
-    ctx.emit('agent/created', { agent: owner })
+    ctx.emit('agent/created', { agent: owner, source: 'resume' })
     expect(started).toEqual(['keep'])
   })
 
   it('skips optional seams and still recovers with no jobs', () => {
     const ctx = new Context()
     plugin.apply(ctx, plugin.Config({} as never))
-    ctx.emit('agent/created', { agent: { session: { id: 's-1' } } as never })
+    ctx.emit('agent/created', { agent: { session: { id: 's-1' } } as never, source: 'resume' })
     expect(plugin.name).toBe('experimental-desktop-media')
     expect(plugin.inject).toEqual(['tools', 'jobs', 'sessionProjections', 'systemPrompt', 'sessions'])
     expect(plugin.Config).toBeDefined()

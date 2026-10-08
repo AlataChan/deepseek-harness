@@ -14,6 +14,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-agent-preset/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { AskDataChip } from './AskDataChip.tsx'
 import type { AskDataChipInjected } from './AskDataChip.tsx'
 import { DataSourcePage } from './DataSourcePage.tsx'
@@ -62,6 +63,7 @@ interface AgentPresetSeatFace {
 interface ListedSession {
   id: string
   blank?: boolean
+  retainedBy?: Record<string, number | undefined>
   projectionValues?: {
     agentPreset?: string
     askDataBinding?: unknown
@@ -126,7 +128,7 @@ export function apply(ctx: ClientContext): void {
     order: 5,
     locale: NS,
   }, WorkspaceFolderRow))
-  ctx.inject(['conversation', 'sessions', 'agentPresetSeat'], (scope: ClientContext) => {
+  ctx.inject(['conversation', 'sessions', 'uiWorkspace', 'agentPresetSeat'], (scope: ClientContext) => {
     const seat = scope.get('agentPresetSeat') as AgentPresetSeatFace
     let gateDispose: (() => void) | undefined
     let previousPreset = 'standard'
@@ -135,10 +137,9 @@ export function apply(ctx: ClientContext): void {
 
     const currentSession = (): ListedSession | undefined => {
       const state = scope.sessions.list.getSnapshot() as {
-        current?: string
         byId: Record<string, ListedSession>
       }
-      return state.current === undefined ? undefined : state.byId[state.current]
+      return Object.values(state.byId).find(row => (row.retainedBy?.mainView ?? 0) > 0)
     }
 
     const remotes = (): DataSourcePageRemotes => {
@@ -208,13 +209,13 @@ export function apply(ctx: ClientContext): void {
             onCommitted: (sessionId) => {
               seat.clearStage()
               closeGate()
-              scope.sessions.open(SessionId(sessionId))
+              scope.uiWorkspace.openSession(SessionId(sessionId))
             },
             onAdvanced: (sessionId) => {
               advancedEscapeIds.add(sessionId)
               seat.clearStage()
               closeGate()
-              scope.sessions.open(SessionId(sessionId))
+              scope.uiWorkspace.openSession(SessionId(sessionId))
             },
           }
         },

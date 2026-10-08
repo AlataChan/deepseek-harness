@@ -5,7 +5,7 @@
 
 import { useState, type ReactNode } from 'react'
 import {
-  DisclosureRow, IconDownloadOutline16, IconInspectOutline12, IconListPenOutline16, IconTrashOutline16, StateDot,
+  DisclosureRow, IconDownloadOutlineRegular, IconInspectOutlineRegular, IconListPenOutlineRegular, IconTrashOutlineRegular, StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
@@ -55,9 +55,9 @@ function titleKey(toolName: string): CommerceKey {
 function leadingIcon(toolName: string, state: CommerceRowState): ReactNode {
   if (state === 'error') return <StateDot state="error" />
   if (state === 'stopped') return <StateDot state="warning" />
-  if (toolName === DISCARD_TOOL_NAME) return <IconTrashOutline16 />
-  if (toolName === EXPORT_TOOL_NAME) return <IconDownloadOutline16 />
-  return <IconListPenOutline16 />
+  if (toolName === DISCARD_TOOL_NAME) return <IconTrashOutlineRegular />
+  if (toolName === EXPORT_TOOL_NAME) return <IconDownloadOutlineRegular />
+  return <IconListPenOutlineRegular />
 }
 
 function exportFileOf(model: CommerceCardModel): ExportFile | null {
@@ -176,7 +176,7 @@ export function CommerceChangeRow({ toolName, block, openFile, inspect, useProje
           {recorded ? <LedgerLine useProjection={useProjection} t={t} /> : null}
           {inspect === undefined ? null : (
             <button type="button" className={css.inspectButton} onClick={inspect}>
-              <IconInspectOutline12 />
+              <IconInspectOutlineRegular />
               {t('row.inspect')}
             </button>
           )}

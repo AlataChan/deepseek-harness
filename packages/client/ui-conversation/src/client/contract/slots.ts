@@ -542,14 +542,11 @@ export interface InputActivityOwnerProps extends InputControlOwnerProps {
 export type ComposerBarProps =
   PropsRuntime<'conversation.composer.bar'>
   & PropsRenderSlots<
-  PropsRenderSlots<
-    'conversation.input.attachments' | 'conversation.input.overlay'
+    | 'conversation.input.attachments' | 'conversation.input.overlay'
     | 'conversation.input.attachKnowledge' | 'conversation.input.attachSessionDocument'
     | 'conversation.input.permission'
     | 'conversation.input.left' | 'conversation.input.plan'
     | 'conversation.input.right' | 'conversation.input.model' | 'conversation.input.activity'
-    | 'conversation.composer.dock'
-  >
     | 'conversation.composer.dock'
   >
   & InjectFace<ComposerBarInjected>

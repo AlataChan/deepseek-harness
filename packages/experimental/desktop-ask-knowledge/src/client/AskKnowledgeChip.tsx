@@ -2,7 +2,7 @@
  * Hero chip: unbound label is 知识库; bound label is the library name.
  */
 
-import { IconFolderOpenOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconFolderOpenOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AskKnowledgeKey } from './locales.ts'
 import { libraryHueIndex, libraryInitial } from './library-initial.ts'
 import css from './AskKnowledgeChip.module.css'
@@ -32,7 +32,7 @@ export function AskKnowledgeChip({ openPicker, boundName, t }: AskKnowledgeChipP
   return (
     <button type="button" className={css.chip} aria-label={label} onClick={openPicker}>
       {boundName === undefined
-        ? <IconFolderOpenOutline16 size={14} className={css.mark} />
+        ? <IconFolderOpenOutlineRegular size={14} className={css.mark} />
         : (
           <span className={`${css.avatar} ${HUE_CLASS[libraryHueIndex(boundName)]}`} aria-hidden>
             {libraryInitial(boundName)}

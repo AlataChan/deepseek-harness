@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { JobId, JobRegistry } from '@deepseek-ai/dsh-jobs'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { isMissingJobController, mediaJobHooks, startMediaJob } from '../src/jobs.ts'
 import { MediaError } from '../src/error.ts'
 
 describe('jobs', () => {
   it('starts an owned media job and settles success, failure, and kill', async () => {
-    const owner = { session: { id: 's-1' } } as unknown as Agent
+    const owner = 's-1' as SessionId
     let hooks: ReturnType<typeof mediaJobHooks> | undefined
     const jobs = {
       start(input: { run: () => ReturnType<typeof mediaJobHooks> }) {

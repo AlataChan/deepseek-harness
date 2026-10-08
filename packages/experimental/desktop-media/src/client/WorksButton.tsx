@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { IconPlayOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconPlayOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { NS } from './locales.ts'
@@ -37,7 +37,7 @@ export function WorksButton({ wide, t }: WorksButtonProps) {
       aria-expanded={worksOpen()}
       onClick={() => { setWorksOpen(!worksOpen()) }}
     >
-      <IconPlayOutline16 size={16} />
+      <IconPlayOutlineRegular size={16} />
       {wide ? <span>{label}</span> : null}
     </button>
   )

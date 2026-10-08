@@ -3,14 +3,14 @@
  * @module @deepseek-ai/dsh-experimental-desktop-media/jobs
  */
 
-import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { JobHooks, JobId, JobRegistry } from '@deepseek-ai/dsh-jobs'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { MediaError } from './error.ts'
 
 /** Start one owned media job. */
 export interface MediaJobStart {
   readonly jobs: JobRegistry
-  readonly owner: Agent
+  readonly owner: SessionId
   readonly label: string
   readonly work: (signal: AbortSignal) => Promise<string>
   /** Durable stop intent after an explicit kill. */

@@ -135,6 +135,7 @@ describe('SidebarRoot shell', () => {
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
       usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])}
       useResource={useResource} useWorkspaces={neverHook}
+      useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
         options?.fallback ?? null) as SidebarRootComponentProps['renderSlot']}
@@ -155,6 +156,7 @@ describe('SidebarRoot shell', () => {
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
       usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])}
       useResource={useResource} useWorkspaces={neverHook}
+      useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
         options?.fallback ?? null) as SidebarRootComponentProps['renderSlot']}
@@ -170,6 +172,7 @@ describe('SidebarRoot shell', () => {
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
       usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])}
       useResource={useResource} useWorkspaces={neverHook}
+      useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
         options?.fallback ?? null) as SidebarRootComponentProps['renderSlot']}
@@ -247,6 +250,7 @@ describe('SidebarRoot shell', () => {
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
       usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])}
       useResource={useResource} useWorkspaces={neverHook}
+      useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
       renderSlot={((key: string) => key === 'sidebar.toggle.badge'
         ? <Tooltip label="Update — V1.2.3"><span data-testid="badge" /></Tooltip>

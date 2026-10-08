@@ -11,6 +11,7 @@ import type { DataSourcePageRemotes } from '../src/client/DataSourcePage.tsx'
 interface SessionRow {
   id: string
   blank?: boolean
+  retainedBy?: Record<string, number | undefined>
   projectionValues?: { agentPreset?: string; askDataBinding?: unknown }
 }
 
@@ -33,7 +34,12 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
   }
   let listener: (() => void) | undefined
   const list = {
-    getSnapshot: () => state,
+    getSnapshot: () => ({
+      byId: Object.fromEntries(Object.entries(state.byId).map(([id, row]) => [
+        id,
+        id === state.current ? { ...row, retainedBy: { ...row.retainedBy, mainView: 1 } } : row,
+      ])),
+    }),
     subscribe: (fn: () => void) => {
       listener = fn
       return () => { listener = undefined }
@@ -41,6 +47,7 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
   }
   const open = vi.fn()
   ctx.provide('sessions', { list, open })
+  ctx.provide('uiWorkspace', { openSession: open })
   ctx.provide('conversation', {})
   const seat = {
     stage: vi.fn(),
@@ -67,7 +74,7 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
     },
   } as never, () => null)
   const fiber = ctx.plugin({
-    inject: [...inject, 'conversation', 'sessions', 'agentPresetSeat'],
+    inject: [...inject, 'conversation', 'sessions', 'uiWorkspace', 'agentPresetSeat'],
     apply,
   })
   await fiber.await()
