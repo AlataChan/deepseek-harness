@@ -1,21 +1,31 @@
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { IntakeRegistry } from './upstream-intake-registry.ts'
 import {
+  changedUpstreamFilesAgainstPin,
   forbiddenDependencyViolations,
   mountRecordingViolations,
   neverMergeFileList,
   neverMergeViolations,
   patchRegistryViolations,
   removalDispositionViolations,
+  telemetryEndpointViolations,
   upstreamIntakeViolations,
 } from './verify-upstream-intake.ts'
 
 /** A registry with one entry per rule, so a seeded violation is unambiguous. */
 function fixtureRegistry(): IntakeRegistry {
   return {
+    upstreamPin: 'intake-pin',
+    ignorableInspection: {
+      eventTypes: ['ask-data/bound'],
+      inspectedLogs: 1,
+      envelopeKeys: ['type', 'seq', 'time', 'data'],
+      conclusion: 'required-not-ignorable',
+    },
     neverMerge: [
       { path: 'apps/desktop/src/account-backend.ts', tag: 'account-binding', reason: 'account surface' },
     ],
@@ -40,6 +50,10 @@ function fixtureRegistry(): IntakeRegistry {
     upstreamOnlyDirectories: ['apps/desktop-host/'],
     forbiddenDependencies: ['electron', 'electron-builder', 'electron-updater'],
     guardedManifests: ['apps/desktop/package.json'],
+    forbiddenEndpoints: [
+      { host: 'harness-telemetry.deepseeksvc.com', owner: 'upstream DeepSeek harness telemetry' },
+      { host: 'deepseeksvc.com', owner: 'upstream DeepSeek service domain' },
+    ],
   }
 }
 
@@ -176,9 +190,95 @@ describe('merge-time rules stay dormant before the merge', () => {
   })
 })
 
+describe('rule 6 — telemetry rows resolve from the composed config', () => {
+  const composition = 'packages/bundle/base/cordis.patch.yml'
+  const row = (mode: string, url: string): string => `
+- insert:
+    - id: session-telemetry-otel
+      name: '@deepseek-ai/dsh-session-telemetry-otel'
+      config:
+        mode: ${mode}
+        exporter:
+          url: ${url}
+`
+  const base = { root: '/fixture', registry: fixtureRegistry(), files: [] as string[] }
+
+  it('accepts the fork row: DISABLED default, no default endpoint', () => {
+    const files = new Map([[composition, row("!!js process.env.DSH_TELEMETRY_MODE || 'DISABLED'", '!!js process.env.DSH_TELEMETRY_OTLP_URL')]])
+    expect(upstreamIntakeViolations({ ...base, readFile: path => files.get(path) })).toEqual([])
+  })
+
+  it('rejects a telemetry row that regains an upstream collector default', () => {
+    const files = new Map([[composition, row("!!js process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'", "!!js process.env.DSH_TELEMETRY_OTLP_URL || 'https://harness-telemetry.deepseeksvc.com/v1/logs'")]])
+    expect(upstreamIntakeViolations({ ...base, readFile: path => files.get(path) }))
+      .toEqual([
+        expect.stringContaining('row session-telemetry-otel composes the forbidden endpoint harness-telemetry.deepseeksvc.com'),
+        expect.stringContaining('row session-telemetry-otel defaults to mode FEEDBACK_ONLY with a default endpoint'),
+      ])
+  })
+
+  it('rejects a non-DISABLED default with an endpoint, even off the forbidden list', () => {
+    const files = new Map([[composition, row("!!js process.env.DSH_TELEMETRY_MODE ?? 'FEEDBACK_ONLY'", "'https://collector.example.com/v1/logs'")]])
+    expect(upstreamIntakeViolations({ ...base, readFile: path => files.get(path) }))
+      .toEqual([expect.stringContaining('row session-telemetry-otel defaults to mode FEEDBACK_ONLY with a default endpoint https://collector.example.com/v1/logs')])
+  })
+
+  it('reports a mode expression it cannot resolve instead of passing it', () => {
+    const files = new Map([[composition, row('!!js dshTelemetryMode()', '!!js process.env.DSH_TELEMETRY_OTLP_URL')]])
+    expect(telemetryEndpointViolations(fixtureRegistry(), path => files.get(path)))
+      .toEqual([expect.stringContaining('has a mode or endpoint expression the gate cannot resolve')])
+  })
+})
+
+describe('the command supplies the pin diff to the merge-time rules', () => {
+  it('rejects an unregistered upstream edit surfaced by the pin diff', () => {
+    const root = mkdtempSync(join(tmpdir(), 'intake-pin-'))
+    try {
+      execFileSync('git', ['-C', root, 'init', '-q'])
+      mkdirSync(join(root, 'packages/fs/fs/src'), { recursive: true })
+      mkdirSync(join(root, 'packages/llm/provider/src'), { recursive: true })
+      writeFileSync(join(root, 'packages/fs/fs/src/index.ts'), 'original\n')
+      writeFileSync(join(root, 'packages/llm/provider/src/index.ts'), 'original\n')
+      const commit = ['-C', root, '-c', 'user.email=fixture@test.invalid', '-c', 'user.name=fixture']
+      execFileSync('git', [...commit, 'add', '-A'])
+      execFileSync('git', [...commit, 'commit', '-qm', 'pin state'])
+      execFileSync('git', ['-C', root, 'tag', 'intake-pin'])
+      writeFileSync(join(root, 'packages/llm/provider/src/index.ts'), 'edited\n')
+      const changedUpstreamFiles = changedUpstreamFilesAgainstPin(root, fixtureRegistry())
+      expect(changedUpstreamFiles).toEqual(['packages/llm/provider/src/index.ts'])
+      expect(upstreamIntakeViolations({ root, registry: fixtureRegistry(), files: [], readFile: () => undefined, changedUpstreamFiles }))
+        .toEqual(['packages/llm/provider/src/index.ts: edits an upstream file with no registry entry'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects an undefined E-class disposition once the pin diff is supplied', async () => {
+    const { REGISTRY } = await import('./verify-upstream-intake.ts')
+    const registry = { ...REGISTRY, removals: [{ path: 'packages/e2b', disposition: undefined, reason: undefined }] }
+    expect(upstreamIntakeViolations({ root: '/fixture', registry, files: [], readFile: () => undefined, changedUpstreamFiles: [] }))
+      .toEqual(['packages/e2b: upstream removed it and no disposition is recorded'])
+  })
+})
+
 describe('the shipped registry satisfies the working-tree rules', () => {
   it('reports no violations against this checkout', async () => {
     const { REGISTRY, upstreamIntakeViolations: check } = await import('./verify-upstream-intake.ts')
     expect(check({ root: new URL('..', import.meta.url).pathname, registry: REGISTRY })).toEqual([])
+  })
+
+  it('reports no violations with the pin diff supplying the merge-time rules', async () => {
+    const { REGISTRY, changedUpstreamFilesAgainstPin, upstreamIntakeViolations: check } = await import('./verify-upstream-intake.ts')
+    const root = new URL('..', import.meta.url).pathname
+    expect(check({ root, registry: REGISTRY, changedUpstreamFiles: changedUpstreamFilesAgainstPin(root, REGISTRY) })).toEqual([])
+  })
+
+  it('records the ignorable inspection as a non-empty required-not-ignorable finding', async () => {
+    const { REGISTRY } = await import('./verify-upstream-intake.ts')
+    const finding = REGISTRY.ignorableInspection
+    expect(finding.conclusion).toBe('required-not-ignorable')
+    expect(finding.eventTypes.length).toBeGreaterThan(0)
+    expect(finding.inspectedLogs).toBeGreaterThan(0)
+    expect(finding.envelopeKeys).not.toContain('ignorable')
   })
 })

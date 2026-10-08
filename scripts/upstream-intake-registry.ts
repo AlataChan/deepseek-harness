@@ -57,6 +57,23 @@ export type RemovalDisposition =
   | 'follow-upstream-deletion'
   | 'move-to-experimental'
 
+/**
+ * The `ignorable` envelope inspection over the fork's real session logs: which
+ * fork session events were checked, against how many logs, and what the logs
+ * showed. Recorded as data because every migration edge reads it: a
+ * required-on-read event the inventory does not admit refuses the whole log.
+ */
+export interface IgnorableInspection {
+  /** Fork session event types the inspection covered. */
+  readonly eventTypes: readonly string[]
+  /** Real user logs inspected; every one was session format v0. */
+  readonly inspectedLogs: number
+  /** Envelope keys observed on every occurrence of {@link eventTypes}. */
+  readonly envelopeKeys: readonly string[]
+  /** What the inspection established about those events. */
+  readonly conclusion: 'required-not-ignorable'
+}
+
 /** One package upstream removed that the fork still carries. */
 export interface RemovalEntry {
   /** Upstream package directory that no longer exists upstream. */
@@ -78,6 +95,10 @@ export interface RemovalEntry {
  * take one injectable value rather than seven positional tables.
  */
 export interface IntakeRegistry {
+  /** Upstream tag this branch has merged through; the pin the changed-file diff reads. */
+  readonly upstreamPin: string
+  /** The `ignorable` envelope inspection over the fork's real session logs. */
+  readonly ignorableInspection: IgnorableInspection
   /** Upstream paths the fork never merges. */
   readonly neverMerge: readonly NeverMergeEntry[]
   /** Upstream files the fork edits. */
@@ -98,6 +119,8 @@ export interface IntakeRegistry {
   readonly forbiddenDependencies: readonly string[]
   /** Manifests the forbidden-dependency rule reads. */
   readonly guardedManifests: readonly string[]
+  /** Upstream collectors a mounted telemetry row must never resolve to. */
+  readonly forbiddenEndpoints: readonly ForbiddenEndpoint[]
 }
 
 /** A single known upstream endpoint the fork must never contact. */
@@ -117,6 +140,35 @@ export const FORK_OWNED_PATHS: readonly string[] = [
   'apps/desktop/',
   'packages/experimental/',
 ]
+
+/**
+ * The upstream tag this branch has merged through (hop 2 of 4). The intake
+ * command diffs the working tree against this pin to compute the upstream
+ * files the fork edits, so the merge-time rules always run.
+ */
+export const UPSTREAM_PIN = 'dsh-v0.1.5-alpha.1'
+
+/**
+ * Inspection of 152 real user logs (2026-10-06, all session format v0): the
+ * fork's nine session events are written without `ignorable: true`, so every
+ * migration edge must admit them as required events or refuse the log.
+ */
+export const IGNORABLE_INSPECTION: IgnorableInspection = {
+  eventTypes: [
+    'ask-data/bound',
+    'ask-knowledge/bound',
+    'ask-knowledge/unbound',
+    'commerce/bound',
+    'media/approval',
+    'media/artifact',
+    'media/request',
+    'media/stop',
+    'media/task',
+  ],
+  inspectedLogs: 152,
+  envelopeKeys: ['type', 'seq', 'time', 'data'],
+  conclusion: 'required-not-ignorable',
+}
 
 /** Upstream shell, account, telemetry and release surface the fork never merges. */
 export const NEVER_MERGE: readonly NeverMergeEntry[] = [
@@ -143,25 +195,34 @@ export const NEVER_MERGE: readonly NeverMergeEntry[] = [
 
 /** Upstream files the fork edits. Phase 3 works the `B` rows down to zero. */
 export const PATCHES: readonly PatchEntry[] = [
+  { path: 'packages/acp/acp/src/index.ts', klass: 'A', reason: 'Fork ACP initialize fix: answer only after the Loader tree settles.' },
   { path: 'packages/api/session-controller/src/index.ts', klass: 'A', reason: "The fork's ask-data, ask-knowledge and commerce remotes." },
   { path: 'packages/api/session-controller/src/agent.ts', klass: 'A', reason: 'Companion agent surface for the fork remotes.' },
   { path: 'packages/api/session-controller/src/ask-data.ts', klass: 'A', reason: 'Ask-data remote implementation.' },
   { path: 'packages/api/session-controller/src/ask-knowledge.ts', klass: 'A', reason: 'Ask-knowledge remote implementation.' },
   { path: 'packages/api/session-controller/src/commerce.ts', klass: 'A', reason: 'Commerce remote implementation.' },
+  { path: 'packages/api/session-controller/src/types.ts', klass: 'A', reason: 'Fork remote and media error codes in the Typert protocol declaration.' },
   { path: 'packages/extensions/cordis-client-runner/src/client/slot-catalog.ts', klass: 'B', reason: 'Fork slots declared in the upstream catalog instead of as overlay registrations.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/InputBar.tsx', klass: 'B', reason: 'Fork input surface, pending an official conversation slot.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/InputBar.module.css', klass: 'B', reason: 'Styling for the fork input surface.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/ConversationRoot.tsx', klass: 'B', reason: 'Fork conversation root, pending an official slot.' },
+  { path: 'packages/client/ui-conversation/src/client/skeleton/ConversationRoot.module.css', klass: 'B', reason: 'Styling for the fork conversation root and hero atmosphere.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/EmptyHero.tsx', klass: 'B', reason: 'Hero atmosphere occupant, pending an official slot.' },
+  { path: 'packages/client/ui-conversation/src/client/locales.ts', klass: 'B', reason: 'Fork locale strings for the input, attachment and atmosphere surface.' },
   { path: 'packages/client/ui-conversation/src/client/contract/slots.ts', klass: 'B', reason: 'Fork slot declarations inside the upstream contract file.' },
   { path: 'packages/client/ui-conversation/src/client/contract/input.ts', klass: 'B', reason: 'Fork input contract extension.' },
   { path: 'packages/client/ui-conversation/src/client/input/facade.ts', klass: 'B', reason: 'Fork input facade behaviour.' },
   { path: 'packages/client/ui-conversation/src/client/apply.ts', klass: 'B', reason: 'Fork conversation plugin application.' },
   { path: 'packages/client/ui-conversation/src/client/index.ts', klass: 'B', reason: 'Fork conversation plugin entry.' },
   { path: 'packages/client/ui-sidebar/src/client/SidebarRoot.tsx', klass: 'B', reason: 'Fork sidebar chrome, pending ui-sidebar-right and ui-dockkit.' },
+  { path: 'packages/client/ui-sidebar/src/client/SidebarRoot.module.css', klass: 'B', reason: 'Styling for the fork sidebar chrome and region tabs.' },
+  { path: 'packages/client/ui-sidebar/src/client/locales.ts', klass: 'B', reason: 'Fork locale strings for the sidebar regions.' },
   { path: 'packages/client/ui-sidebar/src/client/contract/slots.ts', klass: 'B', reason: 'Fork sidebar slot declarations.' },
   { path: 'packages/client/ui-sidebar/src/client/index.ts', klass: 'B', reason: 'Fork sidebar plugin entry.' },
   { path: 'packages/client/ui-agent-preset/src/client/seat-store.ts', klass: 'B', reason: 'Fork seat store, pending upstream ui-agent-preset ownership.' },
+  { path: 'packages/client/ui-agent-preset/src/client/index.ts', klass: 'B', reason: 'Fork preset-seat surface, pending upstream ui-agent-preset ownership.' },
+  { path: 'packages/core/session/src/known-event-types.ts', klass: 'A', reason: "The fork's nine session events (ask-data, ask-knowledge, commerce, media) declared in the upstream known-event table." },
+  { path: 'packages/core/system-prompt/src/index.ts', klass: 'A', reason: 'Fork external-data section in the system-prompt section order.' },
   { path: 'packages/session/session-format-v0-to-v1/src/dispositions.ts', klass: 'A', reason: "Frozen released-v0 inventory must admit this fork's four events (ask-data/bound, ask-knowledge/bound, ask-knowledge/unbound, commerce/bound), or the fork's own v0 fixtures refuse to migrate." },
   { path: 'packages/session/session-format-v0-to-v1/src/payload-validation.ts', klass: 'A', reason: 'Nested payload semantics for the same four events; the released validator refuses an event with no case.' },
   { path: 'packages/session/session-format-v0-to-v1/tests/validation.spec.ts', klass: 'A', reason: 'Valid fixture and inventory count for the four admitted events.' },
@@ -176,10 +237,14 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/fs/tool-fs/src/edit.ts', klass: 'A', reason: 'Fork edit tool behaviour.' },
   { path: 'packages/fs/tool-str-replace-editor/src/index.ts', klass: 'A', reason: 'Fork string replace editor behaviour.' },
   { path: 'packages/boot/app-boot/src/profile.ts', klass: 'A', reason: "The fork's profile resolution." },
+  { path: 'packages/preset/agent-presets/src/index.ts', klass: 'A', reason: 'Fork presets, including the data-source gate before the first ask-data prompt.' },
   { path: 'packages/web/tool-web/src/search.ts', klass: 'A', reason: 'Fork web search behaviour.' },
   { path: 'packages/web/tool-web/src/fetch.ts', klass: 'A', reason: 'Fork web fetch behaviour.' },
   { path: 'packages/web/tool-web/src/trust.ts', klass: 'A', reason: 'Fork web trust policy.' },
   { path: 'packages/subagent/subagent/src/child-agent.ts', klass: 'A', reason: 'Fork child agent adjustment.' },
+  { path: 'packages/subagent/subagent/src/continuation-activation.ts', klass: 'A', reason: 'Fork child-agent composition adjustment for continuable activations.' },
+  { path: 'packages/subagent/subagent-in-process-driver/src/index.ts', klass: 'A', reason: 'Fork child-agent composition adjustment for in-process runs.' },
+  { path: 'packages/subagent/tool-subagent/src/index.ts', klass: 'A', reason: 'Fork model-selection re-exports for the delegation policy.' },
   { path: 'packages/extensions/tool-cordis/src/api-catalog.ts', klass: 'A', reason: 'Fork tool catalog entry.' },
   { path: 'packages/bundle/base/package.json', klass: 'A', reason: 'Fork base composition dependencies, including telemetry.' },
   { path: 'packages/bundle/base/cordis.patch.yml', klass: 'A', reason: 'Fork base composition rows, including the telemetry mode default.' },
@@ -266,9 +331,21 @@ export const FORBIDDEN_ENDPOINTS: readonly ForbiddenEndpoint[] = [
   { host: 'deepseeksvc.com', owner: 'upstream DeepSeek service domain' },
 ]
 
-/** Packages upstream removed after the fork split; each needs an explicit decision at merge time. */
+/** Packages upstream removed after the fork split; each carries the owner's decision. */
 export const REMOVALS: readonly RemovalEntry[] = [
-  { path: 'packages/e2b', disposition: undefined, reason: undefined },
-  { path: 'packages/code-runtime', disposition: undefined, reason: undefined },
-  { path: 'packages/runtime-diagnostics', disposition: undefined, reason: undefined },
+  {
+    path: 'packages/e2b',
+    disposition: 'follow-upstream-deletion',
+    reason: 'POC family absent from every shipped composition; owner confirmed following the upstream deletion on 2026-10-07.',
+  },
+  {
+    path: 'packages/code-runtime',
+    disposition: 'follow-upstream-deletion',
+    reason: 'Owner confirmed 2026-10-07: follow the upstream deletion, unmounting dsh-code-runtime-worker-thread from the headless and web-app bundles with it.',
+  },
+  {
+    path: 'packages/runtime-diagnostics',
+    disposition: 'follow-upstream-deletion',
+    reason: 'Invariant checks the fork mounts nowhere; owner confirmed following the upstream deletion on 2026-10-07.',
+  },
 ]

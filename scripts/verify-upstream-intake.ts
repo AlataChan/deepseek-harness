@@ -5,34 +5,43 @@
  *
  * - **Working-tree rules** run on every checkout: no never-merge upstream file
  *   or upstream-only directory, the collided desktop path has not become
- *   upstream's Electron application, and every gated telemetry or account
- *   reference in a release composition is recorded in the registry.
- * - **Merge-time rules** run only when the caller supplies the file list the
- *   fork changed against the upstream pin: every edited upstream file is
- *   registered, and every package upstream removed carries a disposition.
- *   They stay dormant before the merge, because the fork has not yet been asked
- *   the question they check.
+ *   upstream's Electron application, every gated telemetry or account
+ *   reference in a release composition is recorded, and every mounted
+ *   telemetry row resolves to no upstream collector.
+ * - **Merge-time rules** run once the changed-file list against the upstream
+ *   pin is supplied — the command computes it from `git diff`, so they always
+ *   run there: every edited upstream file is registered, and every package
+ *   upstream removed carries a disposition. Direct callers may omit the list
+ *   to check the working-tree rules alone.
  */
 
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { loadCordisYaml, isJsExpr } from './cordis-yaml.ts'
 import {
   FORBIDDEN_DEPENDENCIES,
+  FORBIDDEN_ENDPOINTS,
   FORK_OWNED_PATHS,
   GATED_PACKAGE_NAMES,
   GUARDED_MANIFESTS,
+  IGNORABLE_INSPECTION,
   MOUNTS,
   NEVER_MERGE,
   PATCHES,
   RELEASE_COMPOSITIONS,
   REMOVALS,
   UPSTREAM_ONLY_DIRECTORIES,
+  UPSTREAM_PIN,
   type IntakeRegistry,
+  type MountEntry,
 } from './upstream-intake-registry.ts'
 
 /** The live registry, assembled from `upstream-intake-registry.ts`. */
 export const REGISTRY: IntakeRegistry = {
+  upstreamPin: UPSTREAM_PIN,
+  ignorableInspection: IGNORABLE_INSPECTION,
   neverMerge: NEVER_MERGE,
   patches: PATCHES,
   mounts: MOUNTS,
@@ -43,6 +52,7 @@ export const REGISTRY: IntakeRegistry = {
   upstreamOnlyDirectories: UPSTREAM_ONLY_DIRECTORIES,
   forbiddenDependencies: FORBIDDEN_DEPENDENCIES,
   guardedManifests: GUARDED_MANIFESTS,
+  forbiddenEndpoints: FORBIDDEN_ENDPOINTS,
 }
 
 /** Inputs of one full evaluation. */
@@ -51,7 +61,7 @@ export interface IntakeInputs {
   readonly root: string
   /** Registry tables to check against. */
   readonly registry: IntakeRegistry
-  /** File list changed against the upstream pin; absent before the merge. */
+  /** File list changed against the upstream pin; the command computes it from git, direct callers may omit it. */
   readonly changedUpstreamFiles?: readonly string[]
   /** Every repository-relative file, for the never-merge check. */
   readonly files?: readonly string[]
@@ -210,6 +220,148 @@ export function removalDispositionViolations(registry: IntakeRegistry): string[]
 }
 
 /**
+ * Rule 6 — every mounted telemetry row resolves to no upstream collector.
+ *
+ * Endpoint and mode are resolved from the composed Cordis config, not read off
+ * the patch text: each row's `!!js` expressions are resolved the way the
+ * Loader resolves them with an unset environment, which yields the shipped
+ * default. The gate fails on a forbidden endpoint anywhere in the row's
+ * composed config, and on a default that is not `DISABLED` while an endpoint
+ * default exists.
+ *
+ * @param registry - registry tables.
+ * @param readFile - file reader, given repository-relative paths.
+ * @returns deterministic path-qualified violations.
+ */
+export function telemetryEndpointViolations(
+  registry: IntakeRegistry,
+  readFile: (relativePath: string) => string | undefined,
+): string[] {
+  const violations: string[] = []
+  for (const mount of registry.mounts) {
+    const text = readFile(mount.composition)
+    if (text === undefined) continue
+    let parsed: unknown
+    try {
+      parsed = loadCordisYaml(text)
+    } catch {
+      violations.push(`${mount.composition}: not valid Cordis YAML, so mounted row ${mount.row} cannot be resolved`)
+      continue
+    }
+    for (const entry of cordisEntries(parsed)) {
+      if (entry.id !== mount.row && entry.name !== mount.packageName) continue
+      violations.push(...telemetryRowViolations(registry, mount, entry.config))
+    }
+  }
+  return violations
+}
+
+/** Matches the `process.env` default expressions config values are written with. */
+const ENV_DEFAULT_EXPR = /^process\.env\.([A-Za-z_$][A-Za-z0-9_$]*)(?:\s*(?:\|\||\?\?)\s*(?:'([^']*)'|"([^"]*)"))?$/
+
+/**
+ * Resolve one composed config value the way the Loader does with an unset
+ * environment: a literal stays itself, and a `process.env` expression yields
+ * its fallback literal or `undefined`. An expression in any other shape is
+ * reported as unresolvable rather than guessed.
+ *
+ * @param value - a composed config leaf.
+ * @returns the resolved value, or unresolvable when the shape is unknown.
+ */
+function resolveComposedValue(value: unknown): { resolved: true; value: unknown } | { resolved: false } {
+  if (!isJsExpr(value)) return { resolved: true, value }
+  const match = ENV_DEFAULT_EXPR.exec(value.__jsExpr)
+  if (match === null) return { resolved: false }
+  return { resolved: true, value: match[2] ?? match[3] }
+}
+
+/**
+ * Collect every Loader entry object in a parsed Cordis config, at any depth,
+ * so patch operations (`insert`, `replace`, nested groups) all surface.
+ *
+ * @param value - parsed Cordis YAML value.
+ * @param out - accumulator for entry records.
+ * @returns entry records with a string `id` or `name`.
+ */
+function cordisEntries(value: unknown, out: Array<Record<string, unknown>> = []): Array<Record<string, unknown>> {
+  if (Array.isArray(value)) {
+    for (const item of value) cordisEntries(item, out)
+  } else if (typeof value === 'object' && value !== null) {
+    const record = value as Record<string, unknown>
+    if (typeof record.id === 'string' || typeof record.name === 'string') out.push(record)
+    for (const child of Object.values(record)) cordisEntries(child, out)
+  }
+  return out
+}
+
+/**
+ * Every literal and resolvable `!!js` string in a row's composed config.
+ *
+ * @param value - the row's config value.
+ * @param out - accumulator for resolved strings.
+ * @returns resolved string leaves, at any depth.
+ */
+function composedStrings(value: unknown, out: string[] = []): string[] {
+  if (typeof value === 'string') {
+    out.push(value)
+  } else if (isJsExpr(value)) {
+    const resolved = resolveComposedValue(value)
+    if (resolved.resolved && typeof resolved.value === 'string') out.push(resolved.value)
+  } else if (Array.isArray(value)) {
+    for (const item of value) composedStrings(item, out)
+  } else if (typeof value === 'object' && value !== null) {
+    for (const child of Object.values(value as Record<string, unknown>)) composedStrings(child, out)
+  }
+  return out
+}
+
+/**
+ * Check one mounted telemetry row's composed config.
+ *
+ * @param registry - registry tables, for the forbidden endpoints.
+ * @param mount - the mounted row being checked.
+ * @param config - the row's composed config value.
+ * @returns deterministic path-qualified violations.
+ */
+function telemetryRowViolations(registry: IntakeRegistry, mount: MountEntry, config: unknown): string[] {
+  const violations: string[] = []
+  for (const value of composedStrings(config)) {
+    // The most specific matching host only: a subdomain match also contains the parent domain.
+    const match = registry.forbiddenEndpoints
+      .filter(endpoint => value.includes(endpoint.host))
+      .sort((a, b) => b.host.length - a.host.length)[0]
+    if (match !== undefined) {
+      violations.push(`${mount.composition}: row ${mount.row} composes the forbidden endpoint ${match.host} (${match.owner})`)
+    }
+  }
+  const record = typeof config === 'object' && config !== null ? config as Record<string, unknown> : {}
+  const exporter = typeof record.exporter === 'object' && record.exporter !== null ? record.exporter as Record<string, unknown> : {}
+  const mode = resolveComposedValue(record.mode)
+  const url = resolveComposedValue(exporter.url)
+  if (!mode.resolved || !url.resolved) {
+    violations.push(`${mount.composition}: row ${mount.row} has a mode or endpoint expression the gate cannot resolve`)
+    return violations
+  }
+  // An absent mode composes the plugin schema default (FEEDBACK_ONLY), not DISABLED.
+  const effectiveMode = mode.value ?? 'FEEDBACK_ONLY'
+  if (effectiveMode !== 'DISABLED' && url.value !== undefined && url.value !== '') {
+    violations.push(`${mount.composition}: row ${mount.row} defaults to mode ${describeComposedValue(effectiveMode)} with a default endpoint ${describeComposedValue(url.value)}`)
+  }
+  return violations
+}
+
+/**
+ * Render a composed config value for a violation message without falling back
+ * to Object's default stringification.
+ *
+ * @param value - a resolved composed config leaf.
+ * @returns a printable rendering of the value.
+ */
+function describeComposedValue(value: unknown): string {
+  return typeof value === 'string' ? value : JSON.stringify(value)
+}
+
+/**
  * Build the file list rule 1 needs from disk: the registry's exact paths that
  * actually exist, plus every file under its upstream-only directories. Exact
  * paths are existence-probed rather than assumed, so the check reads disk truth
@@ -244,6 +396,27 @@ export function neverMergeFileList(root: string, registry: IntakeRegistry): stri
 }
 
 /**
+ * Rule 4's input: the upstream files the working tree edits, read from
+ * `git diff --name-only --diff-filter=M` against the registry's upstream pin.
+ * Modified files only — an addition is a fork-authored file (rules 1–3 govern
+ * those) and a deletion is a removal decision (rule 5 and the never-merge
+ * tables). The patch surface is the `src/` tree plus the release composition
+ * manifests, matching what the registry's patch table records: behaviour and
+ * composition edits, not docs, tests, or generated files.
+ *
+ * @param root - repository root.
+ * @param registry - registry tables, for the pin and the composition manifests.
+ * @returns repository-relative upstream files the working tree edits.
+ * @throws when git or the pin is unreadable, so the command fails loud instead of leaving rule 4 dormant.
+ */
+export function changedUpstreamFilesAgainstPin(root: string, registry: IntakeRegistry): string[] {
+  const output = execFileSync('git', ['-C', root, 'diff', '--name-only', '--diff-filter=M', registry.upstreamPin], { encoding: 'utf8' })
+  return output.split('\n')
+    .filter(path => path !== '')
+    .filter(path => path.includes('/src/') || registry.releaseCompositions.includes(path))
+}
+
+/**
  * Evaluate every applicable intake rule.
  *
  * @param inputs - repository root, registry, and optional merge-time file list.
@@ -261,6 +434,7 @@ export function upstreamIntakeViolations(inputs: IntakeInputs): string[] {
     ...neverMergeViolations(registry, files),
     ...forbiddenDependencyViolations(registry, readFile),
     ...mountRecordingViolations(registry, readFile),
+    ...telemetryEndpointViolations(registry, readFile),
     ...(mergeTime ? patchRegistryViolations(inputs.changedUpstreamFiles ?? [], registry) : []),
     ...(mergeTime ? removalDispositionViolations(registry) : []),
   ]
@@ -268,7 +442,13 @@ export function upstreamIntakeViolations(inputs: IntakeInputs): string[] {
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const root = resolve(import.meta.dirname, '..')
-  const failures = upstreamIntakeViolations({ root, registry: REGISTRY })
+  let failures: string[]
+  try {
+    const changedUpstreamFiles = changedUpstreamFilesAgainstPin(root, REGISTRY)
+    failures = upstreamIntakeViolations({ root, registry: REGISTRY, changedUpstreamFiles })
+  } catch (error) {
+    failures = [`cannot diff the working tree against the upstream pin ${REGISTRY.upstreamPin}: ${error instanceof Error ? error.message : String(error)}`]
+  }
   if (failures.length > 0) {
     console.error('verify-upstream-intake: unrecorded upstream surface:')
     for (const failure of failures) console.error(`  ${failure}`)
