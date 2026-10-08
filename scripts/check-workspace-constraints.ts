@@ -166,6 +166,10 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-experimental-speech-to-text-sensevoice': ['runtime/assets.json'],
   // The isolated Node bootstrap is a separately launched bundle.
   '@deepseek-ai/dsh-ptc-runtime-node': ['lib/process.js'],
+  // The fork's Ask Data overlay ships its sample spreadsheets for the picker.
+  '@deepseek-ai/dsh-experimental-desktop-ask-data': ['samples/**'],
+  // The fork's commerce overlay ships its tools, preset definition, and samples.
+  '@deepseek-ai/dsh-experimental-commerce-mode': ['lib/tools.js', 'lib/preset.js', 'NOTICE', 'preset/**', 'samples/**'],
   // The Host entry starts its sibling Worker by URL rather than a package export.
   '@deepseek-ai/dsh-experimental-inspector': ['lib/worker.js'],
   // Creator's composition guidance travels with the declaration package.
@@ -248,6 +252,9 @@ export function expectedDshPackageFiles(manifest: PackageManifest): readonly str
     ...exportDefault(manifest, './client') === './lib/client.js' ? ['lib/client.js'] : [],
     // runtime's shell-held loader subpath ships as its own bundle beside the client half.
     ...exportDefault(manifest, './loader') === './lib/loader.js' ? ['lib/loader.js'] : [],
+    // A spreadsheet decoder subpath is a standalone Node bundle consumed by
+    // other workspace packages without loading the owning plugin.
+    ...exportDefault(manifest, './spreadsheet') === './lib/spreadsheet.js' ? ['lib/spreadsheet.js'] : [],
     // A store subpath ships its own bundle (single-entry builds; no shared chunk).
     ...exportDefault(manifest, './store') === './lib/store/index.js' ? ['lib/store/index.js'] : [],
     // A surface bundle's startup row is its own bundle: the Loader imports it
