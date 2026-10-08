@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { assertBudgetAllows, ESTIMATE_CLONE_YUAN, ESTIMATE_TTS_YUAN, ESTIMATE_VIDEO_YUAN, spentBudget } from '../src/budget.ts'
 import { MediaError } from '../src/error.ts'
 import { emptyMediaState } from '../src/projection.ts'
+import type { MediaProjectionState } from '../src/types.ts'
 import { MediaRequestId } from '../src/ids.ts'
 
 describe('budget', () => {
@@ -34,7 +35,7 @@ describe('budget', () => {
     const config = { maxPaidCallsPerSession: 1, maxEstimatedSpendYuan: 3 }
     const empty = emptyMediaState()
     assertBudgetAllows(empty, config, ESTIMATE_TTS_YUAN)
-    const spent = {
+    const spent: MediaProjectionState = {
       requests: {
         b: {
           requestId: MediaRequestId('r_b'),

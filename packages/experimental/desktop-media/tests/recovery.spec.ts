@@ -6,7 +6,7 @@ import { emptyMediaState } from '../src/projection.ts'
 import { MediaRequestId } from '../src/ids.ts'
 import type { MediaRequestRecord } from '../src/types.ts'
 
-function request(partial: Partial<MediaRequestRecord> & { requestId: string }): MediaRequestRecord {
+function request(partial: Partial<Omit<MediaRequestRecord, 'requestId'>> & { requestId: string }): MediaRequestRecord {
   return {
     kind: 'video',
     stage: 'running',
@@ -87,7 +87,7 @@ describe('recovery', () => {
         requests: { a: request({ requestId: 'r_a', providerTaskId: 't1' }) },
         artifacts: {},
       },
-      signal => new Promise((_resolve, reject) => {
+      (_request, signal) => new Promise<string>((_resolve, reject) => {
         signal.addEventListener('abort', () => { reject(new Error('aborted')) })
       }),
       async (row) => { stopped.push(row.requestId) },

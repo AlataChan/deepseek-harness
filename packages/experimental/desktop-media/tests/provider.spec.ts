@@ -47,8 +47,8 @@ function transport(
     apiKey: 'test-key',
     baseUrl: 'https://api.example.test/',
     fetch: fetchImpl,
-    now: extras.now,
-    sleep: extras.sleep,
+    ...(extras.now ? { now: extras.now } : {}),
+    ...(extras.sleep ? { sleep: extras.sleep } : {}),
   })
 }
 
@@ -110,10 +110,11 @@ describe('createVideoTask', () => {
     expect(result).toBe('task-1')
     expect(url).toBe('https://api.example.test/v2/video_generation')
     expect(raw).toContain('"prompt_expansion_mode":"disabled"')
+    const { promptExpansionMode: _omitted, ...withoutExpansionMode } = videoReq
     const withoutExtra = await createVideoTask(transport(async (_url, init) => {
       expect(String(init?.body)).not.toContain('prompt_expansion_mode')
       return jsonResponse({ task_id: 'task-2' })
-    }), { ...videoReq, promptExpansionMode: undefined }, new AbortController().signal)
+    }), withoutExpansionMode, new AbortController().signal)
     expect(withoutExtra).toBe('task-2')
     const withImage = await createVideoTask(transport(async (_url, init) => {
       const body = String(init?.body)
@@ -166,12 +167,12 @@ describe('createVideoTask', () => {
       .rejects.toMatchObject({ code: 'provider-invalid' })
     await expect(createVideoTask(t, { ...videoReq, duration: 4 }, signal))
       .rejects.toMatchObject({ code: 'provider-invalid' })
+    const { promptExpansionMode: _omitted, ...baseVideoReq } = videoReq
     await expect(createVideoTask(t, {
-      ...videoReq,
+      ...baseVideoReq,
       model: 'MiniMax-H3',
       resolution: '768P',
       duration: 3,
-      promptExpansionMode: undefined,
     }, signal)).rejects.toMatchObject({ code: 'provider-invalid' })
   })
 

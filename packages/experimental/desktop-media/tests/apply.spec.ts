@@ -49,7 +49,9 @@ describe('host apply', () => {
         return 'job-1' as JobId
       },
     })
-    plugin.apply(ctx, { ...plugin.Config({}), mediaRuntimePath: undefined })
+    const config = { ...plugin.Config({} as never) }
+    delete config.mediaRuntimePath
+    plugin.apply(ctx, config)
     expect(registered).toContain(mediaProjectionDefinition)
     expect(sections[0]?.name).toBe('desktop-media:creation')
     expect(sections[0]?.text()).toBe(MEDIA_CREATION_PROMPT)
@@ -61,7 +63,7 @@ describe('host apply', () => {
 
   it('skips optional seams and still recovers with no jobs', () => {
     const ctx = new Context()
-    plugin.apply(ctx, plugin.Config({}))
+    plugin.apply(ctx, plugin.Config({} as never))
     ctx.emit('agent/created', { agent: { session: { id: 's-1' } } as never })
     expect(plugin.name).toBe('experimental-desktop-media')
     expect(plugin.inject).toEqual(['tools', 'jobs', 'sessionProjections', 'systemPrompt', 'sessions'])

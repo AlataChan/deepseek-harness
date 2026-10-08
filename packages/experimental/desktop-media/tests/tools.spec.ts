@@ -58,7 +58,9 @@ describe('tools', () => {
       'media_compose',
     ])
 
-    const [video, speech, clone, compose] = registered
+    const [video, speech, clone, compose] = registered as [
+      ToolDefinition, ToolDefinition, ToolDefinition, ToolDefinition,
+    ]
     expect(video.output.render({}, { requestId: 'r', jobId: 'j' })).toEqual([
       { type: 'text', text: 'started video request r job j' },
     ])

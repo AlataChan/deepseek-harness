@@ -255,7 +255,7 @@ describe('nativePickDirectory', () => {
     }))).toBeUndefined()
     expect(nativePickDirectory(fake({
       pickDirectory: pick,
-      slots: { entries: () => [{}, { inject: undefined }, { inject: () => undefined }, { inject: () => ({}) }] },
+      slots: { entries: () => [{}, { inject: () => undefined }, { inject: () => ({}) }] },
     }))).toBeUndefined()
     expect(nativePickDirectory(fake({
       pickDirectory: pick,

@@ -5,10 +5,13 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { openListedSession, WorksPanel } from '../src/client/WorksPanel.tsx'
 import { setWorksOpen } from '../src/client/works-state.ts'
 import { zh } from '../src/client/locales.ts'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MediaSessionRemotes, MediaWorkRow } from '../src/client/remotes.ts'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 
-const t = (key: keyof typeof zh) => zh[key]
+const t: TranslateNS<'desktop-media'> = key => (
+  key in zh ? zh[key as keyof typeof zh] : key
+)
 
 const sample: MediaWorkRow = {
   artifactId: 'a_1',
@@ -20,13 +23,14 @@ const sample: MediaWorkRow = {
   durationSeconds: 5,
 }
 
+const { durationSeconds: _sampleDuration, ...sampleRest } = sample
+
 const gone: MediaWorkRow = {
-  ...sample,
+  ...sampleRest,
   artifactId: 'a_2',
   kind: 'speech',
   name: '配音.mp3',
   sessionId: 's-gone',
-  durationSeconds: undefined,
 }
 
 function remotes(overrides: Partial<MediaSessionRemotes> = {}): MediaSessionRemotes {

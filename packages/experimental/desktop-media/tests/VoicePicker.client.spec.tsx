@@ -4,9 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { encodeMediaBytes, isCloneAudioName, readCloneFile, VoicePicker } from '../src/client/VoicePicker.tsx'
 import { zh } from '../src/client/locales.ts'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MediaSessionRemotes } from '../src/client/remotes.ts'
 
-const t = (key: keyof typeof zh) => zh[key]
+const t: TranslateNS<'desktop-media'> = key => (
+  key in zh ? zh[key as keyof typeof zh] : key
+)
 
 function remotes(overrides: Partial<MediaSessionRemotes> = {}): MediaSessionRemotes {
   return {

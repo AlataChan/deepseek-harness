@@ -2,12 +2,31 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
+import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { MediaCard } from '../src/client/MediaCard.tsx'
+import type { MediaCardProps } from '../src/client/MediaCard.tsx'
 import { setWorksOpen, worksOpen } from '../src/client/works-state.ts'
 import { zh } from '../src/client/locales.ts'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MediaSessionRemotes } from '../src/client/remotes.ts'
 
-const t = (key: keyof typeof zh) => zh[key]
+const t: TranslateNS<'desktop-media'> = key => (
+  key in zh ? zh[key as keyof typeof zh] : key
+)
+
+// Card seats the tests never read (owner file/image actions, framework session
+// hooks) are filled by the cast.
+function cardProps(api: MediaSessionRemotes, extra: Partial<MediaCardProps> = {}): MediaCardProps {
+  return {
+    remotes: api,
+    sessionId: SessionId('s-1'),
+    callId: 'c1',
+    openFile: () => {},
+    loadImage: (() => undefined) as unknown as MediaCardProps['loadImage'],
+    t,
+    ...extra,
+  } as MediaCardProps
+}
 
 function remotes(): MediaSessionRemotes {
   return {
@@ -64,14 +83,7 @@ describe('MediaCard', () => {
   it('renders running, failed, stopped, and successful video states', () => {
     const api = remotes()
     const run = render(
-      <MediaCard
-        toolName="media_create_video"
-        block={running() as never}
-        remotes={api}
-        sessionId="s-1"
-        t={t}
-        {...{} as never}
-      />,
+      <MediaCard {...cardProps(api)} toolName="media_create_video" block={running() as never} />,
     )
     expect(run.getByText('进行中')).toBeTruthy()
     expect(run.getByText('media_create_video')).toBeTruthy()
@@ -79,12 +91,9 @@ describe('MediaCard', () => {
 
     const failed = render(
       <MediaCard
+        {...cardProps(api)}
         toolName="media_create_video"
         block={settled({ isError: true, error: { name: 'ToolError', code: 'failed' } }) as never}
-        remotes={api}
-        sessionId="s-1"
-        t={t}
-        {...{} as never}
       />,
     )
     expect(failed.getByText('失败')).toBeTruthy()
@@ -92,15 +101,12 @@ describe('MediaCard', () => {
 
     const stopped = render(
       <MediaCard
+        {...cardProps(api)}
         toolName="media_create_video"
         block={settled({
           isError: true,
           error: { name: 'ToolError', code: 'interrupted' },
         }) as never}
-        remotes={api}
-        sessionId="s-1"
-        t={t}
-        {...{} as never}
       />,
     )
     expect(stopped.getByText('已停止')).toBeTruthy()
@@ -110,14 +116,11 @@ describe('MediaCard', () => {
     const api = remotes()
     const view = render(
       <MediaCard
+        {...cardProps(api)}
         toolName="media_compose"
         block={settled({
           meta: { kind: 'composed', artifactId: 'a_1', requestId: 'r_1' },
         }) as never}
-        remotes={api}
-        sessionId="s-1"
-        t={t}
-        {...{} as never}
       />,
     )
     fireEvent.click(view.getByText('合成'))
@@ -133,14 +136,9 @@ describe('MediaCard', () => {
     const api = remotes()
     const speech = render(
       <MediaCard
+        {...cardProps(api, { workspaceId: 'w-1', onCloneImported: () => {} })}
         toolName="media_synthesize_speech"
         block={settled({ meta: { kind: 'speech', requestId: 'r_1', jobId: 'j_1' } }) as never}
-        remotes={api}
-        sessionId="s-1"
-        workspaceId="w-1"
-        t={t}
-        onCloneImported={() => {}}
-        {...{} as never}
       />,
     )
     fireEvent.click(speech.getByText('配音'))
@@ -149,12 +147,9 @@ describe('MediaCard', () => {
 
     const clone = render(
       <MediaCard
+        {...cardProps(api)}
         toolName="media_clone_voice"
         block={settled({ meta: { kind: 'import', voiceId: 'v_1' } }) as never}
-        remotes={api}
-        sessionId="s-1"
-        t={t}
-        {...{} as never}
       />,
     )
     fireEvent.click(clone.getByText('新增克隆'))
@@ -162,12 +157,9 @@ describe('MediaCard', () => {
 
     const unknown = render(
       <MediaCard
+        {...cardProps(api)}
         toolName="other"
         block={settled({ content: [] }) as never}
-        remotes={api}
-        sessionId="s-1"
-        t={t}
-        {...{} as never}
       />,
     )
     expect(unknown.getByText('素材')).toBeTruthy()

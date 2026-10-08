@@ -7,9 +7,12 @@ import {
   MinimaxKeyCard,
 } from '../src/client/MinimaxKeyCard.tsx'
 import { zh } from '../src/client/locales.ts'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MediaCredentialsRemotes } from '../src/client/remotes.ts'
 
-const t = (key: keyof typeof zh) => zh[key]
+const t: TranslateNS<'desktop-media'> = key => (
+  key in zh ? zh[key as keyof typeof zh] : key
+)
 
 function credentials(overrides: Partial<MediaCredentialsRemotes> = {}): MediaCredentialsRemotes {
   return {
@@ -58,7 +61,7 @@ describe('MinimaxKeyCard', () => {
     const named = credentials({
       set: vi.fn(async () => ({
         ok: false as const,
-        error: { code: 'credential/rejected', message: 'shadowed' },
+        error: { code: 'credential/rejected', message: 'shadowed' } as never,
       })),
     })
     const namedView = render(<MinimaxKeyCard credentials={named} t={t} />)
@@ -71,7 +74,7 @@ describe('MinimaxKeyCard', () => {
     const blank = credentials({
       set: vi.fn(async () => ({
         ok: false as const,
-        error: { code: 'credential/rejected', message: '   ' },
+        error: { code: 'credential/rejected', message: '   ' } as never,
       })),
     })
     const blankView = render(<MinimaxKeyCard credentials={blank} t={t} />)
@@ -130,7 +133,7 @@ describe('MinimaxKeyCard', () => {
     const refused = credentials({
       describe: vi.fn(async () => ({
         ok: false as const,
-        error: { code: 'gateway/internal', message: 'down' },
+        error: { code: 'gateway/internal', message: 'down' } as never,
       })),
     })
     const refusedView = render(<MinimaxKeyCard credentials={refused} t={t} />)

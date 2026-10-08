@@ -67,7 +67,7 @@ describe('plugin load', () => {
 
   it('validates an explicit absolute runtime path at load', async () => {
     const ctx = new Context()
-    await ctx.plugin(plugin, { mediaRuntimePath: '/opt/media-runtime' })
+    await ctx.plugin(plugin, { ...plugin.Config({} as never), mediaRuntimePath: '/opt/media-runtime' })
   })
 
   it('fails load on a relative runtime path', () => {

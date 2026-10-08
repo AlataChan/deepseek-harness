@@ -118,7 +118,7 @@ describe('composeAudiovisual', () => {
     expect(result.clipIds).toEqual(['second', 'silent'])
     expect(result.durationSeconds).toBe(2)
     const encode = calls.find(call => call[0] === '/runtime/bin/ffmpeg' && call.includes('-filter_complex'))!
-    const inputOrder = encode.filter((arg, index, list) => list[index - 1] === '-i')
+    const inputOrder = encode.filter((_arg, index, list) => list[index - 1] === '-i')
     expect(inputOrder).toEqual([files.second, files.silent])
     const graph = encode[encode.indexOf('-filter_complex') + 1]!
     expect(graph).toContain('anullsrc=')

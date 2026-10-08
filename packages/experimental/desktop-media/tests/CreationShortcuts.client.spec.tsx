@@ -2,11 +2,16 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { CreationShortcuts, fileFromPicker } from '../src/client/CreationShortcuts.tsx'
+import type { CreationShortcutsProps } from '../src/client/CreationShortcuts.tsx'
 import { zh } from '../src/client/locales.ts'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MediaSessionRemotes } from '../src/client/remotes.ts'
 
-const t = (key: keyof typeof zh) => zh[key]
+const t: TranslateNS<'desktop-media'> = key => (
+  key in zh ? zh[key as keyof typeof zh] : key
+)
 
 function remotes(overrides: Partial<MediaSessionRemotes> = {}): MediaSessionRemotes {
   return {
@@ -38,9 +43,16 @@ afterEach(() => {
 
 describe('CreationShortcuts', () => {
   it('loads methods into the draft and submits', () => {
-    const inputActions = { setDraft: vi.fn(), submit: vi.fn() }
+    const inputActions = {
+      setDraft: vi.fn(),
+      submit: vi.fn(),
+      addAttachments: vi.fn(),
+      removeAttachment: vi.fn(),
+      pruneAttachments: vi.fn(),
+    }
     const view = render(
-      <CreationShortcuts inputActions={inputActions} t={t} {...{} as never} />,
+      // Unread framework session seats are filled by the cast.
+      <CreationShortcuts {...({ inputActions, t } as CreationShortcutsProps)} />,
     )
     fireEvent.click(view.getByRole('button', { name: '做视频' }))
     expect(inputActions.setDraft).toHaveBeenCalledWith(zh['prompt.video'])
@@ -51,16 +63,21 @@ describe('CreationShortcuts', () => {
   })
 
   it('opens the system file control and imports a chosen recording', async () => {
-    const inputActions = { setDraft: vi.fn(), submit: vi.fn() }
+    const inputActions = {
+      setDraft: vi.fn(),
+      submit: vi.fn(),
+      addAttachments: vi.fn(),
+      removeAttachment: vi.fn(),
+      pruneAttachments: vi.fn(),
+    }
     const api = remotes()
     const view = render(
-      <CreationShortcuts
-        inputActions={inputActions}
-        remotes={api}
-        sessionId="s-1"
-        t={t}
-        {...{} as never}
-      />,
+      <CreationShortcuts {...({
+        inputActions,
+        remotes: api,
+        sessionId: SessionId('s-1'),
+        t,
+      } as CreationShortcutsProps)} />,
     )
     const picker = view.getByLabelText('克隆声音')
     expect(picker.tagName).toBe('INPUT')
@@ -89,13 +106,18 @@ describe('CreationShortcuts', () => {
     const input = document.createElement('input')
     expect(fileFromPicker({ target: input } as never)).toBeUndefined()
     const view = render(
-      <CreationShortcuts
-        inputActions={{ setDraft: vi.fn(), submit: vi.fn() }}
-        remotes={remotes()}
-        sessionId="s-1"
-        t={t}
-        {...{} as never}
-      />,
+      <CreationShortcuts {...({
+        inputActions: {
+          setDraft: vi.fn(),
+          submit: vi.fn(),
+          addAttachments: vi.fn(),
+          removeAttachment: vi.fn(),
+          pruneAttachments: vi.fn(),
+        },
+        remotes: remotes(),
+        sessionId: SessionId('s-1'),
+        t,
+      } as CreationShortcutsProps)} />,
     )
     fireEvent.change(view.getByLabelText('克隆声音'), {
       target: { files: [new File([new Uint8Array([1])], 'notes.txt')] },

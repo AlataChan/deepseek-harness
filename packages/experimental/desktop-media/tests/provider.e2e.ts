@@ -82,7 +82,7 @@ async function paidTransport() {
   const apiKey = await resolveMinimaxApiKey(ctx.credentials, credentialRef('MINIMAX_API_KEY'))
   return createMinimaxTransport({
     apiKey,
-    baseUrl: process.env.MINIMAX_BASE_URL,
+    ...(process.env.MINIMAX_BASE_URL ? { baseUrl: process.env.MINIMAX_BASE_URL } : {}),
   })
 }
 
