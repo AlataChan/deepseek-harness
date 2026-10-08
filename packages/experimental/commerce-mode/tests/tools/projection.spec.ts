@@ -1,4 +1,4 @@
-/** Commerce tool provenance projection behavior. */
+/** Commerce tool read-record projection behavior. */
 
 import { describe, expect, it } from 'vitest'
 import { ChangeId, CommerceSourceId, ListingId } from '@deepseek-ai/dsh-host-commerce'
@@ -15,7 +15,7 @@ function fold(events: readonly SessionEvent[]) {
 }
 
 describe('commerceSession projection', () => {
-  it('folds binding and root commerce provenance identically for live and replayed logs', () => {
+  it('folds binding and root commerce read records identically for live and replayed logs', () => {
     const session = Session.create(SessionId('commerce-projection'))
     session.append('commerce/bound', {
       sourceId: CommerceSourceId('source-1'), displayName: 'Shop', kinds: ['products'],

@@ -95,12 +95,12 @@ export function idList(ids: readonly string[]): string {
   return ids.length > LISTED_IDS ? `${listed}, and ${String(ids.length - LISTED_IDS)} more` : listed
 }
 
-function provenanceHeld(state: CommerceSessionState, ids: readonly ListingId[]): ToolOutcome | undefined {
+function unreadListingsRefusal(state: CommerceSessionState, ids: readonly ListingId[]): ToolOutcome | undefined {
   const known = new Set<string>(state.readListingIds)
   const unread = [...new Set(ids)].filter(id => !known.has(id))
   if (unread.length === 0) return undefined
   return gateHeld(
-    'provenance',
+    'listing-read',
     `listing ids ${idList(unread)} were not returned by a commerce read in this session`,
     'Call commerce_search_listings or commerce_get_listing first and use ids from the results.',
   )
@@ -231,7 +231,7 @@ export function registerStagingTools(ctx: Context, config: StagingConfig): void 
         if ('outcome' in session) return session.outcome
         if (args.fields.length === 0) return held('Provide at least one field to change, then retry.')
         const listingId = ListingId(args.listing_id)
-        const unread = provenanceHeld(session.state, [listingId])
+        const unread = unreadListingsRefusal(session.state, [listingId])
         if (unread !== undefined) return unread
         if (!session.state.fullReadListingIds.includes(listingId)) {
           return gateHeld(
@@ -279,7 +279,7 @@ export function registerStagingTools(ctx: Context, config: StagingConfig): void 
         if ('outcome' in session) return session.outcome
         if (args.items.length === 0) return held('Provide at least one listing line, then retry.')
         const ids = args.items.map(item => ListingId(item.listing_id))
-        const unread = provenanceHeld(session.state, ids)
+        const unread = unreadListingsRefusal(session.state, ids)
         if (unread !== undefined) return unread
         const listings = await readListings(ctx, session.sourceId, ids, exec.signal)
         const family = familyHeld(listings, 'priced')
@@ -315,7 +315,7 @@ export function registerStagingTools(ctx: Context, config: StagingConfig): void 
         const depth = promotionDepthViolation(args.discount_pct, config.guardrails)
         if (depth !== undefined) return gateHeld('guardrail', depth, 'Propose a shallower discount.')
         const ids = args.listing_ids.map(id => ListingId(id))
-        const unread = provenanceHeld(session.state, ids)
+        const unread = unreadListingsRefusal(session.state, ids)
         if (unread !== undefined) return unread
         const listings = await readListings(ctx, session.sourceId, ids, exec.signal)
         const family = familyHeld(listings, 'priced')
@@ -363,7 +363,7 @@ export function registerStagingTools(ctx: Context, config: StagingConfig): void 
         /* jscpd:ignore-end */
         if (args.items.some(item => item.quantity < 1)) return held('Each restock quantity must be at least 1 unit. Correct it, then retry.')
         const ids = args.items.map(item => ListingId(item.listing_id))
-        const unread = provenanceHeld(session.state, ids)
+        const unread = unreadListingsRefusal(session.state, ids)
         if (unread !== undefined) return unread
         const family = familyHeld(await readListings(ctx, session.sourceId, ids, exec.signal), 'stocked')
         if (family !== undefined) return family
@@ -409,7 +409,7 @@ export function registerStagingTools(ctx: Context, config: StagingConfig): void 
         const dates = windowHeld(args.starts_on, args.ends_on)
         if (dates !== undefined) return dates
         const ids = [...new Set(args.listing_ids.map(id => ListingId(id)))]
-        const unread = provenanceHeld(session.state, ids)
+        const unread = unreadListingsRefusal(session.state, ids)
         if (unread !== undefined) return unread
         const items: StagedChangeItem[] = [{ listingId: null, field: 'budget', before: null, after: args.budget }]
         return stage(session.state, 'campaign', args.summary, items, config, {

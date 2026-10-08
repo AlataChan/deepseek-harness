@@ -2,7 +2,7 @@
 
 Status: implemented
 
-[English](2026-10-07-upstream-intake-provenance.md) | 中文
+[English](2026-10-07-upstream-intake-registry.md) | 中文
 
 ## Problem
 

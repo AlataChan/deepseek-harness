@@ -1,4 +1,4 @@
-/** Replay projection for commerce binding, listing-read provenance, and the staged-change ledger. */
+/** Replay projection for commerce binding, the listing-read record, and the staged-change ledger. */
 
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import { z } from 'zod'
@@ -14,7 +14,7 @@ export type {
   StagedChangeStatus,
 } from './types.ts'
 
-const LISTING_PROVENANCE_TOOL_NAMES = new Set([
+const LISTING_READ_TOOL_NAMES = new Set([
   'commerce_search_listings',
   'commerce_get_listing',
   'commerce_inventory_health',
@@ -36,7 +36,7 @@ const COMMERCE_TOOL_NAMES = new Set([
   'commerce_load_sample',
   'commerce_sales_summary',
   'commerce_analysis_query',
-  ...LISTING_PROVENANCE_TOOL_NAMES,
+  ...LISTING_READ_TOOL_NAMES,
   ...STAGING_TOOL_NAMES,
   DISCARD_TOOL_NAME,
   EXPORT_TOOL_NAME,
@@ -153,7 +153,7 @@ export const commerceSessionProjectionDefinition = {
     )
     const meta = readMeta(event.data.meta)
     if (meta === undefined) return { ...state, pendingCalls }
-    if (LISTING_PROVENANCE_TOOL_NAMES.has(toolName)) {
+    if (LISTING_READ_TOOL_NAMES.has(toolName)) {
       return {
         ...state,
         pendingCalls,

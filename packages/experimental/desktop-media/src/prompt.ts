@@ -14,4 +14,4 @@ export const MEDIA_CREATION_PROMPT = [
   'Use media_compose to join approved clips and replace narration by default.',
   'Report only that the system was asked to open a file. Do not claim playback, inspection, or approval.',
   'Never print API keys, signed URLs, or media bytes.',
-].join('\n')
+].join('\n\n')

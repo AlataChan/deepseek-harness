@@ -79,7 +79,7 @@ export function held(message: string): ToolOutcome {
 
 /**
  * Build a held refusal that names the gate which refused the call.
- * @param gate - gate name, such as provenance or guardrail.
+ * @param gate - gate name, such as read-record or guardrail.
  * @param reason - what the gate found.
  * @param recovery - the step that lets a retry pass.
  * @returns the held outcome.
@@ -228,7 +228,7 @@ function projectMeta(value: ToolOutcome) {
 /**
  * Build a successful outcome, holding it when its metadata exceeds the byte cap.
  * @param value - Provider or change value rendered as fenced JSON.
- * @param listingIds - listing ids the result contributes to read provenance.
+ * @param listingIds - listing ids the result contributes to the read record.
  * @param fullListing - whether the result is a complete listing record.
  * @param bounds - listing-id and metadata caps.
  * @param extra - unfenced lead text and ledger metadata.

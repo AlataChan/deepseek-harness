@@ -254,7 +254,7 @@ describe('commerce Provider refusals', () => {
   })
 })
 
-describe('commerce analysis provenance', () => {
+describe('commerce analysis read record', () => {
   it('does not treat model-authored listing aliases as catalog reads', async () => {
     const { ctx, owner } = await bench()
     await ctx.commerce.bind(owner, SOURCE_ID)

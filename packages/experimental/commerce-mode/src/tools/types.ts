@@ -57,16 +57,16 @@ export interface CommerceSessionState {
   readonly pendingCalls: Readonly<Record<string, string>>
 }
 
-/** Client-visible commerce binding and read provenance. */
+/** Client-visible commerce binding and the record of which listings were read. */
 export type CommerceSessionProjection = Omit<CommerceSessionState, 'pendingCalls'>
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
-    /** Commerce binding and listing-read provenance reconstructed from the log. */
+    /** Commerce binding and the listing-read record reconstructed from the log. */
     commerceSession: CommerceSessionState
   }
   interface SessionProjectionMap {
-    /** Commerce binding and listing-read provenance exposed to session consumers. */
+    /** Commerce binding and the listing-read record exposed to session consumers. */
     commerceSession: CommerceSessionProjection
   }
 }

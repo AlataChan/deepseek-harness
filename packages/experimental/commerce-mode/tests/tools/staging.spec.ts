@@ -48,7 +48,7 @@ describe('commerce staging tools', () => {
   it('holds an unread listing and stages a read one with its provider-grounded price', async () => {
     const env = await boundBench()
     expect(text(await callRecorded(env.ctx, env.owner, 'commerce_stage_price_change', priceArgs)))
-      .toContain('Held by the provenance gate: listing ids P-1 were not returned by a commerce read in this session.')
+      .toContain('Held by the listing-read gate: listing ids P-1 were not returned by a commerce read in this session.')
     expect(ledger(env)).toEqual([])
     recordRead(env.owner, 'commerce_search_listings', ['P-1'])
     const staged = await callRecorded(env.ctx, env.owner, 'commerce_stage_price_change', priceArgs)
@@ -149,11 +149,11 @@ describe('commerce staging tools', () => {
     })
   })
 
-  it('checks campaign listing provenance and caps the budget', async () => {
+  it('checks campaign listing reads and caps the budget', async () => {
     const env = await boundBench()
     const base = { summary: 'Tea week', name: 'Tea week', starts_on: '2026-10-01', ends_on: '2026-10-07', listing_ids: ['P-1'] }
     expect(text(await callRecorded(env.ctx, env.owner, 'commerce_stage_campaign', { ...base, budget: 500 })))
-      .toContain('Held by the provenance gate')
+      .toContain('Held by the listing-read gate')
     recordRead(env.owner, 'commerce_search_listings', ['P-1'])
     expect(text(await callRecorded(env.ctx, env.owner, 'commerce_stage_campaign', { ...base, budget: 10_001 })))
       .toContain('the campaign budget of 10001 exceeds the 10000 per-change limit')

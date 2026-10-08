@@ -40,7 +40,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-subagent` | `list_subagent_models`, `subagent` | `ctx.tools`, `ctx.subagents`, `ctx.systemPrompt`, `ctx.llm for model discovery and selected-route validation` | `tool/call`, `tool/result`, `child session events through the chosen provider` | `subagent`, `subagent_fork` | The registered delegation name is the load-time `toolName` config (default `subagent`); the default schema above has model selection off, while the discovery schema is shown as the fixed companion available in an enabled Session. Web presets sample the Plugins preference for each new top-level Session and preserve that decision for its child Sessions; `subagent_fork` remains fixed-route. Each instance independently controls whether it reads model-selection settings and its background behavior through `modelSelectionSettings`, `backgroundMode`, and `enableRunInBackground`. |
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`, `list_agents`, `send_message` | `ctx.tools`, `ctx.subagents`, `ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`, `tool/result`, `child session events through ctx.subagents` | - | The globally named control tools over continuable background subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries). |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
-| `@deepseek-ai/dsh-experimental-commerce-mode` | `commerce_analysis_query`, `commerce_discard_change`, `commerce_export_changes`, `commerce_get_listing`, `commerce_import_file`, `commerce_inventory_health`, `commerce_load_sample`, `commerce_sales_summary`, `commerce_search_listings`, `commerce_stage_campaign`, `commerce_stage_listing_update`, `commerce_stage_price_change`, `commerce_stage_promotion`, `commerce_stage_restock` | `ctx.tools`, `ctx.commerce`, `ctx.fs`, `ctx.sessionProjections`, `ctx.approval`, `ctx.sandboxPolicy`, `a direct calling Agent` | `tool/call`, `commerce/bound on the first import`, `approval/asked and approval/decided for an export`, `tool/result with read provenance or staged-change ledger metadata` | - | The `./preset` row mounts the commerce tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import, staging, discard, and export tools are exclusive; read tools are concurrency-safe. Read, staging, and export tools require a session binding created by an import; staging tools record changes in the session ledger, and the export tool writes a CSV file into the session workspace only after approval. |
+| `@deepseek-ai/dsh-experimental-commerce-mode` | `commerce_analysis_query`, `commerce_discard_change`, `commerce_export_changes`, `commerce_get_listing`, `commerce_import_file`, `commerce_inventory_health`, `commerce_load_sample`, `commerce_sales_summary`, `commerce_search_listings`, `commerce_stage_campaign`, `commerce_stage_listing_update`, `commerce_stage_price_change`, `commerce_stage_promotion`, `commerce_stage_restock` | `ctx.tools`, `ctx.commerce`, `ctx.fs`, `ctx.sessionProjections`, `ctx.approval`, `ctx.sandboxPolicy`, `a direct calling Agent` | `tool/call`, `commerce/bound on the first import`, `approval/asked and approval/decided for an export`, `tool/result with the listing-read record or staged-change ledger metadata` | - | The `./preset` row mounts the commerce tools in the `commerce` preset standing scope; a deployment without a preset roster mounts them for every agent through a root `./tools` row. Import, staging, discard, and export tools are exclusive; read tools are concurrency-safe. Read, staging, and export tools require a session binding created by an import; staging tools record changes in the session ledger, and the export tool writes a CSV file into the session workspace only after approval. |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`, `list_agents`, `propose_action`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `ctx.userQuestions`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
@@ -2474,7 +2474,7 @@ Interrupt one teammate's current turn while preserving its pending inbox. Team L
   "properties": {
     "target": {
       "type": "string",
-      "description": "Teammate target returned by spawn_teammate or list_agents."
+      "description": "Teammate name."
     }
   },
   "required": [
@@ -2487,7 +2487,7 @@ Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/exper
 
 ### `list_agents`
 
-List the Lead and every durable teammate with an addressable target and current availability. inactive means no turn is executing, not a task result. provisioning and failed describe member creation.
+List the Lead and every durable teammate with current runtime status.
 
 ```json
 {
@@ -2536,7 +2536,7 @@ Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/exper
 
 ### `send_message`
 
-Send one durable message to another Team member. A running target receives it at the nearest step boundary; an inactive target starts or resumes a turn.
+Send one durable message to another Team member. A running target receives it at the nearest step boundary; an idle target starts a turn; an inactive teammate cold-resumes.
 
 ```json
 {
@@ -2544,7 +2544,7 @@ Send one durable message to another Team member. A running target receives it at
   "properties": {
     "target": {
       "type": "string",
-      "description": "Member target returned by spawn_teammate or list_agents, including lead."
+      "description": "Team member name, or lead."
     },
     "message": {
       "type": "string",
@@ -2691,7 +2691,7 @@ List shared tasks, including readiness, owner, revision, blockers, and write-sco
     },
     "owner": {
       "type": "string",
-      "description": "Optional member target from spawn_teammate or list_agents, matching ownerName; use unowned for tasks without an owner."
+      "description": "Optional member-name filter; use unowned for tasks without an owner."
     },
     "ready": {
       "type": "boolean",
@@ -2765,7 +2765,7 @@ Compare-and-set a shared task action using the latest revision from team_task_ge
     },
     "owner": {
       "type": "string",
-      "description": "Member target from spawn_teammate or list_agents for Lead-only reassign; omit to unassign."
+      "description": "Member name for Lead-only reassign; omit to unassign."
     }
   },
   "required": [

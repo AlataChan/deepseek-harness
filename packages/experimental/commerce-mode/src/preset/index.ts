@@ -66,7 +66,7 @@ async function readPresetDefinition(ctx: Context, target: string): Promise<Prese
  * joined to that preset see them. An unusable preset composition logs the
  * manual recovery step and mounts no tools.
  * @param ctx - Host context holding the preset roster and tool registries.
- * @param config - tool input, output, and provenance bounds.
+ * @param config - tool input, output, and read-record bounds.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
   if (!await installCommercePreset(ctx)) return

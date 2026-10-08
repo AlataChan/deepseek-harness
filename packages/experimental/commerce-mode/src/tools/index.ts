@@ -37,7 +37,7 @@ export const inject = ['commerce', 'fs', 'tools', 'sessionProjections', 'approva
 /** Host service each tool mount claims so one Host cannot expose two mounts. */
 const TOOL_MOUNT_SERVICE = 'commerceToolMount'
 
-/** Deployment bounds for commerce tool inputs, outputs, provenance, and staging. */
+/** Deployment bounds for commerce tool inputs, outputs, read records, and staging. */
 export interface Config extends StagingConfig {
   /** Maximum bytes read from one workspace import file. */
   readonly maxImportBytes: number
@@ -69,7 +69,7 @@ const PARENT_PATH_SEGMENT = /(?:^|[\\/])\.\.(?:[\\/]|$)/
  * Register the commerce projection with the import, read, staging, and export tools on the current scope.
  * A Host accepts one mount: a second `./tools` or `./preset` mount fails at load.
  * @param ctx - root or preset-scope context holding the injected services.
- * @param config - tool input, output, provenance, and staging bounds.
+ * @param config - tool input, output, read-record, and staging bounds.
  */
 export function apply(ctx: Context, config: Config): void {
   // Scopes share the root service store, so the second mount's claim throws.

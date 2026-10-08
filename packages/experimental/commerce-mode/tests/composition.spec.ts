@@ -1,4 +1,4 @@
-/** Real Loader composition for commerce preset visibility and recorded provenance. */
+/** Real Loader composition for commerce preset visibility and recorded reads. */
 
 import { mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -201,7 +201,7 @@ async function loadComposition(
 }
 
 describe('real commerce Loader composition', () => {
-  it('scopes tools to commerce, records binding and provenance, replays, and disposes', { timeout: 30_000 }, async () => {
+  it('scopes tools to commerce, records binding and reads, replays, and disposes', { timeout: 30_000 }, async () => {
     const { ctx, workspace } = await loadComposition('preset')
     const standard = await ctx.agents.create({
       sessionId: SessionId('standard-agent'), meta: { cwd: workspace },

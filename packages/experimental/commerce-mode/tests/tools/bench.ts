@@ -227,7 +227,7 @@ export async function callRecorded(ctx: Context, owner: Agent, name: string, arg
 }
 
 /**
- * Record a catalog read in the owner's session so read provenance includes the listing ids.
+ * Record a catalog read in the owner's session so the read record includes the listing ids.
  * @param owner - agent whose session records the read.
  * @param name - catalog read tool.
  * @param listingIds - listing ids the read returned.
