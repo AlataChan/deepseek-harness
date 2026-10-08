@@ -8,16 +8,16 @@ import type {
   MaybeSnapshotSelectorHook, ObservableSnapshot, SnapshotSelectorHook,
 } from '@deepseek-ai/dsh-client-store'
 import type {
-  InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
+  FactoryComponentPropsOf, FactoryLocalComponentPropsOf,
+  InjectFace, PropsLocale, PropsRenderFactories, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { ComposerBlock } from './composer-blocks.ts'
-import type {
-  ComposerKeyboard, DraftAttachmentId, EditSelection, InputActions, InputNotice, InputState,
-} from './input.ts'
+import type { DraftAttachmentId, InputActions, InputNotice, InputState } from './input.ts'
+import type { ComposerKeyboard, EditSelection } from './draft-editor.ts'
 import type { createConversationStore } from '../stores.ts'
 import type { BusyEnterBehavior } from './composer-submission.ts'
 import type { ConversationSnapshot } from './snapshot.ts'
@@ -60,8 +60,12 @@ export interface ComposerAttachmentsOwnerProps {
   attachments: readonly ComposerAttachment[]
   /** Whether a document-level file drop may add attachments now. */
   canAcceptDrop: boolean
-  /** Add one dropped batch through the composer's validation path. */
-  onAddFiles: (files: readonly File[]) => void
+  /**
+   * Add one dropped batch through the composer's validation path.
+   * @param files - dropped, pasted, or picked browser files in source order.
+   * @param directories - members of `files` the drop source identified as directories.
+   */
+  onAddFiles: (files: readonly File[], directories?: ReadonlySet<File>) => void
   /** Remove one draft attachment through the Conversation service. */
   onRemoveAttachment: (id: DraftAttachmentId) => void
   /** Current per-draft upload states for file-kind attachments. */
@@ -111,7 +115,11 @@ export interface AttachSessionDocumentOwnerProps {
  * local preview of a submission echo whose admission is still in flight.
  */
 export type MessageImageSource =
-  | { readonly attachment: ImageAttachmentRef }
+  | {
+    readonly attachment: ImageAttachmentRef
+    /** Presentation-only name for the thumbnail and lightbox; loading uses the original reference. */
+    readonly label?: string
+  }
   | {
     readonly preview: {
       /** Browser-owned preview URL (lifecycle stays with the submitter). */
@@ -139,6 +147,8 @@ export interface MessageImagesOwnerProps {
   align: 'start' | 'end'
   /** Force every image into the compact message-attachment tile size. */
   compact?: boolean
+  /** Fixed, uncropped thumbnail for an attachment list row. */
+  thumbnail?: boolean
 }
 
 /** Slot-backed renderer used by Conversation targets without importing an attachment implementation. */
@@ -151,10 +161,25 @@ export type UseConversationViews = SnapshotSelectorHook<readonly ViewTab[]>
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
+    /** Conversation shell beneath its root-scoped main-panel entry. */
+    'main.conversation': { kind: 'single'; scope: 'session-maybe' }
     /** Strict per-Session Conversation body. */
-    'conversation.session': { kind: 'single'; scope: 'session' }
+    'conversation.session': {
+      kind: 'single'
+      scope: 'session'
+      owner: { view?: string }
+    }
+    /** Resident navigation container, including when no Session is selected. */
+    'conversation.header': { kind: 'single'; scope: 'session-maybe' }
     /** Strict per-Session title, actions, and View navigation. */
-    'conversation.session.header': { kind: 'single'; scope: 'session' }
+    'conversation.session.header': {
+      kind: 'single'
+      scope: 'session'
+      owner: {
+        /** Parent-owned visibility shared with the header container styling. */
+        hideChrome: boolean
+      }
+    }
     /** Optional replacement for one Session breadcrumb title. */
     'conversation.session.header.lineage': {
       kind: 'single'
@@ -173,12 +198,17 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
       scope: 'session'
       owner: ConversationHeaderActionOwnerProps
     }
+    /** Global navigation before the Session title, available without a Session. */
+    'conversation.header.leading': {
+      kind: 'single'
+      scope: 'root'
+      owner: ConversationHeaderLeadingOwnerProps
+    }
     /**
      * The header's far-right corner, past the utilities' edge and into the
-     * header's own padding, for one control that must keep its place whether or
-     * not it currently shows anything. The corner reserves its width while an
-     * occupant is registered, so the utilities beside it never move; an
-     * occupant with nothing to show renders a same-size placeholder.
+     * header's own padding, for one control. The corner is laid out only while
+     * its occupant renders something; an occupant with nothing to show renders
+     * nothing, and the utilities take the header's edge.
      */
     'conversation.session.header.corner': {
       kind: 'single'
@@ -196,7 +226,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Blank-session headline; a later occupant replaces the official slogan. */
     'conversation.hero.headline': { kind: 'single'; scope: 'root'; owner: HeroHeadlineOwnerProps }
     /** Agent-preset control staged for a New Session. */
-    'conversation.hero.agentPreset': { kind: 'single'; scope: 'root'; owner: HeroAgentPresetOwnerProps }
+    'conversation.hero.agentPreset': { kind: 'single'; scope: 'session-maybe'; owner: HeroAgentPresetOwnerProps }
     /** Ask-data chip staged for a New Session. */
     'conversation.hero.askData': { kind: 'single'; scope: 'root'; owner: HeroAskDataOwnerProps }
     /** Ask-knowledge chip staged for a New Session. */
@@ -223,6 +253,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.input.left': { kind: 'list'; scope: 'session' }
     /** Compact controls before the composer submit action. */
     'conversation.input.right': { kind: 'list'; scope: 'session' }
+    /** Compact action after the model selector; it can expand across the toolbar while retaining the editor and submit action. */
+    'conversation.input.activity': { kind: 'single'; scope: 'session'; owner: InputActivityOwnerProps }
     /** Resident composer body, including the no-Session inert state. */
     'conversation.composer.bar': { kind: 'single'; scope: 'session-maybe'; owner: ComposerBarOwnerProps }
     /** Optional draft-attachment rail and drop target. */
@@ -245,8 +277,45 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     }
     /** Plan control inside the composer tool row. */
     'conversation.input.plan': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
-    /** Model selector inside the composer tool row. */
+    /** Current-session permission control inside the composer tool row. */
+    'conversation.input.permission': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
+    /**
+     * Model selector inside the composer tool row. When expanded controls cannot
+     * share a line, the row sets --dsh-composer-model-text-display to none and
+     * --dsh-composer-model-icon-display to block for an occupant's compact display.
+     */
     'conversation.input.model': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
+  }
+
+  interface SlotFactoryMap {
+    /** Reusable Conversation content instantiated by presentation hosts. */
+    'conversation.content': {
+      scope: 'session-maybe'
+      props: ConversationContentInputProps
+      children: {
+        'conversation.session': { kind: 'single'; scope: 'session' }
+        'conversation.composer': { kind: 'chain'; scope: 'session' }
+        'conversation.composer.bar': { kind: 'single'; scope: 'session-maybe' }
+        'conversation.input.dock': { kind: 'list'; scope: 'session' }
+        'conversation.hero.brand.mark': { kind: 'single'; scope: 'root' }
+        'conversation.hero.headline': { kind: 'single'; scope: 'root' }
+        'conversation.hero.workspace': { kind: 'single'; scope: 'root' }
+        'conversation.hero.agentPreset': { kind: 'single'; scope: 'session-maybe' }
+        'conversation.hero.askData': { kind: 'single'; scope: 'root' }
+        'conversation.hero.askKnowledge': { kind: 'single'; scope: 'root' }
+        'conversation.hero.commerce': { kind: 'single'; scope: 'root' }
+        'conversation.hero.agentTeam': { kind: 'single'; scope: 'root' }
+        'conversation.askData.gate': { kind: 'single'; scope: 'root' }
+        'conversation.commerce.gate': { kind: 'single'; scope: 'root' }
+        'conversation.askKnowledge.picker': { kind: 'single'; scope: 'root' }
+      }
+      inject: ConversationInjected
+      locale: 'conversation'
+      slots: {
+        views: { scope: 'session' }
+        widthControls: { scope: 'root'; props: ConversationWidthControlsInputProps }
+      }
+    }
   }
 
   interface GlobalStandardProps {
@@ -333,6 +402,12 @@ export interface ConversationHeaderCornerOwnerProps {
   children?: never
 }
 
+/** The leading seat exposes global navigation independently of a Session. */
+export interface ConversationHeaderLeadingOwnerProps {
+  /** Marker field: the occupant receives no owner-specific values. */
+  children?: never
+}
+
 /** Plain breadcrumb data handed to the optional lineage renderer. */
 export interface ConversationHeaderLineageOwnerProps {
   /** Session represented by this breadcrumb title. */
@@ -351,6 +426,8 @@ export interface InputZone {
 
 /** Conversation View entries obtain their data from registered standard hooks. */
 export interface ConvViewOwnerProps {
+  /** Open a tool call's inspector when an inspection target is available. */
+  inspectCall: ((callId: string) => void) | undefined
   /** Focus request addressed to the selected View. */
   viewRequest: import('./views.ts').ConversationViewRequest | null
   /** Select a View and address one opaque focus identity to it. */
@@ -379,7 +456,10 @@ export interface ConversationInjected {
 /** Business callbacks injected into the strict Session body. */
 export interface ConversationSessionInjected {
   /** Package-owned View roster source bound only for the Conversation body. */
-  readonly hooks: { readonly conversationViews: ObservableSnapshot<readonly ViewTab[]> }
+  readonly hooks: {
+    readonly conversationViews: ObservableSnapshot<readonly ViewTab[]>
+    readonly inspectCall: ObservableSnapshot<ConvViewOwnerProps['inspectCall']>
+  }
   /** Bind input draft persistence to the Session-owned store instance. */
   bindDraftMirror: (write: (text: string) => void) => () => void
   /** Select and activate one View while addressing an opaque focus request to it. */
@@ -416,7 +496,14 @@ export interface ComposerBarOwnerProps {
 /** Package-private operations injected into the resident composer bar. */
 export interface ComposerBarInjected {
   keyboard: ComposerKeyboard | undefined
-  addFiles: ((files: readonly File[]) => string | null) | undefined
+  /**
+   * Register one picked batch; resolves to the rejection copy or null. Where
+   * the browser shell reports host paths (the Desktop application), files
+   * and folders with a real path become `@path` references in the draft
+   * instead of uploads; `directories` names the members the drop source
+   * identified as directories.
+   */
+  addFiles: ((files: readonly File[], directories?: ReadonlySet<File>) => string | null) | undefined
   removeAttachment: ((id: DraftAttachmentId) => void) | undefined
   resolveDraftAttachments: ((ids: readonly DraftAttachmentId[]) => readonly ComposerAttachment[]) | undefined
   /** Restart one failed file upload; absent without a session. */
@@ -425,7 +512,6 @@ export interface ComposerBarInjected {
   /** Open or close the `@` workspace-file / session menu at the caret. Absent when no occupant offers it. */
   toggleReferenceMenu?: ((selection: EditSelection) => void) | undefined
   stop: (() => void) | undefined
-  command: ((line: string) => Promise<boolean>) | undefined
   hooks: {
     /**
      * Live busy-state submission preference: the delivery mode plain Enter
@@ -440,24 +526,30 @@ export interface ComposerBarInjected {
   }
 }
 
-/** Owner share of the named plan and model controls. */
+/** Owner share of the named plan, permission, and model controls. */
 export interface InputControlOwnerProps {
   /** Whether the composer currently refuses interaction. */
   locked: boolean
+}
+
+/** A toolbar activity hides ordinary accessory controls while expanded; its occupant must release expansion on unmount. */
+export interface InputActivityOwnerProps extends InputControlOwnerProps {
+  /** @param active - whether the occupant needs the toolbar width before the submit action. */
+  onActiveChange: (active: boolean) => void
 }
 
 /** Full props of the resident composer bar. */
 export type ComposerBarProps =
   PropsRuntime<'conversation.composer.bar'>
   & PropsRenderSlots<
-    | 'conversation.input.attachments'
-    | 'conversation.input.attachKnowledge'
-    | 'conversation.input.attachSessionDocument'
-    | 'conversation.input.overlay'
-    | 'conversation.input.left'
-    | 'conversation.input.plan'
-    | 'conversation.input.right'
-    | 'conversation.input.model'
+  PropsRenderSlots<
+    'conversation.input.attachments' | 'conversation.input.overlay'
+    | 'conversation.input.attachKnowledge' | 'conversation.input.attachSessionDocument'
+    | 'conversation.input.permission'
+    | 'conversation.input.left' | 'conversation.input.plan'
+    | 'conversation.input.right' | 'conversation.input.model' | 'conversation.input.activity'
+    | 'conversation.composer.dock'
+  >
     | 'conversation.composer.dock'
   >
   & InjectFace<ComposerBarInjected>
@@ -495,29 +587,37 @@ export interface ConversationAtmosphereOwnerProps {
 
 /** Full props of the resident optional-Session Conversation shell. */
 export type ConversationSlotProps =
-  PropsRuntime<'conversation'>
-  & PropsRenderSlots<
-    | 'conversation.session' | 'conversation.session.header'
-    | 'conversation.composer' | 'conversation.composer.bar'
-    | 'conversation.input.dock'
-    | 'conversation.hero.brand.mark'
-    | 'conversation.hero.headline'
-    | 'conversation.hero.workspace'
-    | 'conversation.hero.agentPreset'
-    | 'conversation.hero.askData'
-    | 'conversation.hero.askKnowledge'
-    | 'conversation.hero.commerce'
-    | 'conversation.hero.agentTeam'
-    | 'conversation.atmosphere'
-    | 'conversation.askData.gate'
-    | 'conversation.commerce.gate'
-    | 'conversation.askKnowledge.picker'
-  >
-  & InjectFace<ConversationInjected>
-  & PropsLocale<'conversation'>
+  PropsRuntime<'main.conversation'>
+  & PropsRenderSlots<'conversation.header' | 'conversation.atmosphere'>
+  & PropsRenderFactories
+
+/** Inputs shared by main and embedded Conversation content occurrences. */
+export interface ConversationContentInputProps {
+  variant: 'main' | 'embedded'
+  phase: 'settling' | 'hero' | 'active'
+  hero: boolean
+}
+
+/** Values passed from shared content to its occurrence-selected width controls. */
+export interface ConversationWidthControlsInputProps {
+  /** Mounted Conversation body measured and styled by the selected controls. */
+  container: HTMLDivElement | null
+  /** Current body phase; handles render only for an active transcript. */
+  phase: ConversationContentInputProps['phase']
+}
+
+/** Full props of the reusable Conversation Factory definition. */
+export type ConversationContentProps = FactoryComponentPropsOf<'conversation.content'>
 
 /** Shared target-neutral Conversation store handle. */
 export type ConversationStore = ReturnType<typeof createConversationStore>
+
+/** Full props of the Factory's caller-selectable Conversation View position. */
+export type ConversationViewsProps = FactoryLocalComponentPropsOf<'conversation.content', 'views'>
+
+/** Full props of the Factory's caller-selected width-control position. */
+export type ConversationWidthControlsProps =
+  FactoryLocalComponentPropsOf<'conversation.content', 'widthControls'>
 
 /** Full props of the strict Session body. */
 export type ConversationSessionSlotProps =
@@ -525,6 +625,11 @@ export type ConversationSessionSlotProps =
   & PropsRenderSlots<'conversation.view'>
   & PropsStore<ConversationStore>
   & InjectFace<ConversationSessionInjected>
+
+/** Full props of the resident navigation header. */
+export type ConversationHeaderProps =
+  PropsRuntime<'conversation.header'>
+  & PropsRenderSlots<'conversation.header.leading' | 'conversation.session.header'>
 
 /** Full props of the strict Session header. */
 export type ConversationSessionHeaderSlotProps =

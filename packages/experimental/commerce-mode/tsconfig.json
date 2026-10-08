@@ -15,7 +15,7 @@
     { "path": "../../guard/fence-policy" },
     { "path": "../../interaction/user-approval" },
     { "path": "../../host/commerce" },
-    { "path": "../../preset/agent-presets" },
+    { "path": "../../preset/agent-preset-registry" },
     { "path": "../../sandbox/sandbox" },
     { "path": "../../sandbox/sandbox-policy" },
     { "path": "../../session/session-projection" },

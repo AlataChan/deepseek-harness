@@ -5,7 +5,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type z from '@deepseek-ai/schemastery'
-import type {} from '@deepseek-ai/dsh-agent-presets'
+import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import { createScope, type ScopeKey } from '@deepseek-ai/dsh-scope'
 import { installCommercePreset } from '../install.ts'
 import * as CommerceTools from '../tools/index.ts'

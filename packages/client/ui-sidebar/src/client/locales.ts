@@ -1,4 +1,4 @@
-/** `sidebar` namespace dictionaries: shell controls (brand row, New Session, fold toggle). */
+/** `sidebar` namespace dictionaries for shell controls and global panels. */
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
@@ -8,6 +8,7 @@ export const zh = {
   'toggle.collapse': '收起侧边栏',
   'region.sessions': '会话',
   'region.files': '文件',
+  'panels.label': '全局面板',
 } satisfies Record<string, string>
 
 /** The sidebar namespace key union. */
@@ -21,4 +22,5 @@ export const en = {
   'toggle.collapse': 'Collapse sidebar',
   'region.sessions': 'Sessions',
   'region.files': 'Files',
+  'panels.label': 'Global panels',
 } satisfies Record<SidebarKey, string>
