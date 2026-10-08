@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { execa } from 'execa'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  composeEntries, readProfileManifest, resolveBundleDir,
+  composeEntries, readProfileManifest, resolveBundleDir, writeProfileManifest,
 } from '@deepseek-ai/dsh-app-boot'
 import { resolveExampleLaunch } from '@deepseek-ai/dsh-loader-smoke'
 import { runPlugin } from '../src/plugin.ts'
@@ -40,13 +40,16 @@ afterEach(async () => {
 /** Report the composed roster and one preset's tools, then end the run. */
 const PROBE_PLUGIN = [
   "export const name = 'commerce-probe'",
+  '// This row can be applied more than once per boot (a prepare pass and the live',
+  '// mount); only the writer that sees the roster ready writes the report.',
+  'let wrote = false',
   'export function apply(ctx) {',
   '  // A profile with no app row settles and exits; the interval holds the',
   '  // loop open until the report lands.',
   '  const keepAlive = setInterval(() => {}, 1_000)',
   "  ctx.inject(['agentPresets', 'agents', 'tools', 'commerce'], (scope) => {",
   '    void (async () => {',
-  '      const fs = await import("node:fs/promises")',
+  '      const fs = await import("node:fs")',
   '      const report = { presets: [], tools: [], services: {}, entries: [] }',
   '      for (const key of [\'commerce\', \'fs\', \'approval\', \'sandboxPolicy\', \'tools\', \'agentPresets\']) {',
   '        report.services[key] = ctx.get(key) !== undefined',
@@ -54,37 +57,47 @@ const PROBE_PLUGIN = [
   '      for (const entry of ctx.loader.entries()) {',
   '        report.entries.push({ name: String(entry.options.name ?? entry.options.id), state: entry.fiber?.state ?? null })',
   '      }',
-  '      try {',
-  '        // The preset row installs the packaged preset during its own',
-  '        // activation, so wait for the roster to carry it.',
-  '        // The preset row installs the preset and only then mounts the',
-  '        // scoped tools, so wait for that row to finish activating.',
-  '        const deadline = Date.now() + 60_000',
-  '        for (;;) {',
+  '      // The preset row installs the packaged preset and only then mounts the',
+  '      // scoped tools, so wait for that row to finish activating. A prepare-pass',
+  '      // instance can hold an inactive scope: its reads throw, so retry until the',
+  '      // live instance sees the roster.',
+  '      const deadline = Date.now() + 60_000',
+  '      for (;;) {',
+  '        try {',
   '          report.presets = (await scope.agentPresets.list()).map(preset => preset.id)',
-  '          const row = [...ctx.loader.entries()].find(entry =>',
-  "            String(entry.options.name) === '@deepseek-ai/dsh-experimental-commerce-mode/preset')",
-  '          report.presetRowState = row?.fiber?.state ?? null',
-  '          // 2 is FiberState.ACTIVE; a plain .mjs fixture cannot import the enum.',
-  "          const ready = report.presets.includes('commerce') && row?.fiber?.state === 2",
-  '          if (ready || Date.now() > deadline) break',
-  '          await new Promise(resolve => setTimeout(resolve, 50))',
+  '          delete report.failure',
+  '        } catch (error) {',
+  '          report.failure = error instanceof Error ? error.message : String(error)',
   '        }',
-  '        const created = await scope.agents.create({',
-  "          sessionId: 'commerce-probe-session',",
-  "          meta: { cwd: process.cwd(), agentPreset: 'commerce' },",
-  "          agentOptions: { provider: 'probe', model: 'probe' },",
-  "          setup: agentCtx => scope.agentPresets.mount(agentCtx, 'commerce').then(() => undefined),",
-  '        })',
-  '        report.tools = scope.tools.schemas(created.agent).map(tool => tool.name)',
-  '        await created.dispose()',
-  '      } catch (error) {',
-  '        report.failure = error instanceof Error ? error.message : String(error)',
+  '        const row = [...ctx.loader.entries()].find(entry =>',
+  "          String(entry.options.name) === '@deepseek-ai/dsh-experimental-commerce-mode/preset')",
+  '        report.presetRowState = row?.fiber?.state ?? null',
+  '        // 2 is FiberState.ACTIVE; a plain .mjs fixture cannot import the enum.',
+  "        const ready = report.presets.includes('commerce') && row?.fiber?.state === 2",
+  '        if (ready || Date.now() > deadline) break',
+  '        await new Promise(resolve => setTimeout(resolve, 50))',
   '      }',
-  '      await fs.writeFile(process.env.DSH_COMMERCE_PROBE_OUT, JSON.stringify(report))',
-  '      clearInterval(keepAlive)',
-  "      if (process.platform === 'win32') process.emit('SIGTERM')",
-  "      else process.kill(process.pid, 'SIGTERM')",
+  '      if (report.presets.includes(\'commerce\')) {',
+  '        try {',
+  '          const created = await scope.agents.create({',
+  "            sessionId: 'commerce-probe-session',",
+  "            meta: { cwd: process.cwd(), agentPreset: 'commerce' },",
+  "            agentOptions: { provider: 'probe', model: 'probe' },",
+  "            setup: agentCtx => scope.agentPresets.mount(agentCtx, 'commerce').then(() => undefined),",
+  '          })',
+  '          report.tools = scope.tools.schemas(created.agent).map(tool => tool.name)',
+  '          await created.dispose()',
+  '        } catch (error) {',
+  '          report.failure = error instanceof Error ? error.message : String(error)',
+  '        }',
+  '      }',
+  '      if (!wrote) {',
+  '        wrote = true',
+  '        fs.writeFileSync(process.env.DSH_COMMERCE_PROBE_OUT, JSON.stringify(report))',
+  '        clearInterval(keepAlive)',
+  "        if (process.platform === 'win32') process.emit('SIGTERM')",
+  "        else process.kill(process.pid, 'SIGTERM')",
+  '      }',
   '    })()',
   '  })',
   '}',
@@ -95,9 +108,17 @@ async function linkedProfile(): Promise<{ home: string; profileDir: string }> {
   const home = await mkdtemp(join(tmpdir(), 'dsh-commerce-link-'))
   homes.push(home)
   process.env.DSH_HOME = home
-  const code = runPlugin(PROFILE, ['add', `link:${commerceModeDir}`])
+  const code = await runPlugin(PROFILE, ['add', `link:${commerceModeDir}`])
   expect(code).toBe(0)
   const profileDir = join(home, 'profiles', PROFILE)
+  // One deterministic mount: a custom profile defaults to live patch reload,
+  // which re-applies the tree when the watcher starts and keeps the child
+  // alive; pin startup-only loading so the boot probe exits.
+  const manifest = readProfileManifest('test', profileDir)
+  writeProfileManifest(profileDir, {
+    ...manifest,
+    dsh: { ...manifest.dsh, profile: { ...manifest.dsh?.profile, patchReload: 'startup' } },
+  })
   return { home, profileDir }
 }
 
@@ -145,8 +166,8 @@ describe('linked commerce profile bundle', () => {
       '  disabled: true',
       '- insert:',
       '    - id: agent-presets',
-      "      name: '@deepseek-ai/dsh-agent-presets'",
-      '      config: { default: standard, includeShippedRoot: true, includeUserRoot: true, roots: [] }',
+      "      name: '@deepseek-ai/dsh-agent-preset-registry'",
+      '      config: { default: commerce }',
       `    - name: '${pathToFileURL(probeFile).href}'`,
       '',
     ].join('\n'))
