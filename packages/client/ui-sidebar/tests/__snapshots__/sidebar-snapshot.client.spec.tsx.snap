@@ -54,9 +54,21 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
       class="regionArea"
     >
       <div
-        data-slot="sidebar.workspaces"
-        style="display: contents;"
-      />
+        class="regionPane"
+      >
+        <div
+          data-slot="sidebar.workspaces"
+          style="display: contents;"
+        />
+      </div>
+      <div
+        class="regionPane"
+      >
+        <div
+          data-slot="sidebar.files"
+          style="display: contents;"
+        />
+      </div>
     </div>
     <div
       class="footArea"
@@ -188,9 +200,22 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
       class="regionArea"
     >
       <div
-        data-slot="sidebar.workspaces"
-        style="display: contents;"
-      />
+        class="regionPane"
+      >
+        <div
+          data-slot="sidebar.workspaces"
+          style="display: contents;"
+        />
+      </div>
+      <div
+        class="regionPane"
+        hidden=""
+      >
+        <div
+          data-slot="sidebar.files"
+          style="display: contents;"
+        />
+      </div>
     </div>
     <div
       class="footArea"
