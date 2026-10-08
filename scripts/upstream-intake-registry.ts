@@ -142,11 +142,11 @@ export const FORK_OWNED_PATHS: readonly string[] = [
 ]
 
 /**
- * The upstream tag this branch has merged through (hop 2 of 4). The intake
+ * The upstream tag this branch has merged through (hop 3 of 4). The intake
  * command diffs the working tree against this pin to compute the upstream
  * files the fork edits, so the merge-time rules always run.
  */
-export const UPSTREAM_PIN = 'dsh-v0.1.5-alpha.1'
+export const UPSTREAM_PIN = 'dsh-v0.1.7-alpha.1'
 
 /**
  * Inspection of 152 real user logs (2026-10-06, all session format v0): the
@@ -209,6 +209,8 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/client/ui-conversation/src/client/skeleton/InputBar.tsx', klass: 'B', reason: 'Fork input surface, pending an official conversation slot.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/InputBar.module.css', klass: 'B', reason: 'Styling for the fork input surface.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/ConversationRoot.tsx', klass: 'B', reason: 'Fork conversation root, pending an official slot.' },
+  { path: 'packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx', klass: 'B', reason: 'Fork ask-data, ask-knowledge, commerce and agent-team hero slots plus the ask-data/commerce gate rows, pending official conversation slots.' },
+  { path: 'packages/client/ui-conversation/src/client/skeleton/ConversationMainPanel.tsx', klass: 'B', reason: 'Fork gate hooks threaded through the extracted main Conversation frame.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/ConversationRoot.module.css', klass: 'B', reason: 'Styling for the fork conversation root and hero atmosphere.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/EmptyHero.tsx', klass: 'B', reason: 'Hero atmosphere occupant, pending an official slot.' },
   { path: 'packages/client/ui-conversation/src/client/locales.ts', klass: 'B', reason: 'Fork locale strings for the input, attachment and atmosphere surface.' },
@@ -229,6 +231,7 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/session/session-format-v0-to-v1/src/dispositions.ts', klass: 'A', reason: "Frozen released-v0 inventory must admit this fork's four events (ask-data/bound, ask-knowledge/bound, ask-knowledge/unbound, commerce/bound), or the fork's own v0 fixtures refuse to migrate." },
   { path: 'packages/session/session-format-v0-to-v1/src/payload-validation.ts', klass: 'A', reason: 'Nested payload semantics for the same four events; the released validator refuses an event with no case.' },
   { path: 'packages/session/session-format-v0-to-v1/tests/validation.spec.ts', klass: 'A', reason: 'Valid fixture and inventory count for the four admitted events.' },
+  { path: 'packages/session/session-format-v3-to-v4/src/extension-identities.ts', klass: 'A', reason: 'Frozen released-v3 vocabulary must admit the nine fork event types (ask-data, ask-knowledge, commerce, media) released while V3 was current; migrates and historical V3 reads share this constant.' },
   { path: 'packages/session/session-persistence-jsonl/src/index.ts', klass: 'A', reason: 'Fork data-safety rule: a released session generation migrates only after a verified pre-migration backup exists beside it.' },
   { path: 'packages/fs/fs/src/index.ts', klass: 'A', reason: 'Fork filesystem policy behaviour.' },
   { path: 'packages/fs/fs/src/invariant.ts', klass: 'A', reason: 'Fork filesystem invariant.' },
@@ -241,7 +244,7 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/fs/tool-fs/src/edit.ts', klass: 'A', reason: 'Fork edit tool behaviour.' },
   { path: 'packages/fs/tool-str-replace-editor/src/index.ts', klass: 'A', reason: 'Fork string replace editor behaviour.' },
   { path: 'packages/boot/app-boot/src/profile.ts', klass: 'A', reason: "The fork's profile resolution." },
-  { path: 'packages/preset/agent-presets/src/index.ts', klass: 'A', reason: 'Fork presets, including the data-source gate before the first ask-data prompt.' },
+  { path: 'packages/preset/agent-preset-registry/src/index.ts', klass: 'A', reason: 'Ported fork admitSelect hook (was agent-presets before the upstream split): the data-source gate must run before every preset swap, including a direct Remote select.' },
   { path: 'packages/web/tool-web/src/search.ts', klass: 'A', reason: 'Fork web search behaviour.' },
   { path: 'packages/web/tool-web/src/fetch.ts', klass: 'A', reason: 'Fork web fetch behaviour.' },
   { path: 'packages/web/tool-web/src/trust.ts', klass: 'A', reason: 'Fork web trust policy.' },
