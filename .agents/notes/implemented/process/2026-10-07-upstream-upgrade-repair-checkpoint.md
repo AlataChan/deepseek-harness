@@ -2,6 +2,8 @@
 
 Status: implemented
 
+English | [中文](2026-10-07-upstream-upgrade-repair-checkpoint.zh.md)
+
 ## Problem
 
 After hops 1 and 2 of the staged upstream upgrade, the handover ([`docs/plans/2026-10-06-upstream-upgrade-handover.md`](../../../../docs/plans/2026-10-06-upstream-upgrade-handover.md)) documented that the checkpoint evidence did not support the claims made for it. The intake gate had passed for the wrong reason: its merge-time rules never ran, and `FORBIDDEN_ENDPOINTS` was referenced by no rule. The 15-failure test suite had been accepted through a per-file comparison against master instead of the plan's acceptance criteria. Phase 2's migration evidence did not exist, and the pre-migration backup guard was an undecided owner decision. The owner required a repair checkpoint (handover §0.5) before hop 3 could merge.
