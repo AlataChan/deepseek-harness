@@ -64,5 +64,14 @@
 | [commerce.md](commerce.zh.md) | 商务数据接缝：店铺数据源列表、电子表格导入、`commerce` preset 上的 Session 绑定,以及对导入表的读取与分析查询 |
 | [desktop-app.md](desktop-app.zh.md) | 桌面运行时胶水层：外壳在 Host 启动前解析出的 `ctx.desktopStartup` 值及其携带的工作区根 |
 | [media.md](media.zh.md) | 会话媒体接缝：作品与音色目录、打开/显示、字节导入,以及通过用户自装 FFmpeg 运行时的付费视频与语音产出 |
+| [boot.md](boot.zh.md) | boot 包组：launcher 提供的 profile 访问，以及插件管理器的持久化、重载与包操作行为 |
+| [browser-use.md](browser-use.zh.md) | 浏览器操作能力：DSH 拥有的任务循环、提供方的浏览器操作，以及同一 Session 内跨轮次保留的浏览器状态 |
+| [computer-use.md](computer-use.zh.md) | 计算机操作能力：模型通过已配置提供方观察并操作本地桌面 |
+| [deliverables.md](deliverables.zh.md) | 一轮交给用户的东西：`present` 工具声明的文件与本轮改动的文件，均以只写日志的 Session 事件记录 |
+| [mcp.md](mcp.zh.md) | MCP 包组：外部服务器工具作为普通 Harness 工具、调用方作用域内的资源、入系统提示词的服务器指令与协议版本协商 |
+| [office-to-pdf.md](office-to-pdf.zh.md) | document 包族在 Node 宿主上的 Office 转 PDF：经授权的源文件读取、有界准入与临时 PDF 复用 |
+| [product-telemetry.md](product-telemetry.zh.md) | OTLP/HTTP 产品埋点接缝：明确选定的分析事件、仅负责提交的服务与由消费方决定的字段 |
+| [ssh.md](ssh.zh.md) | SSH 提供方族：通过部署自有的 OpenSSH 连接提供一个远程文件系统/进程世界，复用文件系统、子进程与沙箱 API |
+| [voice-input.md](voice-input.zh.md) | 实验性语音识别：服务定义、SenseVoice 提供方与语音输入背后的 Remote 消费方 |
 
 > 这些页面上的类型声明及其 JSDoc 与源码等价，并由 `pnpm run verify-type-equiv` 检查漂移（见 [development.md](../development.zh.md#documenting-types-verbatim-ts-type-equiv)）。普通块保留完整声明；`public-api` 块保留去除实现体的公开 class 声明。Cordis 服务与事件使用每页生成的 **Cordis API** 小节。

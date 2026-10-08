@@ -64,5 +64,14 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [commerce.md](commerce.md) | the commerce-data seam: store source listing, spreadsheet import, the Session binding on the `commerce` preset, and read and analysis queries over the imported tables |
 | [desktop-app.md](desktop-app.md) | the desktop runtime glue: `ctx.desktopStartup` values the shell resolves before the Host boots, and the workspace root they carry |
 | [media.md](media.md) | the conversation media seam: work and voice catalogues, open/reveal, byte import, and paid video and speech production through a user-installed FFmpeg runtime |
+| [boot.md](boot.md) | the boot package group: launcher-provided profile access and the plugin manager's persistence, reload, and package-operation behavior |
+| [browser-use.md](browser-use.md) | the browser-use capability: the DSH-owned task loop, provider browser operations, and live browser state across one Session |
+| [computer-use.md](computer-use.md) | the computer-use capability: model observation and operation of the local desktop through a configured provider |
+| [deliverables.md](deliverables.md) | what a turn hands the user: files declared through the `present` tool and files the turn changed, recorded as log-only Session events |
+| [mcp.md](mcp.md) | the MCP package group: external-server tools as ordinary harness tools, resources in the caller's scope, server instructions in the system prompt, and protocol-revision negotiation |
+| [office-to-pdf.md](office-to-pdf.md) | the document family's Node-Host Office-to-PDF conversion: authorized source reads, bounded admission, and transient PDF reuse |
+| [product-telemetry.md](product-telemetry.md) | the OTLP/HTTP product-telemetry seam: explicitly selected analytics events, a submission-only service, and consumer-owned fields |
+| [ssh.md](ssh.md) | the SSH provider family: one remote filesystem/process world over a deployment-owned OpenSSH connection, reusing the filesystem, subprocess, and sandbox APIs |
+| [voice-input.md](voice-input.md) | experimental speech recognition: the Service Definition, the SenseVoice provider, and the Remote consumer behind voice input |
 
 > Type declarations and their JSDoc on these pages are source-equivalent and drift-checked by `pnpm run verify-type-equiv` (see [development.md](../development.md#documenting-types-verbatim-ts-type-equiv)). Ordinary blocks preserve complete declarations; `public-api` blocks preserve body-stripped public class declarations. Cordis services and events use each page's generated **Cordis API** section.
