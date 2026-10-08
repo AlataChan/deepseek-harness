@@ -32,7 +32,10 @@ const MANIFEST_BIN_ALLOWLIST = new Map<string, ManifestBin>([
 /** Every JavaScript executable in an application or packaging workspace has one explicit role. */
 const EXECUTABLE_SOURCE_ALLOWLIST = new Map<string, string>([
   ['apps/cli/src/bin.ts', 'supported dsh application launcher'],
+  ['apps/cli/src/desktop-companion.ts', 'desktop companion carrier spawned by the shell'],
   ['apps/desktop/scripts/logged-notarytool.mjs', 'build-only notarization logging wrapper'],
+  ['packages/boot/installed-runtime/src/cli.ts', 'private packaging-only runtime dispatcher'],
+  ['packages/experimental/desktop-ask-knowledge/tests/helpers/fake-sidecar.mjs', 'test-only sidecar stub'],
   ['packages/context/time-context/tests/fixtures/driver.ts', 'test-only subprocess driver'],
   ['packages/experimental/webworker-packer/bin.js', 'build-only wrapper'],
   ['packages/experimental/webworker-packer/src/bin.ts', 'build-only implementation'],
@@ -81,6 +84,11 @@ const SOURCE_EXCLUDES = [
   '**/lib/**',
   '**/dist/**',
   '**/coverage/**',
+  // The Tauri shell's generated payload and Cargo output are build artifacts,
+  // not authored sources: `resources/` receives the packaged runtime CLI and
+  // `target/` is ignored build output.
+  'apps/desktop/src-tauri/resources/**',
+  'apps/desktop/src-tauri/target/**',
 ]
 
 /** Convert a host path from glob output to the repository's slash form. */
