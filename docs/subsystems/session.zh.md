@@ -1126,6 +1126,7 @@ workspaceDesktop(): { name: string; available: boolean; fileManager: 'finder' | 
  */
 @Remote('askKnowledgeBinding') askKnowledgeBinding(request: SessionAskKnowledgeBindingRequest): SessionAskKnowledgeBinding | null
 
+/**
  * Query current file handlers on the serving desktop without activating an Agent.
  * @param request - file path in Host filesystem syntax.
  * @param signal - caller lifetime, propagated to filesystem and desktop queries.
