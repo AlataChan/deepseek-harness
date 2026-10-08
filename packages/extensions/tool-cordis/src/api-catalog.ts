@@ -1101,6 +1101,97 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'desktopMedia',
+    summary: 'Overlay media service: catalogues, open/reveal, and paid producers.',
+    description: 'Overlay media service: catalogues, open/reveal, and paid producers.',
+    methods: [
+      {
+        signature: 'async runtimeStatus(signal: AbortSignal): Promise<MediaRuntimeStatus>',
+        description: 'Whether user FFmpeg is recorded and has the V1 encoders.',
+        parameters: [{ name: 'signal', description: 'caller lifetime.' }],
+        returns: 'ready flag and install guidance.',
+      },
+      {
+        signature: 'listWorks(filter: { workspaceId?: string; sessionId?: string } = {}): Promise<readonly MediaArtifactRecord[]>',
+        description: 'List retained works without activating a session.',
+        parameters: [{ name: 'filter', description: 'optional workspace or session filter.' }],
+        returns: 'catalogue rows.',
+      },
+      {
+        signature: 'listVoices(): Promise<readonly MediaVoiceRecord[]>',
+        description: 'List system and cloned voices.',
+        parameters: [],
+        returns: 'catalogue rows.',
+      },
+      {
+        signature: 'async openWork(artifactId: string, signal: AbortSignal): Promise<{ requested: true; message: string }>',
+        description: 'Open a registered work in the system default application.',
+        parameters: [{ name: 'artifactId', description: 'opaque catalogue id.' }, { name: 'signal', description: 'caller lifetime.' }],
+        returns: 'model-safe open wording.',
+      },
+      {
+        signature: 'async revealWork(artifactId: string, signal: AbortSignal): Promise<{ requested: true; message: string }>',
+        description: 'Reveal a registered work in the file manager.',
+        parameters: [{ name: 'artifactId', description: 'opaque catalogue id.' }, { name: 'signal', description: 'caller lifetime.' }],
+        returns: 'model-safe open wording.',
+      },
+      {
+        signature: 'async copyWorkPath(artifactId: string): Promise<{ path: string }>',
+        description: 'Copyable absolute path for a registered work.',
+        parameters: [{ name: 'artifactId', description: 'opaque catalogue id.' }],
+        returns: 'absolute path.',
+      },
+      {
+        signature: 'async saveWorkAs(artifactId: string, destDir: string, filename: string): Promise<{ path: string }>',
+        description: 'Copy a registered work into a user-chosen directory.',
+        parameters: [{ name: 'artifactId', description: 'opaque catalogue id.' }, { name: 'destDir', description: 'absolute destination directory.' }, { name: 'filename', description: 'basename only.' }],
+        returns: 'written path.',
+      },
+      {
+        signature: 'async importBytes( request: ImportBytes, sessionId: string, workspaceId: string | undefined, ): Promise<MediaArtifactRecord>',
+        description: 'Admit selected bytes into managed storage.',
+        parameters: [{ name: 'request', description: 'filename and bytes.' }, { name: 'sessionId', description: 'owning session.' }, { name: 'workspaceId', description: 'optional workspace.' }],
+        returns: 'committed artifact.',
+      },
+      {
+        signature: 'async createVideo( owner: Agent, args: CreateVideoArgs, approval: MediaApprovalInput, ): Promise<{ requestId: MediaRequestId; jobId: JobId }>',
+        description: 'Start a paid video job after the caller has a live owner and approval.',
+        parameters: [{ name: 'owner', description: 'live agent.' }, { name: 'args', description: 'validated generation args.' }, { name: 'approval', description: 'hash-bound confirmation.' }],
+        returns: 'durable request id and process-local job id.',
+      },
+      {
+        signature: 'async createSpeech( owner: Agent, text: string, voiceId: string, approval: MediaApprovalInput, ): Promise<{ requestId: MediaRequestId; jobId: JobId }>',
+        description: 'Start a paid speech job.',
+        parameters: [{ name: 'owner', description: 'live agent.' }, { name: 'text', description: 'narration copy.' }, { name: 'voiceId', description: 'system or cloned voice.' }, { name: 'approval', description: 'hash-bound confirmation.' }],
+        returns: 'durable request id and job id.',
+      },
+      {
+        signature: 'async cloneVoiceFromArtifact( owner: Agent, artifactId: string, label: string, consent: { speakerIsUser: boolean; authorized: boolean }, ): Promise<{ voiceId: MediaVoiceId }>',
+        description: 'Clone a voice from a registered import after consent.',
+        parameters: [{ name: 'owner', description: 'live agent.' }, { name: 'artifactId', description: 'imported sample.' }, { name: 'label', description: 'display name.' }, { name: 'consent', description: 'speaker declaration.' }],
+        returns: 'new local voice id.',
+      },
+      {
+        signature: 'async compose( owner: Agent, clipIds: readonly string[], narrationId: string | undefined, mix: boolean, ): Promise<MediaArtifactRecord>',
+        description: 'Join approved clips and optional narration.',
+        parameters: [{ name: 'owner', description: 'live agent.' }, { name: 'clipIds', description: 'artifact ids in join order.' }, { name: 'narrationId', description: 'optional narration artifact.' }, { name: 'mix', description: 'mix instead of replace.' }],
+        returns: 'composed artifact.',
+      },
+      {
+        signature: 'recover(owner: Agent): readonly JobId[]',
+        description: 'Recover known provider tasks for a newly created live agent.',
+        parameters: [{ name: 'owner', description: 'live agent.' }],
+        returns: 'started job ids.',
+      },
+      {
+        signature: 'estimateYuan(kind: \'video\' | \'speech\' | \'clone\'): number',
+        description: 'Estimate used when the provider does not return a charge.',
+        parameters: [{ name: 'kind', description: 'paid operation.' }],
+        returns: 'yuan estimate.',
+      },
+    ],
+  },
+  {
     key: 'desktopStartup',
     summary: 'Immutable facts selected by the desktop shell for one companion process.',
     description: 'Immutable facts selected by the desktop shell for one companion process.',
@@ -1849,6 +1940,55 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Bind one commerce source to a Session. Host does not guess the current Session: pass `sessionId` only for a blank Session, or one already bound to this source.',
         parameters: [{ name: 'request', description: 'source and optional session / workspace.' }, { name: 'signal', description: 'caller lifetime; abort stops the commit.' }],
         returns: 'the Session identity after bind + `commerce/bound`.',
+      },
+      {
+        signature: '@Remote(\'listMediaWorks\') listMediaWorks( request: SessionListMediaWorksRequest, signal: AbortSignal, ): Promise<readonly SessionMediaWork[]>',
+        description: 'List retained media works without activating a session.',
+        parameters: [{ name: 'request', description: 'optional workspace or session filter.' }, { name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'catalogue rows.',
+        throws: ['RemoteError when the desktop-media overlay is absent.'],
+      },
+      {
+        signature: '@Remote(\'listMediaVoices\') listMediaVoices(signal: AbortSignal): Promise<readonly SessionMediaVoice[]>',
+        description: 'List system and cloned voices.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'catalogue rows.',
+      },
+      {
+        signature: '@Remote(\'mediaRuntimeStatus\') mediaRuntimeStatus(signal: AbortSignal): Promise<SessionMediaRuntimeStatus>',
+        description: 'Whether user FFmpeg is recorded and has the V1 encoders.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the probe.' }],
+        returns: 'ready flag and install guidance.',
+      },
+      {
+        signature: '@Remote(\'openMediaWork\') openMediaWork( request: SessionMediaWorkRequest, signal: AbortSignal, ): Promise<{ requested: true }>',
+        description: 'Open a registered work in the system default application.',
+        parameters: [{ name: 'request', description: 'artifact id.' }, { name: 'signal', description: 'caller lifetime; abort stops the open.' }],
+        returns: 'confirmation that the system opener was requested.',
+      },
+      {
+        signature: '@Remote(\'revealMediaWork\') revealMediaWork( request: SessionMediaWorkRequest, signal: AbortSignal, ): Promise<{ requested: true }>',
+        description: 'Reveal a registered work in the file manager.',
+        parameters: [{ name: 'request', description: 'artifact id.' }, { name: 'signal', description: 'caller lifetime; abort stops the reveal.' }],
+        returns: 'confirmation that the file manager was requested.',
+      },
+      {
+        signature: '@Remote(\'copyMediaWorkPath\') copyMediaWorkPath(request: SessionMediaWorkRequest): Promise<{ path: string }>',
+        description: 'Copyable absolute path for a registered work.',
+        parameters: [{ name: 'request', description: 'artifact id.' }],
+        returns: 'absolute path.',
+      },
+      {
+        signature: '@Remote(\'importMediaBytes\') importMediaBytes( request: SessionImportMediaBytesRequest, signal: AbortSignal, ): Promise<SessionMediaWork>',
+        description: 'Admit selected media bytes. Does not activate an Agent.',
+        parameters: [{ name: 'request', description: 'filename, encoded bytes, and owning session.' }, { name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'committed work row.',
+      },
+      {
+        signature: '@Remote(\'saveMediaWorkAs\') saveMediaWorkAs( request: SessionSaveMediaWorkAsRequest, signal: AbortSignal, ): Promise<{ path: string }>',
+        description: 'Copy a registered work into a user-chosen directory.',
+        parameters: [{ name: 'request', description: 'artifact, destination directory, and basename.' }, { name: 'signal', description: 'caller lifetime; abort stops the copy.' }],
+        returns: 'written path.',
       },
       {
         signature: '@Remote(\'listAskKnowledgeLibraries\') listAskKnowledgeLibraries(signal: AbortSignal): Promise<readonly SessionAskKnowledgeLibrary[]>',
@@ -4634,6 +4774,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CreateTeamTaskRequest {\n    readonly subject: string;\n    readonly description: string;\n    readonly blockedBy?: readonly TeamTaskId[];\n    readonly writeScopes?: readonly string[];\n}',
   },
   {
+    name: 'CreateVideoArgs',
+    declaration: 'export interface CreateVideoArgs {\n    readonly prompt: string;\n    readonly duration: number;\n    readonly ratio: DesktopMediaConfig[\'defaultRatio\'];\n    readonly resolution: DesktopMediaConfig[\'defaultResolution\'];\n    readonly model: DesktopMediaConfig[\'videoModel\'];\n    readonly imageIds?: readonly string[];\n    readonly imageMode?: \'reference\' | \'first_last\';\n}',
+  },
+  {
     name: 'CredentialInfo',
     declaration: 'export interface CredentialInfo {\n    configured: boolean;\n    source?: string;\n    writable: boolean;\n}',
   },
@@ -4672,6 +4816,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'DeepSeekLlmApiJson',
     declaration: 'export type DeepSeekLlmApiJson = null | boolean | number | string | DeepSeekLlmApiJson[] | {\n    [key: string]: DeepSeekLlmApiJson;\n};',
+  },
+  {
+    name: 'DesktopMediaConfig',
+    declaration: 'export interface DesktopMediaConfig extends MediaRuntimeHomeConfig, MediaBudgetConfig, ImportLimits {\n    readonly pollIntervalMs: number;\n    readonly pollTimeoutMs: number;\n    readonly videoModel: \'MiniMax-H3\' | \'MiniMax-H3-Max\';\n    readonly ttsModel: string;\n    readonly defaultDurationSeconds: number;\n    readonly defaultResolution: \'480P\' | \'768P\' | \'2K\';\n    readonly defaultRatio: \'21:9\' | \'16:9\' | \'4:3\' | \'1:1\' | \'3:4\' | \'9:16\';\n    readonly maxClipCount: number;\n}',
   },
   {
     name: 'DiffCallView',
@@ -4994,6 +5142,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ImageVariantId = Branded<\'ImageVariantId\'>;',
   },
   {
+    name: 'ImportBytes',
+    declaration: 'export interface ImportBytes {\n    readonly filename: string;\n    readonly bytes: Uint8Array;\n}',
+  },
+  {
+    name: 'ImportLimits',
+    declaration: 'export interface ImportLimits {\n    readonly maxFileBytes: number;\n    readonly maxClipDurationSeconds: number;\n}',
+  },
+  {
     name: 'IndexInjection',
     declaration: 'export type IndexInjection = {\n    kind: \'global\';\n    name: string;\n    value: unknown;\n} | {\n    kind: \'script\';\n    placement: IndexInjectionPlacement;\n    text: string;\n} | {\n    kind: \'script-src\';\n    placement: IndexInjectionPlacement;\n    src: string;\n} | {\n    kind: \'script-preload\';\n    src: string;\n} | {\n    kind: \'style\';\n    text: string;\n} | {\n    kind: \'html\';\n    placement: IndexInjectionPlacement;\n    html: string;\n};',
   },
@@ -5252,6 +5408,46 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ManualCompactAgentContext',
     declaration: 'export interface ManualCompactAgentContext extends CompactionAgentContext {\n    runMaintenance<T>(task: (signal: AbortSignal) => Promise<T>): Promise<T>;\n}',
+  },
+  {
+    name: 'MediaApprovalInput',
+    declaration: 'export interface MediaApprovalInput {\n    readonly promptHash: string;\n    readonly estimatedYuan: number;\n    readonly inputHashes?: readonly string[];\n    readonly requestId?: string;\n}',
+  },
+  {
+    name: 'MediaArtifactId',
+    declaration: 'export type MediaArtifactId = Branded<\'MediaArtifactId\'>;',
+  },
+  {
+    name: 'MediaArtifactRecord',
+    declaration: 'export interface MediaArtifactRecord {\n    readonly artifactId: MediaArtifactId;\n    readonly requestId: MediaRequestId;\n    readonly kind: MediaWorkKind;\n    readonly name: string;\n    readonly file: string;\n    readonly digest: string;\n    readonly durationSeconds?: number;\n    readonly sessionId: SessionId;\n    readonly workspaceId?: string;\n    readonly createdAt: string;\n}',
+  },
+  {
+    name: 'MediaBudgetConfig',
+    declaration: 'export interface MediaBudgetConfig {\n    readonly maxPaidCallsPerSession: number;\n    readonly maxEstimatedSpendYuan: number;\n}',
+  },
+  {
+    name: 'MediaRequestId',
+    declaration: 'export type MediaRequestId = Branded<\'MediaRequestId\'>;',
+  },
+  {
+    name: 'MediaRuntimeHomeConfig',
+    declaration: 'export interface MediaRuntimeHomeConfig {\n    readonly mediaRuntimePath?: string;\n}',
+  },
+  {
+    name: 'MediaRuntimeStatus',
+    declaration: 'export interface MediaRuntimeStatus {\n    readonly ready: boolean;\n    readonly homeDisplay: string;\n    readonly guidance: string;\n}',
+  },
+  {
+    name: 'MediaVoiceId',
+    declaration: 'export type MediaVoiceId = Branded<\'MediaVoiceId\'>;',
+  },
+  {
+    name: 'MediaVoiceRecord',
+    declaration: 'export interface MediaVoiceRecord {\n    readonly voiceId: MediaVoiceId;\n    readonly label: string;\n    readonly system: boolean;\n    readonly digest?: string;\n    readonly consentAt?: string;\n    readonly lastFormalAt?: string;\n    readonly speakerIsUser?: boolean;\n    readonly requestId?: MediaRequestId;\n}',
+  },
+  {
+    name: 'MediaWorkKind',
+    declaration: 'export type MediaWorkKind = \'video\' | \'speech\' | \'composed\' | \'import\';',
   },
   {
     name: 'Message',
@@ -6014,6 +6210,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SessionImportCommerceSpreadsheetRequest {\n    readonly filename: string;\n    readonly bytes: string;\n    readonly kind: \'orders\' | \'products\' | \'inventory\';\n    readonly platform: string;\n    readonly sourceId?: string;\n}',
   },
   {
+    name: 'SessionImportMediaBytesRequest',
+    declaration: 'export interface SessionImportMediaBytesRequest {\n    readonly filename: string;\n    readonly bytes: string;\n    readonly sessionId: SessionId;\n    readonly workspaceId?: string;\n}',
+  },
+  {
     name: 'SessionInspection',
     declaration: 'export interface SessionInspection extends SessionStorageMetadata {\n    readonly events: readonly SessionEvent[];\n}',
   },
@@ -6038,6 +6238,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SessionListEntriesValue {\n    readonly path: string;\n    readonly root: string;\n    readonly entries: readonly SessionWorkspaceEntry[];\n    readonly truncated: boolean;\n}',
   },
   {
+    name: 'SessionListMediaWorksRequest',
+    declaration: 'export interface SessionListMediaWorksRequest {\n    readonly workspaceId?: string;\n    readonly sessionId?: string;\n}',
+  },
+  {
     name: 'SessionListRequest',
     declaration: 'export interface SessionListRequest {\n    readonly cursor?: string;\n}',
   },
@@ -6052,6 +6256,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionLogSnapshot',
     declaration: 'export interface SessionLogSnapshot {\n    session: SessionHeader;\n    inheritedEventCount: SessionLogOffset;\n    events: SessionEvent[];\n}',
+  },
+  {
+    name: 'SessionMediaRuntimeStatus',
+    declaration: 'export interface SessionMediaRuntimeStatus {\n    readonly ready: boolean;\n    readonly guidance: string;\n}',
+  },
+  {
+    name: 'SessionMediaVoice',
+    declaration: 'export interface SessionMediaVoice {\n    readonly voiceId: string;\n    readonly label: string;\n    readonly system: boolean;\n}',
+  },
+  {
+    name: 'SessionMediaWork',
+    declaration: 'export interface SessionMediaWork {\n    readonly artifactId: string;\n    readonly requestId: string;\n    readonly kind: \'video\' | \'speech\' | \'composed\' | \'import\';\n    readonly name: string;\n    readonly sessionId: string;\n    readonly workspaceId?: string;\n    readonly createdAt: string;\n    readonly durationSeconds?: number;\n}',
+  },
+  {
+    name: 'SessionMediaWorkRequest',
+    declaration: 'export interface SessionMediaWorkRequest {\n    readonly artifactId: string;\n}',
   },
   {
     name: 'SessionObservation',
@@ -6184,6 +6404,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionResultRange',
     declaration: 'export interface SessionResultRange {\n    from?: number;\n    to?: number;\n}',
+  },
+  {
+    name: 'SessionSaveMediaWorkAsRequest',
+    declaration: 'export interface SessionSaveMediaWorkAsRequest {\n    readonly artifactId: string;\n    readonly directory: string;\n    readonly filename: string;\n}',
   },
   {
     name: 'SessionSearchCursor',

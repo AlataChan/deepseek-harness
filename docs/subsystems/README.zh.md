@@ -63,5 +63,6 @@
 | [ask-knowledge.md](ask-knowledge.zh.md) | 文档库接缝：库目录、入库句柄、基于词项的检索,以及把某个库挂到会话上的 Session 绑定 |
 | [commerce.md](commerce.zh.md) | 商务数据接缝：店铺数据源列表、电子表格导入、`commerce` preset 上的 Session 绑定,以及对导入表的读取与分析查询 |
 | [desktop-app.md](desktop-app.zh.md) | 桌面运行时胶水层：外壳在 Host 启动前解析出的 `ctx.desktopStartup` 值及其携带的工作区根 |
+| [media.md](media.zh.md) | 会话媒体接缝：作品与音色目录、打开/显示、字节导入,以及通过用户自装 FFmpeg 运行时的付费视频与语音产出 |
 
 > 这些页面上的类型声明及其 JSDoc 与源码等价，并由 `pnpm run verify-type-equiv` 检查漂移（见 [development.md](../development.zh.md#documenting-types-verbatim-ts-type-equiv)）。普通块保留完整声明；`public-api` 块保留去除实现体的公开 class 声明。Cordis 服务与事件使用每页生成的 **Cordis API** 小节。

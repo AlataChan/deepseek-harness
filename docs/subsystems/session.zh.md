@@ -864,6 +864,68 @@ inspect( sessionId: SessionId, signal?: AbortSignal, ): Promise<SessionInspectio
 @Remote('commitCommerce') commitCommerce( request: SessionCommitCommerceRequest, signal: AbortSignal, ): Promise<SessionCommitCommerceValue>
 
 /**
+ * List retained media works without activating a session.
+ * @param request - optional workspace or session filter.
+ * @param signal - caller lifetime; abort stops the listing.
+ * @returns catalogue rows.
+ * @throws RemoteError when the desktop-media overlay is absent.
+ */
+@Remote('listMediaWorks') listMediaWorks( request: SessionListMediaWorksRequest, signal: AbortSignal, ): Promise<readonly SessionMediaWork[]>
+
+/**
+ * List system and cloned voices.
+ * @param signal - caller lifetime; abort stops the listing.
+ * @returns catalogue rows.
+ */
+@Remote('listMediaVoices') listMediaVoices(signal: AbortSignal): Promise<readonly SessionMediaVoice[]>
+
+/**
+ * Whether user FFmpeg is recorded and has the V1 encoders.
+ * @param signal - caller lifetime; abort stops the probe.
+ * @returns ready flag and install guidance.
+ */
+@Remote('mediaRuntimeStatus') mediaRuntimeStatus(signal: AbortSignal): Promise<SessionMediaRuntimeStatus>
+
+/**
+ * Open a registered work in the system default application.
+ * @param request - artifact id.
+ * @param signal - caller lifetime; abort stops the open.
+ * @returns confirmation that the system opener was requested.
+ */
+@Remote('openMediaWork') openMediaWork( request: SessionMediaWorkRequest, signal: AbortSignal, ): Promise<{ requested: true }>
+
+/**
+ * Reveal a registered work in the file manager.
+ * @param request - artifact id.
+ * @param signal - caller lifetime; abort stops the reveal.
+ * @returns confirmation that the file manager was requested.
+ */
+@Remote('revealMediaWork') revealMediaWork( request: SessionMediaWorkRequest, signal: AbortSignal, ): Promise<{ requested: true }>
+
+/**
+ * Copyable absolute path for a registered work.
+ * @param request - artifact id.
+ * @returns absolute path.
+ */
+@Remote('copyMediaWorkPath') copyMediaWorkPath(request: SessionMediaWorkRequest): Promise<{ path: string }>
+
+/**
+ * Admit selected media bytes. Does not activate an Agent.
+ * @param request - filename, encoded bytes, and owning session.
+ * @param signal - caller lifetime; abort stops the import.
+ * @returns committed work row.
+ */
+@Remote('importMediaBytes') importMediaBytes( request: SessionImportMediaBytesRequest, signal: AbortSignal, ): Promise<SessionMediaWork>
+
+/**
+ * Copy a registered work into a user-chosen directory.
+ * @param request - artifact, destination directory, and basename.
+ * @param signal - caller lifetime; abort stops the copy.
+ * @returns written path.
+ */
+@Remote('saveMediaWorkAs') saveMediaWorkAs( request: SessionSaveMediaWorkAsRequest, signal: AbortSignal, ): Promise<{ path: string }>
+
+/**
  * List overlay-managed knowledge libraries.
  * @param signal - caller lifetime; abort stops the listing.
  * @returns catalog rows.

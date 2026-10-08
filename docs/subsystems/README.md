@@ -63,5 +63,6 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [ask-knowledge.md](ask-knowledge.md) | the document-library seam: the library catalog, ingest handles, term-based retrieval, and the Session binding that hangs a library on a conversation |
 | [commerce.md](commerce.md) | the commerce-data seam: store source listing, spreadsheet import, the Session binding on the `commerce` preset, and read and analysis queries over the imported tables |
 | [desktop-app.md](desktop-app.md) | the desktop runtime glue: `ctx.desktopStartup` values the shell resolves before the Host boots, and the workspace root they carry |
+| [media.md](media.md) | the conversation media seam: work and voice catalogues, open/reveal, byte import, and paid video and speech production through a user-installed FFmpeg runtime |
 
 > Type declarations and their JSDoc on these pages are source-equivalent and drift-checked by `pnpm run verify-type-equiv` (see [development.md](../development.md#documenting-types-verbatim-ts-type-equiv)). Ordinary blocks preserve complete declarations; `public-api` blocks preserve body-stripped public class declarations. Cordis services and events use each page's generated **Cordis API** section.
