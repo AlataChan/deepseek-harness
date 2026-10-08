@@ -161,6 +161,30 @@ export function assertReleasedPayloadSemantics(event: SessionFormatEvent, versio
       coordinatePair(data, label)
       positiveIntegerValue(data['retry'], `${label} retry`)
       return
+    case 'media/approval':
+      literalValue(data['version'], [1], `${label} version`)
+      nonEmptyString(data['requestId'], `${label} requestId`)
+      arrayValue(data['inputHashes'], `${label} inputHashes`, nonEmptyString)
+      nonEmptyString(data['promptHash'], `${label} promptHash`)
+      nonNegativeNumberValue(data['estimatedYuan'], `${label} estimatedYuan`)
+      return
+    case 'media/artifact':
+      literalValue(data['version'], [1], `${label} version`)
+      mediaArtifactValue(data['artifact'], `${label} artifact`)
+      return
+    case 'media/request':
+      literalValue(data['version'], [1], `${label} version`)
+      mediaRequestValue(data['request'], `${label} request`)
+      return
+    case 'media/stop':
+      literalValue(data['version'], [1], `${label} version`)
+      nonEmptyString(data['requestId'], `${label} requestId`)
+      return
+    case 'media/task':
+      literalValue(data['version'], [1], `${label} version`)
+      nonEmptyString(data['requestId'], `${label} requestId`)
+      nonEmptyString(data['providerTaskId'], `${label} providerTaskId`)
+      return
     case 'model/selection':
       nonEmptyString(data['provider'], `${label} provider`)
       nonEmptyString(data['model'], `${label} model`)
@@ -1050,6 +1074,60 @@ function teamMessageValue(value: SessionFormatJsonValue | undefined, label: stri
   stringValue(message['senderName'], `${label} senderName`)
   literalValue(message['delivery'], ['quiet', 'wakeup'], `${label} delivery`)
   contentBlocksValue(message['content'], `${label} content`, version)
+}
+
+function nonNegativeNumberValue(value: SessionFormatJsonValue | undefined, label: string): void {
+  if (finiteNumberValue(value, label) < 0) throw new SessionFormatError(`${label} must be non-negative`)
+}
+
+const MEDIA_WORK_KINDS = ['video', 'speech', 'composed', 'import'] as const
+
+function mediaRequestValue(value: SessionFormatJsonValue | undefined, label: string): void {
+  const request = exactRecord(
+    value,
+    label,
+    ['requestId', 'kind', 'stage', 'label', 'inputHashes', 'estimatedYuan'],
+    ['model', 'promptHash', 'providerTaskId', 'jobId', 'artifactId', 'stopIntent', 'failure'],
+  )
+  nonEmptyString(request['requestId'], `${label} requestId`)
+  literalValue(request['kind'], MEDIA_WORK_KINDS, `${label} kind`)
+  literalValue(
+    request['stage'],
+    [
+      'proposed', 'approved', 'submitted', 'running', 'downloaded',
+      'composed', 'failed', 'stopped', 'pending-recovery',
+    ],
+    `${label} stage`,
+  )
+  stringValue(request['label'], `${label} label`)
+  arrayValue(request['inputHashes'], `${label} inputHashes`, nonEmptyString)
+  nonNegativeNumberValue(request['estimatedYuan'], `${label} estimatedYuan`)
+  for (const key of ['model', 'promptHash', 'providerTaskId', 'jobId', 'artifactId'] as const) {
+    if (request[key] !== undefined) nonEmptyString(request[key], `${label} ${key}`)
+  }
+  if (request['stopIntent'] !== undefined) booleanValue(request['stopIntent'], `${label} stopIntent`)
+  if (request['failure'] !== undefined) stringValue(request['failure'], `${label} failure`)
+}
+
+function mediaArtifactValue(value: SessionFormatJsonValue | undefined, label: string): void {
+  const artifact = exactRecord(
+    value,
+    label,
+    ['artifactId', 'requestId', 'kind', 'name', 'file', 'digest', 'sessionId', 'createdAt'],
+    ['durationSeconds', 'workspaceId'],
+  )
+  nonEmptyString(artifact['artifactId'], `${label} artifactId`)
+  nonEmptyString(artifact['requestId'], `${label} requestId`)
+  literalValue(artifact['kind'], MEDIA_WORK_KINDS, `${label} kind`)
+  stringValue(artifact['name'], `${label} name`)
+  nonEmptyString(artifact['file'], `${label} file`)
+  nonEmptyString(artifact['digest'], `${label} digest`)
+  nonEmptyString(artifact['sessionId'], `${label} sessionId`)
+  if (artifact['durationSeconds'] !== undefined) {
+    nonNegativeNumberValue(artifact['durationSeconds'], `${label} durationSeconds`)
+  }
+  if (artifact['workspaceId'] !== undefined) nonEmptyString(artifact['workspaceId'], `${label} workspaceId`)
+  instantValue(artifact['createdAt'], `${label} createdAt`)
 }
 
 function workflowIdentity(data: JsonRecord, label: string): void {

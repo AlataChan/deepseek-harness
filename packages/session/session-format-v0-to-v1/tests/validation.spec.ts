@@ -68,6 +68,25 @@ const validPayloads: Readonly<Record<string, SessionFormatJsonValue>> = {
     retry: 1, maxRetries: 2, delayMs: 10, failure: { message: 'retry', code: 'SERVER' },
   },
   'llm/retry-started': { retryId: 'retry-1', turn: 1, step: 0, retry: 1 },
+  'media/approval': {
+    version: 1, requestId: 'r-1', inputHashes: ['digest-1'], promptHash: 'prompt-digest', estimatedYuan: 1,
+  },
+  'media/artifact': {
+    version: 1,
+    artifact: {
+      artifactId: 'a-1', requestId: 'r-1', kind: 'video', name: 'clip.mp4', file: 'result.mp4',
+      digest: 'digest-1', durationSeconds: 5, sessionId: 'validation', createdAt: '2026-10-07T00:00:00.000Z',
+    },
+  },
+  'media/request': {
+    version: 1,
+    request: {
+      requestId: 'r-1', kind: 'video', stage: 'approved', label: 'clip', inputHashes: ['digest-1'],
+      estimatedYuan: 1, model: 'model-1', promptHash: 'prompt-digest', stopIntent: false, failure: 'none',
+    },
+  },
+  'media/stop': { version: 1, requestId: 'r-1' },
+  'media/task': { version: 1, requestId: 'r-1', providerTaskId: 'task-1' },
   'model/selection': { provider: 'mock', model: 'mock', reasoningEffort: 'high' },
   'permission/preset': { preset: 'default' },
   'plan/mode': { active: true },
@@ -218,7 +237,7 @@ function replaceAtPath(value: SessionFormatJsonValue, path: string, replacement:
 describe('released event and payload inventory', () => {
   it('has an executable valid fixture for every frozen released-v0 event type', () => {
     expect(Object.keys(validPayloads).sort()).toEqual([...RELEASED_V0_EVENT_TYPES].sort())
-    expect(RELEASED_V0_EVENT_TYPES).toHaveLength(55)
+    expect(RELEASED_V0_EVENT_TYPES).toHaveLength(60)
     expect(RELEASED_V0_EVENT_TYPES.filter(type => !KNOWN_SESSION_EVENT_TYPES.has(type))).toEqual([
       'assistant/chunk',
       'tool/code-dispatch',
