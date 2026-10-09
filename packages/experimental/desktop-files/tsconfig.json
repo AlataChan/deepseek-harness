@@ -6,14 +6,20 @@
   },
   "include": [
     "src/index.ts",
-    "src/list-entries.ts",
-    "src/invariant.ts"
+    "src/list-entries.ts"
   ],
   "references": [
-    { "path": "../../../vendor/cosmokit" },
-    { "path": "../../../vendor/schemastery" },
-    { "path": "../../../vendor/cordis" },
-    { "path": "../../host/workspace-entries" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    {
+      "path": "../../../vendor/cosmokit"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../host/workspace-entries"
+    }
   ]
 }

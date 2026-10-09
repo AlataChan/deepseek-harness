@@ -9,17 +9,38 @@
     "src/css-modules.d.ts"
   ],
   "references": [
-    { "path": "../../../vendor/cordis" },
-    { "path": "../../api/remotes/tsconfig.client.json" },
-    { "path": "../../api/session-controller/tsconfig.client.json" },
-    { "path": "../../client/locale/tsconfig.client.json" },
-    { "path": "../../client/ui-primitives" },
-    { "path": "../../client/ui-renderer" },
-    { "path": "../../client/ui-session" },
-    { "path": "../../client/ui-sidebar" },
-    { "path": "../../client/ui-slots" },
-    { "path": "../../core/session" },
-    { "path": "../../typert/protocol" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../api/remotes/tsconfig.client.json"
+    },
+    {
+      "path": "../../api/session-controller/tsconfig.client.json"
+    },
+    {
+      "path": "../../client/locale/tsconfig.client.json"
+    },
+    {
+      "path": "../../client/ui-primitives"
+    },
+    {
+      "path": "../../client/ui-renderer"
+    },
+    {
+      "path": "../../client/ui-session"
+    },
+    {
+      "path": "../../client/ui-sidebar"
+    },
+    {
+      "path": "../../client/ui-slots"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../typert/protocol"
+    }
   ]
 }

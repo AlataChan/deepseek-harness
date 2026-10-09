@@ -1,6 +1,6 @@
 /**
  * Models settings and product-onboarding plugin, browser half. It registers
- * the Models page plus the ordered internal-testing and official-DeepSeek
+ * the Models page plus the ordered preview-notice and official-DeepSeek
  * onboarding dialogs, whose UI shares this package's modal wrapper. The Host
  * settings and credential contracts stay behind their existing wire APIs.
  * Export discipline:
@@ -64,7 +64,7 @@ export function refreshIfLoaded(controller: ModelsSettingsStore): void {
  * constrained; registration depends on each slot through `slots.inject()`.
  */
 export const inject = [
-  'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.settings',
+  'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.settings', 'remote.session',
   'configForms', 'settingsSchema',
 ]
 
@@ -122,6 +122,7 @@ export function apply(ctx: ClientContext): void {
     const refreshModels = (): void => { refreshIfLoaded(controller) }
     const disposers = [
       ctx.remote.$on('settings/document-updated', () => { refreshModels() }),
+      ctx.remote.$on('credentials/record-updated', refreshModels),
       ctx.remote.$on('credentials/reference-updated', refreshModels),
       ctx.remote.$on('llm/adapters-updated', refreshModels),
       ctx.on('connection/reset', refreshModels),
@@ -143,7 +144,7 @@ export function apply(ctx: ClientContext): void {
       'settings.models.footer': { kind: 'list', scope: 'root' },
     },
   }, ModelsSection))
-  ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
+  if (!('dshDesktop' in globalThis)) ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
     name: 'settings.onboarding',
     id: 'welcome-notice',
     order: -100,

@@ -5,7 +5,6 @@
  * official DeepSeek route. The step reuses that page's credential editor in
  * the onboarding plugin's shared modal, so the key is entered once.
  */
-
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -120,6 +119,7 @@ export function DeepSeekOnboardingDialog(props: DeepSeekOnboardingDialogProps): 
           readOnly={false}
           hideTitle
           credentialOnly
+          onSubmitCredential={() => {}}
           credentialRequired
           autoFocusCredential
           cancelLabelKey="onboardingLater"

@@ -4,21 +4,39 @@
     "rootDir": "src",
     "outDir": "lib/types",
     "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo",
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": ["node"]
+    "lib": [
+      "ES2024",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ]
   },
   "files": [
-    "src/index.ts",
-    "src/invariant.ts"
+    "src/index.ts"
   ],
   "references": [
-    { "path": "../../../vendor/cordis" },
-    { "path": "../../../vendor/schemastery" },
-    { "path": "../connection-process/tsconfig.host.json" },
-    { "path": "../connection/tsconfig.host.json" },
-    { "path": "../modules" },
-    { "path": "../../api/gateway/tsconfig.host.json" },
-    { "path": "../../runtime-diagnostics/invariants" },
-    { "path": "../../util/brand" }
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../connection-process/tsconfig.host.json"
+    },
+    {
+      "path": "../connection/tsconfig.host.json"
+    },
+    {
+      "path": "../modules"
+    },
+    {
+      "path": "../../api/gateway/tsconfig.host.json"
+    },
+    {
+      "path": "../../util/brand"
+    }
   ]
 }

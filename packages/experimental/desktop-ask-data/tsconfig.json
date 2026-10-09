@@ -8,7 +8,6 @@
     "src/index.ts",
     "src/bind.ts",
     "src/import-spreadsheet.ts",
-    "src/invariant.ts",
     "src/limits.ts",
     "src/manifest.ts",
     "src/prompt-limits.ts",
@@ -19,16 +18,35 @@
     "src/zip-scan.ts"
   ],
   "references": [
-    { "path": "../../../vendor/cosmokit" },
-    { "path": "../../../vendor/schemastery" },
-    { "path": "../../../vendor/cordis" },
-    { "path": "../../host/ask-data" },
-    { "path": "../../core/agent" },
-    { "path": "../../util/home-paths" },
-    { "path": "../../util/brand" },
-    { "path": "../../core/session" },
-    { "path": "../../core/system-prompt" },
-    { "path": "../../session/session-projection" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    {
+      "path": "../../../vendor/cosmokit"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../host/ask-data"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../util/home-paths"
+    },
+    {
+      "path": "../../util/brand"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../core/system-prompt"
+    },
+    {
+      "path": "../../session/session-projection"
+    }
   ]
 }

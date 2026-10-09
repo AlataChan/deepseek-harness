@@ -12,8 +12,9 @@
 | [scope.md](scope.zh.md) | 作用域注册标识、dispatch 载体，以及拥有的 `Scope` 上下文 |
 | [typert.md](typert.zh.md) | 远程调用描述符、lookup/Context 声明、Typert 注册表，以及 Host Gateway/Client API 边界 |
 | [goal.md](goal.zh.md) | 持久 goal 标识、生命周期快照、激活、变更记录与 Round 归属 |
-| [schedule.md](schedule.zh.md) | 仅限 Session 内的提醒记录、持久转换、活动视图与普通对话交付 |
-| [todo.md](todo.zh.md) | todo 包的整列表条目类型、持久事件所有权、投影和开放轮次不变量 |
+| [schedule.md](schedule.zh.md) | Host 拥有的提醒记录、持久转换、活动和已结束视图与普通对话交付 |
+| [todo.md](todo.zh.md) | todo 包的整列表条目类型、持久事件所有权和投影 |
+| [deliverables.md](deliverables.zh.md) | 一轮交给用户的东西：`present` 声明的 `PresentedFile` 交付，以及由 git 快照得出、由 Host 提供的 `WorkspaceChangesSummary` 改动摘要 |
 | [commands.md](commands.zh.md) | 人类命令注册表服务：定义、适配器发现、直接调用、结果与解析视图 |
 | [session.md](session.zh.md) | 完整的 `SessionEventMap` 变体目录、`TurnEndReason`、`deriveMessages()`、执行封闭与独立事件 |
 | [persistence.md](persistence.zh.md) | 持久性 seam：`SessionPersistence`、JSONL provider、`session/flush`、崩溃恢复、`SessionHeader` |
@@ -40,13 +41,13 @@
 | [compaction.md](compaction.zh.md) | 压缩（compaction）seam：`compaction/*` 会话事件、`CompactionResult`、`CompactionEngine` 接口 |
 | [subagent.md](subagent.zh.md) | subagent seam：命名提供方注册表、`SubagentStartRequest`/`Result`/`Run`、启动时与运行时能力拆分 |
 | [agent-team.md](agent-team.zh.md) | Agent Teams：隐式 Lead 身份、具名 continuable teammate、持久 peer mailbox 与共享任务 DAG |
+| [claude-code-mods.md](claude-code-mods.zh.md) | 经实验性桥接运行的 Claude Code 模组：与 Claude Code 不同的每个事件、`$` 成员、链规则、绘制特性与示例模组 |
 | [web.md](web.zh.md) | Web 访问 seam：`WebSearchRequest`/`Result`、`WebFetchRequest`/`Result`、`WebFetchBody`、提供方可用性、`WebError` |
 | [spill.md](spill.zh.md) | spill 存储 seam：`SaveTextSpill`、`SpillOwner`/`SpillSource`、`SpillRef`、品牌类型 `SpillLocator` |
 | [workflow.md](workflow.zh.md) | 工作流 seam：`WorkflowStartRequest`、`WorkflowMeta`、`WorkflowRun`/`Result`、`workflow/*` 事件载荷、`WorkflowError` 致命性 |
 | [jobs.md](jobs.zh.md) | 后台任务运行时：品牌化 `JobId`、producer 约定、消费方视图和 `ctx.jobs` 服务行为 |
 | [permission-presets.md](permission-presets.zh.md) | 权限预设层：`PresetSpec`/`PresetOption`、派生的 `custom` 状态、仅记日志的 `permission/preset` 事件 |
 | [plan.md](plan.zh.md) | 计划模式：仅记日志的 `plan/mode` 状态、待定选择的冲刷、`PlanModeConfig`、`exit_plan_mode` 审阅流程 |
-| [invariants.md](invariants.zh.md) | 运行时不变式注册表：选择配置 `Config`、`InvariantInstaller`/`InvariantFailure`、空配套插件约定 |
 | [web-server.md](web-server.zh.md) | HTTP 载体：`WebRouteKind`/`WebRoute`、匹配顺序、可认领的回退席位、index 渲染挂接点 |
 | [webhook.md](webhook.zh.md) | 通过身份验证的提供方交付、任意程序化规则，以及 fire-and-forget 的 Workspace Session 创建 |
 | [storage.md](storage.zh.md) | 存储子系统：后端约定（`StorageBackend`）、`StorageForms`、`DomainSpec`/`Domain`、`domain/changed` |
@@ -58,7 +59,7 @@
 | [sidebar-right.md](sidebar-right.zh.md) | 右侧 Sidebar：资源地址与导航地址、tab 类型注册与路由、`ctx.sidebarRight` 导航服务、pane-tab slot 与 owner props、资源模型及 Workspace Files 服务 |
 | [conversation.md](conversation.zh.md) | target-neutral Session event 组装：Context identity、Location data、replay 路径、view builder 与 target 自有 render node |
 | [session-projection.md](session-projection.zh.md) | 投影 seam：`SessionProjectionMap`、纯函数 `ProjectionDefinition` 单元、`ProjectionSnapshot` 的一致切面、变更馈送 |
-| [session-telemetry.md](session-telemetry.zh.md) | 对外会话上报能力 seam：`SessionTelemetryRecord`/`SessionTelemetrySeverity`、`SessionTelemetrySink` 约定和 `session-telemetry/record` 脱敏 waterfall |
+| [session-telemetry.md](session-telemetry.zh.md) | 对外会话上报能力 seam：`SessionTelemetryRecord`/`SessionTelemetrySeverity`、`SessionTelemetrySink` 约定和 `session-telemetry/record` 脱敏 waterfall（瀑布式事件） |
 | [ask-data.md](ask-data.zh.md) | 关系型数据接缝：已配置数据源列表、电子表格导入,以及把会话指向某个数据源的 Session 绑定 |
 | [ask-knowledge.md](ask-knowledge.zh.md) | 文档库接缝：库目录、入库句柄、基于词项的检索,以及把某个库挂到会话上的 Session 绑定 |
 | [commerce.md](commerce.zh.md) | 商务数据接缝：店铺数据源列表、电子表格导入、`commerce` preset 上的 Session 绑定,以及对导入表的读取与分析查询 |
@@ -67,10 +68,10 @@
 | [boot.md](boot.zh.md) | boot 包组：launcher 提供的 profile 访问，以及插件管理器的持久化、重载与包操作行为 |
 | [browser-use.md](browser-use.zh.md) | 浏览器操作能力：DSH 拥有的任务循环、提供方的浏览器操作，以及同一 Session 内跨轮次保留的浏览器状态 |
 | [computer-use.md](computer-use.zh.md) | 计算机操作能力：模型通过已配置提供方观察并操作本地桌面 |
-| [deliverables.md](deliverables.zh.md) | 一轮交给用户的东西：`present` 工具声明的文件与本轮改动的文件，均以只写日志的 Session 事件记录 |
 | [mcp.md](mcp.zh.md) | MCP 包组：外部服务器工具作为普通 Harness 工具、调用方作用域内的资源、入系统提示词的服务器指令与协议版本协商 |
 | [office-to-pdf.md](office-to-pdf.zh.md) | document 包族在 Node 宿主上的 Office 转 PDF：经授权的源文件读取、有界准入与临时 PDF 复用 |
-| [product-telemetry.md](product-telemetry.zh.md) | OTLP/HTTP 产品埋点接缝：明确选定的分析事件、仅负责提交的服务与由消费方决定的字段 |
+| [otel.md](otel.zh.md) | 共享普通事件与 Session 日志 OTLP 通道 |
+| [product-telemetry.md](product-telemetry.zh.md) | 显式产品分析事件提交与 OTLP/HTTP 传输 |
 | [ssh.md](ssh.zh.md) | SSH 提供方族：通过部署自有的 OpenSSH 连接提供一个远程文件系统/进程世界，复用文件系统、子进程与沙箱 API |
 | [voice-input.md](voice-input.zh.md) | 实验性语音识别：服务定义、SenseVoice 提供方与语音输入背后的 Remote 消费方 |
 

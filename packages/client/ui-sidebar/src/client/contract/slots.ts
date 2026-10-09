@@ -10,6 +10,7 @@
 import type { HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -149,6 +150,7 @@ export type SidebarRootInjected = {
     panels: ObservableSnapshot<readonly SidebarPanelMetadata[]>
     /** True while `sidebar.files` has a registrant. */
     filesOccupied: HostObservable<boolean>
+    shortcuts: ObservableSnapshot<readonly ShortcutCatalogEntry[]>
   }
 }
 

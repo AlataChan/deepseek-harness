@@ -38,7 +38,7 @@ interface WorkspaceNavigation {
 }
 
 /** Services required by the sidebar plugin. */
-export const inject = ['slots', 'layout', 'uiWorkspace', 'locale']
+export const inject = ['slots', 'layout', 'uiWorkspace', 'locale', 'shortcuts']
 
 /** Registers the sidebar shell and its service callbacks.
  * @param ctx - Client root context.
@@ -73,7 +73,7 @@ export function apply(ctx: ClientContext): void {
     startSession: (workspaceId) => { workspaceNavigation.startSession(workspaceId) },
     toggleSidebar: () => { ctx.layout.toggleSidebar() },
     selectPanel: (id) => { ctx.layout.selectPanel(id) },
-    hooks: { filesOccupied, panels },
+    hooks: { filesOccupied, panels, shortcuts: ctx.shortcuts.catalog },
   })
   ctx.slots.inject('sidebar', () => ctx.slots.register({
     name: 'sidebar',

@@ -16,6 +16,6 @@ const spreadsheet: UserConfig = {
 
 export default clientBundle(
   '@deepseek-ai/dsh-experimental-desktop-ask-data',
-  ['lib/types/index.js', 'lib/types/invariant.js'],
+  ['lib/types/index.js'],
   { hostPhase: true, companions: [spreadsheet] },
 )

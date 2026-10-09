@@ -12,7 +12,6 @@
     "src/extract.ts",
     "src/extract-docx.ts",
     "src/ingest.ts",
-    "src/invariant.ts",
     "src/knowledge-home.ts",
     "src/library-lock.ts",
     "src/proposal-page-meta.ts",
@@ -26,19 +25,44 @@
     "src/upload-temp.ts"
   ],
   "references": [
-    { "path": "../../../vendor/schemastery" },
-    { "path": "../../../vendor/cordis" },
-    { "path": "../../host/ask-knowledge" },
-    { "path": "../../core/agent" },
-    { "path": "../../core/session" },
-    { "path": "../../core/system-prompt" },
-    { "path": "../../core/tools" },
-    { "path": "../../credentials/credentials" },
-    { "path": "../../session/session-persistence" },
-    { "path": "../../session/session-projection" },
-    { "path": "../../util/brand" },
-    { "path": "../../util/native-command" },
-    { "path": "../../workspace/workspace" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../host/ask-knowledge"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../core/system-prompt"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../credentials/credentials"
+    },
+    {
+      "path": "../../session/session-persistence"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../util/brand"
+    },
+    {
+      "path": "../../util/native-command"
+    },
+    {
+      "path": "../../workspace/workspace"
+    }
   ]
 }

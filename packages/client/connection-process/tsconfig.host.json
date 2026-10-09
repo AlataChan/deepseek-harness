@@ -4,8 +4,14 @@
     "rootDir": "src",
     "outDir": "lib/types",
     "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo",
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": ["node"]
+    "lib": [
+      "ES2024",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ]
   },
   "files": [
     "src/claim-process-stdio.ts",
@@ -13,17 +19,27 @@
     "src/host-gateway.ts",
     "src/ipc-channel.ts",
     "src/index.ts",
-    "src/invariant.ts",
     "src/protocol.ts",
     "src/stdio-line-port.ts"
   ],
   "references": [
-    { "path": "../../../vendor/cordis" },
-    { "path": "../../../vendor/cosmokit" },
-    { "path": "../connection/tsconfig.host.json" },
-    { "path": "../modules" },
-    { "path": "../../api/gateway/tsconfig.host.json" },
-    { "path": "../../runtime-diagnostics/invariants" },
-    { "path": "../../util/brand" }
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../../vendor/cosmokit"
+    },
+    {
+      "path": "../connection/tsconfig.host.json"
+    },
+    {
+      "path": "../modules"
+    },
+    {
+      "path": "../../api/gateway/tsconfig.host.json"
+    },
+    {
+      "path": "../../util/brand"
+    }
   ]
 }

@@ -14,7 +14,7 @@ const shared = {
 export default defineConfig([
   {
     ...shared,
-    entry: ['lib/types/index.js', 'lib/types/invariant.js'],
+    entry: ['lib/types/index.js'],
   },
   {
     ...shared,

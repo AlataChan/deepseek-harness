@@ -3,7 +3,9 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib/types",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "src"
@@ -11,9 +13,6 @@
   "references": [
     {
       "path": "../../../vendor/cordis"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }
