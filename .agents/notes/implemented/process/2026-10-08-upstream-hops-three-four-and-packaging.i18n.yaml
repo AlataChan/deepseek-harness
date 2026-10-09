@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-10-08-upstream-hops-three-four-and-packaging.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-10-08-upstream-hops-three-four-and-packaging.md
+/agent-note-the-staged-upstream-upgrade-completes-through-hop-four-the-client-taxonomy-and-the-packaged-pipeline:
+  en: 3c679a3b2f8c3aff
+  zh: 05dc816bd255315c
+/agent-note-the-staged-upstream-upgrade-completes-through-hop-four-the-client-taxonomy-and-the-packaged-pipeline/problem:
+  en: b466f4136c3f0a48
+  zh: 35b83d36f7d9ea55
+/agent-note-the-staged-upstream-upgrade-completes-through-hop-four-the-client-taxonomy-and-the-packaged-pipeline/decision:
+  en: 547f6601ffe2934a
+  zh: 772bbc18b0900efa
+/agent-note-the-staged-upstream-upgrade-completes-through-hop-four-the-client-taxonomy-and-the-packaged-pipeline/verification:
+  en: 56252f9870ab379a
+  zh: f73a74f2c34443dd
+/agent-note-the-staged-upstream-upgrade-completes-through-hop-four-the-client-taxonomy-and-the-packaged-pipeline/alternatives-considered:
+  en: 01f43867706e496e
+  zh: 2b107735418d164d
+/agent-note-the-staged-upstream-upgrade-completes-through-hop-four-the-client-taxonomy-and-the-packaged-pipeline/consequences:
+  en: ca620cff766ed109
+  zh: 36f1c0663b1df861
