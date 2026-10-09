@@ -206,6 +206,9 @@
     # active request slot. The outer 3s shutdown deadline stops queued sends;
     # large prefixes or an unsettled transport may leave records unsent.
     # Every CLI exit path drains by disposing the root on SIGINT/SIGTERM.
+    - id: otel
+      name: '@deepseek-ai/dsh-otel'
+
     - id: session-telemetry-otel
       name: '@deepseek-ai/dsh-session-telemetry-otel'
       config:
