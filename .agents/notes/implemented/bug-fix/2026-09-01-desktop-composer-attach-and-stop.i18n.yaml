@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-01-desktop-composer-attach-and-stop.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-01-desktop-composer-attach-and-stop.md
-2026-09-01-desktop-composer-attach-and-stop.md: 773b1844d017cb9e3143d866ca55d4abbebfa516
-2026-09-01-desktop-composer-attach-and-stop.zh.md: b3b0d05042f9f462a4e9f3eeb2026bcdd64c5c7e
+/agent-note-desktop-composer-attach-next-step-and-stop:
+  en: bdb28bbf5ff7390b
+  zh: 7119ce2d94a33e57
+/agent-note-desktop-composer-attach-next-step-and-stop/problem:
+  en: f982bdb68b77d5c0
+  zh: dfe1168b411bc263
+/agent-note-desktop-composer-attach-next-step-and-stop/decision:
+  en: 7a5d065da08c212a
+  zh: 95a3c495ddc58c8d
+/agent-note-desktop-composer-attach-next-step-and-stop/alternatives-considered:
+  en: d032e3e5ec54418f
+  zh: a7508535cb62286a
+/agent-note-desktop-composer-attach-next-step-and-stop/consequences:
+  en: c877a3c6deadfea1
+  zh: a59f9c3af9022a26

@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-agent-team-inactive-roster-model.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-04-agent-team-inactive-roster-model.md
-2026-09-04-agent-team-inactive-roster-model.md: 0e7e72f2449558354de427de0854c4206abcfa30
-2026-09-04-agent-team-inactive-roster-model.zh.md: f16a2a4ac5569936cefab855fa4909dae220c75c
+/agent-note-inactive-team-roster-must-not-invent-the-lead-model:
+  en: 7a507fc2792db8bf
+  zh: 6a922690512e76da
+/agent-note-inactive-team-roster-must-not-invent-the-lead-model/problem:
+  en: 8edcb12f776e3288
+  zh: 0e544e754d68bb17
+/agent-note-inactive-team-roster-must-not-invent-the-lead-model/decision:
+  en: 6c3fbafdaf35064e
+  zh: 8d1f89d13f41c88f
+/agent-note-inactive-team-roster-must-not-invent-the-lead-model/alternatives-considered:
+  en: bf639a7a9a6f4754
+  zh: d0460d0f476eef3c
+/agent-note-inactive-team-roster-must-not-invent-the-lead-model/consequences:
+  en: 977f142e91aa5842
+  zh: 111df8f93c3fe6d8

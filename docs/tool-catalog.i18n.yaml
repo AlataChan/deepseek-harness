@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: 75120ef94b3c2830
-  zh: c5db28dd6853e91a
+  en: 8c31e7ddc59fa1cc
+  zh: 8254a6f9c19ec55c
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -252,8 +252,53 @@
   en: 0c37fb1fed979d72
   zh: 5ea9d07f5a4a8a6c
 /tool-schema-catalog/deepseek-ai-dsh-tool-jobs/job-output:
-  en: f927cca09b283e21
-  zh: 2acd9b36737f17c2
+  en: 3ba504c15ce38781
+  zh: a0659fd4e92277dc
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode:
+  en: 384908911f694701
+  zh: 384908911f694701
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-analysis-query:
+  en: 674c464c6c4d7ff9
+  zh: edcb37d0d006e390
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-discard-change:
+  en: e2b5f6c1e7080e50
+  zh: 00f49e0b18200507
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-export-changes:
+  en: 8031100ef2e040a0
+  zh: bbf6199ddae4fbbe
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-get-listing:
+  en: cd4457d6935f7c9a
+  zh: 7cb86dd7ffdcd3fa
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-import-file:
+  en: 4c6be94ac1488c87
+  zh: adec88f914660d5a
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-inventory-health:
+  en: 4d52341c6ae78c4e
+  zh: f86340ff9201b6c9
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-load-sample:
+  en: 1a500a30fe11729d
+  zh: aa6ff6aa56013259
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-sales-summary:
+  en: ef4c17b25e61225f
+  zh: 917f231824b89db7
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-search-listings:
+  en: 790cf97668771ef1
+  zh: 3a88abf871c2ef4f
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-stage-campaign:
+  en: 709c4aac26508af4
+  zh: 0cc7eca06713aefd
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-stage-listing-update:
+  en: c23f650c65499c16
+  zh: d6e522984069c6b8
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-stage-price-change:
+  en: 58354ffb631c1387
+  zh: c727cbca3e958da6
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-stage-promotion:
+  en: 9610e9ab9d6f01cb
+  zh: 1f00962ed9a98d66
+/tool-schema-catalog/deepseek-ai-dsh-experimental-commerce-mode/commerce-stage-restock:
+  en: 6c1c5856895d00d9
+  zh: 1cdcc6b811f470b7
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team:
   en: 6b1106f417b50db6
   zh: 6b1106f417b50db6
@@ -261,11 +306,14 @@
   en: c3c7af05ceb9f8c9
   zh: ec379e0b42110c6a
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/list-agents:
-  en: f9457f033f75f00a
-  zh: a2d60ec44118c34c
+  en: a8dd8ced34d10a47
+  zh: 5808e7c382f03237
+/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/propose-action:
+  en: 113ec53b50ac67eb
+  zh: d1e6b3f260a6037b
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/send-message:
-  en: e99455aec4656ff2
-  zh: a8f88ec35cfe38b8
+  en: af9766c5b81792a7
+  zh: d9fc5db116e033da
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/spawn-teammate:
   en: 02d6cc746e234b99
   zh: 49bc60ac098bca48
@@ -282,7 +330,7 @@
   en: 2eac7360ba68b1bd
   zh: b5d676bf288c245e
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/wait-agent:
-  en: fbc4d75a9bcf6816
+  en: 09890c7210cf89cb
   zh: 672131ac2705f411
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo:
   en: dea62d26fb18ff68

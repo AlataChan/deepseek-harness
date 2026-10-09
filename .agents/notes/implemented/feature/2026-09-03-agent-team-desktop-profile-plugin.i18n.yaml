@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-03-agent-team-desktop-profile-plugin.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-03-agent-team-desktop-profile-plugin.md
-2026-09-03-agent-team-desktop-profile-plugin.md: e4f521cc8e6f357be6d059dcb8971830f21538e1
-2026-09-03-agent-team-desktop-profile-plugin.zh.md: 80718ed83cdf95fcd2d3fb676c82ba9377e5e7a5
+/agent-note-ship-agent-team-into-octopus-dsh-desktop-profile-plugins:
+  en: 1818e1affbeeaee0
+  zh: 2a36d2fa7041e2a9
+/agent-note-ship-agent-team-into-octopus-dsh-desktop-profile-plugins/problem:
+  en: 5600959392ac9c22
+  zh: 229a1ee3ece7651e
+/agent-note-ship-agent-team-into-octopus-dsh-desktop-profile-plugins/decision:
+  en: fa08309dddfe8d10
+  zh: 8c012c247a39bdce
+/agent-note-ship-agent-team-into-octopus-dsh-desktop-profile-plugins/alternatives-considered:
+  en: e1dce8da1180ef29
+  zh: 89ea65c5c7d948db
+/agent-note-ship-agent-team-into-octopus-dsh-desktop-profile-plugins/consequences:
+  en: 9b4223de8e7fb943
+  zh: 39fbdf4d33e9a461

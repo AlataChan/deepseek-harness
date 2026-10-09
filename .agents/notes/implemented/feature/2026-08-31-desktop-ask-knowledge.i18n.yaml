@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-31-desktop-ask-knowledge.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-31-desktop-ask-knowledge.md
-2026-08-31-desktop-ask-knowledge.md: 606d0da55555136d96a7ae4cb0175f7352c693b0
-2026-08-31-desktop-ask-knowledge.zh.md: 323a11bf5dc98da9f22902fe4e2af6d7d5ece4c7
+/agent-note-desktop-ask-knowledge-overlay:
+  en: 524fa203a34537c7
+  zh: dfe1640cbc959273
+/agent-note-desktop-ask-knowledge-overlay/problem:
+  en: 294d0c99377d791c
+  zh: 1afc59baaa9e5bcb
+/agent-note-desktop-ask-knowledge-overlay/decision:
+  en: a00a7a2189661f56
+  zh: 6f4b0b8eccb99e23
+/agent-note-desktop-ask-knowledge-overlay/alternatives-considered:
+  en: 9bd453f89f8e335b
+  zh: e325090754d9c874
+/agent-note-desktop-ask-knowledge-overlay/consequences:
+  en: 1dc356583333fe2c
+  zh: eb80595c4761ea98

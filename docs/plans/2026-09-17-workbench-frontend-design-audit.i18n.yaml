@@ -1,6 +1,34 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-workbench-frontend-design-audit.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/plans/2026-09-17-workbench-frontend-design-audit.md
-2026-09-17-workbench-frontend-design-audit.md: 9f88344b089c611b330ba4ca96459fad5bd1edb5
-2026-09-17-workbench-frontend-design-audit.zh.md: 834fee200c72a9e0054d45fbb940c5646cf2ba08
+/workbench-frontend-design-audit:
+  en: 634874dbd4cd7413
+  zh: 686d5c6430d715ae
+/workbench-frontend-design-audit/executive-summary:
+  en: 97071e761819af5d
+  zh: 24c89a0007971f23
+/workbench-frontend-design-audit/what-is-already-good:
+  en: 144a5f06c3a5bee6
+  zh: a814e8152e11dc48
+/workbench-frontend-design-audit/finding-1-rendering-defects:
+  en: 1bac48646d5f3e58
+  zh: b90984d1f65f5824
+/workbench-frontend-design-audit/finding-2-improvement-opportunities:
+  en: 5a61f69edef48fcb
+  zh: 4cb7c95ef3f91df8
+/workbench-frontend-design-audit/finding-3-design-defects:
+  en: 63d5a2fbc13bf78f
+  zh: 04263068b09befb0
+/workbench-frontend-design-audit/decision-required-first-inline-region-or-modal:
+  en: 50eeaa55afb3b5b2
+  zh: dee771061f05acee
+/workbench-frontend-design-audit/recommendations-three-upgrades-in-order:
+  en: 9d98ce42d46b66b5
+  zh: 949285f8c0d87af0
+/workbench-frontend-design-audit/verification:
+  en: 4e6d82da41ca6877
+  zh: 7dd86d187e0f6f2d
+/workbench-frontend-design-audit/open-questions:
+  en: c36721006a1e5545
+  zh: d0536915d4c4f7ec

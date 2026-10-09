@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-30-desktop-data-agent-overlay.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-30-desktop-data-agent-overlay.md
-2026-08-30-desktop-data-agent-overlay.md: 3bec1eab02e1b625fc686828626be608e0d8dbe9
-2026-08-30-desktop-data-agent-overlay.zh.md: b3492bb18744755fbb7b746e991c30d81a6c6d69
+/agent-note-octopus-dsh-desktop-data-agent-overlay:
+  en: 9443ee1b2b1f5bee
+  zh: f615b279cb5fabb2
+/agent-note-octopus-dsh-desktop-data-agent-overlay/problem:
+  en: 9c851034139db00b
+  zh: 649c930643da3c1a
+/agent-note-octopus-dsh-desktop-data-agent-overlay/decision:
+  en: b6c3185fcf69c862
+  zh: 0946ef5328262b4d
+/agent-note-octopus-dsh-desktop-data-agent-overlay/alternatives-considered:
+  en: 22a602630f0dccfb
+  zh: 4b4ca334eabdd871
+/agent-note-octopus-dsh-desktop-data-agent-overlay/consequences:
+  en: ba9dc8dfaf43a981
+  zh: 6aec28e107b14190

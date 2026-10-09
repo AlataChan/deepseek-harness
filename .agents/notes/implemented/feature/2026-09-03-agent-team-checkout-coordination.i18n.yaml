@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-03-agent-team-checkout-coordination.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-03-agent-team-checkout-coordination.md
-2026-09-03-agent-team-checkout-coordination.md: 5913de942cdfee6640cc9e633fac26ff1b33b4e0
-2026-09-03-agent-team-checkout-coordination.zh.md: 39ef58ee72d133c2825f1601b460751f09446cc4
+/agent-note-agent-team-checkout-coordination-via-team-aware-optimistic-concurrency:
+  en: 66adea9248233980
+  zh: 81bb66bcdcc62d22
+/agent-note-agent-team-checkout-coordination-via-team-aware-optimistic-concurrency/problem:
+  en: d8a16260f8bbd888
+  zh: 2adc3f4862581b47
+/agent-note-agent-team-checkout-coordination-via-team-aware-optimistic-concurrency/decision:
+  en: d8b912e26dfa8fa7
+  zh: ca2c313d940229ae
+/agent-note-agent-team-checkout-coordination-via-team-aware-optimistic-concurrency/alternatives-considered:
+  en: 9dc048f46c8ee130
+  zh: 083e033a1be8f542
+/agent-note-agent-team-checkout-coordination-via-team-aware-optimistic-concurrency/consequences:
+  en: 76468e456db583c9
+  zh: 8b07688cb32435e4

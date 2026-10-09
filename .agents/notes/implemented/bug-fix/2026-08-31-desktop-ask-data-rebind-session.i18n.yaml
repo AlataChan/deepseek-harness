@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-31-desktop-ask-data-rebind-session.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-31-desktop-ask-data-rebind-session.md
-2026-08-31-desktop-ask-data-rebind-session.md: b57bb572ccac9d68c15336213bdb5326a7ac7052
-2026-08-31-desktop-ask-data-rebind-session.zh.md: b996e2796335b39246c0f840c41c0e544b6adc76
+/agent-note-ask-data-start-must-not-reuse-a-bound-session:
+  en: aa012c43e826ab1c
+  zh: 3e666f9d0f552507
+/agent-note-ask-data-start-must-not-reuse-a-bound-session/problem:
+  en: 710d99e989387e7e
+  zh: 00f3a31656caee67
+/agent-note-ask-data-start-must-not-reuse-a-bound-session/decision:
+  en: eb0bd32f66a9fbd4
+  zh: a18a1b1c077ec825
+/agent-note-ask-data-start-must-not-reuse-a-bound-session/alternatives-considered:
+  en: 3a690f766d9cd1bd
+  zh: 356780a67ff7595c
+/agent-note-ask-data-start-must-not-reuse-a-bound-session/consequences:
+  en: cc7251615171ab44
+  zh: 91edc2e813782202

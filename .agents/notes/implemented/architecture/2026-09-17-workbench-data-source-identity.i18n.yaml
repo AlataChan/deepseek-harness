@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-workbench-data-source-identity.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-17-workbench-data-source-identity.md
-2026-09-17-workbench-data-source-identity.md: 7c7303121d8e9565b60c6c2272bcabaa1cd0ace6
-2026-09-17-workbench-data-source-identity.zh.md: 4013d87dbb76bbf1abf9ff3c13c6a0742332e05d
+/agent-note-workbench-data-source-identity-uses-letter-avatars-type-badges-and-optional-document-counts:
+  en: d665cf11069bd4c5
+  zh: c9b18e363b0baf47
+/agent-note-workbench-data-source-identity-uses-letter-avatars-type-badges-and-optional-document-counts/problem:
+  en: d46446000f7ba68c
+  zh: b690923bca7e18e1
+/agent-note-workbench-data-source-identity-uses-letter-avatars-type-badges-and-optional-document-counts/decision:
+  en: 10c5626372d54348
+  zh: 2223b1cc4d08a5c5
+/agent-note-workbench-data-source-identity-uses-letter-avatars-type-badges-and-optional-document-counts/testing:
+  en: eb47643914276df9
+  zh: 8167c34a8cefe25d
+/agent-note-workbench-data-source-identity-uses-letter-avatars-type-badges-and-optional-document-counts/alternatives-considered:
+  en: 6ac86293f25e3447
+  zh: 97ee2f7147383b8e
+/agent-note-workbench-data-source-identity-uses-letter-avatars-type-badges-and-optional-document-counts/consequences:
+  en: 8cfe64156531206a
+  zh: 7817b19daa0cacd2

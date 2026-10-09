@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-20-media-import-admission.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/architecture/2026-09-20-media-import-admission.md
-2026-09-20-media-import-admission.md: b94a85d1f5438a7a4c63466a59010738e82e030f
-2026-09-20-media-import-admission.zh.md: 2973293e535ebd33434f4b5f74a6cfcaf40e972c
+/agent-note-media-import-admission-for-desktop-creation:
+  en: fd52fd5751607e03
+  zh: 8c96e8a7e5fdeb8f
+/agent-note-media-import-admission-for-desktop-creation/problem:
+  en: 4e39ab9929fa25f1
+  zh: 19f4fa9ef9fc2ab9
+/agent-note-media-import-admission-for-desktop-creation/proposal:
+  en: 926eebc45c47890f
+  zh: da98b93559469681
+/agent-note-media-import-admission-for-desktop-creation/alternatives-considered:
+  en: 0582019c57bfcdd0
+  zh: 70711329c9937852
+/agent-note-media-import-admission-for-desktop-creation/acceptance-criteria:
+  en: 70edff0088877d75
+  zh: 190099c341ca7c5a
+/agent-note-media-import-admission-for-desktop-creation/risks:
+  en: 781cdf0ebc6c3d36
+  zh: 74d9912fe6216f08

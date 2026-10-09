@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-30-desktop-web-app-host-carrier.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-30-desktop-web-app-host-carrier.md
-2026-08-30-desktop-web-app-host-carrier.md: 1b54c081e8b90b66b1c93931c1cc94b2f5a9827f
-2026-08-30-desktop-web-app-host-carrier.zh.md: 5346598ee63292b55f63704710c3e033a648bf4d
+/agent-note-octopus-dsh-desktop-rides-the-web-app-host:
+  en: 0a15068dd4e81bce
+  zh: 6d77874479f5f34a
+/agent-note-octopus-dsh-desktop-rides-the-web-app-host/problem:
+  en: a16c91d33f4a012e
+  zh: e5476b87e95513fd
+/agent-note-octopus-dsh-desktop-rides-the-web-app-host/decision:
+  en: 2095b84f62da7993
+  zh: 416a398b32e8c795
+/agent-note-octopus-dsh-desktop-rides-the-web-app-host/alternatives-considered:
+  en: efc62fef2b3f7f0a
+  zh: ffadf637b8c29a8d
+/agent-note-octopus-dsh-desktop-rides-the-web-app-host/consequences:
+  en: 775dd534c72c82d6
+  zh: a12ee0e3ad30ccf0
+/agent-note-octopus-dsh-desktop-rides-the-web-app-host/testing:
+  en: 4ea182ea3e2ed8b5
+  zh: 1f14a9b41ac12cd8

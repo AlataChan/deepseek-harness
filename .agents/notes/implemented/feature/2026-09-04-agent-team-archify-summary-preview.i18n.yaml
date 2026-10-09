@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-agent-team-archify-summary-preview.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-agent-team-archify-summary-preview.md
-2026-09-04-agent-team-archify-summary-preview.md: 958f727418b769261c8da73157ab539664a0a32f
-2026-09-04-agent-team-archify-summary-preview.zh.md: 184676ab39ea9283c7c2d566c8fd1b88c9469b46
+/agent-note-agent-team-archify-dock-summary-preview:
+  en: cc23257d871f4ac4
+  zh: 929ef768673a8d1b
+/agent-note-agent-team-archify-dock-summary-preview/problem:
+  en: 6b875ac6035214b5
+  zh: a1131f5f8fc5df2e
+/agent-note-agent-team-archify-dock-summary-preview/decision:
+  en: 212643f307a47364
+  zh: ab1de636e643818c
+/agent-note-agent-team-archify-dock-summary-preview/alternatives-considered:
+  en: f56a838084eb3eba
+  zh: 6dd03c164c8fa54a
+/agent-note-agent-team-archify-dock-summary-preview/consequences:
+  en: bb3de5c1c0ff3413
+  zh: d58e59b35babb76a
+/agent-note-agent-team-archify-dock-summary-preview/verification:
+  en: 80937328f4f7b240
+  zh: f88454c968d631e0

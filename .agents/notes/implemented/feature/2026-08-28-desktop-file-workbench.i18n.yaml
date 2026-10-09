@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-28-desktop-file-workbench.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-28-desktop-file-workbench.md
-2026-08-28-desktop-file-workbench.md: 04110c5085ae86c78fbf2e00ef2ed0654b7af06d
-2026-08-28-desktop-file-workbench.zh.md: 3432ff0f0db9a975693ee607864265de9c1c3307
+/agent-note-octopus-dsh-desktop-file-workbench:
+  en: c9b34596ffab03f5
+  zh: 42737144584ae4cc
+/agent-note-octopus-dsh-desktop-file-workbench/problem:
+  en: 25437cb245d18fcd
+  zh: 880c38225dd5f882
+/agent-note-octopus-dsh-desktop-file-workbench/decision:
+  en: 955983bfc0df8eaa
+  zh: d487e76dda5d1d3c
+/agent-note-octopus-dsh-desktop-file-workbench/alternatives-considered:
+  en: 423b6d43452607b3
+  zh: 5b44d421e84c4737
+/agent-note-octopus-dsh-desktop-file-workbench/consequences:
+  en: 99671f0d72a0df13
+  zh: 95a0299798012100
+/agent-note-octopus-dsh-desktop-file-workbench/testing:
+  en: fc7fca7d1a5242c1
+  zh: dcfdf0850d877876

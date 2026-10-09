@@ -1,6 +1,55 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/desktop-ask-knowledge/README.md
-README.md: 7b468188a9d661e1d8e20c017cc01c63cc3c395e
-README.zh.md: 4702cda236f8399b0e47c6046ed7b533ce4e29c3
+/:
+  en: 5889a4c87ba79327
+  zh: 43a36f8ebac032eb
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge:
+  en: bf59049dd239f821
+  zh: c52a45376f2d2c35
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/summary:
+  en: c409aa75a048c32a
+  zh: 705dfee139487f73
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/table-of-contents:
+  en: 4ef4f54c0cb0cf6b
+  zh: 008d0bd676e0184a
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/config:
+  en: 3feb173aaccc1e57
+  zh: cae1cb91e519026a
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience/bound-retrieve-prompt:
+  en: 3a6060d302841451
+  zh: a464e8e910e32263
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience/bound-retrieve-prompt/what-the-model-sees:
+  en: 22a4af10c7e8dae5
+  zh: e2ace22da4707158
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience/bound-retrieve-prompt/what-the-model-sees/retrieve-section:
+  en: ce1b39a14cc57471
+  zh: 37786354ad1ade30
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience/bound-retrieve-prompt/token-effect:
+  en: 1972c8903b2a02c9
+  zh: c5d62809e6a33922
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience/bound-retrieve-prompt/kv-cache-effect:
+  en: d0e07afeacf85f13
+  zh: 09d7b23027030996
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience/retrieve-and-lookup-tools:
+  en: 856e44c1ec20c0a7
+  zh: e9d7ee703eed26ba
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience/retrieve-and-lookup-tools/what-the-model-sees:
+  en: 989601642a963b54
+  zh: d560219065212e93
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience/retrieve-and-lookup-tools/token-effect:
+  en: 615259e3bb37ef0c
+  zh: dc3d3e088df71813
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/model-experience/retrieve-and-lookup-tools/kv-cache-effect:
+  en: f5d65e061a37c183
+  zh: 8236539c9ca0d773
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/known-limitations-and-deferred-work:
+  en: 54cebed6fa48ef68
+  zh: 3b7e6b453aa7c52e
+/deepseek-ai-dsh-experimental-desktop-ask-knowledge/known-limitations-and-deferred-work/dev-note:
+  en: d61310445b831e3b
+  zh: 4f7c1e9ed1dbdea4

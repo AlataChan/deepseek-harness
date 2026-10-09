@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-10-06-fork-owned-doc-exclusions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-10-06-fork-owned-doc-exclusions.md
-2026-10-06-fork-owned-doc-exclusions.md: d7bf02f129b387dff70767dd80d6551f28e5a11c
-2026-10-06-fork-owned-doc-exclusions.zh.md: ccb2b6f1ef84bf9085b4f36b53f8ab5767ce865a
+/agent-note-fork-owned-documents-are-excluded-from-the-bilingual-pairing-corpus:
+  en: b73f38cdbeed7461
+  zh: df9960f2c8937587
+/agent-note-fork-owned-documents-are-excluded-from-the-bilingual-pairing-corpus/problem:
+  en: 036b4c760aaf93f7
+  zh: b8f1147f407435f5
+/agent-note-fork-owned-documents-are-excluded-from-the-bilingual-pairing-corpus/decision:
+  en: 010f4edd3b16d07d
+  zh: 2569525b7ae3982b
+/agent-note-fork-owned-documents-are-excluded-from-the-bilingual-pairing-corpus/consequences:
+  en: 2c6bc5d58402d233
+  zh: 722f661cbd61df34
+/agent-note-fork-owned-documents-are-excluded-from-the-bilingual-pairing-corpus/alternatives-considered:
+  en: 896071cda2942227
+  zh: 1a3b55d82643c218

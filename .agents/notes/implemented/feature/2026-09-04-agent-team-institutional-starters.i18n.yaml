@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-agent-team-institutional-starters.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-agent-team-institutional-starters.md
-2026-09-04-agent-team-institutional-starters.md: 9dec44a0987c3b47180b5058b52c82753600e9c5
-2026-09-04-agent-team-institutional-starters.zh.md: d4220c41379a11dd4b3ff438edd900cee2fdc1a6
+/agent-note-institutional-agent-team-starter-prompts:
+  en: 9f367ccbca63cc6e
+  zh: 2164987da8b483e8
+/agent-note-institutional-agent-team-starter-prompts/problem:
+  en: 11d07a92d7ba1e8e
+  zh: cf505dd0d1ea5293
+/agent-note-institutional-agent-team-starter-prompts/decision:
+  en: 1a81d97cf8084c2c
+  zh: c302d7539c4c3463
+/agent-note-institutional-agent-team-starter-prompts/alternatives-considered:
+  en: e70e3f174d800285
+  zh: 985c725323cc2415
+/agent-note-institutional-agent-team-starter-prompts/consequences:
+  en: 432c6daa117653cf
+  zh: 69531c5390d9ac3c

@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-18-institution-standing-squads.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-18-institution-standing-squads.md
-2026-09-18-institution-standing-squads.md: 9fb45dad9769739eb4e02c36554d4d429dbbd999
-2026-09-18-institution-standing-squads.zh.md: 3f76180a1b9aaa9d7a6f3cee174aac1161e93423
+/agent-note-institution-standing-squads-exist-before-chat:
+  en: e98d0e0baa933432
+  zh: 6eba1f23f6c1ec19
+/agent-note-institution-standing-squads-exist-before-chat/problem:
+  en: 3dfaacfb913038aa
+  zh: 9cbe9ffc97d5be77
+/agent-note-institution-standing-squads-exist-before-chat/decision:
+  en: 3094eebb9bb02d1b
+  zh: 8a039c8e13b871b3
+/agent-note-institution-standing-squads-exist-before-chat/testing:
+  en: c086d32baeecd070
+  zh: 93dfe755c60ae3a0
+/agent-note-institution-standing-squads-exist-before-chat/alternatives-considered:
+  en: e38c5a2c2fce159c
+  zh: 02ef9b213925e2d8
+/agent-note-institution-standing-squads-exist-before-chat/consequences:
+  en: 44185a8ffeee47bc
+  zh: 29f9e331e0745446

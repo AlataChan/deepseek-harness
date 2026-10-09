@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-18-desktop-bundle-skeleton-restore.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-18-desktop-bundle-skeleton-restore.md
-2026-09-18-desktop-bundle-skeleton-restore.md: 2d3a91c3093e362da40abfcfd4116a665a13a612
-2026-09-18-desktop-bundle-skeleton-restore.zh.md: 009305744738a09127171c7805bca9e8518373d5
+/agent-note-restore-a-hollow-octopus-dsh-app-skeleton-before-signing:
+  en: b8bdd30664e50f4b
+  zh: 24bd2bc9ff2bd04c
+/agent-note-restore-a-hollow-octopus-dsh-app-skeleton-before-signing/problem:
+  en: 3a5332b7e98f5252
+  zh: 4158e8e603d2c78b
+/agent-note-restore-a-hollow-octopus-dsh-app-skeleton-before-signing/decision:
+  en: 407cc18c691b49af
+  zh: 29bde6f1bfccd1fa
+/agent-note-restore-a-hollow-octopus-dsh-app-skeleton-before-signing/alternatives-considered:
+  en: 64682ea9c4927d63
+  zh: 37f01adcb8012634
+/agent-note-restore-a-hollow-octopus-dsh-app-skeleton-before-signing/consequences:
+  en: b08b42b3f369ce52
+  zh: 2be9f6eea2f17e7e
+/agent-note-restore-a-hollow-octopus-dsh-app-skeleton-before-signing/testing:
+  en: 2f85688b81c17fe1
+  zh: c5c66c5357c81f0e

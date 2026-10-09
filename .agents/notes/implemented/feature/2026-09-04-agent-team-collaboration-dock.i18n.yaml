@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-agent-team-collaboration-dock.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-agent-team-collaboration-dock.md
-2026-09-04-agent-team-collaboration-dock.md: a708db3ebf9f5299f39ec7da6549d09ca9e69255
-2026-09-04-agent-team-collaboration-dock.zh.md: d05ff5ce757e8008b91a17ada293a351cbaa8283
+/agent-note-agent-team-right-collaboration-dock:
+  en: 5cb0d052d40aece4
+  zh: 2220fae187ef7616
+/agent-note-agent-team-right-collaboration-dock/problem:
+  en: ffd682176e9b649b
+  zh: e2011d6be2cd9894
+/agent-note-agent-team-right-collaboration-dock/decision:
+  en: 0d616402e4dbfe87
+  zh: 6dacd1bcbe5781ca
+/agent-note-agent-team-right-collaboration-dock/alternatives-considered:
+  en: eaa8a2e55ad00923
+  zh: da48c84d19718731
+/agent-note-agent-team-right-collaboration-dock/consequences:
+  en: d1c37abe4eabb5e3
+  zh: 22034d17273299f5
+/agent-note-agent-team-right-collaboration-dock/verification:
+  en: 80937328f4f7b240
+  zh: f88454c968d631e0

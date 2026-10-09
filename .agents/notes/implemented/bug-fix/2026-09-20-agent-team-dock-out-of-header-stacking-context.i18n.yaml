@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-20-agent-team-dock-out-of-header-stacking-context.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-20-agent-team-dock-out-of-header-stacking-context.md
-2026-09-20-agent-team-dock-out-of-header-stacking-context.md: 6c9e1b050e15a3069f27c815b74f6d9e127e6bef
-2026-09-20-agent-team-dock-out-of-header-stacking-context.zh.md: 084b7b2b8e58f75e657b587912033951dcedc79e
+/agent-note-the-agent-team-dock-escapes-the-conversation-header-stacking-context:
+  en: 415380ee7f926669
+  zh: 6ea29c673c13584a
+/agent-note-the-agent-team-dock-escapes-the-conversation-header-stacking-context/problem:
+  en: 54ab4113c33c2f53
+  zh: 59152082aa49141d
+/agent-note-the-agent-team-dock-escapes-the-conversation-header-stacking-context/decision:
+  en: 8bcf5cd506075ac6
+  zh: 70c34ef70e3643d0
+/agent-note-the-agent-team-dock-escapes-the-conversation-header-stacking-context/alternatives-considered:
+  en: 3f1d1f3606087d52
+  zh: f6ed580a213391bc
+/agent-note-the-agent-team-dock-escapes-the-conversation-header-stacking-context/consequences:
+  en: bd40c6ac22809565
+  zh: bb0cb162ecd66c68

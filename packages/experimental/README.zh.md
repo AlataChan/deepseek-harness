@@ -39,7 +39,7 @@ kind: "package-group"
 <a id="related-documentation"></a>
 ## 相关文档
 
-- [实验包决策](../../.agents/notes/implemented/architecture/2026-08-18-experimental-agent-teams-packages.zh.md)——位置、发布排除与依赖隔离。
+- [实验包决策](../../.agents/notes/archived/architecture/2026-08-18-experimental-agent-teams-packages.md)——位置、发布排除与依赖隔离。
 - [Agent Teams 子系统](../../docs/subsystems/agent-team.zh.md)——持久 Team 类型与 `ctx.agentTeams` 服务 API。
 - [实验子树规则](AGENTS.md)——实验状态放宽了什么、不放宽什么。
 

@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-agent-team-archify-autofill-preview.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-agent-team-archify-autofill-preview.md
-2026-09-04-agent-team-archify-autofill-preview.md: bbe3c22bcb4625331ea173cff86a087ec5a35b3f
-2026-09-04-agent-team-archify-autofill-preview.zh.md: 8e4c81ecddcd372454c8afd3c1c46628915ac652
+/agent-note-archify-summary-path-autofill-and-preview-loop:
+  en: 69cf03d2631a3c37
+  zh: 65fc34ddb348daf2
+/agent-note-archify-summary-path-autofill-and-preview-loop/problem:
+  en: df98305fddd351b3
+  zh: 5f60cdfbc064997f
+/agent-note-archify-summary-path-autofill-and-preview-loop/decision:
+  en: cdb2c4a23cca14c2
+  zh: 82d51073b6e4aced
+/agent-note-archify-summary-path-autofill-and-preview-loop/alternatives-considered:
+  en: 59eaf4557cd6cbff
+  zh: a803164c439c7f74
+/agent-note-archify-summary-path-autofill-and-preview-loop/consequences:
+  en: 04e0b19f8df5c6dd
+  zh: 3e73232c01ed2546
+/agent-note-archify-summary-path-autofill-and-preview-loop/verification:
+  en: 80937328f4f7b240
+  zh: 80937328f4f7b240

@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-16-desktop-knowledge-picker-dismiss-and-reject-heal.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-16-desktop-knowledge-picker-dismiss-and-reject-heal.md
-2026-09-16-desktop-knowledge-picker-dismiss-and-reject-heal.md: 87b72c78637d17ffa84cb34e1999730aecdf2d92
-2026-09-16-desktop-knowledge-picker-dismiss-and-reject-heal.zh.md: d8d3c945c804c9d90e385a78d98c65bed25dc21e
+/agent-note-desktop-knowledge-picker-dismisses-and-page-meta-rejections-heal:
+  en: 4677d401e456273a
+  zh: 796559b7583ec11d
+/agent-note-desktop-knowledge-picker-dismisses-and-page-meta-rejections-heal/problem:
+  en: afc79b25bcb0d74b
+  zh: b97c399ba48337ba
+/agent-note-desktop-knowledge-picker-dismisses-and-page-meta-rejections-heal/decision:
+  en: 69d15152113d3536
+  zh: 4ead5830e5215f1b
+/agent-note-desktop-knowledge-picker-dismisses-and-page-meta-rejections-heal/alternatives-considered:
+  en: 4adc26af5041466f
+  zh: 7a10bd2b6fd2fbb5
+/agent-note-desktop-knowledge-picker-dismisses-and-page-meta-rejections-heal/consequences:
+  en: 5fe5a9ac1b1fd092
+  zh: 6db743333de03d47

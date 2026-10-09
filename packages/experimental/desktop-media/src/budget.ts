@@ -8,7 +8,9 @@ import type { MediaProjectionState } from './types.ts'
 
 /** Tunable spend limits from plugin config. */
 export interface MediaBudgetConfig {
+  /** Maximum paid provider calls one session may start. */
   readonly maxPaidCallsPerSession: number
+  /** Maximum estimated spend in yuan one session may reach. */
   readonly maxEstimatedSpendYuan: number
 }
 

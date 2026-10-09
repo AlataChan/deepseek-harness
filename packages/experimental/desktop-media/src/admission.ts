@@ -13,7 +13,9 @@ import type { MediaArtifactRecord, MediaWorkKind } from './types.ts'
 
 /** Import limits from plugin config. */
 export interface ImportLimits {
+  /** Maximum imported file size in bytes. */
   readonly maxFileBytes: number
+  /** Maximum imported clip duration in seconds. */
   readonly maxClipDurationSeconds: number
 }
 

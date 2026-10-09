@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-16-knowledge-ingest-lint-rejections.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-16-knowledge-ingest-lint-rejections.md
-2026-09-16-knowledge-ingest-lint-rejections.md: 9ba3a823ff462071511a90650e7126881c4f2f70
-2026-09-16-knowledge-ingest-lint-rejections.zh.md: 020569c254cf68c2a0637446670f8694881f2f15
+/agent-note-knowledge-ingest-stops-rejecting-multi-page-proposals:
+  en: f907f6ddec1c9b31
+  zh: f93d3146e6874ff1
+/agent-note-knowledge-ingest-stops-rejecting-multi-page-proposals/problem:
+  en: 55f58b321c6b5947
+  zh: 77db2c2927000810
+/agent-note-knowledge-ingest-stops-rejecting-multi-page-proposals/decision:
+  en: e92fcbb9417ce612
+  zh: e6f4585971e6c5e6
+/agent-note-knowledge-ingest-stops-rejecting-multi-page-proposals/alternatives-considered:
+  en: 505141abbe55f29b
+  zh: c6fab42fce29edd2
+/agent-note-knowledge-ingest-stops-rejecting-multi-page-proposals/consequences:
+  en: e2d2edc6be2c334b
+  zh: f3479c59d23cb232

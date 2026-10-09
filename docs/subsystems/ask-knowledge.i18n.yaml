@@ -1,6 +1,10 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for ask-knowledge.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/ask-knowledge.md
-ask-knowledge.md: 52e962ab135e0661908034a3350f87fb84531b58
-ask-knowledge.zh.md: affc294aa9ca5849540638ecdd52a8ae3b7c1cca
+/ask-knowledge-seam:
+  en: a5296dbb9d8d6808
+  zh: eb659eef1006f8e0
+/ask-knowledge-seam/durable-events:
+  en: f6a8b425486ff329
+  zh: 4b012e7894a8909a

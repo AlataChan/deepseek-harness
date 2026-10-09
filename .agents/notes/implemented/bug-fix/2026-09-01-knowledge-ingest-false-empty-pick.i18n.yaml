@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-01-knowledge-ingest-false-empty-pick.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-01-knowledge-ingest-false-empty-pick.md
-2026-09-01-knowledge-ingest-false-empty-pick.md: 48139f21c1e17985f7690bdedbeed27beee54b87
-2026-09-01-knowledge-ingest-false-empty-pick.zh.md: 1fd4da9bf502ba7e5558bdea427c497a2c5f91a7
+/agent-note-knowledge-ingest-false-empty-pick-and-rejected-apply:
+  en: eecf8fe6a0859f66
+  zh: f81f32d80535031a
+/agent-note-knowledge-ingest-false-empty-pick-and-rejected-apply/problem:
+  en: 6df6dd4b88445b17
+  zh: 96a7d8f202bbe5de
+/agent-note-knowledge-ingest-false-empty-pick-and-rejected-apply/decision:
+  en: 82340d93fd4e6b9f
+  zh: 44bcfb4759d566c4
+/agent-note-knowledge-ingest-false-empty-pick-and-rejected-apply/alternatives-considered:
+  en: b631e055a872496d
+  zh: 7422941666fa1484
+/agent-note-knowledge-ingest-false-empty-pick-and-rejected-apply/consequences:
+  en: d29052ed6aa0f18e
+  zh: 50d4da60da11dcdd

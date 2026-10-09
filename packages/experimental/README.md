@@ -39,7 +39,7 @@ The experimental group contains prototype capabilities that are not part of any 
 <a id="related-documentation"></a>
 ## Related documentation
 
-- [Experimental package decision](../../.agents/notes/implemented/architecture/2026-08-18-experimental-agent-teams-packages.md) — placement, release exclusion, and dependency isolation.
+- [Experimental package decision](../../.agents/notes/archived/architecture/2026-08-18-experimental-agent-teams-packages.md) — placement, release exclusion, and dependency isolation.
 - [Agent Teams subsystem](../../docs/subsystems/agent-team.md) — durable Team types and the `ctx.agentTeams` service API.
 - [Experimental subtree rules](AGENTS.md) — what experimental status does and does not relax.
 

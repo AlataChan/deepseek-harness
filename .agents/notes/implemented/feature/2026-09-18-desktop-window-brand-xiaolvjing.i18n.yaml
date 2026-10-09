@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-18-desktop-window-brand-xiaolvjing.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-18-desktop-window-brand-xiaolvjing.md
-2026-09-18-desktop-window-brand-xiaolvjing.md: 453a13b77b4591283c9fa23abecdbb8826a83ba0
-2026-09-18-desktop-window-brand-xiaolvjing.zh.md: 6de3605b567f9f0f7e9c4f96e2c066853e7559e4
+/agent-note-octopus-dsh-window-brand-is:
+  en: a8c0437fbe6dcff0
+  zh: e3c85501f47e4884
+/agent-note-octopus-dsh-window-brand-is/problem:
+  en: fdec20f4fcc8fb0c
+  zh: ecc6ce5b7cae998e
+/agent-note-octopus-dsh-window-brand-is/decision:
+  en: 97c6d05712a028ca
+  zh: 0f3a80e3f0f894b4
+/agent-note-octopus-dsh-window-brand-is/alternatives-considered:
+  en: 3a83083f59e64911
+  zh: 4e2435da39c4f037
+/agent-note-octopus-dsh-window-brand-is/consequences:
+  en: 680b3ec9ff6188f5
+  zh: 20503691ecf6f586
+/agent-note-octopus-dsh-window-brand-is/testing:
+  en: fedb56e3ee29b71e
+  zh: fa5b7d9202b5d739

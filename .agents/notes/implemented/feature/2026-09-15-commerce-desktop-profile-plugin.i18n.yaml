@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-15-commerce-desktop-profile-plugin.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-15-commerce-desktop-profile-plugin.md
-2026-09-15-commerce-desktop-profile-plugin.md: fb952ec4f69b58d4a30f7a23bccef586533ac091
-2026-09-15-commerce-desktop-profile-plugin.zh.md: 7bdd5eb7b861ed72983ea81f251a555d6344f909
+/agent-note-ship-commerce-mode-into-the-octopus-dsh-desktop-profile-plugins:
+  en: e0d27f864b6b4eea
+  zh: 5a49d68c17f7089a
+/agent-note-ship-commerce-mode-into-the-octopus-dsh-desktop-profile-plugins/problem:
+  en: 623a08ae9e092bdd
+  zh: bc4f5e9ee1b32c3b
+/agent-note-ship-commerce-mode-into-the-octopus-dsh-desktop-profile-plugins/decision:
+  en: 15afff951bc23e39
+  zh: 7c81e1eb73ff4506
+/agent-note-ship-commerce-mode-into-the-octopus-dsh-desktop-profile-plugins/alternatives-considered:
+  en: 4431073e9356ef08
+  zh: db75fe4d468e2aa3
+/agent-note-ship-commerce-mode-into-the-octopus-dsh-desktop-profile-plugins/consequences:
+  en: 92bccc28f0f2e136
+  zh: 208301c45f45ca75

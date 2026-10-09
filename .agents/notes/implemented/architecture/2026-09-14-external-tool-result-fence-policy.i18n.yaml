@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-14-external-tool-result-fence-policy.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-14-external-tool-result-fence-policy.md
-2026-09-14-external-tool-result-fence-policy.md: 6a446c1106d5fe259e727164867df397cd055af8
-2026-09-14-external-tool-result-fence-policy.zh.md: 09b5062b66852ab24229da8df655f24d85531d84
+/agent-note-external-tool-result-fencing-uses-targeted-structural-escaping:
+  en: 702932ac5f4a455f
+  zh: 1260138ca246f7e5
+/agent-note-external-tool-result-fencing-uses-targeted-structural-escaping/problem:
+  en: 0b4354fe3406bfd6
+  zh: 3159df372478ded5
+/agent-note-external-tool-result-fencing-uses-targeted-structural-escaping/decision:
+  en: 59c8b9afee390d6b
+  zh: 56d6d82d998d2cbf
+/agent-note-external-tool-result-fencing-uses-targeted-structural-escaping/alternatives-considered:
+  en: bd8e5b1af118a809
+  zh: 7517d9f57be2873e
+/agent-note-external-tool-result-fencing-uses-targeted-structural-escaping/consequences:
+  en: 180c0dde7ab7d493
+  zh: 091e43a513be287c

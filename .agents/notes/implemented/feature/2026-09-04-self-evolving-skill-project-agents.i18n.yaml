@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-self-evolving-skill-project-agents.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-self-evolving-skill-project-agents.md
-2026-09-04-self-evolving-skill-project-agents.md: c865f7fbd0c5e87e3956751dd6975fa71c435ad8
-2026-09-04-self-evolving-skill-project-agents.zh.md: 9ff9b7b6eef4ca37f0fd40ae249ec43e27b661f5
+/agent-note-ship-self-evolving-skill-into-project-agents:
+  en: 230d6f9434bccb79
+  zh: 6b48562304eae671
+/agent-note-ship-self-evolving-skill-into-project-agents/problem:
+  en: b4619a0f170cfc8d
+  zh: ffcd2d3b09c9986e
+/agent-note-ship-self-evolving-skill-into-project-agents/decision:
+  en: dcdf39f7300ac621
+  zh: 86a4a389fb2a4b26
+/agent-note-ship-self-evolving-skill-into-project-agents/alternatives-considered:
+  en: 2c874f77ed3051a9
+  zh: eaa0aaf19a9a3b49
+/agent-note-ship-self-evolving-skill-into-project-agents/consequences:
+  en: 2ab82fa3404c975b
+  zh: 3176e8464a37bc8a

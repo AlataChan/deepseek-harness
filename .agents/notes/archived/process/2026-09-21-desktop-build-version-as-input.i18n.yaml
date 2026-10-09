@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/archived/process/2026-09-21-desktop-build-version-as-input.md
 2026-09-21-desktop-build-version-as-input.md: 8175d41166666be5ee5070a75e6fe23eb00c73fd
-2026-09-21-desktop-build-version-as-input.zh.md: 076492a02be2fcb1cf4aea1345cdd5479173392a
+2026-09-21-desktop-build-version-as-input.zh.md: bd712bc9777f177c79bf896c9897ca312390a9d3

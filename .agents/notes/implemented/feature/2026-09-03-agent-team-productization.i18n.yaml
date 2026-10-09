@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-03-agent-team-productization.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-03-agent-team-productization.md
-2026-09-03-agent-team-productization.md: 07a7bc8486faa9933a21faa620b12c205c9abee2
-2026-09-03-agent-team-productization.zh.md: b647f9161463696f961b601b49950ac0a4de6f6a
+/agent-note-agent-team-productization-promotion-org-view-and-permission-model:
+  en: 1b2a8c9a92ac3d3c
+  zh: 21d509d6ede09a2b
+/agent-note-agent-team-productization-promotion-org-view-and-permission-model/problem:
+  en: 18512c2d435e90cb
+  zh: aabb3e97cc7cf5d7
+/agent-note-agent-team-productization-promotion-org-view-and-permission-model/decision:
+  en: 02eb0e76edd56192
+  zh: 494af3c4ee890a3b
+/agent-note-agent-team-productization-promotion-org-view-and-permission-model/alternatives-considered:
+  en: 059d55026130ceb2
+  zh: 70d32413f939c4d1
+/agent-note-agent-team-productization-promotion-org-view-and-permission-model/consequences:
+  en: 344f2e392816e040
+  zh: 1dae17b2319c3585

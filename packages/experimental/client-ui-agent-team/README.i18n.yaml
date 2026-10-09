@@ -3,41 +3,44 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/client-ui-agent-team/README.md
 /:
-  en: 6deb254c416ff51b
-  zh: e0913c7be837da78
+  en: 06102211d3251ba1
+  zh: c8b47a8ff3e65d46
 /deepseek-ai-dsh-experimental-client-ui-agent-team:
   en: 447e3c2bbf1ea3c6
   zh: 25bba08497976d12
 /deepseek-ai-dsh-experimental-client-ui-agent-team/summary:
-  en: a30d7bbb951ed3ec
-  zh: 8b12eca1138820f0
+  en: 1bd3863dff87b800
+  zh: 0827393b1486859f
 /deepseek-ai-dsh-experimental-client-ui-agent-team/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /deepseek-ai-dsh-experimental-client-ui-agent-team/use-this-package:
-  en: ba021754d3ae6d9e
-  zh: 18017b40f13e6ffd
+  en: dc5cd402d0ef1144
+  zh: 09e289166788797f
+/deepseek-ai-dsh-experimental-client-ui-agent-team/use-this-package/dispatch-a-standing-institution-squad:
+  en: eb325fe1e38eb4a5
+  zh: 39a4a9a211d1813d
 /deepseek-ai-dsh-experimental-client-ui-agent-team/use-this-package/inspect-and-navigate-the-roster:
-  en: 62778e911a4ee9e9
-  zh: dff1dbbc3d5e4af6
-/deepseek-ai-dsh-experimental-client-ui-agent-team/use-this-package/inspect-the-task-board:
-  en: cf09faa436dad9fd
-  zh: e7423f4111eb88f9
+  en: 1a34fc011272e33b
+  zh: 0733f11710dcf41b
+/deepseek-ai-dsh-experimental-client-ui-agent-team/use-this-package/manage-the-task-board:
+  en: 69c8bb2b1a39e393
+  zh: 266fb8f7f7da05ab
 /deepseek-ai-dsh-experimental-client-ui-agent-team/understand-the-implementation:
-  en: 3ea723e7ea467be7
-  zh: dba02b20bef0fd7f
+  en: b24dcd664cedf7eb
+  zh: 580f4e70374c44e0
 /deepseek-ai-dsh-experimental-client-ui-agent-team/further-exploration:
-  en: 71ac041029c64d5a
-  zh: fef2e4c5dccb8d1b
+  en: 09c8a58335bc4f3d
+  zh: 0044a06d437a06ed
 /deepseek-ai-dsh-experimental-client-ui-agent-team/model-experience:
-  en: 47ebeba07d72759d
-  zh: 8fe8133f6dd845a9
+  en: c03f022db4cf84d9
+  zh: 319a849ae70bb008
 /deepseek-ai-dsh-experimental-client-ui-agent-team/model-experience/kv-cache-effect:
   en: b51b320f5e4dacfc
   zh: 6695947c3f9fed28
 /deepseek-ai-dsh-experimental-client-ui-agent-team/known-limitations-and-deferred-work:
-  en: 254e4aa2f81037d2
-  zh: 3cdf19dffafb51df
+  en: f0f4db641f96940d
+  zh: a6154ccb6c3b378e
 /deepseek-ai-dsh-experimental-client-ui-agent-team/known-limitations-and-deferred-work/dev-note:
-  en: e67f633dc6fe7773
-  zh: 3bb0c20c93f16f98
+  en: b17523238daa330d
+  zh: 04e49d7434e0c338

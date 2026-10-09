@@ -1,6 +1,34 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/host/commerce/README.md
-README.md: 91adb63d368897181d6f3e5ba48839ff9adabe8f
-README.zh.md: 2550d8eb4fef18bbe54d5d4c796090ec7480933c
+/:
+  en: 010836ed2d4bc3c1
+  zh: 655035331dbd9e9f
+/deepseek-ai-dsh-host-commerce:
+  en: ab274a7ec58db462
+  zh: 0ca58fcc0b46d64d
+/deepseek-ai-dsh-host-commerce/summary:
+  en: f10802c1bf87f7ca
+  zh: f047943fb1c5b12b
+/deepseek-ai-dsh-host-commerce/table-of-contents:
+  en: 257701b6850ffbfd
+  zh: ecd50ed24629f9f0
+/deepseek-ai-dsh-host-commerce/use-this-package:
+  en: 9f08e5ed9d134d6f
+  zh: 6b52635e07c57be8
+/deepseek-ai-dsh-host-commerce/understand-the-implementation:
+  en: 80cccc93523e33e4
+  zh: 9d434e5cf21a8419
+/deepseek-ai-dsh-host-commerce/dev-note:
+  en: 1405c48ebb59256e
+  zh: 1856b53c30669d37
+/deepseek-ai-dsh-host-commerce/model-experience:
+  en: 82e3ce1b11047d15
+  zh: 9c8f34a7dc70ceff
+/deepseek-ai-dsh-host-commerce/model-experience/kv-cache-effect:
+  en: 4ddf239cb383bcdf
+  zh: caf43d60d485c37d
+/deepseek-ai-dsh-host-commerce/known-limitations-and-deferred-work:
+  en: 62314f8b758b2aae
+  zh: 7137ea50ecb596fc

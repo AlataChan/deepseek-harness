@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-agent-team-entry-c.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-agent-team-entry-c.md
-2026-09-04-agent-team-entry-c.md: 82bdd1e8dc5c9ca82147d5f27c1b9457fc79a7d2
-2026-09-04-agent-team-entry-c.zh.md: 8e3f08c7aab0f52396902dcabd3059e30d94fccf
+/agent-note-shallower-agent-team-header-entry-option-c:
+  en: 91b962dedb15943b
+  zh: 3a405c6b6e7c1cc2
+/agent-note-shallower-agent-team-header-entry-option-c/problem:
+  en: 911668255a6ff63d
+  zh: 5006ad15f267d77c
+/agent-note-shallower-agent-team-header-entry-option-c/decision:
+  en: e8f58599331a5244
+  zh: c695ed3915000837
+/agent-note-shallower-agent-team-header-entry-option-c/alternatives-considered:
+  en: 2404522304ee927c
+  zh: aa4046be1a5be835
+/agent-note-shallower-agent-team-header-entry-option-c/consequences:
+  en: bbddedd15e2c7ca6
+  zh: 54f0a8dea40ec572

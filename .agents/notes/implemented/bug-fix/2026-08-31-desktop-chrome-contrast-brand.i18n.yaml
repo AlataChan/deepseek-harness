@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-31-desktop-chrome-contrast-brand.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-31-desktop-chrome-contrast-brand.md
-2026-08-31-desktop-chrome-contrast-brand.md: d9b22b8606033f4e7ad84eb7616a039957743cf7
-2026-08-31-desktop-chrome-contrast-brand.zh.md: 3e36eb511d38a508ff518df0b8bfea14a48fb3cb
+/agent-note-desktop-ask-data-contrast-settings-gutter-leaf-whale-mark:
+  en: 2051077095363a09
+  zh: c482e5b29a050e89
+/agent-note-desktop-ask-data-contrast-settings-gutter-leaf-whale-mark/problem:
+  en: 8f3c1c23818d6b3f
+  zh: ebef1b796afd7128
+/agent-note-desktop-ask-data-contrast-settings-gutter-leaf-whale-mark/decision:
+  en: 1404f1ffb90b0eb2
+  zh: ce50557d0effa49a
+/agent-note-desktop-ask-data-contrast-settings-gutter-leaf-whale-mark/alternatives-considered:
+  en: ad4cef4f99d2365b
+  zh: c05857020633d62a
+/agent-note-desktop-ask-data-contrast-settings-gutter-leaf-whale-mark/consequences:
+  en: 7ee13caf73a89f0e
+  zh: 3d6f0f7c5c4bd0af

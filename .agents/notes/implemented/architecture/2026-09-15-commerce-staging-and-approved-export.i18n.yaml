@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-15-commerce-staging-and-approved-export.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-15-commerce-staging-and-approved-export.md
-2026-09-15-commerce-staging-and-approved-export.md: e3beced62b288a5dc390a4015c4c6905a84a6474
-2026-09-15-commerce-staging-and-approved-export.zh.md: 26c2262ceb4f56c106a0a7c58e30e8817be59fd8
+/agent-note-commerce-changes-are-staged-in-a-replayed-ledger-and-leave-the-session-only-through-an-approved-workspace-export:
+  en: 144fa71775d0e9af
+  zh: a08cdaa5922e0405
+/agent-note-commerce-changes-are-staged-in-a-replayed-ledger-and-leave-the-session-only-through-an-approved-workspace-export/problem:
+  en: c4e304f9da28f1c6
+  zh: 088853397ad29f87
+/agent-note-commerce-changes-are-staged-in-a-replayed-ledger-and-leave-the-session-only-through-an-approved-workspace-export/decision:
+  en: c54f4a2ce5940261
+  zh: 404bc3012da1a363
+/agent-note-commerce-changes-are-staged-in-a-replayed-ledger-and-leave-the-session-only-through-an-approved-workspace-export/alternatives-considered:
+  en: cb731cb1e7bf3955
+  zh: b9a0d0743ce2cc54
+/agent-note-commerce-changes-are-staged-in-a-replayed-ledger-and-leave-the-session-only-through-an-approved-workspace-export/consequences:
+  en: 3c37604319445e46
+  zh: ec603609fc338e66

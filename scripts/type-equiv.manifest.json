@@ -424,21 +424,6 @@
     },
     {
       "doc": "docs/subsystems/agent-team.md",
-      "symbol": "TeamMemberProjection",
-      "source": "packages/experimental/agent-team/src/types.ts"
-    },
-    {
-      "doc": "docs/subsystems/agent-team.md",
-      "symbol": "TeamTaskView",
-      "source": "packages/experimental/agent-team/src/types.ts"
-    },
-    {
-      "doc": "docs/subsystems/agent-team.md",
-      "symbol": "TeamProjection",
-      "source": "packages/experimental/agent-team/src/types.ts"
-    },
-    {
-      "doc": "docs/subsystems/agent-team.md",
       "symbol": "InstitutionSquadView",
       "source": "packages/experimental/agent-team/src/types.ts"
     },

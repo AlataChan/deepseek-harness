@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-31-desktop-ask-data-single-start.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-31-desktop-ask-data-single-start.md
-2026-08-31-desktop-ask-data-single-start.md: d9f0e170d43f9165472620d9eefbe5c8eec1fa39
-2026-08-31-desktop-ask-data-single-start.zh.md: 948f00d5d0234fdb5850e00b041c36a0dc016ce1
+/agent-note-ask-data-shows-one-start-control-after-a-pick:
+  en: ae0e4131d0c9c4bd
+  zh: c9296b5baedd424f
+/agent-note-ask-data-shows-one-start-control-after-a-pick/problem:
+  en: 80be49a4be4aa427
+  zh: 62bc934261a94658
+/agent-note-ask-data-shows-one-start-control-after-a-pick/decision:
+  en: 9675a4dcfc5b5767
+  zh: bd1c0d4caf673ad4
+/agent-note-ask-data-shows-one-start-control-after-a-pick/alternatives-considered:
+  en: 97f025a66c829cb6
+  zh: 866d0ff7695a9951
+/agent-note-ask-data-shows-one-start-control-after-a-pick/consequences:
+  en: b3a256d61624c498
+  zh: 7a99bb70856764e7

@@ -1,6 +1,40 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/desktop-hero-atmosphere/README.md
-README.md: 34644e1fb3200b0babdfdcb9e00e408ca014184f
-README.zh.md: e2ab33b9347c2b18c89ca1dee1a27bfa64ef4d79
+/:
+  en: 5f71b4e8e5f98f9e
+  zh: 4eb46ff3fb55fdc9
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere:
+  en: f227d75bba427ae5
+  zh: 6da80893b4fa155d
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/summary:
+  en: d8b807dd5ad9d7c2
+  zh: 86efab8cd0282ac3
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: f14f34fce35a8d90
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/use-this-package:
+  en: 9f7928e339222dd3
+  zh: 1bf182b5b2d62097
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/use-this-package/what-you-get:
+  en: 13321c843f8a5f6c
+  zh: ba6cf67afa2cb7a0
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/understand-the-implementation:
+  en: 9a5a1d201d88ba32
+  zh: 0f1520b80424e4c1
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/further-exploration:
+  en: f9f6272a36193a90
+  zh: 3aba5ddffc2b2c53
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/model-experience:
+  en: 31285075d9c44b4f
+  zh: 4723680f0764076c
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: 2fc0b387d8941a9c
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/known-limitations-and-deferred-work:
+  en: a13250b1e8cef16d
+  zh: 6dbf49c0c8202217
+/deepseek-ai-dsh-experimental-desktop-hero-atmosphere/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

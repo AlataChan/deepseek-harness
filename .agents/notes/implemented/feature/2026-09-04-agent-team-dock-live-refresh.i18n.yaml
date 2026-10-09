@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-agent-team-dock-live-refresh.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-agent-team-dock-live-refresh.md
-2026-09-04-agent-team-dock-live-refresh.md: d39fe5acb9a4df69b5853564b578f194223266b8
-2026-09-04-agent-team-dock-live-refresh.zh.md: 668c459ee5dec309f29c3e4b39c976b682bb8d66
+/agent-note-agent-team-dock-live-soft-refresh-and-durable-message-edges:
+  en: 70cb3394bca16501
+  zh: 5f7e8fed34f6ff25
+/agent-note-agent-team-dock-live-soft-refresh-and-durable-message-edges/problem:
+  en: 11619a9dd74950df
+  zh: cdfc59df39b60b3a
+/agent-note-agent-team-dock-live-soft-refresh-and-durable-message-edges/decision:
+  en: 797d93ab191203b4
+  zh: 0a7f447b8f737d51
+/agent-note-agent-team-dock-live-soft-refresh-and-durable-message-edges/alternatives-considered:
+  en: 0316a28fd67e42f4
+  zh: 89d4ba47bc91a6ea
+/agent-note-agent-team-dock-live-soft-refresh-and-durable-message-edges/consequences:
+  en: dff2f86b3d29ed82
+  zh: a146ac4d589711ce
+/agent-note-agent-team-dock-live-soft-refresh-and-durable-message-edges/verification:
+  en: 80937328f4f7b240
+  zh: f88454c968d631e0

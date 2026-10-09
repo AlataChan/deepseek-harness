@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-agent-team-live-topology.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-agent-team-live-topology.md
-2026-09-04-agent-team-live-topology.md: b2c8e3e46722a338ecc1c6e789c6be3625f35181
-2026-09-04-agent-team-live-topology.zh.md: 149009d1ab92ed27e878b78ca2f462da9ecbc032
+/agent-note-team-panel-live-collaboration-topology:
+  en: 6bbfc3de1a16227d
+  zh: 0ab4c021015b44d5
+/agent-note-team-panel-live-collaboration-topology/problem:
+  en: 975e8bbe8038875e
+  zh: c3874470f7f786b3
+/agent-note-team-panel-live-collaboration-topology/decision:
+  en: 0803042e4a2bec8f
+  zh: e6af63d0e0f0e7d4
+/agent-note-team-panel-live-collaboration-topology/alternatives-considered:
+  en: f76ee2e3fcf43afd
+  zh: 706e14756866e872
+/agent-note-team-panel-live-collaboration-topology/consequences:
+  en: 345f6c34a2d748b4
+  zh: fae41fe1c61f5706

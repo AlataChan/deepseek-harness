@@ -18,7 +18,7 @@
 
 - `inject`: `agents` · `llm` · `sessionPersistence` · `sessions`
 - `refs`: `Stream` (`@agentclientprotocol/sdk`)
-- `source`: [`packages/acp/acp/src/index.ts:75`](../packages/acp/acp/src/index.ts)
+- `source`: [`packages/acp/acp/src/index.ts:77`](../packages/acp/acp/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the provider/model selection used for each ACP-created agent. */
@@ -224,7 +224,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-api-session-controller`
 
 - `inject`: `agentDefaultModel` · `agents` · `attachments` · `fileUploads` · `fs` · `llm` · `sessions` · `sessionProjections` · `sessionQuery` · `typert` · `workspaceRegistry`
-- `source`: [`packages/api/session-controller/src/index.ts:79`](../packages/api/session-controller/src/index.ts)
+- `source`: [`packages/api/session-controller/src/index.ts:139`](../packages/api/session-controller/src/index.ts)
 
 ```ts config-catalog
 /** Session Controller deployment policy. */
@@ -480,6 +480,25 @@ export interface ConnectionRecoveryConfig {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-client-connection -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-client-connection-process -->
+<a id="deepseek-aidsh-client-connection-process"></a>
+
+## `@deepseek-ai/dsh-client-connection-process`
+
+- `inject`: `connection` · `clientModules` · `typertGateway`
+- `source`: [`packages/client/connection-process/src/index.ts:29`](../packages/client/connection-process/src/index.ts)
+
+```ts config-catalog
+/** Companion carrier configuration. */
+export interface Config {
+  /** Maximum logical bytes accepted for RPC and stream-data frames. */
+  maxLogicalRpcBytes?: number
+  /** Workspace root the handshake must repeat exactly after path normalization. */
+  workspaceRoot?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-client-connection-process -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-client-hmr -->
 <a id="deepseek-aidsh-client-hmr"></a>
 
@@ -496,26 +515,6 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-client-hmr -->
-
-<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-client-product-analytics -->
-<a id="deepseek-aidsh-client-product-analytics"></a>
-
-## `@deepseek-ai/dsh-client-product-analytics`
-
-- `inject`: `deepseekAccount` · `productTelemetry`
-- `refs`: `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/client/product-analytics/src/index.ts:14`](../packages/client/product-analytics/src/index.ts)
-
-```ts config-catalog
-/** Application-owned collection policy; no user settings surface. */
-export interface Config {
-  /** Live application collection policy; ordinary Web does not mount this service. */
-  enabled: Volatile<boolean>
-  /** Running Desktop release, absent when unavailable. */
-  appVersion?: string
-}
-```
-<!-- END GENERATED config-catalog:@deepseek-ai/dsh-client-product-analytics -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-client-shortcuts -->
 <a id="deepseek-aidsh-client-shortcuts"></a>
@@ -827,13 +826,31 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-deepseek-account-platform -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-desktop-app -->
+<a id="deepseek-aidsh-desktop-app"></a>
+
+## `@deepseek-ai/dsh-desktop-app`
+
+- `source`: [`packages/bundle/desktop-app/src/index.ts:20`](../packages/bundle/desktop-app/src/index.ts)
+
+```ts config-catalog
+/** Desktop runtime configuration derived from the startup provider. */
+export interface Config {
+  /** Absolute workspace root selected by the desktop shell. */
+  workspaceRoot: string
+  /** Whether to register model-visible desktop surface orientation. */
+  surfaceContext: boolean
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-desktop-app -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-agent-team -->
 <a id="deepseek-aidsh-experimental-agent-team"></a>
 
 ## `@deepseek-ai/dsh-experimental-agent-team`
 
 - `inject`: `agents` · `sessions` · `sessionPersistence` · `sessionProjections` · `subagents`
-- `source`: [`packages/experimental/agent-team/src/types.ts:152`](../packages/experimental/agent-team/src/types.ts)
+- `source`: [`packages/experimental/agent-team/src/types.ts:183`](../packages/experimental/agent-team/src/types.ts)
 
 ```ts config-catalog
 /** Team-service deployment limits. */
@@ -848,6 +865,13 @@ export interface Config {
   readonly maxMessageBytes?: number
   /** Maximum milliseconds allowed for Team-owned runtime disposal. */
   readonly disposalTimeoutMs?: number
+  /**
+   * Absolute path of the institution-squad catalog JSON.
+   * Empty or omitted uses `$DSH_HOME/institution-squads.json`.
+   */
+  readonly institutionCatalogPath?: string
+  /** Continuable-subagent provider used when the Host provisions standing seats. */
+  readonly institutionFreshProvider?: string
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-agent-team -->
@@ -992,6 +1016,126 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-ask-data -->
+<a id="deepseek-aidsh-experimental-desktop-ask-data"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-ask-data`
+
+- `inject`: `sessionProjections` · `systemPrompt`
+- `source`: [`packages/experimental/desktop-ask-data/src/index.ts:24`](../packages/experimental/desktop-ask-data/src/index.ts)
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface Config {
+  /**
+   * Absolute data-sources directory. When omitted, uses the companion-resolved
+   * profile home: `{dshHome}/profiles/desktop/data-sources`.
+   */
+  dataHome?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-ask-data -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-ask-knowledge -->
+<a id="deepseek-aidsh-experimental-desktop-ask-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-ask-knowledge`
+
+- `inject`: `sessionProjections` · `systemPrompt`
+- `source`: [`packages/experimental/desktop-ask-knowledge/src/index.ts:57`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface Config extends AskKnowledgeHomeConfig {
+  /** Ceiling of one ingest file in bytes after the last chunk is joined. */
+  readonly maxIngestBytes?: number
+  /** Maximum retrieve items kept in the full tool result. */
+  readonly maxResultItems?: number
+  /** Maximum retrieve characters kept in the full tool result. */
+  readonly maxResultChars?: number
+  /** Maximum retrieve tokens kept in the full tool result. */
+  readonly maxResultTokens?: number
+}
+
+/** Validated plugin configuration. */
+export interface AskKnowledgeHomeConfig {
+  /** Absolute Tauri app-data directory. Empty falls through to `OCTOPUS_APP_DATA`. */
+  readonly knowledgeHome?: string
+  /** Absolute sidecar runtime root. Empty falls through to `OCTOPUS_SIDECAR_HOME`. */
+  readonly sidecarRuntimePath?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-ask-knowledge -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-files -->
+<a id="deepseek-aidsh-experimental-desktop-files"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-files`
+
+- `source`: [`packages/experimental/desktop-files/src/index.ts:14`](../packages/experimental/desktop-files/src/index.ts)
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface Config {
+  /** Complete-result bound of one listing level; see {@link DesktopWorkspaceEntries.Config}. */
+  maxEntries: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-files -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-media -->
+<a id="deepseek-aidsh-experimental-desktop-media"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-media`
+
+- `inject`: `tools` · `jobs` · `sessionProjections` · `systemPrompt` · `sessions`
+- `source`: [`packages/experimental/desktop-media/src/service.ts:42`](../packages/experimental/desktop-media/src/service.ts)
+
+```ts config-catalog
+/** Validated plugin configuration. */
+export interface DesktopMediaConfig extends MediaRuntimeHomeConfig, MediaBudgetConfig, ImportLimits {
+  /** Provider task polling cadence in milliseconds. */
+  readonly pollIntervalMs: number
+  /** Deadline in milliseconds for one provider task to finish. */
+  readonly pollTimeoutMs: number
+  /** Video provider model id sent in create requests. */
+  readonly videoModel: 'MiniMax-H3' | 'MiniMax-H3-Max'
+  /** TTS provider model id sent in speech requests. */
+  readonly ttsModel: string
+  /** Default video duration in seconds when the caller omits one. */
+  readonly defaultDurationSeconds: number
+  /** Default video resolution when the caller omits one. */
+  readonly defaultResolution: '480P' | '768P' | '2K'
+  /** Default aspect ratio when the caller omits one. */
+  readonly defaultRatio: '21:9' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16'
+  /** Maximum clips one compose call may join. */
+  readonly maxClipCount: number
+}
+
+/** Plugin fields that can pin the media-runtime tree. */
+export interface MediaRuntimeHomeConfig {
+  /** Absolute media-runtime root. Empty falls through to `OCTOPUS_MEDIA_HOME`. */
+  readonly mediaRuntimePath?: string
+}
+
+/** Tunable spend limits from plugin config. */
+export interface MediaBudgetConfig {
+  /** Maximum paid provider calls one session may start. */
+  readonly maxPaidCallsPerSession: number
+  /** Maximum estimated spend in yuan one session may reach. */
+  readonly maxEstimatedSpendYuan: number
+}
+
+/** Import limits from plugin config. */
+export interface ImportLimits {
+  /** Maximum imported file size in bytes. */
+  readonly maxFileBytes: number
+  /** Maximum imported clip duration in seconds. */
+  readonly maxClipDurationSeconds: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-media -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-inspector -->
 <a id="deepseek-aidsh-experimental-inspector"></a>
@@ -1213,8 +1357,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-experimental-tool-agent-team`
 
-- `inject`: `agents` · `agentTeams` · `tools` · `systemPrompt`
-- `source`: [`packages/experimental/tool-agent-team/src/index.ts:17`](../packages/experimental/tool-agent-team/src/index.ts)
+- `inject`: `agents` · `agentTeams` · `tools` · `systemPrompt` · `sessionProjections` · `userQuestions`
+- `source`: [`packages/experimental/tool-agent-team/src/index.ts:28`](../packages/experimental/tool-agent-team/src/index.ts)
 
 ```ts config-catalog
 /** Tool routing configuration. */
@@ -1226,6 +1370,25 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-agent-team -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-fence-policy -->
+<a id="deepseek-aidsh-fence-policy"></a>
+
+## `@deepseek-ai/dsh-fence-policy`
+
+- `inject`: `tools` · `systemPrompt`
+- `source`: [`packages/guard/fence-policy/src/index.ts:31`](../packages/guard/fence-policy/src/index.ts)
+
+```ts config-catalog
+/** Required deployment configuration for fenced tool names and mixed results. */
+export interface Config {
+  /** `*`-wildcard tool-name patterns whose root results are fenced. */
+  tools: string[]
+  /** Aggregate UTF-8 cap for text in a result containing any non-text block. */
+  maxMixedTextBytes: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-fence-policy -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-file-reference-local -->
 <a id="deepseek-aidsh-file-reference-local"></a>
@@ -3328,7 +3491,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-system-prompt`
 
-- `source`: [`packages/core/system-prompt/src/index.ts:247`](../packages/core/system-prompt/src/index.ts)
+- `source`: [`packages/core/system-prompt/src/index.ts:248`](../packages/core/system-prompt/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.personaPrefix} for its contract). */
@@ -4416,7 +4579,9 @@ export interface Config {
 | `@deepseek-ai/dsh-experimental-client-ui-agent-team` | — | [`packages/experimental/client-ui-agent-team/src/index.ts`](../packages/experimental/client-ui-agent-team/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-claude-code-mods` | — | [`packages/experimental/client-ui-claude-code-mods/src/index.ts`](../packages/experimental/client-ui-claude-code-mods/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | — | [`packages/experimental/client-ui-voice-input/src/index.ts`](../packages/experimental/client-ui-voice-input/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-commerce-mode` | `sessionProjections` · `subprocess` | [`packages/experimental/commerce-mode/src/index.ts`](../packages/experimental/commerce-mode/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | `computerUse` · `tools` · `systemPrompt` | [`packages/experimental/computer-use-cua-driver-native/src/index.ts`](../packages/experimental/computer-use-cua-driver-native/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-desktop-hero-atmosphere` | — | [`packages/experimental/desktop-hero-atmosphere/src/index.ts`](../packages/experimental/desktop-hero-atmosphere/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-session-inspector` | — | [`packages/experimental/session-inspector/src/index.ts`](../packages/experimental/session-inspector/src/index.ts) |
 | `@deepseek-ai/dsh-fs-observation-policy` | — | [`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts) |
 | `@deepseek-ai/dsh-fs-ssh` | `ssh` · `sandboxPolicy` | [`packages/ssh/fs-ssh/src/index.ts`](../packages/ssh/fs-ssh/src/index.ts) |
@@ -4462,7 +4627,11 @@ export interface Config {
 | `@deepseek-ai/dsh-deepseek-account` | `DeepSeekAccount` | — | [`packages/credentials/deepseek-account/src/index.ts`](../packages/credentials/deepseek-account/src/index.ts) |
 | `@deepseek-ai/dsh-file-reference` | `FileReferenceService` | — | [`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts) |
 | `@deepseek-ai/dsh-fs` | `FileSystem` | — | [`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts) |
+| `@deepseek-ai/dsh-host-ask-data` | `AskData` | — | [`packages/host/ask-data/src/index.ts`](../packages/host/ask-data/src/index.ts) |
+| `@deepseek-ai/dsh-host-ask-knowledge` | `AskKnowledge` | — | [`packages/host/ask-knowledge/src/index.ts`](../packages/host/ask-knowledge/src/index.ts) |
+| `@deepseek-ai/dsh-host-commerce` | `Commerce` | — | [`packages/host/commerce/src/index.ts`](../packages/host/commerce/src/index.ts) |
 | `@deepseek-ai/dsh-host-directory-picker` | `DirectoryPicker` | — | [`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts) |
+| `@deepseek-ai/dsh-host-workspace-entries` | `WorkspaceEntries` | — | [`packages/host/workspace-entries/src/index.ts`](../packages/host/workspace-entries/src/index.ts) |
 | `@deepseek-ai/dsh-jobs` | `JobRegistry` | — | [`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts) |
 | `@deepseek-ai/dsh-ptc-runtime` | `PtcRuntime` | — | [`packages/ptc-runtime/ptc-runtime/src/index.ts`](../packages/ptc-runtime/ptc-runtime/src/index.ts) |
 | `@deepseek-ai/dsh-sandbox` | `SandboxProvider` | — | [`packages/sandbox/sandbox/src/index.ts`](../packages/sandbox/sandbox/src/index.ts) |
@@ -4488,6 +4657,7 @@ export interface Config {
 | `@deepseek-ai/dsh-base` | — | [`packages/bundle/base/src/index.ts`](../packages/bundle/base/src/index.ts) |
 | `@deepseek-ai/dsh-brand` | — | [`packages/util/brand/src/index.ts`](../packages/util/brand/src/index.ts) |
 | `@deepseek-ai/dsh-chunked-list` | — | [`packages/util/chunked-list/src/index.ts`](../packages/util/chunked-list/src/index.ts) |
+| `@deepseek-ai/dsh-client-connection-desktop` | — | [`packages/client/connection-desktop/src/index.ts`](../packages/client/connection-desktop/src/index.ts) |
 | `@deepseek-ai/dsh-client-store` | — | [`packages/client/store/src/index.ts`](../packages/client/store/src/index.ts) |
 | `@deepseek-ai/dsh-client-test-runtime` | — | [`packages/test-support/client-runtime/src/index.ts`](../packages/test-support/client-runtime/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-dockkit` | — | [`packages/client/ui-dockkit/src/index.ts`](../packages/client/ui-dockkit/src/index.ts) |
@@ -4505,6 +4675,7 @@ export interface Config {
 | `@deepseek-ai/dsh-home-paths` | — | [`packages/util/home-paths/src/index.ts`](../packages/util/home-paths/src/index.ts) |
 | `@deepseek-ai/dsh-hook-protocol` | — | [`packages/hooks/hook-protocol/src/index.ts`](../packages/hooks/hook-protocol/src/index.ts) |
 | `@deepseek-ai/dsh-http-proxy` | — | [`packages/util/http-proxy/src/index.ts`](../packages/util/http-proxy/src/index.ts) |
+| `@deepseek-ai/dsh-installed-runtime` | — | [`packages/boot/installed-runtime/src/index.ts`](../packages/boot/installed-runtime/src/index.ts) |
 | `@deepseek-ai/dsh-launch-environment` | — | [`packages/util/launch-environment/src/index.ts`](../packages/util/launch-environment/src/index.ts) |
 | `@deepseek-ai/dsh-lazy-require` | — | [`packages/util/lazy-require/src/index.ts`](../packages/util/lazy-require/src/index.ts) |
 | `@deepseek-ai/dsh-llm-deepseek` | — | [`packages/llm/llm-deepseek/src/index.ts`](../packages/llm/llm-deepseek/src/index.ts) |

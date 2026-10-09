@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-16-desktop-ask-data-gate-exit-and-rule-copy.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-16-desktop-ask-data-gate-exit-and-rule-copy.md
-2026-09-16-desktop-ask-data-gate-exit-and-rule-copy.md: 9c483ffc744dd734cfce386ee17ddec4001109c5
-2026-09-16-desktop-ask-data-gate-exit-and-rule-copy.zh.md: de7140a21164aeef5442e817497e60b3e099e13d
+/agent-note-ask-data-gate-exits-imports-stop-twinning-and-rule-ids-leave-operator-copy:
+  en: 1aef7d10e39514b7
+  zh: 0d555d10ff3c18a2
+/agent-note-ask-data-gate-exits-imports-stop-twinning-and-rule-ids-leave-operator-copy/problem:
+  en: 616fdaa0c2f0d773
+  zh: 172c290e49d5d62b
+/agent-note-ask-data-gate-exits-imports-stop-twinning-and-rule-ids-leave-operator-copy/decision:
+  en: 43875aabc65d2218
+  zh: f0a67f9703cbfd9b
+/agent-note-ask-data-gate-exits-imports-stop-twinning-and-rule-ids-leave-operator-copy/alternatives-considered:
+  en: 2e7323ac2fb79543
+  zh: fde401080992d1eb
+/agent-note-ask-data-gate-exits-imports-stop-twinning-and-rule-ids-leave-operator-copy/consequences:
+  en: 39ee3cb06326cc31
+  zh: 979f6e227aec8901

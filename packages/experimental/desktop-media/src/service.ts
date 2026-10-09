@@ -40,12 +40,19 @@ import type { MediaArtifactRecord, MediaProjectionState, MediaRequestRecord, Med
 
 /** Validated plugin configuration. */
 export interface DesktopMediaConfig extends MediaRuntimeHomeConfig, MediaBudgetConfig, ImportLimits {
+  /** Provider task polling cadence in milliseconds. */
   readonly pollIntervalMs: number
+  /** Deadline in milliseconds for one provider task to finish. */
   readonly pollTimeoutMs: number
+  /** Video provider model id sent in create requests. */
   readonly videoModel: 'MiniMax-H3' | 'MiniMax-H3-Max'
+  /** TTS provider model id sent in speech requests. */
   readonly ttsModel: string
+  /** Default video duration in seconds when the caller omits one. */
   readonly defaultDurationSeconds: number
+  /** Default video resolution when the caller omits one. */
   readonly defaultResolution: '480P' | '768P' | '2K'
+  /** Default aspect ratio when the caller omits one. */
   readonly defaultRatio: '21:9' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16'
   /** Maximum clips one compose call may join. */
   readonly maxClipCount: number

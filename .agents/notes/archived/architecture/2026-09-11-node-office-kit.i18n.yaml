@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/archived/architecture/2026-09-11-node-office-kit.md
 2026-09-11-node-office-kit.md: 222f6836ae121ff5882dcd83dca8135dd06625bd
-2026-09-11-node-office-kit.zh.md: bff5f2916a4c150e2d2af0709d62afc0969e73f7
+2026-09-11-node-office-kit.zh.md: aca2cb701c8f8a495aca96f7e24bebec029d95b2

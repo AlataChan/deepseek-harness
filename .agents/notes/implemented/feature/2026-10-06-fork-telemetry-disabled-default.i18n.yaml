@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-10-06-fork-telemetry-disabled-default.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-10-06-fork-telemetry-disabled-default.md
-2026-10-06-fork-telemetry-disabled-default.md: 004ac1ba3254b3ed2d53b53be3468bdfe0a97cbf
-2026-10-06-fork-telemetry-disabled-default.zh.md: 4099c809b2ee349b7a8f7a9feead675c66ca05ee
+/agent-note-octopus-dsh-ships-session-telemetry-disabled-by-default:
+  en: 2cdda96bc50cad2a
+  zh: 805c23cd15fa1fbd
+/agent-note-octopus-dsh-ships-session-telemetry-disabled-by-default/problem:
+  en: 69d514fde468695f
+  zh: a2bc6610befd81cf
+/agent-note-octopus-dsh-ships-session-telemetry-disabled-by-default/decision:
+  en: c5dceb8706d89fff
+  zh: 1ab1c68afb859d5f
+/agent-note-octopus-dsh-ships-session-telemetry-disabled-by-default/consequences:
+  en: fba95ebfaae11197
+  zh: eef12055c48a7403
+/agent-note-octopus-dsh-ships-session-telemetry-disabled-by-default/alternatives-considered:
+  en: 5d6e5419b6dde5f4
+  zh: 9ae4b35690ebfe3e

@@ -111,8 +111,22 @@ flowchart LR
   pkg_api_account_controller["api-account-controller"]
   pkg_authorization["authorization"]
   svc_authorization["ctx.authorization<br/>Authorization flow registry"]
-  pkg_client_product_analytics["client-product-analytics"]
-  svc_productAnalytics["ctx.productAnalytics<br/>Desktop interaction collection"]
+  pkg_host_ask_data["host-ask-data"]
+  svc_askData["ctx.askData<br/>Data-source import and session bind"]
+  pkg_experimental_desktop_ask_data["experimental-desktop-ask-data"]
+  pkg_host_ask_knowledge["host-ask-knowledge"]
+  svc_askKnowledge["ctx.askKnowledge<br/>Knowledge library catalog and ingest"]
+  pkg_experimental_desktop_ask_knowledge["experimental-desktop-ask-knowledge"]
+  pkg_host_commerce["host-commerce"]
+  svc_commerce["ctx.commerce<br/>Commerce source and analysis capability"]
+  pkg_experimental_commerce_mode["experimental-commerce-mode"]
+  pkg_experimental_desktop_media["experimental-desktop-media"]
+  svc_desktopMedia["ctx.desktopMedia<br/>Desktop media catalogue and producers"]
+  pkg_desktop_app["desktop-app"]
+  svc_desktopStartup["ctx.desktopStartup<br/>Desktop companion startup facts"]
+  pkg_experimental_desktop_files["experimental-desktop-files"]
+  pkg_host_workspace_entries["host-workspace-entries"]
+  svc_workspaceEntries["ctx.workspaceEntries<br/>Workspace folder listing"]
   pkg_otel["otel"]
   svc_otel["ctx.otel<br/>Shared OTel reporting channels"]
   pkg_host_product_telemetry_otel["host-product-telemetry-otel"]
@@ -302,7 +316,6 @@ flowchart LR
   pkg_client_connection --> svc_connection
   pkg_client_file_upload --> svc_fileUploads
   pkg_client_modules --> svc_clientModules
-  pkg_client_product_analytics --> svc_productAnalytics
   pkg_client_ui_plugin_manager --> svc_pluginRegistryProbe
   pkg_command_feedback --> svc_sessionFeedback
   pkg_commands --> svc_commands
@@ -318,14 +331,20 @@ flowchart LR
   pkg_deepseek_account --> svc_deepseekAccount
   pkg_deepseek_account_platform --> svc_deepseekAccount
   pkg_deepseek_llm_api_extensions --> svc_deepseekLlmApiExtensions
+  pkg_desktop_app --> svc_desktopStartup
   pkg_experimental_agent_team --> svc_agentTeams
   pkg_experimental_api_speech_to_text --> svc_speechController
   pkg_experimental_browser_use_chrome_devtools_mcp --> svc_browserUse
   pkg_experimental_browser_use_playwright_mcp --> svc_browserUse
   pkg_experimental_browser_use_stagehand_native --> svc_browserUse
   pkg_experimental_claude_code_mods --> svc_claudeCodeMods
+  pkg_experimental_commerce_mode --> svc_commerce
   pkg_experimental_computer_use_cua_driver_mcp --> svc_computerUse
   pkg_experimental_computer_use_cua_driver_native --> svc_computerUse
+  pkg_experimental_desktop_ask_data --> svc_askData
+  pkg_experimental_desktop_ask_knowledge --> svc_askKnowledge
+  pkg_experimental_desktop_files --> svc_workspaceEntries
+  pkg_experimental_desktop_media --> svc_desktopMedia
   pkg_experimental_ptc_runtime_python --> svc_ptcRuntime
   pkg_experimental_speech_to_text --> svc_speechToText
   pkg_experimental_speech_to_text_sensevoice --> svc_speechToText
@@ -337,11 +356,15 @@ flowchart LR
   pkg_fs_ssh --> svc_fs
   pkg_goal --> svc_goals
   pkg_hmr --> svc_hmr
+  pkg_host_ask_data --> svc_askData
+  pkg_host_ask_knowledge --> svc_askKnowledge
+  pkg_host_commerce --> svc_commerce
   pkg_host_directory_picker --> svc_directoryPicker
   pkg_host_directory_picker_browse --> svc_directoryPicker
   pkg_host_directory_picker_native --> svc_directoryPicker
   pkg_host_product_telemetry_otel --> svc_productTelemetry
   pkg_host_webserver --> svc_webServer
+  pkg_host_workspace_entries --> svc_workspaceEntries
   pkg_inspector --> svc_inspector
   pkg_jobs --> svc_jobs
   pkg_jobs_local --> svc_jobs
@@ -437,6 +460,8 @@ flowchart LR
   svc_approval --> pkg_acp
   svc_approval --> pkg_tool_bash
   svc_approval --> pkg_tools
+  svc_askData --> pkg_api_session_controller
+  svc_askKnowledge --> pkg_api_session_controller
   svc_attachments --> pkg_api_session_controller
   svc_attachments --> pkg_llm_deepseek
   svc_attachments --> pkg_llm_pi_ai
@@ -446,6 +471,8 @@ flowchart LR
   svc_browserUse --> pkg_experimental_browser_use_playwright_mcp
   svc_browserUse --> pkg_experimental_browser_use_stagehand_native
   svc_clientModules --> pkg_client_hmr
+  svc_commerce --> pkg_api_session_controller
+  svc_commerce --> pkg_experimental_commerce_mode
   svc_compaction --> pkg_compaction_basic
   svc_computerUse --> pkg_experimental_computer_use_cua_driver_mcp
   svc_computerUse --> pkg_experimental_computer_use_cua_driver_native
@@ -460,6 +487,8 @@ flowchart LR
   svc_deepseekAccount --> pkg_api_account_controller
   svc_deepseekAccount --> pkg_llm_deepseek
   svc_deepseekLlmApiExtensions --> pkg_llm_deepseek
+  svc_desktopMedia --> pkg_api_session_controller
+  svc_desktopStartup --> pkg_experimental_desktop_files
   svc_directoryPicker --> pkg_api_workspace_controller
   svc_dynamicCordisRunner --> pkg_tool_cordis
   svc_fileReferences --> pkg_api_session_controller
@@ -566,6 +595,7 @@ flowchart LR
   svc_webhookRuntime --> pkg_webhook_github
   svc_workflowEngine --> pkg_tool_ralph
   svc_workflowEngine --> pkg_tool_workflow
+  svc_workspaceEntries --> pkg_api_session_controller
   svc_workspaceRegistry --> pkg_api_session_controller
   svc_workspaceRegistry --> pkg_api_workspace_controller
   svc_fs -. event gate .-> pkg_fs_observation_policy
@@ -610,7 +640,12 @@ flowchart LR
 | `ctx.credentials` | `seam` | [`credentials`](../packages/credentials/credentials) | [`credentials-local`](../packages/credentials/credentials-local) | [`api-settings-controller`](../packages/api/settings-controller), [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | 配置携带对机密信息的引用；提供方拥有实际值。消费方按操作解析，因此轮换后的凭据会在紧接着的下一次请求中生效；settings controller 提供不含实际值的视图和只写存储。 |
 | `ctx.deepseekAccount` | `seam` | [`deepseek-account`](../packages/credentials/deepseek-account) | [`deepseek-account-platform`](../packages/credentials/deepseek-account-platform) | [`api-account-controller`](../packages/api/account-controller), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | Host 负责浏览器授权和本地凭证；UI 使用方只接收不含 token 的状态。 |
 | `ctx.authorization` | `seam` | [`authorization`](../packages/credentials/authorization) | - | [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | flow 由知道如何取得某份凭据的插件注册，并以其写入的记录为键；seam 拥有这段对话与"每个键同时只跑一次尝试"的生命周期，而非协议本身。 |
-| `ctx.productAnalytics` | `service` | [`client-product-analytics`](../packages/client/product-analytics) | - | - | - | 根据 Host 动态采集策略接收指定桌面事件、补充可用登录身份并监听实时压缩。 |
+| `ctx.askData` | `seam` | [`host-ask-data`](../packages/host/ask-data) | [`experimental-desktop-ask-data`](../packages/experimental/desktop-ask-data) | [`api-session-controller`](../packages/api/session-controller) | - | 抽象 seam 列出、导入并绑定一个表格数据源；桌面 overlay 为"问数据"流程实现它。 |
+| `ctx.askKnowledge` | `seam` | [`host-ask-knowledge`](../packages/host/ask-knowledge) | [`experimental-desktop-ask-knowledge`](../packages/experimental/desktop-ask-knowledge) | [`api-session-controller`](../packages/api/session-controller) | - | 库、分块摄取、提取与检索通过该 seam 挂载到一个 Session；桌面 overlay 为"问知识"实现它。 |
+| `ctx.commerce` | `seam` | [`host-commerce`](../packages/host/commerce) | [`experimental-commerce-mode`](../packages/experimental/commerce-mode) | [`api-session-controller`](../packages/api/session-controller), [`experimental-commerce-mode`](../packages/experimental/commerce-mode) | - | 提供方实现源 I/O 与分析；具体 bind 提交 `commerce/bound`，Commerce Mode 工具把提议的变更暂存以待批准。 |
+| `ctx.desktopMedia` | `service` | [`experimental-desktop-media`](../packages/experimental/desktop-media) | - | [`api-session-controller`](../packages/api/session-controller) | - | 编目作品与音色，打开或定位产物，并在会话预算内运行付费的视频、语音与声音克隆生产。 |
+| `ctx.desktopStartup` | `bundle` | [`desktop-app`](../packages/bundle/desktop-app) | - | [`experimental-desktop-files`](../packages/experimental/desktop-files) | - | 桌面 companion 在其 runtime 与 carrier 行读取之前发布的不可变工作区根与 carrier 事实。 |
+| `ctx.workspaceEntries` | `seam` | [`host-workspace-entries`](../packages/host/workspace-entries) | [`experimental-desktop-files`](../packages/experimental/desktop-files) | [`api-session-controller`](../packages/api/session-controller) | - | Workspace 选择器背后的抽象单层列表 seam；桌面 overlay 针对宿主文件系统实现它。 |
 | `ctx.otel` | `service` | [`otel`](../packages/telemetry/otel) | - | [`host-product-telemetry-otel`](../packages/host/product-telemetry-otel), [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | - | 产品埋点和 Session 反馈适配器通过同一个注入服务创建独立上报通道。 |
 | `ctx.productTelemetry` | `service` | [`host-product-telemetry-otel`](../packages/host/product-telemetry-otel) | - | - | - | 通过 OTLP/HTTP 发送显式提交的分析事件；仅挂载插件不会采集信息。 |
 | `ctx.sessionTelemetry` | `seam` | [`session-telemetry`](../packages/session/session-telemetry) | [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | - | - | 该 seam 捕获会话记录、进行脱敏并交给一个后端；没有其他组件消费该服务，其输出会离开当前进程。 |

@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-14-commerce-seam-and-analysis.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-14-commerce-seam-and-analysis.md
-2026-09-14-commerce-seam-and-analysis.md: 0722617953bcd55efced70241e5cb6231c02a627
-2026-09-14-commerce-seam-and-analysis.zh.md: 2515342be70a10989b803605a1e5d147c2514900
+/agent-note-commerce-data-uses-a-release-seam-a-single-writer-binding-event-and-sqlite3-enforced-analysis:
+  en: 7bda6f323593f4d9
+  zh: 63feebb5b31ee998
+/agent-note-commerce-data-uses-a-release-seam-a-single-writer-binding-event-and-sqlite3-enforced-analysis/problem:
+  en: 6ca9ac70ee240d1e
+  zh: f78e7ca7335bf09f
+/agent-note-commerce-data-uses-a-release-seam-a-single-writer-binding-event-and-sqlite3-enforced-analysis/decision:
+  en: 7ff46310e69f5c8d
+  zh: 8c2190247b9b6787
+/agent-note-commerce-data-uses-a-release-seam-a-single-writer-binding-event-and-sqlite3-enforced-analysis/alternatives-considered:
+  en: 371f7e5df51c8a69
+  zh: 6e347f8105c4c74d
+/agent-note-commerce-data-uses-a-release-seam-a-single-writer-binding-event-and-sqlite3-enforced-analysis/consequences:
+  en: 3cce010bb199373f
+  zh: ad9c9a1f9fefe548

@@ -1,6 +1,67 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/commerce-mode/README.md
-README.md: ba91120ae7c212437fd2a2c6602c2534bf0f73c7
-README.zh.md: 3a08a4a1ec7914b3403858e5bc127814113202a1
+/:
+  en: 23b40b968147f550
+  zh: 0f3c31216ea651f1
+/deepseek-ai-dsh-experimental-commerce-mode:
+  en: edd6b90af111e3a4
+  zh: 7c8a5677adc3a662
+/deepseek-ai-dsh-experimental-commerce-mode/summary:
+  en: d3da2d7b815aacaa
+  zh: 61792b2616ed6783
+/deepseek-ai-dsh-experimental-commerce-mode/table-of-contents:
+  en: 76368b6b1da79c80
+  zh: b20af85210506388
+/deepseek-ai-dsh-experimental-commerce-mode/use-this-package:
+  en: f9f31123277800d5
+  zh: be28df3b7ad23058
+/deepseek-ai-dsh-experimental-commerce-mode/understand-the-implementation:
+  en: face3ca683351018
+  zh: a91c121cd3e2ace6
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/tool-schemas:
+  en: 3039bc5e7a796b21
+  zh: 6b7a9eaf69c9ea53
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/tool-schemas/what-the-model-sees:
+  en: 3c97ce962ee84f16
+  zh: 812add1da4c1aa3e
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/tool-schemas/token-effect:
+  en: 22897b185a3c6b0d
+  zh: a24651fc1867d259
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/tool-schemas/kv-cache-effect:
+  en: 1b3df26984470cdd
+  zh: f4c0c22be3429fe9
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/skill-catalog:
+  en: 8b567c1237c67579
+  zh: 4f18a995922ae164
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/skill-catalog/what-the-model-sees:
+  en: 170edea1c3b48781
+  zh: ff76ae6833dea635
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/skill-catalog/token-effect:
+  en: 7eb213d548119e12
+  zh: 8319e1fba75c8bc0
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/skill-catalog/kv-cache-effect:
+  en: 7e5576e41a274bcb
+  zh: 22ad2019ce742759
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/tool-call-history-and-results:
+  en: a8503137ad03720c
+  zh: 611a2dadf7c0c706
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/tool-call-history-and-results/what-the-model-sees:
+  en: 014289ec4a0720d0
+  zh: d94460cec6343132
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/tool-call-history-and-results/token-effect:
+  en: 3fc67645b6eaa39b
+  zh: 9d7de212cc54b447
+/deepseek-ai-dsh-experimental-commerce-mode/model-experience/tool-call-history-and-results/kv-cache-effect:
+  en: 4c7ada1f7ba549d8
+  zh: 431d7fb62a2bd8f2
+/deepseek-ai-dsh-experimental-commerce-mode/known-limitations-and-deferred-work:
+  en: f1915b3c3ece565f
+  zh: 2a22f15e6dd339e1
+/deepseek-ai-dsh-experimental-commerce-mode/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

@@ -12,7 +12,7 @@ Agent Teams 接受一个 teammate `provider`（子代理后端），但不接受
 
 `SpawnTeammateRequest` 携带 `agentOptions?: AgentOptions`，agent-team roster 将其透传给 `startContinuable({ request: { prompt, parent, agentOptions } })`。`spawn_teammate` 工具暴露可选的 `provider`、`model` 与 `reasoning_effort` 参数，并把它们转换成这些 `agentOptions`。
 
-Team runtime 在 `context: 'fork'` 且收到 `agentOptions` 时，用 `TeamError(..., 'TEAM_FORK_NO_ROUTE_OVERRIDE')` 拒绝。`context: 'fork'` 意为子 Session 播种 Lead 的已完成对话前缀，改变 provider 或 model 会放弃 provider 侧 KV-cache 复用（[模型选择的子代理路由](2026-08-18-model-selected-subagent-routes.zh.md)）。已发布的 fork 工具出于同样原因保持路由选择关闭。
+Team runtime 在 `context: 'fork'` 且收到 `agentOptions` 时，用 `TeamError(..., 'TEAM_FORK_NO_ROUTE_OVERRIDE')` 拒绝。`context: 'fork'` 意为子 Session 播种 Lead 的已完成对话前缀，改变 provider 或 model 会放弃 provider 侧 KV-cache 复用（[模型选择的子代理路由](../../archived/feature/2026-08-18-model-selected-subagent-routes.md)）。已发布的 fork 工具出于同样原因保持路由选择关闭。
 
 Team spawn 执行器针对调用方 Lead Session 已记录的 `subagent/model-selection-policy` 强制执行用户授权允许列表，并复用来自 `dsh-tool-subagent` 的 `assertAllowedModelSelection`。spawn 时 teammate Session 尚不存在；只有 Lead Session 携带已记录策略，子 Session 继承它（[用户授权的子代理模型路由](2026-08-24-user-authorized-subagent-model-routes.zh.md)）。策略读取只有一个 home：`dsh-tool-subagent` 将其重新导出给 Team 执行器，而不是新建 agent-team 专用模型列表来源。
 

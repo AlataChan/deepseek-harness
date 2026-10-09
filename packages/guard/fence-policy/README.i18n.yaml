@@ -1,6 +1,46 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/guard/fence-policy/README.md
-README.md: 3e3e00149d7e7491defb4d1f2b3dbb7591a2ceba
-README.zh.md: 4bc3133ea4a7a294ff3c4f3d65e1788427f0d285
+/:
+  en: b500a3723f1c5bbd
+  zh: 4312520bfe3ab192
+/deepseek-ai-dsh-fence-policy:
+  en: 9654071bc9d37b49
+  zh: e2d874176759c701
+/deepseek-ai-dsh-fence-policy/summary:
+  en: b637cdc4db07955a
+  zh: f6ac443c58de9705
+/deepseek-ai-dsh-fence-policy/table-of-contents:
+  en: 257701b6850ffbfd
+  zh: c1bdd69577c9814e
+/deepseek-ai-dsh-fence-policy/use-this-package:
+  en: 70829f5878142684
+  zh: 7f7caeb3e3084f42
+/deepseek-ai-dsh-fence-policy/understand-the-implementation:
+  en: d4329299f412f1d1
+  zh: 2e4add1d67a7f988
+/deepseek-ai-dsh-fence-policy/dev-note:
+  en: 1405c48ebb59256e
+  zh: 1856b53c30669d37
+/deepseek-ai-dsh-fence-policy/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-fence-policy/model-experience/stable-interpretation-section:
+  en: 7ef7892ddcd06c25
+  zh: a8b3b8e2825344f0
+/deepseek-ai-dsh-fence-policy/model-experience/stable-interpretation-section/what-the-model-sees:
+  en: eccddb8e0688e6fa
+  zh: 52a2755ce31444da
+/deepseek-ai-dsh-fence-policy/model-experience/stable-interpretation-section/what-the-model-sees/fenced-result:
+  en: 93b30123260d3a6c
+  zh: 3ed863979959221d
+/deepseek-ai-dsh-fence-policy/model-experience/stable-interpretation-section/token-effect:
+  en: a8afc1e94a5ec3bf
+  zh: 3e3c343d08411ab0
+/deepseek-ai-dsh-fence-policy/model-experience/stable-interpretation-section/kv-cache-effect:
+  en: 3506fae2b8fea5ed
+  zh: 5fd453b392ff5c52
+/deepseek-ai-dsh-fence-policy/known-limitations-and-deferred-work:
+  en: dce7d3c777b69a20
+  zh: 2cc837c3a5fcb7ea

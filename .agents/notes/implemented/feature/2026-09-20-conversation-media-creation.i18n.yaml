@@ -1,6 +1,55 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-20-conversation-media-creation.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-20-conversation-media-creation.md
-2026-09-20-conversation-media-creation.md: 4c6856d629cfb8b5c14da68560dee031b6bec496
-2026-09-20-conversation-media-creation.zh.md: a473c958614698bde425fc9a392df1b395206799
+/agent-note-conversation-driven-media-creation-and-works-browsing:
+  en: 9d31d8206340e650
+  zh: 3a7a0ff0d1165982
+/agent-note-conversation-driven-media-creation-and-works-browsing/problem:
+  en: 3a3337af2da89897
+  zh: b5823c088aa26b0c
+/agent-note-conversation-driven-media-creation-and-works-browsing/decision:
+  en: 13b7c8b9cf133cd0
+  zh: 89a432b3cb89b692
+/agent-note-conversation-driven-media-creation-and-works-browsing/decision/scope:
+  en: 5ec26e7605ec9375
+  zh: 567bb0aa614406d1
+/agent-note-conversation-driven-media-creation-and-works-browsing/decision/user-path:
+  en: 6c914f9d5b17fd0e
+  zh: b5191a442dfdc189
+/agent-note-conversation-driven-media-creation-and-works-browsing/decision/creation-skill-and-h3:
+  en: 1bac0c9d60947127
+  zh: 8c14cb638b6cab19
+/agent-note-conversation-driven-media-creation-and-works-browsing/decision/interface-and-works:
+  en: c3441ee4398d1a20
+  zh: 65ce6f448e3e494f
+/agent-note-conversation-driven-media-creation-and-works-browsing/decision/voice-cloning-and-composition:
+  en: bd2d8149027f0756
+  zh: 395d581a0846ad38
+/agent-note-conversation-driven-media-creation-and-works-browsing/decision/module-and-persistence:
+  en: d2d10e57630820ab
+  zh: 870ebc0280017f99
+/agent-note-conversation-driven-media-creation-and-works-browsing/decision/local-opening-and-distribution:
+  en: c8b7a106be3933be
+  zh: dee9369d40051ce4
+/agent-note-conversation-driven-media-creation-and-works-browsing/stage-1-evidence:
+  en: 53e54a03a43e3754
+  zh: 514b9d3b1e59ac6f
+/agent-note-conversation-driven-media-creation-and-works-browsing/stage-2-4-shipped-facts:
+  en: aa25492b6af6cb1d
+  zh: 0fe43eed6f73e1bf
+/agent-note-conversation-driven-media-creation-and-works-browsing/alternatives-considered:
+  en: b255c65dc498fbc3
+  zh: 8c2929dedb333e36
+/agent-note-conversation-driven-media-creation-and-works-browsing/consequences:
+  en: a6b32dd53834f836
+  zh: 32484c86a6197b1b
+/agent-note-conversation-driven-media-creation-and-works-browsing/testing:
+  en: e66a8f21aae5b230
+  zh: b87a0e81c31682b3
+/agent-note-conversation-driven-media-creation-and-works-browsing/related:
+  en: 708591c2669b16e4
+  zh: b2c42959fc90b98a
+/agent-note-conversation-driven-media-creation-and-works-browsing/sources:
+  en: 2de850a4abbd6d01
+  zh: 37cfb4bbab64356a

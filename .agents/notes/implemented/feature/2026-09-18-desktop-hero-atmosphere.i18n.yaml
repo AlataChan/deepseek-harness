@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-18-desktop-hero-atmosphere.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-18-desktop-hero-atmosphere.md
-2026-09-18-desktop-hero-atmosphere.md: d889ebec06a684aff2abd5e1e5b6ec83c7bc037c
-2026-09-18-desktop-hero-atmosphere.zh.md: 14ecfe9900ef334269cda25345335da21aa54c69
+/agent-note-octopus-dsh-desktop-hero-atmosphere:
+  en: e8d3e693bd4d7d16
+  zh: c7267e044c35a969
+/agent-note-octopus-dsh-desktop-hero-atmosphere/problem:
+  en: 4f6f35fd06ebe36d
+  zh: 9fa9ab28c2671de6
+/agent-note-octopus-dsh-desktop-hero-atmosphere/decision:
+  en: c362184a254ede83
+  zh: 067bd65df033959f
+/agent-note-octopus-dsh-desktop-hero-atmosphere/alternatives-considered:
+  en: 0fafa51d16ae66d1
+  zh: 72da96e77fd5ba22
+/agent-note-octopus-dsh-desktop-hero-atmosphere/consequences:
+  en: ff084d2ce6585166
+  zh: e64fe7d4fb9e7d1e
+/agent-note-octopus-dsh-desktop-hero-atmosphere/testing:
+  en: 2ab4705ed8e1fa25
+  zh: 4cc3d84b4052f05d

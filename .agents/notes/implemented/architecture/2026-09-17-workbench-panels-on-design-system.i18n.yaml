@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-17-workbench-panels-on-design-system.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-17-workbench-panels-on-design-system.md
-2026-09-17-workbench-panels-on-design-system.md: 0fe50c0a344ec4282cdf148b838881c720c624a1
-2026-09-17-workbench-panels-on-design-system.zh.md: 3d4c13229a02f80ec235ed017e771a177d3b84a4
+/agent-note-workbench-panels-sit-on-the-client-design-system:
+  en: ef90355e6f46eee0
+  zh: 062da8ab238ab5b6
+/agent-note-workbench-panels-sit-on-the-client-design-system/problem:
+  en: afcda3a1b855100c
+  zh: 348d0e520cbdefd4
+/agent-note-workbench-panels-sit-on-the-client-design-system/decision:
+  en: 2964ff53468ab5e1
+  zh: aebe7b9f215dab48
+/agent-note-workbench-panels-sit-on-the-client-design-system/alternatives-considered:
+  en: 6c3370c3482dd355
+  zh: 0126db6202174c99
+/agent-note-workbench-panels-sit-on-the-client-design-system/consequences:
+  en: d4a3fb6a21ff50da
+  zh: d17363b0d9209679

@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-agent-team-starter-prompt-fill.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-agent-team-starter-prompt-fill.md
-2026-09-04-agent-team-starter-prompt-fill.md: 13ac2e1bde201d59ae71ce45880489088e82e79b
-2026-09-04-agent-team-starter-prompt-fill.zh.md: c5b4c4e5b52900c6a8de548bd2544c7acd6b05ea
+/agent-note-team-panel-starter-prompt-fill-buttons:
+  en: b38ce7e1c1c20756
+  zh: 66ede0d22e688420
+/agent-note-team-panel-starter-prompt-fill-buttons/problem:
+  en: dffbfd80feb2a0ee
+  zh: eecd1738e02fde53
+/agent-note-team-panel-starter-prompt-fill-buttons/decision:
+  en: d3c67eb435c2d09c
+  zh: dd571b4304e08e80
+/agent-note-team-panel-starter-prompt-fill-buttons/alternatives-considered:
+  en: 36562fff7debe4dc
+  zh: 6da24b291c49a5b5
+/agent-note-team-panel-starter-prompt-fill-buttons/consequences:
+  en: 5a19f4fada4ee667
+  zh: 9d7718cf477226f2

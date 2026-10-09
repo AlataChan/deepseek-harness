@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-16-knowledge-batch-upload.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-16-knowledge-batch-upload.md
-2026-09-16-knowledge-batch-upload.md: 5ca8fa432dac1697cde1caeb74742ad542dbcfc2
-2026-09-16-knowledge-batch-upload.zh.md: e981e58afb433a7c8558166814a7901015623e86
+/agent-note-knowledge-upload-queues-several-files-into-one-library:
+  en: 38cd5ebc4a955fc3
+  zh: 090fed8d8f780e54
+/agent-note-knowledge-upload-queues-several-files-into-one-library/problem:
+  en: fcf5a4058cd3e5d4
+  zh: e540cfaa44ea0cfb
+/agent-note-knowledge-upload-queues-several-files-into-one-library/decision:
+  en: 765204b51f855a22
+  zh: 8ed3f8bdf56d692e
+/agent-note-knowledge-upload-queues-several-files-into-one-library/alternatives-considered:
+  en: 1c5cfe3d27c89c53
+  zh: 3eee9924c4365966
+/agent-note-knowledge-upload-queues-several-files-into-one-library/consequences:
+  en: c2483c756abe1dda
+  zh: f203b5e5d3f9bbb6

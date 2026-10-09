@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-wechat-article-extractor-skill.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-wechat-article-extractor-skill.md
-2026-09-04-wechat-article-extractor-skill.md: 740ead37c13dffc26ef54b7eb8d3805995cd35ab
-2026-09-04-wechat-article-extractor-skill.zh.md: 7e3dda6f4ab912bdfcbdc3232814aaae6210ef88
+/agent-note-ship-wechat-article-extractor-skill-with-soft-rate-limits:
+  en: 69dfcec7403646e7
+  zh: 79052686ead377f9
+/agent-note-ship-wechat-article-extractor-skill-with-soft-rate-limits/problem:
+  en: a7d396aa9930cad4
+  zh: a62db17f543a8602
+/agent-note-ship-wechat-article-extractor-skill-with-soft-rate-limits/decision:
+  en: ab6f9b002c266296
+  zh: 392ceae31478334c
+/agent-note-ship-wechat-article-extractor-skill-with-soft-rate-limits/alternatives-considered:
+  en: 7b8240913aeb5b4f
+  zh: 989604f2febc0034
+/agent-note-ship-wechat-article-extractor-skill-with-soft-rate-limits/consequences:
+  en: 3ae580b45645d6b5
+  zh: 7f5d17b11c3c2bd4

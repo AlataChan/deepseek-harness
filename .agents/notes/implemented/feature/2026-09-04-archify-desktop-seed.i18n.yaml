@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-archify-desktop-seed.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-archify-desktop-seed.md
-2026-09-04-archify-desktop-seed.md: 91263f7841bb6f6f52db6cec483b39d5f0e38577
-2026-09-04-archify-desktop-seed.zh.md: 30f95617d455b65a5bd2ba44b7d6c961de8f3c1d
+/agent-note-archify-desktop-bundled-skill-seed:
+  en: 47f33caaaf368514
+  zh: 5930bd2be09fe1f4
+/agent-note-archify-desktop-bundled-skill-seed/problem:
+  en: f6778f1ce5df3be2
+  zh: 15e8ec1cfdbe053e
+/agent-note-archify-desktop-bundled-skill-seed/decision:
+  en: 68a46d144e0f620b
+  zh: ceb7aad3b19cc618
+/agent-note-archify-desktop-bundled-skill-seed/alternatives-considered:
+  en: 18d52d6bbaf0915a
+  zh: e1facef9c0891f9f
+/agent-note-archify-desktop-bundled-skill-seed/consequences:
+  en: d7d18eff21739e19
+  zh: ca68998b647a5f32
+/agent-note-archify-desktop-bundled-skill-seed/verification:
+  en: 80937328f4f7b240
+  zh: f88454c968d631e0

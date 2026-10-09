@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/desktop-ask-data/README.md
-README.md: 4c265f3773c21ba6b9bb0271157f8ad70d07d945
-README.zh.md: 8fc9a99240ee7f0fa3f6b54238277c286dbf3726
+/:
+  en: 41ec85e6175e9c2c
+  zh: 6ce3d9bbf3119a15
+/deepseek-ai-dsh-experimental-desktop-ask-data:
+  en: e35d703b491ed701
+  zh: 53e5bebc22a26a8b
+/deepseek-ai-dsh-experimental-desktop-ask-data/summary:
+  en: 6f37b1e832014d24
+  zh: 593158c1c9599c8c
+/deepseek-ai-dsh-experimental-desktop-ask-data/table-of-contents:
+  en: 6d459d1504ccbad3
+  zh: 253dbe6c2697be14
+/deepseek-ai-dsh-experimental-desktop-ask-data/reuse-spreadsheet-import:
+  en: ede17dadb87c38ec
+  zh: 4b6805552f60ffec
+/deepseek-ai-dsh-experimental-desktop-ask-data/config:
+  en: 2b6ecfd253dcf175
+  zh: f78d67b21b1b5eca
+/deepseek-ai-dsh-experimental-desktop-ask-data/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-desktop-ask-data/model-experience/bound-limits-section:
+  en: 3342f4eb6b39e5c3
+  zh: a5ae6aeb27e43951
+/deepseek-ai-dsh-experimental-desktop-ask-data/model-experience/bound-limits-section/what-the-model-sees:
+  en: e4834856c5756835
+  zh: a604b43877ec2c3e
+/deepseek-ai-dsh-experimental-desktop-ask-data/model-experience/bound-limits-section/token-effect:
+  en: 217f1ec47533c403
+  zh: 5468f2ac5d2932d6
+/deepseek-ai-dsh-experimental-desktop-ask-data/model-experience/bound-limits-section/kv-cache-effect:
+  en: d769f2f039b2ad08
+  zh: 6a25bfb0349b7ff7
+/deepseek-ai-dsh-experimental-desktop-ask-data/known-limitations-and-deferred-work:
+  en: fcc4f0113a2b8c90
+  zh: 205938e000b16434
+/deepseek-ai-dsh-experimental-desktop-ask-data/known-limitations-and-deferred-work/dev-note:
+  en: 8f49e9c40b1e81c0
+  zh: 095fa5395f14a7c6

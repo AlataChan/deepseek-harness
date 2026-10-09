@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-10-07-upstream-intake-registry.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-10-07-upstream-intake-registry.md
-2026-10-07-upstream-intake-registry.md: ddcd196551e05016764ce8261781d389bc081e01
-2026-10-07-upstream-intake-registry.zh.md: ce2bde388f9bc8b773488981764c8c9916aa99fa
+/agent-note-upstream-intake-deltas-live-in-the-machine-checked-registry:
+  en: 4154fe49bb12333a
+  zh: 8fc1c981886f172e
+/agent-note-upstream-intake-deltas-live-in-the-machine-checked-registry/problem:
+  en: fb00d8f00310c475
+  zh: 5222230473e707af
+/agent-note-upstream-intake-deltas-live-in-the-machine-checked-registry/decision:
+  en: c87d8c29404c7ef9
+  zh: 86cf7526179a944d
+/agent-note-upstream-intake-deltas-live-in-the-machine-checked-registry/decision/what-the-registry-records:
+  en: 89d34a1069e8aa0b
+  zh: b04b2aa0114c7c64
+/agent-note-upstream-intake-deltas-live-in-the-machine-checked-registry/alternatives-considered:
+  en: 28172795c73e8582
+  zh: d22594dde4294bc3
+/agent-note-upstream-intake-deltas-live-in-the-machine-checked-registry/consequences:
+  en: ad029cdbbe968df2
+  zh: be99aadc3309d61b
