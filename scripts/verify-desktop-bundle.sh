@@ -83,9 +83,9 @@ fi
   && ok "desktop-companion.js present" \
   || bad "desktop-companion.js MISSING — this is the npm-publish gap"
 
-[[ -d "$HARNESS/config/agent-presets/standard" ]] \
-  && ok "shipped standard preset present" \
-  || bad "shipped agent-presets missing from bundle"
+[[ -d "$HARNESS/node_modules/@deepseek-ai/dsh-agent-preset" && -d "$HARNESS/node_modules/@deepseek-ai/dsh-agent-preset-registry" ]] \
+  && ok "composition preset providers present" \
+  || bad "composition preset providers missing from bundle"
 
 # ── 4. Module graph resolves (the check that catches ERR_MODULE_NOT_FOUND) ───
 #

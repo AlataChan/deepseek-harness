@@ -138,12 +138,8 @@ cp -R "$CLI_DIR/lib" "$RESOURCES/harness/lib"
 cp -R "$CLI_DIR/config" "$RESOURCES/harness/config"
 cp "$CLI_DIR/package.json" "$RESOURCES/harness/package.json"
 cp -R "$DEPS_CACHE" "$RESOURCES/harness/node_modules"
-SHIPPED_PRESETS="$REPO_ROOT/packages/preset/agent-presets/presets"
-if [[ ! -d "$SHIPPED_PRESETS/standard" ]]; then
-  fail "shipped standard preset missing at $SHIPPED_PRESETS/standard"
-fi
-mkdir -p "$RESOURCES/harness/config/agent-presets"
-cp -R "$SHIPPED_PRESETS/." "$RESOURCES/harness/config/agent-presets/"
+# Presets ship as composition rows (the agent-preset/agent-preset-registry
+# packages); the pre-split standalone preset directory no longer exists.
 ok "Harness package + dependencies embedded (self-contained)"
 
 # ── 3. Bundle presets ───────────────────────────────────────────────────────
