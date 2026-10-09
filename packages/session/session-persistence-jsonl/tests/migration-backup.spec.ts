@@ -13,7 +13,7 @@ import { generationLogPath } from '../src/format.ts'
 const copyFileFailure = vi.hoisted(() => ({
   /** 'throw': copyFile rejects; 'partial': copyFile writes only half the source bytes. */
   mode: undefined as 'throw' | 'partial' | undefined,
-  error: undefined as Error | undefined,
+  error: undefined as unknown,
 }))
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -147,6 +147,18 @@ describe('JsonlSessionPersistence pre-migration backup guard', () => {
     await expect(readFile(backupPath)).rejects.toMatchObject({ code: 'ENOENT' })
     const successor = generationLogPath(root, '/work', id, SESSION_FORMAT_VERSION, 'none')
     await expect(readFile(successor)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('carries a non-Error backup failure into the refusal message', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-migration-backup-'))
+    roots.push(root)
+    await seedV0(root)
+    copyFileFailure.mode = 'throw'
+    copyFileFailure.error = 'disk exploded'
+
+    const ctx = await mount(root)
+    await expect(ctx.sessionPersistence.open(id, 'read')).rejects.toThrow(/disk exploded/)
+    await ctx.sessionPersistence.flush()
   })
 
   it('stops the open loudly when a partial backup is detected', async () => {
