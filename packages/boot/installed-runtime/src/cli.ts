@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* v8 ignore file -- self-executing packaging entry; the DMG build and bundle gate exercise it. */
 /**
  * JSON CLI for installed Harness and Node discovery.
  * @module @deepseek-ai/dsh-installed-runtime/cli

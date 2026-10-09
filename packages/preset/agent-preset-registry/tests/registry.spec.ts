@@ -113,6 +113,35 @@ describe('declarative preset revisions', () => {
     await expect(ctx.agentPresets.select(agent, 'standard')).rejects.toThrow('already started')
   })
 
+  it('runs every admit hook before the swap and stops running after its disposer', async () => {
+    const ctx = await setup()
+    await declare(ctx, contribution('standard'))
+    await declare(ctx, contribution('minimal'))
+    const agent = await agentOn(ctx, 'admission')
+    const seen: string[] = []
+    const dispose = ctx.agentPresets.admitSelect((live, preset) => {
+      expect(live).toBe(agent)
+      seen.push(preset)
+    })
+    expect(await ctx.agentPresets.select(agent, 'minimal')).toBe('minimal')
+    expect(seen).toEqual(['minimal'])
+    dispose()
+    expect(await ctx.agentPresets.select(agent, 'minimal')).toBe('minimal')
+    expect(seen).toEqual(['minimal'])
+  })
+
+  it('refuses the swap when an admit hook rejects it', async () => {
+    const ctx = await setup()
+    await declare(ctx, contribution('standard'))
+    await declare(ctx, contribution('minimal'))
+    const agent = await agentOn(ctx, 'admission-refusal')
+    ctx.agentPresets.admitSelect((_live, preset) => {
+      if (preset === 'minimal') throw new Error('ask-data gate: source required')
+    })
+    await expect(ctx.agentPresets.select(agent, 'minimal')).rejects.toThrow('ask-data gate: source required')
+    expect(ctx.sessionProjections.stateOf(agent.session, 'agentPreset')).toBeNull()
+  })
+
   it('inventories active and disabled child entries and declared display metadata', async () => {
     const ctx = await setup()
     await declare(ctx, { ...contribution('standard'), name: 'Standard', description: 'General', order: 2 })
