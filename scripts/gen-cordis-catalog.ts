@@ -59,7 +59,6 @@ export const SERVICE_PAGE: Record<string, string> = {
   speechController: 'voice-input.md',
   otel: 'otel.md',
   productTelemetry: 'product-telemetry.md',
-  productAnalytics: 'product-telemetry.md',
   connection: 'web-server.md',
   pluginManager: 'boot.md',
   pluginRegistryProbe: 'boot.md',
@@ -694,6 +693,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   TeamTaskId: 'agent-team.md',
   TeamTaskMutationResult: 'agent-team.md',
   TeamTaskView: 'agent-team.md',
+  TeamView: 'agent-team.md',
   TeamProjection: 'agent-team.md',
   TeamMemberProjection: 'agent-team.md',
   TeamWaitResult: 'agent-team.md',
@@ -854,7 +854,6 @@ export const FOUNDATION_TYPE_NAMES: ReadonlySet<string> = new Set([
 
 /** Project types deliberately documented outside the subsystems catalog. */
 export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
-  ProductEvent: 'Desktop event fields are owned by packages/client/product-analytics/README.md and src/events.ts',
   AskDataBindLease: 'ask-data listing/import/bind contract is owned by packages/host/ask-data/README.md',
   AskDataBindRequest: 'ask-data listing/import/bind contract is owned by packages/host/ask-data/README.md',
   AskDataImportPreview: 'ask-data listing/import/bind contract is owned by packages/host/ask-data/README.md',

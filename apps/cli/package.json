@@ -18,6 +18,11 @@
     "lib/*.js",
     "lib/types/*.d.ts"
   ],
+  "dsh": {
+    "companions": {
+      "desktop": "./lib/desktop-companion.js"
+    }
+  },
   "license": "MIT",
   "dependencies": {
     "@deepseek-ai/cordis": "workspace:~",

@@ -18,6 +18,10 @@ import {
 import PluginManager, { type Config, type PluginChange, type PluginInstallLogChunk, type PluginInstallProgress, type PluginInstallRequestId } from '../src/index.ts'
 import Hmr from '@deepseek-ai/dsh-hmr'
 import Timer from '@deepseek-ai/cordis-plugin-timer'
+
+// The bundled pnpm is upstream's Electron-app artifact; this fork's Tauri
+// desktop ships none, so cases using it run only where that tree exists.
+const bundledPnpm = fileURLToPath(new URL('../../../../apps/desktop/node_modules/pnpm/bin/pnpm.mjs', import.meta.url))
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import { Group } from '@deepseek-ai/cordis-plugin-loader'
 import * as operations from '../src/operations.ts'
@@ -172,9 +176,9 @@ it('disposal waits for an active GitHub check to stop', async () => {
   expect(pnpm).not.toHaveBeenCalled()
 })
 
-it.each(['github:acme/connected', 'https://github.com/acme/connected.git', 'git+ssh://git@github.com/acme/connected.git'])(
+it.skipIf(!existsSync(bundledPnpm)).each(['github:acme/connected', 'https://github.com/acme/connected.git', 'git+ssh://git@github.com/acme/connected.git'])(
   'installs %s through real Git and pnpm with private repository SSH fallback', async (spec) => {
-    const pnpm = fileURLToPath(new URL('../../../../apps/desktop/node_modules/pnpm/bin/pnpm.mjs', import.meta.url))
+    const pnpm = bundledPnpm
     const env = { GIT_CONFIG_GLOBAL: '', GIT_CONFIG_NOSYSTEM: '1' }
     const { manager, dir, connection } = await fixture('startup', false, undefined, {}, {
       command: process.execPath, args: ['--expose-internals', pnpm], env,
@@ -1155,9 +1159,6 @@ it('applies watched configuration while pnpm installation is still running', asy
   expect(ctx.get('managedProbe')).toBeUndefined()
 })
 
-// The bundled pnpm is upstream's Electron-app artifact; this fork's Tauri
-// desktop ships none, so the case runs only where that tree exists.
-const bundledPnpm = fileURLToPath(new URL('../../../../apps/desktop/node_modules/pnpm/bin/pnpm.mjs', import.meta.url))
 it.skipIf(!existsSync(bundledPnpm))('installs and removes with the bundled pnpm when PATH contains no pnpm', async () => {
   const pnpm = bundledPnpm
   const { manager, dir } = await fixture('startup', false, undefined, { pnpmCommand: 'must-not-be-used' }, {

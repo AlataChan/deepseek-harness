@@ -161,7 +161,7 @@ async function loadComposition(spillStore = '@deepseek-ai/dsh-spill-test-store')
     '  config: { search: false, fetch: true, fetchMaxOutputChars: 10000 }',
     `- name: '${spillStore}'`,
     "- name: '@deepseek-ai/dsh-spill-policy'",
-    '  config: { maxInlineBytes: 500 }',
+    '  config: { maxInlineTokens: 128 }',
     "- name: '@deepseek-ai/dsh-fence-policy'",
     '  config:',
     '    tools: [web_fetch, mixed_result]',

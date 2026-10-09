@@ -202,6 +202,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'The bound identity.',
       },
       {
+        signature: 'admitSelect(hook: (agent: Agent, agentPreset: string) => void | Promise<void>): () => void',
+        description: 'Register a hook that runs before every preset swap, including a direct Remote `select`. The disposer removes the hook.',
+        parameters: [{ name: 'hook', description: 'called with the live agent and the requested preset id.' }],
+        returns: 'disposer.',
+      },
+      {
         signature: '@Remote(\'select\') async select(agent: Agent, agentPreset: string): Promise<string>',
         description: 'Select a preset before a session starts its first turn.',
         parameters: [{ name: 'agent', description: 'Target Agent.' }, { name: 'agentPreset', description: 'Requested identity.' }],
@@ -323,6 +329,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Agent Teams service backed by the exact live Lead Session log.',
     methods: [
       {
+        signature: 'standingSquadFor(agent: Agent): InstitutionSquadDefinition | undefined',
+        description: 'Return the baked-in squad when this Agent is that squad\'s standing Lead.',
+        parameters: [{ name: 'agent', description: 'exact live Agent.' }],
+        returns: 'the squad, or `undefined` when this Session is not a standing Lead.',
+      },
+      {
         signature: 'membership(agent: Agent): TeamMembership',
         description: 'Resolve one exact live Agent\'s Team role.',
         parameters: [{ name: 'agent', description: 'exact live Agent used as the authority credential.' }],
@@ -377,7 +389,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'one observed change or a timeout result.',
       },
       {
-        signature: 'interrupt(caller: Agent, targetName: string): { previousStatus: \'running\' | \'inactive\' }',
+        signature: 'interrupt(caller: Agent, targetName: string): { previousStatus: \'running\' | \'idle\' | \'inactive\' }',
         description: 'Interrupt one live teammate turn without clearing its pending inbox.',
         parameters: [{ name: 'caller', description: 'exact live Lead Agent.' }, { name: 'targetName', description: 'durable teammate name.' }],
         returns: 'the target status sampled before cancellation.',
@@ -387,6 +399,60 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Resolve a caller without throwing, used by scoped-tool installation and observers.',
         parameters: [{ name: 'agent', description: 'candidate exact live Agent.' }],
         returns: 'Team membership, or undefined for non-Team subagents and stale identities.',
+      },
+      {
+        signature: '@Remote(\'view\') remoteView(agent: Agent): TeamView',
+        description: 'Read the current roster and non-deleted task board through the generated Remote API.',
+        parameters: [{ name: 'agent', description: 'exact live Team member used as the authority credential.' }],
+        returns: 'detached current roster and task views.',
+      },
+      {
+        signature: '@Remote(\'createTask\') remoteCreateTask(agent: Agent, request: CreateTeamTaskRequest): Promise<TeamTaskMutationResult>',
+        description: 'Create one shared task through the generated Remote API.',
+        parameters: [{ name: 'agent', description: 'exact live Team member creating the task.' }, { name: 'request', description: 'task text, blockers, and advisory write scopes.' }],
+        returns: 'the revision-one task or a typed Team rejection.',
+      },
+      {
+        signature: '@Remote(\'updateTask\') remoteUpdateTask(agent: Agent, request: UpdateTeamTaskRequest): Promise<TeamTaskMutationResult>',
+        description: 'Apply one task mutation and preserve Team rejections as business results.',
+        parameters: [{ name: 'agent', description: 'exact live Team member authorizing the mutation.' }, { name: 'request', description: 'task identity, expected revision, action, and action fields.' }],
+        returns: 'the committed task or a typed Team rejection.',
+      },
+      {
+        signature: '@Remote(\'listInstitutionSquads\') async remoteListInstitutionSquads(): Promise<InstitutionSquadView[]>',
+        description: 'List the three institution squads and their current Lead bindings. Stale Lead Session ids are dropped from the catalog when persistence no longer has them.',
+        parameters: [],
+        returns: 'detached squad rows in product order.',
+      },
+      {
+        signature: '@Remote(\'updateInstitutionSeat\') async remoteUpdateInstitutionSeat(request: UpdateInstitutionSeatRequest): Promise<InstitutionSquadView[]>',
+        description: 'Persist one seat\'s provider/model in the institution catalog. Already-spawned teammates keep the route recorded on their member snapshot.',
+        parameters: [{ name: 'request', description: 'squad, seat name, and optional route.' }],
+        returns: 'the refreshed squad list.',
+      },
+      {
+        signature: '@Remote(\'ensureInstitutionSquad\') async remoteEnsureInstitutionSquad( agent: Agent, request: EnsureInstitutionSquadRequest, ): Promise<EnsureInstitutionSquadResult>',
+        description: 'Bind the caller\'s Lead Session as the squad Lead and spawn any missing seats. A new topic is a later human prompt on this same Session, not another spawn.',
+        parameters: [{ name: 'agent', description: 'exact live Lead Agent whose Session becomes the standing Lead.' }, { name: 'request', description: 'squad slug and optional seat-route overrides applied before spawn.' }],
+        returns: 'the bound Session and the current roster.',
+      },
+      {
+        signature: '@Remote(\'readHtmlPreview\') async remoteReadHtmlPreview( agent: Agent, request: ReadHtmlPreviewRequest, ): Promise<ReadHtmlPreviewResult>',
+        description: 'Read one `.html` / `.htm` file for the Team dock sandboxed preview. Paths resolve against the Lead session cwd when relative; absolute paths must stay under that cwd when the Lead has one.',
+        parameters: [{ name: 'agent', description: 'exact live Team member used as the authority credential.' }, { name: 'request', description: 'path to the HTML file.' }],
+        returns: 'absolute path and UTF-8 HTML body.',
+      },
+      {
+        signature: 'async listInstitutionSquads(): Promise<InstitutionSquadView[]>',
+        description: 'List institution squads after dropping Lead bindings whose Sessions are gone.',
+        parameters: [],
+        returns: 'detached squad rows in product order.',
+      },
+      {
+        signature: 'async ensureInstitutionSquad( caller: Agent, request: EnsureInstitutionSquadRequest, ): Promise<EnsureInstitutionSquadResult>',
+        description: 'Bind the caller as the standing Lead and spawn seats that are not yet on the roster.',
+        parameters: [{ name: 'caller', description: 'exact live Lead Agent.' }, { name: 'request', description: 'squad slug and optional seat-route overrides.' }],
+        returns: 'the bound Session and roster.',
       },
     ],
   },
@@ -412,6 +478,141 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read the session override without applying the configured default.',
         parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],
         returns: 'the last logged policy, or `undefined` without one.',
+      },
+    ],
+  },
+  {
+    key: 'askData',
+    summary: 'Abstract data-source listing, import, and session bind.',
+    description: 'Abstract data-source listing, import, and session bind. Subclass, implement the four methods, and load the subclass as a plugin — it registers as `ctx.askData`. The class itself is not a mounted plugin.',
+    methods: [
+      {
+        signature: 'abstract listSources(signal?: AbortSignal): Promise<AskDataSource[]>',
+        description: 'List overlay-managed sources plus unmatched data-agent connections.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'listed sources, `missing` set when a managed sqlite vanished.',
+      },
+      {
+        signature: 'abstract importSpreadsheet( request: AskDataImportSpreadsheetRequest, signal?: AbortSignal, ): Promise<AskDataImportPreview>',
+        description: 'Import one `.xlsx` / `.csv` into a managed sqlite and manifest row. Does not apply a preset or open a session. `connectionRef` stays absent.',
+        parameters: [{ name: 'request', description: 'filename, decoded bytes, optional replace target.' }, { name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'preview read from the written sqlite.',
+      },
+      {
+        signature: 'abstract importSample(signal?: AbortSignal): Promise<AskDataImportPreview>',
+        description: 'Copy the packaged sample sqlite into the manifest. Does not need host `sqlite3`. Does not apply a preset or open a session.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the copy.' }],
+        returns: 'preview read from the copied sqlite.',
+      },
+      {
+        signature: 'abstract bind(request: AskDataBindRequest, signal?: AbortSignal): Promise<AskDataBindLease>',
+        description: 'Register or reuse the readonly data-agent profile, write overlay `connectionRef`, and persist the session binding. The Session must already exist. Idempotent for the same `{ sourceId, sessionId }`.',
+        parameters: [{ name: 'request', description: 'source and session identities.' }, { name: 'signal', description: 'caller lifetime; abort stops the bind.' }],
+        returns: 'a lease whose `rollback` undoes this bind in-process.',
+      },
+    ],
+  },
+  {
+    key: 'askKnowledge',
+    summary: 'Abstract library catalog, ingest, attach, and retrieve.',
+    description: 'Abstract library catalog, ingest, attach, and retrieve. Subclass, implement the methods, and load the subclass as a plugin — it registers as `ctx.askKnowledge`. The class itself is not a mounted plugin.',
+    methods: [
+      {
+        signature: 'abstract listLibraries(signal?: AbortSignal): Promise<AskKnowledgeLibrary[]>',
+        description: 'List catalog rows. Does not run recover.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'catalog rows, `missing` when the vault directory vanished.',
+      },
+      {
+        signature: 'abstract createLibrary( request: { displayName: string; workspaceId?: WorkspaceId }, signal?: AbortSignal, ): Promise<AskKnowledgeLibrary>',
+        description: 'Create an empty vault and catalog row. Does not attach a session.',
+        parameters: [{ name: 'request', description: 'display name and optional workspace for a shortcut.' }, { name: 'signal', description: 'caller lifetime; abort stops the create.' }],
+        returns: 'the new catalog row.',
+      },
+      {
+        signature: 'abstract renameLibrary( request: { libraryId: AskKnowledgeLibraryId; displayName: string }, signal?: AbortSignal, ): Promise<AskKnowledgeLibrary>',
+        description: 'Rename a catalog row. Does not rename the vault directory id.',
+        parameters: [{ name: 'request', description: 'library id and new display name.' }, { name: 'signal', description: 'caller lifetime; abort stops the rename.' }],
+        returns: 'the updated row.',
+      },
+      {
+        signature: 'abstract removeLibrary( request: { libraryId: AskKnowledgeLibraryId }, signal?: AbortSignal, ): Promise<void>',
+        description: 'Mark the row `deleting`, unbind live and cold sessions, delete the vault, then drop the catalog row. Holds catalog for the whole transaction.',
+        parameters: [{ name: 'request', description: 'library id.' }, { name: 'signal', description: 'caller lifetime; abort stops the remove.' }],
+      },
+      {
+        signature: 'abstract attach( request: { libraryId: AskKnowledgeLibraryId; sessionId: SessionId }, signal?: AbortSignal, ): Promise<AskKnowledgeAttachLease>',
+        description: 'Bind an existing Session to a library. Recovers pending audits first.',
+        parameters: [{ name: 'request', description: 'library and session identities.' }, { name: 'signal', description: 'caller lifetime; abort stops the attach.' }],
+        returns: 'a lease whose `rollback` undoes this attach in-process.',
+      },
+      {
+        signature: 'abstract detach(request: { sessionId: SessionId }, signal?: AbortSignal): Promise<void>',
+        description: 'Clear the bind on an existing Session.',
+        parameters: [{ name: 'request', description: 'session identity.' }, { name: 'signal', description: 'caller lifetime; abort stops the detach.' }],
+      },
+      {
+        signature: 'abstract beginIngest( request: { libraryId: AskKnowledgeLibraryId; filename: string }, signal?: AbortSignal, ): Promise<AskKnowledgeIngestHandle>',
+        description: 'Open an ingest upload. Does not take the library lock.',
+        parameters: [{ name: 'request', description: 'library and original filename.' }, { name: 'signal', description: 'caller lifetime; abort stops the begin.' }],
+        returns: 'a handle used by {@link appendIngestChunk} and {@link finishIngest}.',
+      },
+      {
+        signature: 'abstract appendIngestChunk( request: { handle: AskKnowledgeIngestHandle; bytes: string }, signal?: AbortSignal, ): Promise<void>',
+        description: 'Append one base64 chunk. Decoded size must be ≤ 160KiB.',
+        parameters: [{ name: 'request', description: 'handle and canonical base64 bytes.' }, { name: 'signal', description: 'caller lifetime; abort stops the append.' }],
+      },
+      {
+        signature: 'abstract finishIngest( request: { handle: AskKnowledgeIngestHandle; reuseRawPath?: string }, signal?: AbortSignal, ): Promise<AskKnowledgeIngestResult>',
+        description: 'Assemble chunks, take the library lock, and run ingest → propose → apply.',
+        parameters: [{ name: 'request', description: 'handle and optional raw reuse path.' }, { name: 'signal', description: 'caller lifetime; abort stops the finish.' }],
+        returns: 'applied, deferred, or failed ingest status.',
+      },
+      {
+        signature: 'abstract beginExtract( request: { filename: string }, signal?: AbortSignal, ): Promise<AskKnowledgeIngestHandle>',
+        description: 'Open a session-only extract upload. Does not require a library.',
+        parameters: [{ name: 'request', description: 'original filename.' }, { name: 'signal', description: 'caller lifetime; abort stops the begin.' }],
+        returns: 'a handle used by {@link appendExtractChunk} and {@link finishExtract}.',
+      },
+      {
+        signature: 'abstract appendExtractChunk( request: { handle: AskKnowledgeIngestHandle; bytes: string }, signal?: AbortSignal, ): Promise<void>',
+        description: 'Append one base64 chunk to a session-only extract upload.',
+        parameters: [{ name: 'request', description: 'handle and canonical base64 bytes.' }, { name: 'signal', description: 'caller lifetime; abort stops the append.' }],
+      },
+      {
+        signature: 'abstract finishExtract( request: { handle: AskKnowledgeIngestHandle }, signal?: AbortSignal, ): Promise<AskKnowledgeExtractResult>',
+        description: 'Assemble chunks, convert to text, and delete the temp file. Does not write catalog or vault.',
+        parameters: [{ name: 'request', description: 'handle.' }, { name: 'signal', description: 'caller lifetime; abort stops the finish.' }],
+        returns: 'extracted text, truncated when longer than {@link ASK_KNOWLEDGE_EXTRACT_MAX_CHARS}.',
+      },
+      {
+        signature: 'abstract libraryStatus( request: { libraryId: AskKnowledgeLibraryId }, signal?: AbortSignal, ): Promise<AskKnowledgeStatus>',
+        description: 'Recover pending audits for one library and return its status.',
+        parameters: [{ name: 'request', description: 'library id.' }, { name: 'signal', description: 'caller lifetime; abort stops the status read.' }],
+        returns: 'catalog row plus pending audit count.',
+      },
+      {
+        signature: 'abstract retrieveBundle( request: { libraryId: AskKnowledgeLibraryId; terms: string[] }, signal?: AbortSignal, ): Promise<AskKnowledgeBundle>',
+        description: 'Retrieve pages for already-validated terms and load bodies.',
+        parameters: [{ name: 'request', description: 'library and terms.' }, { name: 'signal', description: 'caller lifetime; abort stops the retrieve.' }],
+        returns: 'a bounded bundle. Empty pre-trim concept+entity+raw is `no-hit`.',
+      },
+      {
+        signature: 'abstract lookup( request: { libraryId: AskKnowledgeLibraryId; term: string }, signal?: AbortSignal, ): Promise<AskKnowledgeLookup>',
+        description: 'Look up one term and attach sidecar body when a canonical path exists.',
+        parameters: [{ name: 'request', description: 'library and term.' }, { name: 'signal', description: 'caller lifetime; abort stops the lookup.' }],
+        returns: 'lookup fields plus optional text.',
+      },
+      {
+        signature: 'abstract placeShortcut( request: { libraryId: AskKnowledgeLibraryId; workspaceId: WorkspaceId }, signal?: AbortSignal, ): Promise<{ ok: boolean; path?: string; reason?: string }>',
+        description: 'Place or refresh the workspace-folder symlink. Failure does not roll back create.',
+        parameters: [{ name: 'request', description: 'library and workspace.' }, { name: 'signal', description: 'caller lifetime; abort stops the write.' }],
+        returns: 'whether the shortcut was written.',
+      },
+      {
+        signature: 'abstract revealLibrary( request: { libraryId: AskKnowledgeLibraryId }, signal?: AbortSignal, ): Promise<void>',
+        description: 'Reveal the vault in the host file manager.',
+        parameters: [{ name: 'request', description: 'library id.' }, { name: 'signal', description: 'caller lifetime; abort stops the reveal.' }],
       },
     ],
   },
@@ -670,6 +871,91 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Parse and execute a known command without sending it to the model.\n\nA resolved command\'s lifecycle is logged: `command/run` is appended before the handler is invoked and `command/done` after settlement (a thrown or aborted handler settles as `kind: \'error\'`). Both are direct log-only appends — no turn wraps them, and persistence drains them at ordinary checkpoints. Admission misses (syntax or unknown name) log nothing — they never entered a handler. A `command/run` append failure fails the execution loud; a `command/done` append failure on the handler-failure path is contained so the handler\'s own error stays the reported failure.\n\nAttachment admission is enforced here, not in the composer: attachments sent to a command that does not declare `input.attachments`, an absent attachment store, and an exceeded image limit each settle as an error result before the handler runs. Validation rejection starts no attachment writes; a storage failure can leave only unreachable content-addressed objects for deferred collection.',
         parameters: [{ name: 'agent', description: 'exact receiving agent.' }, { name: 'line', description: 'complete slash-command line.' }, { name: 'submittedAttachments', description: 'encoded images and staged file receipts accompanying the line, in submission order; empty for a plain invocation.' }, { name: 'signal', description: 'cancellation signal owned by the UI request.' }],
         returns: 'the settled execution (result + lifecycle pairing id), or `undefined` when syntax or name does not resolve.',
+      },
+    ],
+  },
+  {
+    key: 'commerce',
+    summary: 'Commerce capability definition.',
+    description: 'Commerce capability definition. Providers implement source I/O and analysis; the concrete bind method alone commits `commerce/bound`.',
+    methods: [
+      {
+        signature: 'abstract listSources(signal?: AbortSignal): Promise<CommerceSource[]>',
+        description: 'List provider-managed commerce sources.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'available commerce sources.',
+      },
+      {
+        signature: 'abstract platforms(): readonly string[]',
+        description: 'List the platform mapping ids this provider accepts for imports and exports.',
+        parameters: [],
+        returns: 'non-empty platform ids in configuration order.',
+      },
+      {
+        signature: 'abstract importSpreadsheet( request: CommerceImportSpreadsheetRequest, signal?: AbortSignal, ): Promise<CommerceImportPreview>',
+        description: 'Import or replace one table through a provider-owned platform mapping.',
+        parameters: [{ name: 'request', description: 'optional target source, table family, platform, filename, and bytes.' }, { name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'preview of the imported table and resulting source.',
+      },
+      {
+        signature: 'abstract importSample(signal?: AbortSignal): Promise<CommerceImportPreview>',
+        description: 'Import the provider\'s packaged fictional sample source.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'preview of the imported sample.',
+      },
+      {
+        signature: 'abstract describeSource( sourceId: CommerceSourceId, signal?: AbortSignal, ): Promise<CommerceSourceDescription>',
+        description: 'Read source metadata and fail with `source-missing` for an unknown identity.',
+        parameters: [{ name: 'sourceId', description: 'provider-managed source identity.' }, { name: 'signal', description: 'caller lifetime; abort stops the read.' }],
+        returns: 'source display name and imported table families.',
+      },
+      {
+        signature: 'async bind( agent: Agent, sourceId: CommerceSourceId, signal?: AbortSignal, ): Promise<CommerceBinding>',
+        description: 'Bind one unbound Session after the provider verifies the source. The method rechecks at the commit point so concurrent calls append only one event.',
+        parameters: [{ name: 'agent', description: 'live agent whose Session receives the binding event.' }, { name: 'sourceId', description: 'source to verify and bind.' }, { name: 'signal', description: 'caller lifetime; abort before commit appends nothing.' }],
+        returns: 'the binding snapshot appended to the Session.',
+      },
+      {
+        signature: 'abstract searchListings( sourceId: CommerceSourceId, request: CommerceSearchListingsRequest, signal?: AbortSignal, ): Promise<CommerceListingSummary[]>',
+        description: 'Search bounded listing summaries in one source.',
+        parameters: [{ name: 'sourceId', description: 'source to search.' }, { name: 'request', description: 'optional terms and required result cap.' }, { name: 'signal', description: 'caller lifetime; abort stops the search.' }],
+        returns: 'matching listing summaries.',
+      },
+      {
+        signature: 'abstract getListing( sourceId: CommerceSourceId, listingId: ListingId, signal?: AbortSignal, ): Promise<CommerceListing>',
+        description: 'Read one complete listing for grounded edits.',
+        parameters: [{ name: 'sourceId', description: 'source containing the listing.' }, { name: 'listingId', description: 'listing identity.' }, { name: 'signal', description: 'caller lifetime; abort stops the read.' }],
+        returns: 'full listing values and variant relationships.',
+      },
+      {
+        signature: 'abstract salesSummary( sourceId: CommerceSourceId, request: CommerceSalesSummaryRequest, signal?: AbortSignal, ): Promise<CommerceSalesSummary>',
+        description: 'Aggregate sales over an optional date range.',
+        parameters: [{ name: 'sourceId', description: 'source containing orders.' }, { name: 'request', description: 'optional inclusive date bounds.' }, { name: 'signal', description: 'caller lifetime; abort stops the aggregation.' }],
+        returns: 'aggregate order, unit, sales, and currency facts.',
+      },
+      {
+        signature: 'abstract inventoryHealth( sourceId: CommerceSourceId, signal?: AbortSignal, ): Promise<CommerceInventoryHealth>',
+        description: 'Classify bounded inventory rows in one source.',
+        parameters: [{ name: 'sourceId', description: 'source containing inventory.' }, { name: 'signal', description: 'caller lifetime; abort stops the read.' }],
+        returns: 'inventory classifications.',
+      },
+      {
+        signature: 'abstract analysisSchema( sourceId: CommerceSourceId, signal?: AbortSignal, ): Promise<CommerceAnalysisSchema>',
+        description: 'Describe tables available to SELECT-only analysis.',
+        parameters: [{ name: 'sourceId', description: 'source whose schema is requested.' }, { name: 'signal', description: 'caller lifetime; abort stops the schema read.' }],
+        returns: 'analysis table and column metadata.',
+      },
+      {
+        signature: 'abstract runAnalysisQuery( sourceId: CommerceSourceId, query: string, signal?: AbortSignal, ): Promise<CommerceAnalysisResult>',
+        description: 'Run one provider-validated SELECT-only query.',
+        parameters: [{ name: 'sourceId', description: 'source queried by the analysis backend.' }, { name: 'query', description: 'SQL text subject to provider enforcement.' }, { name: 'signal', description: 'caller lifetime; abort stops the query.' }],
+        returns: 'bounded tabular query output.',
+      },
+      {
+        signature: 'abstract renderExport( changes: readonly CommerceChange[], platform: string, signal?: AbortSignal, ): Promise<string>',
+        description: 'Render grounded staged changes in a provider-owned platform CSV format. This method performs no file write.',
+        parameters: [{ name: 'changes', description: 'staged changes with verified before and after values.' }, { name: 'platform', description: 'provider-resolved platform mapping identity.' }, { name: 'signal', description: 'caller lifetime; abort stops rendering.' }],
+        returns: 'complete CSV text for the Consumer to write after approval.',
       },
     ],
   },
@@ -975,6 +1261,109 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Prepare every currently registered field from one immutable base request. Preparation failures reject before HTTP dispatch. Field values are cloned and frozen; providers retain no mutable alias to the outgoing request.',
         parameters: [{ name: 'request', description: 'exact serialized request facts before extension fields.' }],
         returns: 'detached fields and their idempotent joint acceptance transaction.',
+      },
+    ],
+  },
+  {
+    key: 'desktopMedia',
+    summary: 'Overlay media service: catalogues, open/reveal, and paid producers.',
+    description: 'Overlay media service: catalogues, open/reveal, and paid producers.',
+    methods: [
+      {
+        signature: 'async runtimeStatus(signal: AbortSignal): Promise<MediaRuntimeStatus>',
+        description: 'Whether user FFmpeg is recorded and has the V1 encoders.',
+        parameters: [{ name: 'signal', description: 'caller lifetime.' }],
+        returns: 'ready flag and install guidance.',
+      },
+      {
+        signature: 'listWorks(filter: { workspaceId?: string; sessionId?: string } = {}): Promise<readonly MediaArtifactRecord[]>',
+        description: 'List retained works without activating a session.',
+        parameters: [{ name: 'filter', description: 'optional workspace or session filter.' }],
+        returns: 'catalogue rows.',
+      },
+      {
+        signature: 'listVoices(): Promise<readonly MediaVoiceRecord[]>',
+        description: 'List system and cloned voices.',
+        parameters: [],
+        returns: 'catalogue rows.',
+      },
+      {
+        signature: 'async openWork(artifactId: string, signal: AbortSignal): Promise<{ requested: true; message: string }>',
+        description: 'Open a registered work in the system default application.',
+        parameters: [{ name: 'artifactId', description: 'opaque catalogue id.' }, { name: 'signal', description: 'caller lifetime.' }],
+        returns: 'model-safe open wording.',
+      },
+      {
+        signature: 'async revealWork(artifactId: string, signal: AbortSignal): Promise<{ requested: true; message: string }>',
+        description: 'Reveal a registered work in the file manager.',
+        parameters: [{ name: 'artifactId', description: 'opaque catalogue id.' }, { name: 'signal', description: 'caller lifetime.' }],
+        returns: 'model-safe open wording.',
+      },
+      {
+        signature: 'async copyWorkPath(artifactId: string): Promise<{ path: string }>',
+        description: 'Copyable absolute path for a registered work.',
+        parameters: [{ name: 'artifactId', description: 'opaque catalogue id.' }],
+        returns: 'absolute path.',
+      },
+      {
+        signature: 'async saveWorkAs(artifactId: string, destDir: string, filename: string): Promise<{ path: string }>',
+        description: 'Copy a registered work into a user-chosen directory.',
+        parameters: [{ name: 'artifactId', description: 'opaque catalogue id.' }, { name: 'destDir', description: 'absolute destination directory.' }, { name: 'filename', description: 'basename only.' }],
+        returns: 'written path.',
+      },
+      {
+        signature: 'async importBytes( request: ImportBytes, sessionId: string, workspaceId: string | undefined, ): Promise<MediaArtifactRecord>',
+        description: 'Admit selected bytes into managed storage.',
+        parameters: [{ name: 'request', description: 'filename and bytes.' }, { name: 'sessionId', description: 'owning session.' }, { name: 'workspaceId', description: 'optional workspace.' }],
+        returns: 'committed artifact.',
+      },
+      {
+        signature: 'async createVideo( owner: Agent, args: CreateVideoArgs, approval: MediaApprovalInput, ): Promise<{ requestId: MediaRequestId; jobId: JobId }>',
+        description: 'Start a paid video job after the caller has a live owner and approval.',
+        parameters: [{ name: 'owner', description: 'live agent.' }, { name: 'args', description: 'validated generation args.' }, { name: 'approval', description: 'hash-bound confirmation.' }],
+        returns: 'durable request id and process-local job id.',
+      },
+      {
+        signature: 'async createSpeech( owner: Agent, text: string, voiceId: string, approval: MediaApprovalInput, ): Promise<{ requestId: MediaRequestId; jobId: JobId }>',
+        description: 'Start a paid speech job.',
+        parameters: [{ name: 'owner', description: 'live agent.' }, { name: 'text', description: 'narration copy.' }, { name: 'voiceId', description: 'system or cloned voice.' }, { name: 'approval', description: 'hash-bound confirmation.' }],
+        returns: 'durable request id and job id.',
+      },
+      {
+        signature: 'async cloneVoiceFromArtifact( owner: Agent, artifactId: string, label: string, consent: { speakerIsUser: boolean; authorized: boolean }, ): Promise<{ voiceId: MediaVoiceId }>',
+        description: 'Clone a voice from a registered import after consent.',
+        parameters: [{ name: 'owner', description: 'live agent.' }, { name: 'artifactId', description: 'imported sample.' }, { name: 'label', description: 'display name.' }, { name: 'consent', description: 'speaker declaration.' }],
+        returns: 'new local voice id.',
+      },
+      {
+        signature: 'async compose( owner: Agent, clipIds: readonly string[], narrationId: string | undefined, mix: boolean, ): Promise<MediaArtifactRecord>',
+        description: 'Join approved clips and optional narration.',
+        parameters: [{ name: 'owner', description: 'live agent.' }, { name: 'clipIds', description: 'artifact ids in join order.' }, { name: 'narrationId', description: 'optional narration artifact.' }, { name: 'mix', description: 'mix instead of replace.' }],
+        returns: 'composed artifact.',
+      },
+      {
+        signature: 'recover(owner: Agent): readonly JobId[]',
+        description: 'Recover known provider tasks for a newly created live agent.',
+        parameters: [{ name: 'owner', description: 'live agent.' }],
+        returns: 'started job ids.',
+      },
+      {
+        signature: 'estimateYuan(kind: \'video\' | \'speech\' | \'clone\'): number',
+        description: 'Estimate used when the provider does not return a charge.',
+        parameters: [{ name: 'kind', description: 'paid operation.' }],
+        returns: 'yuan estimate.',
+      },
+    ],
+  },
+  {
+    key: 'desktopStartup',
+    summary: 'Immutable facts selected by the desktop shell for one companion process.',
+    description: 'Immutable facts selected by the desktop shell for one companion process.',
+    methods: [
+      {
+        signature: 'workspaceRoot: string',
+        description: 'Absolute workspace root served by this companion.',
+        parameters: [],
       },
     ],
   },
@@ -1742,31 +2131,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
-    key: 'productAnalytics',
-    summary: 'Authenticated event intake; disabled instances do not inspect identity or accept new events.',
-    description: 'Authenticated event intake; disabled instances do not inspect identity or accept new events.',
-    methods: [
-      {
-        signature: '@Remote enabled(): boolean',
-        description: 'Read the collection policy.',
-        parameters: [],
-        returns: 'whether this Host currently accepts Desktop analytics.',
-      },
-      {
-        signature: '@Remote({ mode: \'stream\' }) async *watchPolicy(signal: AbortSignal): AsyncIterable<boolean>',
-        description: 'Stream the effective policy initially and after live configuration edits.',
-        parameters: [{ name: 'signal', description: 'subscriber lifetime.' }],
-        returns: 'current policy values until cancellation or service disposal.',
-      },
-      {
-        signature: '@Remote async report(event: ProductEvent): Promise<void>',
-        description: 'Submit selected Desktop fields; missing identity is omitted and never generated.',
-        parameters: [{ name: 'event', description: 'typed product event without message contents or credentials.' }],
-        returns: 'after local submission; no delivery or warehouse acknowledgement.',
-      },
-    ],
-  },
-  {
     key: 'productTelemetry',
     summary: 'Host analytics sender.',
     description: 'Host analytics sender. Mounting alone sends nothing; the owning fiber drains it on unload.',
@@ -1992,6 +2356,211 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'request', description: 'path after best-effort Session workspace resolution.' }, { name: 'signal', description: 'caller lifetime; abort terminates the native command.' }],
         returns: 'confirmation after the native opener accepts the path.',
         throws: ['RemoteError when the request is invalid, has no verified Host mapping, is cancelled, or the opener fails.'],
+      },
+      {
+        signature: '@Remote(\'listEntries\') async listEntries( request: SessionListEntriesRequest, signal: AbortSignal, ): Promise<SessionListEntriesValue>',
+        description: 'List one directory under a Session\'s project cwd. The Host derives the fence from the Session header; the Client must not send a root.',
+        parameters: [{ name: 'request', description: 'Session identity and optional absolute list path.' }, { name: 'signal', description: 'caller lifetime; abort stops the filesystem scan.' }],
+        returns: 'one fenced directory level.',
+        throws: ['RemoteError when the capability is absent, the Session has no cwd, the path leaves the fence, or the scan fails.'],
+      },
+      {
+        signature: '@Remote(\'listAskDataSources\') listAskDataSources(signal: AbortSignal): Promise<readonly SessionAskDataSource[]>',
+        description: 'List overlay-managed sources plus unmatched data-agent connections.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'listed sources.',
+        throws: ['RemoteError when the ask-data capability is absent.'],
+      },
+      {
+        signature: '@Remote(\'importAskDataSpreadsheet\') importAskDataSpreadsheet( request: SessionImportAskDataSpreadsheetRequest, signal: AbortSignal, ): Promise<SessionAskDataImportPreview>',
+        description: 'Import one `.xlsx` / `.csv`. `bytes` is canonical base64 of the decoded file. Does not apply a preset or open a session.',
+        parameters: [{ name: 'request', description: 'filename, encoded bytes, optional replace target.' }, { name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'preview read from the written sqlite.',
+      },
+      {
+        signature: '@Remote(\'importAskDataSample\') importAskDataSample(signal: AbortSignal): Promise<SessionAskDataImportPreview>',
+        description: 'Copy the packaged sample sqlite. Does not need host `sqlite3`.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the copy.' }],
+        returns: 'preview of the copied sqlite.',
+      },
+      {
+        signature: '@Remote(\'commitAskData\') commitAskData( request: SessionCommitAskDataRequest, signal: AbortSignal, ): Promise<SessionCommitAskDataValue>',
+        description: 'Bind one source to a Session. Host does not guess the current Session. Pass `sessionId` only when the caller already has a blank (or already bound-to-this-source) Session.',
+        parameters: [{ name: 'request', description: 'source and optional session / workspace.' }, { name: 'signal', description: 'caller lifetime; abort stops the commit.' }],
+        returns: 'the Session identity after bind + `ask-data/bound`.',
+      },
+      {
+        signature: '@Remote(\'askDataBinding\') askDataBinding(request: SessionAskDataBindingRequest): SessionAskDataBinding | null',
+        description: 'Read the current ask-data bind of a live Session.',
+        parameters: [{ name: 'request', description: 'Session identity.' }],
+        returns: 'the bind, or null before one.',
+      },
+      {
+        signature: '@Remote(\'listCommerceSources\') listCommerceSources(signal: AbortSignal): Promise<readonly SessionCommerceSource[]>',
+        description: 'List the commerce sources the provider stores.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'listed sources.',
+        throws: ['RemoteError when the commerce capability is absent.'],
+      },
+      {
+        signature: '@Remote(\'listCommercePlatforms\') listCommercePlatforms(): readonly string[]',
+        description: 'List the platform mapping ids this deployment configured. A Client picks one before importing a spreadsheet.',
+        parameters: [],
+        returns: 'the configured platform ids.',
+        throws: ['RemoteError when the commerce capability is absent.'],
+      },
+      {
+        signature: '@Remote(\'importCommerceSpreadsheet\') importCommerceSpreadsheet( request: SessionImportCommerceSpreadsheetRequest, signal: AbortSignal, ): Promise<SessionCommerceImportPreview>',
+        description: 'Import or replace one commerce table from a spreadsheet. `bytes` is canonical base64 of the decoded file. Does not apply a preset or open a session.',
+        parameters: [{ name: 'request', description: 'table family, platform mapping, filename, encoded bytes, and the source to extend.' }, { name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'preview of the imported source.',
+      },
+      {
+        signature: '@Remote(\'importCommerceSample\') importCommerceSample(signal: AbortSignal): Promise<SessionCommerceImportPreview>',
+        description: 'Import the packaged fictional commerce sample as one source.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'preview of the imported sample.',
+      },
+      {
+        signature: '@Remote(\'commitCommerce\') commitCommerce( request: SessionCommitCommerceRequest, signal: AbortSignal, ): Promise<SessionCommitCommerceValue>',
+        description: 'Bind one commerce source to a Session. Host does not guess the current Session: pass `sessionId` only for a blank Session, or one already bound to this source.',
+        parameters: [{ name: 'request', description: 'source and optional session / workspace.' }, { name: 'signal', description: 'caller lifetime; abort stops the commit.' }],
+        returns: 'the Session identity after bind + `commerce/bound`.',
+      },
+      {
+        signature: '@Remote(\'listMediaWorks\') listMediaWorks( request: SessionListMediaWorksRequest, signal: AbortSignal, ): Promise<readonly SessionMediaWork[]>',
+        description: 'List retained media works without activating a session.',
+        parameters: [{ name: 'request', description: 'optional workspace or session filter.' }, { name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'catalogue rows.',
+        throws: ['RemoteError when the desktop-media overlay is absent.'],
+      },
+      {
+        signature: '@Remote(\'listMediaVoices\') listMediaVoices(signal: AbortSignal): Promise<readonly SessionMediaVoice[]>',
+        description: 'List system and cloned voices.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'catalogue rows.',
+      },
+      {
+        signature: '@Remote(\'mediaRuntimeStatus\') mediaRuntimeStatus(signal: AbortSignal): Promise<SessionMediaRuntimeStatus>',
+        description: 'Whether user FFmpeg is recorded and has the V1 encoders.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the probe.' }],
+        returns: 'ready flag and install guidance.',
+      },
+      {
+        signature: '@Remote(\'openMediaWork\') openMediaWork( request: SessionMediaWorkRequest, signal: AbortSignal, ): Promise<{ requested: true }>',
+        description: 'Open a registered work in the system default application.',
+        parameters: [{ name: 'request', description: 'artifact id.' }, { name: 'signal', description: 'caller lifetime; abort stops the open.' }],
+        returns: 'confirmation that the system opener was requested.',
+      },
+      {
+        signature: '@Remote(\'revealMediaWork\') revealMediaWork( request: SessionMediaWorkRequest, signal: AbortSignal, ): Promise<{ requested: true }>',
+        description: 'Reveal a registered work in the file manager.',
+        parameters: [{ name: 'request', description: 'artifact id.' }, { name: 'signal', description: 'caller lifetime; abort stops the reveal.' }],
+        returns: 'confirmation that the file manager was requested.',
+      },
+      {
+        signature: '@Remote(\'copyMediaWorkPath\') copyMediaWorkPath(request: SessionMediaWorkRequest): Promise<{ path: string }>',
+        description: 'Copyable absolute path for a registered work.',
+        parameters: [{ name: 'request', description: 'artifact id.' }],
+        returns: 'absolute path.',
+      },
+      {
+        signature: '@Remote(\'importMediaBytes\') importMediaBytes( request: SessionImportMediaBytesRequest, signal: AbortSignal, ): Promise<SessionMediaWork>',
+        description: 'Admit selected media bytes. Does not activate an Agent.',
+        parameters: [{ name: 'request', description: 'filename, encoded bytes, and owning session.' }, { name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'committed work row.',
+      },
+      {
+        signature: '@Remote(\'saveMediaWorkAs\') saveMediaWorkAs( request: SessionSaveMediaWorkAsRequest, signal: AbortSignal, ): Promise<{ path: string }>',
+        description: 'Copy a registered work into a user-chosen directory.',
+        parameters: [{ name: 'request', description: 'artifact, destination directory, and basename.' }, { name: 'signal', description: 'caller lifetime; abort stops the copy.' }],
+        returns: 'written path.',
+      },
+      {
+        signature: '@Remote(\'listAskKnowledgeLibraries\') listAskKnowledgeLibraries(signal: AbortSignal): Promise<readonly SessionAskKnowledgeLibrary[]>',
+        description: 'List overlay-managed knowledge libraries.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort stops the listing.' }],
+        returns: 'catalog rows.',
+      },
+      {
+        signature: '@Remote(\'createAskKnowledgeLibrary\') createAskKnowledgeLibrary( request: SessionCreateAskKnowledgeLibraryRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeLibrary>',
+        description: 'Create an empty knowledge library.',
+        parameters: [{ name: 'request', description: 'display name and optional workspace shortcut.' }, { name: 'signal', description: 'caller lifetime; abort stops the create.' }],
+        returns: 'the new catalog row.',
+      },
+      {
+        signature: '@Remote(\'renameAskKnowledgeLibrary\') renameAskKnowledgeLibrary( request: SessionRenameAskKnowledgeLibraryRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeLibrary>',
+        description: 'Rename a knowledge library.',
+        parameters: [{ name: 'request', description: 'library id and new display name.' }, { name: 'signal', description: 'caller lifetime; abort stops the rename.' }],
+        returns: 'the updated row.',
+      },
+      {
+        signature: '@Remote(\'removeAskKnowledgeLibrary\') removeAskKnowledgeLibrary( request: SessionRemoveAskKnowledgeLibraryRequest, signal: AbortSignal, ): Promise<void>',
+        description: 'Remove a knowledge library and unbind live and cold sessions.',
+        parameters: [{ name: 'request', description: 'library id.' }, { name: 'signal', description: 'caller lifetime; abort stops the remove.' }],
+      },
+      {
+        signature: '@Remote(\'attachAskKnowledge\') attachAskKnowledge( request: SessionAttachAskKnowledgeRequest, signal: AbortSignal, ): Promise<SessionAttachAskKnowledgeValue>',
+        description: 'Hang a library on a Session. Host does not guess the current Session. Omit `sessionId` to create a standard Session, then attach. A named data-agent Session with an ask-data bind creates a new standard Session instead, because data-agent denies retrieve tools.',
+        parameters: [{ name: 'request', description: 'library and optional session / workspace.' }, { name: 'signal', description: 'caller lifetime; abort stops the attach.' }],
+        returns: 'the Session identity after bind.',
+      },
+      {
+        signature: '@Remote(\'detachAskKnowledge\') detachAskKnowledge( request: SessionDetachAskKnowledgeRequest, signal: AbortSignal, ): Promise<void>',
+        description: 'Clear the library bind on a live Session.',
+        parameters: [{ name: 'request', description: 'Session identity.' }, { name: 'signal', description: 'caller lifetime; abort stops the detach.' }],
+      },
+      {
+        signature: '@Remote(\'beginAskKnowledgeIngest\') beginAskKnowledgeIngest( request: SessionBeginAskKnowledgeIngestRequest, signal: AbortSignal, ): Promise<string>',
+        description: 'Open an ingest upload. `bytes` chunks follow on append.',
+        parameters: [{ name: 'request', description: 'library and original filename.' }, { name: 'signal', description: 'caller lifetime; abort stops the begin.' }],
+        returns: 'the ingest handle.',
+      },
+      {
+        signature: '@Remote(\'appendAskKnowledgeIngestChunk\') appendAskKnowledgeIngestChunk( request: SessionAppendAskKnowledgeIngestChunkRequest, signal: AbortSignal, ): Promise<void>',
+        description: 'Append one canonical-base64 chunk. Decoded size must be ≤ 160KiB.',
+        parameters: [{ name: 'request', description: 'handle and encoded bytes.' }, { name: 'signal', description: 'caller lifetime; abort stops the append.' }],
+      },
+      {
+        signature: '@Remote(\'finishAskKnowledgeIngest\') finishAskKnowledgeIngest( request: SessionFinishAskKnowledgeIngestRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeIngestResult>',
+        description: 'Assemble chunks and run ingest → propose → apply.',
+        parameters: [{ name: 'request', description: 'handle and optional raw reuse path.' }, { name: 'signal', description: 'caller lifetime; abort stops the finish.' }],
+        returns: 'applied, deferred, or failed ingest status.',
+      },
+      {
+        signature: '@Remote(\'beginAskKnowledgeExtract\') beginAskKnowledgeExtract( request: SessionBeginAskKnowledgeExtractRequest, signal: AbortSignal, ): Promise<string>',
+        description: 'Open a session-only extract upload. Does not write catalog.',
+        parameters: [{ name: 'request', description: 'original filename.' }, { name: 'signal', description: 'caller lifetime; abort stops the begin.' }],
+        returns: 'the extract handle.',
+      },
+      {
+        signature: '@Remote(\'appendAskKnowledgeExtractChunk\') appendAskKnowledgeExtractChunk( request: SessionAppendAskKnowledgeExtractChunkRequest, signal: AbortSignal, ): Promise<void>',
+        description: 'Append one canonical-base64 chunk to a session-only extract upload.',
+        parameters: [{ name: 'request', description: 'handle and encoded bytes.' }, { name: 'signal', description: 'caller lifetime; abort stops the append.' }],
+      },
+      {
+        signature: '@Remote(\'finishAskKnowledgeExtract\') finishAskKnowledgeExtract( request: SessionFinishAskKnowledgeExtractRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeExtractResult>',
+        description: 'Convert the assembled file to text. Does not write catalog or vault.',
+        parameters: [{ name: 'request', description: 'handle.' }, { name: 'signal', description: 'caller lifetime; abort stops the finish.' }],
+        returns: 'extracted text and whether it was truncated.',
+      },
+      {
+        signature: '@Remote(\'askKnowledgeRetrieve\') askKnowledgeRetrieve( request: SessionAskKnowledgeRetrieveRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeBundle>',
+        description: 'Retrieve pages for the Session\'s hung library.',
+        parameters: [{ name: 'request', description: 'Session identity and terms.' }, { name: 'signal', description: 'caller lifetime; abort stops the retrieve.' }],
+        returns: 'a bounded bundle.',
+      },
+      {
+        signature: '@Remote(\'askKnowledgeLookup\') askKnowledgeLookup( request: SessionAskKnowledgeLookupRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeLookup>',
+        description: 'Look up one term on the Session\'s hung library.',
+        parameters: [{ name: 'request', description: 'Session identity and term.' }, { name: 'signal', description: 'caller lifetime; abort stops the lookup.' }],
+        returns: 'lookup fields plus optional text.',
+      },
+      {
+        signature: '@Remote(\'askKnowledgeBinding\') askKnowledgeBinding(request: SessionAskKnowledgeBindingRequest): SessionAskKnowledgeBinding | null',
+        description: 'Read the current ask-knowledge bind of a live Session.',
+        parameters: [{ name: 'request', description: 'Session identity.' }],
+        returns: 'the bind, or null before one.',
       },
       {
         signature: '@Remote(\'workspacePathApplications\') async workspacePathApplications( request: { readonly path: string }, signal: AbortSignal, ): Promise<readonly SessionWorkspacePathApplication[]>',
@@ -3662,6 +4231,20 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'workspaceEntries',
+    summary: 'Abstract one-level workspace listing service.',
+    description: 'Abstract one-level workspace listing service. Subclass, implement `list`, and load the subclass as a plugin — it registers as `ctx.workspaceEntries` (one implementation per context; loading a second throws, cordis\' standard duplicate-service behavior).',
+    methods: [
+      {
+        signature: 'abstract list( request: WorkspaceEntriesListRequest, signal?: AbortSignal, ): Promise<WorkspaceEntriesListing>',
+        description: 'List one directory level inside `request.root`.',
+        parameters: [{ name: 'request', description: 'Host-derived root and optional fully-qualified list path.' }, { name: 'signal', description: 'caller/connection lifetime; abort stops the scan.' }],
+        returns: 'the level\'s listing; backends bound the complete result, and a cut level reports `truncated`.',
+        throws: ['{WorkspaceEntriesError} `entries-unreadable` when the target is not fully qualified or cannot be listed; `entries-outside-root` when the target (after realpath) leaves `root`.'],
+      },
+    ],
+  },
+  {
     key: 'workspaceFiles',
     summary: 'Host Remote file reads and workspace directory observations over the composed filesystem.',
     description: 'Host Remote file reads and workspace directory observations over the composed filesystem.',
@@ -4089,12 +4672,20 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'target', description: 'the resolved target about to be edited.' }, { name: 'actor', description: 'the opaque tool-execution context the decider keys off.' }],
   },
   {
+    name: 'fs/error-remedy',
+    mode: 'waterfall',
+    signature: '\'fs/error-remedy\'(request: FsErrorRemedyRequest, next: () => FsErrorRemedy | Promise<FsErrorRemedy>): Promise<FsErrorRemedy>',
+    summary: 'Enrich a guarded-mutation failure\'s remedy text.',
+    description: 'Enrich a guarded-mutation failure\'s remedy text. The default listener returns the static remedy; a Team runtime may override it with attribution.',
+    parameters: [{ name: 'request', description: 'the error, target, operation, and actor.' }, { name: 'next', description: 'returns the default remedy string, or undefined for un-remedied errors.' }],
+  },
+  {
     name: 'fs/observed',
     mode: 'emit',
-    signature: '\'fs/observed\'(target: FsTarget, observation: FsObservation, actor: object | undefined): void',
+    signature: '\'fs/observed\'(target: FsTarget, observation: FsObservation, actor: object | undefined, operation?: \'read\' | \'write\' | \'edit\'): void',
     summary: 'Record an authoritative positive or negative observation.',
     description: 'Record an authoritative positive or negative observation. Listeners must be synchronous recorders: throws fail the tool call and returned promises are not awaited.',
-    parameters: [{ name: 'target', description: 'the target whose presence or absence was observed.' }, { name: 'observation', description: 'present with its version, or confirmed absent.' }, { name: 'actor', description: 'the observing tool-execution context; undefined records nothing useful.' }],
+    parameters: [{ name: 'target', description: 'the target whose presence or absence was observed.' }, { name: 'observation', description: 'present with its version, or confirmed absent.' }, { name: 'actor', description: 'the observing tool-execution context; undefined records nothing useful.' }, { name: 'operation', description: 'which tool operation produced this observation, or undefined for non-tool sources.' }],
   },
   {
     name: 'fs/write-intent',
@@ -4577,6 +5168,90 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ArchiveSessionOptions {\n    readonly stopActivity?: boolean;\n}',
   },
   {
+    name: 'AskDataBinding',
+    declaration: 'export interface AskDataBinding {\n    readonly sourceId: string;\n    readonly connectionRef: string;\n    readonly displayName: string;\n    readonly readonly: boolean;\n}',
+  },
+  {
+    name: 'AskDataBindLease',
+    declaration: 'export interface AskDataBindLease {\n    readonly binding: AskDataBinding;\n    rollback(): Promise<void>;\n}',
+  },
+  {
+    name: 'AskDataBindRequest',
+    declaration: 'export interface AskDataBindRequest {\n    readonly sourceId: AskDataSourceId;\n    readonly sessionId: SessionId;\n}',
+  },
+  {
+    name: 'AskDataConnectionRef',
+    declaration: 'export type AskDataConnectionRef = Branded<\'AskDataConnectionRef\'>;',
+  },
+  {
+    name: 'AskDataImportPreview',
+    declaration: 'export interface AskDataImportPreview {\n    readonly source: AskDataSource;\n    readonly tables: readonly AskDataTablePreview[];\n    readonly warnings: readonly string[];\n}',
+  },
+  {
+    name: 'AskDataImportSpreadsheetRequest',
+    declaration: 'export interface AskDataImportSpreadsheetRequest {\n    readonly filename: string;\n    readonly bytes: Uint8Array;\n    readonly replaceSourceId?: AskDataSourceId;\n}',
+  },
+  {
+    name: 'AskDataSource',
+    declaration: 'export interface AskDataSource {\n    readonly id: AskDataSourceId;\n    readonly displayName: string;\n    readonly kind: AskDataSourceKind;\n    readonly connectionRef?: AskDataConnectionRef;\n    readonly lastUsedAt?: string;\n    readonly warnings: readonly string[];\n    readonly missing: boolean;\n}',
+  },
+  {
+    name: 'AskDataSourceId',
+    declaration: 'export type AskDataSourceId = Branded<\'AskDataSourceId\'>;',
+  },
+  {
+    name: 'AskDataSourceKind',
+    declaration: 'export type AskDataSourceKind = \'sample\' | \'import\' | \'saved\';',
+  },
+  {
+    name: 'AskDataTablePreview',
+    declaration: 'export interface AskDataTablePreview {\n    readonly name: string;\n    readonly rowCount: number;\n    readonly columns: readonly string[];\n}',
+  },
+  {
+    name: 'AskKnowledgeAttachLease',
+    declaration: 'export interface AskKnowledgeAttachLease {\n    readonly binding: AskKnowledgeBinding;\n    rollback(): Promise<void>;\n}',
+  },
+  {
+    name: 'AskKnowledgeBinding',
+    declaration: 'export interface AskKnowledgeBinding {\n    readonly libraryId: string;\n    readonly displayName: string;\n}',
+  },
+  {
+    name: 'AskKnowledgeBundle',
+    declaration: 'export interface AskKnowledgeBundle {\n    readonly items: readonly AskKnowledgeBundleItem[];\n    readonly warnings: readonly {\n        readonly ruleId: string;\n        readonly message: string;\n    }[];\n    readonly tokenEstimate: number;\n}',
+  },
+  {
+    name: 'AskKnowledgeBundleItem',
+    declaration: 'export interface AskKnowledgeBundleItem {\n    readonly path: string;\n    readonly title: string;\n    readonly reason: string;\n    readonly text: string;\n    readonly kind: \'concept\' | \'entity\' | \'raw\';\n}',
+  },
+  {
+    name: 'AskKnowledgeExtractResult',
+    declaration: 'export interface AskKnowledgeExtractResult {\n    readonly filename: string;\n    readonly text: string;\n    readonly truncated: boolean;\n}',
+  },
+  {
+    name: 'AskKnowledgeIngestHandle',
+    declaration: 'export type AskKnowledgeIngestHandle = Branded<\'AskKnowledgeIngestHandle\'>;',
+  },
+  {
+    name: 'AskKnowledgeIngestResult',
+    declaration: 'export interface AskKnowledgeIngestResult {\n    readonly status: \'applied\' | \'deferred\' | \'failed\';\n    readonly deferredCount?: number;\n    readonly rawRelPath?: string;\n    readonly retryable?: boolean;\n    readonly proposalId?: string;\n    readonly error?: string;\n}',
+  },
+  {
+    name: 'AskKnowledgeLibrary',
+    declaration: 'export interface AskKnowledgeLibrary {\n    readonly id: AskKnowledgeLibraryId;\n    readonly displayName: string;\n    readonly createdAt: string;\n    readonly lastUsedAt: string;\n    readonly missing: boolean;\n    readonly deleting: boolean;\n    readonly hasWorkspaceShortcut?: boolean;\n    readonly documentCount?: number;\n}',
+  },
+  {
+    name: 'AskKnowledgeLibraryId',
+    declaration: 'export type AskKnowledgeLibraryId = Branded<\'AskKnowledgeLibraryId\'>;',
+  },
+  {
+    name: 'AskKnowledgeLookup',
+    declaration: 'export interface AskKnowledgeLookup {\n    readonly term: string;\n    readonly canonicalPath?: string;\n    readonly text?: string;\n    readonly warnings: readonly {\n        readonly ruleId: string;\n        readonly message: string;\n    }[];\n}',
+  },
+  {
+    name: 'AskKnowledgeStatus',
+    declaration: 'export interface AskKnowledgeStatus {\n    readonly library: AskKnowledgeLibrary;\n    readonly pendingAuditCount: number;\n}',
+  },
+  {
     name: 'AskOptions',
     declaration: 'export interface AskOptions {\n    options?: readonly string[];\n    header?: string;\n    multiSelect?: true;\n}',
   },
@@ -4821,6 +5496,94 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type CommandSubmitAttachment = ({\n    readonly type: \'image\';\n} & EncodedImageAttachment) | {\n    readonly type: \'file\';\n    readonly receiptId: string;\n};',
   },
   {
+    name: 'CommerceAnalysisColumn',
+    declaration: 'export interface CommerceAnalysisColumn {\n    readonly name: string;\n    readonly type: string;\n}',
+  },
+  {
+    name: 'CommerceAnalysisResult',
+    declaration: 'export interface CommerceAnalysisResult {\n    readonly columns: readonly string[];\n    readonly rows: readonly CommerceRecord[];\n    readonly truncated: boolean;\n}',
+  },
+  {
+    name: 'CommerceAnalysisSchema',
+    declaration: 'export interface CommerceAnalysisSchema {\n    readonly tables: readonly CommerceAnalysisTable[];\n}',
+  },
+  {
+    name: 'CommerceAnalysisTable',
+    declaration: 'export interface CommerceAnalysisTable {\n    readonly name: string;\n    readonly columns: readonly CommerceAnalysisColumn[];\n}',
+  },
+  {
+    name: 'CommerceBinding',
+    declaration: 'export interface CommerceBinding {\n    readonly sourceId: CommerceSourceId;\n    readonly displayName: string;\n    readonly kinds: readonly CommerceDataKind[];\n}',
+  },
+  {
+    name: 'CommerceChange',
+    declaration: 'export interface CommerceChange {\n    readonly id: ChangeId;\n    readonly kind: CommerceChangeKind;\n    readonly listingId?: ListingId;\n    readonly before: CommerceRecord;\n    readonly after: CommerceRecord;\n}',
+  },
+  {
+    name: 'CommerceChangeKind',
+    declaration: 'export type CommerceChangeKind = \'listing-update\' | \'price-change\' | \'promotion\' | \'restock\' | \'campaign\';',
+  },
+  {
+    name: 'CommerceDataKind',
+    declaration: 'export type CommerceDataKind = \'orders\' | \'products\' | \'inventory\';',
+  },
+  {
+    name: 'CommerceImportPreview',
+    declaration: 'export interface CommerceImportPreview {\n    readonly source: CommerceSource;\n    readonly tables: readonly CommerceImportTablePreview[];\n    readonly warnings: readonly string[];\n}',
+  },
+  {
+    name: 'CommerceImportSpreadsheetRequest',
+    declaration: 'export interface CommerceImportSpreadsheetRequest {\n    readonly sourceId?: CommerceSourceId;\n    readonly kind: CommerceDataKind;\n    readonly platform: string;\n    readonly filename: string;\n    readonly bytes: Uint8Array;\n}',
+  },
+  {
+    name: 'CommerceImportTablePreview',
+    declaration: 'export interface CommerceImportTablePreview {\n    readonly kind: CommerceDataKind;\n    readonly rowCount: number;\n    readonly columns: readonly string[];\n}',
+  },
+  {
+    name: 'CommerceInventoryHealth',
+    declaration: 'export interface CommerceInventoryHealth {\n    readonly items: readonly CommerceInventoryHealthItem[];\n}',
+  },
+  {
+    name: 'CommerceInventoryHealthItem',
+    declaration: 'export interface CommerceInventoryHealthItem {\n    readonly listingId: ListingId;\n    readonly available: number;\n    readonly status: \'out-of-stock\' | \'low\' | \'healthy\';\n}',
+  },
+  {
+    name: 'CommerceListing',
+    declaration: 'export interface CommerceListing {\n    readonly id: ListingId;\n    readonly title: string;\n    readonly parentId?: ListingId;\n    readonly variantIds: readonly ListingId[];\n    readonly values: CommerceRecord;\n}',
+  },
+  {
+    name: 'CommerceListingSummary',
+    declaration: 'export interface CommerceListingSummary {\n    readonly id: ListingId;\n    readonly title: string;\n    readonly sku?: string;\n    readonly status?: string;\n}',
+  },
+  {
+    name: 'CommerceRecord',
+    declaration: 'export type CommerceRecord = Readonly<Record<string, CommerceValue>>;',
+  },
+  {
+    name: 'CommerceSalesSummary',
+    declaration: 'export interface CommerceSalesSummary {\n    readonly orderCount: number;\n    readonly unitsSold: number;\n    readonly grossSales: number;\n    readonly currency: string;\n}',
+  },
+  {
+    name: 'CommerceSalesSummaryRequest',
+    declaration: 'export interface CommerceSalesSummaryRequest {\n    readonly from?: string;\n    readonly to?: string;\n}',
+  },
+  {
+    name: 'CommerceSearchListingsRequest',
+    declaration: 'export interface CommerceSearchListingsRequest {\n    readonly query?: string;\n    readonly limit: number;\n}',
+  },
+  {
+    name: 'CommerceSource',
+    declaration: 'export interface CommerceSource {\n    readonly id: CommerceSourceId;\n    readonly displayName: string;\n    readonly kinds: readonly CommerceDataKind[];\n}',
+  },
+  {
+    name: 'CommerceSourceDescription',
+    declaration: 'export interface CommerceSourceDescription {\n    readonly displayName: string;\n    readonly kinds: readonly CommerceDataKind[];\n}',
+  },
+  {
+    name: 'CommerceValue',
+    declaration: 'export type CommerceValue = string | number | boolean | null;',
+  },
+  {
     name: 'CompactionAgentContext',
     declaration: 'export interface CompactionAgentContext {\n    session: Session;\n    options: {\n        provider?: string;\n        model?: string;\n    };\n}',
   },
@@ -4899,10 +5662,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ConnectionRpcHandlerResult',
     declaration: 'export type ConnectionRpcHandlerResult = {\n    readonly ok: true;\n    readonly value: unknown;\n    readonly attachments?: readonly ConnectionRpcAttachment[];\n} | {\n    readonly ok: false;\n    readonly error: ConnectionRpcFailure;\n};',
-  },
-  {
-    name: 'ConnectionRpcResult',
-    declaration: 'export type ConnectionRpcResult<T> = {\n    readonly ok: true;\n    readonly value: T;\n} | {\n    readonly ok: false;\n    readonly error: ConnectionRpcFailure;\n};',
   },
   {
     name: 'ConnectionTrustRequest',
@@ -5025,6 +5784,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CreateTeamTaskRequest {\n    readonly subject: string;\n    readonly description: string;\n    readonly blockedBy?: readonly TeamTaskId[];\n    readonly writeScopes?: readonly string[];\n}',
   },
   {
+    name: 'CreateVideoArgs',
+    declaration: 'export interface CreateVideoArgs {\n    readonly prompt: string;\n    readonly duration: number;\n    readonly ratio: DesktopMediaConfig[\'defaultRatio\'];\n    readonly resolution: DesktopMediaConfig[\'defaultResolution\'];\n    readonly model: DesktopMediaConfig[\'videoModel\'];\n    readonly imageIds?: readonly string[];\n    readonly imageMode?: \'reference\' | \'first_last\';\n}',
+  },
+  {
     name: 'CredentialInfo',
     declaration: 'export interface CredentialInfo {\n    configured: boolean;\n    source?: string;\n    writable: boolean;\n}',
   },
@@ -5083,6 +5846,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'DeliveryRetentionBounds',
     declaration: 'export interface DeliveryRetentionBounds {\n    readonly days: number;\n    readonly records: number;\n}',
+  },
+  {
+    name: 'DesktopMediaConfig',
+    declaration: 'export interface DesktopMediaConfig extends MediaRuntimeHomeConfig, MediaBudgetConfig, ImportLimits {\n    readonly pollIntervalMs: number;\n    readonly pollTimeoutMs: number;\n    readonly videoModel: \'MiniMax-H3\' | \'MiniMax-H3-Max\';\n    readonly ttsModel: string;\n    readonly defaultDurationSeconds: number;\n    readonly defaultResolution: \'480P\' | \'768P\' | \'2K\';\n    readonly defaultRatio: \'21:9\' | \'16:9\' | \'4:3\' | \'1:1\' | \'3:4\' | \'9:16\';\n    readonly maxClipCount: number;\n}',
   },
   {
     name: 'DeveloperMessage',
@@ -5209,6 +5976,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EncodedImageAttachment {\n    mediaType: ImageMediaType;\n    data: string;\n    name?: string;\n}',
   },
   {
+    name: 'EnsureInstitutionSquadRequest',
+    declaration: 'export interface EnsureInstitutionSquadRequest {\n    readonly squadId: InstitutionSquadId;\n    readonly seats?: readonly {\n        readonly name: string;\n        readonly provider?: string;\n        readonly model?: string;\n    }[];\n}',
+  },
+  {
+    name: 'EnsureInstitutionSquadResult',
+    declaration: 'export interface EnsureInstitutionSquadResult {\n    readonly sessionId: SessionId;\n    readonly squadId: InstitutionSquadId;\n    readonly members: readonly TeamMemberView[];\n}',
+  },
+  {
     name: 'EpochHeader',
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    tools?: ToolSchema[];\n    system?: never;\n}',
   },
@@ -5285,8 +6060,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface FsEditRequest {\n    oldString: string;\n    newString: string;\n    replaceAll: boolean;\n}',
   },
   {
+    name: 'FsError',
+    declaration: 'export class FsError extends HarnessError {\n    override readonly code: FsErrorCode;\n    constructor(message: string, code: FsErrorCode, options?: ErrorOptions);\n}',
+  },
+  {
+    name: 'FsErrorCode',
+    declaration: 'export type FsErrorCode = \'FS_NOT_FOUND\' | \'FS_NOT_DIRECTORY\' | \'FS_NOT_TEXT\' | \'FS_NOT_REGULAR_FILE\' | \'FS_TOO_LARGE\' | \'FS_PERMISSION_DENIED\' | \'FS_SANDBOX_DENIED\' | \'FS_IO_ERROR\' | \'FS_STALE_VERSION\' | \'FS_NOT_OBSERVED\' | \'FS_AMBIGUOUS_EDIT\' | \'FS_EDIT_NOT_FOUND\' | \'FS_ABORTED\';',
+  },
+  {
+    name: 'FsErrorRemedy',
+    declaration: 'export type FsErrorRemedy = string | undefined;',
+  },
+  {
+    name: 'FsErrorRemedyRequest',
+    declaration: 'export interface FsErrorRemedyRequest {\n    readonly error: FsError;\n    readonly target: FsTarget;\n    readonly operation: FsMutationOperation;\n    readonly actor: object | undefined;\n}',
+  },
+  {
     name: 'FsInfo',
     declaration: 'export interface FsInfo {\n    version: FsVersion;\n    type: \'file\' | \'directory\' | \'other\';\n    size?: number;\n}',
+  },
+  {
+    name: 'FsMutationOperation',
+    declaration: 'export type FsMutationOperation = \'write\' | \'edit\';',
   },
   {
     name: 'FsObservation',
@@ -5373,6 +6168,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface GrantRecord {\n    readonly kind: \'grant\';\n    readonly payload: unknown;\n}',
   },
   {
+    name: 'HarnessError',
+    declaration: 'export class HarnessError extends Error {\n    readonly code: string;\n    constructor(message: string, code: string, options?: ErrorOptions);\n}',
+  },
+  {
     name: 'HookBudget',
     declaration: 'export interface HookBudget {\n    readonly ms: number;\n    readonly remainingMs: number;\n}',
   },
@@ -5429,6 +6228,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ImageVariantId = Branded<\'ImageVariantId\'>;',
   },
   {
+    name: 'ImportBytes',
+    declaration: 'export interface ImportBytes {\n    readonly filename: string;\n    readonly bytes: Uint8Array;\n}',
+  },
+  {
+    name: 'ImportLimits',
+    declaration: 'export interface ImportLimits {\n    readonly maxFileBytes: number;\n    readonly maxClipDurationSeconds: number;\n}',
+  },
+  {
     name: 'IncompatiblePlugin',
     declaration: 'export interface IncompatiblePlugin {\n    name: string;\n    version: string;\n    runtimeVersion: string;\n    peers: Record<string, string>;\n}',
   },
@@ -5467,6 +6274,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'InstallSpecKind',
     declaration: 'export type InstallSpecKind = \'registry\' | \'path\' | \'git\' | \'tarball\';',
+  },
+  {
+    name: 'InstitutionSeatDefinition',
+    declaration: 'export interface InstitutionSeatDefinition {\n    readonly name: string;\n    readonly title: string;\n    readonly titleEn: string;\n    readonly duty: string;\n}',
+  },
+  {
+    name: 'InstitutionSeatView',
+    declaration: 'export interface InstitutionSeatView {\n    readonly name: string;\n    readonly title: string;\n    readonly titleEn: string;\n    readonly duty: string;\n    readonly provider?: string;\n    readonly model?: string;\n}',
+  },
+  {
+    name: 'InstitutionSquadDefinition',
+    declaration: 'export interface InstitutionSquadDefinition {\n    readonly id: InstitutionSquadId;\n    readonly displayName: string;\n    readonly displayNameEn: string;\n    readonly seats: readonly InstitutionSeatDefinition[];\n}',
+  },
+  {
+    name: 'InstitutionSquadId',
+    declaration: 'export type InstitutionSquadId = \'document\' | \'case\' | \'comms\';',
+  },
+  {
+    name: 'InstitutionSquadView',
+    declaration: 'export interface InstitutionSquadView {\n    readonly id: InstitutionSquadId;\n    readonly displayName: string;\n    readonly displayNameEn: string;\n    readonly leadSessionId?: SessionId;\n    readonly established: boolean;\n    readonly seats: readonly InstitutionSeatView[];\n}',
   },
   {
     name: 'InternalScheduleError',
@@ -5781,6 +6608,46 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type McpResourceRequest = {\n    method: \'resources/list\' | \'resources/templates/list\';\n    cursor?: string;\n} | {\n    method: \'resources/read\';\n    uri: string;\n};',
   },
   {
+    name: 'MediaApprovalInput',
+    declaration: 'export interface MediaApprovalInput {\n    readonly promptHash: string;\n    readonly estimatedYuan: number;\n    readonly inputHashes?: readonly string[];\n    readonly requestId?: string;\n}',
+  },
+  {
+    name: 'MediaArtifactId',
+    declaration: 'export type MediaArtifactId = Branded<\'MediaArtifactId\'>;',
+  },
+  {
+    name: 'MediaArtifactRecord',
+    declaration: 'export interface MediaArtifactRecord {\n    readonly artifactId: MediaArtifactId;\n    readonly requestId: MediaRequestId;\n    readonly kind: MediaWorkKind;\n    readonly name: string;\n    readonly file: string;\n    readonly digest: string;\n    readonly durationSeconds?: number;\n    readonly sessionId: SessionId;\n    readonly workspaceId?: string;\n    readonly createdAt: string;\n}',
+  },
+  {
+    name: 'MediaBudgetConfig',
+    declaration: 'export interface MediaBudgetConfig {\n    readonly maxPaidCallsPerSession: number;\n    readonly maxEstimatedSpendYuan: number;\n}',
+  },
+  {
+    name: 'MediaRequestId',
+    declaration: 'export type MediaRequestId = Branded<\'MediaRequestId\'>;',
+  },
+  {
+    name: 'MediaRuntimeHomeConfig',
+    declaration: 'export interface MediaRuntimeHomeConfig {\n    readonly mediaRuntimePath?: string;\n}',
+  },
+  {
+    name: 'MediaRuntimeStatus',
+    declaration: 'export interface MediaRuntimeStatus {\n    readonly ready: boolean;\n    readonly homeDisplay: string;\n    readonly guidance: string;\n}',
+  },
+  {
+    name: 'MediaVoiceId',
+    declaration: 'export type MediaVoiceId = Branded<\'MediaVoiceId\'>;',
+  },
+  {
+    name: 'MediaVoiceRecord',
+    declaration: 'export interface MediaVoiceRecord {\n    readonly voiceId: MediaVoiceId;\n    readonly label: string;\n    readonly system: boolean;\n    readonly digest?: string;\n    readonly consentAt?: string;\n    readonly lastFormalAt?: string;\n    readonly speakerIsUser?: boolean;\n    readonly requestId?: MediaRequestId;\n}',
+  },
+  {
+    name: 'MediaWorkKind',
+    declaration: 'export type MediaWorkKind = \'video\' | \'speech\' | \'composed\' | \'import\';',
+  },
+  {
     name: 'Message',
     declaration: 'export type Message = MessageRoleMap[keyof MessageRoleMap];',
   },
@@ -5977,10 +6844,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface OfficeToPdfResult {\n    readonly pdf: Uint8Array;\n    readonly missingFonts: string[];\n    readonly cacheKey: OfficeToPdfKey;\n    readonly generation: OfficeToPdfGeneration;\n}',
   },
   {
-    name: 'OnboardingPage',
-    declaration: 'export type OnboardingPage = \'onboarding_welcome\' | \'onboarding_recharge\' | \'onboarding_use_case\' | \'onboarding_process\';',
-  },
-  {
     name: 'OneShotScheduleRecord',
     declaration: 'export type OneShotScheduleRecord = AfterScheduleRecord | AtScheduleRecord;',
   },
@@ -6145,14 +7008,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type PreToolDecision = {\n    kind: \'allow\';\n} | {\n    kind: \'deny\';\n    reason: string;\n    info?: ToolErrorInfo;\n} | {\n    kind: \'cancel\';\n} | {\n    kind: \'ask\';\n    reason?: string;\n    displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n};',
   },
   {
-    name: 'ProductEvent',
-    declaration: 'export type ProductEvent = {\n    [K in keyof ProductEventMap]: {\n        eventName: K;\n        attributes: ProductEventMap[K];\n        timestamp: number;\n    };\n}[keyof ProductEventMap];',
-  },
-  {
-    name: 'ProductEventMap',
-    declaration: 'export interface ProductEventMap {\n    desktop_app_launch: Record<string, never>;\n    auth_page_view: Record<string, never>;\n    auth_page_click: {\n        button_name: \'sign_in\' | \'api-key\';\n    };\n    api_key_save_click: Record<string, never>;\n    onboarding_page_view: {\n        page_name: OnboardingPage;\n    };\n    onboarding_page_click: {\n        page_name: OnboardingPage;\n        button_name: \'next\' | \'back\' | \'skip\' | \'charge\' | \'later\' | \'continue\';\n        selected_content?: \'office\' | \'code\' | \'code_office\' | \'focus_result\' | \'key_detail\' | \'full_process\';\n    };\n    onboarding_popup_view: {\n        popup_name: \'skip_charge\' | \'skip_setting\';\n    };\n    onboarding_popup_click: {\n        popup_name: \'skip_charge\' | \'skip_setting\';\n        button_name: \'charge\' | \'know\' | \'enter\' | \'setting\' | \'close\';\n    };\n    desktop_upgrade_click: Record<string, never>;\n    desktop_upgrade_download_result: {\n        is_success: boolean;\n        error_reason?: string;\n    };\n    desktop_upgrade_install_restart_click: Record<string, never>;\n    send_button_click: {\n        session_id?: SessionId;\n        model_name?: string;\n        thinking_effort?: string;\n        run_mode: \'plan\' | \'goal\' | \'default\';\n        msg_type: \'default\' | \'steer\' | \'queue\';\n    };\n    model_switch: {\n        session_id?: SessionId;\n        switch_from: string;\n        switch_to: string;\n    };\n    thinking_level_switch: {\n        session_id?: SessionId;\n        switch_from: string;\n        switch_to: str /* …truncated — full shape in source */',
-  },
-  {
     name: 'ProductTelemetryRecord',
     declaration: 'export type ProductTelemetryRecord = OTelEventRecord;',
   },
@@ -6281,6 +7136,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ReadFileLine {\n    number: number;\n    text: string;\n}',
   },
   {
+    name: 'ReadHtmlPreviewRequest',
+    declaration: 'export interface ReadHtmlPreviewRequest {\n    readonly path: string;\n}',
+  },
+  {
+    name: 'ReadHtmlPreviewResult',
+    declaration: 'export interface ReadHtmlPreviewResult {\n    readonly path: string;\n    readonly html: string;\n}',
+  },
+  {
     name: 'ReadOnlyReason',
     declaration: 'export type ReadOnlyReason = \'management-required\' | \'unaddressable\';',
   },
@@ -6395,10 +7258,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ResumeAgentOptions',
     declaration: 'export interface ResumeAgentOptions {\n    readonly resumeSessionId: SessionId;\n    readonly parentAgent?: Agent;\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
-  },
-  {
-    name: 'RpcId',
-    declaration: 'export type RpcId = Branded<\'rpc-id\'>;',
   },
   {
     name: 'RunnerFailureRule',
@@ -6561,10 +7420,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SerializedNode = SerializedElement | string;',
   },
   {
-    name: 'ServerResponse',
-    declaration: 'export interface ServerResponse {\n    readonly type: \'server-response\';\n    readonly rpcId: RpcId;\n    readonly result: ConnectionRpcResult<unknown>;\n}',
-  },
-  {
     name: 'Session',
     declaration: 'export class Session {\n    get surface(): SessionSurface;\n    readonly header: SessionHeader;\n    readonly inheritedEventCount: SessionLogOffset;\n    get id(): SessionId;\n    readonly firstLiveSeq: SessionLogOffset;\n    readonly firstLifecycleSeq: SessionLogOffset;\n    static create(id: SessionId, seed?: readonly SessionEvent[], header?: SessionHeader, inheritedEventCount?: SessionLogOffset, projections?: readonly SessionMessageProjection[]): Session;\n    static fromRestore(id: SessionId, seed: readonly SessionEvent[], header: SessionHeader, inheritedEventCount: SessionLogOffset, eventState: SessionSeedEventState, projections?: readonly SessionMessageProjection[]): Session;\n    eventAt(seq: SessionSeq): SessionEvent | undefined;\n    snapshotEvents(fromSeq: SessionLogOffset = SessionLogOffset(0), toSeqExclusive: SessionLogOffset = this.seq): readonly SessionEvent[];\n    ownEvents(): readonly SessionEvent[];\n    isOwnSeq(seq: SessionSeq): boolean;\n    get seq(): SessionLogOffset;\n    append<T extends SessionEventType>(type: T, data: SessionEventMap[T], ...opts: T extends SurfaceEventType ? [\n        opts: SurfaceIntent<T>\n    ] : [\n    ]): SessionEvent<T>;\n    requestHeader(): EpochHeader | undefined;\n    requestContext(): RequestContext | undefined;\n    toolHistory(): ToolHistory;\n    deriveMessages(): Message[];\n    deriveEventMessage(event: SessionEvent): Message | null;\n}',
   },
@@ -6597,6 +7452,74 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SessionAddress = {\n    readonly kind: \'session\';\n    readonly sessionId: SessionId;\n} | {\n    readonly kind: \'subagent\';\n    readonly parentSessionId: SessionId;\n    readonly childSessionId: SessionId;\n    readonly mode: \'one-shot\' | \'continuable\' | \'unknown\';\n};',
   },
   {
+    name: 'SessionAppendAskKnowledgeExtractChunkRequest',
+    declaration: 'export interface SessionAppendAskKnowledgeExtractChunkRequest {\n    readonly handle: string;\n    readonly bytes: string;\n}',
+  },
+  {
+    name: 'SessionAppendAskKnowledgeIngestChunkRequest',
+    declaration: 'export interface SessionAppendAskKnowledgeIngestChunkRequest {\n    readonly handle: string;\n    readonly bytes: string;\n}',
+  },
+  {
+    name: 'SessionAskDataBinding',
+    declaration: 'export interface SessionAskDataBinding {\n    readonly sourceId: string;\n    readonly connectionRef: string;\n    readonly displayName: string;\n    readonly readonly: boolean;\n}',
+  },
+  {
+    name: 'SessionAskDataBindingRequest',
+    declaration: 'export interface SessionAskDataBindingRequest {\n    readonly sessionId: SessionId;\n}',
+  },
+  {
+    name: 'SessionAskDataImportPreview',
+    declaration: 'export interface SessionAskDataImportPreview {\n    readonly source: SessionAskDataSource;\n    readonly tables: readonly SessionAskDataTablePreview[];\n    readonly warnings: readonly string[];\n}',
+  },
+  {
+    name: 'SessionAskDataSource',
+    declaration: 'export interface SessionAskDataSource {\n    readonly id: string;\n    readonly displayName: string;\n    readonly kind: \'sample\' | \'import\' | \'saved\';\n    readonly connectionRef?: string;\n    readonly lastUsedAt?: string;\n    readonly warnings: readonly string[];\n    readonly missing: boolean;\n}',
+  },
+  {
+    name: 'SessionAskDataTablePreview',
+    declaration: 'export interface SessionAskDataTablePreview {\n    readonly name: string;\n    readonly rowCount: number;\n    readonly columns: readonly string[];\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeBinding',
+    declaration: 'export interface SessionAskKnowledgeBinding {\n    readonly libraryId: string;\n    readonly displayName: string;\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeBindingRequest',
+    declaration: 'export interface SessionAskKnowledgeBindingRequest {\n    readonly sessionId: SessionId;\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeBundle',
+    declaration: 'export interface SessionAskKnowledgeBundle {\n    readonly items: readonly SessionAskKnowledgeBundleItem[];\n    readonly warnings: readonly {\n        readonly ruleId: string;\n        readonly message: string;\n    }[];\n    readonly tokenEstimate: number;\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeBundleItem',
+    declaration: 'export interface SessionAskKnowledgeBundleItem {\n    readonly path: string;\n    readonly title: string;\n    readonly reason: string;\n    readonly text: string;\n    readonly kind: \'concept\' | \'entity\' | \'raw\';\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeExtractResult',
+    declaration: 'export interface SessionAskKnowledgeExtractResult {\n    readonly filename: string;\n    readonly text: string;\n    readonly truncated: boolean;\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeIngestResult',
+    declaration: 'export interface SessionAskKnowledgeIngestResult {\n    readonly status: \'applied\' | \'deferred\' | \'failed\';\n    readonly deferredCount?: number;\n    readonly rawRelPath?: string;\n    readonly retryable?: boolean;\n    readonly proposalId?: string;\n    readonly error?: string;\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeLibrary',
+    declaration: 'export interface SessionAskKnowledgeLibrary {\n    readonly id: string;\n    readonly displayName: string;\n    readonly createdAt: string;\n    readonly lastUsedAt: string;\n    readonly missing: boolean;\n    readonly deleting: boolean;\n    readonly documentCount?: number;\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeLookup',
+    declaration: 'export interface SessionAskKnowledgeLookup {\n    readonly term: string;\n    readonly canonicalPath?: string;\n    readonly text?: string;\n    readonly warnings: readonly {\n        readonly ruleId: string;\n        readonly message: string;\n    }[];\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeLookupRequest',
+    declaration: 'export interface SessionAskKnowledgeLookupRequest {\n    readonly sessionId: SessionId;\n    readonly term: string;\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeRetrieveRequest',
+    declaration: 'export interface SessionAskKnowledgeRetrieveRequest {\n    readonly sessionId: SessionId;\n    readonly terms: string[];\n}',
+  },
+  {
     name: 'SessionAssistantStreamAttempt',
     declaration: 'export interface SessionAssistantStreamAttempt {\n    readonly attemptId: LlmAttemptId;\n    readonly startedAfterSeq: SessionSeqCursor;\n    readonly turn: number;\n    readonly step: number;\n    readonly nextIndex: number;\n    readonly stream: readonly JsonValue[];\n}',
   },
@@ -6607,6 +7530,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionAssistantStreamFrame',
     declaration: 'export type SessionAssistantStreamFrame = {\n    readonly type: \'start\';\n    readonly attemptId: LlmAttemptId;\n    readonly revision: number;\n    readonly startedAfterSeq: SessionSeqCursor;\n    readonly turn: number;\n    readonly step: number;\n} | {\n    readonly type: \'chunk\';\n    readonly attemptId: LlmAttemptId;\n    readonly revision: number;\n    readonly index: number;\n    readonly time: number;\n    readonly chunk: JsonValue;\n} | {\n    readonly type: \'end\';\n    readonly attemptId: LlmAttemptId;\n    readonly revision: number;\n    readonly index: number;\n    readonly outcome: {\n        readonly kind: \'committed\';\n        readonly eventType: \'assistant/message\' | \'assistant/attempt\';\n        readonly seq: number;\n    } | {\n        readonly kind: \'abandoned\';\n    };\n};',
+  },
+  {
+    name: 'SessionAttachAskKnowledgeRequest',
+    declaration: 'export interface SessionAttachAskKnowledgeRequest {\n    readonly libraryId: string;\n    readonly sessionId?: SessionId;\n    readonly workspaceId?: WorkspaceId;\n}',
+  },
+  {
+    name: 'SessionAttachAskKnowledgeValue',
+    declaration: 'export interface SessionAttachAskKnowledgeValue {\n    readonly sessionId: SessionId;\n}',
   },
   {
     name: 'SessionAttachmentRequest',
@@ -6621,12 +7552,48 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SessionAvailability = \'live\' | \'persisted\';',
   },
   {
+    name: 'SessionBeginAskKnowledgeExtractRequest',
+    declaration: 'export interface SessionBeginAskKnowledgeExtractRequest {\n    readonly filename: string;\n}',
+  },
+  {
+    name: 'SessionBeginAskKnowledgeIngestRequest',
+    declaration: 'export interface SessionBeginAskKnowledgeIngestRequest {\n    readonly libraryId: string;\n    readonly filename: string;\n}',
+  },
+  {
     name: 'SessionCancelRequest',
     declaration: 'export interface SessionCancelRequest {\n    readonly sessionId: SessionId;\n}',
   },
   {
     name: 'SessionCancelValue',
     declaration: 'export interface SessionCancelValue {\n    readonly accepted: true;\n}',
+  },
+  {
+    name: 'SessionCommerceImportPreview',
+    declaration: 'export interface SessionCommerceImportPreview {\n    readonly source: SessionCommerceSource;\n    readonly tables: readonly SessionCommerceTablePreview[];\n    readonly warnings: readonly string[];\n}',
+  },
+  {
+    name: 'SessionCommerceSource',
+    declaration: 'export interface SessionCommerceSource {\n    readonly id: string;\n    readonly displayName: string;\n    readonly kinds: readonly (\'orders\' | \'products\' | \'inventory\')[];\n}',
+  },
+  {
+    name: 'SessionCommerceTablePreview',
+    declaration: 'export interface SessionCommerceTablePreview {\n    readonly kind: \'orders\' | \'products\' | \'inventory\';\n    readonly rowCount: number;\n    readonly columns: readonly string[];\n}',
+  },
+  {
+    name: 'SessionCommitAskDataRequest',
+    declaration: 'export interface SessionCommitAskDataRequest {\n    readonly sourceId: string;\n    readonly sessionId?: SessionId;\n    readonly workspaceId?: WorkspaceId;\n}',
+  },
+  {
+    name: 'SessionCommitAskDataValue',
+    declaration: 'export interface SessionCommitAskDataValue {\n    readonly sessionId: SessionId;\n}',
+  },
+  {
+    name: 'SessionCommitCommerceRequest',
+    declaration: 'export interface SessionCommitCommerceRequest {\n    readonly sourceId: string;\n    readonly sessionId?: SessionId;\n    readonly workspaceId?: WorkspaceId;\n}',
+  },
+  {
+    name: 'SessionCommitCommerceValue',
+    declaration: 'export interface SessionCommitCommerceValue {\n    readonly sessionId: SessionId;\n}',
   },
   {
     name: 'SessionControlBaseline',
@@ -6637,12 +7604,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SessionControlFrame = {\n    readonly type: \'baseline\';\n    readonly value: SessionControlBaseline;\n} | ({\n    readonly type: \'projection\';\n} & SessionProjectionUpdate);',
   },
   {
+    name: 'SessionCreateAskKnowledgeLibraryRequest',
+    declaration: 'export interface SessionCreateAskKnowledgeLibraryRequest {\n    readonly displayName: string;\n    readonly workspaceId?: WorkspaceId;\n}',
+  },
+  {
     name: 'SessionCreateRequest',
     declaration: 'export interface SessionCreateRequest {\n    readonly workspaceId?: WorkspaceId;\n    readonly cwd?: string;\n    readonly sessionId?: SessionId;\n    readonly agentPreset?: string;\n}',
   },
   {
     name: 'SessionCreateValue',
     declaration: 'export interface SessionCreateValue {\n    readonly sessionId: SessionId;\n    readonly agentPreset?: string;\n}',
+  },
+  {
+    name: 'SessionDetachAskKnowledgeRequest',
+    declaration: 'export interface SessionDetachAskKnowledgeRequest {\n    readonly sessionId: SessionId;\n}',
   },
   {
     name: 'SessionEndInput',
@@ -6737,6 +7712,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SessionFeedbackSessionNotFound {\n    readonly code: \'session-not-found\';\n    readonly sessionId: SessionId;\n}',
   },
   {
+    name: 'SessionFinishAskKnowledgeExtractRequest',
+    declaration: 'export interface SessionFinishAskKnowledgeExtractRequest {\n    readonly handle: string;\n}',
+  },
+  {
+    name: 'SessionFinishAskKnowledgeIngestRequest',
+    declaration: 'export interface SessionFinishAskKnowledgeIngestRequest {\n    readonly handle: string;\n    readonly reuseRawPath?: string;\n}',
+  },
+  {
     name: 'SessionFollowFrame',
     declaration: 'export type SessionFollowFrame = {\n    readonly type: \'snapshot\';\n    readonly header: SessionWireHeader;\n    readonly cursor: number;\n    readonly records: readonly SessionHistoryRecord[];\n    readonly hasMore: boolean;\n    readonly projections: SessionProjectionBaseline;\n    readonly assistantStream?: SessionAssistantStreamBaseline;\n} | SessionEventEntry | {\n    readonly type: \'assistant-stream\';\n    readonly frame: SessionAssistantStreamFrame;\n};',
   },
@@ -6789,6 +7772,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SessionId = Branded<\'SessionId\'>;',
   },
   {
+    name: 'SessionImportAskDataSpreadsheetRequest',
+    declaration: 'export interface SessionImportAskDataSpreadsheetRequest {\n    readonly filename: string;\n    readonly bytes: string;\n    readonly replaceSourceId?: string;\n}',
+  },
+  {
+    name: 'SessionImportCommerceSpreadsheetRequest',
+    declaration: 'export interface SessionImportCommerceSpreadsheetRequest {\n    readonly filename: string;\n    readonly bytes: string;\n    readonly kind: \'orders\' | \'products\' | \'inventory\';\n    readonly platform: string;\n    readonly sourceId?: string;\n}',
+  },
+  {
+    name: 'SessionImportMediaBytesRequest',
+    declaration: 'export interface SessionImportMediaBytesRequest {\n    readonly filename: string;\n    readonly bytes: string;\n    readonly sessionId: SessionId;\n    readonly workspaceId?: string;\n}',
+  },
+  {
     name: 'SessionInspection',
     declaration: 'export interface SessionInspection extends SessionStorageMetadata {\n    readonly events: readonly SessionEvent[];\n}',
   },
@@ -6799,6 +7794,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionLineageTrace',
     declaration: 'export type SessionLineageTrace = {\n    target: SessionRecord;\n    ancestors: SessionRecord[];\n    descendants: SessionLineageNode[];\n} & ({\n    complete: true;\n    root: SessionRecord;\n} | {\n    complete: false;\n    unresolvedParentId: SessionId;\n});',
+  },
+  {
+    name: 'SessionListEntriesRequest',
+    declaration: 'export interface SessionListEntriesRequest {\n    readonly sessionId: SessionId;\n    readonly path?: string;\n}',
+  },
+  {
+    name: 'SessionListEntriesValue',
+    declaration: 'export interface SessionListEntriesValue {\n    readonly path: string;\n    readonly root: string;\n    readonly entries: readonly SessionWorkspaceEntry[];\n    readonly truncated: boolean;\n}',
+  },
+  {
+    name: 'SessionListMediaWorksRequest',
+    declaration: 'export interface SessionListMediaWorksRequest {\n    readonly workspaceId?: string;\n    readonly sessionId?: string;\n}',
   },
   {
     name: 'SessionListRequest',
@@ -6827,6 +7834,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionLogSnapshot',
     declaration: 'export interface SessionLogSnapshot {\n    session: SessionHeader;\n    inheritedEventCount: SessionLogOffset;\n    events: SessionEvent[];\n}',
+  },
+  {
+    name: 'SessionMediaRuntimeStatus',
+    declaration: 'export interface SessionMediaRuntimeStatus {\n    readonly ready: boolean;\n    readonly guidance: string;\n}',
+  },
+  {
+    name: 'SessionMediaVoice',
+    declaration: 'export interface SessionMediaVoice {\n    readonly voiceId: string;\n    readonly label: string;\n    readonly system: boolean;\n}',
+  },
+  {
+    name: 'SessionMediaWork',
+    declaration: 'export interface SessionMediaWork {\n    readonly artifactId: string;\n    readonly requestId: string;\n    readonly kind: \'video\' | \'speech\' | \'composed\' | \'import\';\n    readonly name: string;\n    readonly sessionId: string;\n    readonly workspaceId?: string;\n    readonly createdAt: string;\n    readonly durationSeconds?: number;\n}',
+  },
+  {
+    name: 'SessionMediaWorkRequest',
+    declaration: 'export interface SessionMediaWorkRequest {\n    readonly artifactId: string;\n}',
   },
   {
     name: 'SessionMessage',
@@ -6949,6 +7972,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SessionReferenceMentionCandidate extends SessionReferenceCandidate {\n    mention: string;\n}',
   },
   {
+    name: 'SessionRemoveAskKnowledgeLibraryRequest',
+    declaration: 'export interface SessionRemoveAskKnowledgeLibraryRequest {\n    readonly libraryId: string;\n}',
+  },
+  {
+    name: 'SessionRenameAskKnowledgeLibraryRequest',
+    declaration: 'export interface SessionRenameAskKnowledgeLibraryRequest {\n    readonly libraryId: string;\n    readonly displayName: string;\n}',
+  },
+  {
     name: 'SessionRenameRequest',
     declaration: 'export interface SessionRenameRequest {\n    readonly sessionId: SessionId;\n    readonly title: string;\n}',
   },
@@ -6967,6 +7998,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionResultRange',
     declaration: 'export interface SessionResultRange {\n    from?: number;\n    to?: number;\n}',
+  },
+  {
+    name: 'SessionSaveMediaWorkAsRequest',
+    declaration: 'export interface SessionSaveMediaWorkAsRequest {\n    readonly artifactId: string;\n    readonly directory: string;\n    readonly filename: string;\n}',
   },
   {
     name: 'SessionSearchCursor',
@@ -7111,6 +8146,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionWireHeader',
     declaration: 'export interface SessionWireHeader {\n    readonly version: number;\n    readonly id: SessionId;\n    readonly createdAt: number;\n    readonly cwd?: string;\n    readonly parentSession?: SessionId;\n    readonly isSeeded: boolean;\n    readonly origin?: \'subagent\';\n    readonly delegationDepth?: number;\n    readonly agentPreset?: string;\n}',
+  },
+  {
+    name: 'SessionWorkspaceEntry',
+    declaration: 'export interface SessionWorkspaceEntry {\n    readonly name: string;\n    readonly path: string;\n    readonly kind: SessionWorkspaceEntryKind;\n    readonly hidden: boolean;\n    readonly symlink: boolean;\n}',
+  },
+  {
+    name: 'SessionWorkspaceEntryKind',
+    declaration: 'export type SessionWorkspaceEntryKind = \'file\' | \'directory\' | \'broken-symlink\';',
   },
   {
     name: 'SessionWorkspacePathApplication',
@@ -7270,7 +8313,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SpawnTeammateRequest',
-    declaration: 'export interface SpawnTeammateRequest {\n    readonly name: string;\n    readonly description: string;\n    readonly prompt: ContentBlock[];\n    readonly context: \'fresh\' | \'fork\';\n    readonly provider: string;\n    readonly signal: AbortSignal;\n}',
+    declaration: 'export interface SpawnTeammateRequest {\n    readonly name: string;\n    readonly description: string;\n    readonly prompt: ContentBlock[];\n    readonly context: \'fresh\' | \'fork\';\n    readonly provider: string;\n    readonly agentOptions?: AgentOptions;\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'SpawnTeammateResult',
@@ -7589,12 +8632,24 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type TeamId = Branded<\'TeamId\'>;',
   },
   {
+    name: 'TeamInteractionEdge',
+    declaration: 'export interface TeamInteractionEdge {\n    readonly id: string;\n    readonly from: string;\n    readonly to: string;\n    readonly kind: TeamInteractionKind;\n}',
+  },
+  {
+    name: 'TeamInteractionKind',
+    declaration: 'export type TeamInteractionKind = \'message\' | \'task-dep\';',
+  },
+  {
+    name: 'TeamMemberResult',
+    declaration: 'export interface TeamMemberResult {\n    readonly outcome: \'completed\' | \'failed\';\n    readonly summary?: string;\n}',
+  },
+  {
     name: 'TeamMembership',
     declaration: 'export interface TeamMembership {\n    readonly root: Agent;\n    readonly id: TeamId;\n    readonly role: \'lead\' | \'teammate\';\n    readonly name: string;\n}',
   },
   {
     name: 'TeamMemberView',
-    declaration: 'export interface TeamMemberView {\n    readonly id: SessionId;\n    readonly name: string;\n    readonly role: \'lead\' | \'teammate\';\n    readonly status: \'running\' | \'inactive\' | \'provisioning\' | \'failed\';\n    readonly description?: string;\n    readonly provider?: string;\n    readonly context?: \'fresh\' | \'fork\';\n    readonly model?: string;\n    readonly diagnostics: string[];\n}',
+    declaration: 'export interface TeamMemberView {\n    readonly id: SessionId;\n    readonly name: string;\n    readonly role: \'lead\' | \'teammate\';\n    readonly status: \'running\' | \'inactive\' | \'provisioning\' | \'failed\';\n    readonly description?: string;\n    readonly provider?: string;\n    readonly context?: \'fresh\' | \'fork\';\n    readonly model?: string;\n    readonly diagnostics: string[];\n    readonly result?: TeamMemberResult;\n}',
   },
   {
     name: 'TeamMessageId',
@@ -7609,12 +8664,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type TeamTaskId = Branded<\'TeamTaskId\'>;',
   },
   {
+    name: 'TeamTaskMutationResult',
+    declaration: 'export type TeamTaskMutationResult = {\n    readonly ok: true;\n    readonly value: TeamTaskView;\n} | {\n    readonly ok: false;\n    readonly error: {\n        readonly code: \'team-task-conflict\' | \'team-rejected\';\n        readonly message: string;\n    };\n};',
+  },
+  {
     name: 'TeamTaskStatus',
     declaration: 'export type TeamTaskStatus = \'pending\' | \'in_progress\' | \'completed\' | \'deleted\';',
   },
   {
     name: 'TeamTaskView',
     declaration: 'export interface TeamTaskView {\n    readonly id: TeamTaskId;\n    readonly revision: number;\n    readonly subject: string;\n    readonly description: string;\n    readonly status: TeamTaskStatus;\n    readonly blockedBy: TeamTaskId[];\n    readonly writeScopes: string[];\n    readonly ownerName?: string;\n    readonly ready: boolean;\n    readonly writeScopeWarnings: string[];\n}',
+  },
+  {
+    name: 'TeamView',
+    declaration: 'export interface TeamView {\n    readonly members: TeamMemberView[];\n    readonly tasks: TeamTaskView[];\n    readonly interactions: TeamInteractionEdge[];\n}',
   },
   {
     name: 'TeamWaitResult',
@@ -8073,6 +9136,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type UiRenderResult = UiNode;',
   },
   {
+    name: 'UpdateInstitutionSeatRequest',
+    declaration: 'export interface UpdateInstitutionSeatRequest {\n    readonly squadId: InstitutionSquadId;\n    readonly name: string;\n    readonly provider?: string;\n    readonly model?: string;\n}',
+  },
+  {
     name: 'UpdateTeamTaskRequest',
     declaration: 'export interface UpdateTeamTaskRequest {\n    readonly taskId: TeamTaskId;\n    readonly expectedRevision: number;\n    readonly action: TeamTaskAction;\n    readonly subject?: string;\n    readonly description?: string;\n    readonly blockedBy?: readonly TeamTaskId[];\n    readonly writeScopes?: readonly string[];\n    readonly owner?: string;\n}',
   },
@@ -8083,22 +9150,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'VerifiedWebhookDelivery',
     declaration: 'export interface VerifiedWebhookDelivery<K extends string = string> {\n    readonly kind: K;\n    readonly source: WebhookSourceId;\n    readonly deliveryId: WebhookDeliveryId;\n    readonly event: WebhookEventOf<K>;\n    readonly receivedAt: number;\n}',
-  },
-  {
-    name: 'WebBootBatch',
-    declaration: 'export interface WebBootBatch {\n    phase: WebBootBatchPhase;\n    url: string;\n    rev: string;\n    entries: string[];\n}',
-  },
-  {
-    name: 'WebBootBatchPhase',
-    declaration: 'export type WebBootBatchPhase = \'bootstrap\' | \'application\';',
-  },
-  {
-    name: 'WebBootEntry',
-    declaration: 'export interface WebBootEntry {\n    id: string;\n    url: string;\n    rev: string;\n    inject?: string[];\n    immediately?: boolean;\n    external?: string[];\n}',
-  },
-  {
-    name: 'WebBootGraph',
-    declaration: 'export interface WebBootGraph {\n    rev: string;\n    entries: WebBootEntry[];\n    batches: WebBootBatch[];\n}',
   },
   {
     name: 'WebFetchBody',
@@ -8315,6 +9366,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WorkspaceDirectoryListing',
     declaration: 'export interface WorkspaceDirectoryListing {\n    readonly path: string;\n    readonly entries: readonly WorkspaceDirectoryEntry[];\n    readonly truncated: boolean;\n}',
+  },
+  {
+    name: 'WorkspaceEntriesListing',
+    declaration: 'export interface WorkspaceEntriesListing {\n    path: string;\n    root: string;\n    entries: WorkspaceEntry[];\n    truncated: boolean;\n}',
+  },
+  {
+    name: 'WorkspaceEntriesListRequest',
+    declaration: 'export interface WorkspaceEntriesListRequest {\n    root: string;\n    path?: string;\n}',
+  },
+  {
+    name: 'WorkspaceEntry',
+    declaration: 'export interface WorkspaceEntry {\n    name: string;\n    path: string;\n    kind: WorkspaceEntryKind;\n    hidden: boolean;\n    symlink: boolean;\n}',
+  },
+  {
+    name: 'WorkspaceEntryKind',
+    declaration: 'export type WorkspaceEntryKind = \'file\' | \'directory\' | \'broken-symlink\';',
   },
   {
     name: 'WorkspaceFileBytes',
