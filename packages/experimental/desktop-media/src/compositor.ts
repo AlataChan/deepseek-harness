@@ -94,6 +94,7 @@ export async function probeMedia(
     ffprobe,
     ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', path],
     signal,
+    'hidden',
   )
   return parseProbe(stdout)
 }
@@ -211,6 +212,7 @@ export async function composeAudiovisual(request: ComposeRequest): Promise<Compo
       request.outputPath,
     ],
     signal,
+    'hidden',
   )
 
   return {
@@ -275,6 +277,7 @@ async function probeAudio(
     ffprobe,
     ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', path],
     signal,
+    'hidden',
   )
   let doc: {
     format?: { duration?: string }

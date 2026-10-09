@@ -129,6 +129,7 @@ describe('SidebarRoot shell', () => {
     render(<HeaderLeadingControls toggleSidebar={vi.fn()} startSession={vi.fn()} selectPanel={vi.fn()} t={t}
       usePanelInfo={neverHook} useSessions={neverHook} useSessionStatus={neverHook}
       useSessionRetainInfo={neverHook} useResource={useResource} useWorkspaces={neverHook}
+      useFilesOccupied={select => select(false)}
       usePanels={select => select([])} useShortcuts={select => select([shortcut])} />)
     const button = screen.getByRole('button', { name: 'New session' })
     expect(button.getAttribute('aria-keyshortcuts')).toBe('Control+N')

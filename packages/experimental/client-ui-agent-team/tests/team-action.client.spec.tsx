@@ -205,6 +205,7 @@ describe('TeamAction', () => {
       inputActions: {
         captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
         insertText: () => false,
+        persistDraft: () => {},
         setDraft,
         addAttachments: () => false,
         removeAttachment: () => {},
@@ -250,6 +251,7 @@ describe('TeamAction', () => {
       inputActions: {
         captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
         insertText: () => false,
+        persistDraft: () => {},
         setDraft,
         addAttachments: () => false,
         removeAttachment: () => {},

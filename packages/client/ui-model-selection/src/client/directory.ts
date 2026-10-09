@@ -52,7 +52,6 @@ export class ModelDirectory {
    * @param available - whether this session may use Agent-bound model RPCs.
    * @param catalog - Host-generation catalog shared by every Session.
    * @param projected - durable model selection projected from Session history.
-   * @param isBlank - whether this Session has no first message yet.
    */
   constructor(
     private readonly sessions: Pick<TypertClientRemote['session'], 'selectModel'>,
@@ -60,7 +59,6 @@ export class ModelDirectory {
     private readonly available: () => boolean,
     private readonly catalog: ModelCatalogDirectory,
     private readonly projected: ObservableSnapshot<unknown>,
-    private readonly isBlank: () => boolean,
   ) {
     this.unsubscribeCatalog = catalog.store.subscribe(() => { this.syncInputs() })
     this.unsubscribeSelection = projected.subscribe(() => { this.syncInputs() })

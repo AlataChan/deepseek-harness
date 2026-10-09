@@ -4,6 +4,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
+import { PartialArguments } from '@deepseek-ai/dsh-util-values'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import { CommerceChangeRow } from '../../src/client/CommerceChangeRow.tsx'
 import { en, zh } from '../../src/client/locales.ts'
@@ -31,6 +32,8 @@ function settled(name: string, text: string, meta?: unknown, over: Partial<Settl
     seq: 4,
     time: 4_000,
     callId: 'call-1',
+    name,
+    args: PartialArguments.fromText('{"summary":"Raise tea price"}'),
     call: { name, argsRaw: '{"summary":"Raise tea price"}' },
     callTime: 3_000,
     content: [{ type: 'text', text }],
@@ -42,7 +45,7 @@ function settled(name: string, text: string, meta?: unknown, over: Partial<Settl
 }
 
 function running(name: string, argsRaw: string): Block {
-  return { callId: 'call-1', name, argsRaw, turn: 1, step: 1, time: 3_000, subCalls: [] }
+  return { callId: 'call-1', name, argsRaw, args: PartialArguments.fromText(argsRaw), phase: 'start', turn: 1, step: 1, time: 3_000, subCalls: [] }
 }
 
 function projection(ledger: readonly { status: string }[] | undefined) {

@@ -86,15 +86,15 @@ export async function revealMediaFile(
   const platform = internals.platform ?? process.platform
   const run: NativeCommandRunner = internals.run ?? runNativeCommand
   if (platform === 'darwin') {
-    await run('open', ['-R', path], signal)
+    await run('open', ['-R', path], signal, 'visible')
     return
   }
   if (platform === 'win32') {
-    await run('explorer.exe', [`/select,${path}`], signal)
+    await run('explorer.exe', [`/select,${path}`], signal, 'visible')
     return
   }
   if (platform === 'linux') {
-    await run('xdg-open', [dirname(path)], signal)
+    await run('xdg-open', [dirname(path)], signal, 'visible')
     return
   }
   throw new MediaError('open-unsupported', `reveal is unsupported on ${platform}`)

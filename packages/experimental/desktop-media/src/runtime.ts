@@ -56,7 +56,7 @@ export async function inspectFfmpegLicense(
   signal: AbortSignal,
   run: NativeCommandRunner = runNativeCommand,
 ): Promise<FfmpegLicenseReport> {
-  const { stdout } = await run(ffmpegPath, ['-version'], signal)
+  const { stdout } = await run(ffmpegPath, ['-version'], signal, 'hidden')
   return inspectFfmpegVersionOutput(stdout)
 }
 
@@ -86,7 +86,7 @@ export async function assertEncodersAvailable(
   signal: AbortSignal,
   run: NativeCommandRunner = runNativeCommand,
 ): Promise<void> {
-  const { stdout } = await run(ffmpegPath, ['-hide_banner', '-encoders'], signal)
+  const { stdout } = await run(ffmpegPath, ['-hide_banner', '-encoders'], signal, 'hidden')
   for (const name of encoders) {
     const pattern = new RegExp(`(?:^|\\s)${escapeRegExp(name)}(?:\\s|$)`, 'm')
     if (!pattern.test(stdout)) {

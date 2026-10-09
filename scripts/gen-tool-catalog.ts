@@ -136,6 +136,26 @@ function registerCatalogSubagentProvider(ctx: Context, name: string): void {
 const catalogChildScopes = new WeakMap<Context, Agent>()
 
 /**
+ * Install one scope-local tool package into an agent-like child scope for
+ * schema harvest, without starting a model, Agent loop, or persistence backend.
+ * @param ctx - catalog context owning the scope.
+ * @param mountScoped - package installer for the scoped context.
+ * @param key - agent-like scope key exposed to the package's scope selector.
+ * @param inject - services the package installer must await before mounting.
+ */
+async function mountCatalogChildScope(
+  ctx: Context,
+  mountScoped: (childCtx: Context) => void,
+  key: Agent = { id: SessionId('tool-catalog-child') } as Agent,
+  inject: string[] = ['tools', 'systemPrompt', 'subagents'],
+): Promise<void> {
+  await ctx.plugin(Object.assign((inner: Context) => {
+    mountScoped(createScope(inner, key).ctx)
+  }, { inject }))
+  catalogChildScopes.set(ctx, key)
+}
+
+/**
  * Tool package plus its hand-maintained boot recipe. The caller mounts the
  * prompt and registry; each recipe supplies only package-specific seams and
  * config, while `dir` participates in the completeness check.

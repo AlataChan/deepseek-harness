@@ -166,6 +166,16 @@ export function commerceCardModel(block: Block): CommerceCardModel {
  * @returns the staged summary, the discarded id, the exported ids, or the first argument line.
  */
 export function callSummary(block: Block): string {
+  if (!('kind' in block) && block.phase === 'preparing') {
+    // Preparing calls expose the lazy argument view instead of raw text.
+    const summary = block.args.text('summary')
+    if (summary !== undefined) return firstLine(summary)
+    const changeId = block.args.text('change_id')
+    if (changeId !== undefined) return changeId
+    const ids = stringList(block.args.value('change_ids'))
+    if (ids !== null) return ids.join(', ')
+    return block.callId
+  }
   const argsRaw = ('kind' in block ? block.call?.argsRaw : block.argsRaw) ?? ''
   let parsed: unknown
   try {

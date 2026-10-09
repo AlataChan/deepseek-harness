@@ -77,7 +77,6 @@ export class ModelDirectoryResolver extends Service {
       () => sessions.subagentAddress(sessionId) === undefined,
       this.catalog,
       binding.session.projections.faceOf('modelSelection'),
-      () => binding.session.getSnapshot().blank,
     )
     live.directories.set(binding, directory)
     actx.effect(() => () => {
