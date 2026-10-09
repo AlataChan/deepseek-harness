@@ -12,7 +12,7 @@ Two independent reviews of the plan, the branch, and this handover were run on 2
 
 ### 0.0 Repair checkpoint executed (2026-10-07)
 
-**Hop 3 executed and verified (2026-10-08).** `dsh-v0.1.7-alpha.1` merged as `c5c753a3c9` (3269 commits, session format v3 → v4), followed by `f7d70c7137` (57 fork call sites adapted), `899f836b97` (the S8 patch replayed: nine fork events into `RELEASED_V3_EVENT_TYPES`, 384/384), `1cba5bdc2b` (`admitSelect` ported into `agent-preset-registry` and re-wired through session-controller), `7f988367cf` (catalog + `TeamTaskMutationResult`), `a3feb5b842` (hop-3 renames in links; `verify-md-links` exemption for the class-C-deleted desktop surface), `994e45b608` (pin advanced to hop 3; four newly registered fork edits), `40fe7da3f2` (corpus re-recorded on v4), and the triage set `ea96eb58bf` → `e8fc115f85`. Verification: build, both compiler faces, `test:snapshot` 179 passed, intake gate, md-links (2329 files), translation pairing (1161 pairs); the unit suite passes 34827 tests, and every residual failure is a load-induced timeout whose file passes in isolation (the 10-file isolated batch runs 497/498, the last one fixed in `e8fc115f85`). Four silent fork-feature losses were found and fixed during triage: the desktop-companion tsdown entry (companion never built — caught by the assembled-handshake test), three payload rules in `check-workspace-constraints`, the `openTeammate` navigation guard, and the Agent Teams release fields from upstream `63187de80f`. **Remaining: hop 4 (`dsh-v0.2.1-alpha.1`, no format change) pending owner go; owner's migration sign-off; then Phases 3–5.**
+**Hop 3 executed and verified (2026-10-08).** `dsh-v0.1.7-alpha.1` merged as `c5c753a3c9` (3269 commits, session format v3 → v4), followed by `f7d70c7137` (57 fork call sites adapted), `899f836b97` (the S8 patch replayed: nine fork events into `RELEASED_V3_EVENT_TYPES`, 384/384), `1cba5bdc2b` (`admitSelect` ported into `agent-preset-registry` and re-wired through session-controller), `7f988367cf` (catalog + `TeamTaskMutationResult`), `a3feb5b842` (hop-3 renames in links; `verify-md-links` exemption for the class-C-deleted desktop surface), `994e45b608` (pin advanced to hop 3; four newly registered fork edits), `40fe7da3f2` (corpus re-recorded on v4), and the triage set `ea96eb58bf` → `e8fc115f85`. Verification: build, both compiler faces, `test:snapshot` 179 passed, intake gate, md-links (2329 files), translation pairing (1161 pairs); the unit suite passes 34827 tests, and every residual failure is a load-induced timeout whose file passes in isolation (the 10-file isolated batch runs 497/498, the last one fixed in `e8fc115f85`). Four silent fork-feature losses were found and fixed during triage: the desktop-companion tsdown entry (companion never built — caught by the assembled-handshake test), three payload rules in `check-workspace-constraints`, the `openTeammate` navigation guard, and the Agent Teams release fields from upstream `63187de80f`. **Owner-confirmed 2026-10-08: migration sign-off given on the 152/152 evidence; the instruction is to complete the upgrade plan. Remaining: hop 4 (`dsh-v0.2.1-alpha.1`, no format change), then Phases 3–5.**
 
 Executed and passed on branch `upstream-upgrade/repair-2026-10-07` (HEAD `774a4b3f6a`), forked from `upstream-upgrade/2026-10-06` after a rebaseline onto `master`. Everything below was run against this repository by the checkpoint (**verified**); the per-step logs, the S7 failure table, and the verbatim S8 patch are recorded in the main checkout at `.plans/upstream-upgrade-repair/findings.md`.
 
@@ -41,7 +41,7 @@ The branch carries the rebaseline merge `e0064c17df` plus eight commits: `bd1126
 
 **Still open:**
 
-- **Owner sign-off on the migration** — Phase 2's exit gate requires it explicitly; the evidence above awaits it.
+- **Owner sign-off on the migration** — given 2026-10-08 on the 152/152 evidence; Phase 2's exit gate is closed.
 - **Hop 3** — unblocked, pending owner go. Merge `dsh-v0.1.7-alpha.1`; first work item: re-apply the S8 patch; then port `admitSelect` (§6) and keep the 48 `DU` class-C paths deleted.
 - **Phases 3, 4, 5** — not started.
 
@@ -66,7 +66,7 @@ This table replaces the status prose in §3, §4 and §7 where they conflict.
 | Intake gate enforces patch completeness and E-class decisions | verified: gate computes `changedUpstreamFiles` itself; 13 previously unrecorded fork edits registered (`fd45067654`) | none (`fd45067654`) |
 | Intake gate rejects an upstream-endpoint telemetry row | verified: rule 6, with a failing-case spec (`fd45067654`) | none (`fd45067654`) |
 | Fork session events survive v0 → current | verified: v0 inventory covers all nine fork events plus team v2 (`ce5f4f430b`, `774a4b3f6a`); v3→v4 proven on a scratch branch off the hop-3 tag, patch recorded verbatim in the findings file (§0.0) | re-apply the proven `RELEASED_V3_EVENT_TYPES` patch as hop 3's first work item |
-| Real legacy data migrates | verified: 152/152 real logs migrate, list, open, publish v3, and reopen; originals byte-identical throughout (§0.0) | owner sign-off |
+| Real legacy data migrates | verified: 152/152 real logs migrate, list, open, publish v3, and reopen; originals byte-identical throughout (§0.0) | closed: owner sign-off given 2026-10-08 |
 | Pre-migration guard owner named | closed: persistence layer, guard at the head of `prepareStoredMigration` with a stop-on-failed-backup test (`60684b5c60`) | none |
 | E-class dispositions (`e2b`, `code-runtime`, `runtime-diagnostics`) | closed: follow-upstream-deletion ×3, recorded in the registry (`fd45067654`) | none |
 | `ignorable` finding recorded | closed: typed registry data — 9 events, 152 real logs, required-not-ignorable (`fd45067654`) | none |
@@ -227,7 +227,7 @@ The owner asked me to reconcile my proposals against the plan. This is that reco
 | Captured real-DMG v0 fixture; upstream-authored v0 fixture | Phase 2 checklist | **Absent** |
 | Backup test at the named layer | Phase 2 checklist | **Absent** |
 | Real legacy profile copy opens and lists every session | Phase 2 checklist / Phase 4 exit gate | **Never run** |
-| Owner sign-off on the migration | Phase 2 exit gate | **Not obtained** |
+| Owner sign-off on the migration | Phase 2 exit gate | **Given 2026-10-08** (152/152 evidence) |
 | Intake-registry Agent Note; `AGENTS.md` Learned Workspace Facts | Phase 0 actions 3–4 | **Not committed.** The `AGENTS.md` line is an uncommitted edit in the main checkout; no Agent Note exists. |
 | Intake registry as a *document* (`docs/plans/2026-10-06-upstream-intake-registry.md`) | Phase 0 action 2 | Deliberate deviation: built as machine-checked data in `scripts/upstream-intake-registry.ts` instead. The plan names a markdown ledger; decide whether to accept the deviation. |
 | Phase 3 — 36 client patches onto official slots | Phase 3 | Not started. Needed slots (`ui-sidebar-right`, `ui-dockkit`, `ui-brand-official`, `ui-agent-preset`) are present as of hop 2. |
