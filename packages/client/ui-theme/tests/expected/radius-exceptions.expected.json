@@ -1,10 +1,4 @@
 {
-  "ui-conversation/src/client/skeleton/InputBar.module.css": [
-    ".attachChooserAction: border-radius: 14px",
-    ".attachChooserDismiss: border-radius: 14px",
-    ".sessionDocCard: border-radius: 16px",
-    ".sessionDocThumb: border-radius: 12px"
-  ],
   "ui-deliverables/src/client/ChangedFiles.module.css": [
     ".tile: border-radius: 10px"
   ],
