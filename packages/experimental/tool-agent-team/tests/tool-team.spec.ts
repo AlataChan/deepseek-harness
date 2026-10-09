@@ -166,7 +166,7 @@ describe('dsh-tool-team', () => {
       && event.data.source.kind === 'user')
     expect(initialPrompt?.type === 'user/message'
       ? initialPrompt.data.content.flatMap(block => block.type === 'text' ? [block.text] : [])
-      : []).toEqual(['stay available'])
+      : []).toEqual(['<system-reminder>\nYou are teammate "tool-worker".\nYour Team Lead is named "lead".\nUse list_agents({}) to find your teammates and their names.\nTo message your Team Lead, use send_message({ target: "lead", message: "..." }).\nTo message another teammate, use send_message({ target: "<teammate name>", message: "..." }).\n</system-reminder>\n\n', 'stay available'])
 
     const denied = await execute(ctx, child, 'spawn_teammate', {
       name: 'nested', description: 'not allowed', prompt: 'no',
