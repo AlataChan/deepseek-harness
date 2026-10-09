@@ -1,7 +1,7 @@
 /** Registers the target-neutral Conversation assembly, shell, input, and docks. */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { ISessions, SessionBinding } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionBinding } from '@deepseek-ai/dsh-api-session-controller/client'
 import { IconPaperclipOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createSnapshotStore, type BoundActions } from '@deepseek-ai/dsh-client-store'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
@@ -24,7 +24,6 @@ import { createConversationStore, readConversationViewPreference } from './store
 import { formatFileMention } from '@deepseek-ai/dsh-file-reference/grammar'
 import { relativizeToCwd, workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
 import { ConversationController, UnsupportedImageMediaTypeError, isImageMediaType } from './service.ts'
-import type { IConversation } from './service.ts'
 import { ComposerBlockRegistry } from './input/blocks.ts'
 import type { ComposerBlock } from './contract/composer-blocks.ts'
 import { InputHub } from './input/hub.ts'
@@ -126,17 +125,6 @@ interface FileCommandRegistry {
   }): () => void
 }
 
-/** Resolve the session-scoped Conversation action face, failing loud. */
-function scopedConversation(sessions: ISessions, id: SessionId): IConversation {
-  const scoped = sessions.scope(id)
-  if (scoped === undefined) throw new Error(`ui-conversation: session "${id}" resolved no scope`)
-  const conversation = scoped.get('conversation')
-  if (conversation === undefined) {
-    throw new Error('ui-conversation: conversation service unavailable through the session scope')
-  }
-  return conversation
-}
-
 /** Resolve package-internal attachment operations from the public service. */
 function concreteConversation(ctx: Context): ConversationController {
   const conversation = ctx.get('conversation') as ConversationController | undefined
@@ -228,9 +216,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
   }, 'ui-conversation: View selection')
 
   const stop = (sessionId: SessionId): void => {
-    scopedConversation(sessions, sessionId).cancel().catch((_error: unknown) => {
-      // Stop failure is published through Session promptError.
-    })
+    void sessions.binding(sessionId)?.session.cancel()
   }
   const stopShortcut = createSnapshotStore<readonly string[]>([])
   ctx.inject(['shortcuts'], (scope) => {

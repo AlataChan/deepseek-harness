@@ -1,4 +1,10 @@
 {
+  "ui-conversation/src/client/skeleton/InputBar.module.css": [
+    ".attachChooserAction: border-radius: 14px",
+    ".attachChooserDismiss: border-radius: 14px",
+    ".sessionDocCard: border-radius: 16px",
+    ".sessionDocThumb: border-radius: 12px"
+  ],
   "ui-deliverables/src/client/ChangedFiles.module.css": [
     ".tile: border-radius: 10px"
   ],
@@ -55,6 +61,9 @@
     ".dialogButton: border-radius: 12px",
     ".page .action: border-radius: 12px",
     ".indicator: border-radius: 6px"
+  ],
+  "ui-sidebar/src/client/SidebarRoot.module.css": [
+    ".regionTab: border-radius: 8px"
   ],
   "ui-shortcuts/src/client/Reference.module.css": [
     ".dialog: border-radius: 24px",
