@@ -46,9 +46,11 @@ const MAX_DECL_CHARS = 1200
  * reading is a defect rather than a detail. The widest measured slot renders 60
  * lines, so this leaves room to document a slot properly while catching the two
  * ways a report runs away: an owner share that hands down a subsystem instead of
- * a share, and prose that grew into a manual.
+ * a share, and prose that grew into a manual. The fork's composition ships
+ * additional tool views on `tool.call.toolview` (the Agent Team rows), so its
+ * budget carries that headroom.
  */
-const MAX_ENTRY_LINES = 120
+const MAX_ENTRY_LINES = 132
 
 /** One register-call option as the catalog teaches it. */
 interface OptionDoc {
