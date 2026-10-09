@@ -105,7 +105,7 @@ function parseRecord(value: unknown, expectedHome: string): HomeLeaseRecord | un
 function readRecord(path: string, home: string): HomeLeaseRecord | undefined {
   try {
     if (!lstatSync(path).isFile()) return undefined
-    return parseRecord(JSON.parse(readFileSync(path, 'utf8')) as unknown, home)
+    return parseRecord(JSON.parse(readFileSync(path, 'utf8')), home)
   } catch {
     // Partial, malformed, link-shaped, or unreadable ownership is
     // indeterminate and therefore cannot be broken automatically.

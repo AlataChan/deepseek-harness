@@ -10,10 +10,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { meta, releasedV1OneTurnLog } from '../../session-persistence/tests/contract.ts'
 import { generationLogPath } from '../src/format.ts'
 
-const copyFileFailure = vi.hoisted(() => ({
+/** Injected copyFile failure state: rejection mode plus the thrown value. */
+interface CopyFileFailure {
   /** 'throw': copyFile rejects; 'partial': copyFile writes only half the source bytes. */
-  mode: undefined as 'throw' | 'partial' | undefined,
-  error: undefined as unknown,
+  mode: 'throw' | 'partial' | undefined
+  /** Value handed to rejections; deliberately unconstrained. */
+  error: unknown
+}
+
+const copyFileFailure: CopyFileFailure = vi.hoisted(() => ({
+  mode: undefined,
+  error: undefined,
 }))
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -170,7 +177,7 @@ describe('JsonlSessionPersistence pre-migration backup guard', () => {
     const ctx = await mount(root)
     await expect(ctx.sessionPersistence.open(id, 'read')).rejects.toMatchObject({
       name: 'JsonlMigrationBackupError',
-      message: expect.stringContaining('bytes of the') as unknown,
+      message: expect.stringContaining('bytes of the'),
     })
     expect(await readFile(sourcePath)).toEqual(source)
   })
@@ -185,7 +192,7 @@ describe('JsonlSessionPersistence pre-migration backup guard', () => {
     const ctx = await mount(root)
     await expect(ctx.sessionPersistence.open(id, 'read')).rejects.toMatchObject({
       name: 'JsonlMigrationBackupError',
-      message: expect.stringContaining('backup holds 0 bytes') as unknown,
+      message: expect.stringContaining('backup holds 0 bytes'),
     })
   })
 })

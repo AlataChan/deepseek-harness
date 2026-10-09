@@ -3,4 +3,4 @@
 export {
   ProcessTransport,
   type ProcessBridgePort,
-} from '@deepseek-ai/dsh-client-connection-process/client'
+} from '@deepseek-ai/dsh-client-connection-process/browser'

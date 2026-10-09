@@ -112,7 +112,7 @@ export function WorksPanel({
                       <span className={css.thumb} data-kind={work.kind} aria-hidden />
                       <strong>{work.name}</strong>
                       <span>{t(KIND_KEY[work.kind])}</span>
-                      {work.durationSeconds === undefined ? null : <span>{work.durationSeconds}s</span>}
+                      {work.durationSeconds === undefined ? null : <span>{t('works.durationSeconds', { seconds: work.durationSeconds })}</span>}
                       <time dateTime={work.createdAt}>{work.createdAt}</time>
                     </div>
                     <div className={css.actions}>

@@ -23,6 +23,16 @@ import {
 const EXPERIMENTAL_PREFIX = '@deepseek-ai/dsh-experimental-'
 // The independently published entry package owns platform-engine dependencies.
 const EXTERNAL_KIT_PACKAGES = new Set(['@deepseek-ai/libreoffice-kit'])
+/**
+ * Fork bundling exception: the DMG's seeded Agent Teams profile plugins must
+ * resolve from the harness closure, so the launcher names these two as
+ * dependencies. They are never composed by default; they ship only because a
+ * profile plugin cites them.
+ */
+const FORK_BUNDLED_EXPERIMENTAL = new Set([
+  '@deepseek-ai/dsh-experimental-agent-team',
+  '@deepseek-ai/dsh-experimental-tool-agent-team',
+])
 const PROFILE_SOURCE = 'packages/boot/app-boot/src/profile.ts'
 const PRESET_PATTERN = 'packages/bundle/web-app/presets/*.patch.yml'
 const RUNTIME_SECTIONS = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const
@@ -110,7 +120,7 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
   const isExperimental = (pkg: Package): boolean => pkg.manifest.name.startsWith(EXPERIMENTAL_PREFIX)
     || display(pkg.directory).startsWith('packages/experimental/')
   const add = (pkg: Package, origin: string): void => {
-    if (isExperimental(pkg)) {
+    if (isExperimental(pkg) && !FORK_BUNDLED_EXPERIMENTAL.has(pkg.manifest.name)) {
       failures.push(`${origin} -> ${pkg.manifest.name}: default product must not include experimental packages`)
     } else if (!visited.has(pkg.directory)) {
       visited.add(pkg.directory)
@@ -136,11 +146,11 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
       return
     }
     const packageName = barePackageName(name)
-    if (packageName.startsWith(EXPERIMENTAL_PREFIX)) {
+    const pkg = packages.get(packageName)
+    if (packageName.startsWith(EXPERIMENTAL_PREFIX) && !FORK_BUNDLED_EXPERIMENTAL.has(packageName)) {
       failures.push(`${origin} -> ${name}: default product must not include experimental packages`)
       return
     }
-    const pkg = packages.get(packageName)
     if (pkg !== undefined) add(pkg, origin)
     else if (EXTERNAL_KIT_PACKAGES.has(packageName)) return
     else if (packageName.startsWith('@deepseek-ai/')) failures.push(`${origin}: unknown workspace package ${name}`)

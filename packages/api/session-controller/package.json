@@ -120,15 +120,6 @@
     },
     "@deepseek-ai/dsh-settings": {
       "optional": true
-    },
-    "@deepseek-ai/dsh-host-workspace-entries": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-host-ask-data": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-host-ask-knowledge": {
-      "optional": true
     }
   },
   "devDependencies": {

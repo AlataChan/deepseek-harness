@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-host-workspace-entries",
   "description": "Abstract one-level workspace file listing seam (ctx.workspaceEntries) for the DeepSeek Harness web GUI host",
-  "version": "0.1.2-rc.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -27,9 +27,9 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   }
 }

@@ -1,6 +1,6 @@
 /**
  * Neutral runtime-generation reset port for {@link ProcessApiClient}.
- * @module @deepseek-ai/dsh-client-connection-process/client
+ * @module @deepseek-ai/dsh-client-connection-process/browser
  */
 
 /** Shell-owned generation lifecycle used to reset transient carrier state. */

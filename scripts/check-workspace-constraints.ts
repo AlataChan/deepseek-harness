@@ -55,6 +55,17 @@ const publishedRepositoryUrl = 'git+https://github.com/deepseek-ai/deepseek-harn
 const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
 /** npm namespace reserved for experimental packages. */
 const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
+
+/**
+ * Fork bundling exception: the DMG's seeded Agent Teams profile plugins must
+ * resolve from the harness closure, so the launcher names these two as
+ * dependencies. They are never composed by default; they ship only because a
+ * profile plugin cites them.
+ */
+const FORK_BUNDLED_EXPERIMENTAL = new Set([
+  '@deepseek-ai/dsh-experimental-agent-team',
+  '@deepseek-ai/dsh-experimental-tool-agent-team',
+])
 /** Ordinary directories whose packages this repository publishes: one release member each. */
 const standardReleaseMemberDirectory = /^(?:packages\/(?!experimental\/)[^/]+\/[^/]+|apps\/(?!desktop(?:-host)?$)[^/]+|vendor\/[^/]+)$/
 /** Installable application assembled by electron-builder rather than published to npm. */
@@ -190,6 +201,15 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-ptc-runtime-node': ['lib/process.js'],
   // The fork's Ask Data overlay ships its sample spreadsheets for the picker.
   '@deepseek-ai/dsh-experimental-desktop-ask-data': ['samples/**'],
+  // The desktop shell copies the self-contained installed-runtime CLI alone
+  // into the app bundle; its ./cli entry keeps the same file published.
+  '@deepseek-ai/dsh-installed-runtime': ['lib/cli.js'],
+  // The static-linked browser transport backs connection-desktop's ./transport
+  // entry, which carries no dsh.client face of its own.
+  '@deepseek-ai/dsh-client-connection-desktop': ['lib/desktop-transport.js'],
+  // A second tsdown entry emits the workspace-entry helpers lib/index.js
+  // imports by relative path, so the sibling artifact ships beside the entry.
+  '@deepseek-ai/dsh-experimental-desktop-files': ['lib/list-entries.js'],
   // The fork's commerce overlay ships its tools, preset definition, and samples.
   '@deepseek-ai/dsh-experimental-commerce-mode': ['lib/tools.js', 'lib/preset.js', 'NOTICE', 'preset/**', 'samples/**'],
   // The Host entry starts its sibling Worker by URL rather than a package export.
@@ -569,7 +589,7 @@ export function checkExperimentalDependencyIsolation(
     for (const section of runtimeDependencySections) {
       for (const name of Object.keys(manifest[section] ?? {})) {
         if (!experimentalNames.has(name)) continue
-        if (section === 'dependencies' && offered.has(name)) continue
+        if (section === 'dependencies' && (offered.has(name) || FORK_BUNDLED_EXPERIMENTAL.has(name))) continue
         errors.push(`${manifest.name ?? dir}: ${section}.${name} must not reference an experimental package`)
       }
     }

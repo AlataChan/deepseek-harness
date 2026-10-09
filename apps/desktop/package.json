@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-desktop",
   "description": "Tauri desktop window for the installed DeepSeek Harness runtime",
-  "version": "0.0.0",
+  "version": "0.2.1-alpha.1",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -9,13 +9,13 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-client-connection": "workspace:^",
-    "@deepseek-ai/dsh-client-connection-desktop": "workspace:^",
-    "@deepseek-ai/dsh-client-connection-process": "workspace:^",
-    "@deepseek-ai/dsh-client-modules": "workspace:^",
-    "@deepseek-ai/dsh-client-web": "workspace:^",
-    "@deepseek-ai/dsh-installed-runtime": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/dsh-client-connection": "workspace:*",
+    "@deepseek-ai/dsh-client-connection-desktop": "workspace:*",
+    "@deepseek-ai/dsh-client-connection-process": "workspace:*",
+    "@deepseek-ai/dsh-client-modules": "workspace:*",
+    "@deepseek-ai/dsh-client-web": "workspace:*",
+    "@deepseek-ai/dsh-installed-runtime": "workspace:*",
     "@tauri-apps/api": "^2.8.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

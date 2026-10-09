@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-connection-process",
   "description": "Bounded process-carrier protocol, wire codec, Node IPC/stdio ports, and desktop WebView transport",
-  "version": "0.1.2-rc.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -26,12 +26,12 @@
       "types": "./lib/types/codec.d.ts",
       "default": "./lib/types/codec.js"
     },
-    "./client": {
+    "./src/*": "./src/*",
+    "./package.json": "./package.json",
+    "./browser": {
       "types": "./lib/types/client/index.d.ts",
       "default": "./lib/types/client/index.js"
-    },
-    "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    }
   },
   "files": [
     "lib/index.js",
@@ -39,29 +39,18 @@
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
-  "dependencies": {
-    "@deepseek-ai/cosmokit": "workspace:^",
-    "@deepseek-ai/dsh-util-crypto": "workspace:^",
-    "@deepseek-ai/schemastery": "workspace:^",
-    "zod": "^4.4.3"
-  },
   "peerDependencies": {
-    "@deepseek-ai/dsh-api-gateway": "workspace:^",
-    "@deepseek-ai/dsh-brand": "workspace:^",
-    "@deepseek-ai/dsh-client-connection": "workspace:^",
-    "@deepseek-ai/dsh-client-modules": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
-  },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-api-gateway": {
-      "optional": true
-    }
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-api-gateway": "workspace:^",
-    "@deepseek-ai/dsh-brand": "workspace:^",
-    "@deepseek-ai/dsh-client-connection": "workspace:^",
-    "@deepseek-ai/dsh-client-modules": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/dsh-api-gateway": "workspace:*",
+    "@deepseek-ai/dsh-brand": "workspace:*",
+    "@deepseek-ai/dsh-client-connection": "workspace:*",
+    "@deepseek-ai/dsh-client-modules": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cosmokit": "workspace:~",
+    "@deepseek-ai/dsh-util-crypto": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
+    "zod": "^4.4.3"
   }
 }

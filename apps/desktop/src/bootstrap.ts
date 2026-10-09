@@ -4,7 +4,7 @@ import type { ClientTransportHooks } from '@deepseek-ai/dsh-client-connection/cl
 import {
   ProcessTransport,
   type ProcessBridgePort,
-} from '@deepseek-ai/dsh-client-connection-process/client'
+} from '@deepseek-ai/dsh-client-connection-process/browser'
 import {
   sendVsCodeFrame,
   VsCodeWireDecoder,
