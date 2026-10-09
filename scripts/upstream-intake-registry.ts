@@ -146,7 +146,7 @@ export const FORK_OWNED_PATHS: readonly string[] = [
  * command diffs the working tree against this pin to compute the upstream
  * files the fork edits, so the merge-time rules always run.
  */
-export const UPSTREAM_PIN = 'dsh-v0.1.7-alpha.1'
+export const UPSTREAM_PIN = 'dsh-v0.2.1-alpha.1'
 
 /**
  * Inspection of 152 real user logs (2026-10-06, all session format v0): the
@@ -257,6 +257,28 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/bundle/base/cordis.patch.yml', klass: 'A', reason: 'Fork base composition rows, including the telemetry mode default.' },
   { path: 'packages/bundle/web-app/package.json', klass: 'A', reason: 'Fork web composition dependencies.' },
   { path: 'packages/bundle/web-app/cordis.patch.yml', klass: 'A', reason: 'Fork web composition rows.' },
+  { path: 'packages/api/remotes/package.json', klass: 'A', reason: 'Never-merge policy: the product-analytics dependency and registration are stripped from the remotes assembly.' },
+  { path: 'packages/api/remotes/src/client/index.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics client registration is stripped.' },
+  { path: 'packages/client/ui-chat/package.json', klass: 'A', reason: 'Never-merge policy: the product-analytics consumer dependency is stripped.' },
+  { path: 'packages/client/ui-chat/src/client/apply.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics analytics call is stripped from chat apply.' },
+  { path: 'packages/client/ui-conversation/package.json', klass: 'A', reason: 'Never-merge policy: the product-analytics consumer dependency is stripped.' },
+  { path: 'packages/client/ui-conversation/src/client/input/hub.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics analytics call is stripped from the input hub.' },
+  { path: 'packages/client/ui-model-selection/package.json', klass: 'A', reason: 'Never-merge policy: the product-analytics consumer dependency is stripped.' },
+  { path: 'packages/client/ui-model-selection/src/client/directory.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics analytics call is stripped from model directory.' },
+  { path: 'packages/client/ui-model-selection/src/client/service.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics analytics call is stripped from model selection.' },
+  { path: 'packages/client/ui-plugin-manager/package.json', klass: 'A', reason: 'Never-merge policy: the product-analytics consumer dependency is stripped.' },
+  { path: 'packages/client/ui-plugin-manager/src/client/index.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics analytics call is stripped from the plugin manager.' },
+  { path: 'packages/client/ui-plugin-manager/src/client/manager-store.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics analytics call is stripped from the manager store.' },
+  { path: 'packages/client/ui-settings-account/package.json', klass: 'A', reason: 'Never-merge policy: the product-analytics consumer dependency is stripped.' },
+  { path: 'packages/client/ui-settings-account/src/client/DesktopOnboarding.tsx', klass: 'A', reason: 'The fork desktop onboarding surface replacing the account-bound onboarding; never-merge account policy.' },
+  { path: 'packages/client/ui-settings-account/src/client/index.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics wiring and account onboarding are stripped.' },
+  { path: 'packages/client/ui-settings-account/src/client/onboarding-contract.ts', klass: 'A', reason: 'The fork desktop onboarding contract; never-merge account policy.' },
+  { path: 'packages/client/ui-settings-models/package.json', klass: 'A', reason: 'Never-merge policy: the product-analytics consumer dependency is stripped.' },
+  { path: 'packages/client/ui-settings-models/src/client/DeepSeekOnboardingDialog.tsx', klass: 'A', reason: 'The fork model-provider onboarding dialog replacing the account-bound flow.' },
+  { path: 'packages/client/ui-settings-models/src/client/index.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics wiring is stripped from settings models.' },
+  { path: 'packages/client/ui-sidebar/package.json', klass: 'A', reason: 'Never-merge policy: the product-analytics consumer dependency is stripped.' },
+  { path: 'packages/client/ui-workspace/package.json', klass: 'A', reason: 'Never-merge policy: the product-analytics consumer dependency is stripped.' },
+  { path: 'packages/client/ui-workspace/src/client/index.ts', klass: 'A', reason: 'Never-merge policy: the product-analytics analytics call is stripped from workspace.' },
 ]
 
 /**
