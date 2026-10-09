@@ -49,7 +49,7 @@ kind: "package-bundle"
 检索时使用 ask_knowledge_retrieve 的 terms 数组，填写 1 到 6 个专名，不要整句。
 每个专名去掉首尾空白后不超过 16 个字，且不得含 ?？。！! 或换行。
 ask_knowledge_retrieve 的返回里已有命中页的正文。先根据这些正文回答。
-不要用工作区文件、bash 或问数工具代替知识库检索。只有检索结果为空时，才能说库里没有这份材料。
+不要用工作区文件、bash 或问数据工具代替知识库检索。只有检索结果为空时，才能说库里没有这份材料。
 仅当需要打开检索结果里某一条 wiki 词条页时，再调用 ask_knowledge_lookup，term 用该页标题或路径。
 不要用 write、edit 或 bash 修改知识库目录或 .octopus-kb/。
 ```
@@ -80,7 +80,7 @@ ask_knowledge_retrieve 的返回里已有命中页的正文。先根据这些正
 ## 已知限制与延后工作
 
 - **扫描件 PDF 抽不出字** — 文字 PDF 走 markitdown[pdf]；纯图页不做 OCR
-- **不接受 .xls** — Excel 须是 `.xlsx`。表格更适合走问数
+- **不接受 .xls** — Excel 须是 `.xlsx`。表格更适合走问数据
 - **不接受老 .doc** — Word 须是 `.docx`。Host 只读 `word/document.xml`；其它 zip 段里的页眉、页脚、批注不会抽出
 - **没有收件箱审核台，也没有 ingest-url**
 - **不改官方 desktop-app 组合** — 本 overlay 是 profile pin

@@ -204,3 +204,53 @@
   font-size: 100px;
   border: 0;
 }
+
+.docs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  margin: 10px 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.docsItem {
+  min-width: 0;
+}
+
+.docsLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+}
+
+.docsLabel:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.docsLabel span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row:disabled,
+.create:disabled,
+.add:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.row:disabled:hover,
+.create:disabled:hover,
+.add:disabled:hover {
+  background: transparent;
+}

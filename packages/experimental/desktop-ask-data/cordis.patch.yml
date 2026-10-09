@@ -1,4 +1,4 @@
-# Overlay row for octopus_DSH 问数. Dual-face: this Host
+# Overlay row for octopus_DSH 问数据. Dual-face: this Host
 # insert is the only patch line; the Client half is discovered from
 # `dsh.client` after the Host fiber is live. Do not add a second insert.
 

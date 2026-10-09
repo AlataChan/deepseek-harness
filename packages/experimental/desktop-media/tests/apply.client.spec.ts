@@ -6,7 +6,6 @@ import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import {
   apply,
-  CreationShortcuts,
   inject,
   MediaCard,
   mediaCredentialsOf,
@@ -30,6 +29,7 @@ async function bench(options: {
   byId?: Record<string, ListedSession>
   sessions?: boolean
   pickDirectory?: () => Promise<string | null>
+  declareSlots?: boolean
   credentials?: { describe: () => Promise<unknown>; set: () => Promise<unknown> }
 } = {}) {
   const ctx = new Context()
@@ -45,11 +45,12 @@ async function bench(options: {
     importMediaBytes: vi.fn(async () => ({ ok: true as const, value: { artifactId: 'a_1' } })),
     saveMediaWorkAs: vi.fn(async () => ({ ok: true as const, value: { path: '/tmp/out.mp4' } })),
   }
-  ctx.provide('remote', {
-    session: remotes,
-    ...options.credentials === undefined ? {} : { credentials: options.credentials },
-  } as never)
+  // Remote namespaces are separate services (`remote.<name>`); the optional
+  // credentials namespace is mounted only when the composition carries it.
+  ctx.provide('remote', { session: remotes } as never)
   ctx.provide('remote.session', remotes)
+  if (options.credentials !== undefined) ctx.provide('remote.credentials', options.credentials as never)
+  ctx.provide('conversation', {})
   const state = {
     current: options.current,
     byId: options.byId ?? {},
@@ -63,12 +64,14 @@ async function bench(options: {
   }
   if (options.pickDirectory !== undefined) {
     ctx.provide('uiWorkspace', { pickDirectory: options.pickDirectory })
+  } else {
+    ctx.provide('uiWorkspace', {})
   }
   const slots = ctx.get('slots') as SlotRegistry
-  slots.register({
+  const declareSlots = () => slots.register({
     name: 'root',
     children: {
-      'conversation.input.left': { kind: 'list', scope: 'session' },
+      'conversation.hero.capabilities.item': { kind: 'list', scope: 'session-maybe' },
       'tool.call.toolview': { kind: 'keyed', scope: 'session' },
       'sidebar.footer.action': { kind: 'list', scope: 'root' },
       'shell.overlay': { kind: 'list', scope: 'root' },
@@ -76,14 +79,24 @@ async function bench(options: {
       'settings.models.footer': { kind: 'list', scope: 'root' },
     },
   } as never, () => null)
+  if (options.declareSlots !== false) declareSlots()
   const fiber = ctx.plugin({ inject: [...inject], apply })
   await fiber.await()
-  return { ctx, slots, remotes, open, state, dispose: () => fiber.dispose() }
+  return { ctx, slots, declareSlots, remotes, open, state, dispose: () => fiber.dispose() }
 }
 
 describe('desktop-media client apply', () => {
   it('declares the services it binds', () => {
     expect(inject).toEqual(['slots', 'remote', 'remote.session', 'locale'])
+  })
+
+  it('registers the dock entries when the slot declaration arrives after apply', async () => {
+    const b = await bench({ declareSlots: false })
+    expect(b.slots.entries('conversation.hero.capabilities.item')).toHaveLength(0)
+    b.declareSlots()
+    expect(b.slots.entries('conversation.hero.capabilities.item').map(row => row.options.id))
+      .toContain('desktop-media')
+    await b.dispose()
   })
 
   it('registers dictionaries, shortcuts, keyed cards, and Works', async () => {
@@ -92,8 +105,8 @@ describe('desktop-media client apply', () => {
       byId: { 's-1': { id: 's-1', workspaceId: 'w-1' } },
       pickDirectory: async () => '/tmp',
     })
-    expect(b.slots.entries('conversation.input.left')[0]?.component).toBe(CreationShortcuts)
-    const shortcuts = (b.slots.entries('conversation.input.left')[0]!.inject as unknown as (
+    expect(b.slots.entries('conversation.hero.capabilities.item').find(row => row.options.id === 'desktop-media')?.component).toBeDefined()
+    const shortcuts = (b.slots.entries('conversation.hero.capabilities.item').find(row => row.options.id === 'desktop-media')!.inject as unknown as (
       sessionId: string,
     ) => { remotes: unknown; sessionId: string; workspaceId?: string })('s-1')
     expect(shortcuts.remotes).toBe(b.remotes)
@@ -218,13 +231,12 @@ describe('desktop-media client apply', () => {
 })
 
 describe('mediaCredentialsOf', () => {
-  it('requires both describe and set on remote.credentials', () => {
-    expect(mediaCredentialsOf({} as never)).toBeUndefined()
-    expect(mediaCredentialsOf({ remote: {} } as never)).toBeUndefined()
-    expect(mediaCredentialsOf({ remote: { credentials: { describe: async () => ({}) } } } as never))
-      .toBeUndefined()
-    expect(mediaCredentialsOf({ remote: { credentials: { set: async () => ({}) } } } as never))
-      .toBeUndefined()
+  it('requires both describe and set on the remote.credentials service', () => {
+    const withService = (service: unknown) => ({ get: (name: string) => name === 'remote.credentials' ? service : undefined }) as never
+    expect(mediaCredentialsOf(withService(undefined))).toBeUndefined()
+    expect(mediaCredentialsOf(withService({}))).toBeUndefined()
+    expect(mediaCredentialsOf(withService({ describe: async () => ({}) }))).toBeUndefined()
+    expect(mediaCredentialsOf(withService({ set: async () => ({}) }))).toBeUndefined()
   })
 })
 

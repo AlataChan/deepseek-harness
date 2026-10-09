@@ -22,6 +22,7 @@
     { "path": "../../client/ui-sidebar" },
     { "path": "../../client/ui-slots" },
     { "path": "../../client/ui-tool" },
+    { "path": "../desktop-ask-data/tsconfig.client.json" },
     { "path": "../../core/session" },
     { "path": "../../typert/protocol" }
   ]

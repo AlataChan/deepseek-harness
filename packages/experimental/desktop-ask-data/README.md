@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`desktop-ask-data` is the private desktop overlay where a user picks or imports a data source before asking: it provides `ctx.askData`, occupies the 问数 Hero, gate, and window brand slots, and owns the spreadsheet decoder other workspace packages import. Source rows come from the overlay store plus unmatched data-agent connections, and only 开始提问 commits a source to a session. The desktop profile seed installs it; official `dsh-desktop-app` and the default `standard` assistant do not name it.
+`desktop-ask-data` is the private desktop overlay where a user picks or imports a data source before asking: it provides `ctx.askData`, occupies the 问数据 Hero, gate, and window brand slots, and owns the spreadsheet decoder other workspace packages import. Source rows come from the overlay store plus unmatched data-agent connections, and only 开始提问 commits a source to a session. The desktop profile seed installs it; official `dsh-desktop-app` and the default `standard` assistant do not name it.
 
 ## Table of Contents
 
@@ -57,7 +57,7 @@ The section text is stable for a bound session, so it does not churn the prefix 
 ## Known Limitations and Deferred Work
 
 - **No `.xls`, Numbers, Google Sheets, join, or ETL**
-- **No empty SQLite on 问数 click**
+- **No empty SQLite on 问数据 click**
 - **No rewrite of leftover `dsh-context` user profiles** — companion boot must fail visibly
 
 ### Dev Note

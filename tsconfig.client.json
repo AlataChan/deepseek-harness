@@ -112,6 +112,7 @@
     { "path": "./packages/experimental/desktop-ask-data/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-ask-knowledge/tsconfig.client.json" },
     { "path": "./packages/experimental/commerce-mode/tsconfig.client.json" },
+    { "path": "./packages/experimental/desktop-ngo/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-media/tsconfig.client.json" },
     { "path": "./packages/client/ui-dockkit" },
     { "path": "./packages/client/ui-sidebar-right" },

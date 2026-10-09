@@ -7,11 +7,21 @@ import { CreationShortcuts, fileFromPicker } from '../src/client/CreationShortcu
 import type { CreationShortcutsProps } from '../src/client/CreationShortcuts.tsx'
 import { zh } from '../src/client/locales.ts'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
-import type { MediaSessionRemotes } from '../src/client/remotes.ts'
+import type { MediaCredentialsRemotes, MediaSessionRemotes } from '../src/client/remotes.ts'
 
 const t: TranslateNS<'desktop-media'> = key => (
   key in zh ? zh[key as keyof typeof zh] : key
 )
+
+function credentials(configured: boolean): MediaCredentialsRemotes {
+  return {
+    describe: vi.fn(async (refs: string[]) => ({
+      ok: true as const,
+      value: Object.fromEntries(refs.map(ref => [ref, { configured, writable: true }])),
+    })),
+    set: vi.fn(async () => ({ ok: true as const, value: undefined })),
+  }
+}
 
 function remotes(overrides: Partial<MediaSessionRemotes> = {}): MediaSessionRemotes {
   return {
@@ -42,7 +52,7 @@ afterEach(() => {
 })
 
 describe('CreationShortcuts', () => {
-  it('loads methods into the draft and submits', () => {
+  it('loads methods into the draft and submits', async () => {
     const inputActions = {
       setDraft: vi.fn(),
       submit: vi.fn(),
@@ -52,13 +62,23 @@ describe('CreationShortcuts', () => {
     }
     const view = render(
       // Unread framework session seats are filled by the cast.
-      <CreationShortcuts {...({ inputActions, t } as CreationShortcutsProps)} />,
+      <CreationShortcuts {...({
+        inputActions,
+        close: () => {},
+        remotes: remotes(),
+        credentials: credentials(true),
+        t,
+      } as CreationShortcutsProps)} />,
     )
-    fireEvent.click(view.getByRole('button', { name: '做视频' }))
-    expect(inputActions.setDraft).toHaveBeenCalledWith(zh['prompt.video'])
+    fireEvent.click(view.getByRole('menuitem', { name: '做视频' }))
+    await waitFor(() => {
+      expect(inputActions.setDraft).toHaveBeenCalledWith(zh['prompt.video'])
+    })
     expect(inputActions.submit).toHaveBeenCalledTimes(1)
-    fireEvent.click(view.getByRole('button', { name: '做配音' }))
-    expect(inputActions.setDraft).toHaveBeenCalledWith(zh['prompt.speech'])
+    fireEvent.click(view.getByRole('menuitem', { name: '做配音' }))
+    await waitFor(() => {
+      expect(inputActions.setDraft).toHaveBeenCalledWith(zh['prompt.speech'])
+    })
     expect(inputActions.submit).toHaveBeenCalledTimes(2)
   })
 
@@ -74,7 +94,9 @@ describe('CreationShortcuts', () => {
     const view = render(
       <CreationShortcuts {...({
         inputActions,
+        close: () => {},
         remotes: api,
+        credentials: credentials(true),
         sessionId: SessionId('s-1'),
         t,
       } as CreationShortcutsProps)} />,
@@ -84,7 +106,9 @@ describe('CreationShortcuts', () => {
     expect(picker).toHaveProperty('type', 'file')
     const file = new File([new Uint8Array([1, 2, 3])], 'sample.mp3')
     fireEvent.change(picker, { target: { files: [file] } })
-    expect(view.getByRole('dialog', { name: '克隆声音' })).toBeTruthy()
+    await waitFor(() => {
+      expect(view.getByRole('dialog', { name: '克隆声音' })).toBeTruthy()
+    })
     expect(view.getByText('sample.mp3')).toBeTruthy()
     fireEvent.click(view.getByRole('button', { name: '确认克隆' }))
     expect(api.importMediaBytes).not.toHaveBeenCalled()
@@ -102,7 +126,7 @@ describe('CreationShortcuts', () => {
     expect(view.queryByRole('dialog')).toBeNull()
   })
 
-  it('rejects a non-audio pick and an empty picker event', () => {
+  it('rejects a non-audio pick and an empty picker event', async () => {
     const input = document.createElement('input')
     expect(fileFromPicker({ target: input } as never)).toBeUndefined()
     const view = render(
@@ -114,7 +138,9 @@ describe('CreationShortcuts', () => {
           removeAttachment: vi.fn(),
           pruneAttachments: vi.fn(),
         },
+        close: () => {},
         remotes: remotes(),
+        credentials: credentials(true),
         sessionId: SessionId('s-1'),
         t,
       } as CreationShortcutsProps)} />,
@@ -122,6 +148,33 @@ describe('CreationShortcuts', () => {
     fireEvent.change(view.getByLabelText('克隆声音'), {
       target: { files: [new File([new Uint8Array([1])], 'notes.txt')] },
     })
-    expect(view.getByRole('alert').textContent).toBe(zh['voice.badFile'])
+    await waitFor(() => {
+      expect(view.getByRole('alert').textContent).toBe(zh['voice.badFile'])
+    })
+  })
+
+  it('asks for the MiniMax key before sending a shortcut', async () => {
+    const inputActions = {
+      setDraft: vi.fn(),
+      submit: vi.fn(),
+      addAttachments: vi.fn(),
+      removeAttachment: vi.fn(),
+      pruneAttachments: vi.fn(),
+    }
+    const view = render(
+      <CreationShortcuts {...({
+        inputActions,
+        close: () => {},
+        remotes: remotes(),
+        credentials: credentials(false),
+        t,
+      } as CreationShortcutsProps)} />,
+    )
+    fireEvent.click(view.getByRole('menuitem', { name: '做视频' }))
+    await waitFor(() => {
+      expect(view.getByRole('alert').textContent).toBe(zh['preflight.keyMissing'])
+    })
+    expect(inputActions.setDraft).not.toHaveBeenCalled()
+    expect(inputActions.submit).not.toHaveBeenCalled()
   })
 })

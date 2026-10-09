@@ -341,7 +341,7 @@ def cmd_convert_file(req: dict) -> dict:
     if ext not in {".md", ".txt", ".html", ".htm", ".pdf"}:
         return {
             "ok": False,
-            "error": "仅支持 Markdown、TXT、HTML、PDF。表格请走问数。",
+            "error": "仅支持 Markdown、TXT、HTML、PDF。表格请走问数据。",
             "code": "type-unsupported",
         }
     converted = _convert_source(source, session_attachment=True)

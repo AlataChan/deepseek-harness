@@ -167,6 +167,12 @@ export function apply(ctx: ClientContext): void {
       registerGate()
     }
 
+    const openNgo = (): void => {
+      closeGate()
+      seat.clearStage()
+      void seat.select('env-ngo-project-assistant')
+    }
+
     const stopList = scope.sessions.list.subscribe(() => {
       const session = currentSession()
       const preset = session?.projectionValues?.agentPreset
@@ -180,7 +186,7 @@ export function apply(ctx: ClientContext): void {
     const chip = scope.slots.register({
       name: 'conversation.hero.commerce',
       locale: NS,
-      inject: (): CommerceChipInjected => ({ openGate: openFromChip }),
+      inject: (): CommerceChipInjected => ({ openGate: openFromChip, openNgo }),
     }, CommerceChip)
 
     return () => {

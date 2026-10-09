@@ -764,8 +764,18 @@ export interface SessionAskKnowledgeBindingRequest {
   readonly sessionId: SessionId
 }
 
+/** Request document paths inside one library vault. */
+export interface SessionAskKnowledgeListDocumentsRequest {
+  readonly libraryId: string
+}
+
 /** Client-minted prompt identity used to reconcile optimistic and durable messages. */
 export type SessionRequestId = Branded<'session-request-id'>
+
+/** Result of listing documents in a knowledge library vault. */
+export interface SessionAskKnowledgeListDocumentsResult {
+  readonly documentPaths: readonly string[]
+}
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {

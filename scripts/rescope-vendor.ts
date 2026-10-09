@@ -159,6 +159,10 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   { file: 'snapshots/session/cordis-inspect-timeout/client-fixture.mjs', upstream: ['cordis'] },
   // The comment names the community pin's own published npm dependency.
   { file: 'scripts/seed-desktop-profile-plugin.mjs', upstream: ['schemastery'] },
+  // Bare path aliases keep declarations from packages published against
+  // upstream's unscoped names (the seeded community data agent) unified with
+  // the vendored copies; these are path-mapping keys, not package references.
+  { file: 'tsconfig.base.json', upstream: ['cosmokit', 'schemastery'] },
 ]
 
 /** A string that must appear exactly `count` times once the rescope has run. */

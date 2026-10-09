@@ -23,7 +23,7 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import {
   createCatalogLibrary, listCatalog, readCatalog, renameCatalogLibrary, requireLibrary,
-  resumeDeleting, touchLastUsed, writeCatalog, catalogPath, assertVaultDir,
+  resumeDeleting, touchLastUsed, writeCatalog, catalogPath, assertVaultDir, isNotFound,
 } from './catalog.ts'
 import { CATALOG_VERSION } from './catalog.ts'
 import { resolveKnowledgeHome, type AskKnowledgeHomeConfig } from './knowledge-home.ts'
@@ -44,7 +44,8 @@ import {
   disposeUpload, materializeUpload, type IngestUpload,
 } from './upload-temp.ts'
 import { resolveSidecarHome } from './knowledge-home.ts'
-import { rm } from 'node:fs/promises'
+import { rm, readdir } from 'node:fs/promises'
+import { join } from 'node:path'
 
 export { MISSING_API_KEY_MESSAGE, resolveProposeEnv } from './credentials-bridge.ts'
 export { runSidecar, resolveSidecarExecutable, packagePythonDir } from './sidecar.ts'
@@ -151,6 +152,31 @@ export default class DesktopAskKnowledge extends AskKnowledge {
   override async listLibraries(signal?: AbortSignal): Promise<AskKnowledgeLibrary[]> {
     signal?.throwIfAborted()
     return listCatalog(this.home())
+  }
+
+  /**
+   * List ingested raw documents for a vault.
+   * @param request - library identity.
+   * @param signal - caller lifetime.
+   * @returns document file paths (e.g., `raw/sample.md`).
+   */
+  override async listLibraryDocuments(
+    request: { libraryId: AskKnowledgeLibraryId },
+    signal?: AbortSignal,
+  ): Promise<readonly string[]> {
+    signal?.throwIfAborted()
+    const home = this.home()
+    const row = await requireLibrary(home, request.libraryId)
+    const vault = await assertVaultDir(home, row)
+    let entries: string[]
+    try {
+      entries = await readdir(join(vault, 'raw'), { recursive: true })
+    } catch (error: unknown) {
+      /* v8 ignore next -- a vault without raw/ is an empty document set */
+      if (isNotFound(error)) return []
+      throw error
+    }
+    return entries.filter(entry => entry.toLowerCase().endsWith('.md')).sort()
   }
 
   /**

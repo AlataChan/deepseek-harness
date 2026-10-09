@@ -113,7 +113,7 @@ describe('ask-knowledge sidecar', () => {
       path: join(home, '表.xlsx'),
     })).rejects.toMatchObject({
       code: 'ingest-failed',
-      message: '仅支持 Markdown、TXT、HTML、PDF。表格请走问数。',
+      message: '仅支持 Markdown、TXT、HTML、PDF。表格请走问数据。',
     })
   })
 })

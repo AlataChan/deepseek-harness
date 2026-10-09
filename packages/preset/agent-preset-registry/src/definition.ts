@@ -7,6 +7,11 @@ export interface PresetDefinition {
   readonly name?: string
   readonly description?: string
   readonly order?: number
+  /**
+   * When false, the preset stays selectable by id but is omitted from the
+   * official roster menu. Fork chips own that entry instead.
+   */
+  readonly listed?: boolean
   readonly plugins: readonly (Omit<EntryOptions, 'id' | 'disabled'> & { id?: string; disabled?: EntryOptions['disabled'] | JsExpr })[]
 }
 

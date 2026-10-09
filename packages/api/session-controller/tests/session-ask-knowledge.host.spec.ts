@@ -34,6 +34,10 @@ class StubAskKnowledge extends AskKnowledge {
     return Promise.resolve(this.libraries)
   }
 
+  override listLibraryDocuments(): Promise<readonly string[]> {
+    return Promise.resolve(['raw/制度.md'])
+  }
+
   override createLibrary(request: { displayName: string }): Promise<AskKnowledgeLibrary> {
     const row: AskKnowledgeLibrary = {
       id: AskKnowledgeLibraryId('lib-1'),
@@ -208,6 +212,22 @@ describe('session ask-knowledge remotes', () => {
   it('fails listAskKnowledgeLibraries without the capability', async () => {
     const { remote } = await harness({ askKnowledge: false })
     await expect(remote.listAskKnowledgeLibraries()).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'session/ask-knowledge-unavailable' },
+    })
+  })
+
+  it('lists the documents of one library', async () => {
+    const { remote } = await harness()
+    await expect(remote.askKnowledgeListDocuments({ libraryId: 'lib-1' })).resolves.toMatchObject({
+      ok: true,
+      value: { documentPaths: ['raw/制度.md'] },
+    })
+  })
+
+  it('fails askKnowledgeListDocuments without the capability', async () => {
+    const { remote } = await harness({ askKnowledge: false })
+    await expect(remote.askKnowledgeListDocuments({ libraryId: 'lib-1' })).resolves.toMatchObject({
       ok: false,
       error: { code: 'session/ask-knowledge-unavailable' },
     })

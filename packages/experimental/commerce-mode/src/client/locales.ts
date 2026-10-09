@@ -6,6 +6,8 @@ export const NS = 'commerce-mode'
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
   chip: '电商助手',
+  'chip.menu': '专项助手',
+  'chip.ngo': '公益项目助手',
   'page.title': '选一份店铺数据',
   'page.lead': '先用示例看一遍电商助手怎么工作；自己的导出请按订单、商品、库存分别上传，并选择对应平台。',
   'page.sample': '先用示例试一次',
@@ -64,6 +66,8 @@ export type CommerceKey = keyof typeof zh
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
   chip: 'Commerce',
+  'chip.menu': 'Specialist',
+  'chip.ngo': 'Public-service assistant',
   'page.title': 'Pick one store export',
   'page.lead': 'Try the sample first to see how the commerce assistant works; for your own store, upload the orders, products, and inventory exports separately and pick the platform each came from.',
   'page.sample': 'Try the sample first',

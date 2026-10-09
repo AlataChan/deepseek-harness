@@ -1,40 +1,10 @@
-.row {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.chip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 28px;
-  padding: 0 8px;
-  border: none;
-  border-radius: 16px;
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.fileHit {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+.notice {
   margin: 0;
-  padding: 0;
-  border: 0;
-  /* WKWebView drops the File when the control is clipped or fully transparent. */
-  opacity: 0.01;
-  font-size: 100px;
-  cursor: pointer;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: normal;
+  max-width: 280px;
 }
 
 .sheetOverlay {
@@ -44,7 +14,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--dsw-alias-bg-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 40%, transparent);
 }
 
 .sheet {
@@ -54,7 +24,7 @@
   width: min(420px, calc(100vw - 32px));
   padding: 16px;
   border-radius: 16px;
-  background: var(--dsw-alias-bg-primary);
+  background: var(--dsw-alias-bg-layer-2);
   color: var(--dsw-alias-label-primary);
   box-shadow: 0 12px 32px color-mix(in srgb, #000 16%, transparent);
 }
@@ -77,8 +47,4 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
-}
-
-.chip:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
 }

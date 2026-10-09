@@ -455,6 +455,7 @@
     { "path": "./packages/experimental/desktop-files" },
     { "path": "./packages/experimental/desktop-ask-data" },
     { "path": "./packages/experimental/commerce-mode" },
+    { "path": "./packages/experimental/desktop-ngo" },
     { "path": "./packages/host/ask-data" },
     { "path": "./packages/host/commerce" },
     { "path": "./packages/experimental/desktop-ask-knowledge" },

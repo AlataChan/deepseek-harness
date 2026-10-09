@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { apply, inject } from '../src/client/index.ts'
-import type { AskDataChipInjected } from '../src/client/index.ts'
+import type { CapabilitiesMenuInjected } from '../src/client/index.ts'
 import type { DataSourcePageRemotes } from '../src/client/DataSourcePage.tsx'
 
 interface SessionRow {
@@ -127,11 +127,11 @@ describe('desktop-ask-data apply', () => {
     const b = await bench()
     expect(b.slots.entries('conversation.hero.askData')).toHaveLength(1)
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     expect(b.seat.stage).toHaveBeenCalledWith('data-agent', { hold: true })
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(1)
-    injected.openGate()
+    injected.openData()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(1)
     await b.dispose()
   })
@@ -147,8 +147,8 @@ describe('desktop-ask-data apply', () => {
         },
       },
     })
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     const page = gate(b.slots)
     expect(page.currentBlankSessionId).toBeUndefined()
     expect(page.currentBound).toEqual({ sessionId: 's-bound', sourceId: 'src-sample' })
@@ -160,8 +160,8 @@ describe('desktop-ask-data apply', () => {
       current: 's-blank',
       byId: { 's-blank': { id: 's-blank', blank: true } },
     })
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     const page = gate(b.slots)
     expect(page.currentBlankSessionId).toBe('s-blank')
     await page.listSources()
@@ -183,7 +183,7 @@ describe('desktop-ask-data apply', () => {
     expect(b.open).toHaveBeenCalled()
     expect(b.seat.clearStage).toHaveBeenCalled()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
-    injected.openGate()
+    injected.openData()
     page.onCommitted('s-done')
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
     await b.dispose()
@@ -191,8 +191,8 @@ describe('desktop-ask-data apply', () => {
 
   it('does not reopen the gate for an advanced-escape session', async () => {
     const b = await bench()
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     gate(b.slots).onAdvanced('s-adv')
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
     b.state.current = 's-adv'
@@ -210,8 +210,8 @@ describe('desktop-ask-data apply', () => {
 
   it('creates an advanced session when the chip opened the gate without a current session', async () => {
     const b = await bench()
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     await gate(b.slots).createAdvanced({})
     expect(b.remotes.create).toHaveBeenCalledWith({ agentPreset: 'data-agent' })
     await b.dispose()
@@ -228,8 +228,8 @@ describe('desktop-ask-data apply', () => {
         },
       },
     })
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     await gate(b.slots).createAdvanced({})
     expect(b.remotes.create).toHaveBeenCalledWith({ agentPreset: 'data-agent' })
     await b.dispose()
@@ -246,8 +246,8 @@ describe('desktop-ask-data apply', () => {
         },
       },
     })
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     await gate(b.slots).createAdvanced({})
     expect(b.remotes.create).toHaveBeenCalledWith({ agentPreset: 'data-agent' })
     await b.dispose()
@@ -255,8 +255,8 @@ describe('desktop-ask-data apply', () => {
 
   it('still opens the gate for a different unbound data-agent session', async () => {
     const b = await bench()
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     gate(b.slots).onAdvanced('s-adv')
     b.state.current = 's-other'
     b.state.byId = {
@@ -282,8 +282,8 @@ describe('desktop-ask-data apply', () => {
         },
       },
     })
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     const result = await gate(b.slots).createAdvanced({})
     expect(result).toEqual({ ok: true, value: { sessionId: 's-blank' } })
     expect(b.remotes.create).not.toHaveBeenCalled()
@@ -293,8 +293,8 @@ describe('desktop-ask-data apply', () => {
   it('still leaves the gate when cancel is refused', async () => {
     const b = await bench()
     b.seat.select.mockResolvedValueOnce('busy')
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     await gate(b.slots).cancel()
     expect(b.seat.clearStage).toHaveBeenCalled()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
@@ -303,21 +303,21 @@ describe('desktop-ask-data apply', () => {
 
   it('toggles the gate closed from the chip', async () => {
     const b = await bench()
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(1)
-    injected.openGate()
+    injected.openData()
     await settle()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
-    injected.openGate()
+    injected.openData()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(1)
     await b.dispose()
   })
 
   it('closes the gate when cancel is accepted', async () => {
     const b = await bench()
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     await gate(b.slots).cancel()
     expect(b.seat.clearStage).toHaveBeenCalled()
     expect(b.slots.entries('conversation.askData.gate')).toHaveLength(0)
@@ -349,8 +349,8 @@ describe('desktop-ask-data apply', () => {
       s1: { id: 's1', projectionValues: { agentPreset: 'minimal' } },
     }
     b.emit()
-    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => AskDataChipInjected)()
-    injected.openGate()
+    const injected = (b.slots.entries('conversation.hero.askData')[0]!.inject as unknown as () => CapabilitiesMenuInjected)()
+    injected.openData()
     expect(b.seat.stage).toHaveBeenCalled()
     await gate(b.slots).cancel()
     expect(b.seat.select).toHaveBeenCalledWith('minimal')

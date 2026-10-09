@@ -57,7 +57,7 @@ async function readPresetDefinition(ctx: Context, target: string): Promise<Prese
   } catch {
     ctx.logger.info('commerce-mode: unreadable preset.yml; the preset registers without display metadata')
   }
-  return { id: PRESET_ID, ...metadata, plugins }
+  return { id: PRESET_ID, ...metadata, listed: false, plugins }
 }
 
 /**

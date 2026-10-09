@@ -98,6 +98,8 @@ import type {
   SessionAskKnowledgeLookup,
   SessionAskKnowledgeLookupRequest,
   SessionAskKnowledgeRetrieveRequest,
+  SessionAskKnowledgeListDocumentsRequest,
+  SessionAskKnowledgeListDocumentsResult,
   SessionAppendAskKnowledgeExtractChunkRequest,
   SessionAppendAskKnowledgeIngestChunkRequest,
   SessionAttachAskKnowledgeRequest,
@@ -322,7 +324,6 @@ export class SessionController extends TypertRemoteService {
       return Promise.resolve({
         meta: attached.header,
         inheritedEventCount: attached.inheritedEventCount,
-        // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
         events: attached.snapshotEvents(),
       })
     }
@@ -916,6 +917,20 @@ export class SessionController extends TypertRemoteService {
     signal: AbortSignal,
   ): Promise<SessionAskKnowledgeLookup> {
     return this.askKnowledge.lookup(request, signal)
+  }
+
+  /**
+   * List ingested document paths in one library vault.
+   * @param request - library identity.
+   * @param signal - caller lifetime; abort stops the list.
+   * @returns document file paths (e.g., `raw/sample.md`).
+   */
+  @Remote('askKnowledgeListDocuments')
+  askKnowledgeListDocuments(
+    request: SessionAskKnowledgeListDocumentsRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAskKnowledgeListDocumentsResult> {
+    return this.askKnowledge.listLibraryDocuments(request, signal)
   }
 
   /**

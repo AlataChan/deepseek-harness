@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { apply, inject } from '../src/client/index.ts'
-import type { AskKnowledgeChipInjected, AttachKnowledgeBridgeInjected } from '../src/client/index.ts'
+import type {
+  AskKnowledgeDockInjected, AttachKnowledgeBridgeInjected, KnowledgeCapabilitiesRowInjected,
+} from '../src/client/index.ts'
 import type { LibraryPickerInjected } from '../src/client/LibraryPicker.tsx'
 import type { LibrarySettingsRemotes } from '../src/client/LibrarySettingsSection.tsx'
 
@@ -28,6 +30,10 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
     })),
     renameAskKnowledgeLibrary: vi.fn(async () => ({ ok: true as const })),
     removeAskKnowledgeLibrary: vi.fn(async () => ({ ok: true as const })),
+    askKnowledgeListDocuments: vi.fn(async () => ({
+      ok: true as const,
+      value: { documentPaths: ['raw/制度.md'] },
+    })),
     beginAskKnowledgeIngest: vi.fn(async () => ({ ok: true as const, value: 'h1' })),
     appendAskKnowledgeIngestChunk: vi.fn(async () => ({ ok: true as const })),
     finishAskKnowledgeIngest: vi.fn(async () => ({ ok: true as const, value: { status: 'applied' as const } })),
@@ -73,7 +79,9 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
     name: 'conversation',
     children: {
       'conversation.hero.askKnowledge': { kind: 'single', scope: 'root' },
+      'conversation.hero.capabilities.item': { kind: 'list', scope: 'session-maybe' },
       'conversation.askKnowledge.picker': { kind: 'single', scope: 'root' },
+      'conversation.input.dock': { kind: 'list', scope: 'session' },
       'conversation.composer.bar': { kind: 'single', scope: 'session-maybe' },
     },
   } as never, () => null)
@@ -107,17 +115,16 @@ describe('desktop-ask-knowledge apply', () => {
         },
       },
     })
-    expect(b.slots.entries('conversation.hero.askKnowledge')).toHaveLength(1)
+    expect(b.slots.entries('conversation.hero.capabilities.item').map(row => row.options.id))
+      .toEqual(['desktop-ask-knowledge'])
     expect(b.slots.entries('conversation.input.attachKnowledge')).toHaveLength(1)
     expect(b.slots.entries('conversation.input.attachSessionDocument')).toHaveLength(1)
+    expect(b.slots.entries('conversation.input.dock')).toHaveLength(1)
     expect(b.slots.entries('settings.section').map(row => row.options.id)).toEqual(['desktop-ask-knowledge'])
-    const chip = (b.slots.entries('conversation.hero.askKnowledge')[0]!.inject as unknown as () => AskKnowledgeChipInjected)()
-    expect(chip.boundName).toBe('制度 A')
-    chip.openPicker()
+    const row = (b.slots.entries('conversation.hero.capabilities.item')[0]!.inject as unknown as () => KnowledgeCapabilitiesRowInjected)()
+    row.openPicker()
     expect(b.slots.entries('conversation.askKnowledge.picker')).toHaveLength(1)
-    chip.openPicker()
-    expect(b.slots.entries('conversation.askKnowledge.picker')).toHaveLength(0)
-    chip.openPicker()
+    row.openPicker()
     expect(b.slots.entries('conversation.askKnowledge.picker')).toHaveLength(1)
     const attach = (b.slots.entries('conversation.input.attachKnowledge')[0]!.inject as unknown as () => AttachKnowledgeBridgeInjected)()
     attach.openPicker()
@@ -151,6 +158,10 @@ describe('desktop-ask-knowledge apply', () => {
     })
     picker.close()
     expect(b.slots.entries('conversation.askKnowledge.picker')).toHaveLength(0)
+    const dock = (b.slots.entries('conversation.input.dock')[0]!.inject as unknown as () => AskKnowledgeDockInjected)()
+    expect(dock.hooks.askKnowledgeSelection.getSnapshot()).toEqual({})
+    picker.rememberSelection(['raw/制度.md'])
+    expect(dock.hooks.askKnowledgeSelection.getSnapshot()).toEqual({ s1: ['raw/制度.md'] })
     attach.openPicker()
     expect(b.slots.entries('conversation.askKnowledge.picker')).toHaveLength(1)
     const settings = (b.slots.entries('settings.section')[0]!.inject as unknown as () => LibrarySettingsRemotes & { attach: (id: string) => Promise<unknown> })()
@@ -162,11 +173,10 @@ describe('desktop-ask-knowledge apply', () => {
     await b.dispose()
   })
 
-  it('omits boundName and sessionId when no current session exists', async () => {
+  it('omits sessionId when no current session exists', async () => {
     const b = await bench()
-    const chip = (b.slots.entries('conversation.hero.askKnowledge')[0]!.inject as unknown as () => AskKnowledgeChipInjected)()
-    expect(chip.boundName).toBeUndefined()
-    chip.openPicker()
+    const row = (b.slots.entries('conversation.hero.capabilities.item')[0]!.inject as unknown as () => KnowledgeCapabilitiesRowInjected)()
+    row.openPicker()
     const picker = (b.slots.entries('conversation.askKnowledge.picker')[0]!.inject as unknown as () => LibraryPickerInjected)()
     await picker.attach('1')
     expect(b.remotes.attachAskKnowledge).toHaveBeenCalledWith({ libraryId: '1' })
@@ -182,8 +192,8 @@ describe('desktop-ask-knowledge apply', () => {
       ok: true as const,
       value: { sessionId: 's-knowledge' },
     })
-    const chip = (b.slots.entries('conversation.hero.askKnowledge')[0]!.inject as unknown as () => AskKnowledgeChipInjected)()
-    chip.openPicker()
+    const row = (b.slots.entries('conversation.hero.capabilities.item')[0]!.inject as unknown as () => KnowledgeCapabilitiesRowInjected)()
+    row.openPicker()
     const picker = (b.slots.entries('conversation.askKnowledge.picker')[0]!.inject as unknown as () => LibraryPickerInjected)()
     await picker.attach('1')
     expect(b.remotes.attachAskKnowledge).toHaveBeenCalledWith({
@@ -192,23 +202,5 @@ describe('desktop-ask-knowledge apply', () => {
     })
     expect(b.openSession).toHaveBeenCalledWith('s-knowledge')
     await b.dispose()
-  })
-
-  it('treats a non-object or nameless bind as unbound', async () => {
-    const cases: Array<SessionRow['projectionValues']> = [
-      { askKnowledgeBinding: 'x' },
-      { askKnowledgeBinding: null },
-      { askKnowledgeBinding: { libraryId: '1' } },
-      { askKnowledgeBinding: { displayName: 1 } },
-    ]
-    for (const projectionValues of cases) {
-      const b = await bench({
-        current: 's1',
-        byId: { s1: { id: 's1', projectionValues } },
-      })
-      const chip = (b.slots.entries('conversation.hero.askKnowledge')[0]!.inject as unknown as () => AskKnowledgeChipInjected)()
-      expect(chip.boundName).toBeUndefined()
-      await b.dispose()
-    }
   })
 })

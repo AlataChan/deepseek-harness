@@ -24,6 +24,8 @@ import {
   type SessionAskKnowledgeExtractResult,
   type SessionAskKnowledgeIngestResult,
   type SessionAskKnowledgeLibrary,
+  type SessionAskKnowledgeListDocumentsRequest,
+  type SessionAskKnowledgeListDocumentsResult,
   type SessionAskKnowledgeLookup,
   type SessionAttachAskKnowledgeRequest,
   type SessionAttachAskKnowledgeValue,
@@ -376,6 +378,27 @@ export class SessionAskKnowledgeController {
           throw mapAskKnowledgeError(error, signal)
         }
       }))
+  }
+
+  /**
+   * List ingested document paths in one library vault.
+   * @param request - library identity.
+   * @param signal - caller lifetime.
+   * @returns document file paths (e.g., `raw/sample.md`).
+   */
+  async listLibraryDocuments(
+    request: SessionAskKnowledgeListDocumentsRequest,
+    signal: AbortSignal,
+  ): Promise<SessionAskKnowledgeListDocumentsResult> {
+    signal.throwIfAborted()
+    try {
+      const paths = await this.requireAskKnowledge().listLibraryDocuments({
+        libraryId: brandString<AskKnowledgeLibraryId>(request.libraryId),
+      }, signal)
+      return { documentPaths: paths }
+    } catch (error: unknown) {
+      throw mapAskKnowledgeError(error, signal)
+    }
   }
 
   /**

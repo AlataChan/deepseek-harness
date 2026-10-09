@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { IconCloseOutlineRegular, IconCopyOutlineRegular, IconDownloadOutlineRegular, IconFolderOpenOutlineRegular, IconPlayOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -82,7 +83,7 @@ export function WorksPanel({
     if (event.target === event.currentTarget) close()
   }
 
-  return (
+  return createPortal((
     <div className={css.overlay} onClick={onBackdrop} onKeyDown={onKey} role="presentation">
       <section className={css.panel} role="dialog" aria-label={t('works.title')} tabIndex={-1}>
         <header className={css.header}>
@@ -188,7 +189,7 @@ export function WorksPanel({
           )}
       </section>
     </div>
-  )
+  ), document.body)
 }
 
 /**

@@ -9,9 +9,12 @@ import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MediaSessionRemotes, MediaWorkRow } from '../src/client/remotes.ts'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 
-const t: TranslateNS<'desktop-media'> = key => (
-  key in zh ? zh[key as keyof typeof zh] : key
-)
+const t: TranslateNS<'desktop-media'> = (key, params) => {
+  const template = key in zh ? zh[key as keyof typeof zh] : key
+  if (params === undefined) return template
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match)
+}
 
 const sample: MediaWorkRow = {
   artifactId: 'a_1',
@@ -109,8 +112,8 @@ describe('WorksPanel', () => {
     await waitFor(() => {
       expect(view.getByText('样片.mp4')).toBeTruthy()
     })
-    expect(view.container.querySelector('[data-kind="video"]')).toBeTruthy()
-    expect(view.container.querySelector('[data-kind="speech"]')).toBeTruthy()
+    expect(view.baseElement.querySelector('[data-kind="video"]')).toBeTruthy()
+    expect(view.baseElement.querySelector('[data-kind="speech"]')).toBeTruthy()
     expect(view.getByText('还没有安装视频工具。请安装 FFmpeg 后运行 scripts/install-media-runtime.sh')).toBeTruthy()
     expect(view.getByText('5s')).toBeTruthy()
     expect(view.getByText('来源会话已删除')).toBeTruthy()
@@ -144,13 +147,13 @@ describe('WorksPanel', () => {
 
     fireEvent.click(view.getAllByText('另存为')[0]!)
     fireEvent.change(view.getByDisplayValue('样片.mp4'), { target: { value: 'out.mp4' } })
-    fireEvent.submit(view.container.querySelector('form')!)
+    fireEvent.submit(view.baseElement.querySelector('form')!)
     await waitFor(() => {
       expect(pickDirectory).toHaveBeenCalledTimes(1)
     })
     fireEvent.click(view.getAllByText('另存为')[0]!)
     fireEvent.change(view.getByDisplayValue('样片.mp4'), { target: { value: 'out.mp4' } })
-    fireEvent.submit(view.container.querySelector('form')!)
+    fireEvent.submit(view.baseElement.querySelector('form')!)
     await waitFor(() => {
       expect(api.saveMediaWorkAs).toHaveBeenCalledWith({
         artifactId: 'a_1',
@@ -159,9 +162,9 @@ describe('WorksPanel', () => {
       })
     })
 
-    fireEvent.keyDown(view.container.firstElementChild!, { key: 'Tab' })
+    fireEvent.keyDown(view.getByRole('dialog').parentElement!, { key: 'Tab' })
     expect(view.getByRole('dialog')).toBeTruthy()
-    fireEvent.keyDown(view.container.firstElementChild!, { key: 'Escape' })
+    fireEvent.keyDown(view.getByRole('dialog').parentElement!, { key: 'Escape' })
     expect(view.queryByRole('dialog')).toBeNull()
   })
 

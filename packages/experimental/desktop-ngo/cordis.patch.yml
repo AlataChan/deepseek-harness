@@ -1,0 +1,6 @@
+# Fork-owned public-service assistant. Host install + roster registration.
+# The hero menu lives on the commerce chip so this package does not take a second slot.
+
+- insert:
+    - id: desktop-ngo
+      name: '@deepseek-ai/dsh-experimental-desktop-ngo'

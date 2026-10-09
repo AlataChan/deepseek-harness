@@ -18,6 +18,10 @@ class StubAskKnowledge extends AskKnowledge {
     return Promise.resolve([])
   }
 
+  override listLibraryDocuments(): Promise<readonly string[]> {
+    return Promise.resolve([])
+  }
+
   override createLibrary(
     request: { displayName: string },
     _signal?: AbortSignal,

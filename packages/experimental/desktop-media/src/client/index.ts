@@ -15,7 +15,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 // Type-only: Models footer slot declared by the official Models section.
 import type {} from '@deepseek-ai/dsh-client-ui-settings-models/client'
-import { CreationShortcuts } from './CreationShortcuts.tsx'
+// Type-only: the fork-owned capabilities-menu slot and its row owner props.
+import type {} from '@deepseek-ai/dsh-experimental-desktop-ask-data/client'
+import { CreationShortcuts, type CreationShortcutsInjected } from './CreationShortcuts.tsx'
 import { MediaCard, type MediaCardInjected } from './MediaCard.tsx'
 import { MinimaxKeyCard, mediaCredentialsOf } from './MinimaxKeyCard.tsx'
 import { WorksButton } from './WorksButton.tsx'
@@ -112,23 +114,34 @@ export function nativePickDirectory(
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'desktop-media: dictionaries')
-  ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
-    name: 'conversation.input.left',
-    id: 'desktop-media-shortcuts',
-    order: 40,
-    locale: NS,
-    inject: (sessionId: SessionId) => {
-      const sessions = ctx.get('sessions') as {
-        list: { getSnapshot: () => { byId: Record<string, ListedSession> } }
+  // The creation rows ride the fork-owned 专业能力 menu slot. Subscribe to the
+  // declaration (the working knowledge-row shape) instead of registering
+  // eagerly: the menu owner may apply after this entry.
+  ctx.inject(['conversation', 'sessions', 'uiWorkspace'], (scope) => {
+    const workspaceIdFor = (sessionId: SessionId | undefined): string | undefined => {
+      if (sessionId === undefined) return undefined
+      const sessions = scope.get('sessions') as {
+        list?: { getSnapshot: () => { byId: Record<string, ListedSession> } }
       } | undefined
-      const workspaceId = sessions?.list.getSnapshot().byId[sessionId]?.workspaceId
+      return sessions?.list?.getSnapshot().byId[sessionId]?.workspaceId
+    }
+    const injectRows = (sessionId: SessionId | undefined): CreationShortcutsInjected => {
+      const workspaceId = workspaceIdFor(sessionId)
       return {
         remotes: mediaRemotesOf(ctx),
-        sessionId,
+        credentials: mediaCredentialsOf(ctx),
+        ...sessionId === undefined ? {} : { sessionId },
         ...workspaceId === undefined ? {} : { workspaceId },
       }
-    },
-  }, CreationShortcuts))
+    }
+    return scope.slots.inject('conversation.hero.capabilities.item', () => scope.slots.register({
+      name: 'conversation.hero.capabilities.item',
+      id: 'desktop-media',
+      order: 30,
+      locale: NS,
+      inject: injectRows,
+    }, CreationShortcuts))
+  })
   for (const key of TOOLS) {
     ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
       name: 'tool.call.toolview',
