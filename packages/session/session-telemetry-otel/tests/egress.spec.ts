@@ -131,4 +131,67 @@ describe('session-telemetry-otel egress', () => {
       }
     },
   )
+
+  it('issues no OTLP request before the user records feedback', async () => {
+    seen.length = 0
+    captures.length = 0
+    const ctx = new Context()
+    ctx.plugin(OTel)
+    try {
+      await ctx.plugin(SessionStore)
+      const fiber = await ctx.plugin(OpenTelemetrySessionBackend, {
+        mode: SessionTelemetryMode.FEEDBACK_ONLY,
+        exporter: {
+          url: `${collectorUrl}/v1/logs`,
+          timeoutMillis: 1_000,
+          httpAgentOptions: {
+            lookup: (_host, options, callback) => {
+              if (options.all) callback(null, [{ address: '127.0.0.1', family: 4 }])
+              else callback(null, '127.0.0.1', 4)
+            },
+          },
+        },
+        processor: { scheduledDelayMillis: 60_000 },
+      })
+      const session = ctx.sessions.create(SessionId('no-feedback'), { meta: { cwd: home } })
+      session.append('turn/start', { turn: 1 })
+      session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+      await fiber.dispose()
+      expect(captures).toEqual([])
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('issues no OTLP request at all in DISABLED mode, even with feedback', async () => {
+    seen.length = 0
+    captures.length = 0
+    const ctx = new Context()
+    ctx.plugin(OTel)
+    try {
+      await ctx.plugin(SessionStore)
+      const fiber = await ctx.plugin(OpenTelemetrySessionBackend, {
+        mode: SessionTelemetryMode.DISABLED,
+        exporter: {
+          url: `${collectorUrl}/v1/logs`,
+          timeoutMillis: 1_000,
+          httpAgentOptions: {
+            lookup: (_host, options, callback) => {
+              if (options.all) callback(null, [{ address: '127.0.0.1', family: 4 }])
+              else callback(null, '127.0.0.1', 4)
+            },
+          },
+        },
+        processor: { scheduledDelayMillis: 60_000 },
+      })
+      const session = ctx.sessions.create(SessionId('disabled'), { meta: { cwd: home } })
+      session.append('turn/start', { turn: 1 })
+      recordFeedback(session, { text: 'feedback that must not upload' })
+      session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+      await fiber.dispose()
+      expect(captures).toEqual([])
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
 })
