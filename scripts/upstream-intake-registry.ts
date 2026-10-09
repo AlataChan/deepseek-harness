@@ -288,6 +288,18 @@ export const PATCHES: readonly PatchEntry[] = [
 export const MOUNTS: readonly MountEntry[] = [
   {
     composition: 'packages/bundle/base/package.json',
+    row: '@deepseek-ai/dsh-otel',
+    packageName: '@deepseek-ai/dsh-otel',
+    requiredChange: 'Restores upstream OTel SDK bootstrap the hop-4 merge dropped: the telemetry backends inject the otel service it provides. The package carries no endpoint or export of its own; collector defaults stay governed by the telemetry rows.',
+  },
+  {
+    composition: 'packages/bundle/base/cordis.patch.yml',
+    row: 'otel',
+    packageName: '@deepseek-ai/dsh-otel',
+    requiredChange: 'Applied 2026-10-08: the bootstrap row sits beside the telemetry backend; removing it leaves every telemetry plugin pending and the shipped-profile e2e classes hang or fail.',
+  },
+  {
+    composition: 'packages/bundle/base/package.json',
     row: '@deepseek-ai/dsh-session-telemetry-otel',
     packageName: '@deepseek-ai/dsh-session-telemetry-otel',
     requiredChange: 'Keep the dependency: the base composition owns the fork telemetry mode and endpoint policy, so the package stays mounted while defaulting to DISABLED.',
