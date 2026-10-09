@@ -4,7 +4,7 @@
 # passthrough runner, and restate the commerce persona and root rows.
 
 - id: llm-deepseek
-  name: '@deepseek-ai/dsh-llm-deepseek'
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
   disabled: true
 
 - id: acp
