@@ -3,6 +3,7 @@
 
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { AskKnowledgeDock } from '../src/client/AskKnowledgeDock.tsx'
 import { zh } from '../src/client/locales.ts'
 
@@ -20,14 +21,14 @@ function dockProps(
   openPicker: () => void,
 ) {
   return {
-    sessionId: 's1',
+    sessionId: SessionId('s1'),
     openPicker,
     t,
     useProjection: () => projection,
     useAskKnowledgeSelection: (
       selector: (state: Record<string, readonly string[] | undefined>) => unknown,
     ) => selector(selection),
-  } as unknown as Parameters<typeof AskKnowledgeDock>[0]
+  } as Partial<Parameters<typeof AskKnowledgeDock>[0]> as Parameters<typeof AskKnowledgeDock>[0]
 }
 
 describe('ask-knowledge dock', () => {

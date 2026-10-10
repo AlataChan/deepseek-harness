@@ -1,6 +1,10 @@
 /** Discover `ARCHIFY_HTML_PATH` from the loaded Chat conversation snapshot. */
 
-/** Extract `ARCHIFY_HTML_PATH: …` from free text (assistant reply or paste). */
+/**
+ * Extract `ARCHIFY_HTML_PATH: …` from free text (assistant reply or paste).
+ * @param text - assistant reply or pasted text.
+ * @returns the quoted or bare path, or null when the marker is absent.
+ */
 export function extractArchifyPath(text: string): string | null {
   const match = /ARCHIFY_HTML_PATH:\s*(\S+)/u.exec(text)
   if (match?.[1] === undefined) return null

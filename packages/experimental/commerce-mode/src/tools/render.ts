@@ -16,7 +16,12 @@ function entityLengthAt(text: string, index: number): number {
   return /^&(?:amp|lt|#x[0-9a-f]+);$/i.test(candidate) ? candidate.length : 0
 }
 
-/** Fence sanitized Provider text within a complete character budget. */
+/**
+ * Fence sanitized Provider text within a complete character budget.
+ * @param text - untrusted Provider text.
+ * @param maxResultChars - maximum characters of the rendered result.
+ * @returns the fenced text, truncated with the shared suffix past the cap.
+ */
 export function renderCommerceText(text: string, maxResultChars: number): string {
   const sanitized = sanitizeUntrusted(text)
   const complete = fenceText(sanitized)

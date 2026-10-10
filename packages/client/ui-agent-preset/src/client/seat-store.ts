@@ -80,6 +80,7 @@ export class AgentPresetSeatController {
     this.store.set({ ...this.store.getSnapshot(), ...patch })
   }
 
+  /** Drop the staged preset so the chip stops announcing it. */
   clearStage(): void {
     this.staged.id = undefined
     this.staged.introduce = false
@@ -145,6 +146,12 @@ export class AgentPresetSeatController {
    * chip should announce itself on the session it lands on.
    */
   stage(id: string, introduce?: boolean): void
+  /**
+   * Stage a preset with explicit hold and introduce options.
+   * @param id - the preset to stage.
+   * @param opts - `hold` keeps the seat held after the session applies it;
+   * `introduce` mirrors the boolean overload.
+   */
   stage(id: string, opts: { hold?: boolean; introduce?: boolean }): void
   stage(id: string, introduceOrOpts: boolean | { hold?: boolean; introduce?: boolean } = false): void {
     const opts = typeof introduceOrOpts === 'boolean'

@@ -1,9 +1,12 @@
 # VibeVoice-ASR 本地转写插件 · 方案（待审批）
 
 Mode: feature proposal
+
 Created: 2026-10-09
+
 Architect: Cla（起草，供主人审批）
-Status: **提案（待审批）**；审批通过后进入 P0 spike，未批准前不写产品代码。
+
+Status: **提案已批**；**P0 已执行（2026-10-09，结论 NO-GO：本机实测不可行，按 §8 回退到 SenseVoice 长录音入口 + 技能）**，回退方案的实现进行中。
 
 **审批记录（2026-10-09，主人）**
 
@@ -198,3 +201,25 @@ Status: **提案（待审批）**；审批通过后进入 P0 spike，未批准�
 **后续（2026-10-09 08:54 构建，已取代上面的创作条）**：按主人要求，把「问数据 / 问知识 / 做视频 / 做配音 / 克隆声音」合并为 hero 行的「专业能力」下拉菜单（复用被腾出的 `conversation.hero.askData` 槽位；条目由各包通过 fork 自有槽位 `conversation.hero.capabilities.item` 贡献，零上游改动）。创作条与自检/崩溃探针已全部移除；「问数」完成全量改名「问数据」（UI 文案、提示词、sidecar 报错文案、模板文件名、两包文档与测试）。
 
 **与本方案的关系**：附录 A 是主人本轮提出的独立问题；创作入口已按「专业能力」菜单方案落地，本 provider 方案无耦合。
+
+---
+
+## 附录 B：P0 实测结论（2026-10-09 执行，NO-GO）
+
+**环境**：Apple M2 / 8 核 / 24GB，macOS 26.5。上游 `microsoft/VibeASR.cpp` 默认 Release 构建（`BITNET_ARM_TL1` 为死选项：LUT 源码未接入构建；`ggml-bitnet-stub.cpp` 注释确认 VibeASR 走 I2_S MAD 路径）。模型经 hf-mirror 下载（VAE `4941c826…`、LM `fbe273d8…`，均 MIT）。
+
+**实测（真实课程录音，中文）**：
+
+| 项 | 结果 |
+|---|---|
+| 稳速（20s，4 线程，`--warmup`） | RTF **0.369**（decode 28ms/token）；8 线程反而更差（RTF 1.04） |
+| 冷启首跑 | 慢 3–4 倍（mmap 首次换页），90s 冷跑 RTF 0.94–4.20 |
+| 内存 | 20s≈6.3GB、180s≈9.5GB、569s 峰值 10–16GB |
+| 长音频 | **569s 单次推理 4/4 崩溃**（VAE acoustic encode 阶段）；180s 可完成，单次上限约 3–9.5 分钟 |
+| 说话人/时间戳 | **未出现**（`--prompt-format json` 仍输出纯文本；BitNet 1.5B LM 不遵守 7B 的结构化指令） |
+| 中文质量 | 可接受（连贯、断句正确） |
+| 解码依赖 | macOS 自带 `afconvert` 可解 m4a/mp3 → 16k 单声道 WAV，**无需 FFmpeg** |
+
+**结论**：60 分钟单次、带说话人与时间戳、小内存的承诺在本机与目标机型（8–16GB）上均不成立；按 §8 预授权回退，**VibeVoice provider 不实现**，改做 SenseVoice 长录音入口（`speech_transcribe` 工具 + `env-ngo-audio-minutes` 技能），解码走 `afconvert`（FFmpeg 缺失时给中文引导）。完整证据：spike REPORT.md（含逐次命令、sha256、日志路径）。
+
+**回退落地验证（2026-10-09 22:07，真实端到端）**：在安装态 harness 上以 Web carrier 启动同一 desktop profile，官方语音输入页准备 SenseVoice 后就地调用 `speech_transcribe`——90 秒 m4a 转写用时 12.4 秒；完整 9:29 课程录音（9.1MB 源 / 约 16MB WAV，超出旧的 4MiB 单次上限）转写用时 82.8 秒（RTF≈0.15），产出带元信息与全文的 `课程录音-完整.transcript.md`。部署配置相应调高 SenseVoice 上限（`maxAudioBytes` 512MiB、`inferenceTimeoutMs` 2h、`maxResponseBytes` 4MiB）。

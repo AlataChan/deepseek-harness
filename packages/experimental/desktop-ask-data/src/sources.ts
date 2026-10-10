@@ -21,7 +21,9 @@ import {
 import { listUnmatchedSaved } from './saved-connections.ts'
 import { findSqlite3, readSqlitePreview, writeSqliteFile } from './sqlite-write.ts'
 
+/** Packaged stock SQLite sample used when the Host has no sqlite3 binary. */
 const SAMPLE_SQLITE = fileURLToPath(new URL('../samples/sample-sales.sqlite', import.meta.url))
+/** Packaged spreadsheet sample for the data-source chooser. */
 const SAMPLE_XLSX = fileURLToPath(new URL('../samples/sample-sales.xlsx', import.meta.url))
 
 /** Known sample preview when host sqlite3 is absent. */

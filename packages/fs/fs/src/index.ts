@@ -42,8 +42,10 @@ export type {
   FsWriteOutcome,
 } from './types.ts'
 
+/** One filesystem mutation kind a policy records or observes. */
 export type FsMutationOperation = 'write' | 'edit'
 
+/** One provider error offered to a Consumer for remedy mapping. */
 export interface FsErrorRemedyRequest {
   /** The mapped provider error after sandbox mapping. */
   readonly error: FsError

@@ -29,6 +29,7 @@ import {
  * Ask-data Remote helpers owned by Session Controller.
  */
 export class SessionAskDataController {
+  /** Per-session exclusive gate for ask-data proposals; same-stack reentry passes. */
   readonly gate = new SessionCallGate()
   private readonly fifo = new CommitFifo()
 

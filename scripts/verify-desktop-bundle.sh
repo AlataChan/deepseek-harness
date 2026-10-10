@@ -541,6 +541,41 @@ else
   ok "bundle does not embed ffmpeg or ffprobe"
 fi
 
+# desktop-speech-transcribe turns a recording into a transcript through the
+# speech seam. The Host face must carry the tool and the Chinese preparation
+# guidance; the dual face and an asset-free payload are seed requirements.
+TRANSCRIBE_PLUGIN="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-speech-transcribe"
+TRANSCRIBE_HOST="$TRANSCRIBE_PLUGIN/lib/index.js"
+TRANSCRIBE_CLIENT="$TRANSCRIBE_PLUGIN/lib/client.js"
+if [[ -d "$TRANSCRIBE_PLUGIN" ]]; then
+  ok "profile-plugins includes desktop-speech-transcribe"
+else
+  bad "profile-plugins missing desktop-speech-transcribe — the 录音转纪要 entry will not install on first run"
+fi
+if [[ -f "$TRANSCRIBE_HOST" ]] && grep -q 'speech_transcribe' "$TRANSCRIBE_HOST"; then
+  ok "bundled desktop-speech-transcribe Host registers speech_transcribe"
+else
+  bad "bundled desktop-speech-transcribe Host missing speech_transcribe — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$TRANSCRIBE_HOST" ]] \
+  && grep -q '下载并准备' "$TRANSCRIBE_HOST" \
+  && grep -q '语音输入' "$TRANSCRIBE_HOST"; then
+  ok "bundled desktop-speech-transcribe Host returns the 插件→语音输入 下载并准备 guidance"
+else
+  bad "bundled desktop-speech-transcribe Host missing the Chinese provider guidance — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$TRANSCRIBE_CLIENT" ]]; then
+  ok "bundled desktop-speech-transcribe ships the empty Client face"
+else
+  bad "bundled desktop-speech-transcribe missing lib/client.js — the seed gate requires the dual face"
+fi
+TRANSCRIBE_ASSETS="$(find "$TRANSCRIBE_PLUGIN" -type f \( -name '*.wav' -o -name '*.m4a' -o -name '*.mp3' -o -name '*.onnx' -o -name '*.model' -o -name '*.bin' \) 2>/dev/null | head -1 || true)"
+if [[ -z "$TRANSCRIBE_ASSETS" ]]; then
+  ok "bundled desktop-speech-transcribe carries no model or audio assets"
+else
+  bad "bundled desktop-speech-transcribe bundles a model or audio asset: $TRANSCRIBE_ASSETS"
+fi
+
 # Host beginIngest reads ACCEPTED_INGEST_EXTENSIONS from the profile plugin
 # bundle. tsdown Host face is compiled from lib/types; a client-only rebuild
 # leaves .pdf rejected with "extension .pdf is not accepted".

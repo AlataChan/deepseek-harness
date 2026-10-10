@@ -1,11 +1,12 @@
 /**
  * Install or repair the packaged public-service preset.
- * An existing directory is left alone unless its composition still names a
- * package 0.2.1 removed, or its persona row still uses the old `text` key.
+ * A missing directory is copied whole; an existing directory keeps every file
+ * it has, gains packaged files it is missing, and has only a composition this
+ * runtime cannot mount replaced.
  * @module @deepseek-ai/dsh-experimental-desktop-ngo/install
  */
 
-import { access, cp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { access, copyFile, cp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
@@ -33,8 +34,9 @@ export function compositionNeedsRepair(composition: string): boolean {
 }
 
 /**
- * Copy the packaged preset when absent, or replace only a composition this
- * runtime cannot mount. Skill files already on disk are kept.
+ * Copy the packaged preset when absent, add missing packaged files to an
+ * existing directory, and replace only a composition this runtime cannot
+ * mount. Existing files are never overwritten, so user edits survive.
  * @param ctx - Host context whose logger receives install diagnostics.
  * @param target - destination override used by tests.
  * @returns true when the preset directory is usable.
@@ -71,14 +73,52 @@ export async function installNgoPreset(
       return false
     }
   }
-  if (composition !== '' && !compositionNeedsRepair(composition)) return true
+  if (composition === '' || compositionNeedsRepair(composition)) {
+    try {
+      await writeFile(compositionPath, await readFile(join(packaged, 'agent.cordis.yml')))
+      await writeFile(join(target, 'preset.yml'), await readFile(join(packaged, 'preset.yml')))
+      ctx.logger.info(`desktop-ngo: replaced stale preset composition at ${target}`)
+    } catch (error: unknown) {
+      ctx.logger.error(`desktop-ngo: failed to repair ${target}: ${errorMessage(error)}`)
+      return false
+    }
+  }
   try {
-    await writeFile(compositionPath, await readFile(join(packaged, 'agent.cordis.yml')))
-    await writeFile(join(target, 'preset.yml'), await readFile(join(packaged, 'preset.yml')))
-    ctx.logger.info(`desktop-ngo: replaced stale preset composition at ${target}`)
-    return true
+    await copyMissingFiles(packaged, target)
   } catch (error: unknown) {
-    ctx.logger.error(`desktop-ngo: failed to repair ${target}: ${errorMessage(error)}`)
+    // A partial refresh degrades the preset but must not block its roster entry.
+    ctx.logger.error(`desktop-ngo: failed to add missing preset files at ${target}: ${errorMessage(error)}`)
+  }
+  return true
+}
+
+/**
+ * Copy packaged files the destination is missing, one directory level at a
+ * time. Missing directories are created; an existing path is never replaced.
+ * @param from - packaged preset directory.
+ * @param to - live preset directory.
+ */
+async function copyMissingFiles(from: string, to: string): Promise<void> {
+  for (const entry of await readdir(from, { withFileTypes: true })) {
+    const source = join(from, entry.name)
+    const destination = join(to, entry.name)
+    if (entry.isDirectory()) {
+      await mkdir(destination, { recursive: true })
+      await copyMissingFiles(source, destination)
+      continue
+    }
+    if (await exists(destination)) continue
+    await copyFile(source, destination)
+  }
+}
+
+/** Whether a path of any type exists. */
+async function exists(path: string): Promise<boolean> {
+  try {
+    await stat(path)
+    return true
+  } catch {
+    // Any stat failure means the path is absent or unreadable; copyFile reports a real write failure.
     return false
   }
 }

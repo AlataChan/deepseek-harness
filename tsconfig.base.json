@@ -359,6 +359,11 @@
       "@deepseek-ai/dsh-host-commerce/client": ["./packages/host/commerce/src/client.ts"],
       "@deepseek-ai/dsh-experimental-desktop-media": ["./packages/experimental/desktop-media/src"],
       "@deepseek-ai/dsh-experimental-desktop-media/*": ["./packages/experimental/desktop-media/src/*"],
+      "@deepseek-ai/dsh-experimental-desktop-ngo": ["./packages/experimental/desktop-ngo/src"],
+      "@deepseek-ai/dsh-experimental-desktop-ngo/*": ["./packages/experimental/desktop-ngo/src/*"],
+      "@deepseek-ai/dsh-experimental-desktop-speech-transcribe": ["./packages/experimental/desktop-speech-transcribe/src"],
+      "@deepseek-ai/dsh-experimental-desktop-speech-transcribe/*": ["./packages/experimental/desktop-speech-transcribe/src/*"],
+      "@deepseek-ai/dsh-experimental-desktop-speech-transcribe/client": ["./packages/experimental/desktop-speech-transcribe/src/client"],
       "@deepseek-ai/dsh-experimental-desktop-ask-knowledge": ["./packages/experimental/desktop-ask-knowledge/src"],
       "@deepseek-ai/dsh-experimental-desktop-ask-knowledge/*": ["./packages/experimental/desktop-ask-knowledge/src/*"],
       "@deepseek-ai/dsh-experimental-desktop-ask-knowledge/client": ["./packages/experimental/desktop-ask-knowledge/src/client"],
@@ -381,6 +386,9 @@
       "@deepseek-ai/dsh-compaction-image-offload/projection": ["./packages/compaction/compaction-image-offload/src/projection.ts"],
       "@deepseek-ai/dsh-session-format-catalog/message-projections": ["./packages/session/session-format-catalog/src/message-projections.ts"],
       "@deepseek-ai/dsh-native-command/types": ["./packages/util/native-command/src/types.ts"],
+      // The desktop-app bundle names this startup row in its Cordis patch, so tsx source
+      // launch needs the subpath alias; the generated aliases cover only bare package names.
+      "@deepseek-ai/dsh-desktop-app/startup": ["./packages/bundle/desktop-app/src/startup.ts"],
       // BEGIN generated package aliases — pnpm run gen-tsconfig-paths
       "@deepseek-ai/dsh-acp": ["./packages/acp/acp/src"],
       "@deepseek-ai/dsh-acp-app": ["./packages/bundle/acp-app/src"],
@@ -418,9 +426,6 @@
       "@deepseek-ai/dsh-deepseek-llm-api-extensions": ["./packages/llm/deepseek-llm-api-extensions/src"],
       "@deepseek-ai/dsh-deque": ["./packages/util/deque/src"],
       "@deepseek-ai/dsh-desktop-app": ["./packages/bundle/desktop-app/src"],
-      "@deepseek-ai/dsh-desktop-app/startup": ["./packages/bundle/desktop-app/src/startup.ts"],
-      "@deepseek-ai/dsh-desktop-app/invariant": ["./packages/bundle/desktop-app/src/invariant.ts"],
-      "@deepseek-ai/dsh-e2b": ["./packages/e2b/e2b/src"],
       "@deepseek-ai/dsh-fence-policy": ["./packages/guard/fence-policy/src"],
       "@deepseek-ai/dsh-file-reference": ["./packages/context/file-reference/src"],
       "@deepseek-ai/dsh-file-reference-local": ["./packages/context/file-reference-local/src"],

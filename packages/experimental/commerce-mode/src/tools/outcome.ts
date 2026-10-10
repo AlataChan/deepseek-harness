@@ -6,6 +6,7 @@ import {
   CommerceError,
   type ChangeId,
   type CommerceAnalysisSchema,
+  type CommerceBinding,
   type ListingId,
 } from '@deepseek-ai/dsh-host-commerce'
 import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
@@ -277,7 +278,11 @@ function render(value: ToolOutcome, bounds: OutcomeBounds): { type: 'text'; text
  * @param bounds - result and metadata bounds.
  * @returns schema, renderer, and presentation metadata projection.
  */
-export function outputFor(bounds: OutcomeBounds) {
+export function outputFor(bounds: OutcomeBounds): {
+  schema: typeof outcomeSchema
+  render: (_args: unknown, value: ToolOutcome) => ReturnType<typeof render>
+  presentationMeta: (_args: unknown, value: ToolOutcome) => ReturnType<typeof projectMeta>
+} {
   return {
     schema: outcomeSchema,
     render: (_args: unknown, value: ToolOutcome) => render(value, bounds),
@@ -291,6 +296,6 @@ export function outputFor(bounds: OutcomeBounds) {
  * @param agent - calling agent.
  * @returns the binding, or null before binding.
  */
-export function binding(ctx: Context, agent: Agent) {
+export function binding(ctx: Context, agent: Agent): CommerceBinding | null {
   return ctx.sessionProjections.stateOf(agent.session, 'commerceBinding') ?? null
 }

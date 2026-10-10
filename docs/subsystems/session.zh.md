@@ -1132,6 +1132,14 @@ workspaceDesktop(): { name: string; available: boolean; fileManager: 'finder' | 
 @Remote('askKnowledgeLookup') askKnowledgeLookup( request: SessionAskKnowledgeLookupRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeLookup>
 
 /**
+ * List ingested document paths in one library vault.
+ * @param request - library identity.
+ * @param signal - caller lifetime; abort stops the list.
+ * @returns document file paths (e.g., `raw/sample.md`).
+ */
+@Remote('askKnowledgeListDocuments') askKnowledgeListDocuments( request: SessionAskKnowledgeListDocumentsRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeListDocumentsResult>
+
+/**
  * Read the current ask-knowledge bind of a live Session.
  * @param request - Session identity.
  * @returns the bind, or null before one.

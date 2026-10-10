@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/desktop-speech-transcribe/README.md
+/:
+  en: 3a8014affa56e62d
+  zh: 70d3e5e9edd86dae
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe:
+  en: 9cbb2acbc66cdb2f
+  zh: 98e10102708e07c1
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/summary:
+  en: cdca101cb32f34e4
+  zh: 01547107f01cf7ad
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/table-of-contents:
+  en: d0f9862ef86c1fcb
+  zh: 206e7ee35b6f931b
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/use-this-package:
+  en: 224f98fafee1d948
+  zh: 6a6036dc4f4ed27c
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/config:
+  en: 3d8698f6d465d493
+  zh: 193d2a60ec0117f3
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/model-experience/speech-transcribe-tool:
+  en: 0b532412cabf7fd2
+  zh: 0cdbfb51b156f9e4
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/model-experience/speech-transcribe-tool/what-the-model-sees:
+  en: 08bd028799a24a1f
+  zh: e83b70e32e99069e
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/model-experience/speech-transcribe-tool/token-effect:
+  en: e6a395086f12f9ca
+  zh: e6d87bc1f5b860bf
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/model-experience/speech-transcribe-tool/kv-cache-effect:
+  en: 36195482ce76a936
+  zh: a92ba9cd4cb441db
+/deepseek-ai-dsh-experimental-desktop-speech-transcribe/known-limitations-and-deferred-work:
+  en: 4773407a7e0d13d6
+  zh: fc46f40140e23eb5

@@ -106,9 +106,9 @@ describe('desktop-media client apply', () => {
       pickDirectory: async () => '/tmp',
     })
     expect(b.slots.entries('conversation.hero.capabilities.item').find(row => row.options.id === 'desktop-media')?.component).toBeDefined()
-    const shortcuts = (b.slots.entries('conversation.hero.capabilities.item').find(row => row.options.id === 'desktop-media')!.inject as unknown as (
+    const shortcuts = (b.slots.entries('conversation.hero.capabilities.item').find(row => row.options.id === 'desktop-media')!.inject as (
       sessionId: string,
-    ) => { remotes: unknown; sessionId: string; workspaceId?: string })('s-1')
+    ) => { remotes: object; sessionId: string; workspaceId?: string })('s-1')
     expect(shortcuts.remotes).toBe(b.remotes)
     expect(shortcuts.sessionId).toBe('s-1')
     expect(shortcuts.workspaceId).toBe('w-1')

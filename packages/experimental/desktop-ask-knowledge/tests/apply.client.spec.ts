@@ -17,6 +17,19 @@ interface SessionRow {
   projectionValues?: { askKnowledgeBinding?: unknown } | undefined
 }
 
+/**
+ * Read one registered entry's injected face. The registry erases the factory's
+ * declared type, so the test reasserts the face its own registration created.
+ * @param entry - registered slot entry.
+ * @returns the entry's injected business face.
+ */
+function injectedOf<T>(
+  entry: { readonly inject?: ((...args: never[]) => Record<string, unknown>) | undefined } | undefined,
+): T {
+  if (entry?.inject === undefined) throw new Error('registered entry has no inject face')
+  return entry.inject() as Partial<T> as T
+}
+
 async function bench(initial?: { current?: string; byId?: Record<string, SessionRow> }) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
@@ -121,7 +134,7 @@ describe('desktop-ask-knowledge apply', () => {
     expect(b.slots.entries('conversation.input.attachSessionDocument')).toHaveLength(1)
     expect(b.slots.entries('conversation.input.dock')).toHaveLength(1)
     expect(b.slots.entries('settings.section').map(row => row.options.id)).toEqual(['desktop-ask-knowledge'])
-    const row = (b.slots.entries('conversation.hero.capabilities.item')[0]!.inject as unknown as () => KnowledgeCapabilitiesRowInjected)()
+    const row = injectedOf<KnowledgeCapabilitiesRowInjected>(b.slots.entries('conversation.hero.capabilities.item')[0])
     row.openPicker()
     expect(b.slots.entries('conversation.askKnowledge.picker')).toHaveLength(1)
     row.openPicker()
@@ -158,7 +171,7 @@ describe('desktop-ask-knowledge apply', () => {
     })
     picker.close()
     expect(b.slots.entries('conversation.askKnowledge.picker')).toHaveLength(0)
-    const dock = (b.slots.entries('conversation.input.dock')[0]!.inject as unknown as () => AskKnowledgeDockInjected)()
+    const dock = injectedOf<AskKnowledgeDockInjected>(b.slots.entries('conversation.input.dock')[0])
     expect(dock.hooks.askKnowledgeSelection.getSnapshot()).toEqual({})
     picker.rememberSelection(['raw/制度.md'])
     expect(dock.hooks.askKnowledgeSelection.getSnapshot()).toEqual({ s1: ['raw/制度.md'] })
@@ -175,7 +188,7 @@ describe('desktop-ask-knowledge apply', () => {
 
   it('omits sessionId when no current session exists', async () => {
     const b = await bench()
-    const row = (b.slots.entries('conversation.hero.capabilities.item')[0]!.inject as unknown as () => KnowledgeCapabilitiesRowInjected)()
+    const row = injectedOf<KnowledgeCapabilitiesRowInjected>(b.slots.entries('conversation.hero.capabilities.item')[0])
     row.openPicker()
     const picker = (b.slots.entries('conversation.askKnowledge.picker')[0]!.inject as unknown as () => LibraryPickerInjected)()
     await picker.attach('1')
@@ -192,7 +205,7 @@ describe('desktop-ask-knowledge apply', () => {
       ok: true as const,
       value: { sessionId: 's-knowledge' },
     })
-    const row = (b.slots.entries('conversation.hero.capabilities.item')[0]!.inject as unknown as () => KnowledgeCapabilitiesRowInjected)()
+    const row = injectedOf<KnowledgeCapabilitiesRowInjected>(b.slots.entries('conversation.hero.capabilities.item')[0])
     row.openPicker()
     const picker = (b.slots.entries('conversation.askKnowledge.picker')[0]!.inject as unknown as () => LibraryPickerInjected)()
     await picker.attach('1')

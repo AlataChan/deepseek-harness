@@ -906,6 +906,8 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   SessionAskKnowledgeExtractResult: 'ask-knowledge catalog contract is owned by packages/api/session-controller/README.md',
   SessionAskKnowledgeIngestResult: 'ask-knowledge catalog contract is owned by packages/api/session-controller/README.md',
   SessionAskKnowledgeLibrary: 'ask-knowledge catalog contract is owned by packages/api/session-controller/README.md',
+  SessionAskKnowledgeListDocumentsRequest: 'ask-knowledge catalog contract is owned by packages/api/session-controller/README.md',
+  SessionAskKnowledgeListDocumentsResult: 'ask-knowledge catalog contract is owned by packages/api/session-controller/README.md',
   SessionAskKnowledgeLookup: 'ask-knowledge catalog contract is owned by packages/api/session-controller/README.md',
   SessionAskKnowledgeLookupRequest: 'ask-knowledge catalog contract is owned by packages/api/session-controller/README.md',
   SessionAskKnowledgeRetrieveRequest: 'ask-knowledge catalog contract is owned by packages/api/session-controller/README.md',

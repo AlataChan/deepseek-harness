@@ -243,6 +243,7 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/fs/tool-str-replace-editor/src/index.ts', klass: 'A', reason: 'Fork string replace editor behaviour.' },
   { path: 'packages/boot/app-boot/src/profile.ts', klass: 'A', reason: "The fork's profile resolution." },
   { path: 'packages/preset/agent-preset-registry/src/index.ts', klass: 'A', reason: 'Ported fork admitSelect hook (was agent-presets before the upstream split): the data-source gate must run before every preset swap, including a direct Remote select.' },
+  { path: 'packages/preset/agent-preset-registry/src/definition.ts', klass: 'A', reason: 'Fork `listed` flag on PresetDefinition: the 公益项目助手 preset installs through the profile seed while its roster menu entry stays on the fork capabilities chip, so the menu omits it but id selection still works.' },
   { path: 'packages/web/tool-web/src/search.ts', klass: 'A', reason: 'Fork web search behaviour.' },
   { path: 'packages/web/tool-web/src/fetch.ts', klass: 'A', reason: 'Fork web fetch behaviour.' },
   { path: 'packages/web/tool-web/src/trust.ts', klass: 'A', reason: 'Fork web trust policy.' },

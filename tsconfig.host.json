@@ -460,6 +460,7 @@
     { "path": "./packages/host/commerce" },
     { "path": "./packages/experimental/desktop-ask-knowledge" },
     { "path": "./packages/experimental/desktop-media" },
+    { "path": "./packages/experimental/desktop-speech-transcribe" },
     { "path": "./packages/host/ask-knowledge" },
     { "path": "./packages/workflow/workflow" },
     { "path": "./packages/workflow/workflow-ptc" },

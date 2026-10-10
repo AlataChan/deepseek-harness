@@ -15,7 +15,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-agent-preset/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
-import { CapabilitiesMenu, CAPABILITIES_ITEM_SLOT, type CapabilitiesMenuInjected } from './CapabilitiesMenu.tsx'
+import { CapabilitiesMenu, type CapabilitiesMenuInjected } from './CapabilitiesMenu.tsx'
 import { DataSourcePage } from './DataSourcePage.tsx'
 import { OctopusBrandName } from './OctopusBrandName.tsx'
 import { OctopusHeroHeadline } from './OctopusHeroHeadline.tsx'
@@ -250,7 +250,7 @@ export function apply(ctx: ClientContext): void {
     const chip = scope.slots.register({
       name: 'conversation.hero.askData',
       locale: NS,
-      children: { [CAPABILITIES_ITEM_SLOT]: { kind: 'list', scope: 'session-maybe' } },
+      children: { 'conversation.hero.capabilities.item': { kind: 'list', scope: 'session-maybe' } },
       inject: (): CapabilitiesMenuInjected => ({ openData: toggleFromChip }),
     }, CapabilitiesMenu)
 

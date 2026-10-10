@@ -141,5 +141,3 @@ export function apply(ctx: Context, config: DesktopMediaConfig): void {
     media.recover(agent)
   })
 }
-
-export default { name, inject, Config, apply }

@@ -1117,7 +1117,6 @@
   "packages/experimental/desktop-ask-knowledge/tests/apply.client.spec.ts": {
     "4da196822f9aeff0c5dba1d737e8c11cda5968ffd3343dbe5206bfaaad031aed": 3,
     "5c8c41ba658c0576bea6c34b1226c27e7b0328c03c9eea0d6c920f940c9d8f5b": 1,
-    "c9c3be0be4c6dc26ee997910310c0e4d8af3479e3d9e5869694f8ba5d718d97a": 4,
     "cd608741f63e19c6b61a3fd733912a6b16107aa1a507e96f55572b072a768064": 1
   },
   "packages/experimental/desktop-ask-knowledge/tests/retrieve-tools.spec.ts": {
@@ -1139,7 +1138,6 @@
     "468f411f62771883ab31f80ead31335c36373f4c88d29fc1bacd8796c20379e3": 4,
     "4a712922f130107c9019a14f1e4f38676e224872a1e7e9680191e01b14e7a5b6": 1,
     "5dc5720f4a5355898a8a4ec6e775dbe252f42ad261f2bbddfacccdfd6512d973": 4,
-    "5e12a0b312b1c94c709058a03ec9929ceff21c0b9eaf5a154c2faf617e33c566": 1,
     "d8c2c5971ac69befae7463c69e3c9228e7ef322bfa14d88f729d434584261d45": 2,
     "e759e8dc096cfa6dc6dc1912ed2b5fa8284652f9bf0263be795d47d98f125240": 1
   },
