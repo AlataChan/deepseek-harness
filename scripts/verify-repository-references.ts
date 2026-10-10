@@ -17,10 +17,13 @@ const excludedPrefixes = ['vendor/', '.agents/notes/archived/']
  * Fork upgrade records whose subject IS the commit trail: the staged-upgrade
  * plan, its handover, and the repair-checkpoint note pair cite the branch's
  * commits as their evidence, and the S8 re-application steps depend on them.
+ * The desktop-capability round summary cites its three delivery commits the
+ * same way.
  */
 const excludedRecords = [
   'docs/plans/2026-10-06-upstream-selective-upgrade.md',
   'docs/plans/2026-10-06-upstream-upgrade-handover.md',
+  'docs/plans/2026-10-10-desktop-capability-round-summary.md',
   '.agents/notes/implemented/process/2026-10-07-upstream-upgrade-repair-checkpoint.md',
   '.agents/notes/implemented/process/2026-10-07-upstream-upgrade-repair-checkpoint.zh.md',
 ]
