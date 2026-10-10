@@ -2477,6 +2477,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'committed work row.',
       },
       {
+        signature: '@Remote(\'importTranscriptAudio\') async importTranscriptAudio( request: SessionImportTranscriptAudioRequest, signal: AbortSignal, ): Promise<SessionImportTranscriptAudioValue>',
+        description: 'Stage one selected recording into the Session workspace for the transcription tool. Does not activate an Agent.',
+        parameters: [{ name: 'request', description: 'filename, encoded bytes, and owning Session.' }, { name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'workspace-relative path and stored file name.',
+      },
+      {
         signature: '@Remote(\'saveMediaWorkAs\') saveMediaWorkAs( request: SessionSaveMediaWorkAsRequest, signal: AbortSignal, ): Promise<{ path: string }>',
         description: 'Copy a registered work into a user-chosen directory.',
         parameters: [{ name: 'request', description: 'artifact, destination directory, and basename.' }, { name: 'signal', description: 'caller lifetime; abort stops the copy.' }],
@@ -7802,6 +7808,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionImportMediaBytesRequest',
     declaration: 'export interface SessionImportMediaBytesRequest {\n    readonly filename: string;\n    readonly bytes: string;\n    readonly sessionId: SessionId;\n    readonly workspaceId?: string;\n}',
+  },
+  {
+    name: 'SessionImportTranscriptAudioRequest',
+    declaration: 'export interface SessionImportTranscriptAudioRequest {\n    readonly filename: string;\n    readonly bytes: string;\n    readonly sessionId: SessionId;\n    readonly workspaceId?: string;\n}',
+  },
+  {
+    name: 'SessionImportTranscriptAudioValue',
+    declaration: 'export interface SessionImportTranscriptAudioValue {\n    readonly path: string;\n    readonly filename: string;\n}',
   },
   {
     name: 'SessionInspection',

@@ -564,10 +564,10 @@ if [[ -f "$TRANSCRIBE_HOST" ]] \
 else
   bad "bundled desktop-speech-transcribe Host missing the Chinese provider guidance — run tsc -b then tsdown before packaging"
 fi
-if [[ -f "$TRANSCRIBE_CLIENT" ]]; then
-  ok "bundled desktop-speech-transcribe ships the empty Client face"
+if [[ -f "$TRANSCRIBE_CLIENT" ]] && grep -q '录音转文字' "$TRANSCRIBE_CLIENT"; then
+  ok "bundled desktop-speech-transcribe Client ships the 录音转文字 hero row"
 else
-  bad "bundled desktop-speech-transcribe missing lib/client.js — the seed gate requires the dual face"
+  bad "bundled desktop-speech-transcribe Client missing 录音转文字 — run tsc -b then tsdown before packaging"
 fi
 TRANSCRIBE_ASSETS="$(find "$TRANSCRIBE_PLUGIN" -type f \( -name '*.wav' -o -name '*.m4a' -o -name '*.mp3' -o -name '*.onnx' -o -name '*.model' -o -name '*.bin' \) 2>/dev/null | head -1 || true)"
 if [[ -z "$TRANSCRIBE_ASSETS" ]]; then

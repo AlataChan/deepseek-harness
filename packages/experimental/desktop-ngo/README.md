@@ -1,6 +1,6 @@
 ---
 description: "Install and register the octopus_DSH public-service project assistant preset."
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-experimental-desktop-ngo
@@ -17,6 +17,7 @@ This fork package installs the 公益项目助手 (public-service project assist
 - [Understand the implementation](#understand-the-implementation)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
 
 <a id="use-this-package"></a>
 ## Use this package
@@ -48,3 +49,12 @@ None; the package changes composition only.
 
 - **Additive refresh only** — a file deleted from an existing preset directory is restored on the next activation; a per-file deletion opt-out needs an explicit marker.
 - **No uninstall path** — removing the preset is manual: delete the preset directory and the roster entry disappears on the next activation.
+
+### Dev Note
+
+<details>
+<summary>Working context for maintainers — click to expand</summary>
+
+The packaged preset directory is the single source of skills; `installNgoPreset` repairs only a composition this runtime cannot mount, then fills missing files. A skill removed from the package stays on disk for existing users until an explicit per-file deletion rule exists.
+
+</details>

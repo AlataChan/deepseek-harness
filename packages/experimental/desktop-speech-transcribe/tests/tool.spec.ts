@@ -140,7 +140,10 @@ async function composition(options: {
   const service = ctx.get('speechToText')
   if (service === undefined) throw new Error('speechToText was not provided')
   const remove = options.provider === undefined ? undefined : service.register(options.provider)
-  const fiber = await ctx.plugin(plugin.default, { maxAudioMinutes: options.maxAudioMinutes ?? 120 })
+  const fiber = await ctx.plugin(plugin.default, {
+    maxAudioMinutes: options.maxAudioMinutes ?? 120,
+    maxUploadMiB: 64,
+  })
   closers.push(async () => {
     await fiber.dispose()
     if (remove !== undefined) await remove()
@@ -148,7 +151,7 @@ async function composition(options: {
   })
   const definition = registered[0]
   if (definition === undefined) throw new Error('speech_transcribe was not registered')
-  return { directory, registered, definition, service, fiber }
+  return { ctx, directory, registered, definition, service, fiber }
 }
 
 /** Temp directory the last tool call created, from the spied `mkdtemp`. */
@@ -178,8 +181,10 @@ describe('plugin registration', () => {
     expect(plugin.Config).toBeDefined()
     expect(compositionResult.registered.map(row => row.name)).toEqual(['speech_transcribe'])
     expect(compositionResult.definition.description).toContain('Markdown transcript')
+    expect(compositionResult.ctx.get('transcriptAudio')).toBeInstanceOf(plugin.TranscriptAudio)
     await compositionResult.fiber.dispose()
     expect(compositionResult.registered).toEqual([])
+    expect(compositionResult.ctx.get('transcriptAudio')).toBeUndefined()
   })
 
   it('renders and presents the success, note, and guidance values', async () => {

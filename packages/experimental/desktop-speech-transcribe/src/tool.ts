@@ -16,6 +16,7 @@ import type { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
 import type {} from '@deepseek-ai/dsh-subprocess'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { prepareSpeechAudio, type AudioCommandRunner } from './audio.ts'
+import { isErrnoCode } from './staging.ts'
 import { renderTranscript } from './transcript.ts'
 
 /** Largest source recording refused before any read, in bytes. */
@@ -266,11 +267,6 @@ async function writeTranscriptFile(
     }
   }
   throw new Error(`无法写入「${basename(audioPath)}」的文字稿文件：同名文件过多。`)
-}
-
-/** Whether a thrown value carries one filesystem error code. */
-function isErrnoCode(error: unknown, code: string): boolean {
-  return error instanceof Error && 'code' in error && error.code === code
 }
 
 /** Resolve a requested recording path against the session workspace. */

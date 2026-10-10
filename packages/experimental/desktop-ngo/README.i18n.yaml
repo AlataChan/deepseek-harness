@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/desktop-ngo/README.md
 /:
-  en: f9af7c555995638c
-  zh: dca5b88083d26bf3
+  en: c82d95d7fed1f038
+  zh: 88754d71d379f539
 /deepseek-ai-dsh-experimental-desktop-ngo:
   en: 3bba36675ef18c0d
   zh: 756f5b8fc5a57a6e
@@ -12,8 +12,8 @@
   en: 33f83cc2b0a49f73
   zh: be1b2bc958a3a91b
 /deepseek-ai-dsh-experimental-desktop-ngo/table-of-contents:
-  en: 2fee9973f19f9401
-  zh: 8f559f4277f32e6d
+  en: 122f0d41696980b1
+  zh: eaf311136c6f889d
 /deepseek-ai-dsh-experimental-desktop-ngo/use-this-package:
   en: d8f570d714e2f61e
   zh: bd438bb9155b842c
@@ -28,4 +28,7 @@
   zh: db7e922442d3d245
 /deepseek-ai-dsh-experimental-desktop-ngo/known-limitations-and-deferred-work:
   en: 8d3d9eec8a05ef27
-  zh: c314bfcb325dcd85
+  zh: 60da6dc465b920cd
+/deepseek-ai-dsh-experimental-desktop-ngo/known-limitations-and-deferred-work/dev-note:
+  en: cc07cc126436a8b7
+  zh: 7256f3992ea8a1cf

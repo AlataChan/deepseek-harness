@@ -23,6 +23,7 @@ import {
 import type {} from '@deepseek-ai/dsh-host-ask-data'
 import type {} from '@deepseek-ai/dsh-host-ask-knowledge'
 import type {} from '@deepseek-ai/dsh-host-commerce'
+import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
 import { SessionQueryError, type SessionObservation } from '@deepseek-ai/dsh-session-query'
@@ -113,6 +114,8 @@ import type {
   SessionRemoveAskKnowledgeLibraryRequest,
   SessionRenameAskKnowledgeLibraryRequest,
   SessionImportMediaBytesRequest,
+  SessionImportTranscriptAudioRequest,
+  SessionImportTranscriptAudioValue,
   SessionListMediaWorksRequest,
   SessionMediaRuntimeStatus,
   SessionMediaVoice,
@@ -124,6 +127,9 @@ import { SessionAskDataController } from './ask-data.ts'
 import { SessionCommerceController } from './commerce.ts'
 import { SessionAskKnowledgeController } from './ask-knowledge.ts'
 import { SessionMediaController } from './session-media.ts'
+import { mapSeamFailure } from './seam-error.ts'
+import { TRANSCRIPT_AUDIO_MAX_DECODED_BYTES } from './types.ts'
+import { decodeBase64Payload } from './wire-bytes.ts'
 
 export type * from './types.ts'
 export { ApiSessionNotFound } from './agent.ts'
@@ -160,6 +166,51 @@ export interface SessionControllerInternals {
   readonly revealPath?: (path: string, signal: AbortSignal) => Promise<void>
   /** Native handoff availability probe. */
   readonly canOpenPath?: () => boolean
+}
+
+/** Host methods the transcription overlay registers as `ctx.transcriptAudio`. */
+export interface TranscriptAudioSeam {
+  /**
+   * Write one selected recording under the workspace's `recordings` directory.
+   * @param request - user file name and decoded bytes.
+   * @param workspaceRoot - absolute Session workspace root.
+   * @returns workspace-relative path and stored file name.
+   */
+  importAudio(
+    request: { filename: string; bytes: Uint8Array },
+    workspaceRoot: string,
+  ): Promise<SessionImportTranscriptAudioValue>
+}
+
+/**
+ * Read the overlay's typed staging failure out of a thrown value.
+ * @param error - thrown value.
+ * @returns the failure, or undefined for anything else.
+ */
+export function transcriptAudioFailureOf(error: unknown): { code: string; message: string } | undefined {
+  if (typeof error !== 'object' || error === null
+    || !('name' in error) || error.name !== 'TranscriptAudioError'
+    || !('code' in error) || typeof error.code !== 'string'
+    || !('message' in error) || typeof error.message !== 'string') return undefined
+  return { code: error.code, message: error.message }
+}
+
+/**
+ * Map one staging failure onto a RemoteError.
+ * @param error - thrown value.
+ * @param signal - caller lifetime.
+ * @returns never; always throws.
+ */
+export function mapTranscriptAudioError(error: unknown, signal: AbortSignal): never {
+  return mapSeamFailure(error, signal, {
+    aborted: 'transcript audio import was aborted',
+    unavailable: 'session/transcript-audio-unavailable',
+    // The missing-service case fails as a RemoteError before any seam call,
+    // so no seam failure ever carries this code.
+    unavailableSeamCode: 'unavailable',
+    failed: 'session/transcript-audio-failed',
+    failureOf: transcriptAudioFailureOf,
+  })
 }
 
 /** Host service backing the generated `ctx.remote.session` namespace. */
@@ -712,6 +763,88 @@ export class SessionController extends TypertRemoteService {
     signal: AbortSignal,
   ): Promise<SessionMediaWork> {
     return this.media.importBytes(request, signal)
+  }
+
+  /**
+   * Stage one selected recording into the Session workspace for the
+   * transcription tool. Does not activate an Agent.
+   * @param request - filename, encoded bytes, and owning Session.
+   * @param signal - caller lifetime; abort stops the import.
+   * @returns workspace-relative path and stored file name.
+   */
+  @Remote('importTranscriptAudio')
+  async importTranscriptAudio(
+    request: SessionImportTranscriptAudioRequest,
+    signal: AbortSignal,
+  ): Promise<SessionImportTranscriptAudioValue> {
+    signal.throwIfAborted()
+    const bytes = decodeBase64Payload(request.bytes, {
+      limit: TRANSCRIPT_AUDIO_MAX_DECODED_BYTES,
+      code: 'session/transcript-audio-failed',
+      ruleId: 'file-size',
+    })
+    try {
+      return await this.requireTranscriptAudio().importAudio(
+        { filename: request.filename, bytes },
+        this.transcriptAudioRoot(request),
+      )
+    } catch (error: unknown) {
+      mapTranscriptAudioError(error, signal)
+    }
+  }
+
+  /**
+   * Require `ctx.transcriptAudio` or fail `session/transcript-audio-unavailable`.
+   * @returns the duck-typed staging service.
+   */
+  private requireTranscriptAudio(): TranscriptAudioSeam {
+    const capability = this.ctx.get('transcriptAudio') as TranscriptAudioSeam | undefined
+    if (capability === undefined) {
+      throw new RemoteError(
+        'session/transcript-audio-unavailable',
+        'session transcript-audio import needs the desktop-speech-transcribe overlay',
+        {},
+      )
+    }
+    return capability
+  }
+
+  /**
+   * Resolve the directory one Session's staged recording belongs in: the
+   * explicitly named workspace first, but only when it lists the Session, then
+   * the workspace owning the Session, then the Session's own cwd (a Session can
+   * run outside the registry).
+   * @param request - import request carrying the Session and optional workspace.
+   * @returns absolute workspace root.
+   * @throws RemoteError `workspace/not-found` for an unknown named workspace.
+   * @throws RemoteError `session/transcript-audio-failed` when the Session has no resolvable directory.
+   */
+  private transcriptAudioRoot(request: SessionImportTranscriptAudioRequest): string {
+    if (request.workspaceId !== undefined) {
+      const named = this.ctx.workspaceRegistry.get(WorkspaceId(request.workspaceId))
+      if (named === undefined) {
+        throw new RemoteError(
+          'workspace/not-found',
+          `workspace "${request.workspaceId}" not found`,
+          { workspaceId: WorkspaceId(request.workspaceId) },
+        )
+      }
+      // A client-supplied workspace the Session is not a member of must not
+      // receive the write; fall through to the owning/cwd chain below.
+      if (named.sessionIds.includes(request.sessionId)) return named.path
+    }
+    const owning = this.ctx.workspaceRegistry.list()
+      .find(candidate => candidate.sessionIds.includes(request.sessionId))
+    if (owning !== undefined) return owning.path
+    const cwd = this.ctx.sessions.get(request.sessionId)?.header.cwd
+    if (cwd === undefined) {
+      throw new RemoteError(
+        'session/transcript-audio-failed',
+        'the Session has no workspace directory to stage into',
+        { code: 'workspace-missing' },
+      )
+    }
+    return cwd
   }
 
   /**

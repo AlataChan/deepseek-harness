@@ -908,6 +908,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     occupants: [
       'experimental-desktop-ask-knowledge KnowledgeCapabilitiesRow id \'desktop-ask-knowledge\'',
       'experimental-desktop-media CreationShortcuts id \'desktop-media\'',
+      'experimental-desktop-speech-transcribe TranscriptAudioRow id \'desktop-speech-transcribe\'',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.hero.capabilities.item\', () => ctx.slots.register(\n      { name: \'conversation.hero.capabilities.item\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',

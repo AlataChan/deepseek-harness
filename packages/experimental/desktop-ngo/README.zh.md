@@ -1,6 +1,6 @@
 ---
 description: "安装并注册 octopus_DSH 公益项目助手预设。"
-kind: "package-reference"
+kind: "package-bundle"
 ---
 
 # @deepseek-ai/dsh-experimental-desktop-ngo
@@ -17,6 +17,7 @@ kind: "package-reference"
 - [实现说明](#understand-the-implementation)
 - [模型体验](#model-experience)
 - [已知限制与后续工作](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
 
 <a id="use-this-package"></a>
 ## 使用本包
@@ -48,3 +49,13 @@ None, as the preset definition owns every model-visible persona, instruction, an
 
 - **只做增补刷新** —— 从已有预设目录中删除的文件会在下次激活时被补回；若要支持逐文件删除并保持删除状态，需要显式的标记文件。
 - **没有卸载入口** —— 卸载需手动进行：删除预设目录，名册条目会在下次激活时消失。
+
+<a id="dev-note"></a>
+### 开发备注
+
+<details>
+<summary>维护者视角 — 点击展开</summary>
+
+随包的预设目录是技能的唯一来源；`installNgoPreset` 只修复当前运行时无法挂载的 composition，随后补齐缺失文件。已随旧版本安装、后来从包内移除的技能，会在用户磁盘上保留到出现显式的逐文件删除规则为止。
+
+</details>

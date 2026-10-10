@@ -928,6 +928,8 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   SessionImportAskDataSpreadsheetRequest: 'ask-data listing/import/bind contract is owned by packages/api/session-controller/README.md',
   SessionImportCommerceSpreadsheetRequest: 'commerce source contract is owned by packages/api/session-controller/README.md',
   SessionImportMediaBytesRequest: 'conversation media contract is owned by packages/api/session-controller/README.md',
+  SessionImportTranscriptAudioRequest: 'transcript-audio staging contract is owned by packages/experimental/desktop-speech-transcribe/README.md',
+  SessionImportTranscriptAudioValue: 'transcript-audio staging contract is owned by packages/experimental/desktop-speech-transcribe/README.md',
   SessionListEntriesRequest: 'session-controller request contract is owned by packages/api/session-controller/README.md',
   SessionListEntriesValue: 'session-controller request contract is owned by packages/api/session-controller/README.md',
   SessionListMediaWorksRequest: 'conversation media contract is owned by packages/api/session-controller/README.md',
