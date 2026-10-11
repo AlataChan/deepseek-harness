@@ -1,0 +1,140 @@
+name: Desktop Windows EXE
+
+# Manual, release-adjacent packaging lane: builds the NSIS installer on a
+# GitHub-hosted Windows runner, installs it silently, runs the Windows
+# readiness gate against the INSTALLED tree, and uploads the artifact. It is
+# not part of the pull-request check panel. The crate cannot be cross-compiled
+# from macOS (MSVC/WebView2/NSIS), and PyInstaller cannot cross-compile the
+# ask-knowledge sidecar, so this runner is the only Windows build host.
+
+on:
+  workflow_dispatch:
+  # Temporary bring-up trigger on the feature branch; removed before merge.
+  push:
+    branches:
+      - feature/desktop-windows-exe
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PRIMARY_NODE_VERSION: '24'
+  # CI runs must never report to the production telemetry endpoint baked into
+  # apps/cli/cordis.yml (AppCLIEntry disables the row when set).
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  build-exe:
+    runs-on: windows-2025
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Enable Developer Mode (symlink support)
+        shell: pwsh
+        run: >-
+          reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+          /t REG_DWORD /f /v "AllowDevelopmentWithoutDevLicense" /d "1"
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-js-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+      - uses: actions/setup-python@v6.3.0
+        with:
+          python-version: '3.12'
+          # The frozen sidecar's dependency pins live in that script.
+          cache: pip
+          cache-dependency-path: scripts/build-kb-sidecar.mjs
+      - name: Verify Rust stable toolchain
+        shell: pwsh
+        run: |
+          rustc --version
+          cargo --version
+      - name: Configure pnpm store path
+        id: pnpm-store
+        shell: pwsh
+        run: |
+          $store = pnpm store path --silent
+          "path=$store" >> $env:GITHUB_OUTPUT
+      - name: Restore pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
+      - name: Restore cargo registry caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: desktop-windows-cargo-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            desktop-windows-cargo-
+      # Restore/save split so a failed build still keeps the expensive target
+      # tree for the next iteration (a plain cache action saves only on success).
+      - name: Restore Tauri build cache
+        id: tauri-target
+        uses: actions/cache/restore@v4
+        with:
+          path: apps/desktop/src-tauri/target
+          key: desktop-windows-target-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            desktop-windows-target-
+      - name: Restore Tauri toolchain cache (NSIS)
+        uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/tauri
+          key: desktop-windows-tauri-tools-2.11.4
+      - name: Install (immutable)
+        shell: pwsh
+        # See 2026-08-30-windows-refs-store-block-clone-install for the
+        # ReFS block-clone rationale; detect the workspace filesystem and
+        # pass --package-import-method=clone only on ReFS.
+        run: >-
+          $drive = (Split-Path -Qualifier $env:GITHUB_WORKSPACE).TrimEnd(':');
+          $fs = (Get-Volume -DriveLetter $drive).FileSystem;
+          if ($fs -eq 'ReFS') {
+            corepack pnpm install --frozen-lockfile --package-import-method=clone
+          } else {
+            pnpm install --frozen-lockfile
+          }
+      - name: Build workspace libraries and clients
+        shell: pwsh
+        run: pnpm run build
+      - name: Build the Windows installer
+        shell: pwsh
+        run: node scripts/build-exe.mjs
+      - name: Install the EXE silently
+        shell: pwsh
+        run: |
+          $install = Join-Path $env:RUNNER_TEMP 'octopus_DSH'
+          $setup = Join-Path $env:GITHUB_WORKSPACE 'dist\octopus_DSH_Setup.exe'
+          & $setup /S /D=$install
+          if ($LASTEXITCODE -ne 0) { throw "installer exited with $LASTEXITCODE" }
+          if (-not (Test-Path (Join-Path $install 'resources'))) {
+            throw "silent install produced no resources tree under $install"
+          }
+      - name: Run the Windows readiness gate
+        shell: pwsh
+        run: node scripts/verify-desktop-exe.mjs (Join-Path $env:RUNNER_TEMP 'octopus_DSH')
+      - name: Upload the installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: octopus_DSH_Setup
+          path: dist/octopus_DSH_Setup.exe
+          if-no-files-found: error
+      - name: Save Tauri build cache
+        if: always() && steps.tauri-target.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: apps/desktop/src-tauri/target
+          key: ${{ steps.tauri-target.outputs.cache-primary-key }}

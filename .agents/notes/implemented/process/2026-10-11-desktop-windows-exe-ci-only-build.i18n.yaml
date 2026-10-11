@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for 2026-10-11-desktop-windows-exe-ci-only-build.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-10-11-desktop-windows-exe-ci-only-build.md
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner:
+  en: ab2d780d4e2638e5
+  zh: 6ee3fba85169509b
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/problem:
+  en: 5aa5f256f8381ebb
+  zh: d97fe693b714d533
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/decision:
+  en: a15c7c13f167e5ac
+  zh: 63bcc2ef60c2f344
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/decision/build-host:
+  en: d298fc1e2aae590b
+  zh: f10bce1d0b2ef180
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/decision/windows-build-script:
+  en: 27061ded602cd4a8
+  zh: f9db23c2a274a31c
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/decision/installer-configuration:
+  en: a1a2194db42cce0e
+  zh: e95bff9ef879e3cd
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/decision/sidecar-dependency-farm-and-slim-mode:
+  en: 497b0dca07e5c6c2
+  zh: 2bb6ab92549c4d5a
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/decision/windows-readiness-gate:
+  en: 885763f0eab06250
+  zh: 84467b3701b250bb
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/verification:
+  en: c2d07a19db8a0a98
+  zh: 6799d5f8ff9a3b37
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/alternatives-considered:
+  en: dbf0fbf83f72d87c
+  zh: d925a2bf378402af
+/agent-note-build-the-windows-desktop-installer-on-a-ci-only-windows-runner/consequences:
+  en: a4d1027a128788e4
+  zh: f4dd6bb87f49f445

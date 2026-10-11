@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico"],
+    "resources": [
+      "resources/installed-runtime-cli.js",
+      "resources/node.exe",
+      "resources/harness",
+      "resources/profile-plugins",
+      "resources/bundled-skills",
+      "resources/presets",
+      "resources/kb-runtime"
+    ]
+  }
+}

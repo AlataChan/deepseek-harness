@@ -17,7 +17,7 @@
 
 import { createRequire } from 'node:module'
 import { cpSync, existsSync, globSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 
 const refreshWorkspace = process.argv.includes('--refresh-workspace')
 const [anchorArg, outArg] = process.argv.slice(2).filter(arg => arg !== '--refresh-workspace')
@@ -206,17 +206,18 @@ function copyPackage(name, source) {
   const target = join(outDir, name)
   rmSync(target, { recursive: true, force: true })
   mkdirSync(dirname(target), { recursive: true })
-  const prefix = `${source}/`
   const fromWorkspace = workspacePackages.get(name) === source
   cpSync(source, target, {
     recursive: true,
     dereference: true,
     filter: (path) => {
-      if (!path.startsWith(prefix)) return true
-      const relative = path.slice(prefix.length)
-      if (relative.includes('/')) return true
-      if (SKIP_TOP_LEVEL.has(relative)) return false
-      return !(fromWorkspace && SKIP_WORKSPACE_ONLY.has(relative))
+      // `cpSync` hands the filter OS-native paths; `relative` compares them the
+      // same way on both platforms, where a literal `/` prefix check silently
+      // matches nothing on Windows and leaked store trees into the farm.
+      const entry = relative(source, path)
+      if (entry === '' || entry.startsWith('..') || entry.includes(sep)) return true
+      if (SKIP_TOP_LEVEL.has(entry)) return false
+      return !(fromWorkspace && SKIP_WORKSPACE_ONLY.has(entry))
     },
   })
 }

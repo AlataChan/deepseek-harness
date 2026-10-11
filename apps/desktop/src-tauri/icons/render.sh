@@ -23,6 +23,10 @@ fi
 
 magick "$SRC" -resize 1024x1024 -alpha set PNG32:"$ROOT/icon.png"
 
+# Windows bundles one multi-size ICO; NSIS and the taskbar pick their size from
+# it. `iconutil` is macOS-only, so CI reads the committed file instead.
+magick "$SRC" -alpha set -define icon:auto-resize=256,128,64,48,32,16 "$ROOT/icon.ico"
+
 rm -rf "$SET"
 mkdir "$SET"
 
@@ -46,9 +50,9 @@ render_size 1024 icon_512x512@2x.png
 iconutil -c icns "$SET" -o "$ROOT/icon.icns"
 rm -rf "$SET"
 
-if [[ ! -s "$ROOT/icon.png" || ! -s "$ROOT/icon.icns" ]]; then
+if [[ ! -s "$ROOT/icon.png" || ! -s "$ROOT/icon.icns" || ! -s "$ROOT/icon.ico" ]]; then
   echo "render.sh: raster output missing" >&2
   exit 1
 fi
 
-echo "wrote $ROOT/icon.png and $ROOT/icon.icns"
+echo "wrote $ROOT/icon.png, $ROOT/icon.icns, and $ROOT/icon.ico"

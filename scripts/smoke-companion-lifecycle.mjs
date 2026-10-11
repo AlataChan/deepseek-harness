@@ -10,23 +10,27 @@
  * hold period observes that, so this is the check that stands between a build
  * and a user.
  *
- * Usage: node scripts/smoke-companion-lifecycle.mjs <path-to-.app> [holdMs]
+ * Usage: node scripts/smoke-companion-lifecycle.mjs <path-to-.app-or-install-dir> [holdMs]
  * Exit 0 when the companion answered ready and outlived the hold period.
  */
 
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { homedir } from 'node:os'
+import { isAbsolute, join, resolve } from 'node:path'
 
 const [appArg, holdArg] = process.argv.slice(2)
 if (appArg === undefined) {
-  console.error('usage: smoke-companion-lifecycle.mjs <path-to-.app> [holdMs]')
+  console.error('usage: smoke-companion-lifecycle.mjs <path-to-.app-or-install-dir> [holdMs]')
   process.exit(2)
 }
 
 const app = resolve(appArg)
-const resources = join(app, 'Contents', 'Resources', 'resources')
-const nodeBin = join(resources, 'node')
+// macOS bundles keep the payload under Contents/Resources; the Windows NSIS
+// install puts resources/ directly beside the executable.
+const bundleRoot = existsSync(join(app, 'Contents', 'Resources')) ? join(app, 'Contents', 'Resources') : app
+const resources = join(bundleRoot, 'resources')
+const nodeBin = join(resources, process.platform === 'win32' ? 'node.exe' : 'node')
 const companion = join(resources, 'harness', 'lib', 'desktop-companion.js')
 const holdMs = Number(holdArg ?? 8000)
 
@@ -40,10 +44,10 @@ for (const [label, path] of [['embedded node', nodeBin], ['companion entry', com
 /** The protocol version the shell announces; a mismatch is a refused handshake. */
 const PROTOCOL_VERSION = 2
 
-const workspaceRoot = process.env.HOME ?? '/tmp'
+const workspaceRoot = process.env.HOME ?? homedir()
 const appData = process.env.OCTOPUS_APP_DATA ?? join(workspaceRoot, '.octopus-dsh-smoke-app-data')
 const sidecarHome = process.env.OCTOPUS_SIDECAR_HOME ?? join(resources, 'kb-runtime')
-if (!appData.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(appData)) {
+if (!isAbsolute(appData)) {
   console.error('smoke: OCTOPUS_APP_DATA must be an absolute path')
   process.exit(2)
 }

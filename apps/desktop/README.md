@@ -15,7 +15,7 @@ Recorded while implementing this tree:
 
 - A matching installed or source-built `@deepseek-ai/dsh` runtime on the same machine.
 - A real `node` executable. The application does not bundle Node, native modules, or a Harness copy.
-- macOS for the shipped local `.app`. Continuous integration compiles the crate on Linux and macOS and `cargo check`s Windows; those extra targets are not released.
+- macOS for the shipped local `.app` and `.dmg`. No continuous-integration workflow compiled this crate at all until `.github/workflows/desktop-windows.yml`; that manual lane is the first Windows compile and the only Windows build and packaging path.
 
 ## Build and run
 
