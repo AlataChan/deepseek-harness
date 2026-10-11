@@ -9,10 +9,6 @@ name: Desktop Windows EXE
 
 on:
   workflow_dispatch:
-  # Temporary bring-up trigger on the feature branch; removed before merge.
-  push:
-    branches:
-      - feature/desktop-windows-exe
 
 permissions:
   contents: read
