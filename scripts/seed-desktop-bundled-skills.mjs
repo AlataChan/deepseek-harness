@@ -38,6 +38,15 @@ function fail(message) {
   process.exit(1)
 }
 
+/**
+ * npm resolves to a `.cmd` shim on Windows, which Node cannot spawn without a
+ * shell; each call site pairs this with `shell: process.platform === 'win32'`.
+ * @returns the platform npm command name.
+ */
+function npmExecutable() {
+  return process.platform === 'win32' ? 'npm.cmd' : 'npm'
+}
+
 function parseArgs(argv) {
   let out
   for (let i = 0; i < argv.length; i += 1) {
@@ -75,10 +84,11 @@ function installSkillDeps(name, dest) {
     console.log(`bundled skill ready: ${name} (no npm dependencies)`)
     return
   }
-  const install = spawnSync('npm', ['install', '--omit=dev', '--no-fund', '--no-audit'], {
+  const install = spawnSync(npmExecutable(), ['install', '--omit=dev', '--no-fund', '--no-audit'], {
     cwd: dest,
     stdio: 'inherit',
     env: process.env,
+    shell: process.platform === 'win32',
   })
   if (install.status !== 0) fail(`npm install failed for ${name}`)
   if (!existsSync(join(dest, 'node_modules'))) fail(`${name}: node_modules missing after install`)
@@ -110,10 +120,11 @@ function seedNpmSkill(entry, dest) {
   const packRef = `${entry.package}@${entry.version}`
   const scratch = mkdtempSync(join(tmpdir(), 'dsh-bundled-skill-'))
   try {
-    const pack = spawnSync('npm', ['pack', packRef, '--pack-destination', scratch], {
+    const pack = spawnSync(npmExecutable(), ['pack', packRef, '--pack-destination', scratch], {
       cwd: scratch,
       stdio: ['ignore', 'pipe', 'inherit'],
       env: process.env,
+      shell: process.platform === 'win32',
       encoding: 'utf8',
     })
     if (pack.status !== 0) fail(`npm pack failed for ${packRef}`)

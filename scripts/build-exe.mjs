@@ -33,8 +33,9 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, extname, join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
@@ -46,6 +47,7 @@ const APP_NAME = 'octopus_DSH'
 /** Pinned Tauri CLI the bundle phase runs through `pnpm dlx`. */
 const TAURI_CLI = '@tauri-apps/cli@2.11.4'
 const TAURI_DIR = join(REPO_ROOT, 'apps', 'desktop', 'src-tauri')
+const WINDOWS_CONFIG = join(TAURI_DIR, 'tauri.windows.conf.json')
 const RESOURCES = join(TAURI_DIR, 'resources')
 const CACHE = join(REPO_ROOT, 'dist', '.cache')
 const DEPS_CACHE = join(CACHE, 'harness-nm')
@@ -117,6 +119,35 @@ function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex')
 }
 
+/**
+ * Create every path `bundle.resources` names in the Windows platform config as
+ * a placeholder before the compile step.
+ *
+ * `tauri-build` resolves the merged platform config at compile time and fails
+ * the build when a declared resource path is missing, so the fail-fast compile
+ * cannot run before payload assembly unless the paths exist. An entry with a
+ * file extension becomes an empty file and a directory-shaped entry becomes an
+ * empty directory; every staging phase overwrites its placeholder with real
+ * content, and the payload check after staging refuses a file that is still a
+ * placeholder or an empty seed directory.
+ * @param {string} configPath - the Windows platform config declaring the entries.
+ */
+function createResourcePlaceholders(configPath) {
+  const config = JSON.parse(readFileSync(configPath, 'utf8'))
+  const entries = config?.bundle?.resources
+  if (!Array.isArray(entries)) fail(`${configPath} must declare bundle.resources as an array`)
+  for (const entry of entries) {
+    const path = join(dirname(configPath), entry)
+    if (existsSync(path)) continue
+    if (extname(entry) === '') {
+      mkdirSync(path, { recursive: true })
+    } else {
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, '')
+    }
+  }
+}
+
 // ── Arguments ────────────────────────────────────────────────────────────────
 
 const argv = process.argv.slice(2)
@@ -165,6 +196,10 @@ ok('Preflight passed')
 // ── 1. Compile the crate (fail fast, before payload assembly) ───────────────
 
 info('Compiling dsh-desktop (release)')
+// tauri-build resolves the platform config's resource paths at compile time;
+// create the declared entries as placeholders so the fail-fast compile can run
+// before payload assembly.
+createResourcePlaceholders(WINDOWS_CONFIG)
 // tauri-build embeds frontendDist at compile time, so the WebView assets must
 // exist before cargo runs; `tauri build` reruns this idempotently later.
 run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'build'], { shell: process.platform === 'win32' })
@@ -298,18 +333,32 @@ if (!existsSync(cliDest)) {
   if (!existsSync(cliSource)) fail('installed-runtime-cli.js missing — build packages/boot/installed-runtime')
   copyFileSync(cliSource, cliDest)
 }
-const required = [
-  ['installed-runtime-cli.js', cliDest],
-  ['node.exe', join(RESOURCES, 'node.exe')],
-  ['harness/package.json', join(harness, 'package.json')],
-  ['harness/lib/desktop-companion.js', join(harness, 'lib', 'desktop-companion.js')],
-  ['profile-plugins/', pluginResources],
-  ['bundled-skills/', skillResources],
-  ['presets/', presetResources],
-]
-if (!skipKb) required.push(['kb-runtime/', join(RESOURCES, 'kb-runtime')])
-for (const [label, path] of required) {
-  if (!existsSync(path)) fail(`staged payload missing ${label}`)
+// The compile-time placeholders created by createResourcePlaceholders satisfy
+// a bare existence check, so every file below rejects an empty placeholder and
+// every seed directory rejects emptiness.
+const nodeDest = join(RESOURCES, 'node.exe')
+// A real Node binary is ~70 MB; the compile-time placeholder is an empty file.
+if (!existsSync(nodeDest) || statSync(nodeDest).size < 1_000_000) {
+  fail(`node.exe is missing, empty, or a compile-time placeholder at ${nodeDest} — the Node download/extract phase did not complete`)
+}
+if (statSync(cliDest).size === 0) fail(`installed-runtime-cli.js is empty at ${cliDest}`)
+if (!existsSync(join(harness, 'package.json'))) {
+  fail(`staged payload missing ${join(harness, 'package.json')}`)
+}
+if (!existsSync(join(harness, 'lib', 'desktop-companion.js'))) {
+  fail(`staged payload missing ${join(harness, 'lib', 'desktop-companion.js')} — the harness staging phase did not complete`)
+}
+for (const [label, dir] of [['profile-plugins/', pluginResources], ['bundled-skills/', skillResources]]) {
+  if (!existsSync(dir) || readdirSync(dir).length === 0) {
+    fail(`${label} is empty at ${dir} — the seed phase did not complete`)
+  }
+}
+if (!existsSync(presetResources)) fail(`presets/ missing at ${presetResources}`)
+if (!skipKb) {
+  const sidecarExe = join(RESOURCES, 'kb-runtime', 'octopus-kb-sidecar', 'octopus-kb-sidecar.exe')
+  if (!existsSync(sidecarExe)) {
+    fail(`kb-runtime missing ${sidecarExe} — the freeze phase did not complete`)
+  }
 }
 ok('Resource payload complete')
 

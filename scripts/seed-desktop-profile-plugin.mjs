@@ -86,6 +86,15 @@ export function readPinFile(path = PIN_PATH) {
 }
 
 /**
+ * npm resolves to a `.cmd` shim on Windows, which Node cannot spawn without a
+ * shell; each call site pairs this with `shell: process.platform === 'win32'`.
+ * @returns the platform npm command name.
+ */
+function npmExecutable() {
+  return process.platform === 'win32' ? 'npm.cmd' : 'npm'
+}
+
+/**
  * Fail loud when a directory is not a loadable dsh.bundle + dsh.client package.
  * @param {string} dir
  * @param {PluginPin} [expected]
@@ -230,7 +239,10 @@ export function fetchPlugin(plugin, outDir, options = {}) {
   const tarballName = `${plugin.name.replace(/^@/, '').replace('/', '-')}-${plugin.version}.tgz`
   const tarball = join(cacheDir, tarballName)
   if (!existsSync(tarball)) {
-    execFileSync('npm', ['pack', spec, '--pack-destination', cacheDir], { stdio: 'inherit' })
+    execFileSync(npmExecutable(), ['pack', spec, '--pack-destination', cacheDir], {
+      stdio: 'inherit',
+      shell: process.platform === 'win32',
+    })
   }
   if (!existsSync(tarball)) throw new Error(`seed: npm pack did not produce ${tarball}`)
   const extract = mkdtempSync(join(tmpdir(), 'dsh-seed-'))
@@ -320,11 +332,11 @@ function installProductionDependencies(dir) {
       private: true,
       dependencies: thirdParty,
     }, undefined, 2)}\n`)
-    execFileSync('npm', [
+    execFileSync(npmExecutable(), [
       'install',
       '--ignore-scripts',
       '--legacy-peer-deps',
-    ], { cwd: staging, stdio: 'inherit' })
+    ], { cwd: staging, stdio: 'inherit', shell: process.platform === 'win32' })
     const stagedModules = join(staging, 'node_modules')
     if (existsSync(stagedModules)) {
       const destModules = join(dir, 'node_modules')
