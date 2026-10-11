@@ -14,7 +14,7 @@ Neither cross-compilation path exists. Tauri needs the MSVC toolchain, WebView2,
 
 ### Build host
 
-`.github/workflows/desktop-windows.yml` runs on GitHub-hosted `windows-2025`, manual dispatch plus a temporary feature-branch push trigger removed before merge, with `timeout-minutes: 60` and `permissions: contents: read`. It checks out without persisted credentials, installs pnpm with the native Windows destination, Node 24, Rust stable, and Python 3.12, then runs `pnpm install` (the ReFS block-clone branch from `ci.yml`), `pnpm run build`, `node scripts/build-exe.mjs`, a silent NSIS install into the runner temp, `node scripts/verify-desktop-exe.mjs` against the installed tree, and the `dist/octopus_DSH_Setup.exe` artifact upload. No green gate, no artifact.
+`.github/workflows/desktop-windows.yml` runs on GitHub-hosted `windows-2025`, manual dispatch only, with `timeout-minutes: 60` and `permissions: contents: read`. It checks out without persisted credentials, installs pnpm with the native Windows destination, Node 24, Rust stable, and Python 3.12, then runs `pnpm install` (the ReFS block-clone branch from `ci.yml`), `pnpm run build`, `node scripts/build-exe.mjs`, a silent NSIS install into the runner temp, `node scripts/verify-desktop-exe.mjs` against the installed tree, and the `dist/octopus_DSH_Setup.exe` artifact upload. No green gate, no artifact.
 
 ### Windows build script
 

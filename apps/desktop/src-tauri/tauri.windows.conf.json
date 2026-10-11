@@ -5,6 +5,7 @@
     "icon": ["icons/icon.ico"],
     "resources": [
       "resources/installed-runtime-cli.js",
+      "resources/build-info.json",
       "resources/node.exe",
       "resources/harness",
       "resources/profile-plugins",

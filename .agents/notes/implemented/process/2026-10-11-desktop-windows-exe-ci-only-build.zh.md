@@ -14,7 +14,7 @@ Status: implemented
 
 ### 构建主机
 
-`.github/workflows/desktop-windows.yml` 运行在 GitHub 托管的 `windows-2025` 上，手动触发加一条合并前移除的临时 feature 分支 push 触发，设置 `timeout-minutes: 60` 与 `permissions: contents: read`。它不持久化凭据地检出，用原生 Windows 目标目录安装 pnpm，安装 Node 24、Rust stable 与 Python 3.12，然后依次运行 `pnpm install`（沿用 `ci.yml` 的 ReFS block-clone 分支）、`pnpm run build`、`node scripts/build-exe.mjs`、静默 NSIS 安装到 runner 临时目录、针对已安装树的 `node scripts/verify-desktop-exe.mjs`，以及 `dist/octopus_DSH_Setup.exe` 产物上传。门不绿，就没有产物。
+`.github/workflows/desktop-windows.yml` 运行在 GitHub 托管的 `windows-2025` 上，仅手动触发，设置 `timeout-minutes: 60` 与 `permissions: contents: read`。它不持久化凭据地检出，用原生 Windows 目标目录安装 pnpm，安装 Node 24、Rust stable 与 Python 3.12，然后依次运行 `pnpm install`（沿用 `ci.yml` 的 ReFS block-clone 分支）、`pnpm run build`、`node scripts/build-exe.mjs`、静默 NSIS 安装到 runner 临时目录、针对已安装树的 `node scripts/verify-desktop-exe.mjs`，以及 `dist/octopus_DSH_Setup.exe` 产物上传。门不绿，就没有产物。
 
 ### Windows 构建脚本
 

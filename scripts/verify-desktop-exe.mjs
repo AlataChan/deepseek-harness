@@ -8,30 +8,27 @@
  * installer never reaches a user. It mirrors `scripts/verify-desktop-bundle.sh`
  * where the `.app` layout does not apply.
  *
- * Usage: node scripts/verify-desktop-exe.mjs <install-dir> [--skip-kb] [--expect-presets]
- *   --skip-kb        slim mode: excludes the kb-runtime checks and the
- *                    ask-knowledge pin in the lifecycle smoke
- *   --expect-presets the build declared a preset source; presets must be present
+ * The payload modes (KB frozen or slim, presets bundled or dropped) come from
+ * the installer's `resources/build-info.json`, which `scripts/build-exe.mjs`
+ * writes; a missing or unparsable manifest fails the gate.
+ *
+ * Usage: node scripts/verify-desktop-exe.mjs <install-dir>
  */
 
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readlinkSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const argv = process.argv.slice(2)
-const appArg = argv.find(arg => !arg.startsWith('--'))
-if (appArg === undefined) {
-  console.error('usage: verify-desktop-exe.mjs <install-dir> [--skip-kb] [--expect-presets]')
+if (argv.length !== 1) {
+  console.error('usage: verify-desktop-exe.mjs <install-dir>')
   process.exit(2)
 }
-const skipKb = argv.includes('--skip-kb')
-const expectPresets = argv.includes('--expect-presets')
-
-const APP = resolve(appArg)
+const APP = resolve(argv[0])
 const RES = join(APP, 'resources')
 const ASK_KNOWLEDGE_PIN = '@deepseek-ai/dsh-experimental-desktop-ask-knowledge'
 
@@ -72,6 +69,29 @@ if (existsSync(join(RES, 'installed-runtime-cli.js'))) {
   ok('installed-runtime-cli.js bundled')
 } else {
   bad('installed-runtime-cli.js missing under resources/')
+}
+
+// ── 1b. Build manifest ──────────────────────────────────────────────────────
+//
+// The manifest records the declared payload modes so an explicit opt-out is
+// distinguishable from a staging failure. An installer built by this pipeline
+// always carries it.
+
+const buildInfoPath = join(RES, 'build-info.json')
+/** @type {{ kb?: string, presets?: string, node?: string, runtimeVersion?: string } | undefined} */
+let buildInfo
+if (existsSync(buildInfoPath)) {
+  try {
+    buildInfo = JSON.parse(readFileSync(buildInfoPath, 'utf8'))
+  } catch {
+    // An unparsable manifest is reported below as a missing one.
+    buildInfo = undefined
+  }
+}
+if (buildInfo === undefined) {
+  bad('resources/build-info.json missing or unparsable — an installer built by scripts/build-exe.mjs always carries it')
+} else {
+  ok(`build-info.json: node ${String(buildInfo.node)}, runtime ${String(buildInfo.runtimeVersion)}, kb ${String(buildInfo.kb)}, presets ${String(buildInfo.presets)}`)
 }
 
 // ── 2. Embedded Node ────────────────────────────────────────────────────────
@@ -168,7 +188,7 @@ const pinnedNames = JSON.parse(readFileSync(pinPath, 'utf8')).plugins.map(plugin
 const smokeProfile = join(SMOKE_HOME, '.dsh', 'profiles', 'desktop')
 mkdirSync(smokeProfile, { recursive: true })
 for (const name of pinnedNames) {
-  if (skipKb && name === ASK_KNOWLEDGE_PIN) continue
+  if (buildInfo?.kb === 'skipped' && name === ASK_KNOWLEDGE_PIN) continue
   const pluginDir = join(RES, 'profile-plugins', name)
   if (!existsSync(pluginDir)) continue
   const install = capture(nodeExe, [
@@ -225,10 +245,35 @@ function isBroken(link) {
   return !existsSync(link)
 }
 
-/** @param {string} link - symlink path. @returns whether the link target leaves the install. */
+/**
+ * Every file below `root` whose basename is in `names`.
+ * @param {string} root - directory to scan.
+ * @param {ReadonlySet<string>} names - basenames to match.
+ * @returns matching file paths.
+ */
+function findNamedFiles(root, names) {
+  /** @type {string[]} */
+  const found = []
+  /** @param {string} dir - directory to scan. */
+  function walk(dir) {
+    if (!existsSync(dir)) return
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name)
+      if (entry.isSymbolicLink()) continue
+      if (entry.isDirectory()) walk(path)
+      else if (names.has(entry.name)) found.push(path)
+    }
+  }
+  walk(root)
+  return found
+}
+
+/** @param {string} link - symlink path. @returns whether the link's absolute target leaves the install tree. */
 function escapesInstall(link) {
   const target = readlinkSync(link)
-  return isAbsolute(target) || target.startsWith(REPO_ROOT)
+  if (!isAbsolute(target)) return false
+  const rel = relative(APP, target)
+  return rel.startsWith('..') || isAbsolute(rel)
 }
 
 head('Checking for developer-machine leaks')
@@ -238,7 +283,7 @@ const escapingLinks = nodeModulesLinks.filter(link => !isBroken(link) && escapes
 if (brokenLinks.length > 0) {
   bad(`${brokenLinks.length} broken symlink(s) in bundled node_modules (point outside the install)`)
 } else if (escapingLinks.length > 0) {
-  bad(`${escapingLinks.length} symlink(s) point into the build machine`)
+  bad(`${escapingLinks.length} symlink(s) point outside the install tree — will break on a user machine`)
 } else if (nodeModulesLinks.length > 0) {
   ok(`${nodeModulesLinks.length} symlink(s) present but all resolve inside the install`)
 } else {
@@ -300,13 +345,70 @@ if (existsSync(join(RES, 'bundled-skills', 'archify'))) {
   }
 }
 
+// ── 7b. Payload invariants mirrored from verify-desktop-bundle.sh ───────────
+
+head('Checking bundled payload invariants')
+const mediaBinaries = findNamedFiles(RES, new Set(['ffmpeg', 'ffprobe']))
+if (mediaBinaries.length > 0) {
+  bad('bundle contains ffmpeg/ffprobe — V1 must not embed the media runtime')
+} else {
+  ok('bundle does not embed ffmpeg or ffprobe')
+}
+
+head('Checking session-controller client knows listEntries')
+const sessionClient = join(harness, 'node_modules', '@deepseek-ai', 'dsh-api-session-controller', 'lib', 'typert.remote-client.js')
+const sessionClientText = existsSync(sessionClient) ? readFileSync(sessionClient, 'utf8') : ''
+for (const symbol of ['listEntries', 'commitAskData', 'askKnowledgeRetrieve', 'listMediaWorks']) {
+  if (sessionClientText.includes(symbol)) {
+    ok(`bundled session-controller remote face includes ${symbol}`)
+  } else {
+    bad(`bundled session-controller remote face missing ${symbol} — rebuild that Host face before packaging`)
+  }
+}
+
+head('Checking bundled session event vocabulary')
+const vocabFiles = [
+  join(harness, 'node_modules', '@deepseek-ai', 'dsh-session', 'lib', 'index.js'),
+  join(harness, 'node_modules', '@deepseek-ai', 'dsh-session', 'lib', 'types', 'known-event-types.js'),
+]
+/** @param {string} needle - event type to find. @returns whether any vocabulary file contains it. */
+function vocabHas(needle) {
+  return vocabFiles.some(file => existsSync(file) && readFileSync(file, 'utf8').includes(needle))
+}
+if (vocabHas('ask-knowledge/bound') && vocabHas('ask-knowledge/unbound')) {
+  ok('bundled dsh-session knows ask-knowledge/bound and ask-knowledge/unbound')
+} else {
+  bad('bundled dsh-session missing ask-knowledge bind events — refresh workspace packages before packaging')
+}
+
+// The first-launch templates live in the source checkout, which the packaging
+// workflow checks out before running this gate.
+head('Checking first-launch templates')
+const appRsPath = join(REPO_ROOT, 'apps', 'desktop', 'src-tauri', 'src', 'app.rs')
+if (existsSync(appRsPath)) {
+  const appRs = readFileSync(appRsPath, 'utf8')
+  const shippedBlock = /const DESKTOP_SHIPPED_BUNDLES[\s\S]*?\];/.exec(appRs)?.[0] ?? ''
+  if (shippedBlock.includes('dsh-client-app')) {
+    bad('DESKTOP_SHIPPED_BUNDLES still lists dsh-client-app — first launch would recreate the storage clash')
+  } else {
+    ok('app.rs first-launch template does not seed dsh-client-app')
+  }
+  if (appRs.includes('install_bundled_skills')) {
+    ok('app.rs seeds bundled skills on launch')
+  } else {
+    bad('app.rs missing install_bundled_skills')
+  }
+} else {
+  bad(`missing ${appRsPath} — cannot check the first-launch templates`)
+}
+
 // ── 8. Ask-knowledge sidecar runtime ────────────────────────────────────────
 //
-// `--skip-kb` builds a slim installer whose pass criteria exclude the sidecar;
-// the workflow runs the full build.
+// The build manifest decides: `kb: skipped` is an explicit slim installer
+// whose pass criteria exclude the sidecar; `kb: frozen` requires the checks.
 
-if (skipKb) {
-  head('Skipping kb-runtime checks (--skip-kb slim mode)')
+if (buildInfo?.kb === 'skipped') {
+  head('Skipping kb-runtime checks (build-info: kb skipped — slim installer)')
 } else {
   head('Checking kb-runtime sidecar')
   const kbRuntime = join(RES, 'kb-runtime')
@@ -382,16 +484,21 @@ if (skipKb) {
   }
 }
 
-// ── 9. Bundled presets (only when the build declared a source) ──────────────
+// ── 9. Bundled presets ──────────────────────────────────────────────────────
+//
+// `presets: none` in the build manifest is an explicit opt-out: the staged
+// directory stays empty. `presets: bundled` requires preset content.
 
-if (expectPresets) {
+if (buildInfo?.presets === 'none') {
+  head('No bundled presets (build-info: presets none — explicit opt-out)')
+} else {
   head('Checking bundled presets')
   const presetsDir = join(RES, 'presets')
   const presetDirs = existsSync(presetsDir)
     ? readdirSync(presetsDir, { withFileTypes: true }).filter(entry => entry.isDirectory())
     : []
   if (presetDirs.length === 0) {
-    bad('--expect-presets was given but resources/presets is empty')
+    bad('resources/presets is empty but build-info.json declares presets bundled — the preset staging phase did not complete')
   } else {
     ok(`${presetDirs.length} bundled preset(s) for first-run install`)
     for (const preset of presetDirs) {

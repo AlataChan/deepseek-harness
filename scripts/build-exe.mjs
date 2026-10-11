@@ -322,6 +322,22 @@ if (presets === undefined || presets === 'none') {
   }
 }
 
+// ── 6b. Record the build manifest ───────────────────────────────────────────
+//
+// The readiness gate reads the declared payload modes from this file, so an
+// explicit opt-out (KB slim, presets dropped) is distinguishable from a
+// staging failure. It carries no machine paths.
+
+info('Recording the build manifest')
+const buildInfo = {
+  kb: skipKb ? 'skipped' : 'frozen',
+  presets: presets === undefined || presets === 'none' ? 'none' : 'bundled',
+  node: NODE_VERSION,
+  runtimeVersion: JSON.parse(readFileSync(join(REPO_ROOT, 'apps', 'cli', 'package.json'), 'utf8')).version,
+}
+writeFileSync(join(RESOURCES, 'build-info.json'), `${JSON.stringify(buildInfo, undefined, 2)}\n`)
+ok(`build-info.json written (kb: ${buildInfo.kb}, presets: ${buildInfo.presets})`)
+
 // ── 7. Verify the staged resource tree ──────────────────────────────────────
 
 info('Checking the resource payload')
@@ -342,6 +358,9 @@ if (!existsSync(nodeDest) || statSync(nodeDest).size < 1_000_000) {
   fail(`node.exe is missing, empty, or a compile-time placeholder at ${nodeDest} — the Node download/extract phase did not complete`)
 }
 if (statSync(cliDest).size === 0) fail(`installed-runtime-cli.js is empty at ${cliDest}`)
+if (!existsSync(join(RESOURCES, 'build-info.json'))) {
+  fail('staged payload missing build-info.json — the readiness gate reads the declared payload modes from it')
+}
 if (!existsSync(join(harness, 'package.json'))) {
   fail(`staged payload missing ${join(harness, 'package.json')}`)
 }
@@ -365,6 +384,9 @@ ok('Resource payload complete')
 // ── 8. Bundle the installer ─────────────────────────────────────────────────
 
 info('Bundling the NSIS installer')
+// The target directory is cache-restored, so a stale *-setup.exe from an
+// earlier run could otherwise win the newest-file copy below.
+rmSync(NSIS_DIR, { recursive: true, force: true })
 const bundle = spawnSync('pnpm', ['dlx', TAURI_CLI, 'build', '--bundles', 'nsis'], {
   cwd: TAURI_DIR,
   stdio: 'inherit',

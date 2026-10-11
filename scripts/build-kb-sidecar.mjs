@@ -13,8 +13,8 @@
  *   dist/.cache/kb-runtime/SOURCE.txt
  *
  * Do not copy a build-machine venv into the installer; only the frozen onedir
- * ships. pip and PyInstaller are pinned here so the two build hosts freeze the
- * same toolchain.
+ * ships. This Windows freeze pins pip and PyInstaller; `scripts/build-kb-sidecar.sh`
+ * resolves both at build time on macOS.
  *
  * Usage: node scripts/build-kb-sidecar.mjs
  *   ASK_KNOWLEDGE_PYTHON overrides the interpreter (`python` on Windows,

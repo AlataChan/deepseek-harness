@@ -41,6 +41,13 @@ apps/desktop/dist/
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
 apps/desktop/src-tauri/resources/installed-runtime-cli.js
+apps/desktop/src-tauri/resources/build-info.json
+apps/desktop/src-tauri/resources/node.exe
+apps/desktop/src-tauri/resources/harness/
+apps/desktop/src-tauri/resources/kb-runtime/
+apps/desktop/src-tauri/resources/profile-plugins/
+apps/desktop/src-tauri/resources/bundled-skills/
+apps/desktop/src-tauri/resources/presets/
 /dist/
 .artifacts/
 .dsh-build/
