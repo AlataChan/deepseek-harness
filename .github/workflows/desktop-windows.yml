@@ -116,16 +116,38 @@ jobs:
       - name: Install the EXE silently
         shell: pwsh
         run: |
-          $install = Join-Path $env:RUNNER_TEMP 'octopus_DSH'
+          # NSIS is not long-path aware and the payload reaches deep into
+          # resources\harness\node_modules, so the install root stays short.
+          $install = 'D:\octo-dsh'
           $setup = Join-Path $env:GITHUB_WORKSPACE 'dist\octopus_DSH_Setup.exe'
-          & $setup /S /D=$install
-          if ($LASTEXITCODE -ne 0) { throw "installer exited with $LASTEXITCODE" }
+          Write-Output "Installing $setup into $install"
+          # `&` does not wait for a GUI-subsystem installer and leaves
+          # $LASTEXITCODE unset; Start-Process -Wait owns the exit code.
+          $proc = Start-Process -FilePath $setup -ArgumentList '/S', "/D=$install" -Wait -PassThru
+          Write-Output "Installer exit code: $($proc.ExitCode)"
           if (-not (Test-Path (Join-Path $install 'resources'))) {
-            throw "silent install produced no resources tree under $install"
+            Write-Output '::group::Silent install diagnostics'
+            if (Test-Path $setup) {
+              Write-Output "Installer: $setup ($((Get-Item $setup).Length) bytes)"
+            } else {
+              Write-Output "Installer missing: $setup"
+            }
+            Write-Output "Install root exists: $(Test-Path $install)"
+            if (Test-Path $install) {
+              Get-ChildItem -Force $install | Out-String | Write-Output
+            } else {
+              Write-Output "Install root missing; listing its parent:"
+              Get-ChildItem -Force (Split-Path -Parent $install) | Out-String | Write-Output
+            }
+            Write-Output '::endgroup::'
+            throw "silent install produced no resources tree under $install (exit code $($proc.ExitCode))"
+          }
+          if ($proc.ExitCode -ne 0) {
+            Write-Output "::warning::installer exited with $($proc.ExitCode) but the resources tree exists; the readiness gate is the authority on install completeness"
           }
       - name: Run the Windows readiness gate
         shell: pwsh
-        run: node scripts/verify-desktop-exe.mjs (Join-Path $env:RUNNER_TEMP 'octopus_DSH')
+        run: node scripts/verify-desktop-exe.mjs D:\octo-dsh
       - name: Upload the installer
         uses: actions/upload-artifact@v7
         with:
