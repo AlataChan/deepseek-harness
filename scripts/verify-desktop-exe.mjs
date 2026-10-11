@@ -137,9 +137,12 @@ const smokeEnv = {
   USERPROFILE: SMOKE_HOME,
   DSH_HOME: join(SMOKE_HOME, '.dsh'),
 }
-const companionOut = capture(nodeExe, [join(harness, 'lib', 'desktop-companion.js'), '--workspace-root', SMOKE_HOME], {
+const companionRun = capture(nodeExe, [join(harness, 'lib', 'desktop-companion.js'), '--workspace-root', SMOKE_HOME], {
   env: smokeEnv,
-}).stdout
+})
+// The companion reports a pre-gateway startup failure on stderr; the macOS
+// gate merges both streams with 2>&1 and this check must see the same text.
+const companionOut = `${companionRun.stdout}\n${companionRun.stderr}`
 
 if (companionOut.includes('ERR_MODULE_NOT_FOUND')) {
   const missing = /Cannot find package '[^']*'/.exec(companionOut)?.[0] ?? ''
