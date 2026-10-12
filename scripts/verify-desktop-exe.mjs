@@ -211,6 +211,18 @@ if (lifecycle.status === 0) {
   bad('Companion lifecycle FAILED with pinned overlays installed')
   quote(`${lifecycle.stdout}\n${lifecycle.stderr}`.split('\n').slice(0, 16).join('\n'))
 }
+head('Driving installed runtime through the Rust shell')
+const rustHarness = join(REPO_ROOT, 'apps', 'desktop', 'src-tauri', 'target', 'debug', 'carrier-harness.exe')
+const rustLaunch = capture(nodeExe, [join(REPO_ROOT, 'scripts', 'smoke-desktop-rust-launch.mjs'), APP, rustHarness], {
+  env: smokeEnv,
+  timeout: 45_000,
+})
+if (rustLaunch.status === 0) {
+  ok(rustLaunch.stdout.trim())
+} else {
+  bad('Installed runtime failed through the Rust shell')
+  quote(`${rustLaunch.stdout}\n${rustLaunch.stderr}`)
+}
 rmSync(SMOKE_HOME, { recursive: true, force: true })
 
 // ── 6. No leaked developer paths ────────────────────────────────────────────

@@ -206,6 +206,8 @@ fn effective_runtime_path(
 
 /**
  * Run the installed-runtime CLI and parse one JSON object.
+ * Windows Node path arguments use ordinary paths when representable because
+ * Node 24 cannot resolve verbatim drive paths as main modules.
  *
  * @param node_path - real Node executable.
  * @param cli_path - bundled `lib/cli.js`.
@@ -222,7 +224,7 @@ pub fn resolve_installed_runtime(
 ) -> Result<ResolvedRuntime, ShellError> {
     let mut command = Command::new(node_path);
     command
-        .arg(cli_path)
+        .arg(dunce::simplified(cli_path))
         .arg("--companion")
         .arg("desktop")
         .arg("--accepted")
@@ -230,9 +232,11 @@ pub fn resolve_installed_runtime(
         .arg("--accepted")
         .arg("@alatastudio/dsh")
         .arg("--node-path")
-        .arg(node_path);
+        .arg(dunce::simplified(node_path));
     if let Some(runtime_path) = effective_runtime_path(config, origin_exe, bundled) {
-        command.arg("--runtime-path").arg(runtime_path);
+        command
+            .arg("--runtime-path")
+            .arg(dunce::simplified(&runtime_path));
     }
     let output = command.output().map_err(|error| {
         ShellError::Config(format!("installed-runtime CLI failed to start: {error}"))
@@ -334,7 +338,7 @@ mod tests {
     #[test]
     fn resolve_installed_runtime_passes_separated_argv() {
         let dir = tempdir().expect("tempdir");
-        let cli = dir.path().join("cli.mjs");
+        let cli = dir.path().join("CLI with spaces.mjs");
         fs::write(
             &cli,
             r#"
@@ -354,6 +358,7 @@ if (process.argv.includes('--companion') && process.argv.includes('desktop')) {
 "#,
         )
         .expect("write cli");
+        let cli = fs::canonicalize(cli).expect("canonical CLI path");
         let node = PathBuf::from(std::env::var_os("CARGO_NODE").unwrap_or_else(|| "node".into()));
         let resolved = resolve_installed_runtime(
             &node,

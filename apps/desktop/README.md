@@ -14,8 +14,8 @@ Recorded while implementing this tree:
 ## Requirements
 
 - A matching installed or source-built `@deepseek-ai/dsh` runtime on the same machine.
-- A real `node` executable. The application does not bundle Node, native modules, or a Harness copy.
-- macOS for the shipped local `.app` and `.dmg`. No continuous-integration workflow compiled this crate at all until `.github/workflows/desktop-windows.yml`; that manual lane is the first Windows compile and the only Windows build and packaging path.
+- Development uses a real `node` executable; distributable DMG and Windows EXE installers bundle Node and the matching Harness runtime.
+- macOS builds `.app` and `.dmg` through `scripts/build-dmg.sh`; `.github/workflows/desktop-windows.yml` builds the Windows NSIS `.exe` through `scripts/build-exe.mjs`. Both formats use the same desktop plugins. Windows readiness includes installed-runtime resolution and companion handshake through the Rust shell with canonical Windows paths.
 
 ## Build and run
 
@@ -34,8 +34,8 @@ Assembled tests that drive the Rust relay need `pnpm run build:desktop:test-deps
 
 ## Known Limitations and Deferred Work
 
-- **Unsigned local macOS build only** — no signed installer, notarization, updater, or public download.
-- **Preinstalled runtime required** — resolution fails until a real Node executable and an accepted Harness package are configured.
+- **Unsigned installers** — no signing, notarization, updater, or public download.
+- **Source development requires a runtime** — distributable installers carry Node and Harness; source builds use the checkout runtime.
 - **Launch-time workspace only** — Client directory-picker rows do not change `--workspace-root`.
 - **One window** — no multi-window, tray, deep links, native dialogs, or editor context.
 - **Shared home lease** — a second companion against the same `$DSH_HOME` fails with `home-busy`.

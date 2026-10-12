@@ -45,6 +45,8 @@ pub struct CarrierChild {
 
 /**
  * Spawn `node companion --workspace-root <root>` with piped stdio and no shell.
+ * Windows script arguments use ordinary paths when representable so Node can
+ * resolve a companion discovered through a canonical Windows path.
  *
  * @param node_path - real Node executable.
  * @param companion_entry - installed desktop companion module.
@@ -72,9 +74,9 @@ pub fn spawn_companion(
     let app_data_dir = require_absolute_path(app_data_dir, "OCTOPUS_APP_DATA")?;
     let sidecar_home = require_absolute_path(sidecar_home, "OCTOPUS_SIDECAR_HOME")?;
     let mut child = Command::new(node_path)
-        .arg(companion_entry)
+        .arg(dunce::simplified(companion_entry))
         .arg("--workspace-root")
-        .arg(workspace_root)
+        .arg(dunce::simplified(Path::new(workspace_root)))
         .env("OCTOPUS_APP_DATA", &app_data_dir)
         .env("OCTOPUS_SIDECAR_HOME", &sidecar_home)
         .stdin(Stdio::piped())
@@ -281,7 +283,7 @@ mod tests {
     fn write_fixture(dir: &std::path::Path, source: &str) -> PathBuf {
         let path = dir.join("fixture.mjs");
         fs::write(&path, source).expect("write fixture");
-        path
+        fs::canonicalize(path).expect("canonical companion path")
     }
 
     fn node_path() -> PathBuf {

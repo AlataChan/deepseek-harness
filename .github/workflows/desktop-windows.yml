@@ -106,6 +106,15 @@ jobs:
       - name: Build workspace libraries and clients
         shell: pwsh
         run: pnpm run build
+      - name: Test canonical Windows paths through the Rust launcher
+        shell: pwsh
+        run: |
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --lib runtime::tests::resolve_installed_runtime_passes_separated_argv
+          if ($LASTEXITCODE -ne 0) { throw "Rust runtime launch regression failed" }
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --lib carrier::tests::forwards_records_in_arrival_order_without_inspecting_fields
+          if ($LASTEXITCODE -ne 0) { throw "Rust companion launch regression failed" }
+          cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --features harness --bin carrier-harness
+          if ($LASTEXITCODE -ne 0) { throw "Rust carrier harness build failed" }
       - name: Build the Windows installer
         shell: pwsh
         run: node scripts/build-exe.mjs
