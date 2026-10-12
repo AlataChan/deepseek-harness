@@ -4,6 +4,8 @@ use crate::{
     forward_carrier_events, CacheBundleArgs, CacheBundleResult, DesktopShell, DownlinkEvent,
     RuntimeConfig,
 };
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tauri::{ipc::Channel, AppHandle, Manager, State};
@@ -307,28 +309,155 @@ fn heal_desktop_profile_file(profile_dir: &Path) {
     let _ = std::fs::write(&manifest_path, format!("{pretty}\n"));
 }
 
+/// Name of the packaged payload revision file under `resources/`.
+const SEED_REVISION_FILE: &str = "seed-rev.txt";
+
+/// Name of the stamp a completed seed phase writes into the installed tree.
+const SEED_STAMP_FILE: &str = ".dsh-seed-rev";
+
+/// Outcome of one payload seed phase, reported once per launch in `companion.log`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SeedOutcome {
+    /// The bundled tree was copied into the installed location.
+    Reseeded,
+    /// The installed copy already matches the announced revision.
+    Skipped,
+    /// The build staged no bundled tree.
+    Absent,
+}
+
+impl SeedOutcome {
+    /// Log word for this outcome.
+    fn label(self) -> &'static str {
+        match self {
+            Self::Reseeded => "reseeded",
+            Self::Skipped => "skipped",
+            Self::Absent => "absent",
+        }
+    }
+}
+
+/// Read the packaged payload revision; missing, empty, or malformed content is `None`.
+fn read_seed_revision(app: &AppHandle) -> Option<String> {
+    let resource = app.path().resource_dir().ok()?;
+    let text = std::fs::read_to_string(resource.join("resources").join(SEED_REVISION_FILE)).ok()?;
+    let text = text.trim();
+    is_seed_revision(text).then(|| text.to_string())
+}
+
+/// Whether `text` is exactly the 64 lowercase hex characters both build scripts write.
+fn is_seed_revision(text: &str) -> bool {
+    text.len() == 64
+        && text
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+/// Whether one installed stamp names `revision`; a symlinked stamp is never trusted.
+fn stamp_matches(stamp: &Path, revision: &str) -> bool {
+    match std::fs::symlink_metadata(stamp) {
+        Ok(metadata) if metadata.file_type().is_symlink() => false,
+        Ok(_) => std::fs::read_to_string(stamp)
+            .map(|text| text.trim() == revision)
+            .unwrap_or(false),
+        Err(_) => false,
+    }
+}
+
+/// Write one completed phase's stamp; a symlinked stamp is refused, not followed.
+fn write_stamp(stamp: &Path, revision: &str) -> std::io::Result<()> {
+    if std::fs::symlink_metadata(stamp)
+        .map(|metadata| metadata.file_type().is_symlink())
+        .unwrap_or(false)
+    {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            format!("seed stamp {} is a symlink", stamp.display()),
+        ));
+    }
+    std::fs::write(stamp, format!("{revision}\n"))
+}
+
+/// Whether the installed desktop profile can be reused for `revision`: its
+/// stamp matches, its manifest parses and lists every bundled package, and
+/// both profile template files exist.
+fn desktop_profile_seeded(profile_dir: &Path, bundled: &[String], revision: Option<&str>) -> bool {
+    let Some(revision) = revision else {
+        return false;
+    };
+    if !stamp_matches(&profile_dir.join(SEED_STAMP_FILE), revision) {
+        return false;
+    }
+    let Ok(raw) = std::fs::read_to_string(profile_dir.join("package.json")) else {
+        return false;
+    };
+    let Ok(manifest) = serde_json::from_str::<serde_json::Value>(&raw) else {
+        return false;
+    };
+    let Some(dependencies) = manifest
+        .get("dependencies")
+        .and_then(|value| value.as_object())
+    else {
+        return false;
+    };
+    if !bundled.iter().all(|name| dependencies.contains_key(name)) {
+        return false;
+    }
+    profile_dir.join("cordis.patch.yml").is_file()
+        && profile_dir.join("pnpm-workspace.yaml").is_file()
+}
+
+/// Whether every bundled skill is installed under its name with its `SKILL.md`.
+fn bundled_skills_seeded(skills_dir: &Path, bundled: &[String], revision: Option<&str>) -> bool {
+    let Some(revision) = revision else {
+        return false;
+    };
+    stamp_matches(&skills_dir.join(SEED_STAMP_FILE), revision)
+        && bundled
+            .iter()
+            .all(|name| skills_dir.join(name).join("SKILL.md").is_file())
+}
+
 /// Copy each Resources/resources/profile-plugins package into the live desktop
 /// profile. Dest is `node_modules/<package.json name>` (scoped names included).
 /// First install appends the bundle; a later refresh does not put back a
-/// bundle the user removed. Every launch also heals leftover `dsh-client-app`
-/// and `dsh-context` rows so a 0.1.1 profile can boot on 0.1.2.
-fn install_bundled_profile_plugins(app: &AppHandle) {
-    let resource = match app.path().resource_dir() {
-        Ok(dir) => dir,
-        Err(_) => return,
+/// bundle the user removed. A revision stamp on a complete profile skips the
+/// copy; every launch also heals leftover `dsh-client-app` and `dsh-context`
+/// rows so a 0.1.1 profile can boot on 0.1.2.
+fn install_bundled_profile_plugins(app: &AppHandle, revision: Option<&str>) -> SeedOutcome {
+    let Ok(resource) = app.path().resource_dir() else {
+        return SeedOutcome::Absent;
     };
     let src_root = resource.join("resources").join("profile-plugins");
     if !src_root.is_dir() {
-        return;
+        return SeedOutcome::Absent;
     }
     let profile_dir = dsh_home().join("profiles").join("desktop");
     heal_desktop_profile_file(&profile_dir);
-    for src in bundled_profile_plugin_dirs(&src_root) {
-        let Some(name) = package_json_name(&src) else {
-            continue;
-        };
-        let _ = install_one_profile_plugin(&profile_dir, &name, &src);
+    let plugins = bundled_profile_plugin_dirs(&src_root)
+        .into_iter()
+        .filter_map(|src| package_json_name(&src).map(|name| (name, src)))
+        .collect::<Vec<_>>();
+    let bundled = plugins
+        .iter()
+        .map(|(name, _)| name.clone())
+        .collect::<Vec<_>>();
+    if desktop_profile_seeded(&profile_dir, &bundled, revision) {
+        return SeedOutcome::Skipped;
     }
+    let mut failed = false;
+    for (name, src) in &plugins {
+        if install_one_profile_plugin(&profile_dir, name, src).is_err() {
+            failed = true;
+        }
+    }
+    if !failed {
+        if let Some(revision) = revision {
+            let _ = std::fs::create_dir_all(&profile_dir);
+            let _ = write_stamp(&profile_dir.join(SEED_STAMP_FILE), revision);
+        }
+    }
+    SeedOutcome::Reseeded
 }
 
 /// Profile-plugin directories under Resources, including scoped `@scope/name` children.
@@ -472,42 +601,86 @@ fn install_one_profile_plugin(profile_dir: &Path, name: &str, src: &Path) -> std
 }
 
 /// Copy each Resources/resources/bundled-skills package into ~/.dsh/skills so
-/// every workspace can load fork-shipped skills (user-dsh, rank 400). Preserves
-/// local `.rate-limit-state.json` across refreshes.
-fn install_bundled_skills(app: &AppHandle) {
-    let resource = match app.path().resource_dir() {
-        Ok(dir) => dir,
-        Err(_) => return,
+/// every workspace can load fork-shipped skills (user-dsh, rank 400). A
+/// revision stamp skips the copy while every installed skill keeps its
+/// `SKILL.md`. Preserves local `.rate-limit-state.json` across refreshes.
+fn install_bundled_skills(app: &AppHandle, revision: Option<&str>) -> SeedOutcome {
+    let Ok(resource) = app.path().resource_dir() else {
+        return SeedOutcome::Absent;
     };
     let src_root = resource.join("resources").join("bundled-skills");
     if !src_root.is_dir() {
-        return;
+        return SeedOutcome::Absent;
     }
-    let dest_root = dsh_home().join("skills");
     let Ok(entries) = std::fs::read_dir(&src_root) else {
-        return;
+        return SeedOutcome::Absent;
     };
-    for entry in entries.flatten() {
-        let src = entry.path();
-        if !src.is_dir() || !src.join("SKILL.md").is_file() {
-            continue;
-        }
-        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
-            continue;
-        };
-        let dest = dest_root.join(&name);
+    let skills = entries
+        .flatten()
+        .filter_map(|entry| {
+            let src = entry.path();
+            if !src.is_dir() || !src.join("SKILL.md").is_file() {
+                return None;
+            }
+            entry
+                .file_name()
+                .to_str()
+                .map(|name| (name.to_string(), src))
+        })
+        .collect::<Vec<_>>();
+    let dest_root = dsh_home().join("skills");
+    let bundled = skills
+        .iter()
+        .map(|(name, _)| name.clone())
+        .collect::<Vec<_>>();
+    if bundled_skills_seeded(&dest_root, &bundled, revision) {
+        return SeedOutcome::Skipped;
+    }
+    let mut failed = false;
+    for (name, src) in &skills {
+        let dest = dest_root.join(name);
         let state_backup = dest.join(".rate-limit-state.json");
         let saved_state = std::fs::read(&state_backup).ok();
         if dest.exists() {
             let _ = std::fs::remove_dir_all(&dest);
         }
-        if copy_dir_recursive(&src, &dest).is_err() {
+        if copy_dir_recursive(src, &dest).is_err() {
+            failed = true;
             continue;
         }
         if let Some(bytes) = saved_state {
             let _ = std::fs::write(dest.join(".rate-limit-state.json"), bytes);
         }
     }
+    if !failed {
+        if let Some(revision) = revision {
+            let _ = std::fs::create_dir_all(&dest_root);
+            let _ = write_stamp(&dest_root.join(SEED_STAMP_FILE), revision);
+        }
+    }
+    SeedOutcome::Reseeded
+}
+
+/// Append this launch's seed decision to the companion log.
+fn log_seed_decision(
+    path: &Path,
+    revision: Option<&str>,
+    plugins: SeedOutcome,
+    skills: SeedOutcome,
+) {
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) else {
+        return;
+    };
+    let _ = writeln!(
+        file,
+        "--- desktop payload seed (revision {}): profile-plugins {}, bundled-skills {} ---",
+        revision.unwrap_or("absent"),
+        plugins.label(),
+        skills.label()
+    );
 }
 
 fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -541,9 +714,17 @@ pub fn run() {
             let cli_path = installed_runtime_cli(app.app_handle())?;
             let path_value = std::env::var("PATH").unwrap_or_default();
             let bundled = discover_bundled_resources(app.app_handle());
+            let seed_revision = read_seed_revision(app.app_handle());
             install_bundled_presets(app.app_handle());
-            install_bundled_profile_plugins(app.app_handle());
-            install_bundled_skills(app.app_handle());
+            let plugins =
+                install_bundled_profile_plugins(app.app_handle(), seed_revision.as_deref());
+            let skills = install_bundled_skills(app.app_handle(), seed_revision.as_deref());
+            log_seed_decision(
+                &cache_root.join("companion.log"),
+                seed_revision.as_deref(),
+                plugins,
+                skills,
+            );
             app.manage(AppState(Arc::new(Mutex::new(DesktopShell::new(
                 config_dir, cache_root, cli_path, path_value, bundled,
             )))));
@@ -559,4 +740,117 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running octopus_DSH desktop");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    const REVISION: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const OTHER_REVISION: &str = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
+
+    /**
+     * Write one complete desktop profile.
+     *
+     * @param root - tempdir root.
+     * @param stamp - seed revision to stamp, or `None`.
+     * @param dependencies - package names the manifest lists.
+     */
+    fn write_profile(root: &Path, stamp: Option<&str>, dependencies: &[&str]) {
+        let profile = root.join("profiles").join("desktop");
+        std::fs::create_dir_all(&profile).expect("profile dir");
+        let deps = dependencies
+            .iter()
+            .map(|name| {
+                (
+                    (*name).to_string(),
+                    serde_json::Value::String("1.0.0".into()),
+                )
+            })
+            .collect::<serde_json::Map<String, serde_json::Value>>();
+        let manifest = serde_json::json!({
+            "name": "dsh-profile-desktop",
+            "private": true,
+            "dependencies": deps,
+        });
+        std::fs::write(profile.join("package.json"), manifest.to_string()).expect("manifest");
+        std::fs::write(profile.join("cordis.patch.yml"), "[]\n").expect("patch layer");
+        std::fs::write(profile.join("pnpm-workspace.yaml"), "packages:\n  - .\n")
+            .expect("pnpm workspace");
+        if let Some(value) = stamp {
+            std::fs::write(profile.join(SEED_STAMP_FILE), format!("{value}\n")).expect("stamp");
+        }
+    }
+
+    #[test]
+    fn seed_revision_text_requires_64_lowercase_hex() {
+        assert!(is_seed_revision(REVISION));
+        assert!(!is_seed_revision(""));
+        assert!(!is_seed_revision(&REVISION.to_uppercase()));
+        assert!(!is_seed_revision(&REVISION[..63]));
+        assert!(!is_seed_revision(&format!("{REVISION}g")));
+        assert!(!is_seed_revision(
+            "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+        ));
+    }
+
+    #[test]
+    fn profile_seed_decision_requires_revision_stamp_and_complete_profile() {
+        let dir = tempdir().expect("tempdir");
+        let bundled = vec!["@scope/plugin".to_string()];
+        let profile = dir.path().join("profiles").join("desktop");
+        // Missing destination: nothing is installed yet.
+        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        write_profile(dir.path(), Some(REVISION), &["@scope/plugin"]);
+        // Matching revision on a complete profile.
+        assert!(desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        // Missing announced revision: the payload cannot be trusted.
+        assert!(!desktop_profile_seeded(&profile, &bundled, None));
+        // Stale stamp: a changed payload must copy again.
+        assert!(!desktop_profile_seeded(
+            &profile,
+            &bundled,
+            Some(OTHER_REVISION)
+        ));
+        // Missing profile manifest.
+        std::fs::remove_file(profile.join("package.json")).expect("remove manifest");
+        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        // Manifest without the bundled dependency.
+        write_profile(dir.path(), Some(REVISION), &[]);
+        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        // Missing profile template file.
+        write_profile(dir.path(), Some(REVISION), &["@scope/plugin"]);
+        std::fs::remove_file(profile.join("cordis.patch.yml")).expect("remove patch layer");
+        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+    }
+
+    #[test]
+    fn bundled_skill_seed_requires_stamp_and_every_skill_md() {
+        let dir = tempdir().expect("tempdir");
+        let skills = dir.path().join("skills");
+        let bundled = vec!["wechat".to_string()];
+        assert!(!bundled_skills_seeded(&skills, &bundled, Some(REVISION)));
+        std::fs::create_dir_all(skills.join("wechat")).expect("skill dir");
+        std::fs::write(skills.join(SEED_STAMP_FILE), format!("{REVISION}\n")).expect("stamp");
+        // The stamp alone is not enough while a bundled skill is missing.
+        assert!(!bundled_skills_seeded(&skills, &bundled, Some(REVISION)));
+        std::fs::write(skills.join("wechat").join("SKILL.md"), "# skill\n").expect("skill file");
+        assert!(bundled_skills_seeded(&skills, &bundled, Some(REVISION)));
+        std::fs::remove_file(skills.join("wechat").join("SKILL.md")).expect("remove skill");
+        assert!(!bundled_skills_seeded(&skills, &bundled, Some(REVISION)));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn seed_stamp_symlink_is_never_trusted() {
+        let dir = tempdir().expect("tempdir");
+        write_profile(dir.path(), None, &[]);
+        let profile = dir.path().join("profiles").join("desktop");
+        let target = dir.path().join("elsewhere");
+        std::fs::write(&target, format!("{REVISION}\n")).expect("target");
+        std::os::unix::fs::symlink(&target, profile.join(SEED_STAMP_FILE)).expect("symlink");
+        assert!(!desktop_profile_seeded(&profile, &[], Some(REVISION)));
+        assert!(write_stamp(&profile.join(SEED_STAMP_FILE), REVISION).is_err());
+    }
 }

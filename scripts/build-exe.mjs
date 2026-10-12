@@ -9,6 +9,7 @@
  *   resources/harness/            — @deepseek-ai/dsh package (with desktop-companion)
  *   resources/profile-plugins/    — fork-owned profile bundles (npm + workspace pins)
  *   resources/bundled-skills/     — fork-owned skills seeded to ~/.dsh/skills on launch
+ *   resources/seed-rev.txt        — content revision of the seeded trees (shell skip marker)
  *   resources/presets/            — optional bundled presets; empty without --presets
  *   resources/kb-runtime/         — relocatable octopus-kb PyInstaller onedir
  *
@@ -283,6 +284,10 @@ run(process.execPath, [
 ])
 ok('Bundled skills staged')
 
+info('Recording the seed revision')
+run(process.execPath, [join(REPO_ROOT, 'scripts', 'write-seed-rev.mjs'), RESOURCES])
+ok('Seed revision recorded')
+
 // ── 5. Freeze the KB sidecar (PyInstaller cannot cross-compile) ─────────────
 
 if (skipKb) {
@@ -358,6 +363,12 @@ if (!existsSync(nodeDest) || statSync(nodeDest).size < 1_000_000) {
   fail(`node.exe is missing, empty, or a compile-time placeholder at ${nodeDest} — the Node download/extract phase did not complete`)
 }
 if (statSync(cliDest).size === 0) fail(`installed-runtime-cli.js is empty at ${cliDest}`)
+const seedRevDest = join(RESOURCES, 'seed-rev.txt')
+// createResourcePlaceholders leaves an empty file that a bare existence check
+// would accept; only a recorded 64-hex revision may pass.
+if (!/^[0-9a-f]{64}$/.test(existsSync(seedRevDest) ? readFileSync(seedRevDest, 'utf8').trim() : '')) {
+  fail(`seed-rev.txt is missing, empty, or not 64 lowercase hex characters at ${seedRevDest} — the seed revision phase did not complete`)
+}
 if (!existsSync(join(RESOURCES, 'build-info.json'))) {
   fail('staged payload missing build-info.json — the readiness gate reads the declared payload modes from it')
 }

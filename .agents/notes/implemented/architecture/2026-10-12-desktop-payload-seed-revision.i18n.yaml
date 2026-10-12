@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-10-12-desktop-payload-seed-revision.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-10-12-desktop-payload-seed-revision.md
+/agent-note-skip-the-desktop-payload-reseed-while-the-bundled-revision-is-unchanged:
+  en: 28d81604f0ab15bb
+  zh: 8272a7ad2e2a6f60
+/agent-note-skip-the-desktop-payload-reseed-while-the-bundled-revision-is-unchanged/problem:
+  en: c57176471e687489
+  zh: 153c8be468583e6c
+/agent-note-skip-the-desktop-payload-reseed-while-the-bundled-revision-is-unchanged/decision:
+  en: 3ec762cec4d9ff6e
+  zh: 2ff18b418b526a34
+/agent-note-skip-the-desktop-payload-reseed-while-the-bundled-revision-is-unchanged/verification:
+  en: 3124260526a65be8
+  zh: 6e7d0c8bdb49d1ae
+/agent-note-skip-the-desktop-payload-reseed-while-the-bundled-revision-is-unchanged/alternatives-considered:
+  en: 0a7fe59fed3846b2
+  zh: 19bd658d6be3497f
+/agent-note-skip-the-desktop-payload-reseed-while-the-bundled-revision-is-unchanged/consequences:
+  en: 4730a5472a463e55
+  zh: 8ded5f1fa3064ce8

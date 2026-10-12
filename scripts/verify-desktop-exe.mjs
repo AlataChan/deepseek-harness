@@ -94,6 +94,19 @@ if (buildInfo === undefined) {
   ok(`build-info.json: node ${String(buildInfo.node)}, runtime ${String(buildInfo.runtimeVersion)}, kb ${String(buildInfo.kb)}, presets ${String(buildInfo.presets)}`)
 }
 
+// ── 1c. Seed revision ───────────────────────────────────────────────────────
+//
+// The shell skips reseeding only when this revision matches its installed
+// stamp, so an empty compile-time placeholder must not pass as a revision.
+
+const seedRevPath = join(RES, 'seed-rev.txt')
+const seedRevText = existsSync(seedRevPath) ? readFileSync(seedRevPath, 'utf8').trim() : ''
+if (/^[0-9a-f]{64}$/.test(seedRevText)) {
+  ok(`seed-rev.txt present (${seedRevText.slice(0, 12)}…)`)
+} else {
+  bad('resources/seed-rev.txt missing, empty, or not 64 lowercase hex characters — the seed revision phase did not complete')
+}
+
 // ── 2. Embedded Node ────────────────────────────────────────────────────────
 
 const nodeExe = join(RES, 'node.exe')

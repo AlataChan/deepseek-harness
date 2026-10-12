@@ -18,9 +18,9 @@ Status: implemented
 
 ### Windows 构建脚本
 
-`scripts/build-exe.mjs` 逐阶段镜像 `scripts/build-dmg.sh`：预检（Windows 平台、pnpm、cargo/rustc、除非 `--skip-kb` 否则需要 Python、固定版本的 `pnpm dlx @tauri-apps/cli@2.11.4`、已构建的工作区 lib）→ 在负载组装之前以 release 模式编译 `dsh-desktop`，让 Rust 错误在几分钟内暴露 → 下载 `node-v24.14.0-win-x64.zip`，对照该版本的 `SHASUMS256.txt` 校验 SHA-256，用 System32 的 `tar.exe` 解压（bsdtar 读 zip；Node 24 没有内置解压）→ `scripts/collect-runtime-deps.mjs` → 播种 profile 插件与随包技能 → 除非 `--skip-kb` 否则冻结 KB sidecar → 暂存 preset → 用 `pnpm dlx @tauri-apps/cli@2.11.4 build --bundles nsis` 打包 → 把安装包复制到 `dist/octopus_DSH_Setup.exe`。Tauri CLI 失败时，报错信息给出 cargo 回退路径（`cargo install --locked tauri-cli@2.11.4`，然后在 `apps/desktop/src-tauri` 运行 `cargo tauri build --bundles nsis`）。
+`scripts/build-exe.mjs` 逐阶段镜像 `scripts/build-dmg.sh`：预检（Windows 平台、pnpm、cargo/rustc、除非 `--skip-kb` 否则需要 Python、固定版本的 `pnpm dlx @tauri-apps/cli@2.11.4`、已构建的工作区 lib）→ 在负载组装之前以 release 模式编译 `dsh-desktop`，让 Rust 错误在几分钟内暴露 → 下载 `node-v24.14.0-win-x64.zip`，对照该版本的 `SHASUMS256.txt` 校验 SHA-256，用 System32 的 `tar.exe` 解压（bsdtar 读 zip；Node 24 没有内置解压）→ `scripts/collect-runtime-deps.mjs` → 播种 profile 插件与随包技能 → 用 `scripts/write-seed-rev.mjs` 记录播种树的内容修订 → 除非 `--skip-kb` 否则冻结 KB sidecar → 暂存 preset → 用 `pnpm dlx @tauri-apps/cli@2.11.4 build --bundles nsis` 打包 → 把安装包复制到 `dist/octopus_DSH_Setup.exe`。Tauri CLI 失败时，报错信息给出 cargo 回退路径（`cargo install --locked tauri-cli@2.11.4`，然后在 `apps/desktop/src-tauri` 运行 `cargo tauri build --bundles nsis`）。
 
-`tauri-build` 在编译期解析合并后的平台配置里的资源路径，因此快速失败的编译看不到缺失资源；编译步骤先按 `tauri.windows.conf.json` 的 `bundle.resources` 逐条创建空文件或空目录占位，每个暂存阶段覆盖自己的占位，负载检查则拒绝仍为空的文件与空的播种目录。
+`tauri-build` 在编译期解析合并后的平台配置里的资源路径，因此快速失败的编译看不到缺失资源；编译步骤先按 `tauri.windows.conf.json` 的 `bundle.resources` 逐条创建空文件或空目录占位，每个暂存阶段覆盖自己的占位，负载检查则拒绝仍为空的文件、空的播种目录，以及缺失或不是 64 个小写十六进制字符的 `resources/seed-rev.txt`。
 
 ### 安装包配置
 

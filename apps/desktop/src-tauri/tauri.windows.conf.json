@@ -6,6 +6,7 @@
     "resources": [
       "resources/installed-runtime-cli.js",
       "resources/build-info.json",
+      "resources/seed-rev.txt",
       "resources/node.exe",
       "resources/harness",
       "resources/profile-plugins",

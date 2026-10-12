@@ -172,6 +172,11 @@ node "$REPO_ROOT/scripts/seed-desktop-bundled-skills.mjs" --out "$SKILL_RESOURCE
   || fail "Failed to prepare bundled skills"
 ok "Bundled skills embedded"
 
+info "Recording the seed revision..."
+node "$REPO_ROOT/scripts/write-seed-rev.mjs" "$RESOURCES" \
+  || fail "Failed to record the seed revision"
+ok "Seed revision recorded"
+
 # ── 3b. Embed relocatable Python sidecar ────────────────────────────────────
 
 info "Freezing and embedding kb-runtime..."

@@ -1,5 +1,7 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -95,6 +97,38 @@ describe('Windows desktop build scripts', () => {
       const text = read(path)
       expect(text).toContain('builtins.yaml')
       expect(text).toContain('octopus_kb_compound')
+    }
+  })
+})
+
+describe('desktop seed revision', () => {
+  it('writes a stable 64-hex revision and changes it when one payload byte changes', () => {
+    const resources = mkdtempSync(join(tmpdir(), 'dsh-seed-rev-'))
+    try {
+      const plugin = join(resources, 'profile-plugins', '@scope', 'plugin')
+      const skill = join(resources, 'bundled-skills', 'wechat')
+      mkdirSync(plugin, { recursive: true })
+      mkdirSync(skill, { recursive: true })
+      writeFileSync(join(plugin, 'package.json'), '{ "name": "@scope/plugin" }\n')
+      writeFileSync(join(skill, 'SKILL.md'), '# first\n')
+      const record = (): string => {
+        const result = spawnSync(process.execPath, [resolve(root, 'scripts/write-seed-rev.mjs'), resources], { encoding: 'utf8' })
+        expect(result.status, result.stderr).toBe(0)
+        return readFileSync(join(resources, 'seed-rev.txt'), 'utf8')
+      }
+      const first = record()
+      expect(first.trim()).toMatch(/^[0-9a-f]{64}$/)
+      expect(record()).toBe(first)
+      writeFileSync(join(skill, 'SKILL.md'), '# firsT\n')
+      expect(record()).not.toBe(first)
+    } finally {
+      rmSync(resources, { recursive: true, force: true })
+    }
+  })
+
+  it('records the revision in both build scripts', () => {
+    for (const path of ['scripts/build-exe.mjs', 'scripts/build-dmg.sh']) {
+      expect(read(path)).toContain('write-seed-rev.mjs')
     }
   })
 })

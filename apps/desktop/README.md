@@ -36,6 +36,12 @@ Release window binaries require Tauri's production asset protocol. Use `cargo ta
 
 Cached Client script URLs encode the entire absolute path and use the platform's asset protocol, so loading is independent of the application's working directory.
 
+## Launch behavior
+
+The window paints a shell-owned status line from the static `index.html` markup before any bundle runs, switches it to a first-start hint after 20 seconds, and replaces it with the failure reason when the boot rejects. The WebView waits up to 120 s for `control/ready` (`DEFAULT_HANDSHAKE_TIMEOUT_MS`); a timeout reports a failed connection, it does not bound a healthy boot.
+
+On launch the shell copies `resources/profile-plugins/` into `$DSH_HOME/profiles/desktop/node_modules/` and `resources/bundled-skills/` into `$DSH_HOME/skills/`. The packaging scripts hash both trees into `resources/seed-rev.txt` (`scripts/write-seed-rev.mjs`); a completed copy stamps the installed tree with `.dsh-seed-rev`, and the next launch skips that copy while the revision matches and the installed tree stays complete — a parseable profile manifest listing every bundled package, both profile template files, and every skill's `SKILL.md`. Any payload change, including a same-version rebuild, changes the revision and forces a copy. Each launch appends its seed decision to `companion.log` under the app-data directory.
+
 ## Known Limitations and Deferred Work
 
 - **Unsigned installers** — no signing, notarization, updater, or public download.
