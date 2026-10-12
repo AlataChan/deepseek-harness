@@ -30,7 +30,7 @@ pnpm run build:desktop
 
 `build:desktop:frontend` builds Host libraries and the WebView assets. `verify:desktop` rejects `eval(`, `new Function(`, and remaining `process` access in those assets. `build:desktop` then runs `cargo tauri build`. The first window is the product home. An empty workspace root becomes the user home directory. A binary that still lives in this checkout uses `apps/cli` instead of a `PATH` `dsh` that may lack the desktop companion. Settings stores those values in `$configDir/runtime-config.json`. Changing a live workspace root reloads the WebView so the next page load performs exactly one `carrier_open`.
 
-Assembled tests that drive the Rust relay need `pnpm run build:desktop:test-deps` (or the spec `beforeAll`) so `apps/cli/lib/desktop-companion.js` and `carrier-harness` exist.
+Assembled tests that drive the Rust relay need `pnpm run build:desktop:test-deps` (or the spec `beforeAll`) so `apps/cli/lib/desktop-companion.js` and `carrier-harness` exist. The harness-only `carrier_close` command runs the production shutdown flow, including closing the companion's input pipe; harness EOF also stops its owned companion.
 
 Release window binaries require Tauri's production asset protocol. Use `cargo tauri build`; a plain `cargo build --release` is rejected because it selects the development URL instead of the packaged frontend.
 

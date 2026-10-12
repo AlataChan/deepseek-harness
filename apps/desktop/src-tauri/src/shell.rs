@@ -268,6 +268,12 @@ impl DesktopShell {
         self.generation_dir.as_deref()
     }
 
+    /// Stop the harness-owned companion through the production shutdown flow.
+    #[cfg(feature = "harness")]
+    pub fn shutdown_for_harness(&mut self) -> Result<Option<ShutdownOutcome>, ShellError> {
+        self.stop_child()
+    }
+
     /// Install a resolve result without running the CLI (tests only).
     #[cfg(test)]
     pub fn set_resolved_for_tests(&mut self, resolved: ResolvedRuntime) {

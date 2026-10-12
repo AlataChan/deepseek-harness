@@ -1,5 +1,6 @@
 //! NDJSON stand-in for the Tauri invoke + Channel surface.
 
+use dsh_desktop::carrier::ShutdownOutcome;
 use dsh_desktop::{forward_carrier_events, CacheBundleArgs, DesktopShell, RuntimeConfig};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -113,6 +114,13 @@ fn dispatch(
                 Err(error) => reply_err(out, request.id, error),
             }
         }
+        "carrier_close" => match guard.shutdown_for_harness() {
+            Ok(Some(ShutdownOutcome::Killed)) => {
+                reply_err(out, request.id, "companion shutdown exceeded 5s")
+            }
+            Ok(_) => reply_ok(out, request.id, Value::Null),
+            Err(error) => reply_err(out, request.id, error),
+        },
         "cache_bundle" => {
             let args: CacheBundleArgs =
                 serde_json::from_value(request.args).map_err(|error| error.to_string())?;
@@ -175,4 +183,9 @@ fn main() {
             break;
         }
     }
+    if let Ok(mut guard) = shell.lock() {
+        if let Err(error) = guard.shutdown_for_harness() {
+            eprintln!("carrier-harness shutdown: {error}");
+        }
+    };
 }

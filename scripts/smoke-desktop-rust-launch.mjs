@@ -28,8 +28,6 @@ let sequence = 0
 let stderr = ''
 let readyResolve
 let readyReject
-let companionExitResolve
-const companionExit = new Promise(resolveExit => { companionExitResolve = resolveExit })
 const ready = new Promise((resolveReady, rejectReady) => {
   readyResolve = resolveReady
   readyReject = rejectReady
@@ -66,7 +64,6 @@ lines.on('line', line => {
       if (frame.type === 'control/ready') readyResolve(frame)
       if (frame.type === 'control/error') readyReject(new Error(JSON.stringify(frame)))
     } else if (record.event === 'closed' || record.event === 'child-exit') {
-      if (record.event === 'child-exit') companionExitResolve(record.data.code)
       readyReject(new Error(JSON.stringify(record)))
     }
   } catch (error) {
@@ -126,11 +123,7 @@ try {
     if (!scriptSources.includes(assetSource)) throw new Error(`Desktop CSP blocks cached Client scripts: ${assetSource}`)
     console.log('Rust cached Client URL preserves its absolute path and platform protocol')
     console.log(`Rust shell resolved installed runtime and received control/ready (${runtime.runtimeVersion})`)
-    await request('carrier_send', { line: JSON.stringify({
-      type: 'wire/message', encoded: JSON.stringify({ type: 'control/shutdown' }),
-    }) })
-    const code = await companionExit
-    if (code !== 0) throw new Error(`Installed companion shutdown exited (${code})`)
+    await request('carrier_close')
     console.log('Rust shell observed companion exit before releasing its workspace')
   })()])
 } finally {
