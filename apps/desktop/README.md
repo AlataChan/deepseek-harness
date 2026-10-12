@@ -15,7 +15,7 @@ Recorded while implementing this tree:
 
 - A matching installed or source-built `@deepseek-ai/dsh` runtime on the same machine.
 - Development uses a real `node` executable; distributable DMG and Windows EXE installers bundle Node and the matching Harness runtime.
-- macOS builds `.app` and `.dmg` through `scripts/build-dmg.sh`; `.github/workflows/desktop-windows.yml` builds the Windows NSIS `.exe` through `scripts/build-exe.mjs`. Both formats use the same desktop plugins. Windows readiness includes installed-runtime resolution and companion handshake through the Rust shell with canonical Windows paths.
+- macOS builds `.app` and `.dmg` through `scripts/build-dmg.sh`; `.github/workflows/desktop-windows.yml` builds the Windows NSIS `.exe` through `scripts/build-exe.mjs`. Both formats use the same desktop plugins. Windows readiness includes installed-runtime resolution and companion handshake through the Rust shell with canonical Windows paths, then waits for companion shutdown before deleting the test workspace.
 
 ## Build and run
 

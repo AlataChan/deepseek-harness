@@ -82,7 +82,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: apps/desktop/src-tauri/target
-          key: desktop-windows-target-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+          key: desktop-windows-target-production-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock', 'apps/desktop/src-tauri/src/**', 'apps/desktop/src-tauri/build.rs', 'apps/desktop/src-tauri/tauri*.json') }}
           restore-keys: |
             desktop-windows-target-
       - name: Restore Tauri toolchain cache (NSIS)
