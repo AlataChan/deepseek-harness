@@ -6,7 +6,7 @@ English | [中文](2026-10-12-desktop-payload-seed-revision.zh.md)
 
 ## Problem
 
-Every desktop launch deleted and re-copied `resources/profile-plugins/` into `$DSH_HOME/profiles/desktop/node_modules/` and `resources/bundled-skills/` into `$DSH_HOME/skills/`. The shipped payload is 12,981 files / 172 MB, and the copy dominates a cold Windows boot: the WebView gives up before `control/ready` and the home page reports `desktop companion handshake timed out`. The copy also rewrites the module files the companion loads immediately afterwards, so a warm file cache buys nothing.
+Every desktop launch deleted and re-copied `resources/profile-plugins/` into `$DSH_HOME/profiles/desktop/node_modules/` and `resources/bundled-skills/` into `$DSH_HOME/skills/`. The shipped payload is 12,981 files / 172 MB; on Windows that copy is the largest avoidable cost before the companion boots, and it rewrites the module files the companion loads immediately afterwards, so a warm file cache buys nothing. The WebView's 15 s handshake deadline then expired during a boot the copy had made cold, and the home page reported `desktop companion handshake timed out`.
 
 The copy exists for upgrades — a newer installer must replace the installed copies — but nothing recorded which payload an installed tree already carried, so the shell could not tell "same payload" from "changed payload" and copied unconditionally.
 

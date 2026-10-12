@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-每次桌面启动都会删除并重新拷贝 `resources/profile-plugins/` 到 `$DSH_HOME/profiles/desktop/node_modules/`、`resources/bundled-skills/` 到 `$DSH_HOME/skills/`。随包负载有 12,981 个文件 / 172 MB，这次拷贝占满了 Windows 冷启动：WebView 在 `control/ready` 之前放弃，首页报 `desktop companion handshake timed out`。拷贝还会重写 companion 紧接着加载的模块文件，所以热文件缓存毫无收益。
+每次桌面启动都会删除并重新拷贝 `resources/profile-plugins/` 到 `$DSH_HOME/profiles/desktop/node_modules/`、`resources/bundled-skills/` 到 `$DSH_HOME/skills/`。随包负载有 12,981 个文件 / 172 MB；在 Windows 上，这次拷贝是 companion 启动前最大的可避免开销，它还会重写 companion 紧接着加载的模块文件，所以热文件缓存毫无收益。WebView 的 15 秒握手期限就在这次被拷贝拖冷的启动中到期，首页报出 `desktop companion handshake timed out`。
 
 拷贝是为升级而存在的——更新的安装包必须替换已安装的副本——但没有任何东西记录已安装树携带的是哪个负载，外壳分不清「负载相同」与「负载已变」，只能无条件拷贝。
 
