@@ -12,7 +12,7 @@ afterEach(() => {
 })
 
 const t = (key: keyof typeof zh, params?: Record<string, unknown>) =>
-  String(zh[key]).replace(/\{(\w+)\}/g, (match, name: string) =>
+  zh[key].replace(/\{(\w+)\}/g, (match, name: string) =>
     (params ?? {})[name] === undefined ? match : String((params ?? {})[name]))
 
 function dockProps(

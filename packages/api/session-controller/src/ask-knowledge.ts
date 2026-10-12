@@ -532,7 +532,7 @@ export class SessionAskKnowledgeController {
           workspace: attached ? workspace : undefined,
           sessionId,
         })
-        throw mapAskKnowledgeError(error, signal)
+        mapAskKnowledgeError(error, signal)
       }
     })
   }

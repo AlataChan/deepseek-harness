@@ -23,6 +23,7 @@ interface SessionRow {
  * @param entry - registered slot entry.
  * @returns the entry's injected business face.
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- Fixtures own the erased factory result.
 function injectedOf<T>(
   entry: { readonly inject?: ((...args: never[]) => Record<string, unknown>) | undefined } | undefined,
 ): T {
