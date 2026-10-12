@@ -203,7 +203,7 @@ createResourcePlaceholders(WINDOWS_CONFIG)
 // tauri-build embeds frontendDist at compile time, so the WebView assets must
 // exist before cargo runs; `tauri build` reruns this idempotently later.
 run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'build'], { shell: process.platform === 'win32' })
-run('cargo', ['build', '--release', '--manifest-path', join(TAURI_DIR, 'Cargo.toml')])
+run('cargo', ['build', '--release', '--features', 'tauri/custom-protocol', '--manifest-path', join(TAURI_DIR, 'Cargo.toml')])
 ok('Crate compiled')
 
 // ── 2. Download Node.js ─────────────────────────────────────────────────────
