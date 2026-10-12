@@ -40,6 +40,14 @@ import './desktop.css'
 
 const CLIENT_MODULES_ID = '@deepseek-ai/dsh-client-modules'
 
+/**
+ * Default handshake deadline. A cold companion boot on Windows (profile
+ * seeding plus module-graph import) can exceed one minute, so the deadline is
+ * generous; a timeout reports a failed connection instead of bounding boot
+ * time, and callers with a known-fast boot may inject a shorter one.
+ */
+export const DEFAULT_HANDSHAKE_TIMEOUT_MS = 120_000
+
 let bootstrapStarted = false
 let carrierOpened = false
 let transport: ProcessTransport | undefined
@@ -372,7 +380,7 @@ async function finishDesktopClient(
   }, sendRecord)
 
   const timeout = delayReject(
-    options.handshakeTimeoutMs ?? 15_000,
+    options.handshakeTimeoutMs ?? DEFAULT_HANDSHAKE_TIMEOUT_MS,
     'desktop companion handshake timed out',
   )
   const ready = await Promise.race([handshake.next(), timeout.promise]).finally(() => {

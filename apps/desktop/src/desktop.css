@@ -13,6 +13,15 @@ html {
   --dsh-desktop-chrome-right: 0px;
 }
 
+/* Painted from the static index.html markup before any bundle runs. */
+.dsh-boot-status {
+  margin: 0;
+  padding: 24px;
+  font-size: 14px;
+  line-height: 22px;
+  color: #61666b;
+}
+
 body {
   font-family: var(
     --dsw-font-family,

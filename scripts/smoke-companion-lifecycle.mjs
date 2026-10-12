@@ -44,6 +44,9 @@ for (const [label, path] of [['embedded node', nodeBin], ['companion entry', com
 /** The protocol version the shell announces; a mismatch is a refused handshake. */
 const PROTOCOL_VERSION = 2
 
+/** Handshake window; matches the desktop WebView deadline for a cold Windows boot. */
+const HANDSHAKE_DEADLINE_MS = 120_000
+
 const workspaceRoot = process.env.HOME ?? homedir()
 const appData = process.env.OCTOPUS_APP_DATA ?? join(workspaceRoot, '.octopus-dsh-smoke-app-data')
 const sidecarHome = process.env.OCTOPUS_SIDECAR_HOME ?? join(resources, 'kb-runtime')
@@ -132,6 +135,7 @@ function sendFrame(frame) {
  */
 const wait = (ms) => new Promise((r) => { setTimeout(r, ms) })
 
+const helloAt = Date.now()
 sendFrame({
   type: 'control/hello',
   protocolVersion: PROTOCOL_VERSION,
@@ -141,8 +145,9 @@ sendFrame({
 })
 
 // Handshake window, then the hold that catches a companion which dies after ready.
-const deadline = Date.now() + 20_000
+const deadline = helloAt + HANDSHAKE_DEADLINE_MS
 while (!ready && !exited && Date.now() < deadline) await wait(200)
+const readyMs = Date.now() - helloAt
 
 /**
  * Report and exit.
@@ -163,10 +168,10 @@ if (exited) {
   finish(1, `smoke: companion exited before ready (code ${String(exitCode)})`)
 }
 if (!ready) {
-  finish(1, 'smoke: companion never answered control/ready within 20s')
+  finish(1, `smoke: companion never answered control/ready within ${String(HANDSHAKE_DEADLINE_MS / 1000)}s`)
 }
 
-console.log(`smoke: handshake ok (runtime ${readyVersion ?? 'unknown'}); holding ${String(holdMs)}ms`)
+console.log(`smoke: handshake ok (runtime ${readyVersion ?? 'unknown'}) in ${String(readyMs)}ms; holding ${String(holdMs)}ms`)
 await wait(holdMs)
 
 if (exited) {
@@ -180,4 +185,4 @@ if (child.stdin.destroyed || child.stdin.writableEnded) {
   finish(1, 'smoke: companion stdin closed after ready — the shell would report Broken pipe')
 }
 
-finish(0, `smoke: companion alive with an open pipe after ready + ${String(holdMs)}ms hold`)
+finish(0, `smoke: companion alive with an open pipe after ready in ${String(readyMs)}ms + ${String(holdMs)}ms hold`)

@@ -215,7 +215,8 @@ head('Driving installed runtime through the Rust shell')
 const rustHarness = join(REPO_ROOT, 'apps', 'desktop', 'src-tauri', 'target', 'debug', 'carrier-harness.exe')
 const rustLaunch = capture(nodeExe, [join(REPO_ROOT, 'scripts', 'smoke-desktop-rust-launch.mjs'), APP, rustHarness], {
   env: smokeEnv,
-  timeout: 45_000,
+  // Exceeds the Rust smoke's own 120 s handshake deadline plus teardown.
+  timeout: 150_000,
 })
 if (rustLaunch.status === 0) {
   ok(rustLaunch.stdout.trim())

@@ -78,9 +78,13 @@ function request(cmd, args = {}) {
     child.stdin.write(`${JSON.stringify({ id, cmd, args })}\n`)
   })
 }
+
+/** Handshake deadline through the production Rust shell; a cold Windows boot can exceed one minute. */
+const LAUNCH_DEADLINE_MS = 120_000
+
 let timer
 const deadline = new Promise((_, reject) => {
-  timer = setTimeout(() => reject(new Error(`Rust launch exceeded 30s: ${stderr}`)), 30_000)
+  timer = setTimeout(() => reject(new Error(`Rust launch exceeded ${String(LAUNCH_DEADLINE_MS / 1000)}s: ${stderr}`)), LAUNCH_DEADLINE_MS)
 })
 try {
   if (process.platform === 'win32') {

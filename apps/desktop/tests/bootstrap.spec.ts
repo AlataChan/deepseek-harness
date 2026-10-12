@@ -6,6 +6,7 @@ import { VSCODE_CARRIER_PROTOCOL_VERSION } from '@deepseek-ai/dsh-client-connect
 import type { ClientTransportHooks } from '@deepseek-ai/dsh-client-connection/client'
 import {
   bootDesktopClient,
+  DEFAULT_HANDSHAKE_TIMEOUT_MS,
   resetDesktopBootstrapForTests,
 } from '../src/bootstrap.ts'
 import type { DesktopDownlinkEvent, DesktopShellPort } from '../src/harness-port.ts'
@@ -359,6 +360,51 @@ describe('bootDesktopClient', () => {
       })
       expect(result.status).toBe('ready')
       await vi.advanceTimersByTimeAsync(16_000)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not fire the default handshake deadline before 120 s', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      expect(DEFAULT_HANDSHAKE_TIMEOUT_MS).toBe(120_000)
+      const port: DesktopShellPort = {
+        async invoke(cmd) {
+          if (cmd === 'runtime_get_config') return { workspaceRoot: '/tmp/project' }
+          if (cmd === 'runtime_resolve') {
+            return {
+              nodePath: '/usr/bin/node',
+              packageRoot: '/tmp/pkg',
+              companionEntry: '/tmp/companion.js',
+              runtimeVersion: '0.0.1-test',
+              discoveryPath: '/usr/bin/node',
+            }
+          }
+          if (cmd === 'carrier_open') {
+            return { generationId: 'gen-1', runtimeVersion: '0.0.1-test', workspaceRoot: '/tmp/project' }
+          }
+          if (cmd === 'carrier_send') return undefined
+          throw new Error(`unexpected command ${cmd}`)
+        },
+        createChannel: () => ({}),
+      }
+      let settled = false
+      const booting = bootDesktopClient({
+        port,
+        root: document.createElement('div'),
+        extensionVersion: 'test',
+      }).then((result) => {
+        settled = true
+        return result
+      })
+      await vi.advanceTimersByTimeAsync(DEFAULT_HANDSHAKE_TIMEOUT_MS - 1)
+      expect(settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(2 * DEFAULT_HANDSHAKE_TIMEOUT_MS)
+      await expect(booting).resolves.toEqual({
+        status: 'home',
+        reason: expect.stringMatching(/timed out/),
+      })
     } finally {
       vi.useRealTimers()
     }
