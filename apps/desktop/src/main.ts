@@ -3,7 +3,7 @@
 import { bootDesktopClient } from './bootstrap.ts'
 import { createTauriShellPort } from './harness-port.ts'
 
-const DESKTOP_APP_VERSION = '0.1.2-rc.1'
+const DESKTOP_APP_VERSION = '0.1.2-rc.2'
 
 /** When the static first-start hint becomes visible. */
 const STILL_STARTING_AFTER_MS = 20_000
