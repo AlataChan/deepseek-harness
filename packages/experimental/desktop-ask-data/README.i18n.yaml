@@ -4,19 +4,19 @@
 #   pnpm run verify-translation-pairing --write packages/experimental/desktop-ask-data/README.md
 /:
   en: 41ec85e6175e9c2c
-  zh: 6ce3d9bbf3119a15
+  zh: 66dfb778391e8cf4
 /deepseek-ai-dsh-experimental-desktop-ask-data:
   en: e35d703b491ed701
   zh: 53e5bebc22a26a8b
 /deepseek-ai-dsh-experimental-desktop-ask-data/summary:
-  en: 6f37b1e832014d24
-  zh: 593158c1c9599c8c
+  en: 6126dd728a657792
+  zh: db74163aeff80e3b
 /deepseek-ai-dsh-experimental-desktop-ask-data/table-of-contents:
   en: 6d459d1504ccbad3
   zh: 253dbe6c2697be14
 /deepseek-ai-dsh-experimental-desktop-ask-data/reuse-spreadsheet-import:
   en: ede17dadb87c38ec
-  zh: 4b6805552f60ffec
+  zh: dcb6131cf0b65536
 /deepseek-ai-dsh-experimental-desktop-ask-data/config:
   en: 2b6ecfd253dcf175
   zh: f78d67b21b1b5eca
@@ -36,8 +36,8 @@
   en: d769f2f039b2ad08
   zh: 6a25bfb0349b7ff7
 /deepseek-ai-dsh-experimental-desktop-ask-data/known-limitations-and-deferred-work:
-  en: fcc4f0113a2b8c90
-  zh: 205938e000b16434
+  en: b5b7b7bac53299dc
+  zh: 3be302a04e1fc6aa
 /deepseek-ai-dsh-experimental-desktop-ask-data/known-limitations-and-deferred-work/dev-note:
   en: 8f49e9c40b1e81c0
   zh: 095fa5395f14a7c6

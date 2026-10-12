@@ -256,6 +256,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly ruleId?: string
       readonly limit?: number
     }
+    'session/transcript-audio-unavailable': {}
+    'session/transcript-audio-failed': {
+      readonly code: string
+      readonly ruleId?: string
+      readonly limit?: number
+    }
     'subagent/not-found': {
       readonly parentSessionId: SessionId
       readonly childSessionId: SessionId
@@ -319,6 +325,25 @@ export interface SessionImportMediaBytesRequest {
 export interface SessionSaveMediaWorkAsRequest {
   readonly artifactId: string
   readonly directory: string
+  readonly filename: string
+}
+
+/** Decoded-byte cap for `importTranscriptAudio`; matches overlay `maxUploadMiB` default. */
+export const TRANSCRIPT_AUDIO_MAX_DECODED_BYTES = 64 * 1024 * 1024
+
+/** Client-selected recording bytes for workspace staging. `bytes` is canonical base64. */
+export interface SessionImportTranscriptAudioRequest {
+  readonly filename: string
+  readonly bytes: string
+  readonly sessionId: SessionId
+  readonly workspaceId?: string
+}
+
+/** Workspace-relative location of one staged recording. */
+export interface SessionImportTranscriptAudioValue {
+  /** Workspace-relative POSIX path the transcription tool can read. */
+  readonly path: string
+  /** Stored file name, suffixed when a same-name file already existed. */
   readonly filename: string
 }
 
@@ -764,8 +789,18 @@ export interface SessionAskKnowledgeBindingRequest {
   readonly sessionId: SessionId
 }
 
+/** Request document paths inside one library vault. */
+export interface SessionAskKnowledgeListDocumentsRequest {
+  readonly libraryId: string
+}
+
 /** Client-minted prompt identity used to reconcile optimistic and durable messages. */
 export type SessionRequestId = Branded<'session-request-id'>
+
+/** Result of listing documents in a knowledge library vault. */
+export interface SessionAskKnowledgeListDocumentsResult {
+  readonly documentPaths: readonly string[]
+}
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {

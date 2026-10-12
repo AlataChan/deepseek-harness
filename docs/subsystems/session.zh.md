@@ -1014,6 +1014,15 @@ workspaceDesktop(): { name: string; available: boolean; fileManager: 'finder' | 
 @Remote('importMediaBytes') importMediaBytes( request: SessionImportMediaBytesRequest, signal: AbortSignal, ): Promise<SessionMediaWork>
 
 /**
+ * Stage one selected recording into the Session workspace for the
+ * transcription tool. Does not activate an Agent.
+ * @param request - filename, encoded bytes, and owning Session.
+ * @param signal - caller lifetime; abort stops the import.
+ * @returns workspace-relative path and stored file name.
+ */
+@Remote('importTranscriptAudio') async importTranscriptAudio( request: SessionImportTranscriptAudioRequest, signal: AbortSignal, ): Promise<SessionImportTranscriptAudioValue>
+
+/**
  * Copy a registered work into a user-chosen directory.
  * @param request - artifact, destination directory, and basename.
  * @param signal - caller lifetime; abort stops the copy.
@@ -1130,6 +1139,14 @@ workspaceDesktop(): { name: string; available: boolean; fileManager: 'finder' | 
  * @returns lookup fields plus optional text.
  */
 @Remote('askKnowledgeLookup') askKnowledgeLookup( request: SessionAskKnowledgeLookupRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeLookup>
+
+/**
+ * List ingested document paths in one library vault.
+ * @param request - library identity.
+ * @param signal - caller lifetime; abort stops the list.
+ * @returns document file paths (e.g., `raw/sample.md`).
+ */
+@Remote('askKnowledgeListDocuments') askKnowledgeListDocuments( request: SessionAskKnowledgeListDocumentsRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeListDocumentsResult>
 
 /**
  * Read the current ask-knowledge bind of a live Session.

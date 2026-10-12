@@ -23,7 +23,7 @@ afterEach(() => {
 
 describe('ask-data fill-in template', () => {
   it('keeps the sample column names and two example rows', () => {
-    expect(ASK_DATA_TEMPLATE_FILENAME).toBe('问数填写模板.csv')
+    expect(ASK_DATA_TEMPLATE_FILENAME).toBe('问数据填写模板.csv')
     expect(ASK_DATA_TEMPLATE_CSV.startsWith('\uFEFF')).toBe(true)
     expect(ASK_DATA_TEMPLATE_CSV).toContain('日期,渠道,商品,数量,金额')
     expect(ASK_DATA_TEMPLATE_CSV).toContain('线上')

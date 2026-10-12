@@ -4,6 +4,7 @@
  */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-host-ask-knowledge/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
@@ -14,8 +15,12 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
-import { AskKnowledgeChip } from './AskKnowledgeChip.tsx'
-import type { AskKnowledgeChipInjected } from './AskKnowledgeChip.tsx'
+// Type-only: the fork-owned capabilities-menu slot and its row owner props.
+import type {} from '@deepseek-ai/dsh-experimental-desktop-ask-data/client'
+import { AskKnowledgeDock } from './AskKnowledgeDock.tsx'
+import type { AskKnowledgeDockInjected } from './AskKnowledgeDock.tsx'
+import { KnowledgeCapabilitiesRow } from './KnowledgeCapabilitiesRow.tsx'
+import type { KnowledgeCapabilitiesRowInjected } from './KnowledgeCapabilitiesRow.tsx'
 import { AttachKnowledgeBridge } from './AttachKnowledgeBridge.tsx'
 import type { AttachKnowledgeBridgeInjected } from './AttachKnowledgeBridge.tsx'
 import { AttachSessionDocumentBridge } from './AttachSessionDocumentBridge.tsx'
@@ -28,6 +33,10 @@ import { en, zh, type AskKnowledgeKey } from './locales.ts'
 
 export type { AskKnowledgeChipInjected, AskKnowledgeChipProps } from './AskKnowledgeChip.tsx'
 export { AskKnowledgeChip } from './AskKnowledgeChip.tsx'
+export type { AskKnowledgeDockInjected, AskKnowledgeDockProps } from './AskKnowledgeDock.tsx'
+export type {
+  KnowledgeCapabilitiesRowInjected, KnowledgeCapabilitiesRowProps,
+} from './KnowledgeCapabilitiesRow.tsx'
 export type {
   AttachKnowledgeBridgeInjected, AttachKnowledgeBridgeProps,
 } from './AttachKnowledgeBridge.tsx'
@@ -63,23 +72,11 @@ interface ListedSession {
   }
 }
 
-/**
- * Hung library name on this list row, if any.
- * @param session - current list row.
- * @returns display name, or undefined when unbound.
- */
-function boundName(session: ListedSession | undefined): string | undefined {
-  const binding = session?.projectionValues?.askKnowledgeBinding
-  if (typeof binding !== 'object' || binding === null) return undefined
-  if (!('displayName' in binding)) return undefined
-  return typeof binding.displayName === 'string' ? binding.displayName : undefined
-}
-
 /** Services required by the ask-knowledge occupant. */
 export const inject = ['slots', 'remote', 'remote.session', 'locale']
 
 /**
- * Register the 问知识 chip, picker, and settings section.
+ * Register the 专业能力 row, picker, dock strip, and settings section.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
@@ -94,6 +91,8 @@ export function apply(ctx: ClientContext): void {
   }, LibrarySettingsSection))
   ctx.inject(['conversation', 'sessions', 'uiWorkspace'], (scope: ClientContext) => {
     let pickerDispose: (() => void) | undefined
+    // Documents picked per Session, published to the composer dock.
+    const selection = createSnapshotStore<Record<string, string[] | undefined>>({})
 
     const currentSession = (): ListedSession | undefined => {
       const state = scope.sessions.list.getSnapshot() as {
@@ -128,6 +127,12 @@ export function apply(ctx: ClientContext): void {
             }
             return result
           },
+          rememberSelection: (docs) => {
+            const session = currentSession()
+            if (session !== undefined) {
+              selection.update((draft) => { draft[session.id] = [...docs] })
+            }
+          },
           close: closePicker,
         }),
       }, LibraryPicker)
@@ -138,22 +143,23 @@ export function apply(ctx: ClientContext): void {
       openPanel()
     }
 
-    const togglePicker = (): void => {
-      if (pickerDispose !== undefined) {
-        closePicker()
-        return
-      }
-      openPanel()
-    }
-
-    const chip = scope.slots.register({
-      name: 'conversation.hero.askKnowledge',
+    const dock = scope.slots.register({
+      name: 'conversation.input.dock',
+      id: 'desktop-ask-knowledge',
+      order: 30,
       locale: NS,
-      inject: (): AskKnowledgeChipInjected => ({
-        openPicker: togglePicker,
-        ...boundName(currentSession()) === undefined ? {} : { boundName: boundName(currentSession()) },
+      inject: (): AskKnowledgeDockInjected => ({
+        openPicker,
+        hooks: { askKnowledgeSelection: selection },
       }),
-    }, AskKnowledgeChip)
+    }, AskKnowledgeDock)
+    const capabilitiesRow = scope.slots.inject('conversation.hero.capabilities.item', () => scope.slots.register({
+      name: 'conversation.hero.capabilities.item',
+      id: 'desktop-ask-knowledge',
+      order: 20,
+      locale: NS,
+      inject: (): KnowledgeCapabilitiesRowInjected => ({ openPicker }),
+    }, KnowledgeCapabilitiesRow))
     const attach = scope.slots.inject('conversation.input.attachKnowledge', () => scope.slots.register({
       name: 'conversation.input.attachKnowledge',
       inject: (): AttachKnowledgeBridgeInjected => ({
@@ -169,7 +175,8 @@ export function apply(ctx: ClientContext): void {
       closePicker()
       attachSessionDoc()
       attach()
-      chip()
+      dock()
+      capabilitiesRow()
     }
   })
 }
@@ -184,6 +191,11 @@ function remotesOf(ctx: ClientContext): LibrarySettingsRemotes & LibraryPickerRe
     beginAskKnowledgeIngest: (request: { libraryId: string; filename: string }) => ReturnType<LibraryPickerInjected['beginIngest']>
     appendAskKnowledgeIngestChunk: (request: { handle: string; bytes: string }) => ReturnType<LibraryPickerInjected['appendIngestChunk']>
     finishAskKnowledgeIngest: (request: { handle: string }) => ReturnType<LibraryPickerInjected['finishIngest']>
+    askKnowledgeListDocuments: (request: { libraryId: string }) => Promise<{
+      ok: boolean
+      value?: { documentPaths: readonly string[] }
+      error?: { message?: string }
+    }>
   }
   return {
     listLibraries: () => session.listAskKnowledgeLibraries(),
@@ -194,6 +206,12 @@ function remotesOf(ctx: ClientContext): LibrarySettingsRemotes & LibraryPickerRe
     beginIngest: (libraryId, filename) => session.beginAskKnowledgeIngest({ libraryId, filename }),
     appendIngestChunk: (handle, bytes) => session.appendAskKnowledgeIngestChunk({ handle, bytes }),
     finishIngest: handle => session.finishAskKnowledgeIngest({ handle }),
+    listLibraryDocuments: async (libraryId) => {
+      const result = await session.askKnowledgeListDocuments({ libraryId })
+      return result.ok && result.value !== undefined
+        ? { ok: true, value: result.value.documentPaths }
+        : { ok: false, ...result.error === undefined ? {} : { error: result.error } }
+    },
   }
 }
 

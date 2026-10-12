@@ -222,7 +222,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-api-session-controller`
 
 - `inject`: `agentDefaultModel` · `agents` · `attachments` · `fileUploads` · `fs` · `llm` · `sessions` · `sessionProjections` · `sessionQuery` · `typert` · `workspaceRegistry`
-- `source`: [`packages/api/session-controller/src/index.ts:139`](../packages/api/session-controller/src/index.ts)
+- `source`: [`packages/api/session-controller/src/index.ts:141`](../packages/api/session-controller/src/index.ts)
 
 ```ts config-catalog
 /** Session Controller deployment policy. */
@@ -1041,7 +1041,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-desktop-ask-knowledge`
 
 - `inject`: `sessionProjections` · `systemPrompt`
-- `source`: [`packages/experimental/desktop-ask-knowledge/src/index.ts:57`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
+- `source`: [`packages/experimental/desktop-ask-knowledge/src/index.ts:58`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
 
 ```ts config-catalog
 /** Validated plugin configuration. */
@@ -1134,6 +1134,23 @@ export interface ImportLimits {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-media -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-speech-transcribe -->
+<a id="deepseek-aidsh-experimental-desktop-speech-transcribe"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-speech-transcribe`
+
+- `inject`: `tools` · `speechToText` · `subprocess`
+- `source`: [`packages/experimental/desktop-speech-transcribe/src/tool.ts:37`](../packages/experimental/desktop-speech-transcribe/src/tool.ts)
+
+```ts config-catalog
+/** Runtime validation shape for the transcription tool. */
+export interface SpeechTranscribeConfig {
+  /** Maximum accepted recording duration in minutes. */
+  readonly maxAudioMinutes: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-speech-transcribe -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-inspector -->
 <a id="deepseek-aidsh-experimental-inspector"></a>
@@ -4580,6 +4597,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-experimental-commerce-mode` | `sessionProjections` · `subprocess` | [`packages/experimental/commerce-mode/src/index.ts`](../packages/experimental/commerce-mode/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | `computerUse` · `tools` · `systemPrompt` | [`packages/experimental/computer-use-cua-driver-native/src/index.ts`](../packages/experimental/computer-use-cua-driver-native/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-desktop-hero-atmosphere` | — | [`packages/experimental/desktop-hero-atmosphere/src/index.ts`](../packages/experimental/desktop-hero-atmosphere/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-desktop-ngo` | `agentPresets` | [`packages/experimental/desktop-ngo/src/index.ts`](../packages/experimental/desktop-ngo/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-session-inspector` | — | [`packages/experimental/session-inspector/src/index.ts`](../packages/experimental/session-inspector/src/index.ts) |
 | `@deepseek-ai/dsh-fs-observation-policy` | — | [`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts) |
 | `@deepseek-ai/dsh-fs-ssh` | `ssh` · `sandboxPolicy` | [`packages/ssh/fs-ssh/src/index.ts`](../packages/ssh/fs-ssh/src/index.ts) |

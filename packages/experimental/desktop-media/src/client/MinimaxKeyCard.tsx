@@ -21,12 +21,15 @@ export interface MinimaxKeyCardInjected {
 export type MinimaxKeyCardProps = MinimaxKeyCardInjected & PropsLocale<typeof NS>
 
 /**
- * Read credentials remotes from the Client Remote face when present.
- * @param ctx - client context that may carry `remote.credentials`.
+ * Read the credentials namespace when the composition mounts it. Each Remote
+ * namespace is a service of its own (`remote.credentials`), so an optional read
+ * goes through the global store: the inject-gated property proxy rejects names
+ * the caller did not declare.
+ * @param ctx - client context.
  * @returns the remotes, or undefined when that namespace is absent.
  */
 export function mediaCredentialsOf(ctx: ClientContext): MediaCredentialsRemotes | undefined {
-  const credentials = (ctx.remote as { credentials?: MediaCredentialsRemotes } | undefined)?.credentials
+  const credentials = ctx.get('remote.credentials') as MediaCredentialsRemotes | undefined
   if (credentials?.describe === undefined || credentials.set === undefined) return undefined
   return credentials
 }

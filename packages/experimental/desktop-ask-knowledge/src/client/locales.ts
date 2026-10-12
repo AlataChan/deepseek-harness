@@ -26,6 +26,17 @@ export type AskKnowledgeKey =
   | 'picker.uploadTitle'
   | 'picker.uploadLead'
   | 'picker.chooseFile'
+  | 'picker.selectFile'
+  | 'picker.docsTitle'
+  | 'picker.docsLead'
+  | 'picker.docsEmpty'
+  | 'picker.docsHang'
+  | 'picker.docsWhole'
+  | 'picker.back'
+  | 'dock.title'
+  | 'dock.docsOne'
+  | 'dock.docsMany'
+  | 'dock.change'
   | 'picker.skipEmpty'
   | 'batchQueued'
   | 'batchRunning'
@@ -38,6 +49,7 @@ export type AskKnowledgeKey =
   | 'error.unbound'
   | 'error.unsupportedType'
   | 'error.emptyPick'
+  | 'error.docsFailed'
   | 'ingest.converting'
   | 'ingest.proposing'
   | 'ingest.applying'
@@ -47,15 +59,15 @@ export type AskKnowledgeKey =
 
 /** Chinese copy for the ask-knowledge chip, picker, settings, and ingest. */
 const zh = {
-  'chip.unbound': '知识库',
+  'chip.unbound': '问知识',
   'picker.title': '选一个知识库',
-  'picker.summary': '挂上一个可复用的文档库；表格请走问数。',
+  'picker.summary': '挂上一个可复用的文档库；表格请走问数据。',
   'picker.rulesToggle': '规则',
   'picker.empty': '还没有知识库。新建一个，或先空着开始提问。',
   'picker.loading': '正在加载知识库',
   'picker.typeLibrary': '文档库',
   'picker.documentCount': '{count} 篇',
-  'picker.leadAskData': '问数是这一次问一张表，问完锁在这个会话。',
+  'picker.leadAskData': '问数据是这一次问一张表，问完锁在这个会话。',
   'picker.leadLibrary': '知识库是问一套会变厚的材料，换会话还能用。',
   'picker.leadPreset': '挂上库不是换成另一种助理，默认仍是标准模式，只是多了检索工具。',
   'picker.leadDataMode': '当前是数据模式时，点库名会新开一个标准会话再挂上。数据模式只问表，不会按知识库问答。',
@@ -66,8 +78,19 @@ const zh = {
   'picker.emptyCreate': '+ 新建知识库',
   'picker.create': '未命名知识库',
   'picker.uploadTitle': '上传本地文档',
-  'picker.uploadLead': '选一份文档写进这个知识库。可以用 .md、.txt、.html、.pdf、.docx、.csv、.json、.xlsx。表格更适合走问数。',
+  'picker.uploadLead': '选一份文档写进这个知识库。可以用 .md、.txt、.html、.pdf、.docx、.csv、.json、.xlsx。表格更适合走问数据。',
   'picker.chooseFile': '选择本地文档',
+  'picker.selectFile': '从库中选文件',
+  'picker.docsTitle': '库内文档',
+  'picker.docsLead': '勾选要挂载的文档，或挂整个库。挂上后可在对话栏看到。',
+  'picker.docsEmpty': '这个库还没有文档。先添加文档，或直接挂整个库。',
+  'picker.docsHang': '挂载所选文档',
+  'picker.docsWhole': '挂载整个库',
+  'picker.back': '返回',
+  'dock.title': '问知识',
+  'dock.docsOne': '已选：{name}',
+  'dock.docsMany': '已选：{name} 等 {count} 篇',
+  'dock.change': '更换',
   'picker.skipEmpty': '先空着，直接提问',
   batchQueued: '排队中',
   batchRunning: '正在处理',
@@ -80,6 +103,7 @@ const zh = {
   'error.unbound': '先在上方挂上一个知识库。',
   'error.unsupportedType': '这种文件还不能入库。请用 .md、.txt、.html、.pdf、.docx、.csv、.json 或 .xlsx。',
   'error.emptyPick': '没有读到所选文件，请再选一次。',
+  'error.docsFailed': '没能读出这个库的文档，请稍后再试。',
   'ingest.converting': '正在转换文档',
   'ingest.proposing': '正在整理成词条',
   'ingest.applying': '正在写入知识库，可能需要几分钟。',
@@ -90,7 +114,7 @@ const zh = {
 
 /** English copy for the ask-knowledge chip, picker, settings, and ingest. */
 const en = {
-  'chip.unbound': 'Knowledge',
+  'chip.unbound': 'Ask knowledge',
   'picker.title': 'Choose a knowledge library',
   'picker.summary': 'Hang a reusable document library. Spreadsheets belong in ask-data.',
   'picker.rulesToggle': 'Rules',
@@ -111,6 +135,17 @@ const en = {
   'picker.uploadTitle': 'Upload a local document',
   'picker.uploadLead': 'Choose a document for this knowledge library. .md, .txt, .html, .pdf, .docx, .csv, .json, and .xlsx are accepted. Spreadsheets fit ask-data better.',
   'picker.chooseFile': 'Choose a local document',
+  'picker.selectFile': 'Select a file from library',
+  'picker.docsTitle': 'Documents in this library',
+  'picker.docsLead': 'Check the documents to hang, or hang the whole library. The choice shows in the conversation bar.',
+  'picker.docsEmpty': 'This library has no documents yet. Add one first, or hang the whole library.',
+  'picker.docsHang': 'Hang selected documents',
+  'picker.docsWhole': 'Hang the whole library',
+  'picker.back': 'Back',
+  'dock.title': 'Ask knowledge',
+  'dock.docsOne': 'Selected: {name}',
+  'dock.docsMany': 'Selected: {name} and {count} more',
+  'dock.change': 'Change',
   'picker.skipEmpty': 'Skip and ask with an empty library',
   batchQueued: 'Queued',
   batchRunning: 'Working',
@@ -123,6 +158,7 @@ const en = {
   'error.unbound': 'Hang a knowledge library first.',
   'error.unsupportedType': 'This file type cannot be ingested. Use .md, .txt, .html, .pdf, .docx, .csv, .json, or .xlsx.',
   'error.emptyPick': 'The chosen file did not arrive. Choose it again.',
+  'error.docsFailed': 'Could not read this library\u2019s documents. Try again later.',
   'ingest.converting': 'Converting the document',
   'ingest.proposing': 'Organizing entries',
   'ingest.applying': 'Writing the knowledge library. This can take a few minutes.',

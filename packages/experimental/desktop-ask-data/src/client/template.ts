@@ -5,7 +5,7 @@
  */
 
 /** Download name shown in the browser save dialog. */
-export const ASK_DATA_TEMPLATE_FILENAME = '问数填写模板.csv'
+export const ASK_DATA_TEMPLATE_FILENAME = '问数据填写模板.csv'
 
 /**
  * UTF-8 BOM plus header and two example rows. Excel on Windows needs the BOM

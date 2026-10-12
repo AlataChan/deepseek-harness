@@ -3,8 +3,8 @@
  * @module @deepseek-ai/dsh-experimental-commerce-mode/install
  */
 
-import { access, cp, mkdir } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { access, cp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
@@ -30,6 +30,7 @@ export async function installCommercePreset(
 ): Promise<boolean> {
   try {
     await access(target)
+    await repairStalePersona(target)
     return true
   } catch (error: unknown) {
     if (!isNotFound(error)) {
@@ -51,6 +52,24 @@ export async function installCommercePreset(
     ctx.logger.error(`commerce-mode: failed to install preset at ${target}: ${errorMessage(error)}; copy ${packagedPresetDirectory()} to ${target} manually`)
     return false
   }
+}
+
+/**
+ * Rewrite the pre-0.2.1 persona key. The installer does not replace an
+ * existing directory, so a home copy that still says `text:` never mounts.
+ * @param target - installed preset directory.
+ */
+export async function repairStalePersona(target: string): Promise<void> {
+  const path = join(target, 'agent.cordis.yml')
+  let composition: string
+  try {
+    composition = await readFile(path, 'utf8')
+  } catch {
+    return
+  }
+  if (composition.includes('\n    prefix:')) return
+  const repaired = composition.replace(/^(\s*)text: >/m, '$1prefix: >')
+  if (repaired !== composition) await writeFile(path, repaired)
 }
 
 function isNotFound(error: unknown): boolean {

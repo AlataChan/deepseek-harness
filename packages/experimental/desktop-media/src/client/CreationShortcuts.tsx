@@ -1,29 +1,34 @@
 /**
- * Session-scoped Make Video / Make Voiceover controls.
- * 克隆声音 is the file control itself: the composer clips a separate dialog.
+ * 专业能力 menu rows: Make Video, Make Voiceover, and the clone-sample file
+ * control. The clone dialog clips as a body portal sheet.
  */
 
-import { useState, type ChangeEvent } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { IconPlayOutlineRegular, IconSparkleRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import { NS, type MediaKey } from './locales.ts'
-import type { MediaSessionRemotes } from './remotes.ts'
+import { MenuItemButton } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { MediaKey } from './locales.ts'
+import { MINIMAX_API_KEY_NAME } from './MinimaxKeyCard.tsx'
+import type { MediaCredentialsRemotes, MediaSessionRemotes } from './remotes.ts'
 import {
   encodeMediaBytes, importedCloneDraft, isCloneAudioName, readCloneFile,
 } from './VoicePicker.tsx'
 import css from './CreationShortcuts.module.css'
 
-/** Full props of the conversation input-left shortcuts. */
+/** Actions the rows need from their registrant. */
+export interface CreationShortcutsInjected {
+  remotes?: MediaSessionRemotes | undefined
+  credentials?: MediaCredentialsRemotes | undefined
+  sessionId?: SessionId | undefined
+  workspaceId?: string | undefined
+}
+
+/** Full props of the 专业能力 creation rows. */
 export type CreationShortcutsProps =
-  PropsRuntime<'conversation.input.left'>
-  & PropsLocale<typeof NS>
-  & {
-    remotes?: MediaSessionRemotes
-    sessionId?: string
-    workspaceId?: string
-  }
+  PropsRuntime<'conversation.hero.capabilities.item'>
+  & InjectFace<CreationShortcutsInjected>
+  & { t: (key: MediaKey) => string }
 
 /**
  * Take the first file from a native picker event.
@@ -35,29 +40,63 @@ export function fileFromPicker(event: ChangeEvent<HTMLInputElement>): File | und
 }
 
 /**
- * Render Make Video, Make Voiceover, and the clone-sample file control.
- * @param props - session input actions, remotes, and locale.
- * @returns the shortcut row.
+ * Render Make Video, Make Voiceover, and the clone-sample row.
+ * @param props - session input actions, remotes, the menu close seat, and locale.
+ * @returns the menu rows and the clone sheet.
  */
 export function CreationShortcuts({
-  inputActions, sessionId, remotes, workspaceId, t,
+  inputActions, sessionId, remotes, credentials, workspaceId, close: closeMenu, t,
 }: CreationShortcutsProps) {
   const [file, setFile] = useState<File | undefined>()
   const [authorized, setAuthorized] = useState(false)
   const [speakerIsUser, setSpeakerIsUser] = useState(true)
   const [error, setError] = useState<string | undefined>()
+  const [notice, setNotice] = useState<string | undefined>()
   const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const blocked = async (): Promise<string | undefined> => {
+    if (inputActions === undefined) return t('preflight.noSession')
+    if (remotes === undefined) return t('preflight.unavailable')
+    const runtime = await remotes.mediaRuntimeStatus()
+    if (!runtime.ok || !runtime.value.ready) return t('works.runtimeMissing')
+    if (credentials === undefined) return t('preflight.keyMissing')
+    const described = await credentials.describe([MINIMAX_API_KEY_NAME])
+    if (!described.ok || described.value[MINIMAX_API_KEY_NAME]?.configured !== true) {
+      return t('preflight.keyMissing')
+    }
+    return undefined
+  }
   const send = (key: MediaKey): void => {
-    inputActions.setDraft(t(key))
-    inputActions.submit()
+    if (inputActions === undefined) {
+      setNotice(t('preflight.noSession'))
+      return
+    }
+    const actions = inputActions
+    void blocked().then((reason) => {
+      if (reason !== undefined) {
+        setNotice(reason)
+        return
+      }
+      setNotice(undefined)
+      actions.setDraft(t(key))
+      actions.submit()
+      closeMenu()
+    })
   }
   const choose = (event: ChangeEvent<HTMLInputElement>): void => {
     const next = fileFromPicker(event)
     event.target.value = ''
     if (next === undefined) return
-    setFile(next)
-    setAuthorized(false)
-    setError(isCloneAudioName(next.name) ? undefined : t('voice.badFile'))
+    void blocked().then((reason) => {
+      if (reason !== undefined) {
+        setNotice(reason)
+        return
+      }
+      setNotice(undefined)
+      setFile(next)
+      setAuthorized(false)
+      setError(isCloneAudioName(next.name) ? undefined : t('voice.badFile'))
+    })
   }
   const close = (): void => {
     setFile(undefined)
@@ -65,16 +104,21 @@ export function CreationShortcuts({
     setError(undefined)
     setSaving(false)
   }
+  const dismiss = (): void => {
+    close()
+    closeMenu()
+  }
   const confirm = async (): Promise<void> => {
     if (file === undefined || !authorized || saving) return
     if (!isCloneAudioName(file.name)) {
       setError(t('voice.badFile'))
       return
     }
-    if (sessionId === undefined || remotes === undefined) {
+    if (sessionId === undefined || remotes === undefined || inputActions === undefined) {
       setError(t('voice.importFailed'))
       return
     }
+    const actions = inputActions
     setSaving(true)
     let encoded: string
     try {
@@ -96,46 +140,35 @@ export function CreationShortcuts({
       setError(message === '' ? t('voice.importFailed') : message)
       return
     }
-    inputActions.setDraft(importedCloneDraft(
+    actions.setDraft(importedCloneDraft(
       t('voice.imported'),
       result.value.artifactId,
       file.name,
       t(speakerIsUser ? 'voice.speakerIsUser' : 'voice.speakerAuthorized'),
     ))
-    inputActions.submit()
-    close()
+    actions.submit()
+    dismiss()
   }
   return (
-    <div className={css.row}>
-      <button
-        type="button"
-        className={css.chip}
-        aria-label={t('shortcut.video')}
-        onClick={() => { send('prompt.video') }}
-      >
-        <IconPlayOutlineRegular size={14} />
-        <span>{t('shortcut.video')}</span>
-      </button>
-      <button
-        type="button"
-        className={css.chip}
-        aria-label={t('shortcut.speech')}
-        onClick={() => { send('prompt.speech') }}
-      >
-        <IconSparkleRegular size={14} />
-        <span>{t('shortcut.speech')}</span>
-      </button>
-      <label className={css.chip}>
-        <IconSparkleRegular size={14} />
-        <span>{t('shortcut.clone')}</span>
-        <input
-          className={css.fileHit}
-          type="file"
-          aria-label={t('shortcut.clone')}
-          onChange={choose}
-          onInput={choose}
-        />
-      </label>
+    <>
+      {notice === undefined ? null : <p className={css.notice} role="alert">{notice}</p>}
+      <MenuItemButton onSelect={() => { send('prompt.video') }}>
+        {t('shortcut.video')}
+      </MenuItemButton>
+      <MenuItemButton onSelect={() => { send('prompt.speech') }}>
+        {t('shortcut.speech')}
+      </MenuItemButton>
+      <MenuItemButton onSelect={() => { fileInputRef.current?.click() }}>
+        {t('shortcut.clone')}
+      </MenuItemButton>
+      <input
+        ref={fileInputRef}
+        type="file"
+        hidden
+        aria-label={t('shortcut.clone')}
+        onChange={choose}
+        onInput={choose}
+      />
       {file !== undefined && typeof document !== 'undefined'
         ? createPortal(
           <div className={css.sheetOverlay} role="presentation">
@@ -160,7 +193,7 @@ export function CreationShortcuts({
               </label>
               {error === undefined ? null : <p role="alert">{error}</p>}
               <div className={css.sheetActions}>
-                <button type="button" onClick={close}>{t('voice.cancel')}</button>
+                <button type="button" onClick={dismiss}>{t('voice.cancel')}</button>
                 <button type="button" disabled={saving} onClick={() => { void confirm() }}>
                   {t('voice.confirm')}
                 </button>
@@ -170,6 +203,6 @@ export function CreationShortcuts({
           document.body,
         )
         : null}
-    </div>
+    </>
   )
 }

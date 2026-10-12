@@ -75,7 +75,7 @@ describe('DataSourcePage', () => {
     await waitFor(() => {
       expect(view.getByText('先用示例试一次')).toBeTruthy()
     })
-    fireEvent.click(view.getByRole('button', { name: '关闭问数' }))
+    fireEvent.click(view.getByRole('button', { name: '关闭问数据' }))
     expect(cancel).toHaveBeenCalledTimes(1)
   })
 
@@ -860,7 +860,7 @@ describe('AskDataChip', () => {
   it('opens the gate', () => {
     const openGate = vi.fn()
     const view = render(<AskDataChip openGate={openGate} t={t} />)
-    fireEvent.click(view.getByRole('button', { name: '问数' }))
+    fireEvent.click(view.getByRole('button', { name: '问数据' }))
     expect(openGate).toHaveBeenCalled()
     expect(sourceInitial('sales.csv')).toBe('s')
     expect(sourceInitial('')).toBe('?')

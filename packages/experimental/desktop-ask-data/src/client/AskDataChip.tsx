@@ -19,7 +19,7 @@ export interface AskDataChipProps extends AskDataChipInjected {
 }
 
 /**
- * Render the 问数 hero chip.
+ * Render the 问数据 hero chip.
  * @param props - locale and opener.
  * @returns the chip button.
  */

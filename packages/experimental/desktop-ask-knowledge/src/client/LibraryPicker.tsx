@@ -76,6 +76,15 @@ function updateBatchEntry(
   return entries.map((entry, at) => at === index ? { ...entry, ...patch } : entry)
 }
 
+/**
+ * Display name of one vault document path: `raw/name.md` reads as `name`.
+ * @param path - vault-relative document path.
+ * @returns the label shown in the document list.
+ */
+export function documentLabel(path: string): string {
+  return path.replace(/^raw\//, '').replace(/\.md$/i, '')
+}
+
 function BatchGlyph({ state }: { state: BatchState }) {
   const className = state === 'running' ? `${css.batchGlyph} ${css.batchSpin}` : css.batchGlyph
   const Icon = state === 'queued'
@@ -103,6 +112,7 @@ export interface LibraryPickerRemotes {
   attach: (libraryId: string) => Promise<{ ok: boolean; error?: { message?: string } }>
   renameLibrary: (libraryId: string, displayName: string) => Promise<{ ok: boolean; error?: { message?: string } }>
   removeLibrary: (libraryId: string) => Promise<{ ok: boolean; error?: { message?: string } }>
+  listLibraryDocuments: (libraryId: string) => Promise<{ ok: boolean; value?: readonly string[]; error?: { message?: string } }>
   beginIngest: (libraryId: string, filename: string) => Promise<{ ok: boolean; value?: string; error?: { message?: string } }>
   appendIngestChunk: (handle: string, bytes: string) => Promise<{ ok: boolean; error?: { message?: string } }>
   finishIngest: (handle: string) => Promise<{ ok: boolean; value?: PickerIngestResult; error?: { message?: string } }>
@@ -111,6 +121,8 @@ export interface LibraryPickerRemotes {
 /** Injected actions and remotes. */
 export interface LibraryPickerInjected extends LibraryPickerRemotes {
   close: () => void
+  /** Record the documents selected in this gesture for the composer dock. */
+  rememberSelection: (docs: readonly string[]) => void
 }
 
 /** Picker props. */
@@ -155,18 +167,22 @@ export function LibraryPicker({
   attach,
   renameLibrary,
   removeLibrary,
+  listLibraryDocuments,
   beginIngest,
   appendIngestChunk,
   finishIngest,
+  rememberSelection,
   close,
   t,
 }: LibraryPickerProps) {
   const [rows, setRows] = useState<readonly PickerLibrary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | undefined>()
-  const [phase, setPhase] = useState<'list' | 'upload'>('list')
+  const [phase, setPhase] = useState<'list' | 'upload' | 'documents'>('list')
   const [ingesting, setIngesting] = useState(false)
   const [batch, setBatch] = useState<readonly BatchEntry[]>([])
+  const [documents, setDocuments] = useState<readonly string[]>([])
+  const [chosen, setChosen] = useState<readonly string[]>([])
   const fileInputId = useId()
   const errorId = useId()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -185,10 +201,17 @@ export function LibraryPicker({
     return () => { cancelled = true }
   }, [listLibraries, t])
 
-  const hang = async (libraryId: string) => {
+  const hang = async (libraryId: string, docs?: readonly string[]) => {
     const result = await attach(libraryId)
-    if (result.ok) close()
-    else setError(result.error?.message ?? t('error.unbound'))
+    if (result.ok) {
+      if (docs !== undefined) rememberSelection(docs)
+      close()
+    } else setError(result.error?.message ?? t('error.unbound'))
+  }
+
+  const hangTarget = (docs?: readonly string[]): void => {
+    const target = targetRef.current
+    if (target !== undefined) void hang(target.id, docs)
   }
 
   const ensureDraft = (): Promise<PickerLibrary | undefined> => {
@@ -344,6 +367,21 @@ export function LibraryPicker({
     }
   }, [phase, t])
 
+  const startSelectFile = (row: PickerLibrary) => {
+    targetRef.current = row
+    setError(undefined)
+    setDocuments([])
+    setChosen([])
+    setPhase('documents')
+    void listLibraryDocuments(row.id).then((result) => {
+      if (result.ok && result.value !== undefined) setDocuments(result.value)
+      else {
+        setError(result.error?.message ?? t('error.docsFailed'))
+        setPhase('list')
+      }
+    })
+  }
+
   const startCreate = () => {
     targetRef.current = undefined
     setError(undefined)
@@ -366,14 +404,18 @@ export function LibraryPicker({
     setRows(current => current.filter(item => item.id !== row.id))
   }
 
-  const title = phase === 'upload' ? t('picker.uploadTitle') : t('picker.title')
+  const title = phase === 'upload'
+    ? t('picker.uploadTitle')
+    : phase === 'documents' ? t('picker.docsTitle') : t('picker.title')
   return (
     <Modal
       open
       onClose={close}
       title={title}
       closeLabel={t('picker.close')}
-      description={phase === 'upload' ? t('picker.uploadLead') : t('picker.summary')}
+      description={phase === 'upload'
+        ? t('picker.uploadLead')
+        : phase === 'documents' ? t('picker.docsLead') : t('picker.summary')}
       {...css.dialog === undefined ? {} : { className: css.dialog }}
     >
       <div aria-describedby={error === undefined ? undefined : errorId}>
@@ -419,6 +461,9 @@ export function LibraryPicker({
                         <button type="button" className={css.add} onClick={() => { startAdd(row) }}>
                           {t('picker.addDocument')}
                         </button>
+                        <button type="button" className={css.add} onClick={() => { startSelectFile(row) }}>
+                          {t('picker.selectFile')}
+                        </button>
                         <button type="button" className={css.remove} onClick={() => { void removeRow(row) }}>
                           {t('picker.remove')}
                         </button>
@@ -430,6 +475,47 @@ export function LibraryPicker({
                   </div>
                 </>
               )}
+          </>
+        ) : phase === 'documents' ? (
+          <>
+            {documents.length === 0
+              ? <p className={css.empty}>{t('picker.docsEmpty')}</p>
+              : (
+                <ul className={css.docs}>
+                  {documents.map(doc => (
+                    <li key={doc} className={css.docsItem}>
+                      <label className={css.docsLabel}>
+                        <input
+                          type="checkbox"
+                          checked={chosen.includes(doc)}
+                          onChange={(event) => {
+                            setChosen(current => event.target.checked
+                              ? [...current, doc]
+                              : current.filter(item => item !== doc))
+                          }}
+                        />
+                        <span>{documentLabel(doc)}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            <div className={css.list}>
+              <button
+                type="button"
+                className={css.row}
+                disabled={chosen.length === 0}
+                onClick={() => { hangTarget(chosen) }}
+              >
+                {t('picker.docsHang')}
+              </button>
+              <button type="button" className={css.add} onClick={() => { hangTarget([]) }}>
+                {t('picker.docsWhole')}
+              </button>
+              <button type="button" className={css.create} onClick={() => { setPhase('list') }}>
+                {t('picker.back')}
+              </button>
+            </div>
           </>
         ) : (
           <>

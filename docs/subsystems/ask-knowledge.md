@@ -131,6 +131,14 @@ abstract finishExtract( request: { handle: AskKnowledgeIngestHandle }, signal?: 
 abstract libraryStatus( request: { libraryId: AskKnowledgeLibraryId }, signal?: AbortSignal, ): Promise<AskKnowledgeStatus>
 
 /**
+ * List ingested raw document paths for a library vault.
+ * @param request - library identity.
+ * @param signal - caller lifetime.
+ * @returns document file paths (e.g., `raw/sample.md`).
+ */
+abstract listLibraryDocuments( request: { libraryId: AskKnowledgeLibraryId }, signal?: AbortSignal, ): Promise<readonly string[]>
+
+/**
  * Retrieve pages for already-validated terms and load bodies.
  * @param request - library and terms.
  * @param signal - caller lifetime; abort stops the retrieve.

@@ -80,6 +80,8 @@ import type {
   SessionAskKnowledgeBinding,
   SessionAskKnowledgeBindingRequest,
   SessionAskKnowledgeBundle,
+  SessionAskKnowledgeListDocumentsRequest,
+  SessionAskKnowledgeListDocumentsResult,
   SessionAskKnowledgeExtractResult,
   SessionAskKnowledgeIngestResult,
   SessionAskKnowledgeLibrary,
@@ -207,6 +209,10 @@ export interface TestSessionRemote {
     request: SessionAskKnowledgeRetrieveRequest,
     signal?: AbortSignal,
   ): Promise<RemoteResult<SessionAskKnowledgeBundle>>
+  askKnowledgeListDocuments(
+    request: SessionAskKnowledgeListDocumentsRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<SessionAskKnowledgeListDocumentsResult>>
   askKnowledgeLookup(
     request: SessionAskKnowledgeLookupRequest,
     signal?: AbortSignal,
@@ -614,6 +620,10 @@ export function createSessionTestRemote(
     ),
     askKnowledgeRetrieve: (request, signal = new AbortController().signal) => remoteResult(
       () => direct.askKnowledgeRetrieve(request, signal),
+      signal,
+    ),
+    askKnowledgeListDocuments: (request, signal = new AbortController().signal) => remoteResult(
+      () => direct.askKnowledgeListDocuments(request, signal),
       signal,
     ),
     askKnowledgeLookup: (request, signal = new AbortController().signal) => remoteResult(

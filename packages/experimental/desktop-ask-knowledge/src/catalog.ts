@@ -393,6 +393,11 @@ function normalizeDisplayName(displayName: string): string {
   return name
 }
 
-function isNotFound(error: unknown): boolean {
+/**
+ * Whether a filesystem failure means the path does not exist.
+ * @param error - caught value.
+ * @returns true for an `ENOENT` error.
+ */
+export function isNotFound(error: unknown): boolean {
   return error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT'
 }

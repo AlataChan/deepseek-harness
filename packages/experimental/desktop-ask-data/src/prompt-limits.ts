@@ -11,7 +11,7 @@ import { ASK_DATA_RULE_IDS } from './limits.ts'
  */
 export function renderAskDataLimitsPrompt(): string {
   return [
-    `问数导入限制（${ASK_DATA_RULE_IDS.join(' ')}）。`,
+    `问数据导入限制（${ASK_DATA_RULE_IDS.join(' ')}）。`,
     '只接受 .xlsx / .csv（accept-xlsx-csv）；一份文件一个数据源，每个工作表一张表（one-file-one-source）。',
     '第一行是表头（first-row-header）；空表头变为 col、col_2（header-empty）；重复表头加 _2（header-duplicate）。',
     '类型为整数 / 浮点 / 文本 / 日期，混列作文本（type-guess）；表名冲突加 _2（sheet-name）。',

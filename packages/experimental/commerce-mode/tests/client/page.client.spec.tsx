@@ -112,8 +112,10 @@ describe('CommercePage', () => {
 describe('CommerceChip', () => {
   it('opens the gate from the hero row', () => {
     const openGate = vi.fn()
-    render(<CommerceChip openGate={openGate} t={key => zh[key]} />)
-    fireEvent.click(screen.getByRole('button', { name: '电商助手' }))
+    const openNgo = vi.fn()
+    render(<CommerceChip openGate={openGate} openNgo={openNgo} t={key => zh[key]} />)
+    fireEvent.click(screen.getByRole('button', { name: '专项助手' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '电商助手' }))
     expect(openGate).toHaveBeenCalledOnce()
   })
 })

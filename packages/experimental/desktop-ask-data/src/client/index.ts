@@ -1,5 +1,5 @@
 /**
- * Browser half of 问数: hero chip plus a root-scope data-source gate.
+ * Browser half of 问数据: hero chip plus a root-scope data-source gate.
  */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
@@ -15,8 +15,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-agent-preset/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
-import { AskDataChip } from './AskDataChip.tsx'
-import type { AskDataChipInjected } from './AskDataChip.tsx'
+import { CapabilitiesMenu, type CapabilitiesMenuInjected } from './CapabilitiesMenu.tsx'
 import { DataSourcePage } from './DataSourcePage.tsx'
 import { OctopusBrandName } from './OctopusBrandName.tsx'
 import { OctopusHeroHeadline } from './OctopusHeroHeadline.tsx'
@@ -27,6 +26,8 @@ import './chrome.css'
 import { en, zh, type AskDataKey } from './locales.ts'
 
 export type { AskDataChipInjected, AskDataChipProps } from './AskDataChip.tsx'
+export type { CapabilitiesItemOwnerProps, CapabilitiesMenuInjected, CapabilitiesMenuProps } from './CapabilitiesMenu.tsx'
+export { CAPABILITIES_ITEM_SLOT } from './CapabilitiesMenu.tsx'
 export type { DataSourcePageProps, ListedPreview, ListedSource } from './DataSourcePage.tsx'
 export type { OctopusMarkProps } from './OctopusMark.tsx'
 export { OctopusMark } from './OctopusMark.tsx'
@@ -108,7 +109,7 @@ function isReusableBlankSession(session: ListedSession | undefined): session is 
 export const inject = ['slots', 'remote', 'remote.session', 'locale']
 
 /**
- * Register the 问数 chip, brand chrome, headline, and workspace-folder
+ * Register the 问数据 chip, brand chrome, headline, and workspace-folder
  * settings row. The gate occupant is registered only while open.
  * @param ctx - client root context.
  */
@@ -249,8 +250,9 @@ export function apply(ctx: ClientContext): void {
     const chip = scope.slots.register({
       name: 'conversation.hero.askData',
       locale: NS,
-      inject: (): AskDataChipInjected => ({ openGate: toggleFromChip }),
-    }, AskDataChip)
+      children: { 'conversation.hero.capabilities.item': { kind: 'list', scope: 'session-maybe' } },
+      inject: (): CapabilitiesMenuInjected => ({ openData: toggleFromChip }),
+    }, CapabilitiesMenu)
 
     return () => {
       stopList()

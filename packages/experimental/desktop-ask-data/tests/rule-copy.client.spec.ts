@@ -59,7 +59,7 @@ describe('ask-data rule copy', () => {
     expect(failureCopy('session/ask-data-failed', { code: 'csv-encoding' }, 'raw', t))
       .toBe('CSV 编码不支持，请另存为 UTF-8 或 GB18030 再上传。')
     expect(failureCopy('session/ask-data-unavailable', {}, 'raw', t))
-      .toBe('问数暂时不可用，请重开会话再试。')
+      .toBe('问数据暂时不可用，请重开会话再试。')
     expect(failureCopy('session/ask-data-failed', { code: 'brand-new' }, 'raw', t)).toBe('raw')
     expect(failureCopy('session/ask-data-failed', undefined, 'raw', t)).toBe('raw')
     expect(failureCopy('session/ask-data-failed', { code: 7 }, 'raw', t)).toBe('raw')

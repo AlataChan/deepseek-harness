@@ -20,11 +20,11 @@ export interface SeamFailureCodes {
   /** Message reported when the caller aborted the request. */
   readonly aborted: string
   /** Remote code reported when the capability itself is absent. */
-  readonly unavailable: 'session/ask-data-unavailable' | 'session/commerce-unavailable'
+  readonly unavailable: 'session/ask-data-unavailable' | 'session/commerce-unavailable' | 'session/transcript-audio-unavailable'
   /** The seam code that means the capability is absent. */
   readonly unavailableSeamCode: string
   /** Remote code reported for every other seam failure. */
-  readonly failed: 'session/ask-data-failed' | 'session/commerce-failed'
+  readonly failed: 'session/ask-data-failed' | 'session/commerce-failed' | 'session/transcript-audio-failed'
   /** Read a seam failure out of a thrown value; undefined for anything else. */
   readonly failureOf: (error: unknown) => SeamFailure | undefined
 }

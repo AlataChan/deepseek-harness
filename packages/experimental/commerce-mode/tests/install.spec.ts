@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { installCommercePreset, packagedPresetDirectory } from '../src/install.ts'
+import { installCommercePreset, packagedPresetDirectory, repairStalePersona } from '../src/install.ts'
 
 const roots: string[] = []
 afterEach(async () => Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }))))
@@ -44,5 +44,19 @@ describe('commerce preset installer', () => {
     await expect(installCommercePreset(new Context(), target)).resolves.toBe(true)
     await expect(readFile(path, 'utf8')).resolves.toBe('edited\n')
     expect(packagedPresetDirectory()).not.toBe(target)
+  })
+
+  it('rewrites a pre-0.2.1 persona text key to prefix', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'commerce-preset-stale-'))
+    roots.push(root)
+    const target = join(root, 'commerce')
+    await installCommercePreset(new Context(), target)
+    const path = join(target, 'agent.cordis.yml')
+    const stale = (await readFile(path, 'utf8')).replace('prefix: >-', 'text: >-')
+    await writeFile(path, stale)
+    await repairStalePersona(target)
+    const repaired = await readFile(path, 'utf8')
+    expect(repaired).toContain('prefix: >-')
+    expect(repaired).not.toContain('text: >-')
   })
 })

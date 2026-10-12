@@ -1,5 +1,5 @@
 /**
- * User-facing 问数 copy. Chinese is the desktop default; English is the fallback.
+ * User-facing 问数据 copy. Chinese is the desktop default; English is the fallback.
  * Rule ids from `limits.ts` stay internal; `rule-copy.ts` maps them to these keys.
  * @module @deepseek-ai/dsh-experimental-desktop-ask-data/client/locales
  */
@@ -10,16 +10,17 @@ export type AskDataKey = keyof typeof zh
 /** Chinese desktop copy. */
 export const zh = {
   brandName: '小绿鲸',
-  chip: '问数',
+  chip: '问数据',
+  'capabilities.title': '专业能力',
   heroHeadline: '先选工作文件夹，再提问',
   'workspaceFolder.title': '工作文件夹',
   'workspaceFolder.desc': '这个窗口读写哪个文件夹。Node 和运行时在高级选项里。',
   'workspaceFolder.open': '更改',
   title: '选一份要问的数据',
-  close: '关闭问数',
+  close: '关闭问数据',
   pageSummary: '先选数据再提问。先用示例，或下载模板填好再上传。',
   rulesToggle: '上传规则与避坑',
-  pageLead: '先选数据再提问。先用示例看一遍问数怎么工作；自己的表请按下表整理，或先下载模板填写再上传。只接受 .xlsx / .csv；一份文件一个数据源；第一行是表头；空表头变 col；重复表头加 _2；混列作文本；表名冲突加 _2；一份不超过 50MB，合计不超过 20 万行；CSV 仅 UTF-8 或 GB18030；不修复合并单元格。',
+  pageLead: '先选数据再提问。先用示例看一遍问数据怎么工作；自己的表请按下表整理，或先下载模板填写再上传。只接受 .xlsx / .csv；一份文件一个数据源；第一行是表头；空表头变 col；重复表头加 _2；混列作文本；表名冲突加 _2；一份不超过 50MB，合计不超过 20 万行；CSV 仅 UTF-8 或 GB18030；不修复合并单元格。',
   uploadHelper: '上传前请确认：第一行是表头，只收 .xlsx / .csv，一份不超过 50MB，合计不超过 20 万行。',
   previewLimits: '将按同一套规则入库：第一行表头，.xlsx / .csv，一份不超过 50MB，合计不超过 20 万行。',
   pitfallsTitle: '自己的表请先避开这些坑，否则很难分析',
@@ -36,7 +37,7 @@ export const zh = {
   sample: '先用示例试一次',
   upload: '上传表格',
   advanced: '连接已有数据库',
-  advancedHint: '已经有现成数据库时用这个：会打开数据模式工作台让你填连接。连好后请再点「问数」，从名单里选这份库再开始提问。表格请用「上传表格」。',
+  advancedHint: '已经有现成数据库时用这个：会打开数据模式工作台让你填连接。连好后请再点「问数据」，从名单里选这份库再开始提问。表格请用「上传表格」。',
   recent: '最近使用',
   pickHint: '点名单选一份，再按「开始提问」。',
   allSources: '全部数据源',
@@ -49,7 +50,7 @@ export const zh = {
   useSample: '改用示例',
   cancel: '取消',
   sqlite3Missing: '这台电脑找不到 sqlite3，无法上传表格；仍可用示例。',
-  failureUnavailable: '问数暂时不可用，请重开会话再试。',
+  failureUnavailable: '问数据暂时不可用，请重开会话再试。',
   failureSourceMissing: '这份数据源的记录已经不在了，请重新上传一次。',
   failureSourceInvalid: '这份文件读不出来，可能不是有效的 .xlsx / .csv。',
   failureSqlite3: '这台电脑找不到 sqlite3，没法把表格转成可查的库。',
@@ -76,6 +77,7 @@ export const zh = {
 export const en = {
   brandName: '小绿鲸',
   chip: 'Ask data',
+  'capabilities.title': 'Capabilities',
   heroHeadline: 'Choose a folder, then ask',
   'workspaceFolder.title': 'Working folder',
   'workspaceFolder.desc': 'The folder this window reads and writes. Node and the runtime stay under Advanced.',

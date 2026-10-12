@@ -102,6 +102,16 @@ describe('declarative preset revisions', () => {
     expect(ctx.agentPresets.composeFrom(createScope(ctx, {}).ctx, ctx)).toBeUndefined()
   })
 
+  it('omits an unlisted preset from the official roster and still selects it', async () => {
+    const ctx = await setup()
+    await declare(ctx, contribution('standard'))
+    await declare(ctx, { ...contribution('commerce'), listed: false })
+    expect((await ctx.agentPresets.list()).map(row => row.id)).toEqual(['standard'])
+    expect((await ctx.agentPresets.compositionInventory()).map(row => row.id)).toEqual(['standard'])
+    const agent = await agentOn(ctx, 'unlisted')
+    expect(await ctx.agentPresets.select(agent, 'commerce')).toBe('commerce')
+  })
+
   it('logs selection and rejects preset changes after the first turn', async () => {
     const ctx = await setup()
     await declare(ctx, contribution('standard'))

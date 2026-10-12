@@ -496,6 +496,11 @@ if [[ -f "$SESSION_CLIENT" ]] && grep -q 'askKnowledgeRetrieve' "$SESSION_CLIENT
 else
   bad "bundled session-controller remote face missing askKnowledgeRetrieve — rebuild that Host face before packaging"
 fi
+if [[ -f "$SESSION_CLIENT" ]] && grep -q 'askKnowledgeListDocuments' "$SESSION_CLIENT"; then
+  ok "bundled session-controller remote face includes askKnowledgeListDocuments"
+else
+  bad "bundled session-controller remote face missing askKnowledgeListDocuments — rebuild that Host face before packaging"
+fi
 if [[ -f "$SESSION_CLIENT" ]] && grep -q 'listMediaWorks' "$SESSION_CLIENT"; then
   ok "bundled session-controller remote face includes listMediaWorks"
 else
@@ -508,10 +513,11 @@ if [[ -f "$MEDIA_CLIENT" ]] \
   && grep -q '做配音' "$MEDIA_CLIENT" \
   && grep -q '还没有作品，在会话中选择' "$MEDIA_CLIENT" \
   && grep -q '不要把它加成上面的对话模型' "$MEDIA_CLIENT" \
+  && grep -q 'conversation.hero.capabilities.item' "$MEDIA_CLIENT" \
   && grep -q '克隆声音' "$MEDIA_CLIENT"; then
-  ok "bundled desktop-media Client has Chinese shortcuts, Works empty state, and MiniMax key card"
+  ok "bundled desktop-media Client has Chinese shortcuts, Works empty state, and the 专业能力 menu rows"
 else
-  bad "bundled desktop-media Client missing Chinese creation or MiniMax key copy — run tsdown before packaging"
+  bad "bundled desktop-media Client missing Chinese creation, the 专业能力 menu rows, or MiniMax key copy — run tsdown before packaging"
 fi
 if [[ -f "$MEDIA_CLIENT" ]] \
   && ! grep -q 'require("module")' "$MEDIA_CLIENT"; then
@@ -519,10 +525,55 @@ if [[ -f "$MEDIA_CLIENT" ]] \
 else
   bad "bundled desktop-media Client requires Node module — a Host-only dep leaked into lib/client.js"
 fi
+# A panel painted with a token the theme never defines resolves to no
+# background at all, so the Works sheet and the clone dialog leaked the
+# desktop backdrop through. The surface tokens below are the theme-owned ones.
+if [[ -f "$MEDIA_CLIENT" ]] \
+  && ! grep -q 'dsw-alias-bg-primary' "$MEDIA_CLIENT" \
+  && grep -q 'dsw-alias-bg-layer-2' "$MEDIA_CLIENT"; then
+  ok "bundled desktop-media Client paints panels with existing surface tokens"
+else
+  bad "bundled desktop-media Client uses a missing theme token (--dsw-alias-bg-primary) — run tsdown before packaging"
+fi
 if [[ -n "$(find "$RES" \( -name ffmpeg -o -name ffprobe \) -type f 2>/dev/null | head -1)" ]]; then
   bad "bundle contains ffmpeg/ffprobe — V1 must not embed the media runtime"
 else
   ok "bundle does not embed ffmpeg or ffprobe"
+fi
+
+# desktop-speech-transcribe turns a recording into a transcript through the
+# speech seam. The Host face must carry the tool and the Chinese preparation
+# guidance; the dual face and an asset-free payload are seed requirements.
+TRANSCRIBE_PLUGIN="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-speech-transcribe"
+TRANSCRIBE_HOST="$TRANSCRIBE_PLUGIN/lib/index.js"
+TRANSCRIBE_CLIENT="$TRANSCRIBE_PLUGIN/lib/client.js"
+if [[ -d "$TRANSCRIBE_PLUGIN" ]]; then
+  ok "profile-plugins includes desktop-speech-transcribe"
+else
+  bad "profile-plugins missing desktop-speech-transcribe — the 录音转纪要 entry will not install on first run"
+fi
+if [[ -f "$TRANSCRIBE_HOST" ]] && grep -q 'speech_transcribe' "$TRANSCRIBE_HOST"; then
+  ok "bundled desktop-speech-transcribe Host registers speech_transcribe"
+else
+  bad "bundled desktop-speech-transcribe Host missing speech_transcribe — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$TRANSCRIBE_HOST" ]] \
+  && grep -q '下载并准备' "$TRANSCRIBE_HOST" \
+  && grep -q '语音输入' "$TRANSCRIBE_HOST"; then
+  ok "bundled desktop-speech-transcribe Host returns the 插件→语音输入 下载并准备 guidance"
+else
+  bad "bundled desktop-speech-transcribe Host missing the Chinese provider guidance — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$TRANSCRIBE_CLIENT" ]] && grep -q '录音转文字' "$TRANSCRIBE_CLIENT"; then
+  ok "bundled desktop-speech-transcribe Client ships the 录音转文字 hero row"
+else
+  bad "bundled desktop-speech-transcribe Client missing 录音转文字 — run tsc -b then tsdown before packaging"
+fi
+TRANSCRIBE_ASSETS="$(find "$TRANSCRIBE_PLUGIN" -type f \( -name '*.wav' -o -name '*.m4a' -o -name '*.mp3' -o -name '*.onnx' -o -name '*.model' -o -name '*.bin' \) 2>/dev/null | head -1 || true)"
+if [[ -z "$TRANSCRIBE_ASSETS" ]]; then
+  ok "bundled desktop-speech-transcribe carries no model or audio assets"
+else
+  bad "bundled desktop-speech-transcribe bundles a model or audio asset: $TRANSCRIBE_ASSETS"
 fi
 
 # Host beginIngest reads ACCEPTED_INGEST_EXTENSIONS from the profile plugin
@@ -563,6 +614,35 @@ if [[ -f "$ASK_K_CLIENT" ]] \
   ok "bundled ask-knowledge Client can add a document to an existing library"
 else
   bad "bundled ask-knowledge Client missing 添加文档 — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_CLIENT" ]] \
+  && grep -q 'askKnowledgeListDocuments' "$ASK_K_CLIENT" \
+  && grep -q '挂载所选文档' "$ASK_K_CLIENT" \
+  && grep -q '挂载整个库' "$ASK_K_CLIENT"; then
+  ok "bundled ask-knowledge Client can list library documents and hang a selection"
+else
+  bad "bundled ask-knowledge Client missing the document picker — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_CLIENT" ]] \
+  && grep -q 'conversation.input.dock' "$ASK_K_CLIENT" \
+  && grep -q '已选：' "$ASK_K_CLIENT"; then
+  ok "bundled ask-knowledge Client shows the hung library in the composer dock"
+else
+  bad "bundled ask-knowledge Client missing the composer dock entry — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_CLIENT" ]] && grep -q 'conversation.hero.capabilities.item' "$ASK_K_CLIENT"; then
+  ok "bundled ask-knowledge Client contributes the 问知识 row to the 专业能力 menu"
+else
+  bad "bundled ask-knowledge Client missing the 专业能力 menu row — run tsc -b then tsdown before packaging"
+fi
+ASK_DATA_CLIENT="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-data/lib/client.js"
+if [[ -f "$ASK_DATA_CLIENT" ]] \
+  && grep -q '专业能力' "$ASK_DATA_CLIENT" \
+  && grep -q '问数据' "$ASK_DATA_CLIENT" \
+  && grep -q 'conversation.hero.capabilities.item' "$ASK_DATA_CLIENT"; then
+  ok "bundled ask-data Client ships the 专业能力 menu with the 问数据 rename"
+else
+  bad "bundled ask-data Client missing the 专业能力 menu or the 问数据 rename — run tsc -b then tsdown before packaging"
 fi
 if [[ -f "$ASK_K_CLIENT" ]] \
   && grep -q '点删除，从名单去掉' "$ASK_K_CLIENT" \

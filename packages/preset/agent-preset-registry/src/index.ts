@@ -176,7 +176,7 @@ export class AgentPresetRegistry extends TypertRemoteService {
    * @returns Display metadata and loading diagnostics.
    */
   async list(): Promise<AgentPreset[]> {
-    const rows = await Promise.all([...this.definitions.values()].map(async (record) => {
+    const rows = await Promise.all([...this.definitions.values()].filter(record => record.config.listed !== false).map(async (record) => {
       const broken = await this.diagnostic(record)
       return {
         id: record.config.id,
@@ -391,7 +391,7 @@ export class AgentPresetRegistry extends TypertRemoteService {
    * @returns Current declaration metadata and activation states.
    */
   compositionInventory(): Promise<AgentPresetComposition[]> {
-    return Promise.all([...this.definitions.values()].map(async (record) => {
+    return Promise.all([...this.definitions.values()].filter(record => record.config.listed !== false).map(async (record) => {
       const { id, name, description } = record.config
       const broken = await this.diagnostic(record)
       const read = definitionComposition(record.config.plugins, () => { throw new Error('Inactive definition') })

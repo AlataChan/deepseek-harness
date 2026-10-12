@@ -592,6 +592,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'catalog row plus pending audit count.',
       },
       {
+        signature: 'abstract listLibraryDocuments( request: { libraryId: AskKnowledgeLibraryId }, signal?: AbortSignal, ): Promise<readonly string[]>',
+        description: 'List ingested raw document paths for a library vault.',
+        parameters: [{ name: 'request', description: 'library identity.' }, { name: 'signal', description: 'caller lifetime.' }],
+        returns: 'document file paths (e.g., `raw/sample.md`).',
+      },
+      {
         signature: 'abstract retrieveBundle( request: { libraryId: AskKnowledgeLibraryId; terms: string[] }, signal?: AbortSignal, ): Promise<AskKnowledgeBundle>',
         description: 'Retrieve pages for already-validated terms and load bodies.',
         parameters: [{ name: 'request', description: 'library and terms.' }, { name: 'signal', description: 'caller lifetime; abort stops the retrieve.' }],
@@ -2471,6 +2477,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'committed work row.',
       },
       {
+        signature: '@Remote(\'importTranscriptAudio\') async importTranscriptAudio( request: SessionImportTranscriptAudioRequest, signal: AbortSignal, ): Promise<SessionImportTranscriptAudioValue>',
+        description: 'Stage one selected recording into the Session workspace for the transcription tool. Does not activate an Agent.',
+        parameters: [{ name: 'request', description: 'filename, encoded bytes, and owning Session.' }, { name: 'signal', description: 'caller lifetime; abort stops the import.' }],
+        returns: 'workspace-relative path and stored file name.',
+      },
+      {
         signature: '@Remote(\'saveMediaWorkAs\') saveMediaWorkAs( request: SessionSaveMediaWorkAsRequest, signal: AbortSignal, ): Promise<{ path: string }>',
         description: 'Copy a registered work into a user-chosen directory.',
         parameters: [{ name: 'request', description: 'artifact, destination directory, and basename.' }, { name: 'signal', description: 'caller lifetime; abort stops the copy.' }],
@@ -2555,6 +2567,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Look up one term on the Session\'s hung library.',
         parameters: [{ name: 'request', description: 'Session identity and term.' }, { name: 'signal', description: 'caller lifetime; abort stops the lookup.' }],
         returns: 'lookup fields plus optional text.',
+      },
+      {
+        signature: '@Remote(\'askKnowledgeListDocuments\') askKnowledgeListDocuments( request: SessionAskKnowledgeListDocumentsRequest, signal: AbortSignal, ): Promise<SessionAskKnowledgeListDocumentsResult>',
+        description: 'List ingested document paths in one library vault.',
+        parameters: [{ name: 'request', description: 'library identity.' }, { name: 'signal', description: 'caller lifetime; abort stops the list.' }],
+        returns: 'document file paths (e.g., `raw/sample.md`).',
       },
       {
         signature: '@Remote(\'askKnowledgeBinding\') askKnowledgeBinding(request: SessionAskKnowledgeBindingRequest): SessionAskKnowledgeBinding | null',
@@ -6989,7 +7007,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PresetDefinition',
-    declaration: 'export interface PresetDefinition {\n    readonly id: string;\n    readonly name?: string;\n    readonly description?: string;\n    readonly order?: number;\n    readonly plugins: readonly (Omit<EntryOptions, \'id\' | \'disabled\'> & {\n        id?: string;\n        disabled?: EntryOptions[\'disabled\'] | JsExpr;\n    })[];\n}',
+    declaration: 'export interface PresetDefinition {\n    readonly id: string;\n    readonly name?: string;\n    readonly description?: string;\n    readonly order?: number;\n    readonly listed?: boolean;\n    readonly plugins: readonly (Omit<EntryOptions, \'id\' | \'disabled\'> & {\n        id?: string;\n        disabled?: EntryOptions[\'disabled\'] | JsExpr;\n    })[];\n}',
   },
   {
     name: 'PresetOption',
@@ -7508,6 +7526,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SessionAskKnowledgeLibrary {\n    readonly id: string;\n    readonly displayName: string;\n    readonly createdAt: string;\n    readonly lastUsedAt: string;\n    readonly missing: boolean;\n    readonly deleting: boolean;\n    readonly documentCount?: number;\n}',
   },
   {
+    name: 'SessionAskKnowledgeListDocumentsRequest',
+    declaration: 'export interface SessionAskKnowledgeListDocumentsRequest {\n    readonly libraryId: string;\n}',
+  },
+  {
+    name: 'SessionAskKnowledgeListDocumentsResult',
+    declaration: 'export interface SessionAskKnowledgeListDocumentsResult {\n    readonly documentPaths: readonly string[];\n}',
+  },
+  {
     name: 'SessionAskKnowledgeLookup',
     declaration: 'export interface SessionAskKnowledgeLookup {\n    readonly term: string;\n    readonly canonicalPath?: string;\n    readonly text?: string;\n    readonly warnings: readonly {\n        readonly ruleId: string;\n        readonly message: string;\n    }[];\n}',
   },
@@ -7782,6 +7808,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionImportMediaBytesRequest',
     declaration: 'export interface SessionImportMediaBytesRequest {\n    readonly filename: string;\n    readonly bytes: string;\n    readonly sessionId: SessionId;\n    readonly workspaceId?: string;\n}',
+  },
+  {
+    name: 'SessionImportTranscriptAudioRequest',
+    declaration: 'export interface SessionImportTranscriptAudioRequest {\n    readonly filename: string;\n    readonly bytes: string;\n    readonly sessionId: SessionId;\n    readonly workspaceId?: string;\n}',
+  },
+  {
+    name: 'SessionImportTranscriptAudioValue',
+    declaration: 'export interface SessionImportTranscriptAudioValue {\n    readonly path: string;\n    readonly filename: string;\n}',
   },
   {
     name: 'SessionInspection',

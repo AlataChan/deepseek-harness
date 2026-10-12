@@ -44,6 +44,8 @@ function renderPicker(overrides: Partial<LibraryPickerProps> = {}) {
       renameLibrary={async () => ({ ok: true })}
       removeLibrary={async () => ({ ok: true })}
       attach={async () => ({ ok: true })}
+      listLibraryDocuments={async () => ({ ok: true, value: [] })}
+      rememberSelection={() => {}}
       close={() => {}}
       t={t}
       {...remotes}
@@ -85,7 +87,7 @@ async function changeFiles(view: { container: HTMLElement }, names: readonly str
 
 describe('ask-knowledge picker', () => {
   it('keeps English ingest copy next to the Chinese dictionary', () => {
-    expect(en['chip.unbound']).toBe('Knowledge')
+    expect(en['chip.unbound']).toBe('Ask knowledge')
     expect(en['picker.uploadTitle']).toBe('Upload a local document')
     expect(en['picker.chooseFile']).toBe('Choose a local document')
     expect(en['picker.skipEmpty']).toBe('Skip and ask with an empty library')
@@ -140,9 +142,9 @@ describe('ask-knowledge picker', () => {
     expect(encodeAskKnowledgeBytes(wide).length).toBeGreaterThan(0)
   })
 
-  it('shows 知识库 when unbound and the library name when bound', () => {
+  it('shows 问知识 when unbound and the library name when bound', () => {
     const unbound = render(<AskKnowledgeChip openPicker={() => {}} t={t} />)
-    expect(unbound.getByRole('button', { name: '知识库' })).toBeTruthy()
+    expect(unbound.getByRole('button', { name: '问知识' })).toBeTruthy()
     unbound.unmount()
     const bound = render(<AskKnowledgeChip openPicker={() => {}} boundName="制度 A" t={t} />)
     expect(bound.getByRole('button', { name: '制度 A' })).toBeTruthy()
@@ -269,12 +271,12 @@ describe('ask-knowledge picker', () => {
     const listLibraries = vi.fn(async () => ({ ok: true as const, value: [{ id: '1', displayName: '制度 A' }] }))
     const { view } = renderPicker({ listLibraries })
     await waitFor(() => {
-      expect(view.getByText('挂上一个可复用的文档库；表格请走问数。')).toBeTruthy()
+      expect(view.getByText('挂上一个可复用的文档库；表格请走问数据。')).toBeTruthy()
     })
     expect(view.container.getAttribute('role')).toBe('dialog')
     expect(view.getByRole('heading', { name: '选一个知识库' })).toBeTruthy()
     view.getByText('规则').click()
-    expect(view.getByText('问数是这一次问一张表，问完锁在这个会话。')).toBeTruthy()
+    expect(view.getByText('问数据是这一次问一张表，问完锁在这个会话。')).toBeTruthy()
     expect(view.getByText('知识库是问一套会变厚的材料，换会话还能用。')).toBeTruthy()
     expect(view.getByText('挂上库不是换成另一种助理，默认仍是标准模式，只是多了检索工具。')).toBeTruthy()
     expect(view.getByText('点库名挂到这个会话。点添加文档，往这个库再放一份材料。点删除，从名单去掉。')).toBeTruthy()
@@ -344,6 +346,82 @@ describe('ask-knowledge picker', () => {
     expect(view.getByRole('button', { name: '+ 新建知识库' })).toBeTruthy()
   })
 
+  it('lists library documents and hangs the chosen ones', async () => {
+    const attach = vi.fn(async () => ({ ok: true as const }))
+    const rememberSelection = vi.fn()
+    const close = vi.fn()
+    const { view } = renderPicker({
+      attach,
+      rememberSelection,
+      close,
+      listLibraryDocuments: async () => ({ ok: true, value: ['raw/制度.md', 'raw/会议.md'] }),
+    })
+    await waitFor(() => {
+      expect(view.getByRole('button', { name: '制度 A' })).toBeTruthy()
+    })
+    fireEvent.click(view.getByText('从库中选文件'))
+    await waitFor(() => {
+      expect(view.getByText('制度')).toBeTruthy()
+    })
+    expect(view.getByText('会议')).toBeTruthy()
+    fireEvent.click(view.getAllByRole('checkbox')[0]!)
+    fireEvent.click(view.getByText('挂载所选文档'))
+    await waitFor(() => {
+      expect(attach).toHaveBeenCalledWith('1')
+    })
+    expect(rememberSelection).toHaveBeenCalledWith(['raw/制度.md'])
+    expect(close).toHaveBeenCalled()
+  })
+
+  it('hangs the whole library without recording documents', async () => {
+    const attach = vi.fn(async () => ({ ok: true as const }))
+    const rememberSelection = vi.fn()
+    const { view } = renderPicker({
+      attach,
+      rememberSelection,
+      listLibraryDocuments: async () => ({ ok: true, value: ['raw/制度.md'] }),
+    })
+    await waitFor(() => {
+      expect(view.getByRole('button', { name: '制度 A' })).toBeTruthy()
+    })
+    fireEvent.click(view.getByText('从库中选文件'))
+    await waitFor(() => {
+      expect(view.getByText('制度')).toBeTruthy()
+    })
+    fireEvent.click(view.getByText('挂载整个库'))
+    await waitFor(() => {
+      expect(rememberSelection).toHaveBeenCalledWith([])
+    })
+    expect(attach).toHaveBeenCalledWith('1')
+  })
+
+  it('returns to the library list when documents cannot be read', async () => {
+    const { view } = renderPicker({
+      listLibraryDocuments: async () => ({ ok: false, error: { message: '读不到' } }),
+    })
+    await waitFor(() => {
+      expect(view.getByRole('button', { name: '制度 A' })).toBeTruthy()
+    })
+    fireEvent.click(view.getByText('从库中选文件'))
+    await waitFor(() => {
+      expect(view.getByText('读不到')).toBeTruthy()
+    })
+    expect(view.getByText('从库中选文件')).toBeTruthy()
+  })
+
+  it('reports an empty library in the document phase', async () => {
+    const { view } = renderPicker({
+      listLibraryDocuments: async () => ({ ok: true, value: [] }),
+    })
+    await waitFor(() => {
+      expect(view.getByRole('button', { name: '制度 A' })).toBeTruthy()
+    })
+    fireEvent.click(view.getByText('从库中选文件'))
+    await waitFor(() => {
+      expect(view.getByText('这个库还没有文档。先添加文档，或直接挂整个库。')).toBeTruthy()
+    })
+  })
+
   it('lists libraries on the settings page and can remove one', async () => {
     const removeLibrary = vi.fn(async () => ({ ok: true as const }))
     const view = render(
@@ -394,7 +472,7 @@ describe('ask-knowledge picker', () => {
     view.getByRole('button', { name: '+ 新建知识库' }).click()
     await waitFor(() => {
       expect(view.getByText('上传本地文档')).toBeTruthy()
-      expect(view.getByText('选一份文档写进这个知识库。可以用 .md、.txt、.html、.pdf、.docx、.csv、.json、.xlsx。表格更适合走问数。')).toBeTruthy()
+      expect(view.getByText('选一份文档写进这个知识库。可以用 .md、.txt、.html、.pdf、.docx、.csv、.json、.xlsx。表格更适合走问数据。')).toBeTruthy()
     })
     const choose = view.getByText('选择本地文档')
     expect(choose.closest('[data-file-pick="library"]')?.contains(fileInput(view))).toBe(true)
