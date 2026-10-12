@@ -9,8 +9,9 @@ const DESKTOP_APP_VERSION = '0.1.2-rc.1'
 const STILL_STARTING_AFTER_MS = 20_000
 const STILL_STARTING_TEXT = '仍在启动：首次启动要复制组件文件，请保持窗口打开。'
 
-const root = document.getElementById('root')
-if (root === null) throw new Error('desktop WebView is missing #root')
+const found = document.getElementById('root')
+if (found === null) throw new Error('desktop WebView is missing #root')
+const root: HTMLElement = found
 
 /**
  * Replace the root with one shell-owned status paragraph.
