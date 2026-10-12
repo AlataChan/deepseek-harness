@@ -47,12 +47,22 @@ pub fn sha256_bytes(bytes: &[u8]) -> String {
 /// Build the same asset URL `convertFileSrc` produces for a local file.
 #[must_use]
 pub fn asset_src(path: &Path) -> String {
-    let encoded = path
-        .to_string_lossy()
-        .replace('\\', "/")
-        .replace(' ', "%20");
-    if encoded.starts_with('/') {
-        format!("asset://localhost{encoded}")
+    // Match encodeURIComponent: the asset handler strips the URL's first
+    // slash before decoding, so the file's absolute prefix must be encoded.
+    const COMPONENT: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
+        .remove(b'-')
+        .remove(b'_')
+        .remove(b'.')
+        .remove(b'!')
+        .remove(b'~')
+        .remove(b'*')
+        .remove(b'\'')
+        .remove(b'(')
+        .remove(b')');
+    let path_text = path.to_string_lossy();
+    let encoded = percent_encoding::utf8_percent_encode(&path_text, COMPONENT);
+    if cfg!(windows) {
+        format!("http://asset.localhost/{encoded}")
     } else {
         format!("asset://localhost/{encoded}")
     }
@@ -223,15 +233,24 @@ mod tests {
             fs::read(&cached.destination).expect("read cache"),
             b"export {}\n"
         );
-        assert!(cached.src.starts_with("asset://localhost/"));
-        assert!(!cached.src.starts_with("asset://localhost//"));
+        let encoded = cached.src.split_once("localhost/").expect("asset host").1;
+        assert_eq!(
+            percent_encoding::percent_decode_str(encoded)
+                .decode_utf8()
+                .unwrap(),
+            cached.destination.to_string_lossy()
+        );
     }
 
     #[test]
-    fn asset_src_keeps_one_slash_after_localhost() {
+    fn asset_src_preserves_absolute_paths_and_url_delimiters() {
         assert_eq!(
-            asset_src(Path::new("/tmp/file.js")),
-            "asset://localhost/tmp/file.js"
+            asset_src(Path::new("/tmp/中文 #%.js")),
+            format!(
+                "{}://{}localhost/%2Ftmp%2F%E4%B8%AD%E6%96%87%20%23%25.js",
+                if cfg!(windows) { "http" } else { "asset" },
+                if cfg!(windows) { "asset." } else { "" }
+            )
         );
     }
 }

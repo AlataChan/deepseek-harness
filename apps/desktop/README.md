@@ -34,6 +34,8 @@ Assembled tests that drive the Rust relay need `pnpm run build:desktop:test-deps
 
 Release window binaries require Tauri's production asset protocol. Use `cargo tauri build`; a plain `cargo build --release` is rejected because it selects the development URL instead of the packaged frontend.
 
+Cached Client script URLs encode the entire absolute path and use the platform's asset protocol, so loading is independent of the application's working directory.
+
 ## Known Limitations and Deferred Work
 
 - **Unsigned installers** — no signing, notarization, updater, or public download.

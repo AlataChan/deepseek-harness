@@ -829,6 +829,7 @@ version = "0.1.2-rc.1"
 dependencies = [
  "dunce",
  "hex",
+ "percent-encoding",
  "serde",
  "serde_json",
  "sha2",

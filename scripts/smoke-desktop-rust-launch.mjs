@@ -2,7 +2,7 @@
 /** Exercise installed-runtime resolution and companion readiness through the production Rust shell. */
 import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, toNamespacedPath } from 'node:path'
 import { createInterface } from 'node:readline'
@@ -106,6 +106,22 @@ try {
     }) })
     const frame = await ready
     if (frame.runtimeVersion !== runtime.runtimeVersion) throw new Error('Rust launch runtime version mismatch')
+    const bundle = frame.bundles[0]
+    if (!bundle) throw new Error('Installed desktop announced no Client bundles')
+    const cached = await request('cache_bundle', {
+      sourcePath: bundle.sourcePath, sha256: bundle.sha256,
+      graphRev: frame.graph.rev, index: 0, id: bundle.id,
+    })
+    const assetUrl = new URL(cached.src)
+    const prefix = process.platform === 'win32' ? 'http://asset.localhost/' : 'asset://localhost/'
+    if (!cached.src.startsWith(prefix) || decodeURIComponent(assetUrl.pathname.slice(1)) !== cached.destination) {
+      throw new Error(`Cached Client URL does not preserve its absolute path: ${cached.src}`)
+    }
+    const config = JSON.parse(readFileSync(new URL('../apps/desktop/src-tauri/tauri.conf.json', import.meta.url), 'utf8'))
+    const scriptSources = config.app.security.csp.split(';').find(value => value.trim().startsWith('script-src ')).trim().split(/\s+/).slice(1)
+    const assetSource = process.platform === 'win32' ? 'http://asset.localhost' : 'asset:'
+    if (!scriptSources.includes(assetSource)) throw new Error(`Desktop CSP blocks cached Client scripts: ${assetSource}`)
+    console.log('Rust cached Client URL preserves its absolute path and platform protocol')
     console.log(`Rust shell resolved installed runtime and received control/ready (${runtime.runtimeVersion})`)
   })()])
 } finally {
