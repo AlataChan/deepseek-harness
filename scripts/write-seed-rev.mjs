@@ -6,6 +6,9 @@
  * `profile-plugins/` and `bundled-skills/` in sorted relative-path order. The
  * desktop shell compares that revision with the stamp a completed seed writes,
  * and skips the copy while they match, so any payload change forces a reseed.
+ * A symlink contributes its target text instead of copied bytes. Known
+ * ceiling: an empty payload directory contributes nothing, so adding or
+ * removing one does not change the revision.
  *
  * Usage: node scripts/write-seed-rev.mjs <resources-dir>
  */

@@ -16,10 +16,10 @@ Status: implemented
 
 启动时外壳读取 `resources/seed-rev.txt`；缺失、为空或格式错误的值等同于没有修订，每个阶段都会拷贝，构建未暂存播种树时也一样。只有当已安装树带着与修订相等的 `.dsh-seed-rev` 戳且仍然完整时，某个阶段才跳过拷贝：
 
-- profile：`package.json` 可解析并在 `dependencies` 中列出每个随包包，且 `cordis.patch.yml` 与 `pnpm-workspace.yaml` 存在；
+- profile：`package.json` 可解析并在 `dependencies` 中列出每个随包包，每个随包包都以自带 `package.json` 安装在 `node_modules/` 下，且 `cordis.patch.yml` 与 `pnpm-workspace.yaml` 存在；
 - 技能：每个随包技能仍有 `SKILL.md`。
 
-每个戳只在该阶段的所有拷贝都成功之后、且打包修订存在时才写入；拷贝失败不留下戳，因此下次启动会修复它。符号链接形式的戳既不被信任，也不会被写入穿透。`heal_desktop_profile_file` 每次启动仍然运行，因为 `dsh-client-app` / `dsh-context` 的遗留重写不能等负载变化（[遗留 profile 修复](../bug-fix/2026-08-30-desktop-leftover-profile-heal.zh.md)）。每次启动向 `companion.log` 追加一行，写明修订以及每个阶段是重播种、跳过还是未找到暂存树。
+每个戳只在该阶段的所有拷贝都成功之后、且打包修订存在时才写入；拷贝失败不留下戳，因此下次启动会修复它。符号链接形式的戳既不被信任，也不会被写入穿透。`heal_desktop_profile_file` 每次启动仍然运行，因为 `dsh-client-app` / `dsh-context` 的遗留重写不能等负载变化（[遗留 profile 修复](../bug-fix/2026-08-30-desktop-leftover-profile-heal.zh.md)）。每次启动向 `companion.log` 追加一行，写明修订以及每个阶段是重播种、重播种失败、跳过还是未找到暂存树。
 
 用户删除的 bundle 列表项不会强制重播种：重播种本身也不会把已删除的 bundle 放回来，所以跳过与拷贝行为一致。
 
@@ -27,7 +27,7 @@ Status: implemented
 
 | 覆盖面 | 位置 |
 |---|---|
-| 戳决策：修订缺失、匹配、过期；目标缺失、清单缺失、依赖缺失、模板文件缺失；`SKILL.md` 缺失；戳为符号链接 | `apps/desktop/src-tauri/src/app.rs` 的 `app::tests::…` |
+| 戳决策：修订缺失、匹配、过期；目标缺失、清单缺失、依赖缺失、已安装包缺失、模板文件缺失；`SKILL.md` 缺失；戳为符号链接 | `apps/desktop/src-tauri/src/app.rs` 的 `app::tests::…` |
 | 修订文本校验（空、大写、过短、非十六进制） | 同一模块 |
 | 修订稳定性与单字节敏感性；两个构建脚本都调用记录器 | `scripts/verify-desktop-exe.spec.ts` |
 | 已安装树携带 64 位十六进制的 `resources/seed-rev.txt` | `scripts/verify-desktop-exe.mjs` |

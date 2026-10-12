@@ -16,10 +16,10 @@ The copy exists for upgrades — a newer installer must replace the installed co
 
 On launch the shell reads `resources/seed-rev.txt`; a missing, empty, or malformed value behaves as no revision and every phase copies, as it does when the build staged no bundled tree. A phase skips its copy only when the installed tree carries a `.dsh-seed-rev` stamp equal to the revision and is still complete:
 
-- profile: `package.json` parses and lists every bundled package under `dependencies`, and `cordis.patch.yml` plus `pnpm-workspace.yaml` exist;
+- profile: `package.json` parses and lists every bundled package under `dependencies`, every bundled package is installed under `node_modules/` with its own `package.json`, and `cordis.patch.yml` plus `pnpm-workspace.yaml` exist;
 - skills: every bundled skill still has its `SKILL.md`.
 
-Each stamp is written only after every copy in that phase succeeded, and only while the packaged revision exists; a failed copy leaves no stamp, so the next launch repairs it. A stamp that is a symlink is never trusted and never written through. `heal_desktop_profile_file` still runs every launch, because the leftover `dsh-client-app` / `dsh-context` rewrite must not wait for a payload change ([leftover profile heal](../bug-fix/2026-08-30-desktop-leftover-profile-heal.md)). Each launch appends one line to `companion.log` naming the revision and whether each phase reseeded, skipped, or found no staged tree.
+Each stamp is written only after every copy in that phase succeeded, and only while the packaged revision exists; a failed copy leaves no stamp, so the next launch repairs it. A stamp that is a symlink is never trusted and never written through. `heal_desktop_profile_file` still runs every launch, because the leftover `dsh-client-app` / `dsh-context` rewrite must not wait for a payload change ([leftover profile heal](../bug-fix/2026-08-30-desktop-leftover-profile-heal.md)). Each launch appends one line to `companion.log` naming the revision and whether each phase reseeded, failed, skipped, or found no staged tree.
 
 A user-removed bundle-list entry does not force a reseed: a reseed itself does not put a removed bundle back, so the skip matches the copy's behavior.
 
@@ -27,7 +27,7 @@ A user-removed bundle-list entry does not force a reseed: a reseed itself does n
 
 | Coverage | Location |
 |---|---|
-| Stamp decision: missing, matching, and stale revision; missing destination, manifest, dependency, and template file; missing `SKILL.md`; symlinked stamp | `apps/desktop/src-tauri/src/app.rs`, `app::tests::…` |
+| Stamp decision: missing, matching, and stale revision; missing destination, manifest, dependency, installed package, and template file; missing `SKILL.md`; symlinked stamp | `apps/desktop/src-tauri/src/app.rs`, `app::tests::…` |
 | Revision text validation (empty, uppercase, short, non-hex) | same module |
 | Revision stability and one-byte sensitivity; both build scripts invoke the recorder | `scripts/verify-desktop-exe.spec.ts` |
 | Installed tree carries a 64-hex `resources/seed-rev.txt` | `scripts/verify-desktop-exe.mjs` |

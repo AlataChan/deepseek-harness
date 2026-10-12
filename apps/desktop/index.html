@@ -7,7 +7,10 @@
   </head>
   <body>
     <div id="root">
-      <p class="dsh-boot-status">正在启动 octopus_DSH…首次启动可能需要一两分钟。</p>
+      <div class="dsh-boot-status">
+        <p>正在启动 octopus_DSH…首次启动可能需要一两分钟。</p>
+        <p data-testid="desktop-boot-still-starting" hidden>仍在启动：首次启动要复制组件文件，请保持窗口打开。</p>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

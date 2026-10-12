@@ -22,6 +22,10 @@ html {
   color: #61666b;
 }
 
+.dsh-boot-status p {
+  margin: 0;
+}
+
 body {
   font-family: var(
     --dsw-font-family,

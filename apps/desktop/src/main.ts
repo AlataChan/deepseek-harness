@@ -5,9 +5,8 @@ import { createTauriShellPort } from './harness-port.ts'
 
 const DESKTOP_APP_VERSION = '0.1.2-rc.1'
 
-/** When the static first-start hint replaces the waiting line. */
+/** When the static first-start hint becomes visible. */
 const STILL_STARTING_AFTER_MS = 20_000
-const STILL_STARTING_TEXT = '仍在启动：首次启动要复制组件文件，请保持窗口打开。'
 
 const found = document.getElementById('root')
 if (found === null) throw new Error('desktop WebView is missing #root')
@@ -25,12 +24,11 @@ function showStatus(text: string): void {
 }
 
 void createTauriShellPort().then(async (port) => {
-  // One-shot: the status node stays in the document only while no view has
-  // replaced the root children, so a mounted home or Client tree is never
-  // overwritten.
+  // One-shot: the hint stays in the document only while no view has replaced
+  // the root children, so a mounted home or Client tree is never touched.
   const stillStarting = setTimeout(() => {
-    const status = document.querySelector('.dsh-boot-status')
-    if (status !== null) status.textContent = STILL_STARTING_TEXT
+    const hint = document.querySelector<HTMLElement>('[data-testid="desktop-boot-still-starting"]')
+    if (hint !== null) hint.hidden = false
   }, STILL_STARTING_AFTER_MS)
   try {
     const result = await bootDesktopClient({

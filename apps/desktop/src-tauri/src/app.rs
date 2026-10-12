@@ -320,6 +320,8 @@ const SEED_STAMP_FILE: &str = ".dsh-seed-rev";
 enum SeedOutcome {
     /// The bundled tree was copied into the installed location.
     Reseeded,
+    /// At least one copy failed; no stamp was written.
+    Failed,
     /// The installed copy already matches the announced revision.
     Skipped,
     /// The build staged no bundled tree.
@@ -331,6 +333,7 @@ impl SeedOutcome {
     fn label(self) -> &'static str {
         match self {
             Self::Reseeded => "reseeded",
+            Self::Failed => "reseed-failed",
             Self::Skipped => "skipped",
             Self::Absent => "absent",
         }
@@ -379,8 +382,9 @@ fn write_stamp(stamp: &Path, revision: &str) -> std::io::Result<()> {
 }
 
 /// Whether the installed desktop profile can be reused for `revision`: its
-/// stamp matches, its manifest parses and lists every bundled package, and
-/// both profile template files exist.
+/// stamp matches, its manifest parses and lists every bundled package, every
+/// bundled package is installed under `node_modules/`, and both profile
+/// template files exist.
 fn desktop_profile_seeded(profile_dir: &Path, bundled: &[String], revision: Option<&str>) -> bool {
     let Some(revision) = revision else {
         return false;
@@ -401,6 +405,15 @@ fn desktop_profile_seeded(profile_dir: &Path, bundled: &[String], revision: Opti
         return false;
     };
     if !bundled.iter().all(|name| dependencies.contains_key(name)) {
+        return false;
+    }
+    // A package removed after the copy (hand deletion, quarantine) must be
+    // restored, so the installed copy is part of the completeness check.
+    if !bundled.iter().all(|name| {
+        package_node_modules_dest(profile_dir, name)
+            .join("package.json")
+            .is_file()
+    }) {
         return false;
     }
     profile_dir.join("cordis.patch.yml").is_file()
@@ -451,11 +464,12 @@ fn install_bundled_profile_plugins(app: &AppHandle, revision: Option<&str>) -> S
             failed = true;
         }
     }
-    if !failed {
-        if let Some(revision) = revision {
-            let _ = std::fs::create_dir_all(&profile_dir);
-            let _ = write_stamp(&profile_dir.join(SEED_STAMP_FILE), revision);
-        }
+    if failed {
+        return SeedOutcome::Failed;
+    }
+    if let Some(revision) = revision {
+        let _ = std::fs::create_dir_all(&profile_dir);
+        let _ = write_stamp(&profile_dir.join(SEED_STAMP_FILE), revision);
     }
     SeedOutcome::Reseeded
 }
@@ -652,11 +666,12 @@ fn install_bundled_skills(app: &AppHandle, revision: Option<&str>) -> SeedOutcom
             let _ = std::fs::write(dest.join(".rate-limit-state.json"), bytes);
         }
     }
-    if !failed {
-        if let Some(revision) = revision {
-            let _ = std::fs::create_dir_all(&dest_root);
-            let _ = write_stamp(&dest_root.join(SEED_STAMP_FILE), revision);
-        }
+    if failed {
+        return SeedOutcome::Failed;
+    }
+    if let Some(revision) = revision {
+        let _ = std::fs::create_dir_all(&dest_root);
+        let _ = write_stamp(&dest_root.join(SEED_STAMP_FILE), revision);
     }
     SeedOutcome::Reseeded
 }
@@ -775,6 +790,15 @@ mod tests {
             "dependencies": deps,
         });
         std::fs::write(profile.join("package.json"), manifest.to_string()).expect("manifest");
+        for name in dependencies {
+            let installed = package_node_modules_dest(&profile, name);
+            std::fs::create_dir_all(&installed).expect("installed package dir");
+            std::fs::write(
+                installed.join("package.json"),
+                format!("{{ \"name\": \"{name}\" }}\n"),
+            )
+            .expect("installed package manifest");
+        }
         std::fs::write(profile.join("cordis.patch.yml"), "[]\n").expect("patch layer");
         std::fs::write(profile.join("pnpm-workspace.yaml"), "packages:\n  - .\n")
             .expect("pnpm workspace");
@@ -822,6 +846,12 @@ mod tests {
         // Missing profile template file.
         write_profile(dir.path(), Some(REVISION), &["@scope/plugin"]);
         std::fs::remove_file(profile.join("cordis.patch.yml")).expect("remove patch layer");
+        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        // Installed package removed after the copy (hand deletion, quarantine):
+        // the stamp survives, so the installed copy itself must be checked.
+        write_profile(dir.path(), Some(REVISION), &["@scope/plugin"]);
+        std::fs::remove_dir_all(package_node_modules_dest(&profile, "@scope/plugin"))
+            .expect("remove installed package");
         assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
     }
 

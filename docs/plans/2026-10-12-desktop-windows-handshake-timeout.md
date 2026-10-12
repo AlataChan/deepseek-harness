@@ -14,7 +14,7 @@ On the owner's Windows machine (NSIS install under `C:\Users\admin\AppData\Local
 
 ## Evidence
 
-1. `.github/workflows/desktop-windows.yml` run 38240994748 (commit `ea74606ceb`, success) bounds the gate's pinned-overlay step at 26.9 s (`11:40:07.546` → `11:40:34.460`). That window contains the ten `seed-desktop-profile-plugin.mjs install` spawns **plus** the smoke, so it is an upper bound on the handshake, not a measurement of it. The smoke's own limit is 20 s and the desktop WebView's is 15 s (`apps/desktop/src/bootstrap.ts:375`).
+1. `.github/workflows/desktop-windows.yml` run 38240994748 (success) bounds the gate's pinned-overlay step at 26.9 s (`11:40:07.546` → `11:40:34.460`). That window contains the ten `seed-desktop-profile-plugin.mjs install` spawns **plus** the smoke, so it is an upper bound on the handshake, not a measurement of it. The smoke's own limit is 20 s and the desktop WebView's is 15 s (`apps/desktop/src/bootstrap.ts:375`).
 2. The same run's module-graph step needed 4.7 s (`11:40:02.87` → `11:40:07.54`) just to import the companion's module graph on a healthy runner.
 3. The same companion boot with a warm profile is ~2-3 s (gate step 6) and ~2 s on macOS against the shipped `.app` (measured here).
 4. Owner's `companion.log`: every boot reaches `dsh: warning: 3 entries did not activate` with no fatal error, then the shell replaces generation after generation — retries, not crashes. Several generations produced no output at all before replacement. The inactive entries are `commerce-mode` (no `sqlite3` on `PATH`), its dependent `commerce-preset`, and `desktop-speech-transcribe`.

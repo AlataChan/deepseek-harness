@@ -112,7 +112,10 @@ describe('desktop seed revision', () => {
       writeFileSync(join(plugin, 'package.json'), '{ "name": "@scope/plugin" }\n')
       writeFileSync(join(skill, 'SKILL.md'), '# first\n')
       const record = (): string => {
-        const result = spawnSync(process.execPath, [resolve(root, 'scripts/write-seed-rev.mjs'), resources], { encoding: 'utf8' })
+        const result = spawnSync(process.execPath, [resolve(root, 'scripts/write-seed-rev.mjs'), resources], {
+          encoding: 'utf8',
+          timeout: 30_000,
+        })
         expect(result.status, result.stderr).toBe(0)
         return readFileSync(join(resources, 'seed-rev.txt'), 'utf8')
       }
