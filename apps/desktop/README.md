@@ -32,6 +32,8 @@ pnpm run build:desktop
 
 Assembled tests that drive the Rust relay need `pnpm run build:desktop:test-deps` (or the spec `beforeAll`) so `apps/cli/lib/desktop-companion.js` and `carrier-harness` exist.
 
+Release window binaries require Tauri's production asset protocol. Use `cargo tauri build`; a plain `cargo build --release` is rejected because it selects the development URL instead of the packaged frontend.
+
 ## Known Limitations and Deferred Work
 
 - **Unsigned installers** — no signing, notarization, updater, or public download.
