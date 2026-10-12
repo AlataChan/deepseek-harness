@@ -168,6 +168,7 @@ export class ProcessTransport {
    * Unary Fetch for Connection RPC. The body must be a `client-request` envelope.
    * @param _input - unused URL; the method lives in the JSON body.
    * @param init - POST body and optional abort signal.
+   * @returns the RPC response, or a rejection on transport failure.
    */
   fetch(_input: URL | string, init?: RequestInit): Promise<Response> {
     if (typeof init?.body !== 'string') {
@@ -198,6 +199,7 @@ export class ProcessTransport {
    * @param endpoint - canonical Remote endpoint.
    * @param payload - decoded carrier payload.
    * @param signal - caller cancellation.
+   * @returns the Remote stream payloads until completion or cancellation.
    */
   async *openStream(endpoint: string, payload: unknown, signal: AbortSignal): AsyncGenerator<unknown> {
     if (this.closed !== undefined) throw this.closed
@@ -387,5 +389,8 @@ export class ProcessTransport {
   }
 }
 
-/** @deprecated Use {@link ProcessTransport}. */
+/**
+ * Compatibility alias for the process carrier transport.
+ * @deprecated Use {@link ProcessTransport}.
+ */
 export const ProcessApiClient = ProcessTransport

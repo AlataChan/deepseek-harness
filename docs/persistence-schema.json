@@ -3485,6 +3485,240 @@
       }
     },
     {
+      "key": "event:ask-data/bound",
+      "kind": "event",
+      "event": "ask-data/bound",
+      "surface": false,
+      "digest": "2a67e58ae681bcc316e9ec0499adef6a39ee48370bcca0a258dc046976bb8a4b",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 6,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "connectionRef",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "displayName",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "readonly",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "sourceId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "ask-data/bound"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:ask-knowledge/bound",
+      "kind": "event",
+      "event": "ask-knowledge/bound",
+      "surface": false,
+      "digest": "93ccbd84f34655bcdf6bbf1f5dbef7f8d95ab51e5f4d800982da99a7cc353684",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "displayName",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "libraryId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "ask-knowledge/bound"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:ask-knowledge/unbound",
+      "kind": "event",
+      "event": "ask-knowledge/unbound",
+      "surface": false,
+      "digest": "794cbc52faab61299d1138ada1ade5039591e160de3f4c762f2324e916dedb6f",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "libraryId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "ask-knowledge/unbound"
+          }
+        ]
+      }
+    },
+    {
       "key": "event:assistant/attempt",
       "kind": "event",
       "event": "assistant/attempt",
@@ -5630,6 +5864,110 @@
           {
             "kind": "literal",
             "value": "command/run"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:commerce/bound",
+      "kind": "event",
+      "event": "commerce/bound",
+      "surface": false,
+      "digest": "f395569ea0ea07ae5c51db8f09f1d53fa4e940bdcc8830e9aba04bd6a411f9df",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 8,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 10,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "displayName",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "kinds",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "sourceId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "array",
+            "element": 4
+          },
+          {
+            "kind": "union",
+            "types": [
+              5,
+              6,
+              7
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "inventory"
+          },
+          {
+            "kind": "literal",
+            "value": "orders"
+          },
+          {
+            "kind": "literal",
+            "value": "products"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "commerce/bound"
           }
         ]
       }
@@ -10603,6 +10941,656 @@
           {
             "kind": "literal",
             "value": "llm/retry-started"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:media/approval",
+      "kind": "event",
+      "event": "media/approval",
+      "surface": false,
+      "digest": "7c10e657417c1ea1305461fc3b4338fd2f2f508a70ddb941f2702c09f398caf4",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 6,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 7,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "estimatedYuan",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "inputHashes",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "promptHash",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "array",
+            "element": 4
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": 1
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "media/approval"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:media/artifact",
+      "kind": "event",
+      "event": "media/artifact",
+      "surface": false,
+      "digest": "04416393d3f112ad4c9ce58c80c97ba1d595c230a8f47f669ce0790f9dca78e8",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 11,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 12,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "artifact",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 10,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "artifactId",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "createdAt",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "digest",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "durationSeconds",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "file",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "kind",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "name",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "sessionId",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "workspaceId",
+                "type": 3,
+                "optional": true
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "union",
+            "types": [
+              6,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "composed"
+          },
+          {
+            "kind": "literal",
+            "value": "import"
+          },
+          {
+            "kind": "literal",
+            "value": "speech"
+          },
+          {
+            "kind": "literal",
+            "value": "video"
+          },
+          {
+            "kind": "literal",
+            "value": 1
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "media/artifact"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:media/request",
+      "kind": "event",
+      "event": "media/request",
+      "surface": false,
+      "digest": "004db5896647b3b64baca0623c7ba8527ff436fc046b2e016edc0b3e79867cd5",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 22,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 23,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "request",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 21,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "artifactId",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "estimatedYuan",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "failure",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "inputHashes",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "jobId",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "kind",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "label",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "model",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "promptHash",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "providerTaskId",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "requestId",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "stage",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "stopIntent",
+                "type": 20,
+                "optional": true
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "array",
+            "element": 3
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              8,
+              9,
+              10
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "composed"
+          },
+          {
+            "kind": "literal",
+            "value": "import"
+          },
+          {
+            "kind": "literal",
+            "value": "speech"
+          },
+          {
+            "kind": "literal",
+            "value": "video"
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "approved"
+          },
+          {
+            "kind": "literal",
+            "value": "downloaded"
+          },
+          {
+            "kind": "literal",
+            "value": "failed"
+          },
+          {
+            "kind": "literal",
+            "value": "pending-recovery"
+          },
+          {
+            "kind": "literal",
+            "value": "proposed"
+          },
+          {
+            "kind": "literal",
+            "value": "running"
+          },
+          {
+            "kind": "literal",
+            "value": "stopped"
+          },
+          {
+            "kind": "literal",
+            "value": "submitted"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "literal",
+            "value": 1
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "media/request"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:media/stop",
+      "kind": "event",
+      "event": "media/stop",
+      "surface": false,
+      "digest": "c29b5a5712793fdcdd18c997bbf35f60ef55947ddc132f2087542447662dacf1",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 6,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "requestId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 3,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": 1
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "media/stop"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:media/task",
+      "kind": "event",
+      "event": "media/task",
+      "surface": false,
+      "digest": "4f180121fb561d10cc362989276eb5d7a2a1ff95a749009a531b95b11b107e48",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 6,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "providerTaskId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 3,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": 1
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "media/task"
           }
         ]
       }
@@ -15922,7 +16910,7 @@
       "kind": "event",
       "event": "team/member",
       "surface": false,
-      "digest": "4fb59762612c3e3ac3a3bd4f84c9c148d3c3893bd422ba2b201cc039fabd49bc",
+      "digest": "0bff5e9256cf33b10e27a092105d23885a2f68bbe449ed1a68df551d449d619b",
       "schema": {
         "root": 0,
         "nodes": [
@@ -16000,6 +16988,11 @@
                 "name": "id",
                 "type": 6,
                 "optional": false
+              },
+              {
+                "name": "model",
+                "type": 6,
+                "optional": true
               },
               {
                 "name": "name",
@@ -21795,6 +22788,11 @@
   ],
   "types": [
     {
+      "digest": "004db5896647b3b64baca0623c7ba8527ff436fc046b2e016edc0b3e79867cd5",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "0116b1f89c05221d56b0ba35c83d302bf4857bc7277d247e9bbaf74b27d2c66e",
       "names": [],
       "sources": []
@@ -21824,7 +22822,22 @@
       ]
     },
     {
+      "digest": "02db5d512e144a4b3f9322d11ab0253f7e4898eb6b04839a4950aba763d8f439",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "0341d4c3dfcd53253cdc1e789d9130d3cd848b6f8b0706bf92f313a68b39ff23",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "042a7b808c1e8d4bfcce1947a883818d694ccf49b29a0281d72172f87a15ab37",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "04416393d3f112ad4c9ce58c80c97ba1d595c230a8f47f669ce0790f9dca78e8",
       "names": [],
       "sources": []
     },
@@ -21850,6 +22863,11 @@
       "sources": [
         "packages/core/session/src/types.ts:32"
       ]
+    },
+    {
+      "digest": "068cd59f7c3eb878cc0a7ea45c47520efa8c069f36b1ce7a8ed5618f8095ea9c",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "07e1a58c58b593f507b8e7f25723bb0aa42baae6e00f5ecfddf28cb1e64d3235",
@@ -21899,6 +22917,11 @@
       "sources": []
     },
     {
+      "digest": "0aad0b50164c88e09acea6243c974688b7e34eec994c3198f859dca53545dc84",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "0acd94fe8794574c9ae72c7855ee16d29c546096d4af760d16d1225385764555",
       "names": [
         "packages/llm/llm/src/types.ts#ReplayEnvelope"
@@ -21925,11 +22948,16 @@
       "digest": "0bcfaf5566d271028429ac7b562cb59053c9d78b8ae14708c35fac835108d1b1",
       "names": [],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:238"
+        "packages/experimental/agent-team/src/types.ts:350"
       ]
     },
     {
       "digest": "0bdaf9cb63594be4ef034b68901fffe792fe09d6d5f6bac42d7f56f6e7834fb9",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "0bff5e9256cf33b10e27a092105d23885a2f68bbe449ed1a68df551d449d619b",
       "names": [],
       "sources": []
     },
@@ -22085,6 +23113,11 @@
       ]
     },
     {
+      "digest": "14d27f3f7efa6be9238c85eb72b6a8bd44dd78078e8c5cc3c63fece2fb2b32a5",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "15196447222782e773eb943c92b18316ce96b9af0f0cfddb6e57ba8274ecc5ff",
       "names": [],
       "sources": []
@@ -22177,6 +23210,13 @@
       "sources": []
     },
     {
+      "digest": "199bbb443268caf43aee0a2aab553a0806dbc4321a77e658c75c2f9f1379d389",
+      "names": [],
+      "sources": [
+        "packages/experimental/desktop-media/src/types.ts:98"
+      ]
+    },
+    {
       "digest": "1a2718b00937b236a0d0910ef5dab2f9f8b65e4bde410cc21f15fbbf29f584d3",
       "names": [],
       "sources": []
@@ -22201,6 +23241,11 @@
       "sources": [
         "packages/session/session-title/src/types.ts:29"
       ]
+    },
+    {
+      "digest": "1b90cf663c7948daa77333785005cab8dcb29b04f293fc4c57209b4a2e586ca2",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "1b912703e2d64f91c99c675b8f805b01076c8325b905c1218ad81ef0b24909d5",
@@ -22335,7 +23380,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamMessageSource"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:137"
+        "packages/experimental/agent-team/src/types.ts:168"
       ]
     },
     {
@@ -22370,6 +23415,11 @@
     },
     {
       "digest": "24ce31aa528272e59f21cd26da9eca08968bcc97529756a749bfdab71746d9c8",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "2505b59ce0060b8d6844ed90c895ecf56bc19089237bef422a26f37299d4d3b4",
       "names": [],
       "sources": []
     },
@@ -22444,6 +23494,11 @@
       "sources": []
     },
     {
+      "digest": "2a67e58ae681bcc316e9ec0499adef6a39ee48370bcca0a258dc046976bb8a4b",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "2aad1179f957631477b582e57cd8f538cb82618fc3fb816bde1171154235b065",
       "names": [],
       "sources": []
@@ -22483,6 +23538,11 @@
       ]
     },
     {
+      "digest": "2d2e6cc1e4c544c2a4cb8215f80730da76ca530c48712939e459c22de930d64d",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "2da725e554cd89301d829ed9dc45a572c3cd1b93b5e91d0d71f007976d8a0863",
       "names": [],
       "sources": []
@@ -22507,7 +23567,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamMessageSnapshot"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:128"
+        "packages/experimental/agent-team/src/types.ts:159"
       ]
     },
     {
@@ -22532,6 +23592,11 @@
       "sources": [
         "packages/core/tools/src/types.ts:11"
       ]
+    },
+    {
+      "digest": "30549e231abf33100e19ba73bec3f064854b3bc07b41fefdbbfb6be6c0de7c67",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "30d5a537b296685770b1241c4b4bbde19d5a31ff81aa23df73fab5e90b8fc65f",
@@ -22903,10 +23968,22 @@
       "sources": []
     },
     {
+      "digest": "4ba818e1fdbbb0c26e1c8b01b119ee86839586c018dd1bf73149aea49fceede3",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "4bb451330ff699f36b45539ceb0eb2606ead72084e2c5bb637c36cc80e2252db",
       "names": [],
       "sources": [
         "packages/core/session/src/types.ts:193"
+      ]
+    },
+    {
+      "digest": "4bf676e8ed731180de11b7a351e4e327f8daa1a08aefb90fd47f7c55c1ed1bb1",
+      "names": [],
+      "sources": [
+        "packages/host/ask-knowledge/src/types.ts:25"
       ]
     },
     {
@@ -22919,8 +23996,11 @@
         "packages/experimental/agent-team/src/types.ts#TeamId",
         "packages/experimental/agent-team/src/types.ts#TeamMessageId",
         "packages/experimental/agent-team/src/types.ts#TeamTaskId",
+        "packages/experimental/desktop-media/src/ids.ts#MediaArtifactId",
+        "packages/experimental/desktop-media/src/ids.ts#MediaRequestId",
         "packages/feedback/message-feedback/src/types.ts#MessageFeedbackVersion",
         "packages/goal/goal/src/types.ts#GoalId",
+        "packages/host/commerce/src/types.ts#CommerceSourceId",
         "packages/interaction/commands/src/brand.ts#CommandId",
         "packages/interaction/user-approval/src/types.ts#ApprovalRequestId",
         "packages/llm/llm-retry/src/brand.ts#RetryId",
@@ -22937,15 +24017,18 @@
         "packages/workflow/workflow/src/types.ts#WorkflowRunId"
       ],
       "sources": [
-        "packages/api/session-controller/src/types.ts:398",
+        "packages/api/session-controller/src/types.ts:798",
         "packages/attachment/attachment/src/brand.ts:6",
         "packages/compaction/compaction/src/brand.ts:4",
         "packages/core/session/src/types.ts:20",
-        "packages/experimental/agent-team/src/types.ts:20",
-        "packages/experimental/agent-team/src/types.ts:32",
-        "packages/experimental/agent-team/src/types.ts:8",
+        "packages/experimental/agent-team/src/types.ts:21",
+        "packages/experimental/agent-team/src/types.ts:33",
+        "packages/experimental/agent-team/src/types.ts:9",
+        "packages/experimental/desktop-media/src/ids.ts:10",
+        "packages/experimental/desktop-media/src/ids.ts:22",
         "packages/feedback/message-feedback/src/types.ts:14",
         "packages/goal/goal/src/types.ts:17",
+        "packages/host/commerce/src/types.ts:10",
         "packages/interaction/commands/src/brand.ts:31",
         "packages/interaction/user-approval/src/types.ts:17",
         "packages/llm/llm-retry/src/brand.ts:4",
@@ -22997,6 +24080,11 @@
       "sources": []
     },
     {
+      "digest": "4f180121fb561d10cc362989276eb5d7a2a1ff95a749009a531b95b11b107e48",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "4f507598cf476214aa7646ce7841a7064a9dcb05d0a1eaaefaf79c2b738f160f",
       "names": [],
       "sources": []
@@ -23009,9 +24097,13 @@
       ]
     },
     {
-      "digest": "4fb59762612c3e3ac3a3bd4f84c9c148d3c3893bd422ba2b201cc039fabd49bc",
-      "names": [],
-      "sources": []
+      "digest": "4fb9fa3b9a2c29b6308f0cfc8755b4fd3644f81de708354c5b7ced8d565d607b",
+      "names": [
+        "packages/experimental/desktop-media/src/types.ts#MediaRequestRecord"
+      ],
+      "sources": [
+        "packages/experimental/desktop-media/src/types.ts:25"
+      ]
     },
     {
       "digest": "50cf02d875f8a1f1411f4a6fbcffab9120ccef5f74a47331fbf29480e5f68f48",
@@ -23034,7 +24126,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamTaskSnapshot"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:74"
+        "packages/experimental/agent-team/src/types.ts:93"
       ]
     },
     {
@@ -23072,6 +24164,20 @@
     },
     {
       "digest": "53cf1704ae0709c7678bcf070c83c619fc48ca1b5c173b74cfa8702f22a8e492",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "5414fccb3ac68b960b81d1be8429c7469de28ff9993dc5700e218276ca9404a5",
+      "names": [
+        "packages/experimental/agent-team/src/types.ts#TeamMemberSnapshot"
+      ],
+      "sources": [
+        "packages/experimental/agent-team/src/types.ts:56"
+      ]
+    },
+    {
+      "digest": "549647ed521d1f6d14dc47cb7b12926537f3ab89844d5b0138fbf071a4ee5fb0",
       "names": [],
       "sources": []
     },
@@ -23247,6 +24353,13 @@
       "sources": []
     },
     {
+      "digest": "5f315c1de642dcae178d259af2d6134e082b452baa534e2be1aab53293222bc9",
+      "names": [],
+      "sources": [
+        "packages/experimental/desktop-media/src/types.ts:100"
+      ]
+    },
+    {
       "digest": "5f758f3de5f00c18968a7c6d347083aac5c9ae13f6a79c78f6611b23c4973564",
       "names": [
         "packages/subagent/subagent/src/descriptor.ts#OneShotSubagentDescriptorData"
@@ -23297,15 +24410,6 @@
       ],
       "sources": [
         "packages/subagent/subagent/src/descriptor.ts:72"
-      ]
-    },
-    {
-      "digest": "6598cd6da253948d6b207c6374a45335804c79b576866d6215649c2d1bc85e25",
-      "names": [
-        "packages/experimental/agent-team/src/types.ts#TeamMemberSnapshot"
-      ],
-      "sources": [
-        "packages/experimental/agent-team/src/types.ts:47"
       ]
     },
     {
@@ -23380,7 +24484,7 @@
       "digest": "6a4f72e2e179e17b922f2a9392c0e1c8f8c707f32494372454850a3eb184a6e7",
       "names": [],
       "sources": [
-        "packages/api/session-controller/src/types.ts:403"
+        "packages/api/session-controller/src/types.ts:808"
       ]
     },
     {
@@ -23417,6 +24521,11 @@
       ]
     },
     {
+      "digest": "6c14b0557d30a187262c63b4658d9b6f7f1079d55792c9767537bad688c07a2e",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "6c1cccb433ddc153facb380c7dda956237ba5c31f8a532a69142dc277890cc9b",
       "names": [],
       "sources": []
@@ -23446,6 +24555,15 @@
       ]
     },
     {
+      "digest": "6e9b06036fef0fefc30e5bcec7d13829ef5f72f1f57c4c535469f6a015a35a0b",
+      "names": [
+        "packages/experimental/desktop-media/src/types.ts#MediaStage"
+      ],
+      "sources": [
+        "packages/experimental/desktop-media/src/types.ts:13"
+      ]
+    },
+    {
       "digest": "6ea608bdc8a7a63d3d23b84c49721325094db88d136482e43a820945295eee3e",
       "names": [],
       "sources": []
@@ -23468,6 +24586,11 @@
       "sources": [
         "packages/context/agent-instructions/src/state.ts:37"
       ]
+    },
+    {
+      "digest": "6f36dcf4de43cd685f606bdb54f00b27c10f40e21e4bc62adb369eb033bcc71f",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "6f44f32be9bcd9a8bf075c3b575b06c8ed63446386e5b0995c7b73762e68ddae",
@@ -23520,6 +24643,11 @@
       ]
     },
     {
+      "digest": "71d92bb3f006e9f1eafdd57ea0fa7ad61259ef0d8b6b07096cdf5de3933c2465",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "72ec79127a9c0d0241b1106a74cc2b24c81ce467170f1c3c93f7b71a9496d227",
       "names": [],
       "sources": []
@@ -23560,6 +24688,11 @@
       "sources": []
     },
     {
+      "digest": "794cbc52faab61299d1138ada1ade5039591e160de3f4c762f2324e916dedb6f",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "79650cfa10aa3c52440328d85e8a25f0ffadc8d7efd784e3c0819d8bb74a1985",
       "names": [],
       "sources": [
@@ -23580,6 +24713,11 @@
     },
     {
       "digest": "7af85bf70d4eafce63e739adae38ea85501e68df3a0e22f97f3a0be90fd9e4cb",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "7c10e657417c1ea1305461fc3b4338fd2f2f508a70ddb941f2702c09f398caf4",
       "names": [],
       "sources": []
     },
@@ -23682,6 +24820,15 @@
       "sources": []
     },
     {
+      "digest": "8085524dd3661d98e93c7c99bf5ba1d0601c1e11fd3dc22ed2069a71a37e83ed",
+      "names": [
+        "packages/host/ask-knowledge/src/types.ts#AskKnowledgeBinding"
+      ],
+      "sources": [
+        "packages/host/ask-knowledge/src/types.ts:10"
+      ]
+    },
+    {
       "digest": "811229eedcec57979dbadca7dbea832a59f8580cff30cb217fca5e2da16314bd",
       "names": [],
       "sources": []
@@ -23723,6 +24870,15 @@
       "sources": []
     },
     {
+      "digest": "836b2882a8080618889e47ba6a0e7eb8d59173c27ce90fd4a2f4a220619d78f6",
+      "names": [
+        "packages/host/ask-data/src/types.ts#AskDataBinding"
+      ],
+      "sources": [
+        "packages/host/ask-data/src/types.ts:11"
+      ]
+    },
+    {
       "digest": "83d6916021eede8f2d83a1872716caa1efdec39a3681890996c55147187fdd12",
       "names": [],
       "sources": []
@@ -23743,6 +24899,13 @@
       ],
       "sources": [
         "packages/workflow/workflow/src/types.ts:63"
+      ]
+    },
+    {
+      "digest": "8485913f2d7e842ab1c79cf5ce5ca7d4509639b2965397ccbf5d4d76cb4ffda1",
+      "names": [],
+      "sources": [
+        "packages/experimental/desktop-media/src/types.ts:92"
       ]
     },
     {
@@ -23876,6 +25039,11 @@
       "sources": []
     },
     {
+      "digest": "8df1d64990df290693c8e98abb8eea9db0b1d6306ad0fecc265ec68b4431de27",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "8e31bb958e9b015e6f8407eaade32217068159e816f3cc99c3ad76eb889732e0",
       "names": [],
       "sources": [
@@ -23966,6 +25134,11 @@
       ]
     },
     {
+      "digest": "93ccbd84f34655bcdf6bbf1f5dbef7f8d95ab51e5f4d800982da99a7cc353684",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "93d38436347f67c9022aacbc4472e283d722bcab8eb73fc376aaf7b6a6b9fb35",
       "names": [],
       "sources": []
@@ -24027,6 +25200,15 @@
       "digest": "998f22585a5d73ec005365e203f07fc3b3a029e82323fdda3fd7f13b0a9639d0",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "999feb46591fa6e5884f00f5f61cdb85f6bb38c149db8617a77663fa97262e9a",
+      "names": [
+        "packages/experimental/desktop-media/src/types.ts#MediaArtifactRecord"
+      ],
+      "sources": [
+        "packages/experimental/desktop-media/src/types.ts:42"
+      ]
     },
     {
       "digest": "99e7e7d7fed55ae6a3a648b35192f16ab1248ddcb0179a0e275128ac1487d7c7",
@@ -24102,6 +25284,15 @@
       ]
     },
     {
+      "digest": "9e7ee6afb50a2009fc7043d408ffc35849a708ac6f9ef6c4f2486a4228089d16",
+      "names": [
+        "packages/host/commerce/src/types.ts#CommerceBinding"
+      ],
+      "sources": [
+        "packages/host/commerce/src/types.ts:33"
+      ]
+    },
+    {
       "digest": "9edc162949abf93bd5ff049191b345454ba104f583937ce5580fb50f067d2b94",
       "names": [],
       "sources": [
@@ -24110,6 +25301,16 @@
     },
     {
       "digest": "9f65c43e340bba31cdc0fc37bd93ccb68d5e9b36f47a68c207e95a8e68620a5d",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "9f6ddb197636c46406cdab426c2c9abe6d58cc0850befffc1a6fd9183fd55f23",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "a030aec1be14d3f9a13f6d51383bb6b6c5728a7a9b38c50c672183b89b751a93",
       "names": [],
       "sources": []
     },
@@ -24154,6 +25355,13 @@
       "sources": []
     },
     {
+      "digest": "a1eeda2096abce66ca83518f487842a47612f67ac393859192d4882dbf347c55",
+      "names": [],
+      "sources": [
+        "packages/experimental/desktop-media/src/types.ts:82"
+      ]
+    },
+    {
       "digest": "a2066bd52f61218ba15b758def2641cc6a8bd3d4a594a488ee4c65be356d7e39",
       "names": [],
       "sources": []
@@ -24189,7 +25397,7 @@
       "digest": "a40d12070f6f4a124f32fb3cc86e7857554702e32f0eda3080a25c4b9ac9b18c",
       "names": [],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:234"
+        "packages/experimental/agent-team/src/types.ts:346"
       ]
     },
     {
@@ -24198,6 +25406,11 @@
       "sources": [
         "packages/core/session/src/types.ts:311"
       ]
+    },
+    {
+      "digest": "a634b4dcb97623c8d4e287033bd14fda059fe97bf63b4bcefeaae03bb73c0337",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "a6567ccb2e530606b775371eb4fa31468d72084339968e8b0440a516a23b39dc",
@@ -24246,6 +25459,11 @@
       "sources": [
         "packages/interaction/commands/src/types.ts:105"
       ]
+    },
+    {
+      "digest": "a890e6834f3e7a66f3c44849562b41ca445a50ff1334ffb13320fd3838916e72",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "a8a2b9011fc067862df7ce40748868467e5778283d7ac193c13f77684a914c57",
@@ -24431,11 +25649,9 @@
       "sources": []
     },
     {
-      "digest": "b1ebd5cda47d90d980bb05bffc3f970c51537b9aff15b3bc3d639811727741b1",
+      "digest": "b1b4ae5a17c22d9732dbf5a694ae5df357a42b21c8d382784f2959e1f5d7ef41",
       "names": [],
-      "sources": [
-        "packages/experimental/agent-team/src/types.ts:232"
-      ]
+      "sources": []
     },
     {
       "digest": "b1f62380f6746fedd629e71065e3583cef83334875b499ac9665c2eb87acfbf5",
@@ -24463,8 +25679,13 @@
         "packages/experimental/agent-team/src/types.ts#TeamTaskStatus"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:71"
+        "packages/experimental/agent-team/src/types.ts:90"
       ]
+    },
+    {
+      "digest": "b317bf8d88e6d7374207ca79fa5539305057114e7461cc5e4259335190dcdded",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "b3681c026a0b98e98b103f057dfd217fbe904129c090efd668253ec9aea7fece",
@@ -24588,6 +25809,11 @@
       "sources": []
     },
     {
+      "digest": "b8d234b2ee8897fdd09ef6922fef8d260a8503adea8245879a300c307ca1825e",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "b8fc636a2121df9d8423c242e03c9d23b7ab7c6fdce00e45746932c60b730f97",
       "names": [
         "packages/deliverables/tool-present/src/types.ts#PresentedFile"
@@ -24659,6 +25885,15 @@
       "sources": []
     },
     {
+      "digest": "bdd56e44c187e5bdb6821fdc42a79c86197a764822e0122b370e229993c2408b",
+      "names": [
+        "packages/experimental/desktop-media/src/types.ts#MediaWorkKind"
+      ],
+      "sources": [
+        "packages/experimental/desktop-media/src/types.ts:10"
+      ]
+    },
+    {
       "digest": "bf16d2e98a7f13894ded2cffe5ce857bf473954a0e3c0ed9bc7739e2e1c7b78a",
       "names": [],
       "sources": []
@@ -24697,6 +25932,11 @@
     },
     {
       "digest": "c219efbdfd53b836786202ab4532913d555798f0a8615a4e9629736e3799fb70",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "c29b5a5712793fdcdd18c997bbf35f60ef55947ddc132f2087542447662dacf1",
       "names": [],
       "sources": []
     },
@@ -24744,6 +25984,11 @@
       "sources": [
         "packages/util/values/src/index.ts:4"
       ]
+    },
+    {
+      "digest": "c6e4fa548c431804f6adebfaed3e343205c813699d2a191f990a7b1133e8c5ba",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "c748fb42c80a120038a8c587af80ec39924803c401364db11c8974d5bf6d0262",
@@ -24879,6 +26124,13 @@
       "sources": []
     },
     {
+      "digest": "d89a95664f6d8166e566837431d6abf993cb688aec56700acc0e24cb6f7e65d0",
+      "names": [],
+      "sources": [
+        "packages/experimental/desktop-media/src/types.ts:84"
+      ]
+    },
+    {
       "digest": "d9196086e41e4dd5c2ce87f5c25529c8112a1731d258cf0728747d41a9ee3241",
       "names": [],
       "sources": []
@@ -24940,6 +26192,11 @@
       "sources": []
     },
     {
+      "digest": "dd692623bb22f4ea90a028ae64f16244b79a1c31b417ab4a124a942ceae8b184",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "dd6cc2bb2a8f28248347021ad93565360b196a042360b4cd16b569d3a2a91f2d",
       "names": [],
       "sources": []
@@ -24953,6 +26210,15 @@
       "digest": "de30b1fa12c75f81df6aa4096e1595296d2d04e2be14a7c29849cf8028b79048",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "de89b16596096d39b92bfb7000309ba16e2f92ba4bbcb10ea201a844e201ba2e",
+      "names": [
+        "packages/host/commerce/src/types.ts#CommerceDataKind"
+      ],
+      "sources": [
+        "packages/host/commerce/src/types.ts:30"
+      ]
     },
     {
       "digest": "deaae5cd30987d4f49398e8f9d994c125907e7f928300745fb1dbf15f145d0e7",
@@ -24975,7 +26241,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamMemberPhase"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:44"
+        "packages/experimental/agent-team/src/types.ts:45"
       ]
     },
     {
@@ -25107,7 +26373,7 @@
       "digest": "ea08ec1df0c33108fd03345b9af199cf04dea450aa045d3c683f216311403403",
       "names": [],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:236"
+        "packages/experimental/agent-team/src/types.ts:348"
       ]
     },
     {
@@ -25241,6 +26507,18 @@
       ],
       "sources": [
         "packages/llm/llm/src/types.ts:396"
+      ]
+    },
+    {
+      "digest": "f395569ea0ea07ae5c51db8f09f1d53fa4e940bdcc8830e9aba04bd6a411f9df",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "f3d9a2a66cd1bb382c23a2964fbf771fd15ec14a08efbfd265bfbf76efd2592e",
+      "names": [],
+      "sources": [
+        "packages/experimental/agent-team/src/types.ts:344"
       ]
     },
     {

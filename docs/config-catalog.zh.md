@@ -224,7 +224,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-api-session-controller`
 
 - `inject`: `agentDefaultModel` · `agents` · `attachments` · `fileUploads` · `fs` · `llm` · `sessions` · `sessionProjections` · `sessionQuery` · `typert` · `workspaceRegistry`
-- `source`: [`packages/api/session-controller/src/index.ts:141`](../packages/api/session-controller/src/index.ts)
+- `source`: [`packages/api/session-controller/src/index.ts:147`](../packages/api/session-controller/src/index.ts)
 
 ```ts config-catalog
 /** Session Controller deployment policy. */
@@ -1143,13 +1143,22 @@ export interface ImportLimits {
 ## `@deepseek-ai/dsh-experimental-desktop-speech-transcribe`
 
 - `inject`: `tools` · `speechToText` · `subprocess`
-- `source`: [`packages/experimental/desktop-speech-transcribe/src/tool.ts:37`](../packages/experimental/desktop-speech-transcribe/src/tool.ts)
+- `source`: [`packages/experimental/desktop-speech-transcribe/src/index.ts:59`](../packages/experimental/desktop-speech-transcribe/src/index.ts)
 
 ```ts config-catalog
+/** Limits shared by the transcription tool and recording staging service. */
+export type Config = SpeechTranscribeConfig & TranscriptAudioConfig
+
 /** Runtime validation shape for the transcription tool. */
 export interface SpeechTranscribeConfig {
   /** Maximum accepted recording duration in minutes. */
   readonly maxAudioMinutes: number
+}
+
+/** Deployment limits for one staged recording. */
+export interface TranscriptAudioConfig {
+  /** Maximum accepted upload size in MiB. */
+  readonly maxUploadMiB: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-speech-transcribe -->

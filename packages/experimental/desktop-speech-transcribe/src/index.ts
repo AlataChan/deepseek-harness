@@ -55,8 +55,11 @@ export const name = 'desktop-speech-transcribe'
 /** Services the tool and staging service read at load and call time. */
 export const inject = ['tools', 'speechToText', 'subprocess']
 
-/** Runtime validation for {@link SpeechTranscribeConfig} and {@link TranscriptAudioConfig}. */
-export const Config: z<SpeechTranscribeConfig & TranscriptAudioConfig> = z.object({
+/** Limits shared by the transcription tool and recording staging service. */
+export type Config = SpeechTranscribeConfig & TranscriptAudioConfig
+
+/** Runtime validation for the transcription and staging limits. */
+export const Config: z<Config> = z.object({
   maxAudioMinutes: z.natural().default(120),
   maxUploadMiB: z.natural().min(1).default(64),
 })
@@ -67,7 +70,7 @@ export const Config: z<SpeechTranscribeConfig & TranscriptAudioConfig> = z.objec
  * @param ctx - Host context holding tools, the speech registry, and the subprocess seam.
  * @param config - validated plugin configuration.
  */
-export function apply(ctx: Context, config: SpeechTranscribeConfig & TranscriptAudioConfig): void {
+export function apply(ctx: Context, config: Config): void {
   ctx.effect(() => registerSpeechTranscribeTool(ctx, config), 'desktop-speech-transcribe.tools')
   new TranscriptAudio(ctx, config)
 }
