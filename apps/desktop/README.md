@@ -42,6 +42,8 @@ The window paints a shell-owned status line from the static `index.html` markup 
 
 On launch the shell copies `resources/profile-plugins/` into `$DSH_HOME/profiles/desktop/node_modules/` and `resources/bundled-skills/` into `$DSH_HOME/skills/`. The packaging scripts hash both trees into `resources/seed-rev.txt` (`scripts/write-seed-rev.mjs`); a completed copy stamps the installed tree with `.dsh-seed-rev`, and the next launch skips that copy while the revision matches and the installed tree stays complete — a parseable profile manifest listing every bundled package, each of those packages installed under `node_modules/`, both profile template files, and every skill's `SKILL.md`. Any payload change, including a same-version rebuild, changes the revision and forces a copy. Each launch appends its seed decision to `companion.log` under the app-data directory.
 
+On Windows every child process is spawned with `CREATE_NO_WINDOW` because the desktop window is a GUI process with no console of its own, so Windows would otherwise open a console window whose closure terminates the child mid-session.
+
 ## Known Limitations and Deferred Work
 
 - **Unsigned installers** — no signing, notarization, updater, or public download.

@@ -238,6 +238,7 @@ pub fn resolve_installed_runtime(
             .arg("--runtime-path")
             .arg(dunce::simplified(&runtime_path));
     }
+    crate::hide_child_console(&mut command);
     let output = command.output().map_err(|error| {
         ShellError::Config(format!("installed-runtime CLI failed to start: {error}"))
     })?;

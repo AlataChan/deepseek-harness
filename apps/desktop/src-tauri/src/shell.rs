@@ -133,8 +133,10 @@ impl DesktopShell {
     pub fn resolve(&mut self) -> Result<ResolvedRuntime, ShellError> {
         let config = load_config(&self.config_dir)?;
         let discovered = discover_node(&config, &self.path_value, &self.bundled, |node| {
-            let output = std::process::Command::new(node)
-                .arg("--version")
+            let mut command = std::process::Command::new(node);
+            command.arg("--version");
+            crate::hide_child_console(&mut command);
+            let output = command
                 .output()
                 .map_err(|error| ShellError::Config(format!("node --version failed: {error}")))?;
             Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())

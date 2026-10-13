@@ -158,7 +158,7 @@ function captureSqlite3(
   signal?: AbortSignal,
 ): Promise<string> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, ['-separator', '|', '-noheader', database], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const child = spawn(command, ['-separator', '|', '-noheader', database], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
     const onAbort = (): void => { child.kill('SIGTERM') }
     signal?.addEventListener('abort', onAbort, { once: true })
     if (signal?.aborted === true) onAbort()
@@ -193,6 +193,7 @@ function runSqlite3(
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, [database], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
     })
     const onAbort = (): void => {
       child.kill('SIGTERM')

@@ -119,6 +119,33 @@ pub fn forward_carrier_events(
     });
 }
 
+/**
+ * Spawn a child process without a console window.
+ *
+ * The desktop window is a GUI process with no console. Windows allocates one
+ * for every console-subsystem child, and closing that window delivers
+ * `CTRL_CLOSE_EVENT` to the child, terminating it mid-session. Children that
+ * communicate over piped stdio are unaffected by the flag.
+ *
+ * @param command - child command that has not yet started.
+ */
+#[cfg(windows)]
+pub fn hide_child_console(command: &mut std::process::Command) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+/**
+ * Spawn a child process without a console window.
+ *
+ * This platform has no Windows console window to suppress.
+ *
+ * @param _command - child command that has not yet started.
+ */
+#[cfg(not(windows))]
+pub fn hide_child_console(_command: &mut std::process::Command) {}
+
 #[cfg(test)]
 mod spec_tests {
     use serde_json::json;
@@ -169,5 +196,19 @@ mod spec_tests {
         let needle = concat!("workspace", "_set");
         assert!(!app.contains(needle));
         assert!(!harness.contains(needle));
+    }
+
+    #[test]
+    fn every_desktop_child_process_hides_its_console() {
+        for (name, source) in [
+            ("carrier.rs", include_str!("carrier.rs")),
+            ("runtime.rs", include_str!("runtime.rs")),
+            ("shell.rs", include_str!("shell.rs")),
+        ] {
+            assert!(
+                source.contains("hide_child_console"),
+                "{name} spawns a child without hiding its console window"
+            );
+        }
     }
 }

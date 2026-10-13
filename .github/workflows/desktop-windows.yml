@@ -116,6 +116,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Rust runtime launch regression failed" }
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --lib carrier::tests::forwards_records_in_arrival_order_without_inspecting_fields
           if ($LASTEXITCODE -ne 0) { throw "Rust companion launch regression failed" }
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --lib spec_tests::every_desktop_child_process_hides_its_console
+          if ($LASTEXITCODE -ne 0) { throw "Rust console-window regression failed" }
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --lib app::tests::
           if ($LASTEXITCODE -ne 0) { throw "Rust payload seed regression failed" }
           cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --features harness --bin carrier-harness

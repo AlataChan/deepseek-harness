@@ -73,7 +73,8 @@ pub fn spawn_companion(
 ) -> Result<CarrierChild, ShellError> {
     let app_data_dir = require_absolute_path(app_data_dir, "OCTOPUS_APP_DATA")?;
     let sidecar_home = require_absolute_path(sidecar_home, "OCTOPUS_SIDECAR_HOME")?;
-    let mut child = Command::new(node_path)
+    let mut command = Command::new(node_path);
+    command
         .arg(dunce::simplified(companion_entry))
         .arg("--workspace-root")
         .arg(dunce::simplified(Path::new(workspace_root)))
@@ -81,7 +82,9 @@ pub fn spawn_companion(
         .env("OCTOPUS_SIDECAR_HOME", &sidecar_home)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    crate::hide_child_console(&mut command);
+    let mut child = command
         .spawn()
         .map_err(|error| ShellError::Config(format!("companion spawn failed: {error}")))?;
     let stdin = child
