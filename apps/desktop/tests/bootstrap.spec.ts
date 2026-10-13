@@ -126,7 +126,7 @@ describe('bootDesktopClient', () => {
     await bootDesktopClient({
       port,
       root,
-      extensionVersion: '0.1.2-rc.2',
+      extensionVersion: '0.1.2-rc.3',
       loadBundle: async (url) => { loaded.push(url) },
       createAppEntry: () => ({ run: async () => {} }),
     })
@@ -139,7 +139,7 @@ describe('bootDesktopClient', () => {
     expect(JSON.parse(physical.encoded)).toMatchObject({
       type: 'control/hello',
       protocolVersion: VSCODE_CARRIER_PROTOCOL_VERSION,
-      extensionVersion: '0.1.2-rc.2',
+      extensionVersion: '0.1.2-rc.3',
       workspaceRoot: '/tmp/project',
     })
     expect(loaded).toEqual([
