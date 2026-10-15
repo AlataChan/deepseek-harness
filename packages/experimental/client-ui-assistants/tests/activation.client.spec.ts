@@ -14,11 +14,13 @@ describe('Assistant browser activation', () => {
     core.register({ name: 'root', children: {
       'sidebar.panellist': { kind: 'list', scope: 'root' },
       'main': { kind: 'keyed', scope: 'root' },
-      'conversation.hero.agentTeam.card': { kind: 'list', scope: 'root' },
+      'conversation.hero.agentTeam': { kind: 'single', scope: 'root' },
       'conversation.session.header.actions': { kind: 'list', scope: 'session' },
       'conversation.input.dock': { kind: 'list', scope: 'session' },
       'shell.overlay': { kind: 'list', scope: 'root' },
     } }, (() => null) as never)
+    const legacy = () => null
+    core.register({ name: 'conversation.hero.agentTeam' }, legacy)
     const remoteDispose = vi.fn(async () => {})
     const mount = vi.fn(async () => { ctx.reflect.provide('remote.assistants', {}); return remoteDispose })
     ctx.reflect.provide('remote', { $mount: mount })
@@ -37,9 +39,11 @@ describe('Assistant browser activation', () => {
       await fiber.await()
       expect(mount).toHaveBeenCalledOnce()
       expect(core.entries('main')).toHaveLength(1)
+      expect(core.entriesOfSlot('conversation.hero.agentTeam')[0]?.component).not.toBe(legacy)
       expect(core.entries('conversation.input.dock')).toHaveLength(3)
       expect(core.entries('conversation.session.header.actions')).toHaveLength(1)
     } finally { await fiber.dispose(); await ctx.fiber.dispose() }
     expect(remoteDispose).toHaveBeenCalledOnce()
+    expect(core.entriesOfSlot('conversation.hero.agentTeam')[0]?.component).toBe(legacy)
   })
 })

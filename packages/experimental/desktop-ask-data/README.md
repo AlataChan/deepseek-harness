@@ -38,7 +38,7 @@ Other workspace packages import `@deepseek-ai/dsh-experimental-desktop-ask-data/
 
 Empty `dataHome` uses `{dshHome}/profiles/desktop/data-sources`. `cordis.patch.yml` inserts this one Host row. The Client half is discovered from `dsh.client` after the Host fiber is live.
 
-The sidebar and conversation-hero brand slots use the approved right-facing green smiling whale on white, embedded as WebP for offline display. The master image and desktop icon generation are documented in [`icons/README`](../../../apps/desktop/src-tauri/icons/README.md).
+The General settings page places Brand mark next to Appearance. Three offline WebP presets update the sidebar and conversation Hero together: refined original B (default), abstract whale, and the character whale. The `brandMark` volatile preference is stored in the Host user-settings document, synchronizes across windows, and survives restarts; failed writes retain the accepted selection and report a toast. Restore default selects the refined original. The page previews sidebar and Hero placements. Assistant and team avatars are independent. System application icons remain fixed at build time; their source uses the refined original B. The master images are in `assets/assistant-brand`, generated with `scripts/build-assistant-brand-assets.mjs`.
 
 ## Model Experience
 

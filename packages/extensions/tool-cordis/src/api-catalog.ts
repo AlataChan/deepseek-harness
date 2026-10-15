@@ -437,13 +437,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the refreshed squad list.',
       },
       {
-        signature: '@Remote(\'ensureInstitutionSquad\') async remoteEnsureInstitutionSquad( agent: Agent, request: EnsureInstitutionSquadRequest, ): Promise<EnsureInstitutionSquadResult>',
+        signature: '@Remote(\'ensureInstitutionSquad\') async remoteEnsureInstitutionSquad(agent: Agent, request: EnsureInstitutionSquadRequest): Promise<EnsureInstitutionSquadResult>',
         description: 'Bind the caller\'s Lead Session as the squad Lead and spawn any missing seats. A new topic is a later human prompt on this same Session, not another spawn.',
         parameters: [{ name: 'agent', description: 'exact live Lead Agent whose Session becomes the standing Lead.' }, { name: 'request', description: 'squad slug and optional seat-route overrides applied before spawn.' }],
         returns: 'the bound Session and the current roster.',
       },
       {
-        signature: '@Remote(\'readHtmlPreview\') async remoteReadHtmlPreview( agent: Agent, request: ReadHtmlPreviewRequest, ): Promise<ReadHtmlPreviewResult>',
+        signature: '@Remote(\'readHtmlPreview\') async remoteReadHtmlPreview(agent: Agent, request: ReadHtmlPreviewRequest): Promise<ReadHtmlPreviewResult>',
         description: 'Read one `.html` / `.htm` file for the Team dock sandboxed preview. Paths resolve against the Lead session cwd when relative; absolute paths must stay under that cwd when the Lead has one.',
         parameters: [{ name: 'agent', description: 'exact live Team member used as the authority credential.' }, { name: 'request', description: 'path to the HTML file.' }],
         returns: 'absolute path and UTF-8 HTML body.',
@@ -455,7 +455,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'detached squad rows in product order.',
       },
       {
-        signature: 'async transactInstitutionCatalog<T>( action: (current: InstitutionCatalogFile) => Promise<{ next?: InstitutionCatalogFile; result: T }> | { next?: InstitutionCatalogFile; result: T }, ): Promise<T>',
+        signature: 'async transactInstitutionCatalog<T>( action: ( current: InstitutionCatalogFile, ) => Promise<{ next?: InstitutionCatalogFile; result: T }> | { next?: InstitutionCatalogFile; result: T }, ): Promise<T>',
         description: 'Execute an operation inside the serialized institution catalog write chain.',
         parameters: [{ name: 'action', description: 'async callback receiving the current catalog file inside the write lock.' }],
         returns: 'result of the callback.',
@@ -467,7 +467,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'current catalog content.',
       },
       {
-        signature: 'async ensureInstitutionSquad( caller: Agent, request: EnsureInstitutionSquadRequest, ): Promise<EnsureInstitutionSquadResult>',
+        signature: 'async ensureInstitutionSquad(caller: Agent, request: EnsureInstitutionSquadRequest): Promise<EnsureInstitutionSquadResult>',
         description: 'Bind the caller as the standing Lead and spawn seats that are not yet on the roster.',
         parameters: [{ name: 'caller', description: 'exact live Lead Agent.' }, { name: 'request', description: 'squad slug and optional seat-route overrides.' }],
         returns: 'the bound Session and roster.',
@@ -806,7 +806,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'seatId', description: 'target seat identifier.' }, { name: 'sessionId', description: 'runtime session identifier.' }],
       },
       {
-        signature: 'async setSeatModelOverride( seatId: TeamSeatId, model?: AssistantModelSelection | ModelSelection , revision?: number, ): Promise<TeamSeat | undefined>',
+        signature: 'async setSeatModelOverride( seatId: TeamSeatId, model?: AssistantModelSelection | ModelSelection, revision?: number, ): Promise<TeamSeat | undefined>',
         description: 'Set or clear a team seat\'s model override.',
         parameters: [{ name: 'seatId', description: 'team seat identifier.' }, { name: 'model', description: 'model selection override.' }, { name: 'revision', description: 'optional checkpoint revision.' }],
         returns: 'updated team seat if found.',
@@ -863,7 +863,27 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'id', description: 'profile identifier.' }],
       },
       {
-        signature: 'async listConversations( profileId?: AssistantProfileId, includeArchived: boolean = false, ): Promise<readonly AssistantConversation[]>',
+        signature: 'assertSessionUsable(sessionId: SessionId): void',
+        description: 'Reject execution during lifecycle changes or after irreversible deletion.',
+        parameters: [{ name: 'sessionId', description: 'Session about to assemble or execute a model request.' }],
+      },
+      {
+        signature: '@Remote(\'clearConversationBinding\') async clearConversationBinding(sessionId: SessionId): Promise<void>',
+        description: 'Unbind only an idle, pristine private Session; historical conversations keep their identity.',
+        parameters: [{ name: 'sessionId', description: 'live blank Session whose assistant selection is cancelled.' }],
+      },
+      {
+        signature: '@Remote(\'deleteProfile\') async deleteProfile(id: AssistantProfileId, expectedRevision: number): Promise<void>',
+        description: 'Permanently remove reusable assistant configuration while retaining historical Session logs.',
+        parameters: [{ name: 'id', description: 'confirmed profile identifier.' }, { name: 'expectedRevision', description: 'revision displayed at confirmation.' }],
+      },
+      {
+        signature: '@Remote(\'deleteTeam\') async deleteTeam(id: TeamDefinitionId, expectedRevision: number): Promise<void>',
+        description: 'Permanently remove team configuration after all owned work has stopped.',
+        parameters: [{ name: 'id', description: 'confirmed team identifier.' }, { name: 'expectedRevision', description: 'revision displayed at confirmation.' }],
+      },
+      {
+        signature: 'async listConversations(profileId?: AssistantProfileId, includeArchived: boolean = false): Promise<readonly AssistantConversation[]>',
         description: 'List conversations associated with an assistant profile, or all conversations.',
         parameters: [{ name: 'profileId', description: 'optional profile identifier filter.' }, { name: 'includeArchived', description: 'whether to include archived conversations (defaults to false).' }],
         returns: 'list of matching conversation bindings.',
@@ -887,19 +907,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'created conversation binding.',
       },
       {
-        signature: 'async startNewTopic( profileId: AssistantProfileId, options: CreateAssistantConversationOptions = {}, ): Promise<AssistantConversation>',
+        signature: 'async startNewTopic(profileId: AssistantProfileId, options: CreateAssistantConversationOptions = {}): Promise<AssistantConversation>',
         description: 'Start a new topic (allocating a fresh root session) for an assistant profile.',
         parameters: [{ name: 'profileId', description: 'assistant profile identifier.' }, { name: 'options', description: 'optional creation options.' }],
         returns: 'newly created assistant conversation binding.',
       },
       {
-        signature: 'async setConversationModelOverride( id: AssistantConversationId, model?: AssistantModelSelection , checkpoint?: number , ): Promise<AssistantConversation>',
+        signature: 'async setConversationModelOverride( id: AssistantConversationId, model?: AssistantModelSelection, checkpoint?: number, ): Promise<AssistantConversation>',
         description: 'Set or update explicit conversation-scoped model override.',
         parameters: [{ name: 'id', description: 'conversation identifier.' }, { name: 'model', description: 'model selection override.' }, { name: 'checkpoint', description: 'optional replay sequence checkpoint.' }],
         returns: 'updated conversation binding.',
       },
       {
-        signature: 'async clearConversationModelOverride( id: AssistantConversationId, checkpoint?: number , ): Promise<AssistantConversation>',
+        signature: 'async clearConversationModelOverride(id: AssistantConversationId, checkpoint?: number): Promise<AssistantConversation>',
         description: 'Atomically clear conversation-scoped model override and advance replay checkpoint.',
         parameters: [{ name: 'id', description: 'conversation identifier.' }, { name: 'checkpoint', description: 'optional explicit sequence checkpoint.' }],
         returns: 'updated conversation binding inheriting from profile/seat.',
@@ -917,7 +937,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'conversation binding with updated override if eligible events were found.',
       },
       {
-        signature: 'async listPermittedSessions( profileId?: AssistantProfileId, includeArchived: boolean = false, ): Promise<readonly SessionId[]>',
+        signature: 'async listPermittedSessions(profileId?: AssistantProfileId, includeArchived: boolean = false): Promise<readonly SessionId[]>',
         description: 'List all permitted session identifiers for active conversations of a profile, or all profiles. Excludes archived conversations and conversations whose profile is archived.',
         parameters: [{ name: 'profileId', description: 'optional profile identifier filter.' }, { name: 'includeArchived', description: 'whether to include archived conversations and profiles.' }],
         returns: 'array of permitted SessionId instances.',
@@ -933,7 +953,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'sessionId', description: 'target session identifier.' }],
       },
       {
-        signature: 'async submitPrompt( request: SessionPromptRequest, signal?: AbortSignal, ): Promise<SessionPromptValue>',
+        signature: 'async submitPrompt(request: SessionPromptRequest, signal?: AbortSignal): Promise<SessionPromptValue>',
         description: 'Submit a prompt through the assistant submission operation.\n\nOrdering and admission invariants (Step S5): 1. Resolves effective route for the session. 2. Validates route against served catalog (throws immediately if unavailable/invalid). 3. Validates modality: if prompt carries images, verifies effective route has \'image\' input modality. Rejects visibly before admission with UNSUPPORTED_CONTENT if not. 4. Synchronizes effective route to agent selection controller. 5. Delegates to official SessionController.prompt.',
         parameters: [{ name: 'request', description: 'prompt request.' }, { name: 'signal', description: 'optional cancellation signal.' }],
         returns: 'acknowledgement from SessionController.',
@@ -963,7 +983,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'created team definition.',
       },
       {
-        signature: 'async updateTeam( id: TeamDefinitionId, expectedRevision: number, options: UpdateTeamDefinitionOptions, ): Promise<TeamDefinition>',
+        signature: 'async updateTeam(id: TeamDefinitionId, expectedRevision: number, options: UpdateTeamDefinitionOptions): Promise<TeamDefinition>',
         description: 'Update an existing team definition record with CAS revision check.',
         parameters: [{ name: 'id', description: 'team definition identifier.' }, { name: 'expectedRevision', description: 'expected revision for CAS update.' }, { name: 'options', description: 'update options.' }],
         returns: 'updated team definition.',
@@ -1035,7 +1055,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'provisioned team and seat instance sessions.',
       },
       {
-        signature: 'async dispatchCoordinator( teamId: TeamDefinitionId, request: SessionPromptRequest, signal?: AbortSignal, ): Promise<SessionPromptValue>',
+        signature: 'async dispatchCoordinator(teamId: TeamDefinitionId, request: SessionPromptRequest, signal?: AbortSignal): Promise<SessionPromptValue>',
         description: 'Dispatch a user prompt to a team\'s coordinator following coordinator-first dispatch.',
         parameters: [{ name: 'teamId', description: 'team definition identifier.' }, { name: 'request', description: 'prompt request.' }, { name: 'signal', description: 'optional cancellation signal.' }],
         returns: 'prompt execution result.',
@@ -1081,7 +1101,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'id', description: 'profile identifier.' }],
       },
       {
-        signature: '@Remote(\'listConversations\') async remoteListConversations( profileId?: AssistantProfileId, includeArchived?: boolean, ): Promise<readonly AssistantConversation[]>',
+        signature: '@Remote(\'listConversations\') async remoteListConversations(profileId?: AssistantProfileId, includeArchived?: boolean): Promise<readonly AssistantConversation[]>',
         description: 'List conversations associated with an assistant profile through the generated Remote API.',
         parameters: [{ name: 'profileId', description: 'optional profile identifier filter.' }, { name: 'includeArchived', description: 'whether to include archived conversations.' }],
         returns: 'list of matching conversation bindings.',
@@ -1105,13 +1125,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'created conversation binding.',
       },
       {
-        signature: '@Remote(\'startNewTopic\') async remoteStartNewTopic( profileId: AssistantProfileId, options?: CreateAssistantConversationOptions, ): Promise<AssistantConversation>',
+        signature: '@Remote(\'startNewTopic\') async remoteStartNewTopic(profileId: AssistantProfileId, options?: CreateAssistantConversationOptions): Promise<AssistantConversation>',
         description: 'Start a new topic for an assistant profile through the generated Remote API.',
         parameters: [{ name: 'profileId', description: 'assistant profile identifier.' }, { name: 'options', description: 'optional creation options.' }],
         returns: 'newly created conversation binding.',
       },
       {
-        signature: '@Remote(\'setConversationModelOverride\') async remoteSetConversationModelOverride( id: AssistantConversationId, model?: AssistantModelSelection, ): Promise<AssistantConversation>',
+        signature: '@Remote(\'setConversationModelOverride\') async remoteSetConversationModelOverride(id: AssistantConversationId, model?: AssistantModelSelection): Promise<AssistantConversation>',
         description: 'Set or update explicit conversation-scoped model override through the generated Remote API.',
         parameters: [{ name: 'id', description: 'conversation identifier.' }, { name: 'model', description: 'model selection override.' }],
         returns: 'updated conversation binding.',
@@ -1129,6 +1149,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'list of team definitions.',
       },
       {
+        signature: '@Remote(\'getTeamBySession\') async getTeamBySession(sessionId: SessionId): Promise<TeamDefinition | undefined>',
+        description: 'Resolve the saved team owning a live or historical runtime Session.',
+        parameters: [{ name: 'sessionId', description: 'composer Session identifier.' }],
+        returns: 'its owning saved team, if bound.',
+      },
+      {
         signature: '@Remote(\'getTeam\') async remoteGetTeam(id: TeamDefinitionId): Promise<TeamDefinition | undefined>',
         description: 'Retrieve a team definition by identifier through the generated Remote API.',
         parameters: [{ name: 'id', description: 'team definition identifier.' }],
@@ -1141,7 +1167,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'created team definition.',
       },
       {
-        signature: '@Remote(\'updateTeam\') async remoteUpdateTeam( id: TeamDefinitionId, expectedRevision: number, options: UpdateTeamDefinitionOptions, ): Promise<TeamDefinition>',
+        signature: '@Remote(\'updateTeam\') async remoteUpdateTeam(id: TeamDefinitionId, expectedRevision: number, options: UpdateTeamDefinitionOptions): Promise<TeamDefinition>',
         description: 'Update an existing team definition through the generated Remote API.',
         parameters: [{ name: 'id', description: 'team definition identifier.' }, { name: 'expectedRevision', description: 'expected revision for CAS update.' }, { name: 'options', description: 'updated fields.' }],
         returns: 'updated team definition.',
@@ -1213,7 +1239,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'updated adoption record.',
       },
       {
-        signature: '@Remote(\'institution_adoption_repair\') async repairInstitutionAdoption( options: RepairInstitutionAdoptionOptions, ): Promise<InstitutionAdoptionRecord>',
+        signature: '@Remote(\'institution_adoption_repair\') async repairInstitutionAdoption(options: RepairInstitutionAdoptionOptions): Promise<InstitutionAdoptionRecord>',
         description: 'Repair an adopted institution squad whose binding or child sessions diverged. Runs inside the legacy catalog\'s serialized write chain, re-validates the repaired lead and every child descriptor, and re-reads the legacy binding after its write: a concurrent legacy writer that moves the lead again leaves the record in \'repair_needed\' instead of silently diverging.',
         parameters: [{ name: 'options', description: 'repair options.' }],
         returns: 'repaired adoption record.',
@@ -1225,49 +1251,49 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'provisioned team and seat instance sessions.',
       },
       {
-        signature: '@Remote(\'dispatchCoordinator\') async remoteDispatchCoordinator( teamId: TeamDefinitionId, request: SessionPromptRequest, ): Promise<SessionPromptValue>',
+        signature: '@Remote(\'dispatchCoordinator\') async remoteDispatchCoordinator(teamId: TeamDefinitionId, request: SessionPromptRequest): Promise<SessionPromptValue>',
         description: 'Dispatch a user prompt to a team\'s coordinator through the generated Remote API.',
         parameters: [{ name: 'teamId', description: 'team definition identifier.' }, { name: 'request', description: 'session prompt request.' }],
         returns: 'prompt execution result.',
       },
       {
-        signature: '@Remote(\'saveMemory\') async saveMemory( scope: MemoryScope, text: string, options?: SaveMemoryOptions, ): Promise<MemoryEntry>',
+        signature: '@Remote(\'saveMemory\') async saveMemory(scope: MemoryScope, text: string, options?: SaveMemoryOptions): Promise<MemoryEntry>',
         description: 'Save a persistent memory entry for a profile or team scope.',
         parameters: [{ name: 'scope', description: 'memory scope.' }, { name: 'text', description: 'memory content text.' }, { name: 'options', description: 'optional source session and author options.' }],
         returns: 'saved memory entry.',
       },
       {
-        signature: '@Remote(\'updateMemory\') async updateMemory( id: MemoryEntryId, expectedRevision: number, text: string, ): Promise<MemoryEntry>',
+        signature: '@Remote(\'updateMemory\') async updateMemory(id: MemoryEntryId, expectedRevision: number, text: string): Promise<MemoryEntry>',
         description: 'Update an existing memory entry with CAS revision check.',
         parameters: [{ name: 'id', description: 'memory entry identifier.' }, { name: 'expectedRevision', description: 'expected revision for CAS.' }, { name: 'text', description: 'updated memory text.' }],
         returns: 'updated memory entry.',
       },
       {
-        signature: '@Remote(\'removeMemory\') async removeMemory( id: MemoryEntryId, expectedRevision?: number, ): Promise<MemoryEntry>',
+        signature: '@Remote(\'removeMemory\') async removeMemory(id: MemoryEntryId, expectedRevision?: number): Promise<MemoryEntry>',
         description: 'Mark a memory entry as removed (tombstone) with optional CAS revision check.',
         parameters: [{ name: 'id', description: 'memory entry identifier.' }, { name: 'expectedRevision', description: 'optional expected revision.' }],
         returns: 'removed memory entry.',
       },
       {
-        signature: '@Remote(\'archiveMemory\') async archiveMemory( id: MemoryEntryId, expectedRevision?: number, ): Promise<MemoryEntry>',
+        signature: '@Remote(\'archiveMemory\') async archiveMemory(id: MemoryEntryId, expectedRevision?: number): Promise<MemoryEntry>',
         description: 'Archive a memory entry with optional CAS revision check.',
         parameters: [{ name: 'id', description: 'memory entry identifier.' }, { name: 'expectedRevision', description: 'optional expected revision.' }],
         returns: 'archived memory entry.',
       },
       {
-        signature: '@Remote(\'unarchiveMemory\') async unarchiveMemory( id: MemoryEntryId, expectedRevision?: number, ): Promise<MemoryEntry>',
+        signature: '@Remote(\'unarchiveMemory\') async unarchiveMemory(id: MemoryEntryId, expectedRevision?: number): Promise<MemoryEntry>',
         description: 'Unarchive a memory entry with optional CAS revision check.',
         parameters: [{ name: 'id', description: 'memory entry identifier.' }, { name: 'expectedRevision', description: 'optional expected revision.' }],
         returns: 'unarchived memory entry.',
       },
       {
-        signature: '@Remote(\'grantMemory\') async grantMemory( id: MemoryEntryId, teamId: TeamDefinitionId, expectedRevision?: number, ): Promise<MemoryEntry>',
+        signature: '@Remote(\'grantMemory\') async grantMemory(id: MemoryEntryId, teamId: TeamDefinitionId, expectedRevision?: number): Promise<MemoryEntry>',
         description: 'Grant access to a profile-scoped memory entry to a specific team.',
         parameters: [{ name: 'id', description: 'memory entry identifier.' }, { name: 'teamId', description: 'recipient team identifier.' }, { name: 'expectedRevision', description: 'optional expected revision.' }],
         returns: 'updated memory entry.',
       },
       {
-        signature: '@Remote(\'revokeMemoryGrant\') async revokeMemoryGrant( id: MemoryEntryId, teamId: TeamDefinitionId, expectedRevision?: number, ): Promise<MemoryEntry>',
+        signature: '@Remote(\'revokeMemoryGrant\') async revokeMemoryGrant(id: MemoryEntryId, teamId: TeamDefinitionId, expectedRevision?: number): Promise<MemoryEntry>',
         description: 'Revoke a team grant from a profile-scoped memory entry.',
         parameters: [{ name: 'id', description: 'memory entry identifier.' }, { name: 'teamId', description: 'team identifier to revoke.' }, { name: 'expectedRevision', description: 'optional expected revision.' }],
         returns: 'updated memory entry.',
@@ -1285,31 +1311,31 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'memory entry or undefined.',
       },
       {
-        signature: '@Remote(\'listMemory\') async listMemory( scope: MemoryScope, options?: ListMemoryOptions, ): Promise<readonly MemoryEntry[]>',
+        signature: '@Remote(\'listMemory\') async listMemory(scope: MemoryScope, options?: ListMemoryOptions): Promise<readonly MemoryEntry[]>',
         description: 'List memory entries matching a scope.',
         parameters: [{ name: 'scope', description: 'memory scope.' }, { name: 'options', description: 'filter options.' }],
         returns: 'readonly array of memory entries.',
       },
       {
-        signature: 'listMemorySync( scope: MemoryScope, options: ListMemoryOptions = {}, ): readonly MemoryEntry[]',
+        signature: 'listMemorySync(scope: MemoryScope, options: ListMemoryOptions = {}): readonly MemoryEntry[]',
         description: 'Synchronous memory list for prompt injection and local lookups.',
         parameters: [{ name: 'scope', description: 'memory scope.' }, { name: 'options', description: 'filter options.' }],
         returns: 'readonly array of memory entries.',
       },
       {
-        signature: 'listGrantedProfileMemoriesSync( teamId: TeamDefinitionId, profileId?: AssistantProfileId, ): readonly MemoryEntry[]',
+        signature: 'listGrantedProfileMemoriesSync(teamId: TeamDefinitionId, profileId?: AssistantProfileId): readonly MemoryEntry[]',
         description: 'List profile memories granted to a specific team synchronously.',
         parameters: [{ name: 'teamId', description: 'recipient team identifier.' }, { name: 'profileId', description: 'optional profile filter.' }],
         returns: 'readonly array of granted profile memories.',
       },
       {
-        signature: '@Remote(\'recallMemory\') async recallMemory( scope: MemoryScope, query?: string, ): Promise<readonly MemoryEntry[]>',
+        signature: '@Remote(\'recallMemory\') async recallMemory(scope: MemoryScope, query?: string): Promise<readonly MemoryEntry[]>',
         description: 'Recall active memory entries matching a query.',
         parameters: [{ name: 'scope', description: 'memory scope.' }, { name: 'query', description: 'optional search string.' }],
         returns: 'matching active memory entries.',
       },
       {
-        signature: 'recallMemorySync( scope: MemoryScope, query?: string, ): readonly MemoryEntry[]',
+        signature: 'recallMemorySync(scope: MemoryScope, query?: string): readonly MemoryEntry[]',
         description: 'Synchronous recall for prompt injection and local search.',
         parameters: [{ name: 'scope', description: 'memory scope.' }, { name: 'query', description: 'optional search string.' }],
         returns: 'matching active memory entries.',
@@ -1463,7 +1489,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'committed public message.',
       },
       {
-        signature: '@Remote(\'setReadCursor\') async setReadCursor( conversationId: string, lastReadSeq: number, windowId?: string, ): Promise<ReadCursorRecord>',
+        signature: '@Remote(\'setReadCursor\') async setReadCursor(conversationId: string, lastReadSeq: number, windowId?: string): Promise<ReadCursorRecord>',
         description: 'Set durable read cursor for a logical conversation or discussion.',
         parameters: [{ name: 'conversationId', description: 'conversation or discussion identifier.' }, { name: 'lastReadSeq', description: 'highest event sequence number read.' }, { name: 'windowId', description: 'optional window identifier.' }],
         returns: 'updated read cursor record.',
@@ -6264,7 +6290,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AssistantProfile',
-    declaration: 'export interface AssistantProfile {\n    readonly id: AssistantProfileId;\n    readonly name: string;\n    readonly avatar?: string | undefined;\n    readonly responsibility: string;\n    readonly instructions?: string | undefined;\n    readonly capabilities?: CapabilityPolicy | undefined;\n    readonly revision: number;\n    readonly defaultModel?: AssistantModelSelection | undefined;\n    readonly archivedAt?: number | undefined;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n}',
+    declaration: 'export interface AssistantProfile {\n    readonly id: AssistantProfileId;\n    readonly name: string;\n    readonly avatar?: string | undefined;\n    readonly responsibility: string;\n    readonly instructions?: string | undefined;\n    readonly capabilities?: CapabilityPolicy | undefined;\n    readonly revision: number;\n    readonly defaultModel?: AssistantModelSelection | undefined;\n    readonly deletedAt?: number | undefined;\n    readonly archivedAt?: number | undefined;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n}',
   },
   {
     name: 'AssistantProfileId',
@@ -9912,7 +9938,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'TeamDefinition',
-    declaration: 'export interface TeamDefinition {\n    readonly id: TeamDefinitionId;\n    readonly name: string;\n    readonly avatar?: string | undefined;\n    readonly description?: string | undefined;\n    readonly coordinatorProfileId: AssistantProfileId;\n    readonly leadSessionId?: SessionId | undefined;\n    readonly sharedWorkspaceId?: string | undefined;\n    readonly templateOrigin?: TeamTemplateOrigin | undefined;\n    readonly seatIds: readonly TeamSeatId[];\n    readonly capabilities?: CapabilityPolicy | undefined;\n    readonly revision: number;\n    readonly archivedAt?: number | undefined;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n}',
+    declaration: 'export interface TeamDefinition {\n    readonly id: TeamDefinitionId;\n    readonly name: string;\n    readonly avatar?: string | undefined;\n    readonly description?: string | undefined;\n    readonly coordinatorProfileId: AssistantProfileId;\n    readonly leadSessionId?: SessionId | undefined;\n    readonly sharedWorkspaceId?: string | undefined;\n    readonly templateOrigin?: TeamTemplateOrigin | undefined;\n    readonly seatIds: readonly TeamSeatId[];\n    readonly capabilities?: CapabilityPolicy | undefined;\n    readonly revision: number;\n    readonly deletedAt?: number | undefined;\n    readonly archivedAt?: number | undefined;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n}',
   },
   {
     name: 'TeamDefinitionId',

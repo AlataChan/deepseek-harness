@@ -9,8 +9,15 @@ import css from './AssistantConversationHeader.module.css'
 
 /** Async identity readers and an invalidation source shared with the header. */
 export type AssistantIdentityDockInjected = Pick<AssistantConversationHeaderInjected,
-  'sessionId' | 'loadConversation' | 'loadProfile' | 'bindingChanges'>
+  'sessionId' | 'loadConversation' | 'loadProfile' | 'bindingChanges'> & {
+    onUseOrdinary?: (() => Promise<void>) | undefined
+    sessionState?: {
+      subscribe: (listener: () => void) => () => void
+      getSnapshot: () => { blank: boolean; running: boolean } | undefined
+    } | undefined
+  }
 
+const noSession = { subscribe: (_listener: () => void) => () => {}, getSnapshot: () => undefined }
 const noChanges = { subscribe: (_listener: () => void) => () => {}, getSnapshot: () => 0 }
 
 /**
@@ -18,11 +25,14 @@ const noChanges = { subscribe: (_listener: () => void) => () => {}, getSnapshot:
  * @param props - current Session, binding loaders, invalidations, and localized copy.
  * @returns the bound assistant's avatar and name, or no badge for an ordinary Session.
  */
-export function AssistantIdentityDock({ sessionId, loadConversation, loadProfile, bindingChanges, t }:
+export function AssistantIdentityDock({ sessionId, loadConversation, loadProfile, bindingChanges, onUseOrdinary, sessionState, t }:
   AssistantIdentityDockInjected & PropsLocale<typeof NS>) {
   const changes = bindingChanges ?? noChanges
   const revision = useSyncExternalStore(changes.subscribe, changes.getSnapshot)
   const [identity, setIdentity] = useState<{ sessionId: typeof sessionId; profile: AssistantProfile }>()
+  const state = useSyncExternalStore((sessionState ?? noSession).subscribe, (sessionState ?? noSession).getSnapshot)
+  const [changing, setChanging] = useState(false)
+  const [actionFailed, setActionFailed] = useState(false)
   const [failed, setFailed] = useState(false)
   useEffect(() => {
     const lifetime = new AbortController()
@@ -43,6 +53,14 @@ export function AssistantIdentityDock({ sessionId, loadConversation, loadProfile
     <span className={css.badge}>
       <EntityAvatar name={identity.profile.name} avatar={identity.profile.avatar} small />
       {t('currentAssistant')}: {identity.profile.name}
+      {identity.profile.deletedAt !== undefined && <span>{t('entityDeleted')}</span>}
     </span>
+    {onUseOrdinary && <button type="button" className={css.actionButton} disabled={changing || state?.running}
+      onClick={() => {
+        setChanging(true)
+        setActionFailed(false)
+        void onUseOrdinary().catch(() => { setActionFailed(true) }).finally(() => { setChanging(false) })
+      }}>{t(state?.blank ? 'clearAssistantSelection' : 'startOrdinaryConversation')}</button>}
+    {actionFailed && <span role="alert">{t('operationFailed')}</span>}
   </div>
 }

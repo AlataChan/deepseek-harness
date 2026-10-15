@@ -27868,7 +27868,7 @@
         "packages/experimental/assistant-registry/src/types.ts#TokenUsageMetrics"
       ],
       "sources": [
-        "packages/experimental/assistant-registry/src/types.ts:627"
+        "packages/experimental/assistant-registry/src/types.ts:631"
       ]
     },
     {
@@ -29118,7 +29118,7 @@
         "packages/experimental/assistant-registry/src/types.ts#AssistantAuxiliaryEvent"
       ],
       "sources": [
-        "packages/experimental/assistant-registry/src/types.ts:646"
+        "packages/experimental/assistant-registry/src/types.ts:650"
       ]
     },
     {

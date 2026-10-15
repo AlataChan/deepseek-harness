@@ -1064,17 +1064,24 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-desktop-ask-data`
 
 - `inject`: `sessionProjections` · `systemPrompt`
-- `source`: [`packages/experimental/desktop-ask-data/src/index.ts:24`](../packages/experimental/desktop-ask-data/src/index.ts)
+- `refs`: `Volatile` (`@deepseek-ai/cordis`)
+- `source`: [`packages/experimental/desktop-ask-data/src/index.ts:28`](../packages/experimental/desktop-ask-data/src/index.ts)
 
 ```ts config-catalog
 /** Validated plugin configuration. */
 export interface Config {
+  /** Live product-mark preference; defaults to the refined original whale. */
+  brandMark?: Volatile<BrandMarkId>
+
   /**
    * Absolute data-sources directory. When omitted, uses the companion-resolved
    * profile home: `{dshHome}/profiles/desktop/data-sources`.
    */
   dataHome?: string
 }
+
+/** Approved product mark identity, independent of assistant avatars. */
+export type BrandMarkId = typeof BRAND_MARK_IDS[number]
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-ask-data -->
 

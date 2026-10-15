@@ -352,7 +352,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'assistant/auxiliary': AssistantAuxiliaryEvent
 ```
 
-来源：[`packages/experimental/assistant-registry/src/types.ts:660`](../packages/experimental/assistant-registry/src/types.ts)
+来源：[`packages/experimental/assistant-registry/src/types.ts:664`](../packages/experimental/assistant-registry/src/types.ts)
 
 <a id="assistantmessage--surface"></a>
 
@@ -3451,7 +3451,7 @@ SHA-256: `8085524dd3661d98e93c7c99bf5ba1d0601c1e11fd3dc22ed2069a71a37e83ed`
 
 SHA-256: `bcff45ca8ec3836856f00f87970886a759db318739f13900a9511aaa981358d1`
 
-来源：[`packages/experimental/assistant-registry/src/types.ts:646`](../packages/experimental/assistant-registry/src/types.ts)
+来源：[`packages/experimental/assistant-registry/src/types.ts:650`](../packages/experimental/assistant-registry/src/types.ts)
 
 以下类型之一：
 
@@ -5505,7 +5505,7 @@ SHA-256: `fec5442b9ee4122e10514d81d5a43648003fe8bfb7ee2ba50c0cdbdd383ed394`
 
 SHA-256: `79de0f4aacab1b0dedd4890131e1a6e626811a032ba9d05e51fd05a2479bf306`
 
-来源：[`packages/experimental/assistant-registry/src/types.ts:627`](../packages/experimental/assistant-registry/src/types.ts)
+来源：[`packages/experimental/assistant-registry/src/types.ts:631`](../packages/experimental/assistant-registry/src/types.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|

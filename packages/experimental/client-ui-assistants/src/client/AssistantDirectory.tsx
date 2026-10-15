@@ -1,5 +1,6 @@
 import { AvatarPicker, EntityAvatar, DEFAULT_AVATAR } from './EntityAvatar.tsx'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type {
   AssistantProfile,
   AssistantProfileId,
@@ -24,12 +25,21 @@ import css from './AssistantDirectory.module.css'
 
 /** Injected operations for Assistant Directory. */
 export interface AssistantDirectoryInjected {
+  teamRequest?: {
+    subscribe: (listener: () => void) => () => void
+    getSnapshot: () => { teamId: TeamDefinitionId; seq: number } | undefined
+    clear: () => void
+  } | undefined
   loadProfiles: () => Promise<readonly AssistantProfile[]>
   loadTeams: () => Promise<readonly TeamDefinition[]>
   loadSeats: (teamId: TeamDefinitionId) => Promise<readonly TeamSeat[]>
   loadModels: () => Promise<readonly AssistantModelOption[]>
   onCreateProfile: (data: { name: string; responsibility?: string; instructions?: string; avatar?: string }) => Promise<void>
   onStartChat: (profileId: AssistantProfileId) => Promise<void>
+  onDeleteProfile?: ((id: AssistantProfileId, revision: number) => Promise<void>) | undefined
+  onDeleteTeam?: ((id: TeamDefinitionId, revision: number) => Promise<void>) | undefined
+  onArchiveTeam?: ((id: TeamDefinitionId) => Promise<void>) | undefined
+  onUnarchiveProfile?: ((id: AssistantProfileId) => Promise<void>) | undefined
   onArchiveProfile: (profileId: AssistantProfileId) => Promise<void>
   onUpdateProfile: (id: AssistantProfileId, options: UpdateAssistantProfileOptions) => Promise<AssistantProfile | undefined>
   onCreateTeam?: ((payload: CreateTeamPayload) => Promise<void> | void) | undefined
@@ -48,6 +58,8 @@ export interface AssistantDirectoryInjected {
   onPromoteMemory?: ((id: MemoryEntryId, targetProfileId: AssistantProfileId) => Promise<void>) | undefined
 }
 
+const noTeamRequest = { subscribe: (_listener: () => void) => () => {}, getSnapshot: () => undefined }
+
 /** Component props for Assistant Directory. */
 export type AssistantDirectoryProps =
   PropsRuntime<'main'>
@@ -63,6 +75,7 @@ export type AssistantDirectoryProps =
  */
 export function AssistantDirectory({
   t,
+  teamRequest,
   loadProfiles,
   loadTeams,
   loadSeats,
@@ -70,6 +83,10 @@ export function AssistantDirectory({
   onCreateProfile,
   onStartChat,
   onArchiveProfile,
+  onDeleteProfile,
+  onDeleteTeam,
+  onArchiveTeam,
+  onUnarchiveProfile,
   onUpdateProfile,
   onCreateTeam,
   onSaveTeam,
@@ -86,6 +103,17 @@ export function AssistantDirectory({
   onUnarchiveMemory,
   onPromoteMemory,
 }: AssistantDirectoryProps) {
+  const requestedTeam = useSyncExternalStore((teamRequest ?? noTeamRequest).subscribe, (teamRequest ?? noTeamRequest).getSnapshot)
+  useEffect(() => {
+    if (requestedTeam) {
+      setSelectedTeamId(requestedTeam.teamId)
+      teamRequest?.clear()
+    }
+  }, [requestedTeam, teamRequest])
+  const [showArchived, setShowArchived] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'profile'; value: AssistantProfile } | { kind: 'team'; value: TeamDefinition }>()
   const [profiles, setProfiles] = useState<readonly AssistantProfile[]>([])
   const [teams, setTeams] = useState<readonly TeamDefinition[]>([])
   const [seatsByTeam, setSeatsByTeam] = useState<ReadonlyMap<TeamDefinitionId, readonly TeamSeat[]>>(new Map())
@@ -187,7 +215,7 @@ export function AssistantDirectory({
     }
   }
 
-  const activeProfiles = profiles.filter(p => !p.archivedAt)
+  const activeProfiles = profiles.filter(p => p.deletedAt === undefined && (showArchived || !p.archivedAt))
   const selectedTeam = teams.find(t => t.id === selectedTeamId)
   const detailProfile = profiles.find(p => p.id === detailProfileId)
 
@@ -201,8 +229,49 @@ export function AssistantDirectory({
     await refresh()
   }
 
+  const requestDelete = (target: NonNullable<typeof deleteTarget>) => {
+    setDeleteError('')
+    setDeleteTarget(target)
+  }
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleting) return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      if (deleteTarget.kind === 'profile') {
+        if (!onDeleteProfile) throw new Error('Deletion unavailable')
+        await onDeleteProfile(deleteTarget.value.id, deleteTarget.value.revision)
+        if (detailProfileId === deleteTarget.value.id) setDetailProfileId(null)
+      } else {
+        if (!onDeleteTeam) throw new Error('Deletion unavailable')
+        await onDeleteTeam(deleteTarget.value.id, deleteTarget.value.revision)
+        if (selectedTeamId === deleteTarget.value.id) setSelectedTeamId(null)
+      }
+      setDeleteTarget(undefined)
+      await refresh()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : ''
+      setDeleteError(t(/referenced/i.test(message) ? 'deleteReferenced'
+        : /running|active.*round|stop.*task/i.test(message) ? 'deleteBusy'
+          : /revision/i.test(message) ? 'deleteConflict' : 'operationFailed'))
+    } finally { setDeleting(false) }
+  }
+
   return (
     <div className={css.container}>
+      <Modal open={deleteTarget !== undefined} title={t('deleteEntityTitle')} closeLabel={t('cancel')}
+        onClose={() => { if (!deleting) setDeleteTarget(undefined) }}>
+        <p>{deleteTarget?.value.name}</p>
+        <p>{t('deleteEntityHint')}</p>
+        {deleteError && <p role="alert">{deleteError}</p>}
+        <div className={css.cardActions}>
+          <button type="button" className={css.secondaryButton} disabled={deleting}
+            onClick={() => { setDeleteTarget(undefined) }}>{t('cancel')}</button>
+          <button type="button" data-testid="confirm-entity-delete" className={css.secondaryButton} disabled={deleting}
+            onClick={() => { void confirmDelete() }}>{t('deletePermanently')}</button>
+        </div>
+      </Modal>
+      <label><input type="checkbox" checked={showArchived} onChange={(event) => { setShowArchived(event.target.checked) }} />{t('showArchived')}</label>
       <header className={css.header}>
         <div className={css.titleGroup}>
           <h1 className={css.title}>{t('panel')}</h1>
@@ -290,7 +359,7 @@ export function AssistantDirectory({
         </form>
       )}
 
-      {activeProfiles.length === 0 && profilesLoading ? <p>{t('loadingProfiles')}</p> : activeProfiles.length === 0 && !profilesError ? (
+      {!selectedTeamId && (activeProfiles.length === 0 && profilesLoading ? <p>{t('loadingProfiles')}</p> : activeProfiles.length === 0 && !profilesError ? (
         <div className={css.emptyState}>{t('empty')}</div>
       ) : (
         <div className={css.grid}>
@@ -300,6 +369,7 @@ export function AssistantDirectory({
                 <EntityAvatar name={profile.name} avatar={profile.avatar} />
                 <div className={css.cardMeta}>
                   <span className={css.cardName}>{profile.name}</span>
+                  {profile.archivedAt !== undefined && <span className={css.cardBadge}>{t('archivedEntity')}</span>}
                   {profile.responsibility && (
                     <span className={css.cardBadge}>{profile.responsibility}</span>
                   )}
@@ -313,6 +383,7 @@ export function AssistantDirectory({
               <footer className={css.cardActions}>
                 <button
                   type="button"
+                  disabled={profile.archivedAt !== undefined}
                   className={css.primaryButton}
                   onClick={() => { void runAction(`chat:${profile.id}`, () => onStartChat(profile.id)) }}
                 >
@@ -329,16 +400,23 @@ export function AssistantDirectory({
                   <button
                     type="button"
                     className={css.secondaryButton}
-                    onClick={() => { void runAction(`archive:${profile.id}`, () => handleArchive(profile.id)) }}
+                    disabled={profile.archivedAt !== undefined && !onUnarchiveProfile}
+                    onClick={() => { void runAction(`archive:${profile.id}`, async () => {
+                      if (profile.archivedAt !== undefined && onUnarchiveProfile) { await onUnarchiveProfile(profile.id); await refresh() }
+                      else await handleArchive(profile.id)
+                    }) }}
                   >
-                    {t('archiveAssistant')}
+                    {t(profile.archivedAt !== undefined ? 'unarchiveAssistant' : 'archiveAssistant')}
                   </button>
+                  {onDeleteProfile && <button type="button" className={css.secondaryButton}
+                    data-testid={`delete-profile-${profile.id}`}
+                    onClick={() => { requestDelete({ kind: 'profile', value: profile }) }}>{t('deletePermanently')}</button>}
                 </div>
               </footer>
             </article>
           ))}
         </div>
-      )}
+      ))}
 
       {selectedTeam && (
         <div style={{ marginTop: '24px' }}>
@@ -379,12 +457,13 @@ export function AssistantDirectory({
         <div style={{ marginTop: '24px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 500, marginBottom: '12px' }}>{t('teamTemplates')}</h2>
           <div className={css.grid}>
-            {teams.filter(team => !team.archivedAt).map(team => (
+            {teams.filter(team => team.deletedAt === undefined && (showArchived || !team.archivedAt)).map(team => (
               <article key={team.id} className={css.card}>
                 <div className={css.cardHeader}>
                   <EntityAvatar name={team.name} avatar={team.avatar} />
                   <div className={css.cardMeta}>
                     <span className={css.cardName}>{team.name}</span>
+                    {team.archivedAt !== undefined && <span className={css.cardBadge}>{t('archivedEntity')}</span>}
                     {team.description && <span className={css.cardBadge}>{team.description}</span>}
                   </div>
                 </div>
@@ -396,6 +475,10 @@ export function AssistantDirectory({
                   >
                     {t('details')}
                   </button>
+                  {onArchiveTeam && !team.archivedAt && <button type="button" className={css.secondaryButton}
+                    onClick={() => { void runAction(`archive-team:${team.id}`, async () => { await onArchiveTeam(team.id); await refresh() }) }}>{t('archiveTeam')}</button>}
+                  {onDeleteTeam && <button type="button" className={css.secondaryButton} data-testid={`delete-team-${team.id}`}
+                    onClick={() => { requestDelete({ kind: 'team', value: team }) }}>{t('deletePermanently')}</button>}
                 </footer>
               </article>
             ))}
@@ -407,7 +490,7 @@ export function AssistantDirectory({
         <TeamCreationModal
           t={t}
           isOpen={showTeamModal}
-          profiles={profiles}
+          profiles={profiles.filter(profile => profile.archivedAt === undefined)}
           onClose={() => { setShowTeamModal(false) }}
           onCreateTeam={async (payload) => {
             await onCreateTeam(payload)

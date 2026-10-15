@@ -15,7 +15,8 @@
     "src/sources.ts",
     "src/spreadsheet.ts",
     "src/sqlite-write.ts",
-    "src/zip-scan.ts"
+    "src/zip-scan.ts",
+    "src/brand-settings.ts"
   ],
   "references": [
     {
@@ -47,6 +48,9 @@
     },
     {
       "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../settings/settings"
     }
   ]
 }

@@ -203,6 +203,30 @@ describe('Team UI (S15)', () => {
     })
   })
 
+  it('saves team details when its unchanged coordinator is absent from the selectable profiles', async () => {
+    const handleSave = vi.fn()
+    render(
+      <TeamEditorModal
+        t={tZh}
+        isOpen={true}
+        team={testTeam}
+        seats={testSeats}
+        profiles={[workerProfile]}
+        models={[]}
+        onClose={vi.fn()}
+        onSave={handleSave}
+      />,
+    )
+    fireEvent.change(screen.getByTestId('edit-team-name-input'), { target: { value: '更新后的团队' } })
+    fireEvent.click(screen.getByTestId('edit-team-save'))
+    await vi.waitFor(() => {
+      expect(handleSave).toHaveBeenCalledWith(expect.objectContaining({
+        name: '更新后的团队',
+        coordinatorProfileId: undefined,
+      }))
+    })
+  })
+
   it('clears one seat model override when its selection is emptied', async () => {
     const handleUpdateSeat = vi.fn()
     render(

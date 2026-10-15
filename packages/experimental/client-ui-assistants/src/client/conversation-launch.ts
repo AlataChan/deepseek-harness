@@ -1,6 +1,7 @@
 /** Workspace selection and assistant binding for one new conversation. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/types'
 import type { AssistantProfileId } from '@deepseek-ai/dsh-experimental-assistant-registry/types'
 import type { AssistantClientOps } from './mount.ts'
@@ -86,6 +87,36 @@ export class AssistantConversationLauncher {
       this.request = null
       this.notify()
     })
+    return this.active
+  }
+
+  /**
+   * Cancel a blank Session's assistant binding or open a fresh ordinary Session beside its history.
+   * @param sessionId - Session whose current assistant the user is leaving.
+   * @returns completion after durable unbinding or navigation to an ordinary Session.
+   */
+  useOrdinary(sessionId: SessionId): Promise<void> {
+    if (this.disposed || this.active) return Promise.reject(new Error('Assistant navigation unavailable'))
+    const navigation = this.ctx.layout.beginNavigation()
+    this.active = (async () => {
+      const sessions = this.ctx.reflect.get('sessions') as ISessions
+      const row = sessions.list.getSnapshot().byId[sessionId]
+      const registry = this.ctx.workspaces.list.getSnapshot()
+      if (!row || row.running || registry.phase !== 'ready') throw new Error('Stop the running task first')
+      const workspace = registry.items.find(item => item.sessionIds.includes(sessionId))
+      if (!workspace) throw new Error('Session workspace is unavailable')
+      const team = row.blank ? await this.ops.getTeamBySession?.(sessionId) : undefined
+      if (row.blank && !team) {
+        if (!this.ops.clearConversationBinding) throw new Error('Assistant unbinding unavailable')
+        await this.ops.clearConversationBinding(sessionId)
+        this.revision++
+        this.notify()
+        if (this.isCurrent(navigation)) this.ctx.uiWorkspace.openSession(sessionId)
+      } else {
+        const ordinaryId = await sessions.create({ workspaceId: workspace.workspaceId })
+        if (this.isCurrent(navigation)) this.ctx.uiWorkspace.openSession(ordinaryId)
+      }
+    })().finally(() => { this.active = undefined; this.notify() })
     return this.active
   }
 

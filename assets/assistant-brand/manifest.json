@@ -1,6 +1,6 @@
 {
   "generator": "built-in image_gen; model identifier not exposed",
-  "approval": "A1, A3, A4, C1, C2 for avatars; white-background whale with sample 1 colors and sample 3 expression for application branding",
+  "approval": "A1, A3, A4, C1, C2 for avatars; white-background whale with sample 1 colors and sample 3 expression for application branding; refined original B is the default product mark; approved abstract and cartoon are optional in-app presets",
   "images": [
     {
       "label": "A1",
@@ -38,5 +38,23 @@
       "file": "workbench-whale.png",
       "sha256": "2ed601956dfce9c92c9e425d60f111e1e58adcbda4760a6db5cf813194e8a777"
     }
-  ]
+  ],
+  "brandPresets": [
+    {
+      "id": "original",
+      "file": "original-whale-refined.png",
+      "sha256": "da4a938d1ddb9a44ab6e0830fee7fdbfc62f2135770c5ed1577cc60be845b08c"
+    },
+    {
+      "id": "abstract",
+      "file": "abstract-whale.png",
+      "sha256": "1e99434b34c6296f2bd43bf77554502db2740c143092751d7fb0651f72d371a0"
+    },
+    {
+      "id": "cartoon",
+      "file": "workbench-whale.png",
+      "sha256": "2ed601956dfce9c92c9e425d60f111e1e58adcbda4760a6db5cf813194e8a777"
+    }
+  ],
+  "brandDefault": "original"
 }

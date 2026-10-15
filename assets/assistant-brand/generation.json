@@ -37,5 +37,21 @@
       "width": 1254,
       "height": 1254
     }
+  ],
+  "brandPresets": [
+    {
+      "id": "original",
+      "file": "original-whale-refined.png",
+      "generator": "built-in image_gen",
+      "reference": "Original pre-04d64362e6 desktop icon; user-approved B refinement board",
+      "prompt": "Extract the large upper B logo from this approved presentation sheet as a single clean production master on a white square canvas. Preserve the exact approved design: right-facing dark teal-green leaf-tailed whale, no leaf veins, single upright leaf sprout, circular white eye and short integrated pectoral flipper. Do not redesign or stylize. Remove the letter B and all three small repeated logos below. Show ONLY one copy of the main logo centered horizontally and vertically with 12 percent white margin on each side; keep complete tail and top leaf. Pure white background, flat solid color no texture, no gradient, no shadow, no text."
+    },
+    {
+      "id": "abstract",
+      "file": "abstract-whale.png",
+      "generator": "built-in image_gen",
+      "reference": "First abstract whale concept explicitly selected by user on 2026-10-15",
+      "promptSummary": "White square canvas, deep green abstract whale silhouette and ocean-wave negative space, no face, centered flat emblem."
+    }
   ]
 }

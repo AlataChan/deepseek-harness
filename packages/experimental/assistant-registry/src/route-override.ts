@@ -84,6 +84,7 @@ export function installRouteOverride(ctx: Context, assistants: AssistantService)
       if (!agent || !assistants.isAssistantBound(agent.id)) {
         return next()
       }
+      assistants.assertSessionUsable(agent.id)
       const sessionId = agent.id
       const captured = assistants.resolveEffectiveRoute(sessionId)
       if (!captured) {
@@ -122,6 +123,7 @@ export function installRouteOverride(ctx: Context, assistants: AssistantService)
         return next()
       }
 
+      assistants.assertSessionUsable(agent.id)
       const sessionId = agent.id
       const captured = assistants.getCapturedRoute(sessionId) ?? assistants.resolveEffectiveRoute(sessionId)
       if (!captured) {
@@ -173,6 +175,7 @@ export function installRouteOverride(ctx: Context, assistants: AssistantService)
         return next()
       }
 
+      assistants.assertSessionUsable(agent.id)
       const sessionId = agent.id
       // Reuse captured route from assembly (or resolve fresh if no assembly captured it)
       const captured = assistants.getCapturedRoute(sessionId) ?? assistants.resolveEffectiveRoute(sessionId)

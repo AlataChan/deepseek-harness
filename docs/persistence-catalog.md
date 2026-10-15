@@ -350,7 +350,7 @@ Source: [`packages/core/session/src/types.ts:355`](../packages/core/session/src/
 'assistant/auxiliary': AssistantAuxiliaryEvent
 ```
 
-Source: [`packages/experimental/assistant-registry/src/types.ts:660`](../packages/experimental/assistant-registry/src/types.ts)
+Source: [`packages/experimental/assistant-registry/src/types.ts:664`](../packages/experimental/assistant-registry/src/types.ts)
 
 <a id="assistantmessage--surface"></a>
 
@@ -3449,7 +3449,7 @@ Sources: [`packages/host/ask-knowledge/src/types.ts:10`](../packages/host/ask-kn
 
 SHA-256: `bcff45ca8ec3836856f00f87970886a759db318739f13900a9511aaa981358d1`
 
-Sources: [`packages/experimental/assistant-registry/src/types.ts:646`](../packages/experimental/assistant-registry/src/types.ts)
+Sources: [`packages/experimental/assistant-registry/src/types.ts:650`](../packages/experimental/assistant-registry/src/types.ts)
 
 One of:
 
@@ -5503,7 +5503,7 @@ Sources: [`packages/llm/llm/src/types.ts:175`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `79de0f4aacab1b0dedd4890131e1a6e626811a032ba9d05e51fd05a2479bf306`
 
-Sources: [`packages/experimental/assistant-registry/src/types.ts:627`](../packages/experimental/assistant-registry/src/types.ts)
+Sources: [`packages/experimental/assistant-registry/src/types.ts:631`](../packages/experimental/assistant-registry/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|

@@ -38,7 +38,7 @@ try {
 const resources = windows ? path.join(app, 'resources') : path.join(app, 'Contents/Resources/resources')
 const source = [
   ['client-ui-assistants', 'character-images.ts', 5],
-  ['desktop-ask-data', 'octopus-mark-uri.ts', 1],
+  ['desktop-ask-data', 'brand-marks.ts', 3],
 ]
 for (const [name, file, count] of source) {
   const text = readFileSync(path.join(root, 'packages/experimental', name, 'src/client', file), 'utf8')
@@ -58,4 +58,4 @@ for (const [name, file, count] of source) {
     }
   }
 }
-console.log('Approved application icon and all six embedded images match the packaged Client plugins')
+console.log('Approved application icon and all eight embedded images match the packaged Client plugins')

@@ -63,8 +63,8 @@
   en: dea0090bccdf9181
   zh: bd26009109ee83cb
 /session-persistence-event-catalog/events/assistant/assistant-auxiliary-log-only:
-  en: ddf349042867828f
-  zh: db6da0d8e3ceea42
+  en: 50094a40425a9630
+  zh: d1c6b01ba9293552
 /session-persistence-event-catalog/events/assistant/assistant-message-surface:
   en: 70721b64d98f892e
   zh: ad5091727753c698
@@ -1056,8 +1056,8 @@
   en: a2b7089bbc42037c
   zh: 581f43e9b5895f49
 /session-persistence-event-catalog/resolved-persistence-types/assistantauxiliaryevent:
-  en: e73559f981baf8a8
-  zh: 15b9b67555355817
+  en: a9ec3cb1f8fc72b9
+  zh: 91b74f8be29d178b
 /session-persistence-event-catalog/resolved-persistence-types/assistantmessage:
   en: 2a8bc13a30855b26
   zh: 87f1f5fd2882a411
@@ -1377,8 +1377,8 @@
   en: aa1c0e29ba03cdf2
   zh: 0e2d0e96b0cd4cf9
 /session-persistence-event-catalog/resolved-persistence-types/tokenusagemetrics:
-  en: c20dcd6b63c716e9
-  zh: 3681625743a64b84
+  en: 37931be20a561999
+  zh: f0dcf7bab78ede4a
 /session-persistence-event-catalog/resolved-persistence-types/tooladditionblock:
   en: 7ba7c600fc529015
   zh: 94b69e9d5bd1fcfd

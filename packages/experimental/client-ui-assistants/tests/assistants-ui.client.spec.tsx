@@ -3,9 +3,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { Context } from '@deepseek-ai/cordis'
 import {
   AssistantProfileId,
+  TeamDefinitionId,
   AssistantConversationId,
   type AssistantProfile,
   type AssistantConversation,
@@ -457,7 +459,7 @@ describe('mount and slot registrations', () => {
     const cleanupFn = await mountAssistantsUi(ctx)
     expect(registeredSlots).toContain('sidebar.panellist')
     expect(registeredSlots).toContain('main')
-    expect(registeredSlots).toContain('conversation.hero.agentTeam.card')
+    expect(registeredSlots).toContain('conversation.hero.agentTeam')
     expect(registeredSlots).toContain('conversation.session.header.actions')
     expect(registeredSlots).toContain('conversation.input.dock')
 
@@ -465,5 +467,46 @@ describe('mount and slot registrations', () => {
     expect(registeredIds['main']).toBe(PANEL_ID)
 
     await cleanupFn()
+  })
+})
+
+describe('Permanent deletion confirmation', () => {
+  it('keeps the assistant when deletion fails and removes it only after successful confirmation', async () => {
+    let profiles: readonly AssistantProfile[] = [testProfile]
+    const remove = vi.fn(async () => { profiles = [] })
+    remove.mockRejectedValueOnce(new Error('Assistant profile is referenced by a team'))
+    render(<AssistantDirectory {...{
+      t: tZh, loadProfiles: async () => profiles, loadTeams: async () => [], loadSeats: async () => [], loadModels: async () => [],
+      onCreateProfile: vi.fn(), onStartChat: vi.fn(), onArchiveProfile: vi.fn(), onUpdateProfile: vi.fn(), onDeleteProfile: remove,
+    } as AssistantDirectoryProps} />)
+    fireEvent.click(await screen.findByTestId(`delete-profile-${testProfile.id}`))
+    expect(remove).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('confirm-entity-delete'))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByText(testProfile.name, { selector: 'span' })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('confirm-entity-delete'))
+    await waitFor(() => { expect(screen.queryByTestId(`delete-profile-${testProfile.id}`)).toBeNull() })
+    expect(remove).toHaveBeenLastCalledWith(testProfile.id, testProfile.revision)
+  })
+})
+
+
+describe('Team shortcut navigation', () => {
+  it('consumes a team shortcut and opens the saved TeamView without retaining a stale request on remount', async () => {
+    const team = { id: TeamDefinitionId('shortcut-team'), name: 'Shortcut team', coordinatorProfileId: testProfile.id,
+      seatIds: [], revision: 1, createdAt: 1, updatedAt: 1 }
+    const requests = createSnapshotStore<{ teamId: typeof team.id; seq: number } | undefined>({ teamId: team.id, seq: 1 })
+    const props = { t: tZh, loadProfiles: async () => [testProfile], loadTeams: async () => [team],
+      loadSeats: async () => [], loadModels: async () => [], onCreateProfile: vi.fn(), onStartChat: vi.fn(),
+      onArchiveProfile: vi.fn(), onUpdateProfile: vi.fn(),
+      teamRequest: { ...requests, clear: () => { requests.set(undefined) } },
+    } as AssistantDirectoryProps
+    const view = render(<AssistantDirectory {...props} />)
+    expect((await screen.findByTestId('team-name')).textContent).toContain(team.name)
+    expect(requests.getSnapshot()).toBeUndefined()
+    view.unmount()
+    render(<AssistantDirectory {...props} />)
+    expect(await screen.findByText(testProfile.name)).toBeTruthy()
+    expect(screen.queryByTestId('team-name')).toBeNull()
   })
 })

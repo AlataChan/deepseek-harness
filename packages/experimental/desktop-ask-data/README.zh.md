@@ -38,7 +38,7 @@ kind: "package-bundle"
 
 空的 `dataHome` 使用 `{dshHome}/profiles/desktop/data-sources`。`cordis.patch.yml` 插入这一条 Host 行。Client 半面在 Host fiber 就绪后从 `dsh.client` 发现。
 
-侧边栏及会话首页的品牌位使用已确认的白底朝右的深绿色微笑小鲸鱼，以内嵌 WebP 图片离线显示。原始图片与桌面图标生成流程见 [`icons/README`](../../../apps/desktop/src-tauri/icons/README.md)。
+常规设置页在外观旁提供品牌标识：原版精修 B（默认）、抽象鲸鱼和卡通鲸鱼三套离线 WebP，统一更新侧栏与会话首页，并展示两处预览。`brandMark` 动态偏好保存在 Host 用户设置文档中，跨窗口同步并在重启后保留；保存失败保留已接受的选择并显示提示。恢复默认选择原版精修款。智能体和团队头像独立管理。系统应用图标在构建时固定，其源图使用原版精修 B。主图位于 `assets/assistant-brand`，通过 `scripts/build-assistant-brand-assets.mjs` 生成。
 
 <a id="model-experience"></a>
 ## 模型体验

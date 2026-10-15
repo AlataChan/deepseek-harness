@@ -48,11 +48,14 @@ function bench(selected = false) {
     return binding
   })
   const read = vi.fn(async () => binding)
-  const launcher = new AssistantConversationLauncher(ctx, { createConversation: bind, startNewTopic: bind, getConversationBySession: read })
+  const clear = vi.fn(async () => { binding = undefined })
+  const launcher = new AssistantConversationLauncher(ctx, {
+    clearConversationBinding: clear, createConversation: bind, startNewTopic: bind, getConversationBySession: read,
+  })
   ctx.effect(() => () => { launcher.dispose() })
   const loadProfile = vi.fn(async () => profile)
   const props = { launcher, workspaces: ctx.workspaces, loadProfile, pickDirectory: vi.fn(async () => '/project'), t: makeTranslate(zh) }
-  return { ctx, sessions, launcher, create, bind, read, open, props, loadProfile,
+  return { ctx, sessions, launcher, create, bind, read, open, clear, props, loadProfile,
     setBinding: (value: AssistantConversation) => { binding = value } }
 }
 
@@ -184,5 +187,32 @@ describe('Assistant and workspace selection', () => {
     await pending
     expect(b.bind).not.toHaveBeenCalled()
     expect(b.open).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('Switching to ordinary conversation', () => {
+  it('clears an unused binding in the same Session without creating another Session', async () => {
+    const b = bench(true)
+    await b.launcher.start(profile.id)
+    await b.launcher.useOrdinary(sid)
+    expect(b.clear).toHaveBeenCalledExactlyOnceWith(sid)
+    expect(await b.read()).toBeUndefined()
+    expect(b.create).not.toHaveBeenCalled()
+  })
+
+  it('starts an ordinary Session in the same Workspace while preserving existing history', async () => {
+    const b = bench(true)
+    await b.launcher.start(profile.id)
+    const snapshot = b.sessions.getSnapshot()
+    b.sessions.set({ ...snapshot, byId: { [sid]: { ...snapshot.byId[sid]!, blank: false } } })
+    const next = SessionId('ordinary-session')
+    b.create.mockResolvedValue(next)
+    await b.launcher.useOrdinary(sid)
+    expect(b.clear).not.toHaveBeenCalled()
+    expect(b.create).toHaveBeenCalledExactlyOnceWith({ workspaceId: workspace.workspaceId })
+    expect(b.open).toHaveBeenLastCalledWith(next)
+    expect(await b.read()).toBeDefined()
+    expect(b.bind).toHaveBeenCalledTimes(1)
   })
 })

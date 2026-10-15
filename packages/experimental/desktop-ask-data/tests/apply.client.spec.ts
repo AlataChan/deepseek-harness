@@ -19,6 +19,10 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   ctx.provide('locale', new LocaleRuntime(ctx))
+  ctx.provide('configForms', { get: () => ({
+    getSnapshot: () => ({ status: 'ready', value: { brandMark: 'original' }, writable: true, mode: 'host' }),
+    subscribe: () => () => {},
+  }) } as never)
   const remotes = {
     listAskDataSources: vi.fn(async () => ({ ok: true as const, value: [] })),
     importAskDataSpreadsheet: vi.fn(async () => ({ ok: true as const, value: {} })),
@@ -71,6 +75,7 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
       'sidebar.brand.mark': { kind: 'single', scope: 'root' },
       'sidebar.brand.name': { kind: 'single', scope: 'root' },
       'settings.general.item': { kind: 'list', scope: 'root' },
+      'shell.overlay': { kind: 'list', scope: 'root' },
     },
   } as never, () => null)
   const fiber = ctx.plugin({
@@ -119,8 +124,10 @@ describe('desktop-ask-data apply', () => {
     expect(b.slots.entries('conversation.hero.brand.mark')).toHaveLength(1)
     expect(b.slots.entries('conversation.hero.headline')).toHaveLength(1)
     expect(b.slots.entries('settings.general.item').map(row => row.options.id))
-      .toEqual(['desktop-workspace-folder'])
+      .toEqual(['desktop-workspace-folder', 'desktop-brand-mark'])
     await b.dispose()
+    expect(b.slots.entries('sidebar.brand.mark')).toHaveLength(0)
+    expect(b.slots.entries('settings.general.item')).toHaveLength(0)
   })
 
   it('registers the chip and opens the gate only on click', async () => {

@@ -355,6 +355,8 @@ export class AssistantService extends TypertRemoteService {
   private readonly seatRevisions = new Map<TeamSeatId, number>()
   private readonly sessionToSeat = new Map<string, TeamSeatId>()
 
+  private readonly lifecycleChanges = new Set<string>()
+
   private readonly memories = new Map<MemoryEntryId, MemoryEntry>()
 
   private readonly capturedRoutes = new Map<string, CapturedRoute>()
@@ -423,8 +425,10 @@ export class AssistantService extends TypertRemoteService {
       },
       teamResolver: async (teamId) => {
         const cat = this.catalog ?? (await this.initCatalog())
-        if (cat) return cat.getTeam(teamId)
-        return this.getTeam(teamId)
+        if (this.lifecycleChanges.has(teamId)) throw new Error('Team configuration is changing')
+        const team = cat ? cat.getTeam(teamId) : await this.getTeam(teamId)
+        if (team?.deletedAt !== undefined) throw new Error('Team was permanently deleted')
+        return team
       },
     })
     ctx.effect(
@@ -463,7 +467,11 @@ export class AssistantService extends TypertRemoteService {
         if (!conv || conv.archivedAt !== undefined) return
         if (event.seq > (conv.modelCheckpoint ?? -1)) {
           const selection = event.data as ModelSelection
-          void this.setConversationModelOverride(convId, selection, event.seq)
+          void this.setConversationModelOverride(convId, selection, event.seq).catch((error: unknown) => {
+            if (this.getConversationBySessionSync(session.id)?.id === convId) {
+              console.error('Failed to persist assistant model selection:', error)
+            }
+          })
         }
       } else if (this.config.enableMemoryReview && event.type === 'turn/end' && event.data.reason.kind === 'completed') {
         const conv = this.getConversationBySessionSync(session.id)
@@ -657,7 +665,7 @@ export class AssistantService extends TypertRemoteService {
       this.conversations.set(conv.id, conv)
       this.conversationBySession.set(String(conv.rootSessionId), conv.id)
     }
-    const teams = this.catalog.listTeams({ includeArchived: true })
+    const teams = this.catalog.listTeams({ includeArchived: true, includeDeleted: true })
     for (const team of teams) {
       this.teams.set(team.id, team)
       if (team.leadSessionId) {
@@ -1095,7 +1103,7 @@ export class AssistantService extends TypertRemoteService {
     if (this.catalog) {
       return this.catalog.listProfiles(includeArchived)
     }
-    const all = [...this.profiles.values()]
+    const all = [...this.profiles.values()].filter(p => p.deletedAt === undefined)
     return includeArchived ? all : all.filter(p => p.archivedAt === undefined)
   }
 
@@ -1215,6 +1223,7 @@ export class AssistantService extends TypertRemoteService {
     if (options.defaultModel !== undefined) {
       await this.validateRoute(options.defaultModel)
     }
+    if (existing.deletedAt !== undefined) throw new Error('Assistant profile was permanently deleted')
     let updated: AssistantProfile
     if (this.catalog) {
       updated = await this.catalog.updateProfile(id, options, expectedRevision)
@@ -1275,6 +1284,7 @@ export class AssistantService extends TypertRemoteService {
       throw new Error(`Assistant profile ${id} not found`)
     }
     if (existing.archivedAt === undefined) return
+    if (existing.deletedAt !== undefined) throw new Error('Assistant profile was permanently deleted')
     let updated: AssistantProfile
     if (this.catalog) {
       updated = await this.catalog.unarchiveProfile(id)
@@ -1287,6 +1297,116 @@ export class AssistantService extends TypertRemoteService {
       }
     }
     this.profiles.set(id, updated)
+  }
+
+  /**
+   * Reject execution during lifecycle changes or after irreversible deletion.
+   * @param sessionId - Session about to assemble or execute a model request.
+   */
+  assertSessionUsable(sessionId: SessionId): void {
+    const conv = this.getConversationBySessionSync(sessionId)
+    const seat = this.getSeatBySessionSync(sessionId)
+    const teamId = this.getTeamIdBySessionSync(sessionId)
+    const profileId = conv?.profileId ?? seat?.profileId
+    if (this.lifecycleChanges.has(String(sessionId))
+      || (profileId && this.lifecycleChanges.has(profileId))
+      || (teamId && this.lifecycleChanges.has(teamId))) throw new Error('Assistant configuration is changing')
+    if (profileId && this.getProfileSync(profileId)?.deletedAt !== undefined) {
+      throw new Error('Assistant was permanently deleted; start an ordinary conversation to continue')
+    }
+    if (teamId && this.getTeamSync(teamId)?.deletedAt !== undefined) throw new Error('Team was permanently deleted')
+  }
+
+  private assertSessionIdle(sessionId: SessionId): void {
+    const agent = this.agents?.get(sessionId)
+    if (agent && (agent.status !== 'idle' || agent.inbox.nextTurn.length > 0 || agent.inbox.nextStep.length > 0)) {
+      throw new Error('Stop the running task before changing this assistant')
+    }
+  }
+
+  /**
+   * Unbind only an idle, pristine private Session; historical conversations keep their identity.
+   * @param sessionId - live blank Session whose assistant selection is cancelled.
+   */
+  @Remote('clearConversationBinding')
+  async clearConversationBinding(sessionId: SessionId): Promise<void> {
+    await this.ensureCatalogReady()
+    if (this.lifecycleChanges.has(sessionId)) throw new Error('Assistant configuration is changing')
+    this.lifecycleChanges.add(sessionId)
+    try {
+      const conv = this.getConversationBySessionSync(sessionId)
+      if (!conv) return
+      if (this.getTeamIdBySessionSync(sessionId)) throw new Error('Team Sessions cannot be unbound')
+      this.assertSessionIdle(sessionId)
+      const query = this.ctx.get('sessionQuery')
+      if (!query || !this.sessions?.get(sessionId)) throw new Error('Cannot verify a blank live Session')
+      const observation = await query.observeSession(sessionId)
+      try {
+        if (observation.events.some(e => e.type === 'turn/start' || e.type === 'user/message'
+          || e.type === 'request/header' || e.type === 'system/message')) {
+          throw new Error('Start a new ordinary conversation to preserve existing history')
+        }
+      } finally { observation[Symbol.dispose]() }
+      this.assertSessionIdle(sessionId)
+      if (this.catalog) await this.catalog.deleteConversationBinding(conv.id)
+      this.conversations.delete(conv.id)
+      this.conversationBySession.delete(String(sessionId))
+      this.capturedRoutes.delete(String(sessionId))
+      this.stepMessages.delete(String(sessionId))
+      this.reviewPredictions.cancelSession(sessionId)
+    } finally { this.lifecycleChanges.delete(sessionId) }
+  }
+
+  /**
+   * Permanently remove reusable assistant configuration while retaining historical Session logs.
+   * @param id - confirmed profile identifier.
+   * @param expectedRevision - revision displayed at confirmation.
+   */
+  @Remote('deleteProfile')
+  async deleteProfile(id: AssistantProfileId, expectedRevision: number): Promise<void> {
+    await this.ensureCatalogReady()
+    if (!this.catalog) throw new Error('Permanent deletion requires the durable assistant catalog')
+    if (this.lifecycleChanges.has(id)) throw new Error('Assistant configuration is changing')
+    this.lifecycleChanges.add(id)
+    try {
+      for (const conv of this.conversations.values()) {
+        if (conv.profileId === id) this.assertSessionIdle(conv.rootSessionId)
+      }
+      const deleted = await this.catalog.deleteProfile(id, expectedRevision)
+      this.profiles.set(id, deleted)
+      for (const [key, entry] of this.memories) {
+        if (entry.scope.kind === 'profile' && entry.scope.profileId === id) this.memories.delete(key)
+      }
+    } finally { this.lifecycleChanges.delete(id) }
+  }
+
+  /**
+   * Permanently remove team configuration after all owned work has stopped.
+   * @param id - confirmed team identifier.
+   * @param expectedRevision - revision displayed at confirmation.
+   */
+  @Remote('deleteTeam')
+  async deleteTeam(id: TeamDefinitionId, expectedRevision: number): Promise<void> {
+    await this.ensureCatalogReady()
+    if (!this.catalog) throw new Error('Permanent deletion requires the durable assistant catalog')
+    if (this.lifecycleChanges.has(id)) throw new Error('Team configuration is changing')
+    this.lifecycleChanges.add(id)
+    try {
+      const team = this.getTeamSync(id)
+      if (team?.leadSessionId) this.assertSessionIdle(team.leadSessionId)
+      for (const seat of this.listSeatsSync(id)) {
+        for (const session of seat.runtimeInstances) this.assertSessionIdle(session)
+        if (seat.activeInstanceId) this.assertSessionIdle(seat.activeInstanceId)
+      }
+      for (const discussion of this.roundScheduler.listDiscussions(id)) {
+        if (this.roundScheduler.journal.getActiveRound(discussion.id)) throw new Error('Stop the active team round before deleting')
+      }
+      const deleted = await this.catalog.deleteTeam(id, expectedRevision)
+      this.teams.set(id, deleted)
+      for (const [key, entry] of this.memories) {
+        if (entry.scope.kind === 'team' && entry.scope.teamId === id) this.memories.delete(key)
+      }
+    } finally { this.lifecycleChanges.delete(id) }
   }
 
   /**
@@ -1380,6 +1500,10 @@ export class AssistantService extends TypertRemoteService {
       await this.validateRoute(opts.modelOverride)
     }
 
+    this.assertSessionUsable(rootSessionId)
+    if (this.lifecycleChanges.has(profileId) || this.getProfileSync(profileId)?.deletedAt !== undefined) {
+      throw new Error('Assistant configuration is unavailable')
+    }
     const boundExisting = this.conversationBySession.get(String(rootSessionId))
     if (boundExisting) {
       throw new Error(`Session ${rootSessionId} is already bound to conversation ${boundExisting}`)
@@ -1682,6 +1806,7 @@ export class AssistantService extends TypertRemoteService {
    */
   async submitPrompt(request: SessionPromptRequest, signal?: AbortSignal): Promise<SessionPromptValue> {
     await this.ensureCatalogReady()
+    this.assertSessionUsable(request.sessionId)
     const conv = this.getConversationBySessionSync(request.sessionId)
     if (conv) {
       if (conv.archivedAt !== undefined) {
@@ -1742,7 +1867,7 @@ export class AssistantService extends TypertRemoteService {
     if (this.catalog) {
       return this.catalog.listTeams({ includeArchived })
     }
-    const all = [...this.teams.values()]
+    const all = [...this.teams.values()].filter(t => t.deletedAt === undefined)
     return includeArchived ? all : all.filter(t => t.archivedAt === undefined)
   }
 
@@ -2733,6 +2858,18 @@ export class AssistantService extends TypertRemoteService {
   }
 
   /**
+   * Resolve the saved team owning a live or historical runtime Session.
+   * @param sessionId - composer Session identifier.
+   * @returns its owning saved team, if bound.
+   */
+  @Remote('getTeamBySession')
+  async getTeamBySession(sessionId: SessionId): Promise<TeamDefinition | undefined> {
+    await this.ensureCatalogReady()
+    const id = this.getTeamIdBySessionSync(sessionId)
+    return id ? this.getTeamSync(id) : undefined
+  }
+
+  /**
    * Retrieve a team definition by identifier through the generated Remote API.
    * @param id - team definition identifier.
    * @returns team definition if found.
@@ -3196,6 +3333,8 @@ export class AssistantService extends TypertRemoteService {
   @Remote('saveMemory')
   async saveMemory(scope: MemoryScope, text: string, options?: SaveMemoryOptions): Promise<MemoryEntry> {
     await this.ensureCatalogReady()
+    if (scope.kind === 'profile' ? this.lifecycleChanges.has(scope.profileId) || this.getProfileSync(scope.profileId)?.deletedAt !== undefined
+      : this.lifecycleChanges.has(scope.teamId) || this.getTeamSync(scope.teamId)?.deletedAt !== undefined) throw new Error('Memory owner was deleted')
     const trimmed = text.trim()
     if (!trimmed) {
       throw new Error('Memory text cannot be empty')
@@ -3483,6 +3622,8 @@ export class AssistantService extends TypertRemoteService {
    * @returns readonly array of memory entries.
    */
   listMemorySync(scope: MemoryScope, options: ListMemoryOptions = {}): readonly MemoryEntry[] {
+    if (scope.kind === 'profile' ? this.getProfileSync(scope.profileId)?.deletedAt !== undefined
+      : this.getTeamSync(scope.teamId)?.deletedAt !== undefined) return []
     const all = [...this.memories.values()].filter((e) => {
       if (scope.kind === 'profile') {
         if (e.scope.kind !== 'profile' || e.scope.profileId !== scope.profileId) return false
@@ -3941,6 +4082,7 @@ export class AssistantService extends TypertRemoteService {
    */
   @Remote('reviewTurn')
   async reviewTurn(request: ReviewTurnRequest): Promise<ReviewTurnResult> {
+    this.assertSessionUsable(request.sessionId)
     return this.reviewPredictions.reviewTurn(request)
   }
 
@@ -3954,6 +4096,7 @@ export class AssistantService extends TypertRemoteService {
    */
   @Remote('predictComposer')
   async predictComposer(request: ComposerPredictionRequest, signal?: AbortSignal): Promise<ComposerPredictionResult | null> {
+    this.assertSessionUsable(request.sessionId)
     return this.reviewPredictions.predictComposer(request, signal)
   }
 
@@ -3965,6 +4108,7 @@ export class AssistantService extends TypertRemoteService {
   @Remote('getComposerContext')
   async getComposerContext(sessionId: SessionId): Promise<ComposerPredictionContext | null> {
     if (!this.config.enableComposerPredictions || !this.isAssistantBound(sessionId)) return null
+    this.assertSessionUsable(sessionId)
     const agent = (this.ctx.get('agents') as AgentRegistry | undefined)?.get(sessionId)
     if (!agent || agent.status === 'running') return null
     return this.readCompletedTurnContext(sessionId)

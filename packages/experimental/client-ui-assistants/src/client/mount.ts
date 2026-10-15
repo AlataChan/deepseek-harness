@@ -1,5 +1,6 @@
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { RemoteResult, TypertRemoteContribution, TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
@@ -32,9 +33,11 @@ import type {
 import { AssistantsPanelIcon } from './AssistantsPanelIcon.tsx'
 import { AssistantConversationLauncher } from './conversation-launch.ts'
 import { AssistantWorkspaceDialog } from './AssistantWorkspaceDialog.tsx'
-import { AssistantIdentityDock } from './AssistantIdentityDock.tsx'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { AssistantActionToast, type AssistantActionNotice } from './AssistantActionToast.tsx'
 import { AssistantDirectory, type AssistantDirectoryInjected } from './AssistantDirectory.tsx'
-import { AssistantHeroCard, type AssistantHeroCardInjected } from './AssistantHeroCard.tsx'
+import { AssistantComposerSelector, AssistantHeroSelector, type AssistantComposerSelectorInjected } from './AssistantComposerSelector.tsx'
+import { createSelectorPreference, SELECTOR_PREFERENCE_KEY } from './selector-preference.ts'
 import { AssistantConversationHeader, type AssistantConversationHeaderInjected } from './AssistantConversationHeader.tsx'
 import { AssistantExampleChips, type AssistantExampleChipsInjected } from './AssistantExampleChips.tsx'
 import { AssistantPredictionDock, type AssistantPredictionDockInjected } from './ComposerPrediction.tsx'
@@ -95,6 +98,9 @@ export interface AssistantClientOps extends OptionalDiscussionOps {
   listProfiles?: ((includeArchived?: boolean) => Promise<readonly AssistantProfile[]>) | undefined
   createProfile?: ((options: CreateAssistantProfileOptions) => Promise<AssistantProfile>) | undefined
   updateProfile?: ((id: AssistantProfileId, options: UpdateAssistantProfileOptions) => Promise<AssistantProfile>) | undefined
+  deleteProfile?: ((id: AssistantProfileId, revision: number) => Promise<void>) | undefined
+  deleteTeam?: ((id: TeamDefinitionId, revision: number) => Promise<void>) | undefined
+  clearConversationBinding?: ((sessionId: SessionId) => Promise<void>) | undefined
   archiveProfile?: ((id: AssistantProfileId) => Promise<void>) | undefined
   unarchiveProfile?: ((id: AssistantProfileId) => Promise<void>) | undefined
   listConversations?: ((profileId?: AssistantProfileId) => Promise<readonly AssistantConversation[]>) | undefined
@@ -108,7 +114,8 @@ export interface AssistantClientOps extends OptionalDiscussionOps {
   clearConversationModelOverride?: ((id: AssistantConversationId) => Promise<AssistantConversation>) | undefined
   getProfile?: ((id: AssistantProfileId) => Promise<AssistantProfile | undefined>) | undefined
   getAvailableModels?: (() => Promise<readonly AssistantModelOption[]>) | undefined
-  listTeams?: (() => Promise<readonly TeamDefinition[]>) | undefined
+  listTeams?: ((includeArchived?: boolean) => Promise<readonly TeamDefinition[]>) | undefined
+  getTeamBySession?: ((sessionId: SessionId) => Promise<TeamDefinition | undefined>) | undefined
   getTeam?: ((id: TeamDefinitionId) => Promise<TeamDefinition | undefined>) | undefined
   createTeam?: ((options: CreateTeamDefinitionOptions) => Promise<TeamDefinition>) | undefined
   createTeamFromTemplate?:
@@ -148,6 +155,9 @@ interface AssistantRemoteMethods extends DiscussionRemoteMethods {
     options: UpdateAssistantProfileOptions,
     expectedRevision?: number,
   ) => Promise<RemoteResult<AssistantProfile>>
+  deleteProfile: (id: AssistantProfileId, revision: number) => Promise<RemoteResult<void>>
+  deleteTeam: (id: TeamDefinitionId, revision: number) => Promise<RemoteResult<void>>
+  clearConversationBinding: (sessionId: SessionId) => Promise<RemoteResult<void>>
   archiveProfile: (id: AssistantProfileId) => Promise<RemoteResult<void>>
   unarchiveProfile: (id: AssistantProfileId) => Promise<RemoteResult<void>>
   listConversations: (profileId?: AssistantProfileId, includeArchived?: boolean) => Promise<RemoteResult<readonly AssistantConversation[]>>
@@ -167,6 +177,7 @@ interface AssistantRemoteMethods extends DiscussionRemoteMethods {
   clearConversationModelOverride: (id: AssistantConversationId) => Promise<RemoteResult<AssistantConversation>>
   getProfile: (id: AssistantProfileId) => Promise<RemoteResult<AssistantProfile | undefined>>
   listTeams: (includeArchived: boolean) => Promise<RemoteResult<readonly TeamDefinition[]>>
+  getTeamBySession: (sessionId: SessionId) => Promise<RemoteResult<TeamDefinition | undefined>>
   getTeam: (id: TeamDefinitionId) => Promise<RemoteResult<TeamDefinition | undefined>>
   createTeam: (options: CreateTeamDefinitionOptions) => Promise<RemoteResult<TeamDefinition>>
   createTeamFromTemplate: (
@@ -286,6 +297,12 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
         ? async (id: AssistantProfileId, data: UpdateAssistantProfileOptions) =>
           unwrapRemote(await remote.updateProfile(id, data, undefined))
         : undefined),
+    deleteProfile: ops?.deleteProfile ?? (remote?.deleteProfile
+      ? async (id, revision) => { unwrapRemote(await remote.deleteProfile(id, revision)) } : undefined),
+    deleteTeam: ops?.deleteTeam ?? (remote?.deleteTeam
+      ? async (id, revision) => { unwrapRemote(await remote.deleteTeam(id, revision)) } : undefined),
+    clearConversationBinding: ops?.clearConversationBinding ?? (remote?.clearConversationBinding
+      ? async (sessionId) => { unwrapRemote(await remote.clearConversationBinding(sessionId)) } : undefined),
     archiveProfile:
       ops?.archiveProfile ??
       (remote
@@ -327,7 +344,10 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
     getProfile: ops?.getProfile ?? (remote ? async (id: AssistantProfileId) => unwrapRemote(await remote.getProfile(id)) : undefined),
     getAvailableModels:
       ops?.getAvailableModels ?? (sessionRemote ? async () => modelOptions(unwrapRemote(await sessionRemote.modelCatalog())) : undefined),
-    listTeams: ops?.listTeams ?? (remote ? async () => unwrapRemote(await remote.listTeams(false)) : undefined),
+    listTeams: ops?.listTeams ?? (remote
+      ? async (includeArchived?: boolean) => unwrapRemote(await remote.listTeams(includeArchived ?? false)) : undefined),
+    getTeamBySession: ops?.getTeamBySession ?? (remote?.getTeamBySession
+      ? async sessionId => unwrapRemote(await remote.getTeamBySession(sessionId)) : undefined),
     getTeam: ops?.getTeam ?? (remote ? async (id: TeamDefinitionId) => unwrapRemote(await remote.getTeam(id)) : undefined),
     createTeam:
       ops?.createTeam ?? (remote ? async (opt: CreateTeamDefinitionOptions) => unwrapRemote(await remote.createTeam(opt)) : undefined),
@@ -395,9 +415,12 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
       }
       : undefined
 
-  const loadProfiles = async (): Promise<readonly AssistantProfile[]> => (activeOps.listProfiles ? await activeOps.listProfiles(false) : [])
+  const catalogRevision = createSnapshotStore(0)
+  const invalidateCatalog = () => { catalogRevision.set(catalogRevision.getSnapshot() + 1) }
 
-  const loadTeams = async (): Promise<readonly TeamDefinition[]> => (activeOps.listTeams ? await activeOps.listTeams() : [])
+  const loadProfiles = async (): Promise<readonly AssistantProfile[]> => (activeOps.listProfiles ? await activeOps.listProfiles(true) : [])
+
+  const loadTeams = async (): Promise<readonly TeamDefinition[]> => (activeOps.listTeams ? await activeOps.listTeams(true) : [])
 
   const loadSeats = async (teamId: TeamDefinitionId): Promise<readonly TeamSeat[]> =>
     activeOps.listSeats ? await activeOps.listSeats(teamId) : []
@@ -416,7 +439,9 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
 
   const updateProfile = async (id: AssistantProfileId, options: UpdateAssistantProfileOptions): Promise<AssistantProfile | undefined> => {
     if (!activeOps.updateProfile) throw new Error(t('operationFailed'))
-    return await activeOps.updateProfile(id, options)
+    const updated = await activeOps.updateProfile(id, options)
+    invalidateCatalog()
+    return updated
   }
 
   const updateSeat = async (seatId: TeamSeatId, patch: TeamSeatUpdatePatch): Promise<void> => {
@@ -443,8 +468,66 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
     }
   ).uiWorkspace
 
+  const clientSessions = ctx.reflect.get('sessions') as ISessions
+  const notices = createSnapshotStore<AssistantActionNotice | undefined>(undefined)
+  let noticeSeq = 0
+  const showNotice = (text: string, success: boolean) => { notices.set({ seq: ++noticeSeq, text, success }) }
+  const deleteProfile = activeOps.deleteProfile
+  const deleteTeam = activeOps.deleteTeam
+  const deleteEntity = async (action: () => Promise<void>) => {
+    try {
+      await action()
+      invalidateCatalog()
+      showNotice(t('entityDeleted'), true)
+    } catch (error) {
+      showNotice(t('operationFailed'), false)
+      throw error
+    }
+  }
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay', id: 'assistants.action-toast',
+    inject: () => ({ notices, dismiss: (seq: number) => { if (notices.getSnapshot()?.seq === seq) notices.set(undefined) } }),
+  }, AssistantActionToast))
   const launcher = new AssistantConversationLauncher(ctx, activeOps)
-  const bindingChanges = { subscribe: launcher.subscribe, getSnapshot: launcher.getBindingRevision }
+  const bindingChanges = {
+    subscribe: (listener: () => void) => {
+      const offBinding = launcher.subscribe(listener)
+      const offCatalog = catalogRevision.subscribe(listener)
+      return () => { offBinding(); offCatalog() }
+    },
+    getSnapshot: () => launcher.getBindingRevision() + catalogRevision.getSnapshot(),
+  }
+  const teamRequest = createSnapshotStore<{ teamId: TeamDefinitionId; seq: number } | undefined>(undefined)
+  let teamRequestSeq = 0
+  let storage: Storage | undefined
+  try { storage = window.localStorage }
+  catch (error) { void error /* Optional preference storage can be denied by browser settings. */ }
+  const preference = createSelectorPreference(storage)
+  ctx.effect(() => {
+    const sync = (event: StorageEvent) => { if (event.key === SELECTOR_PREFERENCE_KEY || event.key === null) preference.refresh() }
+    window.addEventListener('storage', sync)
+    return () => { window.removeEventListener('storage', sync) }
+  }, 'assistants: composer display preference')
+  const selectorProps = (sessionId?: SessionId): AssistantComposerSelectorInjected => ({
+    sessionId, preference, changes: bindingChanges, loadProfiles, loadTeams,
+    sessionState: {
+      subscribe: listener => clientSessions.list.subscribe(listener),
+      getSnapshot: () => sessionId ? clientSessions.list.getSnapshot().byId[sessionId] : undefined,
+    },
+    loadIdentity: async (id) => {
+      const team = await activeOps.getTeamBySession?.(id)
+      const conversation = await loadConversation(id)
+      const profile = conversation ? await loadProfile(conversation.profileId) : undefined
+      return { team, profile }
+    },
+    onStartChat: id => launcher.start(id),
+    onUseOrdinary: id => launcher.useOrdinary(id),
+    onOpenTeam: (teamId) => {
+      teamRequest.set({ teamId, seq: ++teamRequestSeq })
+      ctx.layout.selectPanel(PANEL_ID)
+    },
+    onManage: () => { ctx.layout.selectPanel(PANEL_ID) },
+  })
   ctx.effect(() => () => { launcher.dispose() }, 'assistants: pending workspace choice')
   const startChat = (profileId: AssistantProfileId): Promise<void> => launcher.start(profileId)
   const startNewTopic = (profileId: AssistantProfileId): Promise<void> => launcher.start(profileId, true)
@@ -540,6 +623,7 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
         inject: (): AssistantDirectoryInjected => ({
           loadProfiles,
           loadTeams,
+          teamRequest: { ...teamRequest, clear: () => { teamRequest.set(undefined) } },
           loadSeats,
           loadModels,
           loadLiveView: activeOps.getTeamActivity,
@@ -552,12 +636,20 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
               instructions: data.instructions,
               ...(data.avatar === undefined ? {} : { avatar: data.avatar }),
             })
+            invalidateCatalog()
           },
           onStartChat: startChat,
           onArchiveProfile: async (profileId) => {
             if (!activeOps.archiveProfile) throw new Error(t('operationFailed'))
             await activeOps.archiveProfile(profileId)
+            invalidateCatalog()
           },
+          onDeleteProfile: deleteProfile
+            ? (id, revision) => deleteEntity(() => deleteProfile(id, revision)) : undefined,
+          onUnarchiveProfile: activeOps.unarchiveProfile,
+          onDeleteTeam: deleteTeam
+            ? (id, revision) => deleteEntity(() => deleteTeam(id, revision)) : undefined,
+          onArchiveTeam: activeOps.archiveTeam ? async (id) => { await activeOps.archiveTeam?.(id) } : undefined,
           onUpdateProfile: updateProfile,
           onCreateTeam: createTeam,
           onSaveTeam: saveTeam,
@@ -582,22 +674,17 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
     ),
   )
 
-  // 3. Hero occupant list child seat: AssistantHeroCard
-  ctx.slots.inject('conversation.hero.agentTeam.card', () =>
-    ctx.slots.register(
-      {
-        name: 'conversation.hero.agentTeam.card',
-        id: 'assistants.hero-card',
-        order: 20,
-        locale: NS,
-        inject: (): AssistantHeroCardInjected => ({
-          loadProfiles,
-          onStartChat: startChat,
-        }),
+  // The fork selector shadows the legacy expanded institution cards while this plugin is mounted.
+  ctx.slots.inject('conversation.hero.agentTeam', () => ctx.slots.register({
+    name: 'conversation.hero.agentTeam', priority: -10, locale: NS,
+    inject: () => ({ ...selectorProps(), activeSession: {
+      subscribe: (listener: () => void) => clientSessions.list.subscribe(listener),
+      getSnapshot: () => {
+        const list = clientSessions.list.getSnapshot()
+        return list.ids.find(id => (list.byId[id]?.retainedBy.mainView ?? 0) > 0)
       },
-      AssistantHeroCard,
-    ),
-  )
+    } }),
+  }, AssistantHeroSelector))
 
   // 4. Conversation header actions: AssistantConversationHeader
   ctx.slots.inject('conversation.session.header.actions', () =>
@@ -637,9 +724,9 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
 
   // 5. Input Dock: AssistantExampleChips
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
-    name: 'conversation.input.dock', id: 'assistants.identity', order: -10, locale: NS,
-    inject: (sessionId: SessionId) => ({ sessionId, loadConversation, loadProfile, bindingChanges }),
-  }, AssistantIdentityDock))
+    name: 'conversation.input.dock', id: 'assistants.selector', order: 20, locale: NS,
+    inject: (sessionId: SessionId) => selectorProps(sessionId),
+  }, AssistantComposerSelector))
 
   ctx.slots.inject('conversation.input.dock', () =>
     ctx.slots.register(

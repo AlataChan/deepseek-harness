@@ -72,6 +72,8 @@ function TeamEditorModalContent({
   const [seatDuties, setSeatDuties] = useState<Record<string, string>>({})
   const [seatModels, setSeatModels] = useState<Record<string, string>>({})
   const coordinatorLocked = team.leadSessionId !== undefined || seats.some(seat => seat.role === 'coordinator')
+  const coordinatorValid = coordinatorId === team.coordinatorProfileId
+    || profiles.some(profile => profile.id === coordinatorId)
   const [saving, setSaving] = useState(false)
 
   const [failed, setFailed] = useState(false)
@@ -86,7 +88,7 @@ function TeamEditorModalContent({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || saving) return
-    if (!profiles.some(profile => profile.id === coordinatorId)) { setFailed(true); return }
+    if (!coordinatorValid) { setFailed(true); return }
     setSaving(true)
     setFailed(false)
     try {
@@ -208,7 +210,7 @@ function TeamEditorModalContent({
                       gap: 4,
                     }}
                   >
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>
+                    <div style={{ fontSize: 12, fontWeight: 500 }}>
                       {s.title ?? s.name} ({s.name})
                     </div>
                     <input
@@ -248,7 +250,7 @@ function TeamEditorModalContent({
                 type="submit"
                 data-testid="edit-team-save"
                 className={`${css.actionButton} ${css.primaryButton}`}
-                disabled={saving || !name.trim() || !profiles.some(profile => profile.id === coordinatorId)}
+                disabled={saving || !name.trim() || !coordinatorValid}
               >
                 {t('save')}
               </button>

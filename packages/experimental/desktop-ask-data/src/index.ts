@@ -4,6 +4,10 @@
  * @module @deepseek-ai/dsh-experimental-desktop-ask-data
  */
 
+import type { Volatile } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-settings'
+import { BRAND_MARK_IDS, type BrandMarkId } from './brand-settings.ts'
+
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
@@ -22,6 +26,9 @@ import { importSampleSource, importSpreadsheetSource, listAllSources } from './s
 
 /** Validated plugin configuration. */
 export interface Config {
+  /** Live product-mark preference; defaults to the refined original whale. */
+  brandMark?: Volatile<BrandMarkId>
+
   /**
    * Absolute data-sources directory. When omitted, uses the companion-resolved
    * profile home: `{dshHome}/profiles/desktop/data-sources`.
@@ -37,8 +44,9 @@ export default class DesktopAskData extends AskData {
    * Optional override of the profile-home data-sources directory. Default
    * follows the same resolver companion already uses (`dshHomePath`).
    */
-  static Config: z<Config> = z.object({
+  static Config = z.object({
     dataHome: z.string().default(''),
+    brandMark: z.union([...BRAND_MARK_IDS]).default('original').volatile(),
   })
 
   private readonly dataHome: string
@@ -49,6 +57,7 @@ export default class DesktopAskData extends AskData {
    */
   constructor(ctx: Context, config: Config) {
     super(ctx)
+    ctx.inject(['settings'], (scope) => { scope.effect(() => scope.settings.configure({ auto: false }, ctx.fiber)) })
     this.dataHome = config.dataHome === undefined || config.dataHome === ''
       ? dshHomePath('profiles', 'desktop', 'data-sources')
       : config.dataHome

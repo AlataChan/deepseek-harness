@@ -142,6 +142,8 @@ export interface AssistantProfile {
   readonly capabilities?: CapabilityPolicy | undefined
   readonly revision: number
   readonly defaultModel?: AssistantModelSelection | undefined
+  /** Irreversible deletion marker; the identifier and historical references remain reserved. */
+  readonly deletedAt?: number | undefined
   readonly archivedAt?: number | undefined
   readonly createdAt: number
   readonly updatedAt: number
@@ -314,6 +316,8 @@ export interface TeamDefinition {
   readonly seatIds: readonly TeamSeatId[]
   readonly capabilities?: CapabilityPolicy | undefined
   readonly revision: number
+  /** Irreversible deletion marker; the identifier and historical references remain reserved. */
+  readonly deletedAt?: number | undefined
   readonly archivedAt?: number | undefined
   readonly createdAt: number
   readonly updatedAt: number

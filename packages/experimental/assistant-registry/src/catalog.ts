@@ -156,7 +156,7 @@ export class AssistantCatalog {
    */
   requireProfile(id: AssistantProfileId): AssistantProfile {
     const profile = this.profilesTable.get(id)
-    if (!profile) {
+    if (!profile || profile.deletedAt !== undefined) {
       throw new Error(`Assistant profile '${id}' not found`)
     }
     return profile
@@ -168,7 +168,7 @@ export class AssistantCatalog {
    * @returns list of profiles.
    */
   listProfiles(includeArchived: boolean = false): readonly AssistantProfile[] {
-    const all = [...this.profilesTable.entries()].map(([, profile]) => profile)
+    const all = [...this.profilesTable.entries()].map(([, profile]) => profile).filter(profile => profile.deletedAt === undefined)
     return includeArchived ? all : all.filter(p => p.archivedAt === undefined)
   }
 
@@ -576,11 +576,13 @@ export class AssistantCatalog {
    * @returns persisted conversation binding.
    */
   async createConversation(conversation: AssistantConversation): Promise<AssistantConversation> {
-    if (this.conversationsTable.get(conversation.id)) {
-      throw new Error(`Assistant conversation '${conversation.id}' already exists`)
-    }
-    await this.conversationsTable.put(conversation.id, conversation)
-    return conversation
+    return this.serializeWrite(async () => {
+      if (this.conversationsTable.get(conversation.id)) {
+        throw new Error(`Assistant conversation '${conversation.id}' already exists`)
+      }
+      await this.conversationsTable.put(conversation.id, conversation)
+      return conversation
+    })
   }
 
   /**
@@ -593,17 +595,19 @@ export class AssistantCatalog {
     id: AssistantConversationId,
     patch: Partial<AssistantConversation>,
   ): Promise<AssistantConversation> {
-    const existing = this.conversationsTable.get(id)
-    if (!existing) {
-      throw new Error(`Assistant conversation '${id}' not found`)
-    }
-    const updated: AssistantConversation = {
-      ...existing,
-      ...patch,
-      updatedAt: Date.now(),
-    }
-    await this.conversationsTable.put(id, updated)
-    return updated
+    return this.serializeWrite(async () => {
+      const existing = this.conversationsTable.get(id)
+      if (!existing) {
+        throw new Error(`Assistant conversation '${id}' not found`)
+      }
+      const updated: AssistantConversation = {
+        ...existing,
+        ...patch,
+        updatedAt: Date.now(),
+      }
+      await this.conversationsTable.put(id, updated)
+      return updated
+    })
   }
 
   /**
@@ -612,20 +616,97 @@ export class AssistantCatalog {
    * @returns archived conversation binding.
    */
   async archiveConversation(id: AssistantConversationId): Promise<AssistantConversation> {
-    const existing = this.conversationsTable.get(id)
-    if (!existing) {
-      throw new Error(`Assistant conversation '${id}' not found`)
-    }
-    if (existing.archivedAt !== undefined) {
-      return existing
-    }
-    const updated: AssistantConversation = {
-      ...existing,
-      archivedAt: Date.now(),
-      updatedAt: Date.now(),
-    }
-    await this.conversationsTable.put(id, updated)
-    return updated
+    return this.serializeWrite(async () => {
+      const existing = this.conversationsTable.get(id)
+      if (!existing) {
+        throw new Error(`Assistant conversation '${id}' not found`)
+      }
+      if (existing.archivedAt !== undefined) {
+        return existing
+      }
+      const updated: AssistantConversation = {
+        ...existing,
+        archivedAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await this.conversationsTable.put(id, updated)
+      return updated
+    })
+  }
+
+  /**
+   * Remove a pristine conversation binding without deleting its Session.
+   * @param id - binding whose Session has been verified blank by the service.
+   */
+  async deleteConversationBinding(id: AssistantConversationId): Promise<void> {
+    await this.serializeWrite(async () => { await this.conversationsTable.delete(id) })
+  }
+
+  /**
+   * Irreversibly erase profile configuration and scoped memory, retaining identity for history.
+   * @param id - profile identifier.
+   * @param expectedRevision - revision shown at confirmation.
+   * @returns historical identity tombstone.
+   */
+  async deleteProfile(id: AssistantProfileId, expectedRevision: number): Promise<AssistantProfile> {
+    return this.serializeWrite(async () => {
+      const existing = this.profilesTable.get(id)
+      if (!existing) throw new Error('Assistant profile not found')
+      if (existing.deletedAt === undefined && existing.revision !== expectedRevision) {
+        throw new RevisionConflictError('profile', id, expectedRevision, existing.revision)
+      }
+      if (this.listTeams({ includeArchived: true }).some(team => team.coordinatorProfileId === id
+        || this.listSeats(team.id).some(seat => seat.profileId === id && seat.retiredAt === undefined))) {
+        throw new Error('Assistant profile is referenced by a team')
+      }
+      const now = Date.now()
+      const deleted: AssistantProfile = existing.deletedAt !== undefined ? existing : {
+        id, name: existing.name, responsibility: '', revision: existing.revision + 1,
+        createdAt: existing.createdAt, updatedAt: now, archivedAt: now, deletedAt: now,
+      }
+      await this.profilesTable.put(id, deleted)
+      for (const [key, entry] of this.memoryTable.entries()) {
+        if (entry.scope.kind === 'profile' && entry.scope.profileId === id) await this.memoryTable.delete(key)
+      }
+      return deleted
+    })
+  }
+
+  /**
+   * Irreversibly erase team configuration and shared memory, retaining historical identity and seats.
+   * @param id - team identifier.
+   * @param expectedRevision - revision shown at confirmation.
+   * @returns historical identity tombstone.
+   */
+  async deleteTeam(id: TeamDefinitionId, expectedRevision: number): Promise<TeamDefinition> {
+    return this.serializeWrite(async () => {
+      const existing = this.teamsTable.get(id)
+      if (!existing) throw new Error('Team not found')
+      if (existing.deletedAt === undefined && existing.revision !== expectedRevision) {
+        throw new RevisionConflictError('team', id, expectedRevision, existing.revision)
+      }
+      const now = Date.now()
+      const deleted: TeamDefinition = existing.deletedAt !== undefined ? existing : {
+        id, name: existing.name, coordinatorProfileId: existing.coordinatorProfileId,
+        ...(existing.leadSessionId !== undefined ? { leadSessionId: existing.leadSessionId } : {}),
+        seatIds: existing.seatIds, revision: existing.revision + 1,
+        createdAt: existing.createdAt, updatedAt: now, archivedAt: now, deletedAt: now,
+      }
+      await this.teamsTable.put(id, deleted)
+      for (const seat of this.listSeats(id)) {
+        await this.seatsTable.put(seat.id, {
+          id: seat.id, teamId: seat.teamId, profileId: seat.profileId, role: seat.role,
+          name: seat.name, duty: '', runtimeInstances: seat.runtimeInstances,
+          ...(seat.activeInstanceId !== undefined ? { activeInstanceId: seat.activeInstanceId } : {}),
+          ...(seat.runtimeNames !== undefined ? { runtimeNames: seat.runtimeNames } : {}),
+          createdAt: seat.createdAt, updatedAt: now, retiredAt: seat.retiredAt ?? now,
+        })
+      }
+      for (const [key, entry] of this.memoryTable.entries()) {
+        if (entry.scope.kind === 'team' && entry.scope.teamId === id) await this.memoryTable.delete(key)
+      }
+      return deleted
+    })
   }
 
   // --- TeamDefinition CRUD ---
@@ -644,8 +725,9 @@ export class AssistantCatalog {
    * @param filter - optional filter.
    * @returns list of team definitions.
    */
-  listTeams(filter?: { includeArchived?: boolean }): readonly TeamDefinition[] {
+  listTeams(filter?: { includeArchived?: boolean; includeDeleted?: boolean }): readonly TeamDefinition[] {
     const all = [...this.teamsTable.entries()].map(([, team]) => team)
+      .filter(team => filter?.includeDeleted || team.deletedAt === undefined)
     if (filter?.includeArchived) return all
     return all.filter(t => t.archivedAt === undefined)
   }
@@ -662,7 +744,7 @@ export class AssistantCatalog {
         throw new Error(`Team definition '${id}' already exists`)
       }
       const coordinator = this.profilesTable.get(options.coordinatorProfileId)
-      if (!coordinator) {
+      if (!coordinator || coordinator.deletedAt !== undefined) {
         throw new Error(`Coordinator profile '${options.coordinatorProfileId}' not found`)
       }
       const now = Date.now()
@@ -715,7 +797,7 @@ export class AssistantCatalog {
       }
       if (options.coordinatorProfileId !== undefined) {
         const coordinator = this.profilesTable.get(options.coordinatorProfileId)
-        if (!coordinator) {
+        if (!coordinator || coordinator.deletedAt !== undefined) {
           throw new Error(`Coordinator profile '${options.coordinatorProfileId}' not found`)
         }
       }
@@ -801,7 +883,7 @@ export class AssistantCatalog {
         throw new Error(`Team seat '${id}' already exists`)
       }
       const team = this.teamsTable.get(options.teamId)
-      if (!team) {
+      if (!team || team.deletedAt !== undefined) {
         throw new Error(`Team definition '${options.teamId}' not found`)
       }
       const existingSeats = this.listSeats(options.teamId)
@@ -819,7 +901,7 @@ export class AssistantCatalog {
         throw new Error(`Teammate name '${options.name}' is permanently reserved in team '${options.teamId}'`)
       }
       const profile = this.profilesTable.get(options.profileId)
-      if (!profile) {
+      if (!profile || profile.deletedAt !== undefined) {
         throw new Error(`Assistant profile '${options.profileId}' not found`)
       }
       const now = Date.now()
@@ -867,6 +949,7 @@ export class AssistantCatalog {
       if (!existing) {
         throw new Error(`Team seat '${id}' not found`)
       }
+      if (this.getTeam(existing.teamId)?.deletedAt !== undefined) throw new Error('Team was permanently deleted')
       if (existing.retiredAt !== undefined) {
         throw new Error(`Cannot update retired team seat '${id}'`)
       }
@@ -1193,6 +1276,8 @@ export class AssistantCatalog {
       if (text.length > MEMORY_TEXT_MAX_LENGTH) {
         throw new Error(`Memory text exceeds maximum length of ${MEMORY_TEXT_MAX_LENGTH} characters`)
       }
+      if (scope.kind === 'profile' ? this.getProfile(scope.profileId)?.deletedAt !== undefined
+        : this.getTeam(scope.teamId)?.deletedAt !== undefined) throw new Error('Memory owner was deleted')
       const id = MemoryEntryId(randomUUID())
       const now = Date.now()
       const entry: MemoryEntry = {
@@ -1443,6 +1528,8 @@ export class AssistantCatalog {
     scope: MemoryScope,
     options: ListMemoryOptions = {},
   ): readonly MemoryEntry[] {
+    if (scope.kind === 'profile' ? this.getProfile(scope.profileId)?.deletedAt !== undefined
+      : this.getTeam(scope.teamId)?.deletedAt !== undefined) return []
     const all = [...this.memoryTable.entries()].map(([, e]) => e).filter((e) => {
       if (scope.kind === 'profile') {
         if (e.scope.kind !== 'profile' || e.scope.profileId !== scope.profileId) return false
@@ -1475,7 +1562,8 @@ export class AssistantCatalog {
     profileId?: AssistantProfileId,
   ): readonly MemoryEntry[] {
     return [...this.memoryTable.entries()].map(([, e]) => e).filter((e) => {
-      if (e.scope.kind !== 'profile') return false
+      if (e.scope.kind !== 'profile' || this.getProfile(e.scope.profileId)?.deletedAt !== undefined
+        || this.getTeam(teamId)?.deletedAt !== undefined) return false
       if (profileId !== undefined && e.scope.profileId !== profileId) return false
       if (e.removedAt !== undefined || e.archivedAt !== undefined) return false
       return e.grants !== undefined && e.grants.includes(teamId)

@@ -9,9 +9,9 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`client-ui-assistants` provides browser UI components for persistent assistants: an assistant directory panel in the sidebar, home cards rendered through the hero squad child seat, an assistant conversation header with a details drawer, and role-specific example chips in the composer input dock.
+`client-ui-assistants` provides browser UI components for persistent assistants: an assistant directory panel in the sidebar, a unified identity selector above the composer, an assistant conversation header with a details drawer, and role-specific example chips in the composer input dock.
 
-The directory loads assistants independently of teams and model discovery. Failed auxiliary loads show an error while preserving saved assistant cards. A failed save keeps the entered draft and displays the error; a pending initial assistant query shows a loading message instead of an empty catalog. Archived entries remain available through the management views.
+The directory preserves saved cards when team or model discovery fails, retains drafts after failed saves, and supports archived entries. Team metadata stays editable when its unchanged coordinator is unavailable; replacement requires an available assistant.
 
 ## Table of Contents
 
@@ -22,6 +22,8 @@ The directory loads assistants independently of teams and model discovery. Faile
 
 ## Behavior
 
+The directory loads assistants independently of teams and model discovery. Failed auxiliary loads show an error while preserving saved assistant cards. A failed save keeps the entered draft and displays the error; a pending initial assistant query shows a loading message instead of an empty catalog. Archived entries remain available through the management views. Team details remain editable when the unchanged coordinator is archived or absent from the selectable profiles; selecting a different coordinator requires an available profile.
+
 Assistant and workspace selection converge on one bound Session before navigation. Selecting an assistant first opens a workspace chooser without creating a Session; selecting a workspace first reuses its current unbound blank Session. Existing conversations and Sessions bound to another assistant use a fresh Session in the same workspace. Cancelling the chooser creates no Session, binding failure does not navigate, and a newer navigation suppresses a pending open. The composer displays the avatar and name from the Host-confirmed Session binding before sending; ordinary Sessions show no assistant badge.
 
 Assistants and standing teams offer five approved generated portraits in their creation and editing forms: Seaside Friends (green whale, ivory seal, apricot seal) and optional Soft Robots (sage and coral). Older character selections map to this collection without rewriting saved profiles. The images are embedded WebP resources, available offline. Unset avatars default to the seaside whale. Explicit initials and saved legacy icons remain available; changing series or character uses the existing avatar save operation. Avatars make no external image requests and provide no image upload. Team forms stay within the window and scroll internally when the available height is small. Team views include roster editing, member model overrides, and shared memory; assistant details include private memory. Archived memories remain visible for restoration, and removing memory explains that earlier conversation history is retained.
@@ -29,6 +31,10 @@ Assistants and standing teams offer five approved generated portraits in their c
 Opening a standing-team roster is read-only, including before its first task. The panel displays saved members immediately and observes existing live activity while open; it does not provision sessions or run models. Starting a task requires an explicit action. Loading, saving, routing, and task-start failures remain visible; failed saves preserve drafts for correction.
 
 The browser entry declares `remote` before mounting the generated contribution, then registers UI in a child scope that requires `remote.assistants`. Composer predictions request completed-turn context from the Host and pass cancellation through the native Remote signal. Typing, navigation, running turns and teardown discard pending suggestions; the same completed-turn suggestion is not requested again after typing. Adoption inserts editable text through input actions and never submits a prompt.
+
+The identity bar offers cancellation for a blank Session and a new ordinary conversation in the same Workspace for a Session with history. Running Sessions disable the action. Management can show archived assistants and teams; permanent deletion requires confirmation and explains that chat history and workspace files remain. Failed deletion retains its item and confirmation, with specific guidance for team references, active tasks, and changed revisions. Shell-owned notices survive closing the management panel.
+
+The selector defaults to a compact identity bar attached to the composer. Show avatars expands a grouped assistant/team shelf; hide avatars collapses it. This browser-local preference is shared across mounted selectors and windows without changing the Host binding or creating Sessions. Assistant choices use the workspace-aware launcher; team choices open the saved TeamView without provisioning or inference. The current identity is read from the Host, with team identity taking precedence over its coordinator profile. Existing institution Hero cards remain available when this plugin unloads. Choice menus use the shared portal Menu; narrow windows stack the avatar groups.
 
 <a id="model-experience"></a>
 ## Model Experience

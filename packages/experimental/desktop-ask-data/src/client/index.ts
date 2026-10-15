@@ -19,6 +19,9 @@ import { CapabilitiesMenu, type CapabilitiesMenuInjected } from './CapabilitiesM
 import { DataSourcePage } from './DataSourcePage.tsx'
 import { OctopusBrandName } from './OctopusBrandName.tsx'
 import { OctopusHeroHeadline } from './OctopusHeroHeadline.tsx'
+import { BrandSettingsRow, BrandSettingsToast } from './BrandSettingsRow.tsx'
+import { createBrandPreference } from './brand-preference.ts'
+import type { BrandSettings } from '../brand-settings.ts'
 import { OctopusMark } from './OctopusMark.tsx'
 import { WorkspaceFolderRow } from './WorkspaceFolderRow.tsx'
 import type { DataSourcePageRemotes, ListedPreview } from './DataSourcePage.tsx'
@@ -115,12 +118,23 @@ export const inject = ['slots', 'remote', 'remote.session', 'locale']
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'desktop-ask-data: dictionaries')
-  ctx.slots.inject('sidebar.brand.mark', () =>
-    ctx.slots.register({ name: 'sidebar.brand.mark' }, OctopusMark))
+  ctx.inject(['configForms'], (scope) => {
+    const preference = createBrandPreference(scope.configForms.get<BrandSettings>('desktop-ask-data'))
+    scope.effect(() => () => { preference.dispose() })
+    for (const name of ['sidebar.brand.mark', 'conversation.hero.brand.mark'] as const) {
+      scope.slots.inject(name, () => scope.slots.register({ name, inject: () => ({ preference }) }, OctopusMark))
+    }
+    scope.slots.inject('settings.general.item', () => scope.slots.register({
+      name: 'settings.general.item', id: 'desktop-brand-mark', order: 12, locale: NS,
+      inject: () => ({ preference }),
+    }, BrandSettingsRow))
+    scope.slots.inject('shell.overlay', () => scope.slots.register({
+      name: 'shell.overlay', id: 'desktop-brand-notice', locale: NS,
+      inject: () => ({ preference }),
+    }, BrandSettingsToast))
+  })
   ctx.slots.inject('sidebar.brand.name', () =>
     ctx.slots.register({ name: 'sidebar.brand.name', locale: NS }, OctopusBrandName))
-  ctx.slots.inject('conversation.hero.brand.mark', () =>
-    ctx.slots.register({ name: 'conversation.hero.brand.mark' }, OctopusMark))
   ctx.slots.inject('conversation.hero.headline', () =>
     ctx.slots.register({ name: 'conversation.hero.headline', locale: NS }, OctopusHeroHeadline))
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({

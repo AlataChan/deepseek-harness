@@ -214,7 +214,7 @@ async function mountBench(
 }
 
 describe('mounted assistants UI reactivity', () => {
-  it('passes the required explicit archive argument to the served team operation', async () => {
+  it('loads archived teams explicitly so management can delete them', async () => {
     const listTeams = vi.fn(async (includeArchived: boolean) => {
       if (includeArchived === undefined) throw new Error('assistants/listTeams expected 1 argument(s), got 0')
       return { ok: true as const, value: [] }
@@ -222,7 +222,7 @@ describe('mounted assistants UI reactivity', () => {
     await mountBench({ listProfiles: async () => [testProfile], getAvailableModels: async () => [] },
       { assistants: { listTeams } })
     expect(await screen.findByText(testProfile.name)).toBeTruthy()
-    expect(listTeams).toHaveBeenCalledWith(false)
+    expect(listTeams).toHaveBeenCalledWith(true)
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
@@ -496,5 +496,20 @@ describe('mounted assistants operations', () => {
     expect(screen.getByTestId('tab-memory')).toBeTruthy()
     fireEvent.click(screen.getByTestId('tab-memory'))
     expect(await screen.findByText('团队共享记忆片段')).toBeTruthy()
+  })
+})
+
+
+describe('Mounted management deletion', () => {
+  it('confirms a team deletion through mounted operations and refreshes the team list', async () => {
+    let teams: readonly TeamDefinition[] = [testTeam]
+    const remove = vi.fn(async () => { teams = [] })
+    await mountBench({ listProfiles: async () => [testProfile], listTeams: async () => teams,
+      listSeats: async () => testSeats, getAvailableModels: async () => [], deleteTeam: remove })
+    fireEvent.click(await screen.findByTestId(`delete-team-${testTeam.id}`))
+    expect(remove).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('confirm-entity-delete'))
+    await vi.waitFor(() => { expect(remove).toHaveBeenCalledExactlyOnceWith(testTeam.id, testTeam.revision) })
+    await vi.waitFor(() => { expect(screen.queryByTestId(`delete-team-${testTeam.id}`)).toBeNull() })
   })
 })

@@ -33,6 +33,8 @@ Team avatars retain optional local selection identifiers such as `character:<pre
 
 `getTeamActivity` reads a saved team's currently live lead roster, tasks, and interactions. Dormant teams return no activity; reading activity never restores sessions or starts model work. Explicit provisioning repairs a legacy empty roster with its original coordinator profile, preserving an existing lead conversation.
 
+Idle private Sessions with no submitted turns can remove their assistant binding through `clearConversationBinding`; Sessions with history require a new ordinary conversation. Profile and team deletion require the confirmed revision, reject active work, and prevent restoration or identifier reuse. Profile deletion also rejects references from retained teams. Deletion erases reusable configuration and scoped memory while keeping minimal identity tombstones, reserved seat names, and Session logs. Prompt assembly and direct Agent execution reject deleted identities, including after restart.
+
 <a id="model-experience"></a>
 ## Model Experience
 

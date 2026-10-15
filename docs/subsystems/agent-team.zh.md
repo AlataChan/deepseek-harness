@@ -264,7 +264,7 @@ tryMembership(agent: Agent): TeamMembership | undefined
  * @param request - squad slug and optional seat-route overrides applied before spawn.
  * @returns the bound Session and the current roster.
  */
-@Remote('ensureInstitutionSquad') async remoteEnsureInstitutionSquad( agent: Agent, request: EnsureInstitutionSquadRequest, ): Promise<EnsureInstitutionSquadResult>
+@Remote('ensureInstitutionSquad') async remoteEnsureInstitutionSquad(agent: Agent, request: EnsureInstitutionSquadRequest): Promise<EnsureInstitutionSquadResult>
 
 /**
  * Read one `.html` / `.htm` file for the Team dock sandboxed preview.
@@ -274,7 +274,7 @@ tryMembership(agent: Agent): TeamMembership | undefined
  * @param request - path to the HTML file.
  * @returns absolute path and UTF-8 HTML body.
  */
-@Remote('readHtmlPreview') async remoteReadHtmlPreview( agent: Agent, request: ReadHtmlPreviewRequest, ): Promise<ReadHtmlPreviewResult>
+@Remote('readHtmlPreview') async remoteReadHtmlPreview(agent: Agent, request: ReadHtmlPreviewRequest): Promise<ReadHtmlPreviewResult>
 
 /**
  * List institution squads after dropping Lead bindings whose Sessions are gone.
@@ -287,7 +287,7 @@ async listInstitutionSquads(): Promise<InstitutionSquadView[]>
  * @param action - async callback receiving the current catalog file inside the write lock.
  * @returns result of the callback.
  */
-async transactInstitutionCatalog<T>( action: (current: InstitutionCatalogFile) => Promise<{ next?: InstitutionCatalogFile; result: T }> | { next?: InstitutionCatalogFile; result: T }, ): Promise<T>
+async transactInstitutionCatalog<T>( action: ( current: InstitutionCatalogFile, ) => Promise<{ next?: InstitutionCatalogFile; result: T }> | { next?: InstitutionCatalogFile; result: T }, ): Promise<T>
 
 /**
  * Read the current institution catalog file directly.
@@ -301,7 +301,7 @@ async readInstitutionCatalog(): Promise<InstitutionCatalogFile>
  * @param request - squad slug and optional seat-route overrides.
  * @returns the bound Session and roster.
  */
-async ensureInstitutionSquad( caller: Agent, request: EnsureInstitutionSquadRequest, ): Promise<EnsureInstitutionSquadResult>
+async ensureInstitutionSquad(caller: Agent, request: EnsureInstitutionSquadRequest): Promise<EnsureInstitutionSquadResult>
 ```
 
 Types: [Agent](core.zh.md)
@@ -474,7 +474,7 @@ async bindSeatSession(seatId: TeamSeatId, sessionId: SessionId): Promise<void>
  * @param revision - optional checkpoint revision.
  * @returns updated team seat if found.
  */
-async setSeatModelOverride( seatId: TeamSeatId, model?: AssistantModelSelection | ModelSelection , revision?: number, ): Promise<TeamSeat | undefined>
+async setSeatModelOverride( seatId: TeamSeatId, model?: AssistantModelSelection | ModelSelection, revision?: number, ): Promise<TeamSeat | undefined>
 
 /**
  * Bind a session to a team seat for seat-level routing.
@@ -540,12 +540,38 @@ async archiveProfile(id: AssistantProfileId): Promise<void>
 async unarchiveProfile(id: AssistantProfileId): Promise<void>
 
 /**
+ * Reject execution during lifecycle changes or after irreversible deletion.
+ * @param sessionId - Session about to assemble or execute a model request.
+ */
+assertSessionUsable(sessionId: SessionId): void
+
+/**
+ * Unbind only an idle, pristine private Session; historical conversations keep their identity.
+ * @param sessionId - live blank Session whose assistant selection is cancelled.
+ */
+@Remote('clearConversationBinding') async clearConversationBinding(sessionId: SessionId): Promise<void>
+
+/**
+ * Permanently remove reusable assistant configuration while retaining historical Session logs.
+ * @param id - confirmed profile identifier.
+ * @param expectedRevision - revision displayed at confirmation.
+ */
+@Remote('deleteProfile') async deleteProfile(id: AssistantProfileId, expectedRevision: number): Promise<void>
+
+/**
+ * Permanently remove team configuration after all owned work has stopped.
+ * @param id - confirmed team identifier.
+ * @param expectedRevision - revision displayed at confirmation.
+ */
+@Remote('deleteTeam') async deleteTeam(id: TeamDefinitionId, expectedRevision: number): Promise<void>
+
+/**
  * List conversations associated with an assistant profile, or all conversations.
  * @param profileId - optional profile identifier filter.
  * @param includeArchived - whether to include archived conversations (defaults to false).
  * @returns list of matching conversation bindings.
  */
-async listConversations( profileId?: AssistantProfileId, includeArchived: boolean = false, ): Promise<readonly AssistantConversation[]>
+async listConversations(profileId?: AssistantProfileId, includeArchived: boolean = false): Promise<readonly AssistantConversation[]>
 
 /**
  * Retrieve an assistant conversation binding by its identifier.
@@ -577,7 +603,7 @@ async createConversation( profileId: AssistantProfileId, rootSessionIdOrOptions?
  * @param options - optional creation options.
  * @returns newly created assistant conversation binding.
  */
-async startNewTopic( profileId: AssistantProfileId, options: CreateAssistantConversationOptions = {}, ): Promise<AssistantConversation>
+async startNewTopic(profileId: AssistantProfileId, options: CreateAssistantConversationOptions = {}): Promise<AssistantConversation>
 
 /**
  * Set or update explicit conversation-scoped model override.
@@ -586,7 +612,7 @@ async startNewTopic( profileId: AssistantProfileId, options: CreateAssistantConv
  * @param checkpoint - optional replay sequence checkpoint.
  * @returns updated conversation binding.
  */
-async setConversationModelOverride( id: AssistantConversationId, model?: AssistantModelSelection , checkpoint?: number , ): Promise<AssistantConversation>
+async setConversationModelOverride( id: AssistantConversationId, model?: AssistantModelSelection, checkpoint?: number, ): Promise<AssistantConversation>
 
 /**
  * Atomically clear conversation-scoped model override and advance replay checkpoint.
@@ -594,7 +620,7 @@ async setConversationModelOverride( id: AssistantConversationId, model?: Assista
  * @param checkpoint - optional explicit sequence checkpoint.
  * @returns updated conversation binding inheriting from profile/seat.
  */
-async clearConversationModelOverride( id: AssistantConversationId, checkpoint?: number , ): Promise<AssistantConversation>
+async clearConversationModelOverride(id: AssistantConversationId, checkpoint?: number): Promise<AssistantConversation>
 
 /**
  * Soft-archive an assistant conversation binding record.
@@ -620,7 +646,7 @@ async seedConversationFromPersistence( id: AssistantConversationId, persistence?
  * @param includeArchived - whether to include archived conversations and profiles.
  * @returns array of permitted SessionId instances.
  */
-async listPermittedSessions( profileId?: AssistantProfileId, includeArchived: boolean = false, ): Promise<readonly SessionId[]>
+async listPermittedSessions(profileId?: AssistantProfileId, includeArchived: boolean = false): Promise<readonly SessionId[]>
 
 /**
  * Synchronizes the effective route to SessionController's in-memory selection reference
@@ -651,7 +677,7 @@ clearAssembledSelection(sessionId: SessionId | string): void
  * @param signal - optional cancellation signal.
  * @returns acknowledgement from SessionController.
  */
-async submitPrompt( request: SessionPromptRequest, signal?: AbortSignal, ): Promise<SessionPromptValue>
+async submitPrompt(request: SessionPromptRequest, signal?: AbortSignal): Promise<SessionPromptValue>
 
 /**
  * List team definitions with optional archived filter.
@@ -688,7 +714,7 @@ async createTeam(options: CreateTeamDefinitionOptions): Promise<TeamDefinition>
  * @param options - update options.
  * @returns updated team definition.
  */
-async updateTeam( id: TeamDefinitionId, expectedRevision: number, options: UpdateTeamDefinitionOptions, ): Promise<TeamDefinition>
+async updateTeam(id: TeamDefinitionId, expectedRevision: number, options: UpdateTeamDefinitionOptions): Promise<TeamDefinition>
 
 /**
  * Soft-archive a team definition record.
@@ -790,7 +816,7 @@ async provisionTeam( teamId: TeamDefinitionId, options?: { signal?: AbortSignal 
  * @param signal - optional cancellation signal.
  * @returns prompt execution result.
  */
-async dispatchCoordinator( teamId: TeamDefinitionId, request: SessionPromptRequest, signal?: AbortSignal, ): Promise<SessionPromptValue>
+async dispatchCoordinator(teamId: TeamDefinitionId, request: SessionPromptRequest, signal?: AbortSignal): Promise<SessionPromptValue>
 
 /**
  * List all non-archived assistant profiles through the generated Remote API.
@@ -848,7 +874,7 @@ async dispatchCoordinator( teamId: TeamDefinitionId, request: SessionPromptReque
  * @param includeArchived - whether to include archived conversations.
  * @returns list of matching conversation bindings.
  */
-@Remote('listConversations') async remoteListConversations( profileId?: AssistantProfileId, includeArchived?: boolean, ): Promise<readonly AssistantConversation[]>
+@Remote('listConversations') async remoteListConversations(profileId?: AssistantProfileId, includeArchived?: boolean): Promise<readonly AssistantConversation[]>
 
 /**
  * Retrieve an assistant conversation binding by identifier through the generated Remote API.
@@ -878,7 +904,7 @@ async dispatchCoordinator( teamId: TeamDefinitionId, request: SessionPromptReque
  * @param options - optional creation options.
  * @returns newly created conversation binding.
  */
-@Remote('startNewTopic') async remoteStartNewTopic( profileId: AssistantProfileId, options?: CreateAssistantConversationOptions, ): Promise<AssistantConversation>
+@Remote('startNewTopic') async remoteStartNewTopic(profileId: AssistantProfileId, options?: CreateAssistantConversationOptions): Promise<AssistantConversation>
 
 /**
  * Set or update explicit conversation-scoped model override through the generated Remote API.
@@ -886,7 +912,7 @@ async dispatchCoordinator( teamId: TeamDefinitionId, request: SessionPromptReque
  * @param model - model selection override.
  * @returns updated conversation binding.
  */
-@Remote('setConversationModelOverride') async remoteSetConversationModelOverride( id: AssistantConversationId, model?: AssistantModelSelection, ): Promise<AssistantConversation>
+@Remote('setConversationModelOverride') async remoteSetConversationModelOverride(id: AssistantConversationId, model?: AssistantModelSelection): Promise<AssistantConversation>
 
 /**
  * Clear explicit conversation-scoped model override through the generated Remote API.
@@ -901,6 +927,13 @@ async dispatchCoordinator( teamId: TeamDefinitionId, request: SessionPromptReque
  * @returns list of team definitions.
  */
 @Remote('listTeams') async remoteListTeams(includeArchived?: boolean): Promise<readonly TeamDefinition[]>
+
+/**
+ * Resolve the saved team owning a live or historical runtime Session.
+ * @param sessionId - composer Session identifier.
+ * @returns its owning saved team, if bound.
+ */
+@Remote('getTeamBySession') async getTeamBySession(sessionId: SessionId): Promise<TeamDefinition | undefined>
 
 /**
  * Retrieve a team definition by identifier through the generated Remote API.
@@ -923,7 +956,7 @@ async dispatchCoordinator( teamId: TeamDefinitionId, request: SessionPromptReque
  * @param options - updated fields.
  * @returns updated team definition.
  */
-@Remote('updateTeam') async remoteUpdateTeam( id: TeamDefinitionId, expectedRevision: number, options: UpdateTeamDefinitionOptions, ): Promise<TeamDefinition>
+@Remote('updateTeam') async remoteUpdateTeam(id: TeamDefinitionId, expectedRevision: number, options: UpdateTeamDefinitionOptions): Promise<TeamDefinition>
 
 /**
  * Soft-archive a team definition through the generated Remote API.
@@ -1013,7 +1046,7 @@ listAdoptionsSync(): readonly InstitutionAdoptionRecord[]
  * @param options - repair options.
  * @returns repaired adoption record.
  */
-@Remote('institution_adoption_repair') async repairInstitutionAdoption( options: RepairInstitutionAdoptionOptions, ): Promise<InstitutionAdoptionRecord>
+@Remote('institution_adoption_repair') async repairInstitutionAdoption(options: RepairInstitutionAdoptionOptions): Promise<InstitutionAdoptionRecord>
 
 /**
  * Provision a team into runtime sessions through the generated Remote API.
@@ -1028,7 +1061,7 @@ listAdoptionsSync(): readonly InstitutionAdoptionRecord[]
  * @param request - session prompt request.
  * @returns prompt execution result.
  */
-@Remote('dispatchCoordinator') async remoteDispatchCoordinator( teamId: TeamDefinitionId, request: SessionPromptRequest, ): Promise<SessionPromptValue>
+@Remote('dispatchCoordinator') async remoteDispatchCoordinator(teamId: TeamDefinitionId, request: SessionPromptRequest): Promise<SessionPromptValue>
 
 /**
  * Save a persistent memory entry for a profile or team scope.
@@ -1037,7 +1070,7 @@ listAdoptionsSync(): readonly InstitutionAdoptionRecord[]
  * @param options - optional source session and author options.
  * @returns saved memory entry.
  */
-@Remote('saveMemory') async saveMemory( scope: MemoryScope, text: string, options?: SaveMemoryOptions, ): Promise<MemoryEntry>
+@Remote('saveMemory') async saveMemory(scope: MemoryScope, text: string, options?: SaveMemoryOptions): Promise<MemoryEntry>
 
 /**
  * Update an existing memory entry with CAS revision check.
@@ -1046,7 +1079,7 @@ listAdoptionsSync(): readonly InstitutionAdoptionRecord[]
  * @param text - updated memory text.
  * @returns updated memory entry.
  */
-@Remote('updateMemory') async updateMemory( id: MemoryEntryId, expectedRevision: number, text: string, ): Promise<MemoryEntry>
+@Remote('updateMemory') async updateMemory(id: MemoryEntryId, expectedRevision: number, text: string): Promise<MemoryEntry>
 
 /**
  * Mark a memory entry as removed (tombstone) with optional CAS revision check.
@@ -1054,7 +1087,7 @@ listAdoptionsSync(): readonly InstitutionAdoptionRecord[]
  * @param expectedRevision - optional expected revision.
  * @returns removed memory entry.
  */
-@Remote('removeMemory') async removeMemory( id: MemoryEntryId, expectedRevision?: number, ): Promise<MemoryEntry>
+@Remote('removeMemory') async removeMemory(id: MemoryEntryId, expectedRevision?: number): Promise<MemoryEntry>
 
 /**
  * Archive a memory entry with optional CAS revision check.
@@ -1062,7 +1095,7 @@ listAdoptionsSync(): readonly InstitutionAdoptionRecord[]
  * @param expectedRevision - optional expected revision.
  * @returns archived memory entry.
  */
-@Remote('archiveMemory') async archiveMemory( id: MemoryEntryId, expectedRevision?: number, ): Promise<MemoryEntry>
+@Remote('archiveMemory') async archiveMemory(id: MemoryEntryId, expectedRevision?: number): Promise<MemoryEntry>
 
 /**
  * Unarchive a memory entry with optional CAS revision check.
@@ -1070,7 +1103,7 @@ listAdoptionsSync(): readonly InstitutionAdoptionRecord[]
  * @param expectedRevision - optional expected revision.
  * @returns unarchived memory entry.
  */
-@Remote('unarchiveMemory') async unarchiveMemory( id: MemoryEntryId, expectedRevision?: number, ): Promise<MemoryEntry>
+@Remote('unarchiveMemory') async unarchiveMemory(id: MemoryEntryId, expectedRevision?: number): Promise<MemoryEntry>
 
 /**
  * Grant access to a profile-scoped memory entry to a specific team.
@@ -1079,7 +1112,7 @@ listAdoptionsSync(): readonly InstitutionAdoptionRecord[]
  * @param expectedRevision - optional expected revision.
  * @returns updated memory entry.
  */
-@Remote('grantMemory') async grantMemory( id: MemoryEntryId, teamId: TeamDefinitionId, expectedRevision?: number, ): Promise<MemoryEntry>
+@Remote('grantMemory') async grantMemory(id: MemoryEntryId, teamId: TeamDefinitionId, expectedRevision?: number): Promise<MemoryEntry>
 
 /**
  * Revoke a team grant from a profile-scoped memory entry.
@@ -1088,7 +1121,7 @@ listAdoptionsSync(): readonly InstitutionAdoptionRecord[]
  * @param expectedRevision - optional expected revision.
  * @returns updated memory entry.
  */
-@Remote('revokeMemoryGrant') async revokeMemoryGrant( id: MemoryEntryId, teamId: TeamDefinitionId, expectedRevision?: number, ): Promise<MemoryEntry>
+@Remote('revokeMemoryGrant') async revokeMemoryGrant(id: MemoryEntryId, teamId: TeamDefinitionId, expectedRevision?: number): Promise<MemoryEntry>
 
 /**
  * Get a memory entry by identifier.
@@ -1110,7 +1143,7 @@ getMemorySync(id: MemoryEntryId): MemoryEntry | undefined
  * @param options - filter options.
  * @returns readonly array of memory entries.
  */
-@Remote('listMemory') async listMemory( scope: MemoryScope, options?: ListMemoryOptions, ): Promise<readonly MemoryEntry[]>
+@Remote('listMemory') async listMemory(scope: MemoryScope, options?: ListMemoryOptions): Promise<readonly MemoryEntry[]>
 
 /**
  * Synchronous memory list for prompt injection and local lookups.
@@ -1118,7 +1151,7 @@ getMemorySync(id: MemoryEntryId): MemoryEntry | undefined
  * @param options - filter options.
  * @returns readonly array of memory entries.
  */
-listMemorySync( scope: MemoryScope, options: ListMemoryOptions = {}, ): readonly MemoryEntry[]
+listMemorySync(scope: MemoryScope, options: ListMemoryOptions = {}): readonly MemoryEntry[]
 
 /**
  * List profile memories granted to a specific team synchronously.
@@ -1126,7 +1159,7 @@ listMemorySync( scope: MemoryScope, options: ListMemoryOptions = {}, ): readonly
  * @param profileId - optional profile filter.
  * @returns readonly array of granted profile memories.
  */
-listGrantedProfileMemoriesSync( teamId: TeamDefinitionId, profileId?: AssistantProfileId, ): readonly MemoryEntry[]
+listGrantedProfileMemoriesSync(teamId: TeamDefinitionId, profileId?: AssistantProfileId): readonly MemoryEntry[]
 
 /**
  * Recall active memory entries matching a query.
@@ -1134,7 +1167,7 @@ listGrantedProfileMemoriesSync( teamId: TeamDefinitionId, profileId?: AssistantP
  * @param query - optional search string.
  * @returns matching active memory entries.
  */
-@Remote('recallMemory') async recallMemory( scope: MemoryScope, query?: string, ): Promise<readonly MemoryEntry[]>
+@Remote('recallMemory') async recallMemory(scope: MemoryScope, query?: string): Promise<readonly MemoryEntry[]>
 
 /**
  * Synchronous recall for prompt injection and local search.
@@ -1142,7 +1175,7 @@ listGrantedProfileMemoriesSync( teamId: TeamDefinitionId, profileId?: AssistantP
  * @param query - optional search string.
  * @returns matching active memory entries.
  */
-recallMemorySync( scope: MemoryScope, query?: string, ): readonly MemoryEntry[]
+recallMemorySync(scope: MemoryScope, query?: string): readonly MemoryEntry[]
 
 /**
  * Promote a team-scoped memory entry into an assistant's private profile memory.
@@ -1341,7 +1374,7 @@ async publishCommittedReply(roundId: GroupRoundId, slotId: RoundSlotId): Promise
  * @param windowId - optional window identifier.
  * @returns updated read cursor record.
  */
-@Remote('setReadCursor') async setReadCursor( conversationId: string, lastReadSeq: number, windowId?: string, ): Promise<ReadCursorRecord>
+@Remote('setReadCursor') async setReadCursor(conversationId: string, lastReadSeq: number, windowId?: string): Promise<ReadCursorRecord>
 
 /**
  * Get durable read cursor for a conversation or discussion.
