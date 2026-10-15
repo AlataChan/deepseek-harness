@@ -762,7 +762,9 @@ fi
 
 if [[ -f "$ASSISTANT_CLIENT" ]] \
   && grep -q 'assistants.workspace-choice' "$ASSISTANT_CLIENT" \
-  && grep -q 'assistant-conversation-identity' "$ASSISTANT_CLIENT" \
+  && grep -q 'assistants.selector' "$ASSISTANT_CLIENT" \
+  && grep -q 'selector-current-name' "$ASSISTANT_CLIENT" \
+  && grep -q 'selector-avatar-shelf' "$ASSISTANT_CLIENT" \
   && grep -q 'Assistant binding does not match the selected Session' "$ASSISTANT_CLIENT"; then
   ok "bundled assistants bind workspace sessions before navigation and display confirmed identity"
 else

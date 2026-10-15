@@ -51,6 +51,13 @@ for (const [name, file, count] of source) {
   if (existsSync(runtimeCopy)) directories.push(runtimeCopy)
   for (const dir of directories) {
     const client = readFileSync(path.join(dir, 'lib/client.js'), 'utf8')
+    const markers = name === 'desktop-ask-data'
+      ? ['desktop-brand-mark', 'desktop-brand-notice', 'brandMark', 'settings.general.item']
+      : ['assistants.selector', 'selector-current-name', 'selector-avatar-shelf', 'assistants.workspace-choice',
+        'Assistant binding does not match the selected Session']
+    for (const marker of markers) {
+      if (!client.includes(marker)) throw new Error(`Missing mounted brand or assistant control: ${marker}`)
+    }
     for (const image of images) {
       const bytes = Buffer.from(image.split(',')[1], 'base64')
       if (bytes.toString('ascii', 0, 4) !== 'RIFF' || bytes.toString('ascii', 8, 12) !== 'WEBP') throw new Error(`Invalid WebP in ${file}`)
