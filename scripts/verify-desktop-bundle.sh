@@ -725,12 +725,48 @@ else
 fi
 
 if [[ -f "$ASSISTANT_CLIENT" ]] \
+  && grep -q 'sea-whale' "$ASSISTANT_CLIENT" \
+  && grep -q 'sea-seal-apricot' "$ASSISTANT_CLIENT" \
+  && grep -q 'bot-sprout' "$ASSISTANT_CLIENT" \
+  && grep -q 'bot-coral' "$ASSISTANT_CLIENT" \
+  && grep -q 'avatarSeaside' "$ASSISTANT_CLIENT" \
+  && grep -q 'avatarRobots' "$ASSISTANT_CLIENT" \
+  && grep -q 'data-character' "$ASSISTANT_CLIENT"; then
+  ok "bundled assistants avatars include default Seaside Friends and optional Soft Robots"
+else
+  bad "bundled assistants Client missing character avatar series — rebuild Client bundles"
+fi
+
+if "$RES/node" "$REPO_ROOT/scripts/verify-assistant-brand-assets.mjs" "$APP"; then
+  ok "approved whale brand and five generated portraits match the packaged Client plugins"
+else
+  bad "packaged brand or generated portraits are stale or missing"
+fi
+
+if [[ -f "$ASSISTANT_CLIENT" ]] \
+  && grep -Eq '\.[[:alnum:]_-]+_modalContent\{[^}]*max-height:100%' "$ASSISTANT_CLIENT" \
+  && grep -Eq '\.[[:alnum:]_-]+_modalContent\{[^}]*overflow-y:auto' "$ASSISTANT_CLIENT"; then
+  ok "bundled assistant and team forms retain viewport bounds and internal scrolling"
+else
+  bad "bundled assistant forms lack viewport scroll bounds — rebuild Client bundles"
+fi
+
+if [[ -f "$ASSISTANT_CLIENT" ]] \
   && grep -q 'team-discussion' "$ASSISTANT_CLIENT" \
   && grep -q 'standing-team-dock' "$ASSISTANT_CLIENT" \
   && grep -q 'discussionCancel' "$ASSISTANT_CLIENT"; then
   ok "bundled assistants Client includes standing-team roster and cancellable discussion controls"
 else
   bad "bundled assistants Client missing standing-team workflows — rebuild Client bundles"
+fi
+
+if [[ -f "$ASSISTANT_CLIENT" ]] \
+  && grep -q 'assistants.workspace-choice' "$ASSISTANT_CLIENT" \
+  && grep -q 'assistant-conversation-identity' "$ASSISTANT_CLIENT" \
+  && grep -q 'Assistant binding does not match the selected Session' "$ASSISTANT_CLIENT"; then
+  ok "bundled assistants bind workspace sessions before navigation and display confirmed identity"
+else
+  bad "bundled assistants lack workspace binding or visible identity — rebuild Client bundles"
 fi
 
 if [[ -f "$ASSISTANT_REGISTRY_HOST" ]] \

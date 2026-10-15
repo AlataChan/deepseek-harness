@@ -38,6 +38,8 @@ kind: "package-bundle"
 
 空的 `dataHome` 使用 `{dshHome}/profiles/desktop/data-sources`。`cordis.patch.yml` 插入这一条 Host 行。Client 半面在 Host fiber 就绪后从 `dsh.client` 发现。
 
+侧边栏及会话首页的品牌位使用已确认的白底朝右的深绿色微笑小鲸鱼，以内嵌 WebP 图片离线显示。原始图片与桌面图标生成流程见 [`icons/README`](../../../apps/desktop/src-tauri/icons/README.md)。
+
 <a id="model-experience"></a>
 ## 模型体验
 

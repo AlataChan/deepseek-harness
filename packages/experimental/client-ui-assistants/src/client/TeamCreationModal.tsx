@@ -1,4 +1,4 @@
-import { AvatarPicker } from './EntityAvatar.tsx'
+import { AvatarPicker, DEFAULT_AVATAR } from './EntityAvatar.tsx'
 import { useEffect, useRef, useState } from 'react'
 import type {
   AssistantProfile,
@@ -39,7 +39,7 @@ function TeamCreationModalContent({
 }: TeamCreationModalProps) {
   const [template, setTemplate] = useState<TeamTemplateOrigin>('blank')
   const [name, setName] = useState('')
-  const [avatar, setAvatar] = useState('')
+  const [avatar, setAvatar] = useState(DEFAULT_AVATAR)
   const [coordinatorId, setCoordinatorId] = useState<AssistantProfileId | ''>(
     profiles[0]?.id ?? '',
   )
@@ -76,7 +76,7 @@ function TeamCreationModalContent({
     try {
       await onCreateTeam({
         name: name.trim(),
-        ...avatar ? { avatar } : {},
+        ...avatar !== DEFAULT_AVATAR ? { avatar } : {},
         templateOrigin: template,
         coordinatorProfileId: effectiveCoordinatorId,
         ...description.trim() ? { description: description.trim() } : {},

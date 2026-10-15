@@ -38,6 +38,8 @@ Other workspace packages import `@deepseek-ai/dsh-experimental-desktop-ask-data/
 
 Empty `dataHome` uses `{dshHome}/profiles/desktop/data-sources`. `cordis.patch.yml` inserts this one Host row. The Client half is discovered from `dsh.client` after the Host fiber is live.
 
+The sidebar and conversation-hero brand slots use the approved right-facing green smiling whale on white, embedded as WebP for offline display. The master image and desktop icon generation are documented in [`icons/README`](../../../apps/desktop/src-tauri/icons/README.md).
+
 ## Model Experience
 
 ### Bound limits section

@@ -536,6 +536,16 @@ if (buildInfo?.presets === 'none') {
   }
 }
 
+const brandProbe = spawnSync(process.execPath, [join(REPO_ROOT, 'scripts/verify-assistant-brand-assets.mjs'), APP, '--windows'], {
+  encoding: 'utf8', timeout: 45000,
+})
+if (brandProbe.status === 0) {
+  ok('Installed application icon and five approved portraits match the selected assets')
+} else {
+  bad('Installed application icon or embedded portraits do not match the selected assets')
+  quote(brandProbe.error?.message ?? brandProbe.stderr ?? brandProbe.stdout)
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 
 console.log('')

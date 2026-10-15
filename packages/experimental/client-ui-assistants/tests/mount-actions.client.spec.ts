@@ -4,8 +4,10 @@ import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { AssistantProfileId, GroupRoundId, MemoryEntryId, TeamDefinitionId, TeamSeatId,
-  type AssistantProfile, type TeamDefinition, type TeamSeat } from '@deepseek-ai/dsh-experimental-assistant-registry'
+  type AssistantProfile, type AssistantConversation, type CreateAssistantConversationOptions,
+  type TeamDefinition, type TeamSeat } from '@deepseek-ai/dsh-experimental-assistant-registry'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import { registerUi, type AssistantClientOps } from '../src/client/mount.ts'
 import type { TeamDiscussionOps } from '../src/client/TeamDiscussion.tsx'
 import type { AssistantDirectoryInjected } from '../src/client/AssistantDirectory.tsx'
@@ -27,7 +29,7 @@ function injection(ops: AssistantClientOps = {}, remote?: object) {
       if (options.name === 'conversation.session.header.actions') {
         const candidate = options.inject?.(SessionId('lead'))
         if (candidate && 'onStartNewTopic' in candidate && typeof candidate.onStartNewTopic === 'function') {
-          const action = candidate.onStartNewTopic
+          const action = candidate.onStartNewTopic as (id: AssistantProfileId) => Promise<void>
           startNewTopic = id => action(id)
         }
       }
@@ -36,13 +38,69 @@ function injection(ops: AssistantClientOps = {}, remote?: object) {
   } as never
   ctx.locale = { register: () => () => {}, bind: () => makeTranslate(zh) } as never
   ctx.uiWorkspace = { openSession } as never
+  ctx.layout = { beginNavigation: () => new AbortController().signal } as never
   if (remote) ctx.provide('remote', remote)
   registerUi(ctx, ops)
   if (!injected) throw new Error('Directory injection not registered')
   return { ctx, directory: injected, openSession, startNewTopic }
 }
 
+function selectedWorkspace(ctx: Context, blank: boolean) {
+  const sessionId = SessionId('selected-workspace-session')
+  const workspaceId = 'chosen-workspace' as WorkspaceId
+  const create = vi.fn(async () => SessionId('fresh-workspace-session'))
+  ctx.reflect.provide('sessions', { list: { getSnapshot: () => ({ phase: 'ready', ids: [sessionId], byId: {
+    [sessionId]: { id: sessionId, blank, running: false, cwd: '/chosen', retainedBy: { mainView: 1 } },
+  } }) }, create })
+  ctx.provide('workspaces', { list: { getSnapshot: () => ({ phase: 'ready', items: [
+    { workspaceId, path: '/chosen', title: 'Chosen', sessionIds: [sessionId] },
+  ] }) } })
+  return { sessionId, workspaceId, create }
+}
+
+function bindConversation(profileId: AssistantProfileId, options?: CreateAssistantConversationOptions): Promise<AssistantConversation> {
+  if (!options?.rootSessionId) throw new Error('A workspace session is required')
+  return Promise.resolve({ id: 'bound-conversation' as AssistantConversation['id'], profileId,
+    rootSessionId: options.rootSessionId, createdAt: 1, updatedAt: 1 })
+}
+
 describe('Mounted assistant action wiring', () => {
+  it('binds the selected assistant to the current blank workspace session before opening it', async () => {
+    const createConversation = vi.fn(bindConversation)
+    const getConversationBySession = vi.fn(async () => undefined)
+    const { ctx, directory, openSession } = injection({ createConversation, getConversationBySession })
+    const selected = selectedWorkspace(ctx, true)
+    try {
+      await directory.onStartChat(profile.id)
+      expect(createConversation).toHaveBeenCalledExactlyOnceWith(profile.id, { rootSessionId: selected.sessionId })
+      expect(selected.create).not.toHaveBeenCalled()
+      expect(openSession).toHaveBeenCalledExactlyOnceWith(selected.sessionId)
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('starts a fresh bound session in the selected workspace without rebinding existing history', async () => {
+    const createConversation = vi.fn(bindConversation)
+    const { ctx, directory, openSession } = injection({ createConversation, getConversationBySession: async () => undefined })
+    const selected = selectedWorkspace(ctx, false)
+    try {
+      await directory.onStartChat(profile.id)
+      expect(selected.create).toHaveBeenCalledExactlyOnceWith({ workspaceId: selected.workspaceId })
+      expect(createConversation).toHaveBeenCalledExactlyOnceWith(profile.id, { rootSessionId: SessionId('fresh-workspace-session') })
+      expect(openSession).toHaveBeenCalledExactlyOnceWith(SessionId('fresh-workspace-session'))
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('does not open an ordinary session when assistant binding fails', async () => {
+    const { ctx, directory, openSession } = injection({
+      createConversation: async () => { throw new Error('binding failed') },
+      getConversationBySession: async () => undefined,
+    })
+    selectedWorkspace(ctx, true)
+    try {
+      await expect(directory.onStartChat(profile.id)).rejects.toThrow('binding failed')
+      expect(openSession).not.toHaveBeenCalled()
+    } finally { await ctx.fiber.dispose() }
+  })
   it('retains explicit null through JSON for seat model inheritance', async () => {
     const update = vi.fn().mockResolvedValue(seat)
     const { ctx, directory } = injection({ updateSeat: update })
@@ -141,15 +199,17 @@ describe('Mounted assistant action wiring', () => {
     })
     const start = vi.fn(async (...args: readonly unknown[]) => {
       if (args.length !== 2) throw new Error('startNewTopic requires exactly two arguments')
-      return { ok: true, value: { rootSessionId: SessionId('new-topic') } }
+      return { ok: true, value: await bindConversation(profile.id, args[1] as CreateAssistantConversationOptions) }
     })
-    const { ctx, directory, startNewTopic } = injection({}, { assistants: { updateProfile, startNewTopic: start } })
+    const { ctx, directory, startNewTopic } = injection({ getConversationBySession: async () => undefined },
+      { assistants: { updateProfile, startNewTopic: start } })
+    selectedWorkspace(ctx, true)
     try {
       await directory.onUpdateProfile(profile.id, { avatar: '🌊' })
       expect(updateProfile.mock.calls[0]).toEqual([profile.id, { avatar: '🌊' }, undefined])
       expect(startNewTopic).toBeDefined()
       await startNewTopic?.(profile.id)
-      expect(start.mock.calls[0]).toEqual([profile.id, undefined])
+      expect(start.mock.calls[0]).toEqual([profile.id, { rootSessionId: SessionId('fresh-workspace-session') }])
     } finally { await ctx.fiber.dispose() }
   })
 

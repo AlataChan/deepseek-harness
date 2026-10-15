@@ -15,10 +15,12 @@ const t: TranslateNS<'desktop-ask-data'> = key => (
 )
 
 describe('OctopusMark', () => {
-  it('paints the leaf-whale plate at the requested size', () => {
+  it('paints the approved whale at the requested size', () => {
     const view = render(<OctopusMark size={24} className="mark" />)
     const img = view.container.querySelector('img')
     expect(img?.getAttribute('src')).toBe(OCTOPUS_MARK_URI)
+    expect(img?.getAttribute('src')).toMatch(/^data:image\/webp;base64,/)
+    expect(img?.style.borderRadius).toBe('25%')
     expect(img?.getAttribute('width')).toBe('24')
     expect(img?.getAttribute('height')).toBe('24')
     expect(img?.className).toBe('mark')

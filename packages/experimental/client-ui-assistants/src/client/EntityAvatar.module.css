@@ -2,16 +2,26 @@
 .avatar svg { width: 23px; height: 23px; }
 .small { width: 26px; height: 26px; border-radius: 8px; font-size: 11px; }
 .small svg { width: 17px; height: 17px; }
+.character { overflow: hidden; }
+.character img { width: 100%; height: 100%; }
 .color0 { --avatar-color: var(--dsw-static-blue-500); }
 .color1 { --avatar-color: var(--dsw-static-green-500); }
 .color2 { --avatar-color: var(--dsw-static-deepseek-500); }
 .color3 { --avatar-color: var(--dsw-static-amber-500); }
 .color4 { --avatar-color: var(--dsw-static-red-500); }
 .color5 { --avatar-color: var(--dsw-alias-state-business-primary); }
-.picker { margin: 0; padding: 8px 0; border: 0; color: var(--dsw-alias-label-primary); }
+.picker { margin: 0; padding: 8px 0; border: 0; min-width: 0; color: var(--dsw-alias-label-primary); }
 .picker legend { font-size: 13px; }
-.options { display: flex; flex-wrap: wrap; gap: 8px; }
-.choice { display: inline-flex; align-items: center; gap: 5px; padding: 5px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; cursor: pointer; font-size: 12px; }
-.choice:has(input:checked) { border-color: var(--dsw-alias-state-business-primary); }
+.series { margin-top: 10px; }
+.seriesTitle { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+.badge { font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.options { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 6px; }
+.choice { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 7px 3px; border: .5px solid var(--dsw-alias-border-l2); border-radius: 8px; cursor: pointer; font-size: 11px; text-align: center; overflow-wrap: anywhere; }
+.choice:has(input:checked) { border-color: var(--dsw-alias-state-business-primary); box-shadow: inset 0 0 0 1px var(--dsw-alias-state-business-primary); }
 .choice:focus-within { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
-.choice input { accent-color: var(--dsw-alias-state-business-primary); }
+.choice:has(input:disabled) { cursor: default; opacity: .55; }
+.choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.otherOptions { display: flex; gap: 6px; margin-top: 8px; }
+.otherOptions .choice { flex: 1; flex-direction: row; gap: 8px; padding: 6px; }
+.otherOptions .avatar { width: 26px; height: 26px; font-size: 11px; border-radius: 8px; }
+.otherOptions .avatar svg { width: 17px; height: 17px; }

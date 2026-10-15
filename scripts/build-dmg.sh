@@ -74,11 +74,9 @@ fi
 
 ICON_SRC="$REPO_ROOT/apps/desktop/src-tauri/icons/icon.icns"
 ICON_DST="$APP_BUNDLE/Contents/Resources/icon.icns"
-if [[ ! -f "$ICON_DST" ]]; then
-  [[ -f "$ICON_SRC" ]] || fail "icon.icns missing at $ICON_SRC"
-  info "Restoring Contents/Resources/icon.icns"
-  cp "$ICON_SRC" "$ICON_DST"
-fi
+[[ -f "$ICON_SRC" ]] || fail "icon.icns missing at $ICON_SRC"
+info "Refreshing Contents/Resources/icon.icns"
+cp "$ICON_SRC" "$ICON_DST"
 [[ -f "$ICON_DST" ]] || fail "Contents/Resources/icon.icns missing after restore"
 
 # ── 1. Download Node.js ─────────────────────────────────────────────────────

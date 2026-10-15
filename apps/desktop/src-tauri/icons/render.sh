@@ -21,11 +21,13 @@ if ! command -v magick >/dev/null; then
   exit 1
 fi
 
-magick "$SRC" -resize 1024x1024 -alpha set PNG32:"$ROOT/icon.png"
+magick "$SRC" -resize 1024x1024 -alpha set \
+  \( -size 1024x1024 xc:none -fill white -draw 'roundrectangle 0,0 1023,1023 224,224' \) \
+  -compose DstIn -composite PNG32:"$ROOT/icon.png"
 
 # Windows bundles one multi-size ICO; NSIS and the taskbar pick their size from
 # it. `iconutil` is macOS-only, so CI reads the committed file instead.
-magick "$SRC" -alpha set -define icon:auto-resize=256,128,64,48,32,16 "$ROOT/icon.ico"
+magick "$ROOT/icon.png" -define icon:auto-resize=256,128,64,48,32,16 "$ROOT/icon.ico"
 
 rm -rf "$SET"
 mkdir "$SET"
@@ -33,7 +35,7 @@ mkdir "$SET"
 render_size() {
   local px="$1"
   local name="$2"
-  magick "$SRC" -resize "${px}x${px}" -alpha set PNG32:"$SET/$name"
+  magick "$ROOT/icon.png" -resize "${px}x${px}" -alpha set PNG32:"$SET/$name"
 }
 
 render_size 16 icon_16x16.png

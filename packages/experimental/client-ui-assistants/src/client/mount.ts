@@ -30,6 +30,9 @@ import type {
   ComposerPredictionResult,
 } from '@deepseek-ai/dsh-experimental-assistant-registry/types'
 import { AssistantsPanelIcon } from './AssistantsPanelIcon.tsx'
+import { AssistantConversationLauncher } from './conversation-launch.ts'
+import { AssistantWorkspaceDialog } from './AssistantWorkspaceDialog.tsx'
+import { AssistantIdentityDock } from './AssistantIdentityDock.tsx'
 import { AssistantDirectory, type AssistantDirectoryInjected } from './AssistantDirectory.tsx'
 import { AssistantHeroCard, type AssistantHeroCardInjected } from './AssistantHeroCard.tsx'
 import { AssistantConversationHeader, type AssistantConversationHeaderInjected } from './AssistantConversationHeader.tsx'
@@ -57,7 +60,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 export const PANEL_ID = 'assistants' as MainPanelId
 
 /** Services required for assistant UI registration. */
-export const inject = ['remote', 'remote.session', 'sessions', 'slots', 'locale', 'layout', 'uiWorkspace']
+export const inject = ['remote', 'remote.session', 'sessions', 'workspaces', 'slots', 'locale', 'layout', 'uiWorkspace']
 
 /** Saved-team templates, including a blank team with one coordinator seat. */
 export type TeamTemplateId = TeamTemplateOrigin
@@ -97,7 +100,8 @@ export interface AssistantClientOps extends OptionalDiscussionOps {
   listConversations?: ((profileId?: AssistantProfileId) => Promise<readonly AssistantConversation[]>) | undefined
   createConversation?:
     ((profileId: AssistantProfileId, options?: CreateAssistantConversationOptions) => Promise<AssistantConversation>) | undefined
-  startNewTopic?: ((profileId: AssistantProfileId) => Promise<AssistantConversation>) | undefined
+  startNewTopic?:
+    ((profileId: AssistantProfileId, options?: CreateAssistantConversationOptions) => Promise<AssistantConversation>) | undefined
   getConversationBySession?: ((sessionId: SessionId) => Promise<AssistantConversation | undefined>) | undefined
   setConversationModelOverride?:
     ((id: AssistantConversationId, model?: AssistantModelSelection) => Promise<AssistantConversation>) | undefined
@@ -307,7 +311,8 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
         : undefined),
     startNewTopic:
       ops?.startNewTopic ??
-      (remote ? async (pid: AssistantProfileId) => unwrapRemote(await remote.startNewTopic(pid, undefined)) : undefined),
+      (remote ? async (pid: AssistantProfileId, opt?: CreateAssistantConversationOptions) =>
+        unwrapRemote(await remote.startNewTopic(pid, opt)) : undefined),
     getConversationBySession:
       ops?.getConversationBySession ??
       (remote ? async (sid: SessionId) => unwrapRemote(await remote.getConversationBySession(sid)) : undefined),
@@ -438,17 +443,16 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
     }
   ).uiWorkspace
 
-  const startChat = async (profileId: AssistantProfileId): Promise<void> => {
-    if (!activeOps.createConversation) throw new Error(t('operationFailed'))
-    const conversation = await activeOps.createConversation(profileId)
-    uiWorkspace?.openSession(conversation.rootSessionId)
-  }
+  const launcher = new AssistantConversationLauncher(ctx, activeOps)
+  const bindingChanges = { subscribe: launcher.subscribe, getSnapshot: launcher.getBindingRevision }
+  ctx.effect(() => () => { launcher.dispose() }, 'assistants: pending workspace choice')
+  const startChat = (profileId: AssistantProfileId): Promise<void> => launcher.start(profileId)
+  const startNewTopic = (profileId: AssistantProfileId): Promise<void> => launcher.start(profileId, true)
 
-  const startNewTopic = async (profileId: AssistantProfileId): Promise<void> => {
-    if (!activeOps.startNewTopic) throw new Error(t('operationFailed'))
-    const conversation = await activeOps.startNewTopic(profileId)
-    uiWorkspace?.openSession(conversation.rootSessionId)
-  }
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay', id: 'assistants.workspace-choice', locale: NS,
+    inject: () => ({ launcher, workspaces: ctx.workspaces, loadProfile, pickDirectory: () => ctx.uiWorkspace.pickDirectory() }),
+  }, AssistantWorkspaceDialog))
 
   const createTeam = async (payload: CreateTeamPayload): Promise<void> => {
     if (!activeOps.createTeamFromTemplate) throw new Error(t('operationFailed'))
@@ -609,6 +613,7 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
           loadProfile,
           loadModels,
           onStartNewTopic: profileId => startNewTopic(profileId),
+          bindingChanges,
           onSetModelOverride: async (conversationId, model) =>
             activeOps.setConversationModelOverride
               ? await activeOps.setConversationModelOverride(conversationId, model)
@@ -631,6 +636,11 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
   )
 
   // 5. Input Dock: AssistantExampleChips
+  ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+    name: 'conversation.input.dock', id: 'assistants.identity', order: -10, locale: NS,
+    inject: (sessionId: SessionId) => ({ sessionId, loadConversation, loadProfile, bindingChanges }),
+  }, AssistantIdentityDock))
+
   ctx.slots.inject('conversation.input.dock', () =>
     ctx.slots.register(
       {
@@ -681,7 +691,7 @@ export async function mountAssistantsUi(
   if (contributionOrOps && 'package' in contributionOrOps && 'descriptors' in contributionOrOps) {
     const disposeRemote = await ctx.remote.$mount(contributionOrOps)
     // The generated namespace is a service published by $mount, so consume it in a child fiber.
-    const ui = ctx.inject(['remote.assistants', ...inject], child => registerUi(child))
+    const ui = ctx.inject(['remote.assistants', ...inject], (child) => { registerUi(child) })
     try {
       await ui.await()
     } catch (error) {

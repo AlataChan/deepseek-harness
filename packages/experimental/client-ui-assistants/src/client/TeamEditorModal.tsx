@@ -1,4 +1,4 @@
-import { AvatarPicker } from './EntityAvatar.tsx'
+import { AvatarPicker, DEFAULT_AVATAR } from './EntityAvatar.tsx'
 import { useEffect, useRef, useState } from 'react'
 import type {
   AssistantModelSelection,
@@ -63,7 +63,7 @@ function TeamEditorModalContent({
   onUpdateSeat,
 }: TeamEditorModalProps) {
   const [name, setName] = useState(team.name)
-  const [avatar, setAvatar] = useState(team.avatar ?? '')
+  const [avatar, setAvatar] = useState(team.avatar ?? DEFAULT_AVATAR)
   const [description, setDescription] = useState(team.description ?? '')
   const [coordinatorId, setCoordinatorId] = useState<AssistantProfileId>(
     team.coordinatorProfileId,
@@ -116,7 +116,7 @@ function TeamEditorModalContent({
 
       await onSave({
         name: name.trim() !== team.name ? name.trim() : undefined,
-        ...avatar !== (team.avatar ?? '') ? { avatar } : {},
+        ...avatar !== (team.avatar ?? DEFAULT_AVATAR) ? { avatar } : {},
         description: description.trim() !== (team.description ?? '') ? description.trim() : undefined,
         coordinatorProfileId: coordinatorId !== team.coordinatorProfileId ? coordinatorId : undefined,
         sharedWorkspaceId: workspace.trim() !== (team.sharedWorkspaceId ?? '') ? workspace.trim() : undefined,

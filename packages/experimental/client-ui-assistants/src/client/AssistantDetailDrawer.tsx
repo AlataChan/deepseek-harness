@@ -1,4 +1,4 @@
-import { AvatarPicker, EntityAvatar } from './EntityAvatar.tsx'
+import { AvatarPicker, EntityAvatar, DEFAULT_AVATAR } from './EntityAvatar.tsx'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {
@@ -185,7 +185,7 @@ function AssistantDetailDrawerContent({
           {onUpdateProfile && (
             <AvatarPicker
               name={profile.name}
-              value={profile.avatar ?? ''}
+              value={profile.avatar ?? DEFAULT_AVATAR}
               disabled={avatarSaving}
               onChange={(value) => {
                 void saveAvatar(value)

@@ -1,4 +1,4 @@
-import { AvatarPicker, EntityAvatar } from './EntityAvatar.tsx'
+import { AvatarPicker, EntityAvatar, DEFAULT_AVATAR } from './EntityAvatar.tsx'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   AssistantProfile,
@@ -94,7 +94,7 @@ export function AssistantDirectory({
   const [showTeamModal, setShowTeamModal] = useState(false)
   const [selectedTeamId, setSelectedTeamId] = useState<TeamDefinitionId | null>(null)
   const [detailProfileId, setDetailProfileId] = useState<AssistantProfileId | null>(null)
-  const [avatar, setAvatar] = useState('')
+  const [avatar, setAvatar] = useState(DEFAULT_AVATAR)
   const [name, setName] = useState('')
   const [responsibility, setResponsibility] = useState('')
   const [instructions, setInstructions] = useState('')
@@ -170,11 +170,11 @@ export function AssistantDirectory({
     try {
       await onCreateProfile({
         name: name.trim(),
-        ...avatar ? { avatar } : {},
+        ...avatar !== DEFAULT_AVATAR ? { avatar } : {},
         ...responsibility.trim() ? { responsibility: responsibility.trim() } : {},
         ...instructions.trim() ? { instructions: instructions.trim() } : {},
       })
-      setAvatar('')
+      setAvatar(DEFAULT_AVATAR)
       setName('')
       setResponsibility('')
       setInstructions('')

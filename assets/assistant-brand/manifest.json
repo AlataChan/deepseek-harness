@@ -1,0 +1,42 @@
+{
+  "generator": "built-in image_gen; model identifier not exposed",
+  "approval": "A1, A3, A4, C1, C2 for avatars; white-background whale with sample 1 colors and sample 3 expression for application branding",
+  "images": [
+    {
+      "label": "A1",
+      "id": "sea-whale",
+      "file": "sea-whale.png",
+      "sha256": "78b79b81a7760477fc17b11623545d6b7e64c76578d2130f45e9180aca4e7e04"
+    },
+    {
+      "label": "A3",
+      "id": "sea-seal",
+      "file": "sea-seal.png",
+      "sha256": "f093dfe343022c5d98eb64ffe21c3336773fb1cc4933d0f6566b0fa29785a8dc"
+    },
+    {
+      "label": "A4",
+      "id": "sea-seal-apricot",
+      "file": "sea-seal-apricot.png",
+      "sha256": "1b2db164f2f62330d40a8f293dbdf01cf854e63887476dd9223469d7acd91411"
+    },
+    {
+      "label": "C1",
+      "id": "bot-sprout",
+      "file": "bot-sprout.png",
+      "sha256": "557c995501d635c047658638a27c71b2d4fb70349432045c48eec270e1d51378"
+    },
+    {
+      "label": "C2",
+      "id": "bot-coral",
+      "file": "bot-coral.png",
+      "sha256": "3d1ff1ff3cb3de5705eeb57d019aa9cf9448c0543c2fa63565de1209effa795f"
+    },
+    {
+      "label": "White whale: sample 1 colors + sample 3 smile",
+      "id": "workbench-whale",
+      "file": "workbench-whale.png",
+      "sha256": "2ed601956dfce9c92c9e425d60f111e1e58adcbda4760a6db5cf813194e8a777"
+    }
+  ]
+}

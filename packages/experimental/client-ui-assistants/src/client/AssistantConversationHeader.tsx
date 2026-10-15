@@ -1,5 +1,5 @@
 import { EntityAvatar } from './EntityAvatar.tsx'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {
   AssistantConversation,
@@ -26,6 +26,7 @@ export interface AssistantConversationHeaderInjected {
   loadConversation: (sessionId: SessionId) => Promise<AssistantConversation | undefined>
   loadProfile: (profileId: AssistantProfileId) => Promise<AssistantProfile | undefined>
   loadModels: () => Promise<readonly AssistantModelOption[]>
+  bindingChanges?: { subscribe: (listener: () => void) => () => void; getSnapshot: () => number } | undefined
   onStartNewTopic?: ((profileId: AssistantProfileId) => Promise<void>) | undefined
   onSetModelOverride?:
     ((id: AssistantConversationId, model: AssistantModelSelection) => Promise<AssistantConversation | undefined>) | undefined
@@ -44,6 +45,8 @@ export type AssistantConversationHeaderProps = PropsRuntime<'conversation.sessio
   AssistantConversationHeaderInjected &
   PropsLocale<typeof NS>
 
+const noBindingChanges = { subscribe: (_listener: () => void) => () => {}, getSnapshot: () => 0 }
+
 /**
  * Header actions for assistant-bound sessions: role badge, new topic, details drawer.
  * The header loads its own conversation, profile, and model catalog through
@@ -58,6 +61,7 @@ export function AssistantConversationHeader({
   loadConversation,
   loadProfile,
   loadModels,
+  bindingChanges,
   onStartNewTopic,
   onSetModelOverride,
   onClearModelOverride,
@@ -69,6 +73,8 @@ export function AssistantConversationHeader({
   onArchiveMemory,
   onUnarchiveMemory,
 }: AssistantConversationHeaderProps) {
+  const changes = bindingChanges ?? noBindingChanges
+  const bindingRevision = useSyncExternalStore(changes.subscribe, changes.getSnapshot)
   const generation = useRef(0)
   const [conversation, setConversation] = useState<AssistantConversation | undefined>(undefined)
   const [profile, setProfile] = useState<AssistantProfile | undefined>(undefined)
@@ -77,7 +83,8 @@ export function AssistantConversationHeader({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   useEffect(() => {
-    let active = true
+    const lifetime = new AbortController()
+    const isCurrent = () => !lifetime.signal.aborted
     generation.current++
     setProfile(undefined)
     setConversation(undefined)
@@ -85,22 +92,22 @@ export function AssistantConversationHeader({
     setActionFailed(false)
     void (async () => {
       const loadedConversation = await loadConversation(sessionId)
-      if (!active) return
+      if (!isCurrent()) return
       setConversation(loadedConversation)
       if (!loadedConversation) {
         setProfile(undefined)
         return
       }
       const loadedProfile = await loadProfile(loadedConversation.profileId)
-      if (active) setProfile(loadedProfile)
+      if (isCurrent()) setProfile(loadedProfile)
     })().catch(() => {
-      if (active) setActionFailed(true)
+      if (isCurrent()) setActionFailed(true)
     })
     return () => {
-      active = false
+      lifetime.abort()
       generation.current++
     }
-  }, [loadConversation, loadProfile, sessionId])
+  }, [loadConversation, loadProfile, sessionId, bindingRevision])
 
   useEffect(() => {
     let active = true

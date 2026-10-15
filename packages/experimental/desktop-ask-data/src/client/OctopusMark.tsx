@@ -1,5 +1,5 @@
 /**
- * octopus_DSH leaf-whale mark: cream plate, forest-green whale, leaf tail.
+ * octopus_DSH mark: the approved right-facing green smiling whale on white.
  * Occupies the official fish slots on the desktop overlay.
  */
 
@@ -16,7 +16,7 @@ export interface OctopusMarkProps {
 /**
  * Render the fork mark at the size the host slot requested.
  * @param props - square edge and optional host class.
- * @returns the leaf-whale image.
+ * @returns the bundled whale image.
  */
 export function OctopusMark({ size, className }: OctopusMarkProps) {
   return (
@@ -27,6 +27,7 @@ export function OctopusMark({ size, className }: OctopusMarkProps) {
       alt=""
       className={className}
       aria-hidden="true"
+      style={{ borderRadius: '25%' }}
     />
   )
 }

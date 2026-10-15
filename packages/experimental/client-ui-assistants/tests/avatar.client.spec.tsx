@@ -23,7 +23,7 @@ it('renders grapheme-safe initials and falls back for legacy values without fetc
   expect(view.container.querySelector('img')).toBeNull()
   view.rerender(<EntityAvatar name="Jane Smith" avatar="icon:document" />)
   expect(view.container.querySelector('[data-avatar="icon:document"] svg')).not.toBeNull()
-  view.rerender(<EntityAvatar name="👩‍💻" />)
+  view.rerender(<EntityAvatar name="👩‍💻" avatar="" />)
   expect(view.container.textContent).toBe('👩‍💻')
 })
 it('selects an icon and automatic initials without submitting', () => {
@@ -34,12 +34,21 @@ it('selects an icon and automatic initials without submitting', () => {
       <AvatarPicker name="Example" value="" onChange={change} t={makeTranslate(zh)} />
     </form>,
   )
-  fireEvent.click(screen.getByRole('radio', { name: zh.avatarDocument }))
-  expect(change).toHaveBeenCalledWith('icon:document')
+  fireEvent.click(screen.getByRole('radio', { name: zh.avatarSeal }))
+  expect(change).toHaveBeenCalledWith('character:sea-seal')
   expect(submit).not.toHaveBeenCalled()
 })
 
 const t = makeTranslate(zh)
+const unusedHook = (): never => { throw new Error('Directory avatar forms do not consume global selector hooks') }
+const directoryStandardProps = {
+  usePanelInfo: unusedHook,
+  useSessions: unusedHook,
+  useSessionStatus: unusedHook,
+  useSessionRetainInfo: unusedHook,
+  useWorkspaces: unusedHook,
+  useResource: unusedHook,
+}
 const profile: AssistantProfile = {
   id: AssistantProfileId('avatar-profile'),
   name: 'Jane Smith',
@@ -80,19 +89,46 @@ it('saves a new assistant avatar and renders the saved selection after refresh',
   )
   fireEvent.click(screen.getByText(zh.newAssistant))
   fireEvent.change(screen.getByLabelText(zh.name), { target: { value: profile.name } })
-  fireEvent.click(screen.getByRole('radio', { name: zh.avatarIdea }))
+  fireEvent.click(screen.getByRole('radio', { name: zh.avatarSeal }))
   fireEvent.click(screen.getByText(zh.save))
-  await waitFor(() => expect(create).toHaveBeenCalledWith({ name: profile.name, avatar: 'icon:idea' }))
+  await waitFor(() => expect(create).toHaveBeenCalledWith({ name: profile.name, avatar: 'character:sea-seal' }))
   await screen.findByText(profile.name)
-  expect(document.querySelector('[data-avatar="icon:idea"]')).not.toBeNull()
+  expect(document.querySelector('[data-avatar="character:sea-seal"]')).not.toBeNull()
 })
 it('passes a selected avatar through team creation', async () => {
   const create = vi.fn()
   render(<TeamCreationModal isOpen profiles={[profile]} onCreateTeam={create} onClose={vi.fn()} t={t} />)
   fireEvent.change(screen.getByTestId('team-name-input'), { target: { value: 'Saved team' } })
-  fireEvent.click(screen.getByRole('radio', { name: zh.avatarGlobe }))
+  fireEvent.click(screen.getByRole('radio', { name: zh.avatarBotCoral }))
   fireEvent.click(screen.getByTestId('create-team-submit'))
-  await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ avatar: 'icon:globe' })))
+  await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ avatar: 'character:bot-coral' })))
+})
+it('uses the seaside default for new assistants and persists explicitly chosen initials', async () => {
+  const create = vi.fn(async () => {})
+  render(
+    <AssistantDirectory
+      {...directoryStandardProps}
+      t={t}
+      loadProfiles={async () => []}
+      loadTeams={async () => []}
+      loadSeats={async () => []}
+      loadModels={async () => []}
+      onCreateProfile={create}
+      onStartChat={vi.fn()}
+      onArchiveProfile={vi.fn()}
+      onUpdateProfile={vi.fn()}
+    />,
+  )
+  fireEvent.click(screen.getByText(zh.newAssistant))
+  expect((screen.getByRole('radio', { name: zh.avatarWhale }) as HTMLInputElement).checked).toBe(true)
+  fireEvent.change(screen.getByLabelText(zh.name), { target: { value: 'Default assistant' } })
+  fireEvent.click(screen.getByText(zh.save))
+  await waitFor(() => expect(create).toHaveBeenCalledWith({ name: 'Default assistant' }))
+  fireEvent.click(screen.getByText(zh.newAssistant))
+  fireEvent.change(screen.getByLabelText(zh.name), { target: { value: 'Initials assistant' } })
+  fireEvent.click(screen.getByRole('radio', { name: zh.avatarInitials }))
+  fireEvent.click(screen.getByText(zh.save))
+  await waitFor(() => expect(create).toHaveBeenCalledWith({ name: 'Initials assistant', avatar: '' }))
 })
 it('explicitly clears a stored team preset when initials are selected', async () => {
   const save = vi.fn()
@@ -113,8 +149,8 @@ it('reports failed avatar persistence and keeps the saved selection', async () =
       t={t}
     />,
   )
-  fireEvent.click(screen.getByRole('radio', { name: zh.avatarDocument }))
+  fireEvent.click(screen.getByRole('radio', { name: zh.avatarSeal }))
   await screen.findByRole('alert')
-  expect((screen.getByRole('radio', { name: zh.avatarPerson }) as HTMLInputElement).checked).toBe(true)
-  expect((screen.getByRole('radio', { name: zh.avatarDocument }) as HTMLInputElement).checked).toBe(false)
+  expect((screen.getByRole('radio', { name: zh.avatarSavedIcon }) as HTMLInputElement).checked).toBe(true)
+  expect((screen.getByRole('radio', { name: zh.avatarSeal }) as HTMLInputElement).checked).toBe(false)
 })

@@ -421,13 +421,24 @@ async function runVerification() {
   ok(`DMG attached read-only at ${mountPoint}`)
 
   const appPath = join(mountPoint, 'octopus_DSH.app')
-  if (!existsSync(appPath)) {
-    fail(`octopus_DSH.app not found at ${appPath}`)
-  }
-  ok('Packaged octopus_DSH.app identified in mounted DMG')
 
   let primaryError
   try {
+    const avatarClient = readFileSync(join(appPath, 'Contents', 'Resources', 'resources', 'profile-plugins',
+      '@deepseek-ai', 'dsh-experimental-client-ui-assistants', 'lib', 'client.js'), 'utf8')
+    for (const marker of ['sea-whale', 'sea-seal', 'sea-seal-apricot', 'bot-sprout', 'bot-coral',
+      'data-character', 'avatarSeaside', 'avatarRobots', 'assistants.workspace-choice',
+      'assistant-conversation-identity', 'Assistant binding does not match the selected Session']) {
+      assert.ok(avatarClient.includes(marker), `Mounted Client lacks character avatar marker: ${marker}`)
+    }
+    ok('Mounted DMG contains character avatars, workspace binding, and confirmed assistant identity controls')
+    execFileSync(process.execPath, [resolve('.','scripts/verify-assistant-brand-assets.mjs'), appPath], { stdio: 'pipe' })
+    ok('Mounted DMG contains the approved application icon and all five embedded portraits in the packaged Client plugins')
+    if (!existsSync(appPath)) {
+      fail(`octopus_DSH.app not found at ${appPath}`)
+    }
+    ok('Packaged octopus_DSH.app identified in mounted DMG')
+
     // ==========================================
     // FLOW 1: Fresh Profile Verification
     // ==========================================
@@ -451,11 +462,18 @@ async function runVerification() {
     }
     ok('Initial profiles list is clean')
 
+    const workspaceSelection = await freshClient.call('workspace/create', { request: { path: freshWorkspace } })
+    const selectedWorkspaceSession = await freshClient.call('session/create', {
+      request: { workspaceId: workspaceSelection.workspace.workspaceId },
+    })
+    assert(selectedWorkspaceSession.sessionId, 'Workspace-first selection must resolve a real Session')
+    ok('Workspace-first selection creates a workspace-owned blank Session before assistant selection')
+
     // 2. Create assistant profile
     const profile = await freshClient.call('assistants/createProfile', {
       options: {
         name: '社区宣教助理',
-        avatar: 'icon:document',
+        avatar: 'character:sea-whale',
         responsibility: '负责社区低碳环保宣传与文案编撰',
         instructions: '请使用专业、简洁、亲切的中文回复居民咨询',
       },
@@ -464,8 +482,14 @@ async function runVerification() {
       fail('Profile creation returned invalid object', profile)
     }
     ok(`Created assistant profile '${profile.name}' (id: ${profile.id})`)
-    assert.equal(profile.avatar, 'icon:document')
-    await freshClient.call('assistants/updateProfile', { id: profile.id, options: { avatar: 'icon:idea' } })
+    assert.equal(profile.avatar, 'character:sea-whale')
+    for (const avatar of ['character:sea-whale', 'character:sea-seal', 'character:sea-seal-apricot', 'character:bot-sprout', 'character:bot-coral']) {
+      await freshClient.call('assistants/updateProfile', { id: profile.id, options: { avatar } })
+      const saved = await freshClient.call('assistants/listProfiles', { includeArchived: true })
+      assert.equal(saved.find(item => item.id === profile.id)?.avatar, avatar)
+    }
+    ok('All five approved portraits round-trip through the packaged assistant catalog')
+    await freshClient.call('assistants/updateProfile', { id: profile.id, options: { avatar: 'character:bot-coral' } })
     ok('Packaged assistant avatar creation and update preserve the selected preset')
 
     // 3. Create conversation
@@ -473,12 +497,17 @@ async function runVerification() {
       profileId: profile.id,
       options: {
         title: '垃圾分类宣传专项讨论',
+        rootSessionId: selectedWorkspaceSession.sessionId,
       },
     })
     if (!conversation.id || conversation.profileId !== profile.id) {
       fail('Conversation creation returned invalid object', conversation)
     }
     ok(`Created conversation '${conversation.title ?? conversation.id}' bound to profile`)
+    assert.equal(conversation.rootSessionId, selectedWorkspaceSession.sessionId)
+    const confirmedBinding = await freshClient.call('assistants/getConversationBySession', { sessionId: selectedWorkspaceSession.sessionId })
+    assert.equal(confirmedBinding?.profileId, profile.id)
+    ok('Workspace-first assistant binding preserves the exact Session identity before sending')
 
     // 4. Model route change / override
     const overrideModel = { provider: 'deepseek-official', model: 'deepseek-v4-pro' }
@@ -601,6 +630,44 @@ async function runVerification() {
     ok('Verified system message logged assistant role, memory text, and entry ID/revision 2 metadata')
     ok("Verified overridden model 'deepseek-v4-pro' logged on actual request/header")
 
+    const assistantFirstProfile = await freshClient.call('assistants/createProfile', {
+      options: { name: '工作区路径核验助理', responsibility: '核验当前工作区与智能体身份', instructions: '使用简洁中文' },
+    })
+    const assistantFirstPath = mkdtempSync(join(tmpdir(), 's20-assistant-first-'))
+    temporaryPaths.add(assistantFirstPath)
+    const assistantFirstWorkspace = await freshClient.call('workspace/create', { request: { path: assistantFirstPath } })
+    const assistantFirstSession = await freshClient.call('session/create', {
+      request: { workspaceId: assistantFirstWorkspace.workspace.workspaceId },
+    })
+    const assistantFirstConversation = await freshClient.call('assistants/createConversation', {
+      profileId: assistantFirstProfile.id, options: { rootSessionId: assistantFirstSession.sessionId },
+    })
+    assert.equal(assistantFirstConversation.rootSessionId, assistantFirstSession.sessionId)
+    assert.equal((await freshClient.call('assistants/getConversationBySession', {
+      sessionId: assistantFirstSession.sessionId,
+    }))?.profileId, assistantFirstProfile.id)
+    ok('Assistant-first selection binds the chosen workspace Session without replacing its identity')
+    const assistantFirstReceipt = await freshClient.call('session/prompt', { request: {
+      requestId: 'req-s20-assistant-first', sessionId: assistantFirstSession.sessionId, mode: 'queue',
+      content: [{ type: 'text', text: '请确认当前任务身份' }],
+    } })
+    assert.equal(assistantFirstReceipt.accepted, true)
+    let assistantFirstPage
+    for (const deadline = Date.now() + 8000; Date.now() < deadline;) {
+      const projection = await freshClient.call('session/projections', { request: { sessionId: assistantFirstSession.sessionId } })
+      const page = await freshClient.call('session/page', { request: {
+        address: { kind: 'session', sessionId: assistantFirstSession.sessionId }, throughSeq: projection.asOfSeq,
+      } })
+      if (page.records?.some(record => record.event?.type === 'turn/end')) { assistantFirstPage = page; break }
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    assert(assistantFirstPage, 'Assistant-first request must complete a real turn')
+    const assistantFirstSystems = assistantFirstPage.records.filter(record => record.event?.type === 'system/message')
+    assert(assistantFirstSystems.some(record => JSON.stringify(record.event.data).includes(`You are ${assistantFirstProfile.name}.`)))
+    assert(!assistantFirstSystems.some(record => JSON.stringify(record.event.data).includes('You are 社区宣教助理.')))
+    assert(assistantFirstPage.records.some(record => record.event?.type === 'request/header'))
+    ok('Assistant-first actual request logs the selected role and excludes the other assistant identity')
+
 
     // 7. Cold restart of companion
     section('Flow 1: Cold Restart Verification')
@@ -613,11 +680,12 @@ async function runVerification() {
 
     // Verify profile persisted
     const restoredProfiles = await restartClient.call('assistants/listProfiles', { includeArchived: true })
-    if (restoredProfiles.length !== 1 || restoredProfiles[0].id !== profile.id) {
+    if (restoredProfiles.length !== 2 || !restoredProfiles.some(item => item.id === profile.id)
+      || !restoredProfiles.some(item => item.id === assistantFirstProfile.id)) {
       fail('Profiles did not restore correctly after restart', restoredProfiles)
     }
-    ok(`Verified restored profile '${restoredProfiles[0].name}' from disk`)
-    assert.equal(restoredProfiles[0].avatar, 'icon:idea')
+    ok(`Verified restored profile '${profile.name}' from disk`)
+    assert.equal(restoredProfiles.find(item => item.id === profile.id)?.avatar, 'character:bot-coral')
     ok('Assistant avatar survives packaged companion cold restart')
 
     // Verify conversation and model override persisted
@@ -1258,7 +1326,7 @@ async function runVerification() {
       options: {
         coordinatorProfileId: coordProfile.id,
         name: '自定义协同小组',
-        avatar: 'icon:team',
+        avatar: 'character:sea-seal-apricot',
         description: '空白模板创建的协同小组',
       },
     })
@@ -1272,7 +1340,7 @@ async function runVerification() {
       options: {
         coordinatorProfileId: coordProfile.id,
         name: '公文编撰工作组',
-        avatar: 'icon:document',
+        avatar: 'character:bot-sprout',
         description: '公文处理模板团队',
       },
     })
@@ -1280,8 +1348,8 @@ async function runVerification() {
       fail('Document template team must create coordinator + teammate seats', docTeamResult)
     }
     ok(`Document template created team with ${docTeamResult.seats.length} seats (coordinator + teammates)`)
-    assert.equal(blankTeamResult.team.avatar, 'icon:team')
-    assert.equal(docTeamResult.team.avatar, 'icon:document')
+    assert.equal(blankTeamResult.team.avatar, 'character:sea-seal-apricot')
+    assert.equal(docTeamResult.team.avatar, 'character:bot-sprout')
     const avatarTeam = await existingClient.call('assistants/getTeam', { id: blankTeamResult.team.id })
     await existingClient.call('assistants/updateTeam', { id: avatarTeam.id, expectedRevision: avatarTeam.revision, options: { avatar: '' } })
     ok('Packaged team templates preserve avatars and explicit initials restoration')
@@ -1334,7 +1402,7 @@ async function runVerification() {
     }
     ok(`Verified ${teams.length} teams restored from disk`)
     assert.equal(teams.find(team => team.id === blankTeamResult.team.id)?.avatar, '')
-    assert.equal(teams.find(team => team.id === docTeamResult.team.id)?.avatar, 'icon:document')
+    assert.equal(teams.find(team => team.id === docTeamResult.team.id)?.avatar, 'character:bot-sprout')
     ok('Team avatar presets and initials restoration survive packaged cold restart')
 
     const reloadedTeamMem = await restartExisting.call('assistants/listMemory', { scope: teamScope })

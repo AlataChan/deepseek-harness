@@ -17,12 +17,14 @@ describe('Assistant browser activation', () => {
       'conversation.hero.agentTeam.card': { kind: 'list', scope: 'root' },
       'conversation.session.header.actions': { kind: 'list', scope: 'session' },
       'conversation.input.dock': { kind: 'list', scope: 'session' },
+      'shell.overlay': { kind: 'list', scope: 'root' },
     } }, (() => null) as never)
     const remoteDispose = vi.fn(async () => {})
     const mount = vi.fn(async () => { ctx.reflect.provide('remote.assistants', {}); return remoteDispose })
     ctx.reflect.provide('remote', { $mount: mount })
     ctx.reflect.provide('remote.session', {})
     ctx.reflect.provide('sessions', {})
+    ctx.reflect.provide('workspaces', {})
     ctx.reflect.provide('layout', {})
     ctx.reflect.provide('uiWorkspace', {})
     ctx.reflect.provide('locale', { register: () => () => {}, bind: () => makeTranslate(zh) })
@@ -35,7 +37,7 @@ describe('Assistant browser activation', () => {
       await fiber.await()
       expect(mount).toHaveBeenCalledOnce()
       expect(core.entries('main')).toHaveLength(1)
-      expect(core.entries('conversation.input.dock')).toHaveLength(2)
+      expect(core.entries('conversation.input.dock')).toHaveLength(3)
       expect(core.entries('conversation.session.header.actions')).toHaveLength(1)
     } finally { await fiber.dispose(); await ctx.fiber.dispose() }
     expect(remoteDispose).toHaveBeenCalledOnce()
