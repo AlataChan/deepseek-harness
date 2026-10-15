@@ -82,7 +82,7 @@ function registerUi(ctx: ClientContext): void {
     () => ctx.slots.register({
       name: 'conversation.session.header.actions',
       id: 'agent-team',
-      order: 20,
+      order: 10,
       locale: NS,
       inject: () => actions,
     }, TeamAction),
@@ -119,6 +119,9 @@ function registerUi(ctx: ClientContext): void {
       name: 'conversation.hero.agentTeam',
       locale: NS,
       inject: () => squads,
+      children: {
+        'conversation.hero.agentTeam.card': { kind: 'list', scope: 'root' },
+      },
     }, InstitutionSquads),
   )
 }

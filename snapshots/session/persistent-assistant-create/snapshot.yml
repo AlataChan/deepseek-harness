@@ -1,0 +1,11 @@
+version: 1
+scenario: persistent-assistant-create
+profile: headless
+composition: persistent-assistant-create
+recording: live
+permission: workspace-write
+header:
+  class: persistent-assistant-create
+  pin: true
+input:
+  task: 用 assistant_create 工具创建一个常驻助手：名字叫「资料整理员」，职责是「整理机构会议资料并输出结构化纪要」，instructions 写「输出使用中文，先列缺失项再给结论」。调用工具后，用一句中文确认它已创建，并逐字包含它的名字，以 DONE 结尾。

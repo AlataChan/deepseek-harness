@@ -195,7 +195,7 @@ export const NEVER_MERGE: readonly NeverMergeEntry[] = [
 
 /** Upstream files the fork edits. Phase 3 works the `B` rows down to zero. */
 export const PATCHES: readonly PatchEntry[] = [
-  { path: 'apps/cli/package.json', klass: 'A', reason: 'Fork harness assembly: the desktop companion entry and the fork workspace Host dependencies (desktop-app, agent-team, commerce) must be dependencies here to bundle into the harness.' },
+  { path: 'apps/cli/package.json', klass: 'A', reason: 'Fork harness assembly: the desktop companion entry and the fork workspace Host dependencies (desktop-app, agent-team, assistant-registry, commerce) must be dependencies here to bundle into the harness.' },
   { path: 'packages/acp/acp/package.json', klass: 'A', reason: 'cordis-plugin-loader peer for the fork ACP initialize fix, which answers only after the Loader tree settles.' },
   { path: 'packages/acp/acp/src/index.ts', klass: 'A', reason: 'Fork ACP initialize fix: answer only after the Loader tree settles.' },
   { path: 'packages/api/session-controller/src/index.ts', klass: 'A', reason: "The fork's ask-data, ask-knowledge, commerce and transcript-audio remotes." },
@@ -209,7 +209,7 @@ export const PATCHES: readonly PatchEntry[] = [
   // that cannot be expressed without editing an upstream file is an A with a
   // registered patch. Each reason names the seam that would have to appear
   // upstream before the row could shrink again.
-  { path: 'packages/extensions/cordis-client-runner/src/client/slot-catalog.ts', klass: 'A', reason: 'Generated artifact: `pnpm run gen-client-catalog` must run after any slot declaration change, and it carries the fork slots while their declarations stay in the owner packages.' },
+  { path: 'packages/extensions/cordis-client-runner/src/client/slot-catalog.ts', klass: 'A', reason: 'Generated artifact: `pnpm run gen-client-catalog` must run after any slot declaration change (including the persistent-assistant directory, hero card, header, and example-chip slots); it carries the fork slots while their declarations stay in the owner packages.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx', klass: 'A', reason: 'Renders the fork hero chip row, the ask-knowledge picker and the ask-data/commerce gate takeover inside the official factory body; the slot framework binds `renderSlot` to the declaring entry, so no overlay can occupy these positions.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/ConversationMainPanel.tsx', klass: 'A', reason: 'Renders the atmosphere plate as the conversation root\'s first child; no official slot renders before `conversation.header`, and the plate needs the root as its positioning context.' },
   { path: 'packages/client/ui-conversation/src/client/skeleton/ConversationRoot.module.css', klass: 'A', reason: 'Layer order for the atmosphere plate (header/body above it) and the desktop window-chrome inset on the header.' },
@@ -224,7 +224,7 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/client/ui-sidebar/src/client/index.ts', klass: 'A', reason: 'Registers `sidebar.files` and binds the occupancy source SidebarRoot reads.' },
   { path: 'packages/client/ui-agent-preset/src/client/seat-store.ts', klass: 'A', reason: 'Hold/clear stage semantics (`held`, public `clearStage`) consumed by the ask-data and commerce gates; the official controller keeps its shared stage private.' },
   { path: 'packages/client/ui-agent-preset/src/client/index.ts', klass: 'A', reason: 'Provides the conversation-scoped `agentPresetSeat` service the fork gates call; the official package exposes no equivalent seam.' },
-  { path: 'packages/core/session/src/known-event-types.ts', klass: 'A', reason: "The fork's nine session events (ask-data, ask-knowledge, commerce, media) declared in the upstream known-event table." },
+  { path: 'packages/core/session/src/known-event-types.ts', klass: 'A', reason: 'Generated session event vocabulary, including fork ask-data, ask-knowledge, commerce, media and assistant auxiliary inference records; regenerated from owner-package event declarations.' },
   { path: 'packages/core/system-prompt/src/index.ts', klass: 'A', reason: 'Fork external-data section in the system-prompt section order.' },
   { path: 'packages/session/session-format-v0-to-v1/src/dispositions.ts', klass: 'A', reason: "Frozen released-v0 inventory must admit this fork's four events (ask-data/bound, ask-knowledge/bound, ask-knowledge/unbound, commerce/bound), or the fork's own v0 fixtures refuse to migrate." },
   { path: 'packages/session/session-format-v0-to-v1/src/payload-validation.ts', klass: 'A', reason: 'Nested payload semantics for the same four events; the released validator refuses an event with no case.' },
@@ -248,10 +248,12 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/web/tool-web/src/fetch.ts', klass: 'A', reason: 'Fork web fetch behaviour.' },
   { path: 'packages/web/tool-web/src/trust.ts', klass: 'A', reason: 'Fork web trust policy.' },
   { path: 'packages/subagent/subagent/src/child-agent.ts', klass: 'A', reason: 'Fork child agent adjustment.' },
+  { path: 'packages/session-query/tool-session-query/src/workspace-access.ts', klass: 'A', reason: "Fork scope authority: an assistant- or team-bound caller authorizes session-history targets through the assistant registry's binding scope instead of equal-cwd workspace membership; unbound callers keep the upstream cwd rule." },
+  { path: 'packages/test-support/session-snapshot/src/identity.ts', klass: 'A', reason: 'Fork identity redaction: prefixed opaque ids generated inside tool-result text (for example an assistant profile id) must be claimable by shape so a fork scenario fixture stays a normalization fixed point.' },
   { path: 'packages/subagent/subagent/src/continuation-activation.ts', klass: 'A', reason: 'Fork child-agent composition adjustment for continuable activations.' },
   { path: 'packages/subagent/subagent-in-process-driver/src/index.ts', klass: 'A', reason: 'Fork child-agent composition adjustment for in-process runs.' },
   { path: 'packages/subagent/tool-subagent/src/index.ts', klass: 'A', reason: 'Fork model-selection re-exports for the delegation policy.' },
-  { path: 'packages/extensions/tool-cordis/src/api-catalog.ts', klass: 'A', reason: 'Fork tool catalog entry.' },
+  { path: 'packages/extensions/tool-cordis/src/api-catalog.ts', klass: 'A', reason: 'Fork tool and service catalog entries, including the assistant registry service and its remotes.' },
   { path: 'packages/bundle/base/package.json', klass: 'A', reason: 'Fork base composition dependencies, including telemetry.' },
   { path: 'packages/bundle/base/cordis.patch.yml', klass: 'A', reason: 'Fork base composition rows, including the telemetry mode default.' },
   { path: 'packages/bundle/web-app/package.json', klass: 'A', reason: 'Fork web composition dependencies.' },

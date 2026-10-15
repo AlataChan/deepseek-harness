@@ -1,0 +1,3 @@
+- insert:
+    - id: assistant-registry
+      name: '@deepseek-ai/dsh-experimental-assistant-registry'

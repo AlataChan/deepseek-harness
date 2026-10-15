@@ -1,0 +1,82 @@
+# Bilingual-pair consistency record for 2026-10-12-persistent-assistants-and-teams-design.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-10-12-persistent-assistants-and-teams-design.md
+/persistent-assistants-and-team-collaboration:
+  en: 20c0069c692dd420
+  zh: d15cf07294294ea6
+/persistent-assistants-and-team-collaboration/summary:
+  en: 069cc82eb93a4b15
+  zh: 34f77f26581fce42
+/persistent-assistants-and-team-collaboration/contents:
+  en: acddc4d9317ec862
+  zh: 04cc7861ec80351f
+/persistent-assistants-and-team-collaboration/evidence-and-limits:
+  en: e59af2f05616bcc6
+  zh: 33bda5eb319205bc
+/persistent-assistants-and-team-collaboration/composer-predictions:
+  en: 23a92a2fc1b90a00
+  zh: 056eb539f79985bc
+/persistent-assistants-and-team-collaboration/capability-comparison:
+  en: f7ced292ad733f3f
+  zh: 568db2dbc23dbecf
+/persistent-assistants-and-team-collaboration/options-and-recommendation:
+  en: 1858ad7c8266555d
+  zh: 7b107656eca6a0bd
+/persistent-assistants-and-team-collaboration/frontend-experience:
+  en: 7701e0a575c4cd23
+  zh: 36898bb4bdd1e53b
+/persistent-assistants-and-team-collaboration/frontend-experience/home-and-navigation:
+  en: dc81a00ce6087d27
+  zh: b0ab7d6546a5b246
+/persistent-assistants-and-team-collaboration/frontend-experience/assistant-conversation:
+  en: 159937c25daa8725
+  zh: db446a2af5305010
+/persistent-assistants-and-team-collaboration/frontend-experience/assistant-creation-and-editing:
+  en: bd706dbcbb62c53b
+  zh: 581cd8622a5a5535
+/persistent-assistants-and-team-collaboration/frontend-experience/team-creation-and-entry:
+  en: aa48bb035e3ca657
+  zh: 2552b1e9d244b599
+/persistent-assistants-and-team-collaboration/frontend-experience/team-working-view:
+  en: d98e0b7a325b620b
+  zh: 26c26b292f923e80
+/persistent-assistants-and-team-collaboration/frontend-experience/layout-sketch:
+  en: 8b390d3db45d020c
+  zh: e01dc3888f6400be
+/persistent-assistants-and-team-collaboration/frontend-and-backend-work:
+  en: 072aacb644076352
+  zh: 529d34b486655bb8
+/persistent-assistants-and-team-collaboration/identity-and-data-ownership:
+  en: a46dda483ff0d0d0
+  zh: 99aedd77b07c58a3
+/persistent-assistants-and-team-collaboration/host-services-and-message-flow:
+  en: 2d2d5315a8689da7
+  zh: d7f12eee32f04469
+/persistent-assistants-and-team-collaboration/host-services-and-message-flow/first-stage-team-dispatch:
+  en: 74d7dfa8e20ea5a4
+  zh: adcaba71593e4220
+/persistent-assistants-and-team-collaboration/host-services-and-message-flow/shared-discussion-phase:
+  en: 3be0644074f12ea1
+  zh: 6f843d307474f78f
+/persistent-assistants-and-team-collaboration/host-services-and-message-flow/memory-and-history:
+  en: e6a6a5cc8b9b80d6
+  zh: eff45a26fac3806e
+/persistent-assistants-and-team-collaboration/delivery-stages-and-acceptance:
+  en: 424715ab43357082
+  zh: 6b6678976224fa81
+/persistent-assistants-and-team-collaboration/delivery-stages-and-acceptance/stage-a-truthful-presentation-of-existing-capabilities:
+  en: ef604c4ad4d27571
+  zh: ce60ed9e750b6663
+/persistent-assistants-and-team-collaboration/delivery-stages-and-acceptance/stage-b-general-persistent-assistants-and-saved-teams-minimum-complete-release:
+  en: e271fd369bbb859a
+  zh: 86e1959fc7398763
+/persistent-assistants-and-team-collaboration/delivery-stages-and-acceptance/stage-c-public-group-collaboration-and-managed-follow-up:
+  en: 7c734609ffa65ca9
+  zh: b2c6efcd965236ae
+/persistent-assistants-and-team-collaboration/delivery-stages-and-acceptance/stage-d-optional-specialized-integrations:
+  en: b33135703e41412d
+  zh: df2001d973056c8e
+/persistent-assistants-and-team-collaboration/delivery-stages-and-acceptance/validation-and-distribution-requirements:
+  en: c11305ec585488af
+  zh: e1db855beed74c1c

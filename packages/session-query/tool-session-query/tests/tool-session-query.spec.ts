@@ -618,8 +618,29 @@ describe('workspace authority and lineage redaction', () => {
       .toBe('SESSION_QUERY_TOOL_UNAUTHORIZED')
   })
 
-  it('makes hidden and nonexistent parent guesses indistinguishable without calling search', async () => {
+  it('narrows an assistant-bound caller to its binding scope instead of the shared workspace', async () => {
     const mounted = await mount()
+    const sameWorkspace = createSession(mounted.ctx, 'same-workspace-other', '/work')
+    const scoped = createSession(mounted.ctx, 'scoped-allowed', '/elsewhere')
+
+    mounted.ctx.provide('assistants', {
+      authorizeSessionSource: (caller: string, target: string) => caller !== 'caller'
+        ? undefined
+        : target === 'caller' || target === 'scoped-allowed',
+    })
+
+    // Assistant-bound callers use the binding scope: a same-workspace sibling is outside it.
+    expect(errorCode(await mounted.call('session_trace', { session_id: sameWorkspace.id })))
+      .toBe('SESSION_QUERY_TOOL_UNAUTHORIZED')
+    expect(errorCode(await mounted.call('session_event_read', { session_id: sameWorkspace.id, seq: 0 })))
+      .toBe('SESSION_QUERY_TOOL_UNAUTHORIZED')
+    // The permitted scope wins even across working directories, and self stays readable.
+    expect(errorCode(await mounted.call('session_trace', { session_id: scoped.id })))
+      .not.toBe('SESSION_QUERY_TOOL_UNAUTHORIZED')
+    expect((await mounted.call('session_trace', {})).isError).toBe(false)
+  })
+
+  it('makes hidden and nonexistent parent guesses indistinguishable without calling search', async () => {    const mounted = await mount()
     const hiddenParent = createSession(mounted.ctx, 'guessed-hidden-parent-secret', '/outside')
     const visibleChild = createSession(
       mounted.ctx,

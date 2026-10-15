@@ -59,3 +59,4 @@ worktrees/
 .agents/worktrees/
 .typert-*/
 native/system/test/bin/
+.plans/**/source-snapshot/

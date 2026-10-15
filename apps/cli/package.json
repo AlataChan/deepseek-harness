@@ -114,6 +114,7 @@
     "@deepseek-ai/dsh-desktop-app": "workspace:*",
     "@deepseek-ai/dsh-experimental-agent-team": "workspace:*",
     "@deepseek-ai/dsh-experimental-tool-agent-team": "workspace:*",
+    "@deepseek-ai/dsh-experimental-assistant-registry": "workspace:*",
     "@deepseek-ai/dsh-fence-policy": "workspace:*",
     "@deepseek-ai/dsh-host-commerce": "workspace:*",
     "@deepseek-ai/dsh-native-command": "workspace:*"

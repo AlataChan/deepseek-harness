@@ -215,11 +215,12 @@ function templateBodyKey(id: StarterTemplateId): TeamKey {
 /** Render the live Team roster and compare-and-set task board. */
 export function TeamAction({
   sessionId, load, createTask, updateTask, openTeammate, readHtmlPreview, openWorkspacePath, t, inputActions,
-  useConversation,
+  useConversation, useInput,
 }: TeamActionProps) {
   const [open, setOpen] = useState(false)
   const [dockTab, setDockTab] = useState<'live' | 'summary'>('live')
   const [archifyGenerating, setArchifyGenerating] = useState(false)
+  const currentDraft = useInput?.(s => s.draft) ?? ''
   const discoveredPath = useConversation(snapshot => discoverArchifyPathFromViews({
     get: target => snapshot.views.get(target as never),
   }))
@@ -266,6 +267,7 @@ export function TeamAction({
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent): void => {
+      if (event.isComposing) return
       if (event.key !== 'Escape' || pinned) return
       const target = event.target
       if (target instanceof HTMLElement) {
@@ -422,6 +424,7 @@ export function TeamAction({
 
   const fillStarter = (id: StarterTemplateId): void => {
     if (inputActions === undefined) return
+    if (currentDraft.trim().length > 0) return
     inputActions.setDraft(t(templateBodyKey(id)))
   }
 

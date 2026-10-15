@@ -1,0 +1,29 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../util/brand" },
+    { "path": "../../util/home-paths" },
+    { "path": "../../llm/llm" },
+    { "path": "../../core/session" },
+    { "path": "../../core/agent" },
+    { "path": "../../api/session-controller/tsconfig.host.json" },
+    { "path": "../../subagent/subagent" },
+    { "path": "../../session/session-persistence" },
+    { "path": "../../session/session-projection" },
+    { "path": "../../storage/storage" },
+    { "path": "../../storage/storage-domain" },
+    { "path": "../../storage/storage-json" },
+    { "path": "../../typert/protocol" },
+    { "path": "../../core/tools" },
+    { "path": "../agent-team" },
+    { "path": "../../../native/system/packages/entry" }
+  ]
+}

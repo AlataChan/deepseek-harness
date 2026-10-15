@@ -88,6 +88,9 @@ const teamMessageSnapshotSchema = z.object({
   senderName: z.string(),
   targetId: sessionIdSchema,
   content: z.array(contentBlockSchema),
+  roundId: z.string().min(1).optional(),
+  slotId: z.string().min(1).optional(),
+  attemptId: z.string().min(1).optional(),
 }).strict() as z.ZodType<TeamMessageSnapshot>
 
 const teamEventSelectorSchema = z.object({
@@ -118,6 +121,9 @@ const teamMessageDeliveredEventSchema = z.object({
   teamId: teamIdSchema,
   messageId: teamMessageIdSchema,
   targetId: sessionIdSchema,
+  roundId: z.string().min(1).optional(),
+  slotId: z.string().min(1).optional(),
+  attemptId: z.string().min(1).optional(),
 }).strict() as z.ZodType<SessionEventMap['team/message/delivered']>
 
 /** Current Team state selected by durable Team identity. */

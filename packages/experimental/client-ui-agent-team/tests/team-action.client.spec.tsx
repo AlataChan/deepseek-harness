@@ -228,6 +228,42 @@ describe('TeamAction', () => {
     expect(screen.getByRole('dialog').hasAttribute('data-team-dock')).toBe(true)
   })
 
+  it('preserves existing non-empty draft and does not overwrite or submit when starter template is clicked', async () => {
+    const setDraft = vi.fn()
+    const submit = vi.fn()
+    render(<TeamAction {...{
+      ...props(actions()),
+      useInput: ((selector: (s: { draft: string }) => unknown) => selector({ draft: 'existing draft' })) as never,
+      inputActions: {
+        captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
+        insertText: () => false,
+        persistDraft: () => {},
+        setDraft,
+        submit,
+        addAttachments: () => false,
+        removeAttachment: () => {},
+        pruneAttachments: () => {},
+      },
+    }} />)
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
+    expect(await screen.findByText(zh.templatesTitle)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: zh['template.document.label'] }))
+    expect(setDraft).not.toHaveBeenCalled()
+    expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('closes on Escape unless event is composing or pinned', async () => {
+    render(<TeamAction {...props(actions())} />)
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+
+    fireEvent.keyDown(window, { key: 'Escape', isComposing: true })
+    expect(screen.queryByRole('dialog')).toBeTruthy()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('portals the dock and backdrop onto document.body so the transcript cannot paint over them', async () => {
     const rendered = render(<TeamAction {...props(actions())} />)
     fireEvent.click(screen.getByRole('button', { name: new RegExp(zh.trigger) }))

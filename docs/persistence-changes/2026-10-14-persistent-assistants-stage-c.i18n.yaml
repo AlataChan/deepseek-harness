@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-10-14-persistent-assistants-stage-c.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-10-14-persistent-assistants-stage-c.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-10-14-persistent-assistants-stage-c:
+  en: 6fd555bcb80683ac
+  zh: 88621f0279e8bf62
+/2026-10-14-persistent-assistants-stage-c/summary:
+  en: ad86a9b09dda3a16
+  zh: 3b586a3b15364071
+/2026-10-14-persistent-assistants-stage-c/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-10-14-persistent-assistants-stage-c/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-10-14-persistent-assistants-stage-c/compatibility:
+  en: b3bca06878e38949
+  zh: 179708790068b34f
+/2026-10-14-persistent-assistants-stage-c/verification:
+  en: 87ea7ab4fd6276b1
+  zh: e8d31335a6ce4a50
+/2026-10-14-persistent-assistants-stage-c/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

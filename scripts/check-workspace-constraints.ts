@@ -57,14 +57,15 @@ const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
 const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
 
 /**
- * Fork bundling exception: the DMG's seeded Agent Teams profile plugins must
- * resolve from the harness closure, so the launcher names these two as
+ * Fork bundling exception: the DMG's seeded assistant and team profile plugins must
+ * resolve from the harness closure, so the launcher names these packages as
  * dependencies. They are never composed by default; they ship only because a
  * profile plugin cites them.
  */
 const FORK_BUNDLED_EXPERIMENTAL = new Set([
   '@deepseek-ai/dsh-experimental-agent-team',
   '@deepseek-ai/dsh-experimental-tool-agent-team',
+  '@deepseek-ai/dsh-experimental-assistant-registry',
 ])
 /** Ordinary directories whose packages this repository publishes: one release member each. */
 const standardReleaseMemberDirectory = /^(?:packages\/(?!experimental\/)[^/]+\/[^/]+|apps\/(?!desktop(?:-host)?$)[^/]+|vendor\/[^/]+)$/
@@ -212,6 +213,8 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-experimental-desktop-files': ['lib/list-entries.js'],
   // The fork's commerce overlay ships its tools, preset definition, and samples.
   '@deepseek-ai/dsh-experimental-commerce-mode': ['lib/tools.js', 'lib/preset.js', 'NOTICE', 'preset/**', 'samples/**'],
+  // The fork's NGO assistant overlay ships its bundled preset and skills.
+  '@deepseek-ai/dsh-experimental-desktop-ngo': ['preset/**'],
   // The Host entry starts its sibling Worker by URL rather than a package export.
   // The Inspector owns a Worker and a mirrored frontend outside package export paths.
   '@deepseek-ai/dsh-experimental-inspector': ['lib/client.*.js', 'lib/worker.js', 'lib/devtools/**'],

@@ -178,7 +178,7 @@ describe('ui-team browser plugin', () => {
     const b = await bench()
     expect(inject).toEqual(['sessions', 'remote', 'remote.session', 'slots', 'locale', 'uiWorkspace'])
     expect(b.entry()).toMatchObject({
-      options: { id: 'agent-team', order: 20 },
+      options: { id: 'agent-team', order: 10 },
       locale: 'agent-team',
     })
     expect(b.remote.mount).toHaveBeenCalledOnce()

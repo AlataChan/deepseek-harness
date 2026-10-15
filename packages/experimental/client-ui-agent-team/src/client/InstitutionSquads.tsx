@@ -14,7 +14,7 @@ import type {
 } from '@deepseek-ai/dsh-experimental-agent-team/client'
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { NS, type TeamKey } from './locales.ts'
 import css from './InstitutionSquads.module.css'
@@ -36,11 +36,22 @@ export interface InstitutionSquadsInjected {
   openSession: (sessionId: SessionId) => void
 }
 
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotMap {
+    /** Cards contributed to the hero agent-team section. */
+    'conversation.hero.agentTeam.card': {
+      kind: 'list'
+      scope: 'root'
+    }
+  }
+}
+
 /** Full props of the Hero institution-squad row. */
 export type InstitutionSquadsProps =
   PropsRuntime<'conversation.hero.agentTeam'>
   & InstitutionSquadsInjected
   & PropsLocale<typeof NS>
+  & Partial<PropsRenderSlots<'conversation.hero.agentTeam.card'>>
 
 const HUE = [css.hue0, css.hue1, css.hue2] as const
 
@@ -101,7 +112,7 @@ function failureText(error: { readonly message: string; readonly code: string })
  * @returns the squad row.
  */
 export function InstitutionSquads({
-  t, workspaceId, list, updateSeat, models, createSession, renameSession, ensure, openSession,
+  t, workspaceId, list, updateSeat, models, createSession, renameSession, ensure, openSession, renderSlot,
 }: InstitutionSquadsProps) {
   const [rows, setRows] = useState<InstitutionSquadView[]>([])
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null)
@@ -256,6 +267,7 @@ export function InstitutionSquads({
           )
         })}
       </div>
+      {renderSlot?.('conversation.hero.agentTeam.card', {})}
     </section>
   )
 }

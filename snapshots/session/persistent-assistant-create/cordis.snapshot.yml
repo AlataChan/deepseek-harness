@@ -1,0 +1,59 @@
+# Replay patch for the persistent-assistant composition. The model script comes
+# from the scenario's committed session JSONL.
+
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+  disabled: true
+
+- id: plugin-package-inventory-deepseek
+  disabled: true
+
+- id: session-title-llm
+  disabled: true
+
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none
+
+- id: sandbox
+  name: '@deepseek-ai/dsh-sandbox-local'
+  config:
+    runnerCommand:
+      - bash
+      - -c
+      - while [ "$1" != "--" ]; do shift; done; shift; exec "$@"
+      - passthrough-runner
+    runnerFailureSignatures:
+      - 'passthrough-runner: profile rejected'
+
+- insert:
+    - id: llm-replay
+      name: '@deepseek-ai/dsh-llm-replay'
+      config:
+        providers:
+          - id: deepseek-official
+            name: DeepSeek
+            models:
+              - id: deepseek-v4-flash
+                contextWindow: 1000000
+              - id: deepseek-v4-pro
+                contextWindow: 1000000
+          - id: deepseek-messages
+            name: DeepSeek Messages
+            models:
+              - id: deepseek-v4-flash
+                contextWindow: 1000000
+              - id: deepseek-v4-pro
+                contextWindow: 1000000
+
+- id: tool-subagent-control
+  disabled: true
+- id: tool-subagent-list-agents
+  disabled: true
+- id: tool-subagent-report
+  disabled: true
+- insert:
+    - id: assistant-registry
+      name: '@deepseek-ai/dsh-experimental-assistant-registry'

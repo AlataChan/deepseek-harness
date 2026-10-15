@@ -6,12 +6,7 @@ import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { z } from 'zod'
 import { TeamError } from './error.ts'
-import type {
-  InstitutionSeatView,
-  InstitutionSquadId,
-  InstitutionSquadView,
-  UpdateInstitutionSeatRequest,
-} from './types.ts'
+import type { InstitutionSeatView, InstitutionSquadId, InstitutionSquadView, UpdateInstitutionSeatRequest } from './types.ts'
 
 /** Product-constant squad slugs. */
 export const INSTITUTION_SQUAD_IDS = ['document', 'case', 'comms'] as const
@@ -91,16 +86,20 @@ const seatBindingSchema = z.object({
 
 const catalogSchema = z.object({
   version: z.literal(1),
-  leads: z.object({
-    document: z.string().min(1).optional(),
-    case: z.string().min(1).optional(),
-    comms: z.string().min(1).optional(),
-  }).default({}),
-  seats: z.object({
-    document: z.record(z.string(), seatBindingSchema).optional(),
-    case: z.record(z.string(), seatBindingSchema).optional(),
-    comms: z.record(z.string(), seatBindingSchema).optional(),
-  }).default({}),
+  leads: z
+    .object({
+      document: z.string().min(1).optional(),
+      case: z.string().min(1).optional(),
+      comms: z.string().min(1).optional(),
+    })
+    .default({}),
+  seats: z
+    .object({
+      document: z.record(z.string(), seatBindingSchema).optional(),
+      case: z.record(z.string(), seatBindingSchema).optional(),
+      comms: z.record(z.string(), seatBindingSchema).optional(),
+    })
+    .default({}),
 })
 
 /** On-disk catalog after validation. */
@@ -137,16 +136,10 @@ export function requireInstitutionSquad(id: string): InstitutionSquadDefinition 
  * @param name - candidate teammate name.
  * @returns the seat definition.
  */
-export function requireInstitutionSeat(
-  squad: InstitutionSquadDefinition,
-  name: string,
-): InstitutionSeatDefinition {
+export function requireInstitutionSeat(squad: InstitutionSquadDefinition, name: string): InstitutionSeatDefinition {
   const seat = squad.seats.find(row => row.name === name)
   if (seat === undefined) {
-    throw new TeamError(
-      `unknown institution seat "${name}" on squad "${squad.id}"`,
-      'TEAM_INSTITUTION_SEAT_UNKNOWN',
-    )
+    throw new TeamError(`unknown institution seat "${name}" on squad "${squad.id}"`, 'TEAM_INSTITUTION_SEAT_UNKNOWN')
   }
   return seat
 }
@@ -158,15 +151,12 @@ export function requireInstitutionSeat(
  * @param seat - seat being spawned.
  * @returns one model-visible text block.
  */
-export function standingSeatPrompt(
-  squad: InstitutionSquadDefinition,
-  seat: InstitutionSeatDefinition,
-): string {
+export function standingSeatPrompt(squad: InstitutionSquadDefinition, seat: InstitutionSeatDefinition): string {
   return (
-    `你是机构小队「${squad.displayName}」的常驻队友，机器名 ${seat.name}，职务「${seat.title}」。`
-    + `职责：${seat.duty}。跨话题保持这个角色和已有上下文。等主控派活再开工。`
-    + '不要编造事实、数字或成效。不要再拉新的队友。回复和思考过程一律用中文。'
-    + '不要向用户追问本工种的文件路径；材料由用户贴进主会话。'
+    `你是机构小队「${squad.displayName}」的常驻队友，机器名 ${seat.name}，职务「${seat.title}」。` +
+    `职责：${seat.duty}。跨话题保持这个角色和已有上下文。等主控派活再开工。` +
+    '不要编造事实、数字或成效。不要再拉新的队友。回复和思考过程一律用中文。' +
+    '不要向用户追问本工种的文件路径；材料由用户贴进主会话。'
   )
 }
 
@@ -179,10 +169,10 @@ export function standingLeadPrompt(squad: InstitutionSquadDefinition): string {
   const seats = squad.seats.map(seat => `${seat.name}（${seat.title}）：${seat.duty}`).join('；')
   const order = squad.seats.map(seat => seat.name).join('→')
   return (
-    `你是机构小队「${squad.displayName}」的主控。编制座位：${seats}。`
-    + `按 ${order} 建共享任务依赖并分派，你收口不写终稿。`
-    + '等用户把材料贴进本会话再开工。不要向用户追问每个工种的文件路径。'
-    + '回复和思考过程一律用中文。数字与事实只来自材料。'
+    `你是机构小队「${squad.displayName}」的主控。编制座位：${seats}。` +
+    `按 ${order} 建共享任务依赖并分派，你收口不写终稿。` +
+    '等用户把材料贴进本会话再开工。不要向用户追问每个工种的文件路径。' +
+    '回复和思考过程一律用中文。数字与事实只来自材料。'
   )
 }
 
@@ -223,7 +213,36 @@ export class InstitutionCatalog {
       await persistCatalog(this.path, next)
       return next
     })
-    this.writeChain = run.then(() => undefined, () => undefined)
+    this.writeChain = run.then(
+      () => undefined,
+      () => undefined,
+    )
+    return await run
+  }
+
+  /**
+   * Run an asynchronous transaction over the catalog within the serialized write chain.
+   * If `outcome.next` is provided, persists the next catalog state.
+   * @param action - async callback receiving the current catalog file.
+   * @returns the outcome result.
+   */
+  async transact<T>(
+    action: (
+      current: InstitutionCatalogFile,
+    ) => Promise<{ next?: InstitutionCatalogFile; result: T }> | { next?: InstitutionCatalogFile; result: T },
+  ): Promise<T> {
+    const run = this.writeChain.then(async () => {
+      const current = await this.read()
+      const outcome = await action(current)
+      if (outcome.next !== undefined) {
+        await persistCatalog(this.path, outcome.next)
+      }
+      return outcome.result
+    })
+    this.writeChain = run.then(
+      () => undefined,
+      () => undefined,
+    )
     return await run
   }
 }
@@ -252,15 +271,15 @@ export function projectInstitutionSquad(
       title: seat.title,
       titleEn: seat.titleEn,
       duty: seat.duty,
-      ...provider === undefined ? {} : { provider },
-      ...model === undefined ? {} : { model },
+      ...(provider === undefined ? {} : { provider }),
+      ...(model === undefined ? {} : { model }),
     }
   })
   return {
     id: squad.id,
     displayName: squad.displayName,
     displayNameEn: squad.displayNameEn,
-    ...lead === undefined ? {} : { leadSessionId: lead as SessionId },
+    ...(lead === undefined ? {} : { leadSessionId: lead as SessionId }),
     established: lead !== undefined,
     seats,
   }
@@ -272,24 +291,22 @@ export function projectInstitutionSquad(
  * @param request - seat identity and optional route.
  * @returns the next catalog.
  */
-export function applySeatUpdate(
-  file: InstitutionCatalogFile,
-  request: UpdateInstitutionSeatRequest,
-): InstitutionCatalogFile {
+export function applySeatUpdate(file: InstitutionCatalogFile, request: UpdateInstitutionSeatRequest): InstitutionCatalogFile {
   const squad = requireInstitutionSquad(request.squadId)
   requireInstitutionSeat(squad, request.name)
   const provider = normalizeOptionalText(request.provider)
   const model = normalizeOptionalText(request.model)
   const current = { ...file.seats[squad.id] }
-  const nextSeats = provider === undefined && model === undefined
-    ? Object.fromEntries(Object.entries(current).filter(([name]) => name !== request.name))
-    : {
-      ...current,
-      [request.name]: {
-        ...provider === undefined ? {} : { provider },
-        ...model === undefined ? {} : { model },
-      },
-    }
+  const nextSeats =
+    provider === undefined && model === undefined
+      ? Object.fromEntries(Object.entries(current).filter(([name]) => name !== request.name))
+      : {
+        ...current,
+        [request.name]: {
+          ...(provider === undefined ? {} : { provider }),
+          ...(model === undefined ? {} : { model }),
+        },
+      }
   return {
     version: 1,
     leads: { ...file.leads },
@@ -315,11 +332,7 @@ function parseCatalog(raw: string, path: string): InstitutionCatalogFile {
   }
   const result = catalogSchema.safeParse(parsed)
   if (!result.success) {
-    throw new TeamError(
-      `institution catalog at "${path}" failed validation`,
-      'TEAM_INSTITUTION_CATALOG',
-      { cause: result.error },
-    )
+    throw new TeamError(`institution catalog at "${path}" failed validation`, 'TEAM_INSTITUTION_CATALOG', { cause: result.error })
   }
   return result.data
 }

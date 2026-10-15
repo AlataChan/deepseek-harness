@@ -96,7 +96,7 @@ fi
 head_ "Smoke-testing companion module graph"
 SMOKE_HOME="$(mktemp -d "${TMPDIR:-/tmp}/dsh-bundle-smoke.XXXXXX")"
 # A live octopus_DSH holds ~/.dsh. The smoke must not inherit the builder's DSH_HOME.
-COMPANION_OUT="$(HOME="$SMOKE_HOME" DSH_HOME="$SMOKE_HOME/.dsh" "$RES/node" "$HARNESS/lib/desktop-companion.js" --workspace-root "$SMOKE_HOME" 2>&1 | head -40 || true)"
+COMPANION_OUT="$(HOME="$SMOKE_HOME" DSH_HOME="$SMOKE_HOME/.dsh" "$RES/node" "$HARNESS/lib/desktop-companion.js" --workspace-root "$SMOKE_HOME" < /dev/null 2>&1 | head -40 || true)"
 
 if grep -q "ERR_MODULE_NOT_FOUND" <<<"$COMPANION_OUT"; then
   MISSING="$(grep -o "Cannot find package '[^']*'" <<<"$COMPANION_OUT" | head -1)"
@@ -692,6 +692,53 @@ if vocab_has 'ask-knowledge/bound' && vocab_has 'ask-knowledge/unbound'; then
   ok "bundled dsh-session knows ask-knowledge/bound and ask-knowledge/unbound"
 else
   bad "bundled dsh-session missing ask-knowledge bind events — refresh workspace packages before packaging"
+fi
+
+head_ "Checking persistent assistants and teams runtime (Stage C)"
+ASSISTANT_REGISTRY_HOST="$HARNESS/node_modules/@deepseek-ai/dsh-experimental-assistant-registry/lib/index.js"
+if [[ -f "$ASSISTANT_REGISTRY_HOST" ]] \
+  && grep -q 'GroupRoundScheduler' "$ASSISTANT_REGISTRY_HOST" \
+  && grep -q 'ReviewPredictionManager' "$ASSISTANT_REGISTRY_HOST" \
+  && grep -q 'DispatchOwnershipManager' "$ASSISTANT_REGISTRY_HOST" \
+  && grep -q 'DurableReadCursorManager' "$ASSISTANT_REGISTRY_HOST"; then
+  ok "bundled assistant-registry Host provides Stage C round scheduler, prediction manager, ownership manager, and cursors"
+else
+  bad "bundled assistant-registry Host missing Stage C classes — run pnpm run build before packaging"
+fi
+
+ASSISTANT_CLIENT="$RES/profile-plugins/@deepseek-ai/dsh-experimental-client-ui-assistants/lib/client.js"
+if [[ -f "$ASSISTANT_CLIENT" ]] \
+  && grep -q 'ComposerPrediction' "$ASSISTANT_CLIENT" \
+  && grep -q 'AssistantPredictionDock' "$ASSISTANT_CLIENT" \
+  && grep -q 'predictionLabel' "$ASSISTANT_CLIENT"; then
+  ok "bundled client-ui-assistants Client provides ComposerPrediction, AssistantPredictionDock, and locale copy"
+else
+  bad "bundled client-ui-assistants Client missing Stage C ComposerPrediction — run pnpm run build before packaging"
+fi
+
+if [[ -f "$ASSISTANT_CLIENT" ]] \
+  && grep -q 'data-avatar' "$ASSISTANT_CLIENT" \
+  && grep -q 'avatarInitials' "$ASSISTANT_CLIENT"; then
+  ok "bundled assistants Client includes local avatars and their selection controls"
+else
+  bad "bundled assistants Client missing avatar controls — rebuild Client bundles"
+fi
+
+if [[ -f "$ASSISTANT_CLIENT" ]] \
+  && grep -q 'team-discussion' "$ASSISTANT_CLIENT" \
+  && grep -q 'standing-team-dock' "$ASSISTANT_CLIENT" \
+  && grep -q 'discussionCancel' "$ASSISTANT_CLIENT"; then
+  ok "bundled assistants Client includes standing-team roster and cancellable discussion controls"
+else
+  bad "bundled assistants Client missing standing-team workflows — rebuild Client bundles"
+fi
+
+if [[ -f "$ASSISTANT_REGISTRY_HOST" ]] \
+  && grep -q 'getTeamActivity' "$ASSISTANT_REGISTRY_HOST" \
+  && grep -q 'repairEmptyTeamRoster' "$ASSISTANT_REGISTRY_HOST"; then
+  ok "bundled assistants Host includes read-only activity and explicit legacy roster repair"
+else
+  bad "bundled assistants Host missing team workflow repairs — rebuild Host bundles"
 fi
 
 # ── 7c. Ask-knowledge sidecar runtime ────────────────────────────────────────

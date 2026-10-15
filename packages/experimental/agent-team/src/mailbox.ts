@@ -21,6 +21,7 @@ import type {
   SendTeamMessageRequest,
   SendTeamMessageResult,
   TeamMessageSnapshot,
+  TeamMessageSource,
 } from './types.ts'
 
 /** Owns every process-local state transition for the durable Team mailbox. */
@@ -119,6 +120,24 @@ export class TeamMailbox {
       const state = this.journal.state(root)
       const target = resolveActiveMember(root, state, request.target)
       if (target.id === caller.id) throw new TeamError('a Team member cannot message itself', 'TEAM_SELF_MESSAGE')
+      if (this.sessionRetired(target.id)) {
+        throw new TeamError(`teammate "${target.name}" is retired`, 'TEAM_MEMBER_RETIRED')
+      }
+      if (this.sessionRetired(caller.id)) {
+        throw new TeamError(`sender "${membership.name}" is retired`, 'TEAM_MEMBER_RETIRED')
+      }
+      // Keyed deduplication: if roundId, slotId, and attemptId are provided, check for existing admitted message
+      if (request.roundId !== undefined && request.slotId !== undefined && request.attemptId !== undefined) {
+        const existing = state.messages.find(m =>
+          m.roundId === request.roundId && m.slotId === request.slotId && m.attemptId === request.attemptId)
+        if (existing !== undefined) {
+          const isDelivered = state.delivered.includes(existing.id)
+          return {
+            message: existing,
+            dispatch: isDelivered ? Promise.resolve(true) : this.tryDispatch(root, existing, request.signal),
+          }
+        }
+      }
       const pendingForTarget = state.messages.filter(candidate =>
         candidate.targetId === target.id && !state.delivered.includes(candidate.id)).length
       if (pendingForTarget >= this.maxPendingMessagesPerMember) {
@@ -133,6 +152,9 @@ export class TeamMailbox {
         senderName: membership.name,
         targetId: target.id,
         content,
+        ...request.roundId !== undefined ? { roundId: request.roundId } : {},
+        ...request.slotId !== undefined ? { slotId: request.slotId } : {},
+        ...request.attemptId !== undefined ? { attemptId: request.attemptId } : {},
       }
       if (Buffer.byteLength(JSON.stringify(this.deliveryContent(queued)), 'utf8') > this.maxMessageBytes) {
         throw new TeamError(`team message exceeds ${this.maxMessageBytes} bytes`, 'TEAM_MESSAGE_TOO_LARGE')
@@ -147,7 +169,13 @@ export class TeamMailbox {
       return { message: queued, dispatch: this.tryDispatch(root, queued, request.signal) }
     })
     const accepted = await queued.dispatch
-    return { messageId: queued.message.id, status: accepted ? 'accepted' : 'queued' }
+    return {
+      messageId: queued.message.id,
+      status: accepted ? 'accepted' : 'queued',
+      ...queued.message.roundId !== undefined ? { roundId: queued.message.roundId } : {},
+      ...queued.message.slotId !== undefined ? { slotId: queued.message.slotId } : {},
+      ...queued.message.attemptId !== undefined ? { attemptId: queued.message.attemptId } : {},
+    }
   }
 
   /** Attempt one queued message exactly once in this process at a time. */
@@ -186,6 +214,16 @@ export class TeamMailbox {
     message: TeamMessageSnapshot,
     signal: AbortSignal,
   ): Promise<boolean> {
+    if (this.sessionRetired(message.targetId) || this.sessionRetired(message.senderId)) return false
+    const assistants = this.ctx.get('assistants') as {
+      ownership?: {
+        isOwnedByOther?: (sessionId: SessionId, roundId?: string, slotId?: string) => boolean
+        waitForRelease?: (sessionId: SessionId, signal?: AbortSignal) => Promise<void>
+      }
+    } | undefined
+    if (assistants?.ownership?.isOwnedByOther?.(message.targetId, message.roundId, message.slotId)) {
+      await assistants.ownership.waitForRelease?.(message.targetId, signal)
+    }
     return await this.serializeDispatch(message, () => this.dispatchThrough(root, message, signal))
   }
 
@@ -231,19 +269,34 @@ export class TeamMailbox {
     return true
   }
 
-  /** Attempt one queued delivery after target-local ordering admits it. */
+  /** Whether one Session belongs to a retired seat, when seat retirement is installed. */
+  private sessionRetired(sessionId: SessionId): boolean {
+    const assistants = this.ctx.get('assistants') as { isSessionRetired?: (id: SessionId) => boolean } | undefined
+    return assistants?.isSessionRetired?.(sessionId) ?? false
+  }
+
+  /**
+   * Attempt one queued delivery after target-local ordering admits it.
+   * Re-validates seat retirement at this delivery step, because a seat can retire
+   * while the message waits behind the target-local queue. A retired target or
+   * sender keeps the message queued.
+   */
   private async dispatchOnce(root: Agent, message: TeamMessageSnapshot, signal: AbortSignal): Promise<boolean> {
+    if (this.sessionRetired(message.targetId) || this.sessionRetired(message.senderId)) return false
     try {
       const target = message.targetId === root.id ? root : this.ctx.agents.get(message.targetId)
       if (target !== undefined && this.targetRecorded(target.session, message.id)) {
         return await this.checkpointDelivered(root, target.session, message.id)
       }
-      const source = {
+      const source: TeamMessageSource = {
         kind: 'team-message' as const,
         teamId: TeamId(root.id),
         messageId: message.id,
         senderId: message.senderId,
         senderName: message.senderName,
+        ...message.roundId !== undefined ? { roundId: message.roundId } : {},
+        ...message.slotId !== undefined ? { slotId: message.slotId } : {},
+        ...message.attemptId !== undefined ? { attemptId: message.attemptId } : {},
       }
       const content = this.deliveryContent(message)
       if (message.targetId === root.id) {
@@ -293,7 +346,37 @@ export class TeamMailbox {
         teamId: TeamId(root.id),
         messageId,
         targetId,
+        ...queued.roundId !== undefined ? { roundId: queued.roundId } : {},
+        ...queued.slotId !== undefined ? { slotId: queued.slotId } : {},
+        ...queued.attemptId !== undefined ? { attemptId: queued.attemptId } : {},
       })
+    })
+  }
+
+  /**
+   * Cancel an unstarted queued message for one slot from this Lead's mailbox.
+   * @param root - exact live Lead Agent.
+   * @param roundId - group round identity.
+   * @param slotId - slot identity.
+   * @returns true if an unstarted queued message was cancelled.
+   */
+  async cancelQueuedSlot(root: Agent, roundId: string, slotId: string): Promise<boolean> {
+    return await this.journal.transact(root.id, async () => {
+      const state = this.journal.state(root)
+      const targetMessage = state.messages.find(m =>
+        m.roundId === roundId && m.slotId === slotId && !state.delivered.includes(m.id))
+      if (targetMessage === undefined) return false
+      if (this.inFlightMessages.has(targetMessage.id)) return false
+      await this.journal.appendAndFlush(root, 'team/message/delivered', {
+        version: 2,
+        teamId: TeamId(root.id),
+        messageId: targetMessage.id,
+        targetId: targetMessage.targetId,
+        ...targetMessage.roundId !== undefined ? { roundId: targetMessage.roundId } : {},
+        ...targetMessage.slotId !== undefined ? { slotId: targetMessage.slotId } : {},
+        ...targetMessage.attemptId !== undefined ? { attemptId: targetMessage.attemptId } : {},
+      })
+      return true
     })
   }
 

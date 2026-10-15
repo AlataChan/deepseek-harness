@@ -848,7 +848,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-agent-team`
 
 - `inject`: `agents` · `sessions` · `sessionPersistence` · `sessionProjections` · `subagents`
-- `source`: [`packages/experimental/agent-team/src/types.ts:183`](../packages/experimental/agent-team/src/types.ts)
+- `source`: [`packages/experimental/agent-team/src/types.ts:189`](../packages/experimental/agent-team/src/types.ts)
 
 ```ts config-catalog
 /** Team-service deployment limits. */
@@ -892,6 +892,49 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-api-speech-to-text -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-assistant-registry -->
+<a id="deepseek-aidsh-experimental-assistant-registry"></a>
+
+## `@deepseek-ai/dsh-experimental-assistant-registry`
+
+- `inject`: `storageDomain` · `storage`
+- `source`: [`packages/experimental/assistant-registry/src/index.ts:265`](../packages/experimental/assistant-registry/src/index.ts)
+
+```ts config-catalog
+/** Deployment configuration for assistant registry. */
+export interface Config {
+  /** Maximum number of active assistant profiles. */
+  readonly maxProfiles?: number
+  /** Custom lock path for catalog lease acquisition. */
+  readonly lockPath?: string
+  /** Whether to automatically open the catalog on service activation (defaults to true if storageDomain is present). */
+  readonly autoOpen?: boolean
+  /** Deployment-wide allowed-tool ceiling intersected into every assistant-bound agent; empty means unrestricted. */
+  readonly deploymentAllowedTools?: string[]
+  /** Deployment-wide tool denials applied to every assistant-bound agent. */
+  readonly deploymentDisallowedTools?: string[]
+  /** Deployment-wide allowed-path ceiling for every assistant-bound agent; empty means unrestricted. */
+  readonly deploymentAllowedPaths?: string[]
+  /** Whether terminal tools stay available to assistant-bound agents (defaults to true). */
+  readonly deploymentAllowTerminal?: boolean
+  /** Whether subagent tools stay available to assistant-bound agents (defaults to true). */
+  readonly deploymentAllowSubagents?: boolean
+  /** Whether bounded memory review is enabled (defaults to false). */
+  readonly enableMemoryReview?: boolean
+  /** Whether composer follow-up predictions are enabled (defaults to false). */
+  readonly enableComposerPredictions?: boolean
+  /** Token ceiling for memory review auxiliary calls (defaults to 500). */
+  readonly maxReviewTokens?: number
+  /** Token ceiling for composer prediction auxiliary calls (defaults to 150). */
+  readonly maxPredictionTokens?: number
+  /** Timeout in ms for composer prediction (defaults to 3000). */
+  readonly predictionTimeoutMs?: number
+  /** Timeout in ms for memory review auxiliary calls (defaults to 3000). */
+  readonly reviewTimeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-assistant-registry -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp -->
 <a id="deepseek-aidsh-experimental-browser-use-chrome-devtools-mcp"></a>
@@ -4601,6 +4644,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-deepseek-llm-api-extensions` | — | [`packages/llm/deepseek-llm-api-extensions/src/index.ts`](../packages/llm/deepseek-llm-api-extensions/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-auto-review` | `approval` · `llm` · `permissionPresets` · `sessions` · `tools` | [`packages/experimental/auto-review/src/index.ts`](../packages/experimental/auto-review/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-agent-team` | — | [`packages/experimental/client-ui-agent-team/src/index.ts`](../packages/experimental/client-ui-agent-team/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-client-ui-assistants` | — | [`packages/experimental/client-ui-assistants/src/index.ts`](../packages/experimental/client-ui-assistants/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-claude-code-mods` | — | [`packages/experimental/client-ui-claude-code-mods/src/index.ts`](../packages/experimental/client-ui-claude-code-mods/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | — | [`packages/experimental/client-ui-voice-input/src/index.ts`](../packages/experimental/client-ui-voice-input/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-commerce-mode` | `sessionProjections` · `subprocess` | [`packages/experimental/commerce-mode/src/index.ts`](../packages/experimental/commerce-mode/src/index.ts) |

@@ -1,0 +1,17 @@
+.avatar { display: inline-flex; flex: 0 0 auto; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 12px; font-size: 15px; font-weight: 500; color: var(--dsw-alias-label-primary); background: color-mix(in srgb, var(--avatar-color) 22%, var(--dsw-alias-bg-module-platform)); }
+.avatar svg { width: 23px; height: 23px; }
+.small { width: 26px; height: 26px; border-radius: 8px; font-size: 11px; }
+.small svg { width: 17px; height: 17px; }
+.color0 { --avatar-color: var(--dsw-static-blue-500); }
+.color1 { --avatar-color: var(--dsw-static-green-500); }
+.color2 { --avatar-color: var(--dsw-static-deepseek-500); }
+.color3 { --avatar-color: var(--dsw-static-amber-500); }
+.color4 { --avatar-color: var(--dsw-static-red-500); }
+.color5 { --avatar-color: var(--dsw-alias-state-business-primary); }
+.picker { margin: 0; padding: 8px 0; border: 0; color: var(--dsw-alias-label-primary); }
+.picker legend { font-size: 13px; }
+.options { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice { display: inline-flex; align-items: center; gap: 5px; padding: 5px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; cursor: pointer; font-size: 12px; }
+.choice:has(input:checked) { border-color: var(--dsw-alias-state-business-primary); }
+.choice:focus-within { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+.choice input { accent-color: var(--dsw-alias-state-business-primary); }

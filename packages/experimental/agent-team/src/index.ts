@@ -52,6 +52,7 @@ import {
   resolveInstitutionCatalogPath,
   standingSeatPrompt,
   type InstitutionSquadDefinition,
+  type InstitutionCatalogFile,
 } from './institution.ts'
 
 export type * from './types.ts'
@@ -59,9 +60,16 @@ export type { TeamMembership } from './roster.ts'
 export { TeamId, TeamMessageId, TeamTaskId } from './types.ts'
 export { TeamError } from './error.ts'
 export {
-  INSTITUTION_SQUAD_IDS, INSTITUTION_SQUADS, resolveInstitutionCatalogPath,
-  standingLeadPrompt, standingSeatPrompt,
+  INSTITUTION_SQUAD_IDS,
+  INSTITUTION_SQUADS,
+  resolveInstitutionCatalogPath,
+  standingLeadPrompt,
+  standingSeatPrompt,
+  requireInstitutionSquad,
+  requireInstitutionSeat,
 } from './institution.ts'
+export type { InstitutionCatalogFile } from './institution.ts'
+export { readPersistedSession } from './persisted.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -123,21 +131,18 @@ export class TeamService extends TypertRemoteService {
         config.maxPendingMessagesPerMember ?? DEFAULT_MAX_PENDING_MESSAGES,
       ),
       maxMessageBytes: positiveLimit('maxMessageBytes', config.maxMessageBytes ?? DEFAULT_MAX_MESSAGE_BYTES),
-      disposalTimeoutMs: positiveLimit(
-        'disposalTimeoutMs',
-        config.disposalTimeoutMs ?? DEFAULT_DISPOSAL_TIMEOUT_MS,
-      ),
+      disposalTimeoutMs: positiveLimit('disposalTimeoutMs', config.disposalTimeoutMs ?? DEFAULT_DISPOSAL_TIMEOUT_MS),
       institutionCatalogPath: config.institutionCatalogPath ?? '',
       institutionFreshProvider: config.institutionFreshProvider ?? 'spawn',
     }
     this.institutionFreshProvider = this.config.institutionFreshProvider
-    this.institutionCatalog = new InstitutionCatalog(
-      resolveInstitutionCatalogPath(this.config.institutionCatalogPath),
-    )
+    this.institutionCatalog = new InstitutionCatalog(resolveInstitutionCatalogPath(this.config.institutionCatalogPath))
 
     this.activity = new TeamActivity()
     this.lifecycle = new TeamRuntimeLifecycle(this.config.disposalTimeoutMs)
-    this.journal = new TeamJournal(ctx, (root) => { this.activity.notify(TeamId(root.id)) })
+    this.journal = new TeamJournal(ctx, (root) => {
+      this.activity.notify(TeamId(root.id))
+    })
     this.roster = new TeamRoster(ctx, this.journal, this.lifecycle, this.config.maxMembers)
     this.attribution = new TeamAttribution(this.roster)
     this.mailbox = new TeamMailbox(
@@ -150,13 +155,19 @@ export class TeamService extends TypertRemoteService {
     )
     this.tasks = new TeamTaskBoard(this.journal, this.config.maxTasks)
 
-    ctx.on('session/event', (session, event) => { this.mailbox.observeSessionEvent(session, event) })
-    ctx.on('fs/observed', (target, observation, actor, operation) => { this.attribution.observe(target, observation, actor, operation) })
+    ctx.on('session/event', (session, event) => {
+      this.mailbox.observeSessionEvent(session, event)
+    })
+    ctx.on('fs/observed', (target, observation, actor, operation) => {
+      this.attribution.observe(target, observation, actor, operation)
+    })
     ctx.on('fs/error-remedy', (request, next) => {
       const enriched = this.attribution.remedy(request)
       return Promise.resolve(enriched === undefined ? next() : enriched)
     })
-    ctx.on('agent/created', ({ agent }) => { this.scheduleRecovery(agent) })
+    ctx.on('agent/created', ({ agent }) => {
+      this.scheduleRecovery(agent)
+    })
     ctx.on('agent/status', ({ agent }) => {
       const membership = this.roster.tryMembership(agent)
       if (membership !== undefined) this.activity.notify(membership.id)
@@ -173,7 +184,9 @@ export class TeamService extends TypertRemoteService {
     }, 'agentTeams.runtimeLifecycle()')
     for (const agent of ctx.agents.list()) this.scheduleRecovery(agent)
     void this.institutionCatalog.read().then(
-      (file) => { this.rememberStandingLeads(file) },
+      (file) => {
+        this.rememberStandingLeads(file)
+      },
       () => {
         // Absent or invalid catalog: listInstitutionSquads is the loud path.
       },
@@ -234,6 +247,18 @@ export class TeamService extends TypertRemoteService {
    */
   async sendMessage(caller: Agent, request: SendTeamMessageRequest): Promise<SendTeamMessageResult> {
     return await this.mailbox.send(caller, request)
+  }
+
+  /**
+   * Cancel an unstarted queued message for one slot from this Lead's mailbox.
+   * @param caller - exact live Team member.
+   * @param roundId - group round identity.
+   * @param slotId - slot identity.
+   * @returns true if an unstarted queued message was cancelled.
+   */
+  async cancelQueuedSlot(caller: Agent, roundId: string, slotId: string): Promise<boolean> {
+    const membership = this.roster.membership(caller)
+    return await this.mailbox.cancelQueuedSlot(membership.root, roundId, slotId)
   }
 
   /**
@@ -377,10 +402,7 @@ export class TeamService extends TypertRemoteService {
    * @returns the bound Session and the current roster.
    */
   @Remote('ensureInstitutionSquad')
-  async remoteEnsureInstitutionSquad(
-    agent: Agent,
-    request: EnsureInstitutionSquadRequest,
-  ): Promise<EnsureInstitutionSquadResult> {
+  async remoteEnsureInstitutionSquad(agent: Agent, request: EnsureInstitutionSquadRequest): Promise<EnsureInstitutionSquadResult> {
     return await this.ensureInstitutionSquad(agent, request)
   }
 
@@ -393,10 +415,7 @@ export class TeamService extends TypertRemoteService {
    * @returns absolute path and UTF-8 HTML body.
    */
   @Remote('readHtmlPreview')
-  async remoteReadHtmlPreview(
-    agent: Agent,
-    request: ReadHtmlPreviewRequest,
-  ): Promise<ReadHtmlPreviewResult> {
+  async remoteReadHtmlPreview(agent: Agent, request: ReadHtmlPreviewRequest): Promise<ReadHtmlPreviewResult> {
     const membership = this.roster.membership(agent)
     const raw = request.path.trim()
     if (raw === '') {
@@ -407,10 +426,7 @@ export class TeamService extends TypertRemoteService {
       ? resolvePath(raw)
       : cwd === undefined
         ? (() => {
-          throw new TeamError(
-            'relative HTML preview paths need a Lead session cwd',
-            'TEAM_INVALID_TARGET',
-          )
+          throw new TeamError('relative HTML preview paths need a Lead session cwd', 'TEAM_INVALID_TARGET')
         })()
         : resolvePath(cwd, raw)
     const ext = extname(absolute).toLowerCase()
@@ -427,17 +443,10 @@ export class TeamService extends TypertRemoteService {
     try {
       html = await readFile(absolute, 'utf8')
     } catch (error: unknown) {
-      throw new TeamError(
-        `HTML preview could not be read: ${errorMessage(error)}`,
-        'TEAM_INVALID_TARGET',
-        { cause: error },
-      )
+      throw new TeamError(`HTML preview could not be read: ${errorMessage(error)}`, 'TEAM_INVALID_TARGET', { cause: error })
     }
     if (Buffer.byteLength(html, 'utf8') > MAX_HTML_PREVIEW_BYTES) {
-      throw new TeamError(
-        `HTML preview exceeds ${MAX_HTML_PREVIEW_BYTES} bytes`,
-        'TEAM_INVALID_TARGET',
-      )
+      throw new TeamError(`HTML preview exceeds ${MAX_HTML_PREVIEW_BYTES} bytes`, 'TEAM_INVALID_TARGET')
     }
     return { path: absolute, html }
   }
@@ -479,15 +488,33 @@ export class TeamService extends TypertRemoteService {
   }
 
   /**
+   * Execute an operation inside the serialized institution catalog write chain.
+   * @param action - async callback receiving the current catalog file inside the write lock.
+   * @returns result of the callback.
+   */
+  async transactInstitutionCatalog<T>(
+    action: (
+      current: InstitutionCatalogFile,
+    ) => Promise<{ next?: InstitutionCatalogFile; result: T }> | { next?: InstitutionCatalogFile; result: T },
+  ): Promise<T> {
+    return await this.institutionCatalog.transact(action)
+  }
+
+  /**
+   * Read the current institution catalog file directly.
+   * @returns current catalog content.
+   */
+  async readInstitutionCatalog(): Promise<InstitutionCatalogFile> {
+    return await this.institutionCatalog.read()
+  }
+
+  /**
    * Bind the caller as the standing Lead and spawn seats that are not yet on the roster.
    * @param caller - exact live Lead Agent.
    * @param request - squad slug and optional seat-route overrides.
    * @returns the bound Session and roster.
    */
-  async ensureInstitutionSquad(
-    caller: Agent,
-    request: EnsureInstitutionSquadRequest,
-  ): Promise<EnsureInstitutionSquadResult> {
+  async ensureInstitutionSquad(caller: Agent, request: EnsureInstitutionSquadRequest): Promise<EnsureInstitutionSquadResult> {
     const squad = requireInstitutionSquad(request.squadId)
     const membership = this.membership(caller)
     if (membership.role !== 'lead') {
@@ -496,12 +523,14 @@ export class TeamService extends TypertRemoteService {
     if (request.seats !== undefined) {
       for (const seat of request.seats) {
         requireInstitutionSeat(squad, seat.name)
-        await this.institutionCatalog.update(file => applySeatUpdate(file, {
-          squadId: squad.id,
-          name: seat.name,
-          ...seat.provider === undefined ? {} : { provider: seat.provider },
-          ...seat.model === undefined ? {} : { model: seat.model },
-        }))
+        await this.institutionCatalog.update(file =>
+          applySeatUpdate(file, {
+            squadId: squad.id,
+            name: seat.name,
+            ...(seat.provider === undefined ? {} : { provider: seat.provider }),
+            ...(seat.model === undefined ? {} : { model: seat.model }),
+          }),
+        )
       }
     }
     await this.institutionCatalog.update(file => ({
@@ -513,26 +542,28 @@ export class TeamService extends TypertRemoteService {
     this.rememberStandingLeads(catalog)
     const bindings = catalog.seats[squad.id] ?? {}
     const existing = new Set(
-      this.listMembers(caller).filter(member => member.role === 'teammate').map(member => member.name),
+      this.listMembers(caller)
+        .filter(member => member.role === 'teammate')
+        .map(member => member.name),
     )
     for (const seat of squad.seats) {
       if (existing.has(seat.name)) continue
       const binding = bindings[seat.name]
-      const agentOptions = binding === undefined
-        ? undefined
-        : {
-          ...binding.provider === undefined ? {} : { provider: binding.provider },
-          ...binding.model === undefined ? {} : { model: binding.model },
-        }
-      const hasOptions = agentOptions !== undefined
-        && (agentOptions.provider !== undefined || agentOptions.model !== undefined)
+      const agentOptions =
+        binding === undefined
+          ? undefined
+          : {
+            ...(binding.provider === undefined ? {} : { provider: binding.provider }),
+            ...(binding.model === undefined ? {} : { model: binding.model }),
+          }
+      const hasOptions = agentOptions !== undefined && (agentOptions.provider !== undefined || agentOptions.model !== undefined)
       await this.spawnTeammate(caller, {
         name: seat.name,
         description: `${seat.title}：${seat.duty}`,
         prompt: [{ type: 'text', text: standingSeatPrompt(squad, seat) }],
         context: 'fresh',
         provider: this.institutionFreshProvider,
-        ...hasOptions ? { agentOptions } : {},
+        ...(hasOptions ? { agentOptions } : {}),
         signal: this.lifecycle.signal,
       })
     }
@@ -553,9 +584,7 @@ export class TeamService extends TypertRemoteService {
       if (leadId === undefined) continue
       const snapshot = await this.ctx.sessionPersistence.stat(SessionId(leadId))
       if (snapshot === undefined) {
-        nextLeads = Object.fromEntries(
-          Object.entries(nextLeads).filter(([key]) => key !== id),
-        )
+        nextLeads = Object.fromEntries(Object.entries(nextLeads).filter(([key]) => key !== id))
         changed = true
       }
     }

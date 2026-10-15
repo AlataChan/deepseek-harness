@@ -115,6 +115,7 @@
     { "path": "./packages/experimental/desktop-ngo/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-media/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-speech-transcribe/tsconfig.client.json" },
+    { "path": "./packages/experimental/client-ui-assistants" },
     { "path": "./packages/client/ui-dockkit" },
     { "path": "./packages/client/ui-sidebar-right" },
     { "path": "./packages/client/ui-sidebar-documentpreview/tsconfig.client.json" },

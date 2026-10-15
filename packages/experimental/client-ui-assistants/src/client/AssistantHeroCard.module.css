@@ -1,0 +1,89 @@
+.section {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary, #111827);
+  margin: 0;
+}
+
+.desc {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+  margin: 0;
+}
+
+.cardsRow {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.heroCard {
+  min-width: 180px;
+  max-width: 220px;
+  padding: 12px;
+  background: var(--dsw-alias-bg-layer-1, #ffffff);
+  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  text-align: left;
+}
+
+.heroCard:hover {
+  border-color: var(--dsw-alias-state-business-primary, #10b981);
+  transform: translateY(-1px);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--dsw-alias-interactive-bg-hover, #d1fae5);
+  color: var(--dsw-alias-state-business-primary, #059669);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resp {
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

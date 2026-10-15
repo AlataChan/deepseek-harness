@@ -73,6 +73,9 @@ export function redactSessionSnapshotIds(logs: readonly string[]): string[] {
     if (typeof value === 'string') {
       for (const match of value.matchAll(/\bas message ([0-9a-f-]{36})\b/gi)) claim(match[1], 'message')
       for (const match of value.matchAll(/\bAnonymous user: ([0-9a-f-]{36})\b/gi)) claim(match[1], 'id')
+      // Prefixed opaque ids generated inside tool results (for example an assistant profile id) arrive
+      // inside free text, so they are claimed by shape rather than by a JSON key.
+      for (const match of value.matchAll(/\b([a-z][a-z0-9]*[_-][0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi)) claim(match[1], 'id')
       return
     }
     if (Array.isArray(value)) {

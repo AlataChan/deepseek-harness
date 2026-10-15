@@ -109,6 +109,7 @@ interface TeamServiceInternals {
     tryDispatch(root: Agent, message: TeamMessageSnapshot, signal: AbortSignal): Promise<boolean>
     serializeDispatch(message: TeamMessageSnapshot, operation: () => Promise<boolean>): Promise<boolean>
     markDelivered(root: Agent, messageId: ReturnType<typeof TeamMessageId>, targetId: SessionId): Promise<void>
+    dispatchOnce(root: Agent, message: TeamMessageSnapshot, signal: AbortSignal): Promise<boolean>
   }
   readonly journal: {
     state(root: Agent): unknown
@@ -121,6 +122,13 @@ interface TeamServiceInternals {
 /** White-box access follows the runtime owners so coverage does not widen the service API. */
 function teamInternals(ctx: Context): TeamServiceInternals {
   return ctx.agentTeams as unknown as TeamServiceInternals
+}
+
+/** Install the duck-typed seat-retirement authority the mailbox consults, and return its retirement switch. */
+function installRetirementAuthority(ctx: Context): (id: SessionId) => void {
+  const retired = new Set<string>()
+  ctx.provide('assistants', { isSessionRetired: (id: SessionId) => retired.has(String(id)) })
+  return (id: SessionId): void => { retired.add(String(id)) }
 }
 
 function spawn(
@@ -1502,6 +1510,146 @@ describe('Team mailbox and waiting', () => {
 
     ctx.agentTeams.interrupt(lead, 'live-target')
     await waitNoAgent(ctx, live.id)
+  })
+
+  it('leaves a queued message undelivered when its target retires before the queue turn', async () => {
+    const { ctx, lead } = await setup(['hang'])
+    const started = await spawn(ctx, lead, 'retiring-target')
+    const target = await waitRunning(ctx, started.member.id)
+    const retire = installRetirementAuthority(ctx)
+    const internal = teamInternals(ctx).mailbox
+    const message: TeamMessageSnapshot = {
+      id: TeamMessageId('queued-before-target-retirement'),
+      senderId: lead.id,
+      senderName: 'lead',
+      targetId: target.id,
+      content: content('queued while the target was active'),
+    }
+    lead.session.append('team/message/queued', { version: 2, teamId: TeamId(lead.id), message })
+    await ctx.sessions.flush(lead.session)
+
+    const entered = Promise.withResolvers<undefined>()
+    const release = Promise.withResolvers<undefined>()
+    const blocking = internal.serializeDispatch({
+      ...message,
+      id: TeamMessageId('target-queue-blocker'),
+    }, async () => {
+      entered.resolve(undefined)
+      await release.promise
+      return true
+    })
+    await entered.promise
+
+    // Retirement lands after delivery admission but while the message still
+    // waits behind the target-local queue.
+    const dispatching = internal.tryDispatch(lead, message, SIGNAL)
+    retire(target.id)
+    release.resolve(undefined)
+    await blocking
+
+    await expect(dispatching).resolves.toBe(false)
+    expect(durable(lead).pendingMessages.map(pending => pending.id)).toEqual([message.id])
+    expect(target.inbox.nextStep.some(input => input.source.kind === 'team-message'
+      && input.source.messageId === message.id)).toBe(false)
+
+    ctx.agentTeams.interrupt(lead, 'retiring-target')
+    target.cancel({ kind: 'parent' })
+    await waitNoAgent(ctx, target.id)
+  })
+
+  it('leaves a queued message undelivered when its sender retires before the queue turn', async () => {
+    const { ctx, lead } = await setup(['hang'])
+    const started = await spawn(ctx, lead, 'sender-retirement-target')
+    const target = await waitRunning(ctx, started.member.id)
+    const retire = installRetirementAuthority(ctx)
+    const internal = teamInternals(ctx).mailbox
+    const message: TeamMessageSnapshot = {
+      id: TeamMessageId('queued-before-sender-retirement'),
+      senderId: lead.id,
+      senderName: 'lead',
+      targetId: target.id,
+      content: content('queued while the sender was active'),
+    }
+    lead.session.append('team/message/queued', { version: 2, teamId: TeamId(lead.id), message })
+    await ctx.sessions.flush(lead.session)
+
+    const entered = Promise.withResolvers<undefined>()
+    const release = Promise.withResolvers<undefined>()
+    const blocking = internal.serializeDispatch({
+      ...message,
+      id: TeamMessageId('sender-queue-blocker'),
+    }, async () => {
+      entered.resolve(undefined)
+      await release.promise
+      return true
+    })
+    await entered.promise
+
+    const dispatching = internal.tryDispatch(lead, message, SIGNAL)
+    retire(lead.id)
+    release.resolve(undefined)
+    await blocking
+
+    await expect(dispatching).resolves.toBe(false)
+    expect(durable(lead).pendingMessages.map(pending => pending.id)).toEqual([message.id])
+    expect(target.inbox.nextStep.some(input => input.source.kind === 'team-message'
+      && input.source.messageId === message.id)).toBe(false)
+
+    ctx.agentTeams.interrupt(lead, 'sender-retirement-target')
+    target.cancel({ kind: 'parent' })
+    await waitNoAgent(ctx, target.id)
+  })
+
+  it('refuses delivery to a retired seat from a mailbox restarted over the same journal', async () => {
+    const { ctx, lead, teamFiber } = await setup([textResponse('restart target initial')])
+    const started = await spawn(ctx, lead, 'restarted-retired-target')
+    await waitNoAgent(ctx, started.member.id)
+    const message: TeamMessageSnapshot = {
+      id: TeamMessageId('queued-before-restart'),
+      senderId: lead.id,
+      senderName: 'lead',
+      targetId: started.member.id,
+      content: content('queued before the restart'),
+    }
+    lead.session.append('team/message/queued', { version: 2, teamId: TeamId(lead.id), message })
+    await ctx.sessions.flush(lead.session)
+
+    const retire = installRetirementAuthority(ctx)
+    retire(started.member.id)
+    await teamFiber.dispose()
+    await ctx.plugin(TeamService, {})
+
+    // The restarted mailbox must not cold-resume the retired seat at delivery.
+    await expect(teamInternals(ctx).mailbox.dispatchOnce(lead, message, SIGNAL)).resolves.toBe(false)
+    expect(ctx.agents.get(started.member.id)).toBeUndefined()
+    expect(durable(lead).pendingMessages.map(pending => pending.id)).toEqual([message.id])
+  })
+
+  it('keeps a queued message when recovery runs for a retired target', async () => {
+    const { ctx, lead } = await setup(['hang'])
+    const started = await spawn(ctx, lead, 'recovery-retirement-target')
+    const target = await waitRunning(ctx, started.member.id)
+    const retire = installRetirementAuthority(ctx)
+    const message: TeamMessageSnapshot = {
+      id: TeamMessageId('queued-before-recovery'),
+      senderId: lead.id,
+      senderName: 'lead',
+      targetId: target.id,
+      content: content('queued before recovery'),
+    }
+    lead.session.append('team/message/queued', { version: 2, teamId: TeamId(lead.id), message })
+    await ctx.sessions.flush(lead.session)
+    retire(target.id)
+
+    await teamInternals(ctx).recoverFor(lead)
+
+    expect(durable(lead).pendingMessages.map(pending => pending.id)).toEqual([message.id])
+    expect(target.inbox.nextStep.some(input => input.source.kind === 'team-message'
+      && input.source.messageId === message.id)).toBe(false)
+
+    ctx.agentTeams.interrupt(lead, 'recovery-retirement-target')
+    target.cancel({ kind: 'parent' })
+    await waitNoAgent(ctx, target.id)
   })
 
   it('cold-resumes an inactive sibling with sender attribution', async () => {

@@ -787,6 +787,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Owns the implicit-root roster, durable peer mailbox, shared task DAG, and continuable-child lifecycle; tool-agent-team contributes model controls.',
   },
   {
+    key: 'assistants',
+    pkg: 'experimental-assistant-registry',
+    title: 'Persistent assistant and team catalog and lifecycle',
+    mode: 'core',
+    consumers: [],
+    note: 'Owns persistent assistant profiles, saved-team definitions, private conversation bindings, and model route precedence.',
+  },
+  {
     key: 'claudeCodeMods',
     pkg: 'experimental-claude-code-mods',
     title: 'Claude Code mods bridge',

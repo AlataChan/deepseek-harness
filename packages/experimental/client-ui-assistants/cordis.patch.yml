@@ -1,0 +1,7 @@
+# octopus_DSH persistent assistants client UI overlay.
+- insert:
+    - id: assistant-registry
+      name: '@deepseek-ai/dsh-experimental-assistant-registry'
+
+    - id: client-ui-assistants
+      name: '@deepseek-ai/dsh-experimental-client-ui-assistants'

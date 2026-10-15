@@ -162,6 +162,9 @@ export interface TeamMessageSnapshot {
   readonly senderName: string
   readonly targetId: SessionId
   readonly content: ContentBlock[]
+  readonly roundId?: string | undefined
+  readonly slotId?: string | undefined
+  readonly attemptId?: string | undefined
 }
 
 /** Source retained by the target Session for durable mailbox de-duplication. */
@@ -171,6 +174,9 @@ export interface TeamMessageSource {
   readonly messageId: TeamMessageId
   readonly senderId: SessionId
   readonly senderName: string
+  readonly roundId?: string | undefined
+  readonly slotId?: string | undefined
+  readonly attemptId?: string | undefined
 }
 
 declare module '@deepseek-ai/dsh-llm' {
@@ -283,12 +289,18 @@ export interface SendTeamMessageRequest {
   readonly target: string
   readonly content: ContentBlock[]
   readonly signal: AbortSignal
+  readonly roundId?: string | undefined
+  readonly slotId?: string | undefined
+  readonly attemptId?: string | undefined
 }
 
 /** Result after a peer message enters the durable mailbox. */
 export interface SendTeamMessageResult {
   readonly messageId: TeamMessageId
   readonly status: 'accepted' | 'queued'
+  readonly roundId?: string | undefined
+  readonly slotId?: string | undefined
+  readonly attemptId?: string | undefined
 }
 
 /** Input for creating one shared task. */
@@ -352,6 +364,9 @@ declare module '@deepseek-ai/dsh-session/types' {
       teamId: TeamId
       messageId: TeamMessageId
       targetId: SessionId
+      roundId?: string | undefined
+      slotId?: string | undefined
+      attemptId?: string | undefined
     }
   }
 }
