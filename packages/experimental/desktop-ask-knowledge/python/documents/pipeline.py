@@ -160,7 +160,7 @@ def plan_document(req):
         plan_hash = _hash(plan)
         previous_path = _plan_path(vault, document_id)
         if previous_path.is_file():
-            previous = json.loads(previous_path.read_text())
+            previous = json.loads(previous_path.read_text(encoding='utf-8'))
             if previous['status'] in {'running', 'uncertain'}:
                 raise RuntimeError('Cannot replace an active or uncertain paid inference plan')
             if req.get('freshRetry'):
@@ -168,7 +168,7 @@ def plan_document(req):
                     raise RuntimeError('Retry source revision changed; import a new revision')
                 for chunk in plan['chunks']:
                     old = previous_path.parent / (previous['planHash'] + '-' + str(chunk['index']) + '.json')
-                    if chunk['index'] < len(previous['chunks']) and old.is_file() and json.loads(old.read_text()).get('state') == 'applied':
+                    if chunk['index'] < len(previous['chunks']) and old.is_file() and json.loads(old.read_text(encoding='utf-8')).get('state') == 'applied':
                         old_chunk = previous['chunks'][chunk['index']]
                         if (old_chunk['start'], old_chunk['end']) == (chunk['start'], chunk['end']):
                             chunk['alreadyApplied'] = True
@@ -215,7 +215,7 @@ def _public_plan(plan):
 def _reported_usage(plan_path, plan):
     total = 0
     for path in plan_path.parent.glob(plan['planHash'] + '-*.json'):
-        saved = json.loads(path.read_text())
+        saved = json.loads(path.read_text(encoding='utf-8'))
         total += (saved.get('inputTokens') or 0) + (saved.get('outputTokens') or 0)
     return total
 
@@ -244,7 +244,7 @@ def execute_document(req):
             raise ValueError('Frozen request manifest integrity check failed')
         if plan['status'] == 'uncertain' or (plan['status'] == 'running' and plan['startupAttempt'] == current_attempt):
             raise RuntimeError('Execution is active or uncertain; automatic duplicate inference is refused')
-        if plan['status'] == 'running' and any(json.loads(p.read_text()).get('state') == 'calling' for p in plan_path.parent.glob(plan['planHash'] + '-*.json')):
+        if plan['status'] == 'running' and any(json.loads(p.read_text(encoding='utf-8')).get('state') == 'calling' for p in plan_path.parent.glob(plan['planHash'] + '-*.json')):
             raise RuntimeError('Interrupted inference outcome is uncertain; refusing automatic repeat')
         if plan['status'] == 'cancelled':
             raise RuntimeError('Cancelled jobs cannot resume; explicitly retry to create a new plan')
@@ -282,7 +282,7 @@ def execute_document(req):
                 continue
             checkpoint = plan_path.parent / (plan['planHash'] + '-' + str(chunk['index']) + '.json')
             with publication_guard(vault, plan, attempt):
-                saved = json.loads(checkpoint.read_text()) if checkpoint.is_file() else None
+                saved = json.loads(checkpoint.read_text(encoding='utf-8')) if checkpoint.is_file() else None
                 if saved and saved.get('requestHash') != chunk['requestHash']:
                     raise ValueError('Saved provider response request identity mismatch')
                 if saved and saved['state'] == 'applied':
@@ -350,7 +350,7 @@ def execute_document(req):
                 existing_id = proposal['id'] + ('-recovery-' + str(saved['applyAttempt']) if saved.get('applyAttempt') else '')
                 existing_audit = audit.find_entry(vault, existing_id)
                 if existing_audit is not None:
-                    audit_state = json.loads(existing_audit.read_text())['status']
+                    audit_state = json.loads(existing_audit.read_text(encoding='utf-8'))['status']
                     if audit_state == 'pending':
                         recover_proposal(existing_id, vault)
                         audit_state = 'rolled_back'
@@ -379,9 +379,9 @@ def execute_document(req):
         return _public_plan(plan)
     except Exception as exc:
         with commit_lock(vault):
-            current = json.loads(plan_path.read_text())
+            current = json.loads(plan_path.read_text(encoding='utf-8'))
             if current['status'] != 'cancelled':
-                current['status'] = 'uncertain' if any(json.loads(p.read_text()).get('state') == 'calling' for p in plan_path.parent.glob(plan['planHash'] + '-*.json')) else 'paused'
+                current['status'] = 'uncertain' if any(json.loads(p.read_text(encoding='utf-8')).get('state') == 'calling' for p in plan_path.parent.glob(plan['planHash'] + '-*.json')) else 'paused'
                 current['error'] = str(exc)
                 _write(plan_path, current)
                 if verify_startup_attempt(db, plan['libraryId'], attempt):
@@ -436,7 +436,7 @@ def document_location(req):
             raise ValueError('Original source is unavailable')
         rel = revision['objectPath']
     else:
-        plan = json.loads(_plan_path(vault, req['documentId']).read_text())
+        plan = json.loads(_plan_path(vault, req['documentId']).read_text(encoding='utf-8'))
         rel = plan['rawPath'] if action == 'text' else _plan_path(vault, req['documentId']).relative_to(vault).as_posix()
     path = vault / rel
     if not path.is_file() or not path.resolve().is_relative_to(vault.resolve()):
@@ -468,7 +468,7 @@ def document_status(req):
             linked = any(part.is_symlink() for part in [source, *source.parents] if part != vault and part.is_relative_to(vault))
             available = source.is_file() and not linked and source.resolve().is_relative_to(vault.resolve()) and hashlib.sha256(source.read_bytes()).hexdigest() == revision['sha256']
         path = _plan_path(vault, document_id)
-        plan = json.loads(path.read_text()) if path.is_file() else None
+        plan = json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
         raw_rel = plan['rawPath'] if plan else (revision['objectPath'] if revision and revision['objectPath'].startswith('raw/') else None)
         searchable = False
         if raw_rel:
@@ -489,7 +489,7 @@ def document_status(req):
                'estimatedTokens': 0, 'budgetApproved': False, 'planHash': None, 'error': None}
         if plan:
             if plan['status'] == 'running' and not verify_startup_attempt(db, plan['libraryId'], plan['startupAttempt']):
-                plan['status'] = 'uncertain' if any(json.loads(p.read_text()).get('state') == 'calling' for p in path.parent.glob(plan['planHash'] + '-*.json')) else 'paused'
+                plan['status'] = 'uncertain' if any(json.loads(p.read_text(encoding='utf-8')).get('state') == 'calling' for p in path.parent.glob(plan['planHash'] + '-*.json')) else 'paused'
             row.update(_public_plan(plan))
             row['conversionStatus'] = plan['conversionStatus']
             row['stage'] = plan['status']
@@ -500,7 +500,7 @@ def document_status(req):
                 row.update(status=job['status'], stage='conversion', jobId=job['jobId'], error=job.get('error'))
             failure = _conversion_path(vault, document_id)
             if failure.is_file() and not (job and job['status'] in {'active', 'queued'}):
-                diagnostic = json.loads(failure.read_text())
+                diagnostic = json.loads(failure.read_text(encoding='utf-8'))
                 row['conversionStatus'] = diagnostic['status']
                 row.update(status='cancelled' if (job and job['status'] == 'cancelled') or diagnostic['status'] == 'cancelled' else 'failed',
                            stage='conversion', error=diagnostic.get('error'))
@@ -534,7 +534,7 @@ def document_action(req):
             cancel_job(db, job['jobId'])
             _write(_conversion_path(vault, req['documentId']), {'status': 'cancelled', 'conversion': {}, 'error': 'Processing cancelled'})
             return {'ok': True, 'documentId': req['documentId'], 'status': 'cancelled'}
-        plan = json.loads(path.read_text())
+        plan = json.loads(path.read_text(encoding='utf-8'))
         if plan['libraryId'] != req['libraryId']:
             raise ValueError('Cross-library document action rejected')
         if req['action'] == 'cancel':

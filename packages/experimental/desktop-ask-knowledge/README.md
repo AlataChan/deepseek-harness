@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`desktop-ask-knowledge` provides desktop document libraries under the app-data directory. Uploads retain immutable originals, publish distinct normalized text for each import, and index full raw pages and handwritten wiki entries. Conversion and search do not call a model. Wiki enrichment requires explicit approval of a durable full-document request manifest and its conservative token allowance. The desktop profile seeds this overlay without changing official application packages.
+`desktop-ask-knowledge` provides desktop document libraries under the app-data directory. Uploads retain immutable originals, publish distinct normalized text for each import, and index full raw pages and handwritten wiki entries. Conversion and search do not call a model. Wiki enrichment requires explicit approval of a durable full-document request manifest and its conservative token allowance. The desktop profile seeds this overlay without changing official application packages. Document manifests, checkpoints, and conversion diagnostics are read and written as UTF-8 independently of the Host locale.
 
 ## Table of Contents
 
