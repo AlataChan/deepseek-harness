@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-`desktop-ask-knowledge` 是文档库的私有桌面 overlay：提供 `ctx.askKnowledge`，为入库、propose 与抽取运行随包的 octopus-kb sidecar，并占用 `conversation.hero.askKnowledge`。活库位于 Tauri `app_data_dir`；`catalog.json` 是唯一户口本，工作区 symlink 可选，绝不是索引。桌面 profile 种子会安装本包；官方 `dsh-desktop-app` 与默认 `standard` 助理不点名它。
+`desktop-ask-knowledge` 在应用数据目录提供文档知识库。上传时保留不可覆盖的原件，为每次导入生成独立文本，并对完整原始文本和手写 wiki 条目建立索引。转换和检索不会调用模型；知识整理须先展示并批准完整文档的持久化请求清单和保守 token 预算。桌面 profile 安装本 overlay，不修改官方应用包。
 
 ## 目录
 
@@ -29,9 +29,13 @@ kind: "package-bundle"
   config:
     knowledgeHome: ''
     sidecarRuntimePath: ''
+    extractionChunkChars: 1500
+    extractionContextChars: 2000
+    extractionOutputTokens: 2048
+    extractionTimeoutMs: 1800000
 ```
 
-空的 `knowledgeHome` 使用 `OCTOPUS_APP_DATA`。空的 `sidecarRuntimePath` 使用 `OCTOPUS_SIDECAR_HOME`。`cordis.patch.yml` 插入这一行 Host。Client 半边在 Host fiber 就绪后从 `dsh.client` 发现。
+空的 `knowledgeHome` 使用 `OCTOPUS_APP_DATA`。空的 `sidecarRuntimePath` 使用 `OCTOPUS_SIDECAR_HOME`。`cordis.patch.yml` 插入这一行 Host。Client 在注册界面前挂载生成的文档 Remote。每个库的 `.octopus-kb/config.toml` 统一配置整理模型；批准绑定该 profile、模型、端点、实际序列化请求、源文件哈希和完整字符覆盖。路由或请求变化后须重新估算和批准。缺失或结果不明的响应会暂停处理，不会自动重复付费推理。
 
 <a id="model-experience"></a>
 ## 模型体验
@@ -49,7 +53,8 @@ kind: "package-bundle"
 检索时使用 ask_knowledge_retrieve 的 terms 数组，填写 1 到 6 个专名，不要整句。
 每个专名去掉首尾空白后不超过 16 个字，且不得含 ?？。！! 或换行。
 ask_knowledge_retrieve 的返回里已有命中页的正文。先根据这些正文回答。
-不要用工作区文件、bash 或问数据工具代替知识库检索。只有检索结果为空时，才能说库里没有这份材料。
+返回 cursor 表示还有未读内容；用相同 terms 和 documentFilter 继续检索。需要完整段落时，调用 ask_knowledge_read 并继续读取其 cursor。
+不要用工作区文件、bash 或问数据工具代替知识库检索。检索无结果也只表示这些专名未命中；有截断警告或 cursor 时不能断言整库没有材料。
 仅当需要打开检索结果里某一条 wiki 词条页时，再调用 ask_knowledge_lookup，term 用该页标题或路径。
 不要用 write、edit 或 bash 修改知识库目录或 .octopus-kb/。
 ```
@@ -66,7 +71,7 @@ ask_knowledge_retrieve 的返回里已有命中页的正文。先根据这些正
 
 #### 模型看见什么
 
-存在 `ctx.tools` 时，overlay 注册 `ask_knowledge_retrieve` 和 `ask_knowledge_lookup`。实验工具不进官方 tool catalog。执行器接受 `terms[]` 或一个 `term`，并拒绝整句。retrieve 的 render 带上每页正文，模型不必再为同一页空转 lookup。
+存在 `ctx.tools` 时，overlay 注册 `ask_knowledge_retrieve`、`ask_knowledge_read` 和 `ask_knowledge_lookup`。检索及完整段落读取返回私密签名的续读游标，绑定知识库、查询和索引世代；正常工具结果将模型可见文本与游标元数据保存在会话日志中。实验工具不进官方 tool catalog。执行器接受 `terms[]` 或一个 `term`，并拒绝整句。retrieve 的 render 带上每页正文，模型不必再为同一页空转 lookup。
 
 #### Token 影响
 
@@ -74,18 +79,18 @@ ask_knowledge_retrieve 的返回里已有命中页的正文。先根据这些正
 
 #### KV Cache 影响
 
-工具集不变时前缀稳定。HMR dispose 会摘掉两个 schema，可能从第一处变化的 schema token 起让复用失效。
+工具集不变时前缀稳定。HMR dispose 会摘掉三个 schema，可能从第一处变化的 schema token 起让复用失效。
 
 <a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
-- **扫描件 PDF 抽不出字** — 文字 PDF 走 markitdown[pdf]；纯图页不做 OCR
-- **不接受 .xls** — Excel 须是 `.xlsx`。表格更适合走问数据
-- **不接受老 .doc** — Word 须是 `.docx`。Host 只读 `word/document.xml`；其它 zip 段里的页眉、页脚、批注不会抽出
-- **没有收件箱审核台，也没有 ingest-url**
-- **不改官方 desktop-app 组合** — 本 overlay 是 profile pin
+- 纯图片 PDF 页需要 OCR；文字与图片混合页无法确认图片内文字是否完整，因此保留“部分文本”状态，不调用云端 OCR。
+- 系统能够限制网络时，DOCX 使用隔离的原生转换器；内置回退报告“部分提取”和遗漏部件。旧版 `.doc`、`.xls` 不受支持，表格一般更适合问数据。
+- macOS 通过操作系统禁止原生转换器联网；无法建立限制时拒绝启动。Windows 原生转换等待等效网络策略。macOS 的进程组托管无法约束任意主动逃离进程组的后代。
+- 仅本会话文档预览保持 32,000 字符上限；本 overlay 不引入保留 24 小时的策略。
+- 设置页展示真实保留、转换、检索和分段进度。“批准”执行显示的计划；“取消”停止所属工作并保留原件与已提交历史；“重试”只生成新的待批准估算。付费结果不明时须先排查，不会自动重发。
 
 <a id="dev-note"></a>
 ### 开发备注
 
-`catalog.json` 是唯一户口本；`DEEPSEEK_API_KEY` 只注入 sidecar 子进程这一次；缺少 `OCTOPUS_APP_DATA` 或 `OCTOPUS_SIDECAR_HOME` 只能让问知识方法失败，不能让 companion 聊天失败。浏览器侧上传队列以窗口为界，Host 对每个库串行入库，所以关窗会丢掉排队文件；`builtins.yaml` 有意删掉 `confidence.tier_gate_defer`，让中等置信度提案直接入库，而不是停进没人审核的收件箱。
+`catalog.json` 管理知识库身份。原件以私有流式文件写入并 fsync，不覆盖已发布对象，通过可重放意图完成登记；启动时先修复登记，再恢复任务。共享短文件锁将启动世代、取消和 wiki／审计发布串行化，模型推理在锁外运行。只有明确的整理调用获得配置的凭据；调用方等待托管进程退出，转换结果使用私有且有上限的文件。删除知识库会删除该库保留的原件和处理记录。Windows 原生安装态验收仍是独立的发行条件。

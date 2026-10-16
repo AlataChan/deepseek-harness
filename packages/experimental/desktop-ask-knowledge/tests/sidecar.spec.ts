@@ -1,6 +1,6 @@
 /** Sidecar spawn, env isolation, abort, and vault bootstrap. */
 
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -76,6 +76,22 @@ describe('ask-knowledge sidecar', () => {
       code: 'ingest-failed',
       message: '这份文件没有可提取的文字。',
     })
+  })
+
+  it('returns a large session conversion through file results without losing its tail', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-knowledge-large-file-result-'))
+    try {
+      await installPythonSidecar(home)
+      const source = join(home, 'large.md')
+      await writeFile(source, '全量文档。'.repeat(200_000) + 'SESSION_FINAL_MARKER_9241')
+      const result = await runSidecar({ sidecarRuntimePath: home }, { command: 'convert-file', path: source })
+      expect(result.ok).toBe(true)
+      expect(typeof result.body).toBe('string')
+      expect(String(result.body)).toContain('SESSION_FINAL_MARKER_9241')
+      expect(Buffer.byteLength(String(result.body))).toBeGreaterThan(2 * 1024 * 1024)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
   })
 
   it('fails retrieve when sidecar home is missing', async () => {

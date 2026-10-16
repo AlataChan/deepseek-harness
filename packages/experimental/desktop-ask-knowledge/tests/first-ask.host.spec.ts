@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { bootOverlay } from './helpers/boot.ts'
+import { installPythonSidecar } from './helpers/install-sidecar.ts'
 
 const cleanups: Array<() => Promise<void> | void> = []
 const originalCwd = process.cwd()
@@ -25,6 +26,7 @@ describe('ask-knowledge first-ask', () => {
     })
     cleanups.push(() => started.fiber.dispose())
     const { ctx } = started
+    await installPythonSidecar(started.sidecarHome)
     const library = await ctx.askKnowledge.createLibrary({ displayName: '报销制度' })
     const handle = await ctx.askKnowledge.beginIngest({ libraryId: library.id, filename: '报销.md' })
     await ctx.askKnowledge.appendIngestChunk({
@@ -32,7 +34,7 @@ describe('ask-knowledge first-ask', () => {
       bytes: Buffer.from('# 报销\n\n报销流程。\n', 'utf8').toString('base64'),
     })
     const ingested = await ctx.askKnowledge.finishIngest({ handle })
-    expect(ingested.status).toBe('applied')
+    expect(ingested.status).toBe('deferred')
     const session = ctx.sessions.prepare(SessionId('first-ask'))
     ctx.sessions.enter(session)
     ctx.sessions.announce(session)

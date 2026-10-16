@@ -3,8 +3,13 @@
  * @module @deepseek-ai/dsh-experimental-desktop-ask-knowledge/sidecar
  */
 
-import { spawn } from 'node:child_process'
+import { Context } from '@deepseek-ai/cordis'
+import type { SubprocessHandle, SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
+import { LocalSubprocessRuntime } from '@deepseek-ai/dsh-subprocess-local'
 import { existsSync, statSync } from 'node:fs'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { validateFileResult } from './document-jobs.ts'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
@@ -98,91 +103,58 @@ export async function runSidecar(
   const home = resolveSidecarHome(config)
   const executable = resolveSidecarExecutable(home)
   const kbRoot = resolveKbRoot(home)
-  const merged: NodeJS.ProcessEnv = { ...process.env, OCTOPUS_KB_ROOT: kbRoot }
-  delete merged.DEEPSEEK_API_KEY
-  const childEnv = Object.fromEntries(
-    Object.entries({ ...merged, ...options.env }).filter((entry): entry is [string, string] => (
-      entry[1] !== undefined
-    )),
-  )
-  /* v8 ignore start -- tests and the bundle install a named executable, not sidecar.py */
-  const args = executable.endsWith('.py') ? [executable] : []
-  const command = executable.endsWith('.py') ? (process.env.ASK_KNOWLEDGE_PYTHON ?? 'python3') : executable
-  /* v8 ignore stop */
-  return await new Promise<SidecarResponse>((resolvePromise, reject) => {
-    const child = spawn(command, args, {
-      env: childEnv,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-    })
-    const stdout: Buffer[] = []
-    const stderr: Buffer[] = []
-    let settled = false
-    const finish = (error: Error | undefined, value?: SidecarResponse) => {
-      if (settled) return
-      settled = true
-      options.signal?.removeEventListener('abort', onAbort)
-      if (timer !== undefined) clearTimeout(timer)
-      if (error !== undefined) reject(error)
-      else if (value === undefined) {
-        reject(new AskKnowledgeError('ingest-failed', 'sidecar finished without a response'))
-      } else resolvePromise(value)
-    }
-    const onAbort = () => {
-      child.kill('SIGTERM')
-      finish(new AskKnowledgeError('ingest-failed', 'sidecar was aborted'))
-    }
-    options.signal?.addEventListener('abort', onAbort, { once: true })
-    const timer = options.timeoutMs === undefined
-      ? undefined
-      : setTimeout(() => {
-        child.kill('SIGTERM')
-        finish(new AskKnowledgeError('ingest-failed', 'sidecar timed out'))
-      }, options.timeoutMs)
-    child.stdout.on('data', (chunk) => { stdout.push(chunk as Buffer) })
-    child.stderr.on('data', (chunk) => { stderr.push(chunk as Buffer) })
-    /* v8 ignore next 3 -- spawn fails only when the resolved executable vanishes */
-    child.on('error', (error) => {
-      finish(new AskKnowledgeError('sidecar-home-missing', error.message))
-    })
-    child.on('close', (code) => {
-      const text = Buffer.concat(stdout).toString('utf8').trim()
-      if (text === '') {
-        finish(new AskKnowledgeError(
-          'ingest-failed',
-          `sidecar exited ${code ?? 'null'} without JSON`,
-        ))
-        return
+  const resultDir = ['convert-document', 'convert-file'].includes(request.command) ? await mkdtemp(join(tmpdir(), 'dsh-convert-result-')) : undefined
+  const resultPath = resultDir ? join(resultDir, 'result.json') : undefined
+  try {
+    const response = await withKnowledgeProcessRunner(config, async (runner) => {
+      let result: KnowledgeProcessResult
+      try {
+        result = await runner.run({
+          argv: [executable],
+          cwd: home,
+          input: `${JSON.stringify(resultPath ? { ...request, resultPath } : request)}\n`,
+          env: { OCTOPUS_KB_ROOT: kbRoot, ...options.env },
+          signal: options.signal,
+          timeoutMs: options.timeoutMs,
+        })
+      } catch (error) {
+        if (error instanceof KnowledgeProcessExitError) {
+          let failure: unknown
+          try { failure = JSON.parse(error.stdout.trim().split('\n').filter(Boolean).at(-1) ?? '') }
+          catch (_invalidSidecarErrorJson) { throw error }
+          if (typeof failure === 'object' && failure !== null && 'ok' in failure && failure.ok === false &&
+            'error' in failure && typeof failure.error === 'string') {
+            throw new AskKnowledgeError('ingest-failed', failure.error)
+          }
+        }
+        throw error
       }
       let parsed: unknown
-      const lastLine = text.split('\n').filter(Boolean).at(-1)
-      if (lastLine === undefined) {
-        finish(new AskKnowledgeError('ingest-failed', 'sidecar stdout is not JSON'))
-        return
-      }
       try {
-        parsed = JSON.parse(lastLine)
-      } catch {
-        finish(new AskKnowledgeError('ingest-failed', 'sidecar stdout is not JSON'))
-        return
+        parsed = JSON.parse(result.stdout.trim().split('\n').filter(Boolean).at(-1) ?? '')
+      } catch (error) {
+        throw new AskKnowledgeError('ingest-failed', `sidecar stdout is not JSON: ${String(error)}`)
       }
-      if (typeof parsed !== 'object' || parsed === null) {
-        finish(new AskKnowledgeError('ingest-failed', 'sidecar JSON is not an object'))
-        return
+      if (typeof parsed !== 'object' || parsed === null || !('ok' in parsed) || parsed.ok !== true) {
+        const detail = typeof parsed === 'object' && parsed !== null && 'error' in parsed
+          ? String(parsed.error) : 'sidecar failed'
+        throw new AskKnowledgeError('ingest-failed', detail)
       }
-      const response = parsed as SidecarResponse
-      if (response.ok !== true) {
-        finish(new AskKnowledgeError(
-          'ingest-failed',
-          typeof response.error === 'string' ? response.error : 'sidecar failed',
-        ))
-        return
+      if (resultDir && resultPath && ('protocol' in parsed || request.command === 'convert-document')) {
+        if (!('protocol' in parsed) || parsed.protocol !== 'file-result-v1' || !('resultPath' in parsed) || parsed.resultPath !== resultPath ||
+          !('sha256' in parsed) || typeof parsed.sha256 !== 'string') {
+          throw new AskKnowledgeError('ingest-failed', 'conversion did not produce an authorized file result')
+        }
+        const data = await validateFileResult(resultDir, resultPath, parsed.sha256)
+        if (data.ok !== true) throw new AskKnowledgeError('ingest-failed', String(data.error ?? 'conversion failed'))
+        return data as SidecarResponse
       }
-      finish(undefined, response)
+      return parsed as SidecarResponse
     })
-    child.stdin.write(`${JSON.stringify(request)}\n`)
-    child.stdin.end()
-  })
+    return response
+  } finally {
+    if (resultDir) await rm(resultDir, { recursive: true, force: true })
+  }
 }
 
 /**
@@ -197,4 +169,152 @@ export const sidecarScriptPath = PACKAGE_PYTHON
  */
 export function packagePythonDir(): string {
   return dirname(PACKAGE_PYTHON)
+}
+
+/** Fully resolved batch invocation owned by the knowledge service. */
+export interface KnowledgeProcessRequest {
+  readonly argv: readonly string[]
+  readonly cwd: string
+  readonly input?: string | undefined
+  readonly env?: Readonly<Record<string, string | undefined>> | undefined
+  readonly signal?: AbortSignal | undefined
+  readonly timeoutMs?: number | undefined
+  readonly jobId?: string | undefined
+}
+
+/** Output collected only after the provider-managed range has settled. */
+export interface KnowledgeProcessResult {
+  readonly stdout: string
+  readonly stderr: string
+}
+
+/** Nonzero process exit retains bounded protocol output for the sidecar parser. */
+class KnowledgeProcessExitError extends AskKnowledgeError {
+  constructor(readonly exitCode: number | null, readonly stdout: string, readonly stderr: string) {
+    super('ingest-failed', `knowledge child exited ${exitCode}: ${stderr || stdout}`)
+  }
+}
+
+/** Owns conversion/job children through the mounted subprocess provider. */
+export class KnowledgeProcessRunner {
+  private readonly active = new Map<SubprocessHandle, string | undefined>()
+  private disposed = false
+  private readonly cancelled = new Set<SubprocessHandle>()
+
+  private readonly runtime: Promise<SubprocessRuntime>
+  private readonly localContext: Context | undefined
+
+  constructor(subprocess?: SubprocessRuntime) {
+    if (subprocess) {
+      this.runtime = Promise.resolve(subprocess)
+    } else {
+      const ctx = new Context()
+      this.localContext = ctx
+      this.runtime = Promise.resolve(ctx.plugin(LocalSubprocessRuntime)).then(() => {
+        const provider = ctx.get('subprocess')
+        if (!provider) throw new AskKnowledgeError('ingest-failed', 'local subprocess provider failed to initialize')
+        return provider
+      })
+    }
+  }
+
+  /**
+   * Execute a bounded batch and await managed-range settlement on every path.
+   * @param request - exact argv, lifetime, input and deliberate environment.
+   * @returns complete bounded stdout and diagnostics; truncation fails visibly.
+   */
+  async run(request: KnowledgeProcessRequest): Promise<KnowledgeProcessResult> {
+    if (this.disposed) throw new AskKnowledgeError('ingest-failed', 'knowledge service is disposed')
+    if (request.signal?.aborted) throw new AskKnowledgeError('ingest-failed', 'knowledge child was aborted')
+    const deadline = AbortSignal.timeout(request.timeoutMs ?? 90_000)
+    const signal = request.signal ? AbortSignal.any([request.signal, deadline]) : deadline
+    // Tombstones prevent the provider's safe ambient base from forwarding proxies,
+    // loader hooks or user configuration. Credentials require deliberate request.env.
+    const env: NodeJS.ProcessEnv = Object.fromEntries(Object.keys(process.env).map(key => [key, undefined]))
+    for (const key of ['PATH', 'HOME', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'LANG']) {
+      if (process.env[key] !== undefined) env[key] = process.env[key]
+    }
+    Object.assign(env, request.env)
+    const subprocess = await this.runtime
+    if (this.disposed) throw new AskKnowledgeError('ingest-failed', 'knowledge service is disposed')
+    if (signal.aborted) throw new AskKnowledgeError('ingest-failed', 'knowledge child was aborted or timed out')
+    const handle = subprocess.spawn({
+      argv: request.argv,
+      cwd: request.cwd,
+      stdio: {
+        stdin: request.input === undefined ? 'ignore' : { data: request.input },
+        stdout: { maxBytes: 2 * 1024 * 1024 },
+        stderr: { maxBytes: 64 * 1024 },
+      },
+      graceMs: 500,
+      env,
+      signal,
+    })
+    this.active.set(handle, request.jobId)
+    try {
+      const outcome = await handle.done
+      // A child must not leave descendants running after writing its result.
+      handle.terminate()
+      await handle.waitForExit()
+      if (signal.aborted) throw new AskKnowledgeError('ingest-failed', 'knowledge child was aborted or timed out')
+      if (this.disposed || this.cancelled.has(handle)) throw new AskKnowledgeError('ingest-failed', 'knowledge child was cancelled')
+      const stdout = handle.collected.stdout?.readFrom(0)
+      const stderr = handle.collected.stderr?.readFrom(0)
+      if (outcome.exitCode !== 0) {
+        throw new KnowledgeProcessExitError(outcome.exitCode, stdout?.text ?? '', stderr?.text ?? '')
+      }
+      if (stdout?.lossy) throw new AskKnowledgeError('ingest-failed', 'knowledge child response exceeded collection limit; use file results')
+      return { stdout: stdout?.text ?? '', stderr: stderr?.text ?? '' }
+    } catch (error) {
+      if (signal.aborted) throw new AskKnowledgeError('ingest-failed', deadline.aborted ? 'knowledge child timed out' : 'knowledge child was aborted')
+      throw error
+    } finally {
+      handle.terminate()
+      await handle.waitForExit()
+      this.active.delete(handle)
+      this.cancelled.delete(handle)
+    }
+  }
+
+  /**
+   * Stop and join all currently executing children of one tracked job.
+   * @param jobId - durable job identity.
+   */
+  async cancelJob(jobId: string): Promise<void> {
+    const handles = [...this.active].filter(([, id]) => id === jobId).map(([handle]) => handle)
+    for (const handle of handles) { this.cancelled.add(handle); handle.terminate() }
+    await Promise.all(handles.map(handle => handle.waitForExit()))
+  }
+
+  /** Reject new work and join every active provider-managed range. */
+  async dispose(): Promise<void> {
+    this.disposed = true
+    const handles = [...this.active.keys()]
+    for (const handle of handles) { this.cancelled.add(handle); handle.terminate() }
+    await Promise.all(handles.map(handle => handle.waitForExit()))
+    await this.runtime
+    await this.localContext?.fiber.dispose()
+  }
+}
+
+/**
+ * Use the production service owner or an isolated, per-call local owner in utilities.
+ * @param config - runtime capability injected by the knowledge service.
+ * @param operation - operation that must settle before its owner is disposed.
+ * @returns operation result.
+ */
+export async function withKnowledgeProcessRunner<T>(
+  config: AskKnowledgeHomeConfig,
+  operation: (runner: KnowledgeProcessRunner) => Promise<T>,
+): Promise<T> {
+  if (config.processRunner) return await operation(config.processRunner)
+  const ctx = new Context()
+  await ctx.plugin(LocalSubprocessRuntime)
+  const runner = new KnowledgeProcessRunner(ctx.get('subprocess'))
+  try {
+    return await operation(runner)
+  } finally {
+    await runner.dispose()
+    await ctx.fiber.dispose()
+  }
 }

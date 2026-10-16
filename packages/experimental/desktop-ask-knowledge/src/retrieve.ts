@@ -11,7 +11,7 @@ import { parseAskKnowledgeLookupTerm, parseAskKnowledgeTerms } from '@deepseek-a
 import { assertVaultDir, requireLibrary } from './catalog.ts'
 import type { AskKnowledgeHomeConfig } from './knowledge-home.ts'
 import { withLibraryLock } from './library-lock.ts'
-import { boundRetrieveResult, resolveResultBounds, type ResultBounds } from './result-bounds.ts'
+import { boundRetrieveResult, resolveResultBounds, tokenEstimate, type ResultBounds } from './result-bounds.ts'
 import { runSidecar } from './sidecar.ts'
 
 /**
@@ -48,9 +48,12 @@ export async function retrieveLibraryBundle(
       const rawItems = Array.isArray(response.items) ? response.items : []
       for (const raw of rawItems) {
         if (typeof raw !== 'object' || raw === null) continue
-        const item = raw as { path?: unknown; title?: unknown; reason?: unknown; text?: unknown; kind?: unknown }
-        if (typeof item.path !== 'string' || seen.has(item.path)) continue
-        seen.add(item.path)
+        const item = raw as { path?: unknown; title?: unknown; reason?: unknown; text?: unknown; kind?: unknown; passageId?: unknown }
+        if (typeof item.path !== 'string') continue
+        const pId = typeof item.passageId === 'string' ? item.passageId : undefined
+        const itemKey = pId ? `${item.path}#${pId}` : item.path
+        if (seen.has(itemKey)) continue
+        seen.add(itemKey)
         const kind = item.kind === 'concept' || item.kind === 'entity' || item.kind === 'raw'
           ? item.kind
           : 'raw'
@@ -123,12 +126,16 @@ export async function lookupLibraryTerm(
       [],
       bounds,
     )
-    return {
+    const result: AskKnowledgeLookup = {
       term: parsed,
       ...path === undefined ? {} : { canonicalPath: path },
       ...bundle.items[0]?.text === undefined ? {} : { text: bundle.items[0].text },
       warnings: bundle.warnings,
     }
+    if (tokenEstimate(JSON.stringify(result)) > bounds.maxTokens) {
+      throw new AskKnowledgeError('ingest-failed', 'lookup metadata exceeds the payload allowance')
+    }
+    return result
   })
 }
 

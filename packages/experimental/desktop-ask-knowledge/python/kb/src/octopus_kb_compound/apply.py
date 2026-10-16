@@ -71,7 +71,15 @@ def validate_proposal_file(
     *,
     apply: bool = False,
     override: dict[str, list[str]] | None = None,
+    commit_guard=None,
 ) -> ApplyResult:
+    if commit_guard is not None:
+        with commit_guard():
+            return _validate_proposal_file(proposal_path, vault, apply=apply, override=override)
+    return _validate_proposal_file(proposal_path, vault, apply=apply, override=override)
+
+
+def _validate_proposal_file(proposal_path, vault, *, apply=False, override=None):
     root = Path(vault)
     path = Path(proposal_path)
     if not root.exists() or not root.is_dir():

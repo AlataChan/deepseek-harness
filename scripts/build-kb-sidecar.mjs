@@ -178,6 +178,7 @@ run(VENV_PYTHON, [
   '--workpath', join(CACHE, 'build'),
   '--specpath', CACHE,
   '--collect-all', 'octopus_kb_compound',
+  '--collect-all', 'documents',
   '--collect-all', 'markitdown',
   '--collect-all', 'magika',
   '--collect-all', 'pdfminer',

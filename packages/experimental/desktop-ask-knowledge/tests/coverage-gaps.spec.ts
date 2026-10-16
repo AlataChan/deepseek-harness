@@ -182,13 +182,11 @@ describe('result bounds leftover', () => {
       maxChars: 24_000,
       maxTokens: 6000,
     })
-    const bounded = boundRetrieveResult(
+    expect(() => boundRetrieveResult(
       [{ path: 'a', title: 'a', reason: '', text: 'abcd', kind: 'raw' }],
       [{ ruleId: 'w', message: 'warn' }],
       { maxItems: 12, maxChars: 24_000, maxTokens: 0 },
-    )
-    expect(bounded.items).toEqual([])
-    expect(bounded.warnings.some(item => item.ruleId === 'result-truncated')).toBe(true)
+    )).toThrow(/metadata.*allowance/)
     expect(retrieveBounds({ maxItems: 2 }).maxItems).toBe(2)
   })
 })
@@ -371,15 +369,13 @@ describe('retrieve leftover', () => {
     await writeFakeSidecarEnv(sidecarHome, {
       ASK_KNOWLEDGE_FAKE_LOOKUP_JSON: JSON.stringify({ canonicalPath: 'wiki/a.md', text: 'clipped' }),
     })
-    const clipped = await lookupLibraryTerm(
+    await expect(lookupLibraryTerm(
       { sidecarRuntimePath: sidecarHome },
       root,
       created.id,
       '报销',
       { maxItems: 12, maxChars: 24_000, maxTokens: 0 },
-    )
-    expect(clipped.canonicalPath).toBe('wiki/a.md')
-    expect(clipped.text).toBeUndefined()
+    )).rejects.toThrow(/metadata.*allowance/)
     await writeFakeSidecarEnv(sidecarHome, {
       ASK_KNOWLEDGE_FAKE_RETRIEVE_JSON: JSON.stringify({ items: 1 }),
     })

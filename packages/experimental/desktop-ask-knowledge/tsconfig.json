@@ -8,7 +8,14 @@
     "src/index.ts",
     "src/bootstrap-vault.ts",
     "src/catalog.ts",
+    "src/conversion.ts",
+    "src/converter-worker.ts",
+    "src/converters/anydoc.ts",
     "src/credentials-bridge.ts",
+    "src/document-jobs.ts",
+    "src/document-retrieve.ts",
+    "src/document-types.ts",
+    "src/documents-service.ts",
     "src/extract.ts",
     "src/extract-docx.ts",
     "src/ingest.ts",
@@ -20,9 +27,12 @@
     "src/retrieve.ts",
     "src/shortcut.ts",
     "src/sidecar.ts",
+    "src/source-store.ts",
     "src/tools.ts",
     "src/unbind.ts",
-    "src/upload-temp.ts"
+    "src/upload-temp.ts",
+    "src/document-view.ts",
+    "src/types.ts"
   ],
   "references": [
     {
@@ -63,6 +73,15 @@
     },
     {
       "path": "../../workspace/workspace"
+    },
+    {
+      "path": "../../subprocess/subprocess"
+    },
+    {
+      "path": "../../subprocess/subprocess-local"
+    },
+    {
+      "path": "../../typert/protocol"
     }
   ]
 }

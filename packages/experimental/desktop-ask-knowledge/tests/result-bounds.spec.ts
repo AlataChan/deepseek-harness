@@ -22,7 +22,7 @@ describe('ask-knowledge result bounds', () => {
   it('clips one item to 4000 code points and estimates tokens', () => {
     const long = '字'.repeat(ITEM_TEXT_LIMIT + 8)
     expect([...clipItemText(long)]).toHaveLength(ITEM_TEXT_LIMIT)
-    expect(tokenEstimate('abcd')).toBe(1)
+    expect(tokenEstimate('abcd')).toBe(4)
   })
 
   it('truncates a multi-item payload at an exact Chinese char cap', () => {

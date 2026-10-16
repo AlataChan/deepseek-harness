@@ -4,10 +4,11 @@ import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { apply, inject } from '../src/client/index.ts'
+import { apply, inject, mountAskKnowledgeUi } from '../src/client/mount.ts'
+import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import type {
   AskKnowledgeDockInjected, AttachKnowledgeBridgeInjected, KnowledgeCapabilitiesRowInjected,
-} from '../src/client/index.ts'
+} from '../src/client/mount.ts'
 import type { LibraryPickerInjected } from '../src/client/LibraryPicker.tsx'
 import type { LibrarySettingsRemotes } from '../src/client/LibrarySettingsSection.tsx'
 
@@ -23,7 +24,6 @@ interface SessionRow {
  * @param entry - registered slot entry.
  * @returns the entry's injected business face.
  */
-// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- Fixtures own the erased factory result.
 function injectedOf<T>(
   entry: { readonly inject?: ((...args: never[]) => Record<string, unknown>) | undefined } | undefined,
 ): T {
@@ -31,7 +31,7 @@ function injectedOf<T>(
   return entry.inject() as Partial<T> as T
 }
 
-async function bench(initial?: { current?: string; byId?: Record<string, SessionRow> }) {
+async function bench(initial?: { current?: string; byId?: Record<string, SessionRow>; mountContribution?: TypertRemoteContribution }) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   ctx.provide('locale', new LocaleRuntime(ctx))
@@ -58,7 +58,9 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
       value: { filename: '制度.pdf', text: '正文', truncated: false },
     })),
   }
-  ctx.provide('remote', { session: remotes } as never)
+  const unmountRemote = vi.fn(async () => {})
+  const mountRemote = vi.fn(async (_contribution: TypertRemoteContribution) => unmountRemote)
+  ctx.provide('remote', { session: remotes, $mount: mountRemote } as never)
   ctx.provide('remote.session', remotes)
   const state = {
     current: initial?.current,
@@ -108,13 +110,27 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
   } as never, () => null)
   const fiber = ctx.plugin({
     inject: [...inject, 'conversation', 'sessions', 'uiWorkspace'],
-    apply,
+    apply: initial?.mountContribution === undefined
+      ? apply
+      : async (scope: Context) => await mountAskKnowledgeUi(scope, initial.mountContribution!),
   })
   await fiber.await()
-  return { ctx, slots, remotes, sessions, openSession, state, dispose: () => fiber.dispose() }
+  return { ctx, slots, remotes, sessions, openSession, state, mountRemote, unmountRemote, dispose: () => fiber.dispose() }
 }
 
 describe('desktop-ask-knowledge apply', () => {
+  it('mounts generated Remotes before UI and removes UI before unmounting', async () => {
+    const contribution: TypertRemoteContribution = { package: '@fixture/document-remote', descriptors: [] }
+    const b = await bench({ mountContribution: contribution })
+    expect(b.mountRemote).toHaveBeenCalledExactlyOnceWith(contribution)
+    expect(b.slots.entries('settings.section')).toHaveLength(1)
+    b.unmountRemote.mockImplementation(async () => {
+      expect(b.slots.entries('settings.section')).toHaveLength(0)
+    })
+    await b.dispose()
+    expect(b.unmountRemote).toHaveBeenCalledTimes(1)
+  })
+
   it('declares only the services it uses', () => {
     expect(inject).toEqual(['slots', 'remote', 'remote.session', 'locale'])
   })
@@ -216,5 +232,47 @@ describe('desktop-ask-knowledge apply', () => {
     })
     expect(b.openSession).toHaveBeenCalledWith('s-knowledge')
     await b.dispose()
+  })
+})
+
+
+describe('registered document actions', () => {
+  it('dispatches every visible action to the document Host namespace with durable identity', async () => {
+    const b = await bench()
+    const item = { id: 'doc-verified', libraryId: 'library-verified', filename: 'policy.md',
+      revisionId: 'rev-verified', originalAvailable: true, searchable: true,
+      status: 'paused' as const, estimatedTokens: 42000, totalChunks: 8, planHash: 'exact-visible-plan' }
+    let refuse = false
+    const action = vi.fn(async () => refuse
+      ? { ok: false as const, error: { message: 'durable cancellation refused' } }
+      : { ok: true as const, value: undefined })
+    const documents = vi.fn(async () => ({ ok: true as const, value: [item] }))
+    Reflect.set(b.ctx.remote, 'askKnowledge', { documentAction: action, documents })
+    try {
+      const settings = injectedOf<LibrarySettingsRemotes>(b.slots.entries('settings.section')[0])
+      expect(await settings.listDocuments!('library-verified')).toEqual({ ok: true, value: [item] })
+      for (const [name, operation] of [
+        ['openOriginal', 'original'], ['viewText', 'text'], ['viewSources', 'sources'],
+        ['retryStage', 'retry'], ['resumeExtraction', 'resume'], ['cancelProcessing', 'cancel'],
+        ['approveBudget', 'approve'],
+      ] as const) {
+        await settings[name]!(item)
+        expect(action).toHaveBeenLastCalledWith({ libraryId: item.libraryId, documentId: item.id,
+          action: operation, planHash: item.planHash, approvedTokens: item.estimatedTokens })
+      }
+      refuse = true
+      await expect(settings.cancelProcessing!(item)).rejects.toThrow('durable cancellation refused')
+    } finally { await b.dispose() }
+  })
+
+  it('refuses actions without a Host method and never invents a retained legacy original', async () => {
+    const b = await bench()
+    try {
+      const settings = injectedOf<LibrarySettingsRemotes>(b.slots.entries('settings.section')[0])
+      await expect(settings.cancelProcessing!({ id: 'legacy', filename: 'a.md', originalAvailable: false,
+        searchable: true, status: 'active' })).rejects.toThrow()
+      const listed = await settings.listDocuments!('library')
+      expect(listed.value?.every(item => !item.originalAvailable)).toBe(true)
+    } finally { await b.dispose() }
   })
 })

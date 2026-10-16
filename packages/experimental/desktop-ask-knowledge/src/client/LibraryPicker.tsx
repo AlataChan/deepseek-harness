@@ -59,6 +59,7 @@ interface BatchEntry {
 /** What one file's ingest settled as. */
 type IngestOutcome =
   | { readonly kind: 'applied' }
+  | { readonly kind: 'retained' }
   | { readonly kind: 'deferred' }
   | { readonly kind: 'failed'; readonly reason: string }
 
@@ -100,7 +101,7 @@ function BatchGlyph({ state }: { state: BatchState }) {
 function batchEntryText(entry: BatchEntry, t: (key: AskKnowledgeKey) => string): string {
   /* v8 ignore next -- the driver writes every failed entry with its reason */
   if (entry.state === 'failed') return entry.reason ?? t('ingest.failed')
-  if (entry.state === 'done') return t('batchDone')
+  if (entry.state === 'done') return entry.reason ?? t('batchDone')
   if (entry.state === 'running') return t('batchRunning')
   return t('batchQueued')
 }
@@ -252,7 +253,7 @@ export function LibraryPicker({
     if (!finished.ok || finished.value === undefined || finished.value.status === 'failed') {
       return { kind: 'failed', reason: ingestFinishError(finished, t('ingest.failed'), t('ingest.timeout')) }
     }
-    if (finished.value.status === 'deferred') return { kind: 'deferred' }
+    if (finished.value.status === 'deferred' && !finished.value.rawRelPath) return { kind: 'deferred' }
     if (nameFromStem) {
       const stem = ingestFilenameStem(file.name)
       await renameLibrary(library.id, unusedLibraryName(
@@ -260,7 +261,7 @@ export function LibraryPicker({
         stem === '' ? t('picker.create') : stem,
       ))
     }
-    return { kind: 'applied' }
+    return { kind: finished.value.status === 'deferred' ? 'retained' : 'applied' }
   }
 
   const ingestBatch = async (files: readonly File[]): Promise<void> => {
@@ -296,14 +297,13 @@ export function LibraryPicker({
             reason: error instanceof Error ? error.message : t('ingest.failed'),
           }
         }
-        if (outcome.kind === 'applied') {
+        if (outcome.kind === 'applied' || outcome.kind === 'retained') {
           nameFromStem = false
           boundId = target.id
-          setBatch(current => updateBatchEntry(current, index, { state: 'done' }))
+          setBatch(current => updateBatchEntry(current, index, { state: 'done', ...outcome.kind === 'retained' ? { reason: t('ingest.retained') } : {} }))
           continue
         }
-        // A deferred proposal wrote nothing: its entries wait in a queue no
-        // surface reviews, so the file has not landed and must not read as added.
+        // Legacy deferred proposals have no searchable raw publication.
         const reason = outcome.kind === 'deferred' ? t('ingest.deferred') : outcome.reason
         setBatch(current => updateBatchEntry(current, index, { state: 'failed', reason }))
       }

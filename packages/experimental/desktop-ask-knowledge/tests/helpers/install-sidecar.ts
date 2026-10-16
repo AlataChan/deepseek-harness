@@ -4,11 +4,21 @@
  */
 
 import { chmod, copyFile, mkdir, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sidecarScriptPath } from '../../src/sidecar.ts'
 
 const FAKE = fileURLToPath(new URL('./fake-sidecar.mjs', import.meta.url))
+
+function resolveTestPython(): string {
+  if (process.env.ASK_KNOWLEDGE_PYTHON) return process.env.ASK_KNOWLEDGE_PYTHON
+  const candidates = ['/opt/homebrew/bin/python3', '/usr/local/bin/python3']
+  for (const c of candidates) {
+    if (existsSync(c)) return c
+  }
+  return 'python3'
+}
 
 /**
  * Overlay fake-sidecar environment for one runtime home without touching
@@ -47,7 +57,7 @@ exec node "${FAKE}" "$@"
  */
 export async function installPythonSidecar(home: string): Promise<void> {
   await mkdir(home, { recursive: true })
-  const python = process.env.ASK_KNOWLEDGE_PYTHON ?? 'python3'
+  const python = resolveTestPython()
   const dest = join(home, 'octopus-kb-sidecar')
   await writeFile(dest, `#!/bin/sh
 exec "${python}" "${sidecarScriptPath}" "$@"

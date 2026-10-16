@@ -54,8 +54,34 @@ export type AskKnowledgeKey =
   | 'ingest.proposing'
   | 'ingest.applying'
   | 'ingest.timeout'
+  | 'ingest.retained'
   | 'ingest.deferred'
   | 'ingest.failed'
+  | 'docs.estimate'
+  | 'docs.statusCancelled'
+  | 'docs.partialConversion'
+  | 'docs.title'
+  | 'docs.originalSaved'
+  | 'docs.originalUnavailable'
+  | 'docs.textSearchable'
+  | 'docs.searchableWithProgress'
+  | 'docs.partialNeedsOcr'
+  | 'docs.openOriginal'
+  | 'docs.viewExtracted'
+  | 'docs.viewSources'
+  | 'docs.retryStage'
+  | 'docs.resumeExtraction'
+  | 'docs.cancelProcessing'
+  | 'docs.estimateLabel'
+  | 'docs.approveBudget'
+  | 'docs.budgetApproved'
+  | 'docs.empty'
+  | 'docs.statusConverting'
+  | 'docs.statusChunking'
+  | 'docs.statusEnriching'
+  | 'docs.statusPaused'
+  | 'docs.statusFailed'
+  | 'docs.statusCompleted'
 
 /** Chinese copy for the ask-knowledge chip, picker, settings, and ingest. */
 const zh = {
@@ -108,8 +134,34 @@ const zh = {
   'ingest.proposing': '正在整理成词条',
   'ingest.applying': '正在写入知识库，可能需要几分钟。',
   'ingest.timeout': '整理这份文档超过了等待时间。请再试一次。',
+  'ingest.retained': '原件和全文已保存，可直接提问；可在设置的“我的知识库”批准整理预算。',
   'ingest.deferred': '这次没有写进去，需要人工确认后才能入库。',
   'ingest.failed': '文档没有写进知识库。',
+  'docs.estimate': '完整文档预计预算：{tokens} token，{chunks} 段。批准后才会请求模型。',
+  'docs.statusCancelled': '处理已取消；原件和已索引文本保留。',
+  'docs.partialConversion': '部分文本；原件可能还有未提取内容',
+  'docs.title': '库内文档管理',
+  'docs.originalSaved': '原始文件已保存',
+  'docs.originalUnavailable': '原始文件不可用',
+  'docs.textSearchable': '文本可检索',
+  'docs.searchableWithProgress': '文本可检索；知识提取 {completed}/{total} 块',
+  'docs.partialNeedsOcr': '部分文本：第 {page} 页需要 OCR',
+  'docs.openOriginal': '打开原始文件',
+  'docs.viewExtracted': '查看提取文本',
+  'docs.viewSources': '查看来源',
+  'docs.retryStage': '重试失败步骤',
+  'docs.resumeExtraction': '继续提取',
+  'docs.cancelProcessing': '取消处理',
+  'docs.estimateLabel': '预计消耗: ~{tokens} 词元',
+  'docs.approveBudget': '批准预算',
+  'docs.budgetApproved': '已批准',
+  'docs.empty': '该知识库暂无文档',
+  'docs.statusConverting': '正在转换格式',
+  'docs.statusChunking': '正在分块规划',
+  'docs.statusEnriching': '正在提取知识',
+  'docs.statusPaused': '提取已暂停',
+  'docs.statusFailed': '处理失败',
+  'docs.statusCompleted': '提取完成',
 } as const satisfies Record<AskKnowledgeKey, string>
 
 /** English copy for the ask-knowledge chip, picker, settings, and ingest. */
@@ -163,8 +215,34 @@ const en = {
   'ingest.proposing': 'Organizing entries',
   'ingest.applying': 'Writing the knowledge library. This can take a few minutes.',
   'ingest.timeout': 'Organizing this document took longer than the wait. Try again.',
+  'ingest.retained': 'Original and full text saved; ready to ask. Approve wiki enrichment in Settings → My libraries.',
   'ingest.deferred': 'Nothing was written this time: the entries need a human confirmation first.',
   'ingest.failed': 'The document was not written into the knowledge library.',
+  'docs.estimate': 'Whole-document allowance: {tokens} tokens across {chunks} chunks. Model calls start only after approval.',
+  'docs.statusCancelled': 'Processing cancelled; the original and indexed text are retained.',
+  'docs.partialConversion': 'Partial text; the original may contain additional unextracted content',
+  'docs.title': 'Document Management',
+  'docs.originalSaved': 'Original saved',
+  'docs.originalUnavailable': 'Original unavailable',
+  'docs.textSearchable': 'Text searchable',
+  'docs.searchableWithProgress': 'Text searchable; knowledge extraction {completed}/{total} chunks',
+  'docs.partialNeedsOcr': 'Partial text: page {page} needs OCR',
+  'docs.openOriginal': 'Open original',
+  'docs.viewExtracted': 'View extracted text',
+  'docs.viewSources': 'View sources',
+  'docs.retryStage': 'Retry failed stage',
+  'docs.resumeExtraction': 'Resume extraction',
+  'docs.cancelProcessing': 'Cancel processing',
+  'docs.estimateLabel': 'Estimated usage: ~{tokens} tokens',
+  'docs.approveBudget': 'Approve budget',
+  'docs.budgetApproved': 'Approved',
+  'docs.empty': 'No documents in this library yet',
+  'docs.statusConverting': 'Converting format',
+  'docs.statusChunking': 'Planning chunks',
+  'docs.statusEnriching': 'Extracting knowledge',
+  'docs.statusPaused': 'Extraction paused',
+  'docs.statusFailed': 'Processing failed',
+  'docs.statusCompleted': 'Extraction completed',
 } as const satisfies Record<AskKnowledgeKey, string>
 
 export { en, zh }

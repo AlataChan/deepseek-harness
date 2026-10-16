@@ -4,7 +4,8 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, open, rm } from 'node:fs/promises'
+import { closeSync, constants, openSync, ftruncateSync, writeSync } from 'node:fs'
 import { basename, isAbsolute, join, resolve } from 'node:path'
 import { AskKnowledgeError, AskKnowledgeIngestHandle, AskKnowledgeLibraryId } from '@deepseek-ai/dsh-host-ask-knowledge'
 
@@ -23,14 +24,13 @@ export const ACCEPTED_EXTRACT_EXTENSIONS = ['.md', '.txt', '.html', '.htm', '.pd
 /** Sentinel library id stored on extract uploads. Never written to catalog.json. */
 export const EXTRACT_LIBRARY_ID = AskKnowledgeLibraryId('session-extract')
 
-/** In-memory upload assembled from Remote chunks. */
+/** Private disk upload assembled from bounded Remote chunks. */
 export interface IngestUpload {
   readonly handle: AskKnowledgeIngestHandle
   readonly libraryId: AskKnowledgeLibraryId
   readonly filename: string
   readonly dir: string
   readonly path: string
-  chunks: Buffer[]
   bytes: number
 }
 
@@ -115,9 +115,11 @@ async function createUpload(
   parsed: { basename: string },
 ): Promise<IngestUpload> {
   const root = join(resolve(knowledgeHome), 'tmp')
-  await mkdir(root, { recursive: true })
+  await mkdir(root, { recursive: true, mode: 0o700 })
   const dir = join(root, randomUUID())
-  await mkdir(dir, { recursive: true })
+  await mkdir(dir, { mode: 0o700 })
+  const file = await open(join(dir, parsed.basename), 'wx', 0o600)
+  await file.close()
   const handle = AskKnowledgeIngestHandle(randomUUID())
   return {
     handle,
@@ -125,7 +127,6 @@ async function createUpload(
     filename: parsed.basename,
     dir,
     path: join(dir, parsed.basename),
-    chunks: [],
     bytes: 0,
   }
 }
@@ -168,17 +169,27 @@ export function appendUpload(upload: IngestUpload, chunk: Buffer, maxBytes: numb
   if (upload.bytes + chunk.byteLength > maxBytes) {
     throw new AskKnowledgeError('file-too-large', `file exceeds ${maxBytes} bytes`, { limit: maxBytes })
   }
-  upload.chunks.push(chunk)
-  upload.bytes += chunk.byteLength
+  const fd = openSync(upload.path, constants.O_WRONLY | constants.O_APPEND | constants.O_NOFOLLOW)
+  try {
+    let offset = 0
+    while (offset < chunk.byteLength) offset += writeSync(fd, chunk, offset, chunk.byteLength - offset)
+    upload.bytes += chunk.byteLength
+  } catch (error) {
+    ftruncateSync(fd, upload.bytes)
+    throw error
+  } finally {
+    closeSync(fd)
+  }
 }
 
 /**
- * Write assembled bytes to the temp file.
+ * Flush accepted chunks to disk before conversion or immutable publication.
  * @param upload - in-flight upload.
  * @returns absolute temp file path.
  */
 export async function materializeUpload(upload: IngestUpload): Promise<string> {
-  await writeFile(upload.path, Buffer.concat(upload.chunks))
+  const file = await open(upload.path, constants.O_RDWR | constants.O_NOFOLLOW)
+  try { await file.sync() } finally { await file.close() }
   return upload.path
 }
 

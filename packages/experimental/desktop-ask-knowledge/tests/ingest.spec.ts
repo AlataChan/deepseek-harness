@@ -10,10 +10,10 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import type { AskKnowledge } from '@deepseek-ai/dsh-host-ask-knowledge'
 import DesktopAskKnowledge from '../src/index.ts'
-import { healRejectedProposals, isPageMetaRejection, isPostLintRejection } from '../src/ingest.ts'
+import { finishIngestPipeline, healRejectedProposals, isPageMetaRejection, isPostLintRejection } from '../src/ingest.ts'
 import { withLibraryLock } from '../src/library-lock.ts'
 import { decodeIngestChunk, MAX_INGEST_CHUNK_BYTES } from '../src/upload-temp.ts'
-import { installFakeSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
+import { installFakeSidecar, installPythonSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
 
 const KEY = credentialRef('DEEPSEEK_API_KEY')
 const cleanups: Array<() => Promise<void> | void> = []
@@ -24,10 +24,11 @@ afterEach(async () => {
 
 async function boot(options: {
   sidecarEnv?: NodeJS.ProcessEnv
+  realSidecar?: boolean
 } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'ask-knowledge-ingest-'))
   const sidecarHome = join(root, 'sidecar')
-  await installFakeSidecar(sidecarHome)
+  await (options.realSidecar ? installPythonSidecar(sidecarHome) : installFakeSidecar(sidecarHome))
   if (options.sidecarEnv !== undefined) {
     const overlay: Record<string, string> = {}
     for (const [key, value] of Object.entries(options.sidecarEnv)) {
@@ -93,16 +94,31 @@ async function ingestText(
   })
 }
 
+async function legacyText(
+  harness: Awaited<ReturnType<typeof boot>>,
+  libraryId: Parameters<AskKnowledge['beginIngest']>[0]['libraryId'],
+  filename: string,
+  body: string,
+  reuseRawPath?: string,
+) {
+  const tempPath = join(harness.root, filename)
+  await writeFile(tempPath, body, 'utf8')
+  return finishIngestPipeline(harness.ctx, { sidecarRuntimePath: harness.sidecarHome }, harness.root, {
+    libraryId, tempPath, ...(reuseRawPath === undefined ? {} : { reuseRawPath }),
+  })
+}
+
 describe('ask-knowledge ingest', () => {
-  it('applies a markdown fixture through begin/append/finish', async () => {
-    const { capability } = await boot()
+  it('retains and indexes a markdown fixture while awaiting explicit extraction approval', async () => {
+    const { capability } = await boot({ realSidecar: true })
     const library = await capability.createLibrary({ displayName: '制度' })
     const result = await ingestText(capability, library.id, '报销.md', '# 报销\n\n流程\n')
-    expect(result).toMatchObject({ status: 'applied', rawRelPath: 'raw/报销.md' })
+    expect(result.status).toBe('deferred')
+    expect(result.rawRelPath).toMatch(/^raw\/doc-.+-rev-.+\.md$/)
   })
 
   it('unzips Word on the Host and ingests the markdown copy', async () => {
-    const { capability, root } = await boot()
+    const { capability, root } = await boot({ realSidecar: true })
     const library = await capability.createLibrary({ displayName: '制度' })
     const result = await ingestBytes(
       capability,
@@ -110,19 +126,18 @@ describe('ask-knowledge ingest', () => {
       '制度.docx',
       docxWithParagraphs(['报销流程']),
     )
-    expect(result).toMatchObject({ status: 'applied', rawRelPath: 'raw/制度.md' })
+    expect(result.status).toBe('deferred')
+    expect(result.rawRelPath).toMatch(/^raw\/doc-.+-rev-.+\.md$/)
     expect(await readFile(
-      join(root, 'knowledge-bases', 'libraries', library.id, 'raw', '制度.md'),
+      join(root, 'knowledge-bases', 'libraries', library.id, result.rawRelPath!),
       'utf8',
     )).toContain('报销流程')
     await expect(ingestBytes(capability, library.id, '空.docx', docxWithParagraphs([])))
       .rejects.toMatchObject({ message: '这份 Word 没有可提取的文字' })
   })
 
-  it('serializes two overlapping finishIngest calls on one library', async () => {
-    const { capability, root } = await boot({
-      sidecarEnv: { ASK_KNOWLEDGE_FAKE_HOLD_MS: '40' },
-    })
+  it('retains both same-name files across overlapping public uploads', async () => {
+    const { capability, root } = await boot({ realSidecar: true })
     const library = await capability.createLibrary({ displayName: '并发' })
     const started: number[] = []
     const finished: number[] = []
@@ -133,11 +148,15 @@ describe('ask-knowledge ingest', () => {
       return result
     }
     const [a, b] = await Promise.all([
-      run(1, 'one.md'),
-      run(2, 'two.md'),
+      run(1, 'same.md'),
+      run(2, 'same.md'),
     ])
-    expect(a.status).toBe('applied')
-    expect(b.status).toBe('applied')
+    expect(a.status).toBe('deferred')
+    expect(b.status).toBe('deferred')
+    expect(a.rawRelPath).not.toBe(b.rawRelPath)
+    const vault = join(root, 'knowledge-bases', 'libraries', library.id)
+    expect(await readFile(join(vault, a.rawRelPath!), 'utf8')).toContain('doc 1')
+    expect(await readFile(join(vault, b.rawRelPath!), 'utf8')).toContain('doc 2')
     expect(finished).toHaveLength(2)
     const raw = await readdir(join(root, 'knowledge-bases', 'libraries', library.id, 'raw'))
     expect(raw).toHaveLength(2)
@@ -145,11 +164,12 @@ describe('ask-knowledge ingest', () => {
   })
 
   it('keeps exactly one raw when propose fails and retries via reuseRawPath', async () => {
-    const { capability, root, sidecarHome } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_PROPOSE: 'fail' },
     })
+    const { capability, root, sidecarHome } = harness
     const library = await capability.createLibrary({ displayName: '重试' })
-    const failed = await ingestText(capability, library.id, '报销.md', '# 报销\n')
+    const failed = await legacyText(harness, library.id, '报销.md', '# 报销\n')
     expect(failed).toMatchObject({
       status: 'failed',
       retryable: true,
@@ -159,34 +179,36 @@ describe('ask-knowledge ingest', () => {
     const vault = join(root, 'knowledge-bases', 'libraries', library.id)
     expect(await readdir(join(vault, 'raw'))).toEqual(['报销.md'])
     await writeFakeSidecarEnv(sidecarHome, {})
-    const retried = await ingestText(capability, library.id, '报销.md', '# unused\n', 'raw/报销.md')
+    const retried = await legacyText(harness, library.id, '报销.md', '# unused\n', 'raw/报销.md')
     expect(retried.status).toBe('applied')
     expect(await readdir(join(vault, 'raw'))).toEqual(['报销.md'])
   })
 
   it('maps sidecar propose English to Chinese', async () => {
-    const { capability, sidecarHome } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_PROPOSE: 'LLM returned non-JSON output' },
     })
+    const { capability, sidecarHome } = harness
     const library = await capability.createLibrary({ displayName: '映射' })
-    const failed = await ingestText(capability, library.id, '意见.md', '# 意见\n')
+    const failed = await legacyText(harness, library.id, '意见.md', '# 意见\n')
     expect(failed.error).toBe('模型没有按词条格式返回。原文已经放进库，请再试一次。')
     await writeFakeSidecarEnv(sidecarHome, { ASK_KNOWLEDGE_FAKE_PROPOSE: 'proposal schema invalid' })
     const second = await capability.createLibrary({ displayName: '格式' })
-    const invalid = await ingestText(capability, second.id, '意见.md', '# 意见\n')
+    const invalid = await legacyText(harness, second.id, '意见.md', '# 意见\n')
     expect(invalid.error).toBe('模型给出的词条格式不对，请再试一次。')
   })
 
   it('recovers a pending apply failure and rejects the old proposal id', async () => {
-    const { capability, sidecarHome } = await boot({
+    const harness = await boot({
       sidecarEnv: {
         ASK_KNOWLEDGE_FAKE_APPLY: 'fail',
         ASK_KNOWLEDGE_FAKE_PROPOSAL_ID: 'prop-old',
         ASK_KNOWLEDGE_FAKE_INBOX: JSON.stringify([{ proposal_id: 'prop-old' }]),
       },
     })
+    const { capability, sidecarHome } = harness
     const library = await capability.createLibrary({ displayName: '补偿' })
-    const failed = await ingestText(capability, library.id, '报销.md', '# 报销\n')
+    const failed = await legacyText(harness, library.id, '报销.md', '# 报销\n')
     expect(failed).toMatchObject({
       status: 'failed',
       retryable: true,
@@ -198,16 +220,17 @@ describe('ask-knowledge ingest', () => {
       ASK_KNOWLEDGE_FAKE_OLD_PROPOSAL_ID: 'prop-old',
       ASK_KNOWLEDGE_FAKE_PROPOSAL_ID: 'prop-new',
     })
-    const retried = await ingestText(capability, library.id, '报销.md', '# unused\n', failed.rawRelPath)
+    const retried = await legacyText(harness, library.id, '报销.md', '# unused\n', failed.rawRelPath)
     expect(retried).toMatchObject({ status: 'applied', proposalId: 'prop-new' })
   })
 
   it('does not treat sidecar apply rejected as applied', async () => {
-    const { capability } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'rejected' },
     })
+    const { capability } = harness
     const library = await capability.createLibrary({ displayName: '拒写' })
-    const result = await ingestText(capability, library.id, '意见.md', '# 意见\n')
+    const result = await legacyText(harness, library.id, '意见.md', '# 意见\n')
     expect(result).toMatchObject({
       status: 'failed',
       error: '整理词条没有写出可检索的页面。',
@@ -215,20 +238,22 @@ describe('ask-knowledge ingest', () => {
   })
 
   it('reports deferred ingest as not fully written', async () => {
-    const { capability } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'deferred' },
     })
+    const { capability } = harness
     const library = await capability.createLibrary({ displayName: '延期' })
-    const result = await ingestText(capability, library.id, '报销.md', '# 报销\n')
+    const result = await legacyText(harness, library.id, '报销.md', '# 报销\n')
     expect(result).toMatchObject({ status: 'deferred', deferredCount: 1 })
   })
 
   it('names the lint rule and page when a proposal fails the post-apply lint', async () => {
-    const { capability } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'rejected-post-lint' },
     })
+    const { capability } = harness
     const library = await capability.createLibrary({ displayName: '词条冲突' })
-    const result = await ingestText(capability, library.id, '冲突.md', '# 冲突\n')
+    const result = await legacyText(harness, library.id, '冲突.md', '# 冲突\n')
     expect(result).toMatchObject({ status: 'failed', retryable: true })
     expect(result.error).toContain('同一个别名指向了多个词条')
     expect(result.error).toContain('wiki/a.md,wiki/b.md')

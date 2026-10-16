@@ -59,6 +59,7 @@ rm -rf "$CACHE/dist" "$CACHE/build"
     --workpath "$CACHE/build" \
     --specpath "$CACHE" \
     --collect-all octopus_kb_compound \
+    --collect-all documents \
     --collect-all markitdown \
     --collect-all magika \
     --collect-all pdfminer \

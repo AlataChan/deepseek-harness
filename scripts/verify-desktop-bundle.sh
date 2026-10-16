@@ -887,6 +887,14 @@ else
   bad "Code signature missing or stale — Gatekeeper will say the app is damaged after a WeChat/browser download"
 fi
 
+# Public operations must pass against installed code before packaging.
+head_ "Checking installed Ask Knowledge operations"
+if node "$REPO_ROOT/scripts/verify-ask-knowledge-installed-flows.mjs" "$APP"; then
+  ok "Installed Ask Knowledge source, worker and approved Host flows"
+else
+  bad "Installed Ask Knowledge acceptance failed"
+fi
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 echo ""

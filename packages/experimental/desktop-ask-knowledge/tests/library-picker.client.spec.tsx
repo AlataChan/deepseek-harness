@@ -1148,3 +1148,15 @@ describe('ask-knowledge picker', () => {
     expect(attach).not.toHaveBeenCalled()
   })
 })
+
+it('attaches retained searchable uploads while wiki extraction awaits spending approval', async () => {
+  const attach = vi.fn(async () => ({ ok: true as const }))
+  const close = vi.fn()
+  const { view } = renderPicker({ attach, close,
+    finishIngest: async () => ({ ok: true, value: { status: 'deferred', rawRelPath: 'raw/doc-unique.md', deferredCount: 1 } }),
+  })
+  fireEvent.click(await view.findByRole('button', { name: '+ 新建知识库' }))
+  await changeFile(view, new File(['retained content'], 'retained.md', { type: 'text/markdown' }))
+  await waitFor(() => expect(attach).toHaveBeenCalled())
+  expect(close).toHaveBeenCalled()
+})

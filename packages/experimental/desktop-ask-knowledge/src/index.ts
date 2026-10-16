@@ -31,32 +31,95 @@ import {
   withCatalogLock, withLibraryLock, withSessionLock, withSessionLocks,
 } from './library-lock.ts'
 import { renderAskKnowledgeRetrievePrompt } from './prompt-retrieve.ts'
-import { finishIngestPipeline, healRejectedProposals, pendingAuditCount, recoverPendingAudits } from './ingest.ts'
+import { healRejectedProposals, pendingAuditCount, recoverPendingAudits } from './ingest.ts'
 import { lookupLibraryTerm, retrieveLibraryBundle } from './retrieve.ts'
 import { resolveResultBounds, type ResultBounds } from './result-bounds.ts'
 import { placeLibraryShortcut, revealLibraryVault } from './shortcut.ts'
 import { registerAskKnowledgeTools } from './tools.ts'
 import { listBoundSessionIds, unbindSession } from './unbind.ts'
 import { convertUploadToText } from './extract.ts'
-import { isDocxExtractFilename, writeDocxMarkdownForIngest } from './extract-docx.ts'
+import { isDocxExtractFilename } from './extract-docx.ts'
 import {
   appendUpload, beginExtractUpload, beginUpload, decodeIngestChunk, DEFAULT_MAX_INGEST_BYTES,
   disposeUpload, materializeUpload, type IngestUpload,
 } from './upload-temp.ts'
 import { resolveSidecarHome } from './knowledge-home.ts'
-import { rm, readdir } from 'node:fs/promises'
-import { join } from 'node:path'
-
+import { runSidecar, KnowledgeProcessRunner } from './sidecar.ts'
+import { bindTypertRemote, Remote } from '@deepseek-ai/dsh-typert-protocol'
+import { createReadStream } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import type { DocumentView, DocumentActionRequest, DocumentLibraryId } from './document-view.ts'
+import { RevisionId } from './document-types.ts'
+import { resolveProposeEnv } from './credentials-bridge.ts'
+import { canOpenNativePath, openNativePath } from '@deepseek-ai/dsh-native-command'
+import { searchLibraryPassages, readLibraryPassage } from './document-retrieve.ts'
+import { mkdir, readFile, readdir, rm, realpath, lstat, open, link, unlink } from 'node:fs/promises'
+import { join, relative, isAbsolute } from 'node:path'
+import { convertSourceFile, type ConversionResult } from './conversion.ts'
+import {
+  DocumentsServiceImpl,
+  registerDocumentsService,
+  type AskKnowledgeDocumentsService,
+} from './documents-service.ts'
+import {
+  readSourceOriginal,
+  recoverSourceRegistrations,
+  storeSourceOriginal,
+  verifySourceRevision,
+} from './source-store.ts'
+import {
+  initLibraryStartupAttempt,
+  createTrackedJob,
+  getLibraryStartupAttempt,
+  recoverLibraryJobs,
+} from './document-jobs.ts'
+import { indexLibraryVault } from './document-retrieve.ts'
+export * from './document-types.ts'
+export type { DocumentView, DocumentActionRequest, DocumentLibraryId } from './document-view.ts'
+export {
+  DocumentsServiceImpl,
+  registerDocumentsService,
+  type AskKnowledgeDocumentsService,
+  readSourceOriginal,
+  storeSourceOriginal,
+  verifySourceRevision,
+}
+export {
+  initLibraryStartupAttempt,
+  createTrackedJob,
+  updateJobCheckpoint,
+  finishTrackedJob,
+  markJobUncertain,
+  cancelTrackedJob,
+  getTrackedJob,
+  listTrackedJobs,
+  validateFileResult,
+  runFileResultCommand,
+  recoverLibraryJobs,
+  MAX_FILE_RESULT_BYTES,
+} from './document-jobs.ts'
 export { MISSING_API_KEY_MESSAGE, resolveProposeEnv } from './credentials-bridge.ts'
 export { runSidecar, resolveSidecarExecutable, packagePythonDir } from './sidecar.ts'
 export { boundRetrieveResult, resolveResultBounds, tokenEstimate, clipItemText } from './result-bounds.ts'
 export { parseAskKnowledgeTerms, parseAskKnowledgeLookupTerm } from '@deepseek-ai/dsh-host-ask-knowledge'
 export { withSessionLock, withLibraryLock, withCatalogLock, withSessionLocks } from './library-lock.ts'
 export { renderAskKnowledgeRetrievePrompt } from './prompt-retrieve.ts'
+export {
+  searchLibraryPassages,
+  indexLibraryVault,
+  checkSqliteRuntime,
+  type PassageSearchItem,
+  type PassageSearchResult,
+  type PassageSearchRequest,
+} from './document-retrieve.ts'
 
 /** Validated plugin configuration. */
 export interface Config extends AskKnowledgeHomeConfig {
   /** Ceiling of one ingest file in bytes after the last chunk is joined. */
+  readonly extractionChunkChars?: number
+  readonly extractionContextChars?: number
+  readonly extractionTimeoutMs?: number
+  readonly extractionOutputTokens?: number
   readonly maxIngestBytes?: number
   /** Maximum retrieve items kept in the full tool result. */
   readonly maxResultItems?: number
@@ -77,12 +140,21 @@ export default class DesktopAskKnowledge extends AskKnowledge {
   static Config: z<Config> = z.object({
     knowledgeHome: z.string().default(''),
     sidecarRuntimePath: z.string().default(''),
+    extractionChunkChars: z.number().step(1).min(128).max(8000).default(1500),
+    extractionContextChars: z.number().step(1).min(0).max(8000).default(2000),
+    extractionTimeoutMs: z.number().step(1).min(1000).max(3600000).default(1800000),
+    extractionOutputTokens: z.number().step(1).min(128).max(8192).default(2048),
     maxIngestBytes: z.natural().default(DEFAULT_MAX_INGEST_BYTES),
     maxResultItems: z.natural().default(12),
     maxResultChars: z.natural().default(24_000),
     maxResultTokens: z.natural().default(6000),
   })
 
+  /** Generated Gateway binding for desktop document operations. */
+  readonly typertRemote = bindTypertRemote(this, 'askKnowledge')
+  private readonly ready: Promise<void>
+  private readonly lifetime = new AbortController()
+  private readonly documentRuns = new Map<string, { controller: AbortController; done: Promise<unknown> }>()
   private readonly config: Config
   private readonly uploads = new Map<string, IngestUpload>()
   private readonly bounds: ResultBounds
@@ -93,7 +165,8 @@ export default class DesktopAskKnowledge extends AskKnowledge {
    */
   constructor(ctx: Context, config: Config) {
     super(ctx)
-    this.config = config
+    const runner = new KnowledgeProcessRunner(ctx.get('subprocess'))
+    this.config = { ...config, processRunner: runner }
     this.bounds = resolveResultBounds({
       maxItems: config.maxResultItems,
       maxChars: config.maxResultChars,
@@ -116,20 +189,25 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       },
     }), 'desktop-ask-knowledge.prompt')
     if (ctx.get('tools') !== undefined) {
-      ctx.effect(() => registerAskKnowledgeTools(ctx), 'desktop-ask-knowledge.tools')
+      ctx.effect(() => registerAskKnowledgeTools(ctx, {
+        search: (request, signal) => searchLibraryPassages(this.config, this.home(), request, signal),
+        read: (request, signal) => readLibraryPassage(this.config, this.home(), request, signal),
+      }), 'desktop-ask-knowledge.tools')
     }
-    ctx.effect(() => {
-      try {
-        const home = this.home()
-        void this.resumeDeletingRows(home)
-      } catch (error: unknown) {
-        /* v8 ignore start -- home() only throws knowledge-home-missing */
-        if (!(error instanceof AskKnowledgeError) || error.code !== 'knowledge-home-missing') {
-          throw error
-        }
-        /* v8 ignore stop */
-      }
-      return () => {}
+    ctx.effect(
+      () => registerDocumentsService(ctx, this.config),
+      'desktop-ask-knowledge.documents-service',
+    )
+    this.ready = this.initialize()
+    // Preserve the failure for callers while observing it until first use.
+    void this.ready.catch(error => ctx.logger('ask-knowledge').warn(error))
+    ctx.effect(() => async () => {
+      this.lifetime.abort()
+      for (const run of this.documentRuns.values()) run.controller.abort()
+      await Promise.allSettled([...this.documentRuns.values()].map(run => run.done))
+      await runner.dispose()
+      await this.ready.catch(error => ctx.logger('ask-knowledge').warn(error))
+      await Promise.all([...this.uploads.values()].map(disposeUpload))
     })
   }
 
@@ -250,6 +328,11 @@ export default class DesktopAskKnowledge extends AskKnowledge {
           }
           try {
             const vault = await assertVaultDir(home, deleting)
+            await runSidecar(this.config, {
+              command: 'cancel-library-jobs',
+              vault,
+              libraryId: request.libraryId,
+            }, { signal })
             await rm(vault, { recursive: true, force: true })
           } catch (error: unknown) {
             /* v8 ignore next -- a row that passed recover uses the same vaultRelPath */
@@ -396,18 +479,69 @@ export default class DesktopAskKnowledge extends AskKnowledge {
     if (upload === undefined) {
       throw new AskKnowledgeError('ingest-failed', 'unknown ingest handle')
     }
+    await this.ready
+    const operationSignal = signal === undefined ? this.lifetime.signal : AbortSignal.any([signal, this.lifetime.signal])
+    let conversionRun: { key: string; settle: () => void } | undefined
     try {
-      let tempPath = upload.path
-      if (request.reuseRawPath === undefined) {
-        await materializeUpload(upload)
-        tempPath = await writeDocxMarkdownForIngest(upload)
+      if (request.reuseRawPath !== undefined) {
+        throw new AskKnowledgeError('ingest-failed', 'Use the document Retry action; raw reuse cannot bypass spending approval')
       }
-      return await finishIngestPipeline(this.ctx, this.config, this.home(), {
-        libraryId: upload.libraryId,
-        tempPath,
-        ...request.reuseRawPath === undefined ? {} : { reuseRawPath: request.reuseRawPath },
-      }, signal)
+      await materializeUpload(upload)
+      const stored = await storeSourceOriginal(this.config, this.home(), upload.libraryId,
+        upload.filename, createReadStream(upload.path), undefined, operationSignal)
+      const row = await requireLibrary(this.home(), upload.libraryId)
+      const vault = await assertVaultDir(this.home(), row)
+      const attempt = await getLibraryStartupAttempt(this.config, this.home(), upload.libraryId)
+      const job = await createTrackedJob(this.config, this.home(), upload.libraryId, stored.document.id,
+        stored.revision.revisionId, attempt, 'conversion')
+      const controller = new AbortController()
+      const conversionSignal = AbortSignal.any([operationSignal, controller.signal])
+      const completion = Promise.withResolvers<void>()
+      const key = `${upload.libraryId}:${stored.document.id}`
+      this.documentRuns.set(key, { controller, done: completion.promise })
+      conversionRun = { key, settle: completion.resolve }
+      let converted: ConversionResult
+      try {
+        converted = await convertSourceFile(this.config, upload.path, upload.filename, { signal: conversionSignal })
+        conversionSignal.throwIfAborted()
+      } catch (error) {
+        await runSidecar(this.config, { command: 'record-conversion', vault, libraryId: upload.libraryId,
+          documentId: stored.document.id, jobId: job.jobId, conversionStatus: 'failed',
+          error: error instanceof Error ? error.message : String(error) }, { signal: this.lifetime.signal })
+        throw error
+      }
+      if (!converted.markdown) {
+        await runSidecar(this.config, { command: 'record-conversion', vault, libraryId: upload.libraryId,
+          documentId: stored.document.id, jobId: job.jobId, revisionId: stored.revision.revisionId,
+          conversion: converted.diagnostics, conversionStatus: converted.status,
+          error: converted.error ?? converted.status }, { signal: operationSignal })
+        return { status: 'failed', retryable: true, error: converted.error ?? converted.status }
+      }
+      const rawRelPath = `raw/${stored.document.id}-${stored.revision.revisionId}.md`
+      await withLibraryLock(upload.libraryId, async () => {
+        conversionSignal.throwIfAborted()
+        await requireLibrary(this.home(), upload.libraryId)
+        conversionSignal.throwIfAborted()
+        await publishRawText(vault, rawRelPath, converted.markdown, conversionSignal)
+      })
+      await indexLibraryVault(this.config, this.home(), upload.libraryId, operationSignal)
+      try { await runSidecar(this.config, { command: 'plan-document', vault, libraryId: upload.libraryId,
+        documentId: stored.document.id, revisionId: stored.revision.revisionId, jobId: job.jobId, rawPath: rawRelPath,
+        conversion: converted.diagnostics, conversionStatus: converted.status,
+        chunkChars: this.config.extractionChunkChars ?? 1500,
+        contextChars: this.config.extractionContextChars ?? 2000,
+        outputReserve: this.config.extractionOutputTokens ?? 2048 }, { signal: operationSignal }) } catch (error) {
+        await runSidecar(this.config, { command: 'record-conversion', vault, libraryId: upload.libraryId,
+          documentId: stored.document.id, conversionStatus: 'failed', conversion: converted.diagnostics,
+          error: error instanceof Error ? error.message : String(error) }, { signal: this.lifetime.signal })
+        throw error
+      }
+      return { status: 'deferred', rawRelPath, deferredCount: 1 }
     } finally {
+      if (conversionRun) {
+        this.documentRuns.delete(conversionRun.key)
+        conversionRun.settle()
+      }
       this.uploads.delete(request.handle)
       await disposeUpload(upload)
     }
@@ -580,6 +714,116 @@ export default class DesktopAskKnowledge extends AskKnowledge {
     await touchLastUsed(this.home(), libraryId)
   }
 
+  /** Await source-registration repair and job recovery before accepting writes. */
+  private async initialize(): Promise<void> {
+    let home: string
+    try { home = this.home() } catch (error) {
+      if (error instanceof AskKnowledgeError && error.code === 'knowledge-home-missing') return
+      throw error
+    }
+    const catalog = await readCatalog(home)
+    for (const library of catalog.libraries) {
+      if (library.deleting) continue
+      await recoverSourceRegistrations(this.config, home, library.id, this.lifetime.signal)
+      const attempt = await initLibraryStartupAttempt(this.config, home, library.id)
+      await recoverLibraryJobs(this.config, home, library.id, attempt)
+    }
+    await this.resumeDeletingRows(home)
+  }
+
+  /** List durable document state for the authenticated desktop connection.
+   * @param libraryId - catalog library to inspect.
+   * @returns retained source and processing status rows.
+   */
+  @Remote('documents')
+  async remoteDocuments(libraryId: DocumentLibraryId): Promise<readonly DocumentView[]> {
+    await this.ready
+    const vault = await assertVaultDir(this.home(), await requireLibrary(this.home(), libraryId))
+    const result = await runSidecar(this.config, { command: 'document-status', vault, libraryId }, { signal: this.lifetime.signal })
+    if (!Array.isArray(result.documents)) throw new Error('Invalid document status response')
+    return result.documents as DocumentView[]
+  }
+
+  /** Apply a document lifecycle operation; approval identifies the exact estimate displayed.
+   * @param request - document, operation and explicit spending authorization.
+   */
+  @Remote('documentAction')
+  async remoteDocumentAction(request: DocumentActionRequest): Promise<void> {
+    await this.ready
+    const { libraryId, documentId, action } = request
+    const vault = await assertVaultDir(this.home(), await requireLibrary(this.home(), libraryId))
+    const key = `${libraryId}:${documentId}`
+    if (action === 'cancel') {
+      await runSidecar(this.config, { command: 'document-action', vault, libraryId, documentId, action }, { signal: this.lifetime.signal })
+      const run = this.documentRuns.get(key)
+      run?.controller.abort()
+      await run?.done.catch((error) => { if (!run.controller.signal.aborted) throw error })
+      return
+    }
+    if (action === 'original' || action === 'text' || action === 'sources') {
+      const documents = await this.remoteDocuments(libraryId)
+      const document = documents.find(item => item.id === documentId)
+      if (!document) throw new Error('Document is not in this library')
+      let path: string
+      if (action === 'original') {
+        const original = await readSourceOriginal(
+          this.config, this.home(), libraryId, RevisionId(document.revisionId), this.lifetime.signal,
+        )
+        path = original.absPath
+      } else {
+        const result = await runSidecar(this.config, { command: 'document-location', vault, libraryId, documentId, action }, { signal: this.lifetime.signal })
+        if (typeof result.path !== 'string') throw new Error('Document has no extracted text')
+        path = join(vault, result.path)
+        const rel = relative(await realpath(vault), await realpath(path))
+        if (rel.startsWith('..') || isAbsolute(rel) || (await lstat(path)).isSymbolicLink()) throw new Error('Linked document refused')
+      }
+      if (!canOpenNativePath()) throw new Error('Host cannot open local files')
+      await openNativePath(path, this.lifetime.signal)
+      return
+    }
+    if (action === 'retry') {
+      const document = (await this.remoteDocuments(libraryId)).find(item => item.id === documentId)
+      if (!document) throw new Error('Document is not in this library')
+      if (document.stage === 'conversion') {
+        const original = await readSourceOriginal(
+          this.config, this.home(), libraryId, RevisionId(document.revisionId), this.lifetime.signal,
+        )
+        const converted = await convertSourceFile(this.config, original.absPath, document.filename, { signal: this.lifetime.signal })
+        if (!converted.markdown) {
+          await runSidecar(this.config, { command: 'record-conversion', vault, libraryId, documentId,
+            conversionStatus: converted.status, conversion: converted.diagnostics, error: converted.error ?? converted.status })
+          throw new Error(converted.error ?? converted.status)
+        }
+        const rawPath = `raw/${documentId}-${document.revisionId}.md`
+        await withLibraryLock(libraryId, async () => {
+          await publishRawText(vault, rawPath, converted.markdown, this.lifetime.signal)
+        })
+        await indexLibraryVault(this.config, this.home(), libraryId, this.lifetime.signal)
+        await runSidecar(this.config, { command: 'plan-document', vault, libraryId, documentId,
+          revisionId: document.revisionId, rawPath, conversion: converted.diagnostics,
+          chunkChars: this.config.extractionChunkChars ?? 1500, outputReserve: this.config.extractionOutputTokens ?? 2048 })
+        return
+      }
+      await runSidecar(this.config, { command: 'document-action', vault, libraryId, documentId, action }, { signal: this.lifetime.signal })
+      return
+    }
+    if (this.documentRuns.has(key)) throw new Error('Document extraction is already running')
+    if (!request.planHash || !Number.isSafeInteger(request.approvedTokens) || (request.approvedTokens ?? 0) < 1) {
+      throw new Error('Review the complete document estimate and approve its budget first')
+    }
+    const controller = new AbortController()
+    const runSignal = AbortSignal.any([controller.signal, this.lifetime.signal])
+    const done = (async () => {
+      const env = await resolveProposeEnv(this.ctx)
+      await runSidecar(this.config, { command: 'execute-document', vault, libraryId, documentId,
+        expectedPlanHash: request.planHash, approvedTokens: request.approvedTokens }, {
+        env, signal: runSignal, timeoutMs: this.config.extractionTimeoutMs ?? 1800000,
+      })
+    })()
+    this.documentRuns.set(key, { controller, done })
+    try { await done } finally { this.documentRuns.delete(key) }
+  }
+
   private home(): string {
     return resolveKnowledgeHome(this.config)
   }
@@ -613,4 +857,26 @@ function sessionPreset(ctx: Context, session: object): string | undefined {
   }
   const value = projections.stateOf(session, 'agentPreset')
   return typeof value === 'string' ? value : undefined
+}
+
+/** Publish complete normalized bytes without exposing an unfinished .md file. */
+async function publishRawText(vault: string, relativePath: string, text: string, signal: AbortSignal): Promise<void> {
+  signal.throwIfAborted()
+  const directory = join(vault, 'raw')
+  await mkdir(directory, { recursive: true, mode: 0o700 })
+  if ((await lstat(directory)).isSymbolicLink()) throw new Error('Linked raw directory refused')
+  const temporary = join(directory, `.${randomUUID()}.tmp`)
+  const file = await open(temporary, 'wx', 0o600)
+  try {
+    await file.writeFile(text, 'utf8')
+    await file.sync()
+  } finally { await file.close() }
+  try {
+    signal.throwIfAborted()
+    const target = join(vault, relativePath)
+    try { await link(temporary, target) } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST' || (await lstat(target)).isSymbolicLink()
+        || await readFile(target, 'utf8') !== text) throw error
+    }
+  } finally { await unlink(temporary) }
 }

@@ -1,6 +1,8 @@
 /** Tool execute rejects sentences and accepts names; retrieve returns bodies. */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
@@ -62,11 +64,15 @@ describe('ask-knowledge retrieve tools', () => {
   })
 
   it('accepts 党的纪律处分条例 and 报销 and returns page bodies', async () => {
-    const { ctx } = await boot()
+    const { ctx, root } = await boot()
     const session = ctx.sessions.prepare(SessionId('ok'))
     ctx.sessions.enter(session)
     ctx.sessions.announce(session)
     const library = await ctx.askKnowledge.createLibrary({ displayName: '库' })
+    const raw = join(root, 'knowledge-bases', 'libraries', library.id, 'raw')
+    await mkdir(raw, { recursive: true })
+    await writeFile(join(raw, '党的纪律处分条例.md'), '# 党的纪律处分条例\n\n党的纪律处分条例正文。\n', 'utf8')
+    await writeFile(join(raw, '报销.md'), '# 报销\n\n报销流程正文。\n', 'utf8')
     await ctx.askKnowledge.attach({ libraryId: library.id, sessionId: session.id })
     const agent = agentWith(session)
     const ordinance = await execute(ctx, 'ask_knowledge_retrieve', {
