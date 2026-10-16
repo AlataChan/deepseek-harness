@@ -652,16 +652,16 @@ else
   bad "bundled ask-knowledge Client missing 删除 — run tsc -b then tsdown before packaging"
 fi
 if [[ -f "$ASK_K_HOST" ]] \
-  && grep -q '整理词条没有产出可写入的提案' "$ASK_K_HOST"; then
-  ok "bundled ask-knowledge Host returns finishIngest error text"
+  && grep -q 'Review the complete document estimate and approve its budget first' "$ASK_K_HOST"; then
+  ok "bundled ask-knowledge Host requires complete-document budget approval"
 else
-  bad "bundled ask-knowledge Host missing finishIngest error text — run tsc -b then tsdown before packaging"
+  bad "bundled ask-knowledge Host missing the extraction approval guard — run tsc -b then tsdown before packaging"
 fi
 if [[ -f "$ASK_K_HOST" ]] \
-  && grep -q '模型没有按词条格式返回' "$ASK_K_HOST"; then
-  ok "bundled ask-knowledge Host maps LLM non-JSON to Chinese"
+  && grep -q 'record-conversion' "$ASK_K_HOST"; then
+  ok "bundled ask-knowledge Host records conversion failures durably"
 else
-  bad "bundled ask-knowledge Host missing LLM non-JSON Chinese — run tsc -b then tsdown before packaging"
+  bad "bundled ask-knowledge Host missing durable conversion failure handling — run tsc -b then tsdown before packaging"
 fi
 # Vite minifies 180_000 to 18e4. The WebView is baked from apps/desktop/dist
 # at `cargo tauri build`; a stale connection-process lib/types emit leaves
