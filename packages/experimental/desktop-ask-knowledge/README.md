@@ -37,6 +37,8 @@ English | [中文](README.zh.md)
 
 Empty `knowledgeHome` uses `OCTOPUS_APP_DATA`. Empty `sidecarRuntimePath` uses `OCTOPUS_SIDECAR_HOME`. `cordis.patch.yml` inserts this one Host row. The Client mounts the generated document Remote contribution before registering its UI. The per-library `.octopus-kb/config.toml` owns the extraction route; approval binds its profile, model, endpoint, actual serialized requests, source hash, and complete character coverage. Route or request changes require a new estimate and approval. Missing or ambiguous responses pause processing and never trigger automatic paid retries.
 
+`ctx.askKnowledgeDocuments` is an interface-typed Host service provided by this overlay's `DocumentsServiceImpl`. It owns library-scoped original storage, integrity verification and document records. Document processing uses `DocumentJobId`; job identifiers are persisted as strings.
+
 ## Model Experience
 
 ### Bound retrieve prompt

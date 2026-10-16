@@ -25,13 +25,13 @@ export type RevisionId = Branded<'RevisionId'>
 export const RevisionId = (id: string): RevisionId => brandString<RevisionId>(id)
 
 /** Branded identifier for a document processing job. */
-export type JobId = Branded<'JobId'>
+export type DocumentJobId = Branded<'AskKnowledgeDocumentJobId'>
 /**
- * Create a branded JobId.
+ * Create a branded DocumentJobId.
  * @param id - serialized identifier.
  * @returns the branded identifier.
  */
-export const JobId = (id: string): JobId => brandString<JobId>(id)
+export const DocumentJobId = (id: string): DocumentJobId => brandString<DocumentJobId>(id)
 
 /** Status of a logical document in the library. */
 export type DocumentStatus = 'retained' | 'converting' | 'indexed' | 'failed' | 'deleted'
@@ -66,7 +66,7 @@ export interface SourceRevisionRecord {
 
 /** Tracked durable job record. */
 export interface JobRecord {
-  readonly jobId: JobId
+  readonly jobId: DocumentJobId
   readonly libraryId: AskKnowledgeLibraryId
   readonly documentId: DocumentId
   readonly revisionId: RevisionId

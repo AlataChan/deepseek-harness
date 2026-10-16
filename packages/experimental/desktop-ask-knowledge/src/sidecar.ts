@@ -297,6 +297,27 @@ export class KnowledgeProcessRunner {
   }
 }
 
+/** Process ownership is runtime state, never user configuration or persisted data. */
+const processOwners = new WeakMap<AskKnowledgeHomeConfig, KnowledgeProcessRunner>()
+
+/**
+ * Associate one service-owned runtime with its private resolved configuration.
+ * @param config - stable configuration object owned by the knowledge service.
+ * @param runner - process owner disposed with that service.
+ */
+export function setKnowledgeProcessRunner(config: AskKnowledgeHomeConfig, runner: KnowledgeProcessRunner): void {
+  processOwners.set(config, runner)
+}
+
+/**
+ * Read the runtime owner without exposing it to configuration reflection.
+ * @param config - stable configuration object owned by the knowledge service.
+ * @returns its process owner, or undefined for standalone utility calls.
+ */
+export function getKnowledgeProcessRunner(config: AskKnowledgeHomeConfig): KnowledgeProcessRunner | undefined {
+  return processOwners.get(config)
+}
+
 /**
  * Use the production service owner or an isolated, per-call local owner in utilities.
  * @param config - runtime capability injected by the knowledge service.
@@ -307,7 +328,8 @@ export async function withKnowledgeProcessRunner<T>(
   config: AskKnowledgeHomeConfig,
   operation: (runner: KnowledgeProcessRunner) => Promise<T>,
 ): Promise<T> {
-  if (config.processRunner) return await operation(config.processRunner)
+  const owner = getKnowledgeProcessRunner(config)
+  if (owner) return await operation(owner)
   const ctx = new Context()
   await ctx.plugin(LocalSubprocessRuntime)
   const runner = new KnowledgeProcessRunner(ctx.get('subprocess'))

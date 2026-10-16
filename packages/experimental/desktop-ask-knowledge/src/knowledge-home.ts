@@ -4,15 +4,11 @@
  * @module @deepseek-ai/dsh-experimental-desktop-ask-knowledge/knowledge-home
  */
 
-import type { KnowledgeProcessRunner } from './sidecar.ts'
 import { isAbsolute, resolve } from 'node:path'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 
 /** Validated plugin configuration. */
 export interface AskKnowledgeHomeConfig {
-  /** Internal process owner, supplied by the Host lifecycle. */
-  readonly processRunner?: KnowledgeProcessRunner
-
   /** Absolute Tauri app-data directory. Empty falls through to `OCTOPUS_APP_DATA`. */
   readonly knowledgeHome?: string
   /** Absolute sidecar runtime root. Empty falls through to `OCTOPUS_SIDECAR_HOME`. */

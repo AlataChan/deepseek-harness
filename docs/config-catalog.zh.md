@@ -1093,12 +1093,20 @@ export type BrandMarkId = typeof BRAND_MARK_IDS[number]
 ## `@deepseek-ai/dsh-experimental-desktop-ask-knowledge`
 
 - `inject`: `sessionProjections` · `systemPrompt`
-- `source`: [`packages/experimental/desktop-ask-knowledge/src/index.ts:58`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
+- `source`: [`packages/experimental/desktop-ask-knowledge/src/index.ts:117`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
 
 ```ts config-catalog
 /** Validated plugin configuration. */
 export interface Config extends AskKnowledgeHomeConfig {
-  /** Ceiling of one ingest file in bytes after the last chunk is joined. */
+  /** Maximum source characters included in one extraction request. */
+  readonly extractionChunkChars?: number
+  /** Maximum existing-library context characters included in each extraction request. */
+  readonly extractionContextChars?: number
+  /** Deadline in milliseconds for an explicitly approved extraction job. */
+  readonly extractionTimeoutMs?: number
+  /** Reserved maximum output tokens per extraction request. */
+  readonly extractionOutputTokens?: number
+  /** Maximum accepted source file size in bytes. */
   readonly maxIngestBytes?: number
   /** Maximum retrieve items kept in the full tool result. */
   readonly maxResultItems?: number

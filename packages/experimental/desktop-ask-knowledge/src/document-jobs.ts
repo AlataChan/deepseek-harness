@@ -10,12 +10,14 @@ import { join, relative, resolve } from 'node:path'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 import type { AskKnowledgeLibraryId } from '@deepseek-ai/dsh-host-ask-knowledge'
 import { assertVaultDir, requireLibrary } from './catalog.ts'
-import { JobId } from './document-types.ts'
+import { DocumentJobId } from './document-types.ts'
 import type { DocumentId, JobRecord, RevisionId } from './document-types.ts'
 import type { AskKnowledgeHomeConfig } from './knowledge-home.ts'
 import { resolveSidecarHome } from './knowledge-home.ts'
 import { withLibraryLock } from './library-lock.ts'
-import { resolveKbRoot, resolveSidecarExecutable, runSidecar, withKnowledgeProcessRunner } from './sidecar.ts'
+import {
+  resolveKbRoot, resolveSidecarExecutable, runSidecar, withKnowledgeProcessRunner, getKnowledgeProcessRunner,
+} from './sidecar.ts'
 
 /** Maximum allowed file size for file-result protocol (50 MiB). */
 export const MAX_FILE_RESULT_BYTES = 50 * 1024 * 1024
@@ -181,7 +183,7 @@ export async function createTrackedJob(
   totalChunks = 0,
   tokenEstimate = 0,
 ): Promise<JobRecord> {
-  const jobId = JobId(`job-${randomUUID()}`)
+  const jobId = DocumentJobId(`job-${randomUUID()}`)
   return await withLibraryLock(libraryId, async () => {
     const row = await requireLibrary(knowledgeHome, libraryId)
     const vault = await assertVaultDir(knowledgeHome, row)
@@ -238,7 +240,7 @@ export async function updateJobCheckpoint(
   config: AskKnowledgeHomeConfig,
   knowledgeHome: string,
   libraryId: AskKnowledgeLibraryId,
-  jobId: JobId,
+  jobId: DocumentJobId,
   expectedStartupAttempt: number,
   completedChunks: number,
   currentChunkIndex: number,
@@ -280,7 +282,7 @@ export async function finishTrackedJob(
   config: AskKnowledgeHomeConfig,
   knowledgeHome: string,
   libraryId: AskKnowledgeLibraryId,
-  jobId: JobId,
+  jobId: DocumentJobId,
   expectedStartupAttempt: number,
   status: 'completed' | 'failed' = 'completed',
   error?: string,
@@ -314,7 +316,7 @@ export async function markJobUncertain(
   config: AskKnowledgeHomeConfig,
   knowledgeHome: string,
   libraryId: AskKnowledgeLibraryId,
-  jobId: JobId,
+  jobId: DocumentJobId,
   reason: string,
 ): Promise<void> {
   await withLibraryLock(libraryId, async () => {
@@ -340,9 +342,9 @@ export async function cancelTrackedJob(
   config: AskKnowledgeHomeConfig,
   knowledgeHome: string,
   libraryId: AskKnowledgeLibraryId,
-  jobId: JobId,
+  jobId: DocumentJobId,
 ): Promise<void> {
-  await config.processRunner?.cancelJob(jobId)
+  await getKnowledgeProcessRunner(config)?.cancelJob(jobId)
 
   await withLibraryLock(libraryId, async () => {
     const row = await requireLibrary(knowledgeHome, libraryId)
@@ -367,7 +369,7 @@ export async function getTrackedJob(
   config: AskKnowledgeHomeConfig,
   knowledgeHome: string,
   libraryId: AskKnowledgeLibraryId,
-  jobId: JobId,
+  jobId: DocumentJobId,
 ): Promise<JobRecord | null> {
   return await withLibraryLock(libraryId, async () => {
     const row = await requireLibrary(knowledgeHome, libraryId)
@@ -420,7 +422,7 @@ export async function runFileResultCommand(
   config: AskKnowledgeHomeConfig,
   knowledgeHome: string,
   libraryId: AskKnowledgeLibraryId,
-  jobId: JobId,
+  jobId: DocumentJobId,
   command: string,
   payload: Record<string, unknown>,
   options: {

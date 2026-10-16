@@ -44,7 +44,7 @@ import {
   disposeUpload, materializeUpload, type IngestUpload,
 } from './upload-temp.ts'
 import { resolveSidecarHome } from './knowledge-home.ts'
-import { runSidecar, KnowledgeProcessRunner } from './sidecar.ts'
+import { runSidecar, KnowledgeProcessRunner, setKnowledgeProcessRunner } from './sidecar.ts'
 import { bindTypertRemote, Remote } from '@deepseek-ai/dsh-typert-protocol'
 import { createReadStream } from 'node:fs'
 import { randomUUID } from 'node:crypto'
@@ -115,11 +115,15 @@ export {
 
 /** Validated plugin configuration. */
 export interface Config extends AskKnowledgeHomeConfig {
-  /** Ceiling of one ingest file in bytes after the last chunk is joined. */
+  /** Maximum source characters included in one extraction request. */
   readonly extractionChunkChars?: number
+  /** Maximum existing-library context characters included in each extraction request. */
   readonly extractionContextChars?: number
+  /** Deadline in milliseconds for an explicitly approved extraction job. */
   readonly extractionTimeoutMs?: number
+  /** Reserved maximum output tokens per extraction request. */
   readonly extractionOutputTokens?: number
+  /** Maximum accepted source file size in bytes. */
   readonly maxIngestBytes?: number
   /** Maximum retrieve items kept in the full tool result. */
   readonly maxResultItems?: number
@@ -166,7 +170,8 @@ export default class DesktopAskKnowledge extends AskKnowledge {
   constructor(ctx: Context, config: Config) {
     super(ctx)
     const runner = new KnowledgeProcessRunner(ctx.get('subprocess'))
-    this.config = { ...config, processRunner: runner }
+    this.config = { ...config }
+    setKnowledgeProcessRunner(this.config, runner)
     this.bounds = resolveResultBounds({
       maxItems: config.maxResultItems,
       maxChars: config.maxResultChars,

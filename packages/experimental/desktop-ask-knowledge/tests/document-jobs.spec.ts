@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AskKnowledgeError, AskKnowledgeLibraryId } from '@deepseek-ai/dsh-host-ask-knowledge'
-import { DocumentId, JobId } from '../src/document-types.ts'
+import { DocumentId, DocumentJobId } from '../src/document-types.ts'
 import {
   cancelTrackedJob,
   createTrackedJob,
@@ -299,7 +299,7 @@ describe('file-result protocol validation', () => {
   it('executes one-shot command using file-result protocol and parses result', async () => {
     const { sidecarHome, knowledgeHome, libraryId } = await setupTestEnvironment()
     const config = { sidecarRuntimePath: sidecarHome }
-    const jobId = JobId(`job-${randomUUID()}`)
+    const jobId = DocumentJobId(`job-${randomUUID()}`)
 
     const res = await runFileResultCommand(
       config,
@@ -319,7 +319,7 @@ describe('file-result protocol validation', () => {
   it('terminates command immediately when AbortSignal fires', async () => {
     const { sidecarHome, knowledgeHome, libraryId } = await setupTestEnvironment()
     const config = { sidecarRuntimePath: sidecarHome }
-    const jobId = JobId(`job-${randomUUID()}`)
+    const jobId = DocumentJobId(`job-${randomUUID()}`)
     const controller = new AbortController()
 
     const promise = runFileResultCommand(
