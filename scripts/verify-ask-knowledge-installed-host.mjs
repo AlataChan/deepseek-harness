@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Exercise public Host operations using only the installed application runtime. */
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import { createRequire, registerHooks } from 'node:module'
@@ -119,6 +120,21 @@ function action(document, operation, overrides = {}) {
 }
 
 try {
+  const frozenSidecar = join(runtime, 'octopus-kb-sidecar', process.platform === 'win32' ? 'octopus-kb-sidecar.exe' : 'octopus-kb-sidecar')
+  for (const encoding of ['ascii', 'cp1252']) {
+    // Set the child's encoding directly: the production runner intentionally
+    // removes inherited environment overrides before launching its children.
+    const wire = spawnSync(frozenSidecar, [], {
+      input: JSON.stringify({ command: '不存在命令' }) + '\n', encoding: 'utf8', timeout: 15000,
+      env: { PATH: process.env.PATH, HOME: root, TMPDIR: root, TEMP: root, TMP: root,
+        SystemRoot: process.env.SystemRoot, PYTHONIOENCODING: encoding, OCTOPUS_KB_ROOT: runtime },
+    })
+    if (wire.error) throw wire.error
+    check(wire.status === 2, `frozen UTF-8 JSON wire returns the expected refusal under ${encoding}`)
+    const refusal = JSON.parse(wire.stdout)
+    assert.deepEqual(refusal, { ok: false, error: 'unknown command: 不存在命令' })
+    check(refusal.error === 'unknown command: 不存在命令', `frozen Unicode JSON refusal remains exact under ${encoding}`)
+  }
   await boot()
   const library = await service.createLibrary({ displayName: 'Installed synthetic acceptance' })
   const vault = join(home, 'knowledge-bases', 'libraries', library.id)

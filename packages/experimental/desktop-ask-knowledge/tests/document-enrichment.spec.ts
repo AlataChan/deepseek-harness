@@ -4,8 +4,9 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
-import { runSidecar } from '../src/sidecar.ts'
+import { runSidecar, type SidecarRequest, type SidecarResponse } from '../src/sidecar.ts'
 import { installPythonSidecar } from './helpers/install-sidecar.ts'
+import { PROCESS_INTEGRATION_TIMEOUT } from './helpers/process-integration-timeout.ts'
 
 describe('approved complete document enrichment', () => {
   let home: string
@@ -15,9 +16,18 @@ describe('approved complete document enrichment', () => {
   let requests: string[]
   let revisionId: string
   let invalidResponseAt: number | undefined
+  let controller: AbortController
+  const activeSidecars = new Set<Promise<SidecarResponse>>()
+  const sidecar = (request: SidecarRequest) => {
+    const call = runSidecar(config(), request, { signal: controller.signal })
+    activeSidecars.add(call)
+    void call.then(() => { activeSidecars.delete(call) }, () => { activeSidecars.delete(call) })
+    return call
+  }
   const source = '社区培训预算须有正规凭证。\n'.repeat(1200) + 'END_OF_DOCUMENT_9241'
 
   beforeEach(async () => {
+    controller = new AbortController()
     home = await mkdtemp(join(tmpdir(), 'ak-approved-enrich-'))
     vault = join(home, 'vault')
     runtime = join(home, 'runtime')
@@ -53,7 +63,7 @@ describe('approved complete document enrichment', () => {
     if (!address || typeof address === 'string') throw new Error('Recording provider did not bind')
     await writeFile(join(vault, '.octopus-kb', 'config.toml'), `version = 1\n[llm]\ndefault_profile = "recording"\n[llm.profiles.recording]\nbase_url = "http://127.0.0.1:${address.port}/v1"\nmodel = "recording-model"\nmax_retries = 0\n`)
     await installPythonSidecar(runtime)
-    const registered = await runSidecar({ sidecarRuntimePath: runtime }, { command: 'register-source-revision', vault,
+    const registered = await sidecar({ command: 'register-source-revision', vault,
       documentId: 'doc-1', libraryId: 'library-1', filename: 'source.md', byteLength: Buffer.byteLength(source),
       sha256: createHash('sha256').update(source).digest('hex'), objectPath: 'raw/source.md' })
     const revision = registered.revision
@@ -61,18 +71,21 @@ describe('approved complete document enrichment', () => {
       throw new Error('No source revision was registered')
     }
     revisionId = revision.revisionId
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 
   afterEach(async () => {
+    controller.abort()
+    while (activeSidecars.size > 0) await Promise.allSettled([...activeSidecars])
+    server?.closeAllConnections()
     if (server) await new Promise<void>((resolve, reject) => server.close((error) => {
       if (error) reject(error)
       else resolve()
     }))
     await rm(home, { recursive: true, force: true })
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 
   const config = () => ({ sidecarRuntimePath: runtime })
-  const plan = () => runSidecar(config(), { command: 'plan-document', vault, libraryId: 'library-1',
+  const plan = () => sidecar({ command: 'plan-document', vault, libraryId: 'library-1',
     documentId: 'doc-1', revisionId, rawPath: 'raw/source.md', chunkChars: 4000 })
 
   it('plans every character without inference and rejects an inadequate approval', async () => {
@@ -80,16 +93,16 @@ describe('approved complete document enrichment', () => {
     expect(pending.status).toBe('awaiting_approval')
     expect(pending.totalChunks).toBeGreaterThan(3)
     expect(requests).toHaveLength(0)
-    await expect(runSidecar(config(), { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+    await expect(sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
       expectedPlanHash: pending.planHash, approvedTokens: 1 })).rejects.toThrow(/full manifest/)
     expect(requests).toHaveLength(0)
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 
   it('uses actual provider replies and covers the final chunk exactly once across reboot', async () => {
     const pending = await plan()
     const request = { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
       expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate }
-    const result = await runSidecar(config(), request)
+    const result = await sidecar(request)
     expect(result.status).toBe('completed')
     expect(requests).toHaveLength(Number(pending.totalChunks))
     expect(requests.join('\n')).toContain('END_OF_DOCUMENT_9241')
@@ -98,47 +111,47 @@ describe('approved complete document enrichment', () => {
     const log = await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')
     expect(log).toContain(`approved-extraction-${requests.length}`)
     const calls = requests.length
-    await runSidecar(config(), { command: 'increment-startup-attempt', vault, libraryId: 'library-1' })
-    expect((await runSidecar(config(), request)).status).toBe('completed')
+    await sidecar({ command: 'increment-startup-attempt', vault, libraryId: 'library-1' })
+    expect((await sidecar(request)).status).toBe('completed')
     expect(requests).toHaveLength(calls)
     expect(await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')).toBe(log)
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 
   it('requires a fresh approval for retry and preserves already committed chunks', async () => {
     const pending = await plan()
     invalidResponseAt = 2
-    await expect(runSidecar(config(), { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+    await expect(sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
       expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate })).rejects.toThrow()
     expect(requests).toHaveLength(2)
-    const interrupted = await runSidecar(config(), { command: 'get-job', vault, jobId: pending.jobId })
+    const interrupted = await sidecar({ command: 'get-job', vault, jobId: pending.jobId })
     const recordedJob = interrupted.job
     expect(recordedJob).toMatchObject({ tokensUsed: 76 })
     expect(await readFile(join(vault, '.octopus-kb', 'document-plans', 'manifests', `${String(pending.planHash)}.json`), 'utf8'))
       .toContain('END_OF_DOCUMENT_9241')
     const logBeforeRetry = await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')
     expect(logBeforeRetry).toContain('approved-extraction-1')
-    const retry = await runSidecar(config(), { command: 'document-action', vault, libraryId: 'library-1',
+    const retry = await sidecar({ command: 'document-action', vault, libraryId: 'library-1',
       documentId: 'doc-1', action: 'retry' })
     expect(retry.planHash).not.toBe(pending.planHash)
     expect(retry.status).toBe('awaiting_approval')
     expect(requests).toHaveLength(2)
     invalidResponseAt = undefined
-    const finished = await runSidecar(config(), { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+    const finished = await sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
       expectedPlanHash: retry.planHash, approvedTokens: retry.tokenEstimate })
     expect(finished.status).toBe('completed')
     expect(requests).toHaveLength(Number(pending.totalChunks) + 1)
     const log = await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')
     expect(log.match(/approved-extraction-1\b/g)).toHaveLength(1)
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 
   it('refuses the former synthetic enrichment entry and cancelled jobs', async () => {
     const pending = await plan()
-    await expect(runSidecar(config(), { command: 'enrich-chunks', vault, libraryId: 'library-1', documentId: 'doc-1',
+    await expect(sidecar({ command: 'enrich-chunks', vault, libraryId: 'library-1', documentId: 'doc-1',
       revisionId, jobId: pending.jobId, expectedStartupAttempt: 1, chunks: [{ primaryText: source }],
     })).rejects.toThrow(/Unapproved enrichment/)
-    await runSidecar(config(), { command: 'document-action', action: 'cancel', vault, libraryId: 'library-1', documentId: 'doc-1' })
-    await expect(runSidecar(config(), { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+    await sidecar({ command: 'document-action', action: 'cancel', vault, libraryId: 'library-1', documentId: 'doc-1' })
+    await expect(sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
       expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate })).rejects.toThrow(/Cancelled/)
     expect(requests).toHaveLength(0)
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 })

@@ -1,0 +1,8 @@
+version: 1
+scenario: ask-knowledge-unbound-read
+profile: headless
+composition: ask-knowledge-unbound-read
+recording: authored
+header:
+  class: ask-knowledge-unbound-read
+  pin: true

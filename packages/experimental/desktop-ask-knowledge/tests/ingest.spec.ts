@@ -14,6 +14,7 @@ import { finishIngestPipeline, healRejectedProposals, isPageMetaRejection, isPos
 import { withLibraryLock } from '../src/library-lock.ts'
 import { decodeIngestChunk, MAX_INGEST_CHUNK_BYTES } from '../src/upload-temp.ts'
 import { installFakeSidecar, installPythonSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
+import { PROCESS_INTEGRATION_TIMEOUT } from './helpers/process-integration-timeout.ts'
 
 const KEY = credentialRef('DEEPSEEK_API_KEY')
 const cleanups: Array<() => Promise<void> | void> = []
@@ -134,7 +135,7 @@ describe('ask-knowledge ingest', () => {
     )).toContain('报销流程')
     await expect(ingestBytes(capability, library.id, '空.docx', docxWithParagraphs([])))
       .rejects.toMatchObject({ message: '这份 Word 没有可提取的文字' })
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 
   it('retains both same-name files across overlapping public uploads', async () => {
     const { capability, root } = await boot({ realSidecar: true })

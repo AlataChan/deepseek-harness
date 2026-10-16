@@ -18,6 +18,7 @@ import {
   finishTrackedJob,
 } from '../src/document-jobs.ts'
 import { installPythonSidecar } from './helpers/install-sidecar.ts'
+import { PROCESS_INTEGRATION_TIMEOUT } from './helpers/process-integration-timeout.ts'
 
 describe('Ask Knowledge Host Acceptance (AC1-AC13, AC21)', () => {
   it('exercises full retention, retrieval, jobs, and cleanup lifecycle', async () => {
@@ -220,5 +221,5 @@ describe('Ask Knowledge Host Acceptance (AC1-AC13, AC21)', () => {
       await rm(home, { recursive: true, force: true })
       await rm(sidecarHome, { recursive: true, force: true })
     }
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 })

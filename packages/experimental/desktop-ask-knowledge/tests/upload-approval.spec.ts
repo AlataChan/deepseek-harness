@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, onTestFinished } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { createServer } from 'node:http'
+import { createServer, type Server } from 'node:http'
 import { mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -9,6 +9,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import DesktopAskKnowledge from '../src/index.ts'
 import { installPythonSidecar } from './helpers/install-sidecar.ts'
 import { assertVaultDir, requireLibrary } from '../src/catalog.ts'
+import { PROCESS_INTEGRATION_TIMEOUT } from './helpers/process-integration-timeout.ts'
 
 type UploadFixture = {
   ak: DesktopAskKnowledge
@@ -20,11 +21,35 @@ type UploadFixture = {
 
 async function fixture(fn: (arg: UploadFixture) => Promise<void>) {
   const root = await mkdtemp(join(tmpdir(), 'ak-round2-host-'))
+  const lifetime = new AbortController()
+  const owned: {
+    server?: Server
+    disposeFiber?: () => Promise<void>
+    disposeCredentials?: () => Promise<void>
+  } = {}
+  let cleanupRun: Promise<void> | undefined
+  const cleanup = () => cleanupRun ??= (async () => {
+    lifetime.abort()
+    try {
+      await owned.disposeFiber?.()
+    } finally {
+      try {
+        await owned.disposeCredentials?.()
+      } finally {
+        const server = owned.server
+        server?.closeAllConnections()
+        if (server?.listening) await new Promise<void>(resolve => server.close(() => { resolve() }))
+        await rm(root, { recursive: true, force: true })
+      }
+    }
+  })()
+  onTestFinished(cleanup, PROCESS_INTEGRATION_TIMEOUT)
   const home = join(root, 'home')
   const runtime = join(root, 'runtime')
   await installPythonSidecar(runtime)
+  lifetime.signal.throwIfAborted()
   const requests: unknown[] = []
-  const server = createServer(async (req, res) => {
+  const provider = createServer(async (req, res) => {
     let text = ''
     for await (const x of req) text += x
     requests.push(JSON.parse(text))
@@ -52,8 +77,10 @@ async function fixture(fn: (arg: UploadFixture) => Promise<void>) {
       usage: { prompt_tokens: 50, completion_tokens: 2, total_tokens: 52 },
     }))
   })
-  await new Promise<void>(r => server.listen(0, '127.0.0.1', r))
-  const address = server.address()
+  owned.server = provider
+  await new Promise<void>(r => provider.listen(0, '127.0.0.1', r))
+  lifetime.signal.throwIfAborted()
+  const address = provider.address()
   if (!address || typeof address === 'string') throw new Error('missing port')
   const ctx = new Context()
   ctx.provide('systemPrompt', { section: () => () => {} })
@@ -62,13 +89,18 @@ async function fixture(fn: (arg: UploadFixture) => Promise<void>) {
     path: join(root, 'synthetic-credentials.yml'),
     watch: false,
   })
+  owned.disposeCredentials = () => creds.dispose()
   await creds.await()
+  lifetime.signal.throwIfAborted()
   await ctx.credentials.set(credentialRef('DEEPSEEK_API_KEY'), 'synthetic-local-only')
+  lifetime.signal.throwIfAborted()
   const fiber = ctx.plugin(DesktopAskKnowledge, {
     knowledgeHome: home,
     sidecarRuntimePath: runtime,
   })
+  owned.disposeFiber = () => fiber.dispose()
   await fiber.await()
+  lifetime.signal.throwIfAborted()
   try {
     const ak = ctx.get('askKnowledge') as DesktopAskKnowledge
     const lib = await ak.createLibrary({ displayName: 'Synthetic review' })
@@ -93,11 +125,7 @@ timeout = 5
     }
     await fn({ ak, lib, vault, requests, upload })
   } finally {
-    await fiber.dispose()
-    await creds.dispose()
-    server.closeAllConnections()
-    await new Promise<void>(r => server.close(() => { r() }))
-    await rm(root, { recursive: true, force: true })
+    await cleanup()
   }
 }
 
@@ -105,7 +133,7 @@ describe('public upload approval and source isolation', () => {
   it('does not send inference before a full-manifest spending approval', async () => fixture(async ({ requests, upload }) => {
     await upload('policy.md', '# 政策\n未批准任何预算的文档。')
     expect(requests.length).toBe(0)
-  }))
+  }), PROCESS_INTEGRATION_TIMEOUT)
 
   it('delivers the late document content to extraction instead of a prefix', async () => fixture(async ({ ak, lib, requests, upload }) => {
     const pending = await upload('long.md', '# 长文\n' + '背景材料。'.repeat(2600) + '\n末尾唯一事实END_COVERAGE_9241')
@@ -131,7 +159,7 @@ describe('public upload approval and source isolation', () => {
     })
     expect(requests.length).toBeGreaterThan(0)
     expect(JSON.stringify(requests)).toContain('END_COVERAGE_9241')
-  }))
+  }), PROCESS_INTEGRATION_TIMEOUT)
 
   it('keeps both raw imports when filenames are identical', async () => fixture(async ({ upload, vault }) => {
     await upload('same.md', '# 第一份\nFIRST_SOURCE_9241')
@@ -141,5 +169,5 @@ describe('public upload approval and source isolation', () => {
     const all = (await Promise.all(names.map((n: string) => readFile(join(vault, 'raw', n), 'utf8')))).join('\n')
     expect(all).toContain('FIRST_SOURCE_9241')
     expect(all).toContain('SECOND_SOURCE_9241')
-  }))
+  }), PROCESS_INTEGRATION_TIMEOUT)
 })

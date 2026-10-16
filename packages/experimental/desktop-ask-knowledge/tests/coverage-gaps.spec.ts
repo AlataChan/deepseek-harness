@@ -34,6 +34,7 @@ import {
 import { placeLibraryShortcut } from '../src/shortcut.ts'
 import { installFakeSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
 import { resolveResultBounds as retrieveBounds } from '../src/retrieve.ts'
+import { PROCESS_INTEGRATION_TIMEOUT } from './helpers/process-integration-timeout.ts'
 
 const cleanups: Array<() => Promise<void> | void> = []
 
@@ -717,5 +718,5 @@ describe('ingest leftover helpers', () => {
       'prop-old',
     )
     expect(camel).toBe('prop-camel')
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 })

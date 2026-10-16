@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 import { BOOTSTRAP_CONFIG_TOML } from '../src/bootstrap-vault.ts'
-import { packagePythonDir, runSidecar } from '../src/sidecar.ts'
+import { packagePythonDir, resolveSidecarExecutable, runSidecar } from '../src/sidecar.ts'
 import { installFakeSidecar, installPythonSidecar } from './helpers/install-sidecar.ts'
 
 const cleanups: Array<() => void> = []
@@ -108,6 +108,25 @@ describe('ask-knowledge sidecar', () => {
       await expect(runSidecar({ sidecarRuntimePath: home }, { command: '不存在命令' }, {
         env: { PYTHONIOENCODING: encoding },
       })).rejects.toMatchObject({ code: 'ingest-failed', message: 'unknown command: 不存在命令' })
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it('resolves the Windows onedir executable under its extensionless directory', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-knowledge-platform-layout-'))
+    try {
+      const directory = join(home, 'octopus-kb-sidecar')
+      await mkdir(directory)
+      const windowsExecutable = join(directory, 'octopus-kb-sidecar.exe')
+      await writeFile(windowsExecutable, 'synthetic PE placeholder')
+      expect(resolveSidecarExecutable(home, 'win32')).toBe(windowsExecutable)
+      const posixExecutable = join(directory, 'octopus-kb-sidecar')
+      await writeFile(posixExecutable, 'synthetic POSIX placeholder')
+      expect(resolveSidecarExecutable(home, 'darwin')).toBe(posixExecutable)
+      const flatWindowsExecutable = join(home, 'octopus-kb-sidecar.exe')
+      await writeFile(flatWindowsExecutable, 'synthetic flat PE placeholder')
+      expect(resolveSidecarExecutable(home, 'win32')).toBe(flatWindowsExecutable)
     } finally {
       await rm(home, { recursive: true, force: true })
     }

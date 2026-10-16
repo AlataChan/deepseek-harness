@@ -52,17 +52,17 @@ function isExecutableFile(path: string): boolean {
  * Resolve the sidecar executable. Prefers a PyInstaller binary in the runtime
  * home; tests may install a script named `octopus-kb-sidecar`.
  * @param home - resolved sidecar runtime directory.
+ * @param platform - execution operating system; defaults to the Host operating system.
  * @returns absolute executable path.
  */
-export function resolveSidecarExecutable(home: string): string {
-  /* v8 ignore next -- Windows lane covers the .exe candidate */
-  const names = process.platform === 'win32'
+export function resolveSidecarExecutable(home: string, platform: NodeJS.Platform = process.platform): string {
+  const names = platform === 'win32'
     ? ['octopus-kb-sidecar.exe', 'octopus-kb-sidecar']
     : ['octopus-kb-sidecar']
   for (const name of names) {
     const candidate = join(home, name)
     if (isExecutableFile(candidate)) return candidate
-    const nested = join(home, name, name)
+    const nested = join(home, 'octopus-kb-sidecar', name)
     if (isExecutableFile(nested)) return nested
   }
   throw new AskKnowledgeError(
