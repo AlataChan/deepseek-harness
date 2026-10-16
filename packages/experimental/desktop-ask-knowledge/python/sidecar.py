@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import sys
@@ -917,6 +918,11 @@ COMMANDS = {
 
 
 def main() -> int:
+    # Node encodes this process channel as UTF-8, independently of OS locale.
+    # StringIO callers already supply decoded text and do not expose reconfigure.
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8")
     raw = sys.stdin.read()
     try:
         req = json.loads(raw) if raw.strip() else {}

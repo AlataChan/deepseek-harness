@@ -94,6 +94,25 @@ describe('ask-knowledge sidecar', () => {
     }
   })
 
+  it.each(['ascii', 'cp1252'])('keeps the JSON wire UTF-8 under a %s process locale', async (encoding) => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-knowledge-json-encoding-'))
+    try {
+      await installPythonSidecar(home)
+      const source = join(home, '中文资料.md')
+      await writeFile(source, '# 中文标题\n保留完整中文内容。\n', 'utf8')
+      const result = await runSidecar({ sidecarRuntimePath: home }, { command: 'convert-file', path: source }, {
+        env: { PYTHONIOENCODING: encoding },
+      })
+      expect(result.body).toContain('保留完整中文内容。')
+      expect(result.title).toBe('中文资料')
+      await expect(runSidecar({ sidecarRuntimePath: home }, { command: '不存在命令' }, {
+        env: { PYTHONIOENCODING: encoding },
+      })).rejects.toMatchObject({ code: 'ingest-failed', message: 'unknown command: 不存在命令' })
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
   it('fails retrieve when sidecar home is missing', async () => {
     await expect(runSidecar({ sidecarRuntimePath: '' }, { command: 'self-test' }))
       .rejects.toMatchObject({ code: 'sidecar-home-missing' })

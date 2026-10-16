@@ -157,8 +157,10 @@ jobs:
       - name: Run the Windows readiness gate
         shell: pwsh
         run: node scripts/verify-desktop-exe.mjs D:\octo-dsh
-      - name: Verify installed Ask Knowledge public flows
+      - name: Verify installed Ask Knowledge public flows with a legacy code page
         shell: pwsh
+        env:
+          PYTHONIOENCODING: cp1252
         run: |
           & 'D:\octo-dsh\resources\node.exe' scripts/verify-ask-knowledge-installed-host.mjs 'D:\octo-dsh\resources'
           if ($LASTEXITCODE -ne 0) { throw "Installed Ask Knowledge acceptance failed" }
