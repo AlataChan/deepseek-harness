@@ -100,6 +100,18 @@ def cmd_self_test(req: dict) -> dict:
         has_xlsx = True
     except ImportError:
         has_xlsx = False
+    try:
+        import pypdf
+        from documents import convert as document_convert
+
+        has_pypdf = callable(pypdf.PdfReader)
+        has_document_pdf = document_convert.pypdf is not None and callable(document_convert.inspect_pdf)
+    except ImportError:
+        has_pypdf = False
+        has_document_pdf = False
+    from documents.runtime_check import check_sqlite_runtime
+
+    sqlite_runtime = check_sqlite_runtime()
     filled = {
         "operations": [
             {
@@ -129,6 +141,9 @@ def cmd_self_test(req: dict) -> dict:
         "convertFile": True,
         "markitdown": has_markitdown,
         "pdf": has_pdf,
+        "pypdf": has_pypdf,
+        "documentPdf": has_document_pdf,
+        "sqliteRuntime": sqlite_runtime["ok"],
         "xlsx": has_xlsx,
         "hasDeepseekKey": bool(key),
     }

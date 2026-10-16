@@ -191,6 +191,45 @@ try {
   }
   const preview = await service.finishExtract({ handle: extractHandle })
   check(preview.truncated && preview.text.length <= 32_000, 'large session-only conversion uses file results and preserves preview cap')
+  const callsBeforePdf = requests.length
+  const pdfFixture = name => readFile(new URL(`../packages/experimental/desktop-ask-knowledge/tests/fixtures/conversion/${name}`, import.meta.url))
+  const latinBytes = await pdfFixture('latin.pdf')
+  const latin = await upload(library.id, 'installed-latin.pdf', latinBytes)
+  const latinDocument = (await service.remoteDocuments(library.id)).find(row => row.filename === 'installed-latin.pdf')
+  check(latin.status === 'deferred', `installed public text PDF conversion defers approved enrichment (${latin.status}: ${latin.error ?? ''})`)
+  check(latinDocument?.conversionStatus === 'complete' && latinDocument.originalAvailable && latinDocument.searchable,
+    'installed text PDF reports complete retained and searchable conversion')
+  const latinOriginal = await ctx.get('askKnowledgeDocuments').readOriginal(library.id, latinDocument.revisionId)
+  check(Buffer.from(latinOriginal.bytes).equals(latinBytes), 'installed text PDF retains original bytes')
+  const latinHits = await searchLibraryPassages({ knowledgeHome: home, sidecarRuntimePath: runtime }, home,
+    { libraryId: library.id, queries: ['Budget'], documentFilter: latin.rawRelPath })
+  check(latinHits.items.some(item => item.text.includes('Community Training Plan') && item.text.includes('Budget 2000 dollars')),
+    'installed public text PDF exposes actual converted text to search')
+
+  const mixedBytes = await pdfFixture('mixed-pages.pdf')
+  const mixed = await upload(library.id, 'installed-mixed-pages.pdf', mixedBytes)
+  const mixedDocument = (await service.remoteDocuments(library.id)).find(row => row.filename === 'installed-mixed-pages.pdf')
+  check(mixed.status === 'deferred' && mixedDocument?.conversionStatus === 'partial',
+    'installed mixed PDF preserves searchable partial conversion')
+  check(mixedDocument.originalAvailable && mixedDocument.searchable && mixedDocument.needsOcrPage === 2,
+    'installed mixed PDF identifies page 2 as needing OCR without discarding extractable text')
+  const mixedOriginal = await ctx.get('askKnowledgeDocuments').readOriginal(library.id, mixedDocument.revisionId)
+  check(Buffer.from(mixedOriginal.bytes).equals(mixedBytes), 'installed mixed PDF retains original bytes')
+  const mixedHits = await searchLibraryPassages({ knowledgeHome: home, sidecarRuntimePath: runtime }, home,
+    { libraryId: library.id, queries: ['Community'], documentFilter: mixed.rawRelPath })
+  check(mixedHits.items.some(item => item.text.includes('Community Training Plan')),
+    'installed mixed PDF exposes its extractable page to search')
+
+  const scanBytes = await pdfFixture('scan.pdf')
+  const scan = await upload(library.id, 'installed-scan.pdf', scanBytes)
+  const scanDocument = (await service.remoteDocuments(library.id)).find(row => row.filename === 'installed-scan.pdf')
+  check(scan.status === 'failed' && scanDocument?.conversionStatus === 'needs_ocr',
+    'installed scan reports needs OCR instead of fabricated conversion success')
+  check(scanDocument.originalAvailable && !scanDocument.searchable && scanDocument.needsOcrPage === 1,
+    'installed scan truthfully retains original without claiming searchable text')
+  const scanOriginal = await ctx.get('askKnowledgeDocuments').readOriginal(library.id, scanDocument.revisionId)
+  check(Buffer.from(scanOriginal.bytes).equals(scanBytes), 'installed scan retains byte-identical original for later OCR')
+  check(requests.length === callsBeforePdf, 'installed PDF conversion dispatches no unapproved model calls')
   process.stdout.write(JSON.stringify({ ok: true, mode: 'installed-host', checks: checks.length, providerRequests: requests.length,
     sourceSha256: createHash('sha256').update(source).digest('hex'), verified: checks }) + '\n')
 } finally {

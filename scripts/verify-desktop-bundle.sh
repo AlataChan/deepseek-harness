@@ -814,7 +814,10 @@ if [[ -x "$SIDECAR" ]]; then
     && printf '%s' "$SELFTEST" | grep -q '"rulesSchema": true' \
     && printf '%s' "$SELFTEST" | grep -q '"pageMetaFill": true' \
     && printf '%s' "$SELFTEST" | grep -q '"retrieveFold": true' \
-    && printf '%s' "$SELFTEST" | grep -q '"convertFile": true'; then
+    && printf '%s' "$SELFTEST" | grep -q '"convertFile": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"pypdf": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"documentPdf": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"sqliteRuntime": true'; then
     ok "bundled sidecar self-test passed in place"
   else
     bad "bundled sidecar self-test failed in place — must load proposal.json and builtins.yaml via the frozen package"
@@ -846,7 +849,10 @@ if [[ -x "$SIDECAR" ]]; then
     && printf '%s' "$RELOC_OUT" | grep -q '"rulesSchema": true' \
     && printf '%s' "$RELOC_OUT" | grep -q '"pageMetaFill": true' \
     && printf '%s' "$RELOC_OUT" | grep -q '"retrieveFold": true' \
-    && printf '%s' "$RELOC_OUT" | grep -q '"convertFile": true'; then
+    && printf '%s' "$RELOC_OUT" | grep -q '"convertFile": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"pypdf": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"documentPdf": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"sqliteRuntime": true'; then
     ok "sidecar self-test passed after relocating kb-runtime"
   else
     bad "sidecar self-test failed after relocating kb-runtime — runtime is not relocatable"

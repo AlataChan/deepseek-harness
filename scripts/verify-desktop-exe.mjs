@@ -467,8 +467,8 @@ if (buildInfo?.kb === 'skipped') {
     return capture(executable, [], { input: '{"command":"self-test"}\n', env, timeout: 300_000 }).stdout
   }
 
-  /** Eight self-test flags, in the order both build scripts check them. */
-  const SELF_TEST_KEYS = ['pdf', 'xlsx', 'proposalSchema', 'applyRules', 'rulesSchema', 'pageMetaFill', 'retrieveFold', 'convertFile']
+  /** Required self-test flags shared by both platform freeze scripts. */
+  const SELF_TEST_KEYS = ['pypdf', 'documentPdf', 'sqliteRuntime', 'pdf', 'xlsx', 'proposalSchema', 'applyRules', 'rulesSchema', 'pageMetaFill', 'retrieveFold', 'convertFile']
   /** @param {string} output - sidecar stdout. @returns whether every flag answered true. */
   const selfTestPassed = output => SELF_TEST_KEYS.every(key => output.includes(`"${key}": true`))
 

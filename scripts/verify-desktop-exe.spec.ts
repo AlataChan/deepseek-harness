@@ -80,8 +80,14 @@ describe('Windows desktop build scripts', () => {
     )
     const moduleKeys = capturedValues(arrayLiteral, /'([^']+)'/g).sort()
     expect(moduleKeys).toEqual(shellKeys)
+    const verifierKeys = capture(
+      read('scripts/verify-desktop-exe.mjs'), /const SELF_TEST_KEYS = \[([^\]]+)\]/,
+      'verify-desktop-exe.mjs SELF_TEST_KEYS',
+    )
+    expect(capturedValues(verifierKeys, /'([^']+)'/g).sort()).toEqual(moduleKeys)
     expect(shellKeys).toEqual([
-      'applyRules', 'convertFile', 'pageMetaFill', 'pdf', 'proposalSchema', 'retrieveFold', 'rulesSchema', 'xlsx',
+      'applyRules', 'convertFile', 'documentPdf', 'pageMetaFill', 'pdf', 'proposalSchema',
+      'pypdf', 'retrieveFold', 'rulesSchema', 'sqliteRuntime', 'xlsx',
     ])
   })
 
@@ -90,6 +96,19 @@ describe('Windows desktop build scripts', () => {
     const module = read('scripts/build-kb-sidecar.mjs')
     expect(flagValues(module, '--collect-all')).toEqual(flagValues(shell, '--collect-all'))
     expect(flagValues(module, '--hidden-import')).toEqual(flagValues(shell, '--hidden-import'))
+  })
+
+  it('ships the pinned PDF inspector and SQLite extension in both freezes', () => {
+    for (const path of ['scripts/build-kb-sidecar.mjs', 'scripts/build-kb-sidecar.sh']) {
+      const text = read(path)
+      expect(text).toContain('pypdf==6.11.0')
+      expect(flagValues(text, '--collect-all')).toContain('pypdf')
+      expect(flagValues(text, '--hidden-import')).toEqual(expect.arrayContaining(['pypdf', 'sqlite3', '_sqlite3']))
+    }
+    const bundle = read('scripts/verify-desktop-bundle.sh')
+    for (const key of ['pypdf', 'documentPdf', 'sqliteRuntime']) {
+      expect(bundle.match(new RegExp(`"${key}": true`, 'g'))).toHaveLength(2)
+    }
   })
 
   it('keeps the builtins.yaml add-data source in both freezes', () => {

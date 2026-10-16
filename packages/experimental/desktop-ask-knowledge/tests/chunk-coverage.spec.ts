@@ -120,6 +120,7 @@ describe('document chunking and span coverage', () => {
 
     // Second chunk onward should have contextHeader with table header
     const chunk2 = (res.chunks as readonly { readonly contextHeader: string }[])[1]
+    if (!chunk2) throw new Error('Expected a second structural chunk')
     expect(chunk2.contextHeader).toContain('Table Context: | 项目 | 预算（元） | 说明 |')
   })
 

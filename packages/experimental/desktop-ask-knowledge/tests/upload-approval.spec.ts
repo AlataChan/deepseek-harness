@@ -112,7 +112,8 @@ describe('public upload approval and source isolation', () => {
     expect(pending.status).toBe('deferred')
     expect(requests).toHaveLength(0)
     const [document] = await ak.remoteDocuments(lib.id)
-    expect(document?.status).toBe('paused')
+    if (!document?.planHash) throw new Error('Pending document and spending plan are required')
+    expect(document.status).toBe('paused')
     await expect(ak.remoteDocumentAction({
       libraryId: lib.id,
       documentId: document.id,
