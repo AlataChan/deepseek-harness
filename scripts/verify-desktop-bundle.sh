@@ -649,6 +649,14 @@ if [[ -f "$ASK_K_CLIENT" ]] && grep -q 'conversation.hero.capabilities.item' "$A
 else
   bad "bundled ask-knowledge Client missing the 专业能力 menu row — run tsc -b then tsdown before packaging"
 fi
+if [[ -f "$ASK_K_CLIENT" ]] \
+  && grep -Fq 'get("remote.askKnowledge")' "$ASK_K_CLIENT" \
+  && grep -q 'docs.loading' "$ASK_K_CLIENT" \
+  && grep -q '批准预算' "$ASK_K_CLIENT"; then
+  ok "bundled knowledge settings resolve document remotes safely and expose budget approval"
+else
+  bad "bundled knowledge settings lack scoped document loading or budget approval — rebuild Client bundles"
+fi
 ASK_DATA_CLIENT="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-data/lib/client.js"
 if [[ -f "$ASK_DATA_CLIENT" ]] \
   && grep -q '专业能力' "$ASK_DATA_CLIENT" \

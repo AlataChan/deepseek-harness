@@ -1,6 +1,11 @@
+/** @vitest-environment jsdom */
 /** Ask-knowledge occupant registers the chip, picker, and settings section. */
 
-import { Context } from '@deepseek-ai/cordis'
+import { Context, Service } from '@deepseek-ai/cordis'
+import { createElement } from 'react'
+import { fireEvent, render } from '@testing-library/react'
+import { LibrarySettingsSection } from '../src/client/LibrarySettingsSection.tsx'
+import { zh } from '../src/client/locales.ts'
 import { describe, expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
@@ -31,12 +36,18 @@ function injectedOf<T>(
   return entry.inject() as Partial<T> as T
 }
 
-async function bench(initial?: { current?: string; byId?: Record<string, SessionRow>; mountContribution?: TypertRemoteContribution }) {
+async function bench(initial?: {
+  current?: string
+  byId?: Record<string, SessionRow>
+  mountContribution?: TypertRemoteContribution
+  namespacedRemote?: boolean
+  libraries?: Array<{ id: string; displayName: string; documentCount?: number }>
+}) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   ctx.provide('locale', new LocaleRuntime(ctx))
   const remotes = {
-    listAskKnowledgeLibraries: vi.fn(async () => ({ ok: true as const, value: [] })),
+    listAskKnowledgeLibraries: vi.fn(async () => ({ ok: true as const, value: initial?.libraries ?? [] })),
     createAskKnowledgeLibrary: vi.fn(async () => ({ ok: true as const, value: { id: '2', displayName: '新' } })),
     attachAskKnowledge: vi.fn(async () => ({
       ok: true as const,
@@ -60,7 +71,13 @@ async function bench(initial?: { current?: string; byId?: Record<string, Session
   }
   const unmountRemote = vi.fn(async () => {})
   const mountRemote = vi.fn(async (_contribution: TypertRemoteContribution) => unmountRemote)
-  ctx.provide('remote', { session: remotes, $mount: mountRemote } as never)
+  if (initial?.namespacedRemote) {
+    class RemoteService extends Service {
+      readonly $mount = mountRemote
+      constructor(scope: Context) { super(scope, 'remote') }
+    }
+    new RemoteService(ctx)
+  } else ctx.provide('remote', { session: remotes, $mount: mountRemote } as never)
   ctx.provide('remote.session', remotes)
   const state = {
     current: initial?.current,
@@ -247,7 +264,7 @@ describe('registered document actions', () => {
       ? { ok: false as const, error: { message: 'durable cancellation refused' } }
       : { ok: true as const, value: undefined })
     const documents = vi.fn(async () => ({ ok: true as const, value: [item] }))
-    Reflect.set(b.ctx.remote, 'askKnowledge', { documentAction: action, documents })
+    b.ctx.provide('remote.askKnowledge', { documentAction: action, documents } as never)
     try {
       const settings = injectedOf<LibrarySettingsRemotes>(b.slots.entries('settings.section')[0])
       expect(await settings.listDocuments!('library-verified')).toEqual({ ok: true, value: [item] })
@@ -275,4 +292,27 @@ describe('registered document actions', () => {
       expect(listed.value?.every(item => !item.originalAvailable)).toBe(true)
     } finally { await b.dispose() }
   })
+})
+
+it('loads pending documents and approves their displayed budget through a real Cordis Remote namespace', async () => {
+  const b = await bench({ namespacedRemote: true,
+    libraries: [{ id: 'qinghe', displayName: '青禾培训测试库', documentCount: 1 }] })
+  const item = { id: 'doc-qinghe', libraryId: 'qinghe', filename: '青禾原版.md',
+    originalAvailable: true, searchable: true, status: 'paused' as const, stage: 'awaiting_approval',
+    estimatedTokens: 42000, totalChunks: 32, completedChunks: 0, budgetApproved: false, planHash: 'visible-plan' }
+  const documents = vi.fn(async () => ({ ok: true as const, value: [item] }))
+  const documentAction = vi.fn(async () => ({ ok: true as const, value: undefined }))
+  await b.ctx.plugin({ name: 'document-remote-provider', apply: (scope: Context) => {
+    scope.provide('remote.askKnowledge', { documents, documentAction } as never)
+  } }).await()
+  const settings = injectedOf<LibrarySettingsRemotes>(b.slots.entries('settings.section')[0])
+  const view = render(createElement(LibrarySettingsSection, { ...settings, t: key => zh[key] }))
+  try {
+    fireEvent.click(await view.findByRole('button', { name: /青禾培训测试库/ }))
+    fireEvent.click(await view.findByRole('button', { name: '批准预算' }))
+    expect(documents).toHaveBeenCalledWith('qinghe')
+    expect(documentAction).toHaveBeenCalledWith({ libraryId: 'qinghe', documentId: item.id,
+      action: 'approve', planHash: 'visible-plan', approvedTokens: 42000 })
+    expect(view.queryByText('该知识库暂无文档')).toBeNull()
+  } finally { view.unmount(); await b.dispose(); await b.ctx.fiber.dispose() }
 })

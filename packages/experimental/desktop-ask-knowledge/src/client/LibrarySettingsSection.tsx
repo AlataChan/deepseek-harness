@@ -26,6 +26,10 @@ export interface LibrarySettingsRemotes {
   approveBudget?: (item: DocumentStatusItem) => Promise<void>
 }
 
+type DocumentLoadState =
+  | { readonly state: 'ready'; readonly items: readonly DocumentStatusItem[] }
+  | { readonly state: 'failed' }
+
 /** Injected remotes and locale. */
 export interface LibrarySettingsSectionProps extends LibrarySettingsRemotes {
   t: (key: AskKnowledgeKey) => string
@@ -52,7 +56,7 @@ export function LibrarySettingsSection({
   const [rows, setRows] = useState<readonly SettingsLibrary[]>([])
   const [error, setError] = useState<string | undefined>()
   const [expandedLibraryId, setExpandedLibraryId] = useState<string | undefined>()
-  const [docMap, setDocMap] = useState<Record<string, readonly DocumentStatusItem[]>>({})
+  const [docMap, setDocMap] = useState<Record<string, DocumentLoadState>>({})
 
   useEffect(() => {
     void listLibraries().then((result) => {
@@ -65,8 +69,12 @@ export function LibrarySettingsSection({
     try {
       const result = await listDocuments(libraryId)
       if (!result.ok || !result.value) throw new Error(t('error.docsFailed'))
-      setDocMap(current => ({ ...current, [libraryId]: result.value ?? [] }))
-    } catch (error) { setError(error instanceof Error ? error.message : t('error.docsFailed')) }
+      setDocMap(current => ({ ...current, [libraryId]: { state: 'ready', items: result.value ?? [] } }))
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t('error.docsFailed'))
+      setDocMap(current => current[libraryId]?.state === 'ready' ? current
+        : { ...current, [libraryId]: { state: 'failed' } })
+    }
   }
   useEffect(() => {
     if (!expandedLibraryId) return
@@ -89,7 +97,7 @@ export function LibrarySettingsSection({
       <ul className={css.list}>
         {rows.map((row) => {
           const isExpanded = expandedLibraryId === row.id
-          const docs = docMap[row.id] ?? []
+          const documents = docMap[row.id]
           return (
             <li key={row.id} className={css.itemWrapper}>
               <div className={css.row}>
@@ -125,8 +133,8 @@ export function LibrarySettingsSection({
               </div>
               {isExpanded && listDocuments !== undefined && (
                 <div className={css.details}>
-                  <DocumentList
-                    items={docs}
+                  {documents?.state === 'ready' ? <DocumentList
+                    items={documents.items}
                     t={t}
                     onOpenOriginal={operate(openOriginal)}
                     onViewText={operate(viewText)}
@@ -135,7 +143,7 @@ export function LibrarySettingsSection({
                     onResume={operate(resumeExtraction)}
                     onCancel={operate(cancelProcessing)}
                     onApproveBudget={operate(approveBudget)}
-                  />
+                  /> : <p role="status">{documents?.state === 'failed' ? t('error.docsFailed') : t('docs.loading')}</p>}
                 </div>
               )}
             </li>

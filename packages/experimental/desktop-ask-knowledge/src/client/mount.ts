@@ -275,7 +275,7 @@ interface DocumentRemotes {
 }
 
 function documentRemotes(ctx: ClientContext): DocumentRemotes | undefined {
-  return (ctx.remote as { askKnowledge?: DocumentRemotes }).askKnowledge
+  return ctx.get('remote.askKnowledge') as DocumentRemotes | undefined
 }
 
 async function documentAction(ctx: ClientContext, item: DocumentStatusItem, action: string): Promise<void> {

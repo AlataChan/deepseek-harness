@@ -77,6 +77,7 @@ export type AskKnowledgeKey =
   | 'docs.estimateLabel'
   | 'docs.approveBudget'
   | 'docs.budgetApproved'
+  | 'docs.loading'
   | 'docs.empty'
   | 'docs.statusConverting'
   | 'docs.statusChunking'
@@ -159,6 +160,7 @@ const zh = {
   'docs.estimateLabel': '预计消耗: ~{tokens} 词元',
   'docs.approveBudget': '批准预算',
   'docs.budgetApproved': '已批准',
+  'docs.loading': '正在加载文档…',
   'docs.empty': '该知识库暂无文档',
   'docs.statusConverting': '正在转换格式',
   'docs.statusChunking': '正在分块规划',
@@ -242,6 +244,7 @@ const en = {
   'docs.estimateLabel': 'Estimated usage: ~{tokens} tokens',
   'docs.approveBudget': 'Approve budget',
   'docs.budgetApproved': 'Approved',
+  'docs.loading': 'Loading documents…',
   'docs.empty': 'No documents in this library yet',
   'docs.statusConverting': 'Converting format',
   'docs.statusChunking': 'Planning chunks',

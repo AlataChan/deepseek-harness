@@ -35,7 +35,7 @@ kind: "package-bundle"
     extractionTimeoutMs: 1800000
 ```
 
-空的 `knowledgeHome` 使用 `OCTOPUS_APP_DATA`。空的 `sidecarRuntimePath` 使用 `OCTOPUS_SIDECAR_HOME`。`cordis.patch.yml` 插入这一行 Host。Client 在注册界面前挂载生成的文档 Remote。每个库的 `.octopus-kb/config.toml` 统一配置整理模型；批准绑定该 profile、模型、端点、源文范围、提示版本和额度上限。每块执行时再选择 Wiki 上下文；路由、提示版本或更高额度需要重新估算和批准。缺失或结果不明的响应会暂停处理，不会自动重复付费推理。
+空的 `knowledgeHome` 使用 `OCTOPUS_APP_DATA`。空的 `sidecarRuntimePath` 使用 `OCTOPUS_SIDECAR_HOME`。`cordis.patch.yml` 插入这一行 Host。Client 在注册界面前挂载生成的文档 Remote。可选文档方法通过 Cordis 命名空间服务查询访问。设置页区分文档加载中、加载失败与成功读取后的空库；刷新失败时保留已加载文档。每个库的 `.octopus-kb/config.toml` 统一配置整理模型；批准绑定该 profile、模型、端点、源文范围、提示版本和额度上限。每块执行时再选择 Wiki 上下文；路由、提示版本或更高额度需要重新估算和批准。缺失或结果不明的响应会暂停处理，不会自动重复付费推理。
 
 `ctx.askKnowledgeDocuments` 是由本 overlay 的 `DocumentsServiceImpl` 提供、以接口声明的 Host 服务，负责按文档库管理原件存储、完整性校验和文档记录。 文档处理使用独立的 `DocumentJobId`，任务标识符以字符串持久化。
 

@@ -214,3 +214,19 @@ it('A15: normal UI flow contains no technical retrieval controls (chunking, FTS,
   const container = view.container.textContent ?? ''
   expect(container).not.toMatch(/chunk|overlap|top-k|fts|bm25/i)
 })
+
+it('keeps document loading and request failures distinct from a successfully empty library', async () => {
+  const pending = Promise.withResolvers<{ ok: boolean }>()
+  const listDocuments = vi.fn(() => pending.promise)
+  const view = render(<LibrarySettingsSection
+    listLibraries={async () => ({ ok: true, value: [{ id: 'pending', displayName: '待处理知识库' }] })}
+    removeLibrary={async () => ({ ok: true })}
+    listDocuments={listDocuments}
+    t={t}
+  />)
+  fireEvent.click(await view.findByRole('button', { name: /待处理知识库/ }))
+  expect(view.queryByText('该知识库暂无文档')).toBeNull()
+  pending.resolve({ ok: false })
+  expect(await view.findByRole('alert')).toBeTruthy()
+  expect(view.queryByText('该知识库暂无文档')).toBeNull()
+})
