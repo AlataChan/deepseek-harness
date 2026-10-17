@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createServer, type Server } from 'node:http'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -94,6 +94,95 @@ describe('approved complete document enrichment', () => {
   const config = () => ({ sidecarRuntimePath: runtime })
   const plan = () => sidecar({ command: 'plan-document', vault, libraryId: 'library-1',
     documentId: 'doc-1', revisionId, rawPath: 'raw/source.md', chunkChars: 4000 })
+
+  it('publishes cited create_page, add_alias and the reported append_log together', async () => {
+    const reported = JSON.parse(await readFile(new URL('./fixtures/append-log-with-source-span.json', import.meta.url), 'utf8'))
+    const pending = await plan()
+    customResponder = index => index === 1 ? { content: JSON.stringify({ operations: [
+      { op: 'create_page', path: 'wiki/CitedPolicy.md',
+        frontmatter: { title: 'CitedPolicy', type: 'note', role: 'note', layer: 'wiki', lang: 'zh', summary: '培训要求' },
+        body: '社区培训预算须有正规凭证。', rationale: 'source fact', confidence: 1,
+        source_span: { path: 'raw/source.md', start_line: 1, end_line: 5 } },
+      { op: 'add_alias', target_page: 'wiki/CitedPolicy.md', alias: '培训凭证', rationale: 'source alias', confidence: 1,
+        source_span: { path: 'raw/source.md', start_line: 1, end_line: 5 } },
+      { ...reported, source_span: { ...reported.source_span, path: 'raw/source.md' } },
+    ] }) } : undefined
+    const execute = { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate }
+    const result = await sidecar(execute)
+    expect(result.status).toBe('completed')
+    expect(await readFile(join(vault, 'wiki', 'CitedPolicy.md'), 'utf8')).toContain('培训凭证')
+    const log = await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')
+    expect(log).toContain(reported.entry)
+    const checkpointPath = join(vault, '.octopus-kb', 'document-plans', `${String(pending.planHash)}-0.json`)
+    const saved = JSON.parse(await readFile(checkpointPath, 'utf8'))
+    expect(saved.proposal.operations[2].source_span).toEqual({ path: 'raw/source.md', start_line: 38, end_line: 66 })
+    const count = requests.length
+    expect((await sidecar(execute)).status).toBe('completed')
+    expect(requests).toHaveLength(count)
+    expect(await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')).toBe(log)
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('resumes a log citation rejected by the old schema without repeating its paid call', async () => {
+    await cp(new URL('../python/kb/src/', import.meta.url), join(runtime, 'src'), { recursive: true })
+    await cp(new URL('../python/kb/prompts/', import.meta.url), join(runtime, 'prompts'), { recursive: true })
+    await cp(new URL('../python/kb/schemas/', import.meta.url), join(runtime, 'schemas'), { recursive: true })
+    const schemaPath = join(runtime, 'schemas', 'llm', 'proposal.json')
+    const currentSchema = await readFile(schemaPath, 'utf8')
+    const legacySchema = JSON.parse(currentSchema)
+    delete legacySchema.$defs.append_log_op.properties.source_span
+    await writeFile(schemaPath, JSON.stringify(legacySchema))
+    const reported = JSON.parse(await readFile(new URL('./fixtures/append-log-with-source-span.json', import.meta.url), 'utf8'))
+    const pending = await plan()
+    customResponder = index => index === 1 ? { content: JSON.stringify({ operations: [
+      { ...reported, source_span: { ...reported.source_span, path: 'raw/source.md' } },
+    ] }) } : undefined
+    const execute = { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate }
+    await expect(sidecar(execute)).rejects.toThrow(/Provider proposal rejected/)
+    expect(requests).toHaveLength(1)
+    const checkpointPath = join(vault, '.octopus-kb', 'document-plans', `${String(pending.planHash)}-0.json`)
+    const before = JSON.parse(await readFile(checkpointPath, 'utf8'))
+    expect(before.state).toBe('response')
+    await writeFile(schemaPath, currentSchema)
+    const result = await sidecar(execute)
+    expect(result.status).toBe('completed')
+    expect(result.tokensUsed).toBe(Number(pending.totalChunks) * 38)
+    expect(requests).toHaveLength(Number(pending.totalChunks))
+    const after = JSON.parse(await readFile(checkpointPath, 'utf8'))
+    expect(after.attemptId).toBe(before.attemptId)
+    expect(after.content).toBe(before.content)
+    expect(after.proposal.operations[0].source_span).toEqual({ path: 'raw/source.md', start_line: 38, end_line: 66 })
+    expect(await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')).toContain(reported.entry)
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it.each(['create_page', 'add_alias', 'append_log'])(
+    'still rejects foreign and out-of-range citations on %s', async (op) => {
+      const pending = await plan()
+      const operation = {
+        create_page: { op, path: 'wiki/Rejected.md',
+          frontmatter: { title: 'Rejected', type: 'note', role: 'note', layer: 'wiki', lang: 'zh', summary: '培训要求' },
+          body: '不得发布' },
+        add_alias: { op, target_page: 'wiki/INDEX.md', alias: '不得发布' },
+        append_log: { op, path: 'wiki/LOG.md', entry: '不得发布' },
+      }[op]
+      customResponder = () => ({ content: JSON.stringify({ operations: [{ ...operation, rationale: 'invalid citation', confidence: 1,
+        source_span: { path: 'raw/foreign.md', start_line: 1, end_line: 5 } }] }) })
+      const execute = { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+        expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate }
+      await expect(sidecar(execute)).rejects.toThrow(/outside the approved primary source range/)
+      expect(requests).toHaveLength(1)
+      const checkpointPath = join(vault, '.octopus-kb', 'document-plans', `${String(pending.planHash)}-0.json`)
+      const saved = JSON.parse(await readFile(checkpointPath, 'utf8'))
+      const payload = JSON.parse(saved.content)
+      payload.operations[0].source_span = { path: 'raw/source.md', start_line: 9999, end_line: 10000 }
+      saved.content = JSON.stringify(payload)
+      await writeFile(checkpointPath, JSON.stringify(saved))
+      await expect(sidecar(execute)).rejects.toThrow(/outside the approved primary source range/)
+      expect(requests).toHaveLength(1)
+      expect(await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')).not.toContain('不得发布')
+    }, PROCESS_INTEGRATION_TIMEOUT,
+  )
 
   it('plans every character without inference and rejects an inadequate approval', async () => {
     const pending = await plan()

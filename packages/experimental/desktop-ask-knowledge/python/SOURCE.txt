@@ -21,3 +21,4 @@ patches:
 - apply returns the severe lint findings it rejects on, in the rejection record and in ApplyResult, so the operator reads the rule and path instead of "post-apply lint failed"
 - the obsidian store stages an append or alias op under the vault's own spelling of a path it already holds under another case, so `wiki/log.md` lands in the existing `wiki/LOG.md` instead of reading as a new page
 - builtins.yaml drops the `confidence.tier_gate_defer` rule: a deferral parks operations in an inbox this product has no surface to review, so a medium-confidence proposal now applies; the below-0.4 reject gate stays
+- proposal.json accepts optional append_log source_span using the same citation fields as page and alias operations; document execution validates supplied citations against approved ranges

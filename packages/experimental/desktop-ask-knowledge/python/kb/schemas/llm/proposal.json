@@ -103,7 +103,8 @@
         "path": {"type": "string", "minLength": 1},
         "entry": {"type": "string"},
         "rationale": {"type": "string"},
-        "confidence": {"$ref": "#/$defs/confidence"}
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "source_span": {"$ref": "#/$defs/source_span"}
       }
     }
   }

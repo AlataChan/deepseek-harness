@@ -168,12 +168,19 @@ const server = createServer(async (request, response) => {
     }
     const proposal = { operations: [{ op: 'append_log', path: 'wiki/LOG.md',
       entry: `- INSTALLED_APPROVED_CHUNK_${requests.length}`, rationale: 'Synthetic recorded source fact', confidence: 1 }] }
-    if (requests.length === 1) proposal.operations.push({
-      op: 'create_page', path: 'wiki/InstalledTrainingPolicy.md',
-      frontmatter: { title: 'InstalledTrainingPolicy', type: 'policy', role: 'policy', lang: 'zh', layer: 'wiki', summary: '社区培训预算' },
-      body: '社区培训预算必须保留正规凭证。', rationale: 'Synthetic source policy', confidence: 1,
-      source_span: { path: policySourcePath, start_line: 1, end_line: 2 },
-    })
+    if (requests.length === 1) {
+      proposal.operations[0].source_span = { path: policySourcePath, start_line: 1, end_line: 2 }
+      proposal.operations.push({
+        op: 'create_page', path: 'wiki/InstalledTrainingPolicy.md',
+        frontmatter: { title: 'InstalledTrainingPolicy', type: 'policy', role: 'policy', lang: 'zh', layer: 'wiki', summary: '社区培训预算' },
+        body: '社区培训预算必须保留正规凭证。', rationale: 'Synthetic source policy', confidence: 1,
+        source_span: { path: policySourcePath, start_line: 1, end_line: 2 },
+      }, {
+        op: 'add_alias', target_page: 'wiki/InstalledTrainingPolicy.md', alias: '培训凭证规则',
+        rationale: 'Synthetic source alias', confidence: 1,
+        source_span: { path: policySourcePath, start_line: 1, end_line: 2 },
+      })
+    }
     const send = () => {
       if (response.destroyed) return
       response.writeHead(200, { 'content-type': 'application/json' })
@@ -263,6 +270,12 @@ try {
   const policyPage = await readFile(join(vault, 'wiki', 'InstalledTrainingPolicy.md'), 'utf8')
   check(policyPage.includes('type: "note"') && policyPage.includes('role: "note"'), 'frozen runtime repairs generated policy categories before strict publication')
   check(policyPage.includes('社区培训预算必须保留正规凭证。'), 'category repair retains the generated source fact')
+  check(policyPage.includes('培训凭证规则'), 'installed cited add_alias publishes alongside create_page')
+  const citedCheckpoint = JSON.parse(await readFile(join(vault, '.octopus-kb', 'document-plans', `${document.planHash}-0.json`), 'utf8'))
+  check(citedCheckpoint.proposal.operations[0].source_span.path === policySourcePath &&
+    citedCheckpoint.proposal.operations[0].source_span.start_line === 1 &&
+    citedCheckpoint.proposal.operations[0].source_span.end_line === 2,
+  'installed append_log accepts and durably retains its validated source citation')
   check(JSON.stringify(requests).includes('INSTALLED_FINAL_SOURCE_9241'), 'provider observes final source marker beyond old prefix limit')
   check(requests.every(request => request.model === 'installed-recording-model'), 'provider receives the configured model route')
   const storedPlanPath = join(vault, '.octopus-kb', 'document-plans', createHash('sha256').update(document.id).digest('hex') + '.json')
