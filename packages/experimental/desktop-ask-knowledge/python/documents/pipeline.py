@@ -832,10 +832,14 @@ def document_location(req):
         rel = revision['objectPath']
     else:
         plan_path = _plan_path(vault, req['documentId'])
-        if not plan_path.is_file():
-            raise ValueError('Document has no extracted text')
-        plan = json.loads(plan_path.read_text(encoding='utf-8'))
-        rel = plan['rawPath']
+        if plan_path.is_file():
+            plan = json.loads(plan_path.read_text(encoding='utf-8'))
+            rel = plan['rawPath']
+        else:
+            revision = get_source_revision(db, doc['activeRevisionId'])
+            if not revision or not revision['objectPath'].startswith('raw/'):
+                raise ValueError('Document has no extracted text')
+            rel = revision['objectPath']
     path = vault / rel
     if not path.is_file() or not path.resolve().is_relative_to(vault.resolve()):
         raise ValueError('Document location is missing or outside this library')

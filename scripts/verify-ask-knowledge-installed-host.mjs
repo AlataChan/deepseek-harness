@@ -397,7 +397,7 @@ try {
   check(Buffer.from(scanOriginal.bytes).equals(scanBytes), 'installed scan retains byte-identical original for later OCR')
   await rejects(() => action(scanDocument, 'retry'), 'retry of an image-only PDF refuses conversion without OCR')
   const scanRetried = (await service.remoteDocuments(library.id)).find(row => row.id === scanDocument.id)
-  check(scanRetried?.conversionStatus === 'needs_ocr' && scanRetried.needsOcrPage === 1, 'failed OCR retry preserves its original conversion status and page warning')
+  check(scanRetried?.conversionStatus === 'needs_ocr' && scanRetried.needsOcrPage === 1, `failed OCR retry preserves its original conversion status and page warning: ${JSON.stringify(scanRetried)}`)
   check(requests.length === callsBeforePdf, 'installed PDF conversion dispatches no unapproved model calls')
   if (process.platform === 'win32') {
     await assert.rejects(() => service.beginIngest({ libraryId: library.id, filename: 'policy-native-refusal.pptx' }),
@@ -405,6 +405,15 @@ try {
     check(!(await service.remoteDocuments(library.id)).some(row => row.filename === 'policy-native-refusal.pptx'),
       'Windows library admission rejects unsupported PPTX before creating a document')
   }
+  const legacyLibrary = await service.createLibrary({ displayName: 'Installed legacy view acceptance' })
+  const legacyVault = join(home, 'knowledge-bases', 'libraries', legacyLibrary.id)
+  const legacyText = '# Legacy retained text\nLEGACY_VIEW_TAIL_20261017\n'
+  await writeFile(join(legacyVault, 'raw', 'legacy-view.md'), legacyText)
+  await ctx.get('askKnowledgeDocuments').migrateLibrary(legacyLibrary.id)
+  const legacyDocument = (await service.remoteDocuments(legacyLibrary.id)).find(row => row.filename === 'legacy-view.md')
+  check(legacyDocument?.textAvailable && !legacyDocument.originalAvailable, 'migrated text is viewable without inventing an original')
+  await action(legacyDocument, 'text')
+  check(await readFile(nativeViews.at(-1).path, 'utf8') === legacyText, 'installed migrated document opens its complete extracted text without a plan')
   // Every continuation below comes from rendered model content, not private result.value.
   await writeFile(join(vault, 'wiki', 'InstalledPolicy.md'), '---\ntitle: 培训预算\nrole: concept\n---\n# 培训预算\n\n培训预算摘要由知识页提供，数字需核对原文。\n')
   const session = ctx.sessions.prepare(SessionId('installed-tools-session'))

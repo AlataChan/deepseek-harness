@@ -216,9 +216,13 @@ describe('public upload approval and source isolation', () => {
     await upload('retry-ocr.pdf', 'not a PDF')
     const [document] = await ak.remoteDocuments(lib.id)
     if (!document) throw new Error('missing failed conversion')
-    vi.spyOn(conversion, 'convertSourceFile').mockResolvedValue({ status: 'needs_ocr', format: 'pdf', markdown: '',
-      blocks: [], sha256: 'a'.repeat(64), byteLength: 3, error: 'OCR is required',
-      diagnostics: { warnings: ['IMAGE_ONLY'], omissions: [], unsupportedFeatures: [], needsOcrPages: [1] } })
+    vi.spyOn(conversion, 'convertSourceFile').mockImplementation(async (_config, inputPath) => {
+      expect(inputPath.endsWith('.pdf')).toBe(true)
+      expect(await readFile(inputPath, 'utf8')).toBe('not a PDF')
+      return { status: 'needs_ocr', format: 'pdf', markdown: '',
+        blocks: [], sha256: 'a'.repeat(64), byteLength: 3, error: 'OCR is required',
+        diagnostics: { warnings: ['IMAGE_ONLY'], omissions: [], unsupportedFeatures: [], needsOcrPages: [1] } }
+    })
     onTestFinished(() => { vi.restoreAllMocks() })
     await expect(ak.remoteDocumentAction({ libraryId: lib.id, documentId: document.id, action: 'retry' })).rejects.toThrow('OCR is required')
     expect((await ak.remoteDocuments(lib.id))[0]).toMatchObject({ status: 'failed', stage: 'conversion',

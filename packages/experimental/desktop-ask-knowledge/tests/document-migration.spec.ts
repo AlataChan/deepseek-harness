@@ -99,6 +99,14 @@ describe('document migration and library lifecycle cleanup', () => {
     expect(rev.originalFilename).toBe('volunteers.md')
     expect(rev.mimeType).toBe('text/markdown')
 
+    const location = await runSidecar(config, {
+      command: 'document-location', vault: vaultDir, libraryId: TEST_LIB,
+      documentId: volDoc!.id, action: 'text',
+    })
+    expect(location.ok).toBe(true)
+    expect(location.path).toBe('raw/volunteers.md')
+    expect(await readFile(join(vaultDir, String(location.path)), 'utf8')).toBe(doc1)
+
     // 4. Verify full-text search immediately finds passages in migrated files (AC3, AC8)
     const searchRes = await runSidecar(config, {
       command: 'passage-search',

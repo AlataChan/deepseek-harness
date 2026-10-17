@@ -937,6 +937,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
         let retryJob: Awaited<ReturnType<typeof createTrackedJob>> | undefined
         let planned = false
         let retryConversion: ConversionResult | undefined
+        let conversionInput: IngestUpload | undefined
         try {
           const attempt = await getLibraryStartupAttempt(this.config, this.home(), libraryId)
           retryJob = await createTrackedJob(this.config, this.home(), libraryId, documentId,
@@ -945,7 +946,12 @@ export default class DesktopAskKnowledge extends AskKnowledge {
           const original = await readSourceOriginal(
             this.config, this.home(), libraryId, RevisionId(document.revisionId), retrySignal,
           )
-          const converted = await convertSourceFile(this.config, original.absPath, document.filename, {
+          conversionInput = await beginUpload(this.home(), libraryId, document.filename)
+          appendUpload(conversionInput, Buffer.from(original.bytes.buffer, original.bytes.byteOffset, original.bytes.byteLength),
+            original.bytes.byteLength)
+          await materializeUpload(conversionInput)
+          retrySignal.throwIfAborted()
+          const converted = await convertSourceFile(this.config, conversionInput.path, document.filename, {
             maxBytes: this.config.maxConvertedBytes,
             timeoutMs: this.config.conversionTimeoutMs,
             signal: retrySignal,
@@ -980,8 +986,10 @@ export default class DesktopAskKnowledge extends AskKnowledge {
             error: error instanceof Error ? error.message : String(error) }, { signal: this.lifetime.signal })
           throw error
         } finally {
-          if (this.documentRuns.get(key)?.controller === controller) this.documentRuns.delete(key)
-          settled.resolve(undefined)
+          try { if (conversionInput) await disposeUpload(conversionInput) } finally {
+            if (this.documentRuns.get(key)?.controller === controller) this.documentRuns.delete(key)
+            settled.resolve(undefined)
+          }
         }
       }
       await runSidecar(this.config, { command: 'document-action', vault, libraryId, documentId, action }, { signal: this.lifetime.signal })
