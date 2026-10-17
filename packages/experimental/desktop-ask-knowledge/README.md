@@ -43,6 +43,8 @@ Configured HTTP(S) proxy URLs, including their authentication, are forwarded onl
 
 `extractionContextChars` bounds the complete serialized wiki-context bundle, including page paths and JSON framing. Runtime selection trims page text to fit; planning reserves four UTF-8 bytes per serialized character and includes the outer request envelope. Conflict destinations are reserved across all operations in a proposal so distinct claims cannot overwrite each other. Index links recover from the saved proposal intent; publication stages and flushes a complete replacement, checks for observed concurrent edits, and atomically replaces the index.
 
+Generated page categories outside the PageMeta enums are normalized to `note` before strict validation, including saved proposals resumed after rejection. This repair retains the original response, attempt identity and reported usage without repeating inference for that range. Other publication failures report the rejecting rule and leave extraction paused.
+
 ## Model Experience
 
 ### Bound retrieve prompt

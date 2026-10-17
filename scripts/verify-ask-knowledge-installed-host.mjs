@@ -136,6 +136,7 @@ async function until(predicate, label) {
   }
   throw new Error(`Bounded wait expired: ${label}`)
 }
+let policySourcePath
 const server = createServer(async (request, response) => {
   try {
     let body = ''
@@ -147,6 +148,12 @@ const server = createServer(async (request, response) => {
     requests.push(decoded)
     const proposal = { operations: [{ op: 'append_log', path: 'wiki/LOG.md',
       entry: `- INSTALLED_APPROVED_CHUNK_${requests.length}`, rationale: 'Synthetic recorded source fact', confidence: 1 }] }
+    if (requests.length === 1) proposal.operations.push({
+      op: 'create_page', path: 'wiki/InstalledTrainingPolicy.md',
+      frontmatter: { title: 'InstalledTrainingPolicy', type: 'policy', role: 'policy', lang: 'zh', layer: 'wiki', summary: '社区培训预算' },
+      body: '社区培训预算必须保留正规凭证。', rationale: 'Synthetic source policy', confidence: 1,
+      source_span: { path: policySourcePath, start_line: 1, end_line: 2 },
+    })
     const send = () => {
       if (response.destroyed) return
       response.writeHead(200, { 'content-type': 'application/json' })
@@ -226,10 +233,14 @@ try {
   await rejects(() => action(document, 'approve', { planHash: 'deliberately-wrong-plan' }), 'changed-plan approval is refused')
   await rejects(() => action(document, 'approve', { approvedTokens: 1 }), 'inadequate complete-job allowance is refused')
   check(requests.length === 0, 'invalid approvals dispatch no provider calls')
+  policySourcePath = 'raw/' + (await readdir(join(vault, 'raw')))[0]
   await action(document, 'approve')
   const completed = (await service.remoteDocuments(library.id)).find(row => row.id === document.id)
   check(completed.status === 'completed' && completed.completedChunks === completed.totalChunks, 'public approval completes every planned primary span')
   check(requests.length === completed.totalChunks, 'provider observes exactly one call for every manifest chunk')
+  const policyPage = await readFile(join(vault, 'wiki', 'InstalledTrainingPolicy.md'), 'utf8')
+  check(policyPage.includes('type: "note"') && policyPage.includes('role: "note"'), 'frozen runtime repairs generated policy categories before strict publication')
+  check(policyPage.includes('社区培训预算必须保留正规凭证。'), 'category repair retains the generated source fact')
   check(JSON.stringify(requests).includes('INSTALLED_FINAL_SOURCE_9241'), 'provider observes final source marker beyond old prefix limit')
   check(requests.every(request => request.model === 'installed-recording-model'), 'provider receives the configured model route')
   const storedPlan = JSON.parse(await readFile(join(vault, '.octopus-kb', 'document-plans', createHash('sha256').update(document.id).digest('hex') + '.json'), 'utf8'))

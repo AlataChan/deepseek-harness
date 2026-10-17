@@ -48,6 +48,22 @@ def _write(path, value):
             os.unlink(name)
 
 
+def _normalize_generated_page_categories(proposal):
+    """Map unsupported model page categories to notes; retain all other validation."""
+    from octopus_kb_compound.schema import load_page_meta_schema
+    properties = load_page_meta_schema()['properties']
+    for operation in proposal.get('operations', []):
+        if not isinstance(operation, dict) or operation.get('op') != 'create_page':
+            continue
+        meta = operation.get('frontmatter')
+        if not isinstance(meta, dict):
+            continue
+        if meta.get('type') not in properties['type']['enum']:
+            meta['type'] = 'note'
+        if meta.get('role') not in properties['role']['enum']:
+            meta['role'] = meta['type'] if meta['type'] in properties['role']['enum'] else 'note'
+
+
 def _safe_raw(vault, rel):
     root = vault.resolve()
     path = root / rel
@@ -656,16 +672,19 @@ def execute_document(req):
                             elif total_p is None and plan.get('conversion', {}).get('format') in {'txt', 'markdown', 'md'} and page_num > 1:
                                 raise ValueError(f"Proposal cited page {page_num} for non-paginated document format")
                 _handle_proposal_conflicts_and_merges(vault, proposal, plan, chunk)
-                fill_create_page_frontmatter(proposal)
-                errors = validate_proposal_dict(proposal)
-                if errors:
-                    raise ValueError('Provider proposal rejected: ' + '; '.join(str(e) for e in errors))
-                saved['proposal'] = proposal
-                _write(checkpoint, saved)
-                if saved.get('attemptId'):
-                    attempts_dir = plan_path.parent / 'attempts'
-                    attempts_dir.mkdir(parents=True, exist_ok=True)
-                    _write(attempts_dir / f"{saved['attemptId']}.json", saved)
+            # Saved generated proposals need the same repair as fresh provider output.
+            # Conflict destinations remain the durable publication intent on resume.
+            _normalize_generated_page_categories(proposal)
+            fill_create_page_frontmatter(proposal)
+            errors = validate_proposal_dict(proposal)
+            if errors:
+                raise ValueError('Provider proposal rejected: ' + '; '.join(str(e) for e in errors))
+            saved['proposal'] = proposal
+            _write(checkpoint, saved)
+            if saved.get('attemptId'):
+                attempts_dir = plan_path.parent / 'attempts'
+                attempts_dir.mkdir(parents=True, exist_ok=True)
+                _write(attempts_dir / f"{saved['attemptId']}.json", saved)
             proposal_path = vault / '.octopus-kb' / 'proposals' / (proposal['id'] + '.json')
             with publication_guard(vault, plan, attempt):
                 existing_id = proposal['id'] + ('-recovery-' + str(saved['applyAttempt']) if saved.get('applyAttempt') else '')
@@ -690,7 +709,11 @@ def execute_document(req):
                     result = validate_proposal_file(proposal_path, vault, apply=True,
                                 commit_guard=lambda: publication_guard(vault, plan, attempt))
                     if result.status not in {'applied', 'already_applied'}:
-                        raise RuntimeError('Wiki publication ' + result.status)
+                        details = '; '.join(
+                            str(row.get('rule_id', 'validation')) + ': ' + str(row.get('reason', 'rejected'))
+                            for row in result.rule_results if row.get('verdict') == 'reject')
+                        raise RuntimeError('Wiki publication ' + result.status +
+                            (': ' + details if details else ''))
                 _link_accepted_pages_to_index(vault, proposal)
                 saved['state'] = 'applied'
                 _write(checkpoint, saved)

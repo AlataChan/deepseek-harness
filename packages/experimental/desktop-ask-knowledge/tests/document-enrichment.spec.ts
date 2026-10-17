@@ -124,6 +124,51 @@ describe('approved complete document enrichment', () => {
     expect(await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')).toBe(log)
   }, PROCESS_INTEGRATION_TIMEOUT)
 
+  it('publishes generated policy metadata as a note without weakening page validation', async () => {
+    const pending = await plan()
+    customResponder = index => index === 1 ? { content: JSON.stringify({ operations: [{
+      op: 'create_page', path: 'wiki/TrainingPolicy.md',
+      frontmatter: { title: 'TrainingPolicy', type: 'policy', role: 'policy', layer: 'wiki', lang: 'zh', summary: '社区培训预算' },
+      body: '社区培训预算须有正规凭证。', rationale: 'source policy', confidence: 1,
+      source_span: { path: 'raw/source.md', start_line: 1, end_line: 5 },
+    }] }) } : undefined
+    const result = await sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate })
+    expect(result.status).toBe('completed')
+    const page = await readFile(join(vault, 'wiki', 'TrainingPolicy.md'), 'utf8')
+    expect(page).toMatch(/type: "note"/)
+    expect(page).toMatch(/role: "note"/)
+    expect(requests).toHaveLength(Number(pending.totalChunks))
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('repairs a saved prepared response on resume without paying for that range again', async () => {
+    const pending = await plan()
+    customResponder = index => index === 1 ? { content: JSON.stringify({ operations: [{
+      op: 'create_page', path: 'wiki/SavedPolicy.md',
+      frontmatter: { title: 'SavedPolicy', type: 'note', role: 'note', layer: 'wiki', lang: 'z', summary: '社区培训预算' },
+      body: '社区培训预算须有正规凭证。', rationale: 'source policy', confidence: 1,
+      source_span: { path: 'raw/source.md', start_line: 1, end_line: 5 },
+    }] }) } : undefined
+    const execute = { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate }
+    await expect(sidecar(execute)).rejects.toThrow(/schema.page_meta_invalid/)
+    expect(requests).toHaveLength(1)
+    const checkpointPath = join(vault, '.octopus-kb', 'document-plans', `${String(pending.planHash)}-0.json`)
+    const saved = JSON.parse(await readFile(checkpointPath, 'utf8'))
+    // Reproduce an older build's saved, rejected metadata; the original response stays unchanged.
+    saved.proposal.operations[0].frontmatter = { ...saved.proposal.operations[0].frontmatter, lang: 'zh', type: 'policy', role: 'policy' }
+    await writeFile(checkpointPath, JSON.stringify(saved), 'utf8')
+    const result = await sidecar(execute)
+    expect(result.status).toBe('completed')
+    expect(result.tokensUsed).toBe(Number(pending.totalChunks) * 38)
+    expect(requests).toHaveLength(Number(pending.totalChunks))
+    const repaired = JSON.parse(await readFile(checkpointPath, 'utf8'))
+    expect(repaired.attemptId).toBe(saved.attemptId)
+    expect(repaired.content).toBe(saved.content)
+    expect(repaired.proposal.operations[0].frontmatter).toMatchObject({ type: 'note', role: 'note' })
+    expect(await readFile(join(vault, 'wiki', 'SavedPolicy.md'), 'utf8')).toContain('社区培训预算须有正规凭证。')
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
   it('requires a fresh approval for retry and preserves already committed chunks', async () => {
     const pending = await plan()
     invalidResponseAt = 2
