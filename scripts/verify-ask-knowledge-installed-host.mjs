@@ -334,8 +334,8 @@ try {
     const presentation = modelValue(await tool(ctx, session, 'ask_knowledge_session_document', { filename: reference.name }))
     check(presentation.status === 'unsupported' && presentation.text === '' &&
       presentation.diagnostics.omissions.includes('entire presentation') &&
-      presentation.diagnostics.warnings.some(warning => warning.includes('network-confined')),
-      'Windows session attachment visibly refuses unconfined native presentation conversion')
+      presentation.diagnostics.warnings.some(warning => warning.includes('network confinement is not implemented')),
+      `Windows session attachment visibly refuses unconfined native presentation conversion: ${JSON.stringify(presentation)}`)
     const originalChunks = []
     for await (const chunk of ctx.attachments.readFileStream(reference)) originalChunks.push(Buffer.from(chunk))
     check(Buffer.concat(originalChunks).equals(bytes), 'Windows native conversion refusal preserves the official original byte-for-byte')
