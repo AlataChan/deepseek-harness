@@ -53,6 +53,34 @@ class MigrationDurability(unittest.TestCase):
             finally:
                 writer.close()
 
+    def test_stale_backup_recovery_can_flush_on_write_required_filesystems(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vault = Path(directory)
+            (vault / 'raw').mkdir()
+            db = vault / '.octopus-kb' / 'documents.sqlite'
+            ensure_schema(db).close()
+            backup = db.with_name('documents.sqlite.bak')
+            backup.write_bytes(b'interrupted backup')
+            original_open = Path.open
+            original_sync = migration.os.fsync
+            handles = {}
+
+            def tracked_open(path, *args, **kwargs):
+                stream = original_open(path, *args, **kwargs)
+                handles[stream.fileno()] = stream
+                return stream
+
+            def require_write_access(descriptor):
+                stream = handles.get(descriptor)
+                if stream is not None and not stream.closed and not stream.writable():
+                    raise OSError('flushing requires a writable handle')
+                return original_sync(descriptor)
+
+            with patch.object(Path, 'open', tracked_open), patch.object(migration.os, 'fsync', require_write_access):
+                result = migration.migrate_legacy_library(vault, 'library')
+            self.assertTrue(result['ok'], result)
+            self.assertFalse(backup.exists())
+
     def test_future_schema_preserves_stale_backup_and_live_version(self):
         with tempfile.TemporaryDirectory() as directory:
             vault = Path(directory)

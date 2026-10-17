@@ -83,7 +83,7 @@ def migrate_legacy_library(
             finally:
                 backup.close()
                 source.close()
-            with bak_path.open("rb") as saved:
+            with bak_path.open("r+b") as saved:
                 os.fsync(saved.fileno())
             _sync_directory(bak_path.parent)
         except Exception as exc:

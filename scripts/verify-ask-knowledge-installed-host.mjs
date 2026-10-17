@@ -455,7 +455,7 @@ try {
   await writeFile(recoveredBackup, 'stale backup fixture')
   const recoveredList = await service.remoteDocumentList(recoveredLibrary.id)
   check(recoveredList.documents.length === 1 && recoveredList.migrationWarning === undefined && !existsSync(recoveredBackup),
-    'installed sidecar recovers stale backup only after validating its healthy live database')
+    `installed sidecar recovers stale backup only after validating its healthy live database: ${JSON.stringify(recoveredList)}`)
   // Every continuation below comes from rendered model content, not private result.value.
   await writeFile(join(vault, 'wiki', 'InstalledPolicy.md'), '---\ntitle: 培训预算\nrole: concept\n---\n# 培训预算\n\n培训预算摘要由知识页提供，数字需核对原文。\n')
   const session = ctx.sessions.prepare(SessionId('installed-tools-session'))

@@ -50,6 +50,13 @@ jobs:
           # The frozen sidecar's dependency pins live in that script.
           cache: pip
           cache-dependency-path: scripts/build-kb-sidecar.mjs
+      - name: Check native Windows knowledge migration durability
+        shell: pwsh
+        env:
+          PYTHONIOENCODING: cp1252
+        run: |
+          python packages/experimental/desktop-ask-knowledge/tests/source-migration-controls.py
+          if ($LASTEXITCODE -ne 0) { throw "Knowledge migration durability controls failed" }
       - name: Verify Rust stable toolchain
         shell: pwsh
         run: |
