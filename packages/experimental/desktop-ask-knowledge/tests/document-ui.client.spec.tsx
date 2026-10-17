@@ -4,7 +4,7 @@
  * @module
  */
 
-import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DocumentStatus, type DocumentStatusItem } from '../src/client/DocumentStatus.tsx'
 import { DocumentList } from '../src/client/DocumentList.tsx'
@@ -350,4 +350,19 @@ it('records document action availability for every processing state', () => {
       ],
     }
   `)
+})
+
+
+it('reports a viewer failure and enables another attempt without leaving the button stuck', async () => {
+  const viewSources = vi.fn().mockRejectedValueOnce(new Error('VIEWER_UNAVAILABLE_4471')).mockResolvedValue(undefined)
+  const view = render(<DocumentStatus item={{ id: 'viewer-failure', filename: 'policy.pdf', originalAvailable: true,
+    searchable: true, status: 'completed' }} t={t} onViewSources={viewSources} />)
+  const button = view.getByRole('button', { name: zh['docs.viewSources'] })
+  fireEvent.click(button)
+  expect((await view.findByRole('alert')).textContent).toBe('VIEWER_UNAVAILABLE_4471')
+  await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false))
+  fireEvent.click(button)
+  await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false))
+  expect(viewSources).toHaveBeenCalledTimes(2)
+  expect(view.queryByRole('alert')).toBeNull()
 })

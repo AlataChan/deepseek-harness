@@ -395,6 +395,9 @@ try {
     'installed scan truthfully retains original without claiming searchable text')
   const scanOriginal = await ctx.get('askKnowledgeDocuments').readOriginal(library.id, scanDocument.revisionId)
   check(Buffer.from(scanOriginal.bytes).equals(scanBytes), 'installed scan retains byte-identical original for later OCR')
+  await rejects(() => action(scanDocument, 'retry'), 'retry of an image-only PDF refuses conversion without OCR')
+  const scanRetried = (await service.remoteDocuments(library.id)).find(row => row.id === scanDocument.id)
+  check(scanRetried?.conversionStatus === 'needs_ocr' && scanRetried.needsOcrPage === 1, 'failed OCR retry preserves its original conversion status and page warning')
   check(requests.length === callsBeforePdf, 'installed PDF conversion dispatches no unapproved model calls')
   if (process.platform === 'win32') {
     await assert.rejects(() => service.beginIngest({ libraryId: library.id, filename: 'policy-native-refusal.pptx' }),

@@ -936,6 +936,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
         this.documentRuns.set(key, { controller, done: settled.promise })
         let retryJob: Awaited<ReturnType<typeof createTrackedJob>> | undefined
         let planned = false
+        let retryConversion: ConversionResult | undefined
         try {
           const attempt = await getLibraryStartupAttempt(this.config, this.home(), libraryId)
           retryJob = await createTrackedJob(this.config, this.home(), libraryId, documentId,
@@ -949,12 +950,9 @@ export default class DesktopAskKnowledge extends AskKnowledge {
             timeoutMs: this.config.conversionTimeoutMs,
             signal: retrySignal,
           })
+          retryConversion = converted
           retrySignal.throwIfAborted()
-          if (!converted.markdown) {
-            await runSidecar(this.config, { command: 'record-conversion', vault, libraryId, documentId,
-              conversionStatus: converted.status, conversion: converted.diagnostics, error: converted.error ?? converted.status })
-            throw new Error(converted.error ?? converted.status)
-          }
+          if (!converted.markdown) throw new Error(converted.error ?? converted.status)
           const rawPath = `raw/${documentId}-${document.revisionId}.md`
           await withLibraryLock(libraryId, async () => {
             retrySignal.throwIfAborted()
@@ -976,7 +974,9 @@ export default class DesktopAskKnowledge extends AskKnowledge {
         } catch (error) {
           if (!planned) await runSidecar(this.config, { command: 'record-conversion', vault, libraryId, documentId,
             ...retryJob ? { jobId: retryJob.jobId } : {},
-            conversionStatus: retrySignal.aborted ? 'cancelled' : 'failed',
+            conversionStatus: retrySignal.aborted ? 'cancelled'
+              : retryConversion && !retryConversion.markdown ? retryConversion.status : 'failed',
+            conversion: retryConversion?.diagnostics ?? {},
             error: error instanceof Error ? error.message : String(error) }, { signal: this.lifetime.signal })
           throw error
         } finally {

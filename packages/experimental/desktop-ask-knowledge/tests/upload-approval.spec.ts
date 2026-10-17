@@ -212,6 +212,19 @@ describe('public upload approval and source isolation', () => {
     } finally { release.resolve(undefined); await settled }
   }), PROCESS_INTEGRATION_TIMEOUT)
 
+  it('preserves OCR diagnostics when a retry still cannot extract text', async () => fixture(async ({ ak, lib, upload }) => {
+    await upload('retry-ocr.pdf', 'not a PDF')
+    const [document] = await ak.remoteDocuments(lib.id)
+    if (!document) throw new Error('missing failed conversion')
+    vi.spyOn(conversion, 'convertSourceFile').mockResolvedValue({ status: 'needs_ocr', format: 'pdf', markdown: '',
+      blocks: [], sha256: 'a'.repeat(64), byteLength: 3, error: 'OCR is required',
+      diagnostics: { warnings: ['IMAGE_ONLY'], omissions: [], unsupportedFeatures: [], needsOcrPages: [1] } })
+    onTestFinished(() => { vi.restoreAllMocks() })
+    await expect(ak.remoteDocumentAction({ libraryId: lib.id, documentId: document.id, action: 'retry' })).rejects.toThrow('OCR is required')
+    expect((await ak.remoteDocuments(lib.id))[0]).toMatchObject({ status: 'failed', stage: 'conversion',
+      conversionStatus: 'needs_ocr', needsOcrPage: 1, error: 'OCR is required' })
+  }), PROCESS_INTEGRATION_TIMEOUT)
+
   it('persists a thrown retry conversion error and keeps retry available', async () => fixture(async ({ ak, lib, upload }) => {
     await upload('retry-throw.pdf', 'not a PDF')
     const [document] = await ak.remoteDocuments(lib.id)
