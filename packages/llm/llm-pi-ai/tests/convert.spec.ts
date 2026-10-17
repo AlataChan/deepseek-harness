@@ -723,8 +723,11 @@ describe('toStreamChunks', () => {
     const requested = getBuiltinModels('anthropic').find(model => model.id === requestedModel)
     if (requested === undefined) throw new Error('missing Anthropic catalog model')
     expect(transformMessages(context.messages, requested)[0]).toMatchObject({ content: native.content })
+    // Thinking is dropped for a different model: the signature is valid only
+    // for the model that produced it, and readable thinking replayed as text
+    // would read as part of that model's visible reply.
     expect(transformMessages(context.messages, { ...requested, id: 'other-model' })[0]).toMatchObject({
-      content: [{ type: 'text', text: 'reason' }],
+      content: [],
     })
   })
 
