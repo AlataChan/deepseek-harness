@@ -63,6 +63,8 @@ const child = spawn(nodeBin, [companion, '--workspace-root', workspaceRoot], {
 
 /** @type {string[]} */
 const stderrLines = []
+let closed = false
+const childClosed = new Promise(resolve => child.once('close', () => { closed = true; resolve() }))
 let exited = false
 /** @type {number | null} */
 let exitCode = null
@@ -154,35 +156,44 @@ const readyMs = Date.now() - helloAt
  * @param code - process exit code.
  * @param message - one-line result.
  */
-function finish(code, message) {
+async function finish(code, message) {
   console.log(message)
   if (code !== 0 && stderrLines.length > 0) {
     console.log('companion stderr:')
     for (const line of stderrLines.slice(0, 25)) console.log(`  ${line}`)
   }
   if (!exited) child.kill('SIGTERM')
+  await Promise.race([childClosed, wait(5000)])
+  if (!closed) {
+    child.kill('SIGKILL')
+    await Promise.race([childClosed, wait(5000)])
+  }
+  if (!closed) {
+    console.error('smoke: companion did not close its output pipes after termination')
+    process.exit(1)
+  }
   process.exit(code)
 }
 
 if (exited) {
-  finish(1, `smoke: companion exited before ready (code ${String(exitCode)})`)
+  await finish(1, `smoke: companion exited before ready (code ${String(exitCode)})`)
 }
 if (!ready) {
-  finish(1, `smoke: companion never answered control/ready within ${String(HANDSHAKE_DEADLINE_MS / 1000)}s`)
+  await finish(1, `smoke: companion never answered control/ready within ${String(HANDSHAKE_DEADLINE_MS / 1000)}s`)
 }
 
 console.log(`smoke: handshake ok (runtime ${readyVersion ?? 'unknown'}) in ${String(readyMs)}ms; holding ${String(holdMs)}ms`)
 await wait(holdMs)
 
 if (exited) {
-  finish(1, `smoke: companion answered ready then EXITED (code ${String(exitCode)}) — this is the Broken pipe cause`)
+  await finish(1, `smoke: companion answered ready then EXITED (code ${String(exitCode)}) — this is the Broken pipe cause`)
 }
 
 // The shell's next write is what surfaces a dead companion as EPIPE, so the
 // pipe itself is asserted rather than only the process. `control/hello` cannot
 // serve here — a second one is a protocol violation the host rightly refuses.
 if (child.stdin.destroyed || child.stdin.writableEnded) {
-  finish(1, 'smoke: companion stdin closed after ready — the shell would report Broken pipe')
+  await finish(1, 'smoke: companion stdin closed after ready — the shell would report Broken pipe')
 }
 
-finish(0, `smoke: companion alive with an open pipe after ready in ${String(readyMs)}ms + ${String(holdMs)}ms hold`)
+await finish(0, `smoke: companion alive with an open pipe after ready in ${String(readyMs)}ms + ${String(holdMs)}ms hold`)

@@ -49,3 +49,60 @@ describe('ask-knowledge result bounds', () => {
     expect(bounded.warnings.map(item => item.ruleId)).toContain('result-truncated')
   })
 })
+
+it('keeps final serialized payloads within their allowance across Unicode, metadata and truncation boundaries', () => {
+  const items = [
+    { path: 'raw/a.md', title: '字'.repeat(180), reason: 'reason'.repeat(60),
+      text: '😀\\"中文'.repeat(800), kind: 'raw' as const },
+    { path: 'raw/b.md', title: 'B', reason: '', text: 'late exception', kind: 'raw' as const },
+  ]
+  const warnings = [{ ruleId: 'warning'.repeat(20), message: '提示'.repeat(200) }]
+  let refusals = 0, successes = 0
+  for (const maxTokens of [1, 80, 160, 320, 640, 1024, 2048, 4096, 6000]) {
+    for (const maxItems of [1, 2, 12]) {
+      for (const maxChars of [1, 8, 128, 24000]) {
+        const bounds = { maxTokens, maxItems, maxChars }
+        let result
+        try { result = boundRetrieveResult(items, warnings, bounds) } catch (error) {
+          expect(String(error)).toMatch(/metadata exceeds the payload allowance/)
+          refusals++
+          continue
+        }
+        successes++
+        const bytes = Buffer.byteLength(JSON.stringify(result))
+        expect(bytes).toBeLessThanOrEqual(maxTokens)
+        expect(result.tokenEstimate).toBe(bytes)
+        expect(result.items.length).toBeLessThanOrEqual(maxItems)
+        expect(result.items.reduce((sum, item) => sum + [...item.text].length, 0)).toBeLessThanOrEqual(maxChars)
+        expect(result.warnings.some(warning => warning.ruleId === 'result-truncated')).toBe(true)
+        for (const item of result.items) {
+          expect(items.find(original => original.path === item.path)?.text.startsWith(item.text)).toBe(true)
+          expect(item.text.isWellFormed()).toBe(true)
+        }
+      }
+    }
+  }
+  expect(refusals).toBeGreaterThan(0)
+  expect(successes).toBeGreaterThan(0)
+})
+
+it('reserves truncation diagnostics when a previously fitting item reaches the final byte boundary', () => {
+  const first = { path: 'a', title: 'A', reason: '', text: '😀中文 budget '.repeat(5), kind: 'raw' as const }
+  const second = { path: 'b'.repeat(300), title: 'B', reason: '', text: 'late', kind: 'raw' as const }
+  const complete = boundRetrieveResult([first], [], resolveResultBounds())
+  let retained = 0
+  for (const maxTokens of Array.from({ length: 200 }, (_, index) => complete.tokenEstimate - 60 + index)) {
+    for (const maxItems of [1, 2]) {
+      try {
+        const result = boundRetrieveResult([first, second], [], { maxTokens, maxItems, maxChars: 24000 })
+        expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(maxTokens)
+        expect(result.warnings.map(warning => warning.ruleId)).toContain('result-truncated')
+        expect(result.items.every(item => item.text.isWellFormed())).toBe(true)
+        retained++
+      } catch (error) {
+        expect(String(error)).toContain('metadata exceeds the payload allowance')
+      }
+    }
+  }
+  expect(retained).toBeGreaterThan(0)
+})

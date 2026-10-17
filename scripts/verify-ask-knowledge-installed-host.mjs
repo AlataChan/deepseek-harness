@@ -315,10 +315,10 @@ try {
   check(Buffer.from(scanOriginal.bytes).equals(scanBytes), 'installed scan retains byte-identical original for later OCR')
   check(requests.length === callsBeforePdf, 'installed PDF conversion dispatches no unapproved model calls')
   if (process.platform === 'win32') {
-    const presentation = await upload(library.id, 'policy-native-refusal.pptx', Buffer.from('unavailable native converter fixture'))
-    const state = (await service.remoteDocuments(library.id)).find(row => row.filename === 'policy-native-refusal.pptx')
-    check(presentation.status === 'failed' && state?.conversionStatus === 'unsupported' && state.originalAvailable,
-      'Windows refuses unconfined native presentation conversion and retains the original')
+    await assert.rejects(() => service.beginIngest({ libraryId: library.id, filename: 'policy-native-refusal.pptx' }),
+      error => error.code === 'type-unsupported')
+    check(!(await service.remoteDocuments(library.id)).some(row => row.filename === 'policy-native-refusal.pptx'),
+      'Windows library admission rejects unsupported PPTX before creating a document')
   }
   // Every continuation below comes from rendered model content, not private result.value.
   await writeFile(join(vault, 'wiki', 'InstalledPolicy.md'), '---\ntitle: 培训预算\nrole: concept\n---\n# 培训预算\n\n培训预算摘要由知识页提供，数字需核对原文。\n')
@@ -326,6 +326,20 @@ try {
   ctx.sessions.enter(session); ctx.sessions.announce(session)
   session.append('turn/start', { turn: 1 })
   await service.attach({ libraryId: library.id, sessionId: session.id })
+  if (process.platform === 'win32') {
+    const bytes = Buffer.from('unavailable native converter fixture')
+    const reference = await ctx.attachments.saveFile({ name: 'policy-native-refusal.pptx', data: bytes })
+    session.append('user/message', createUserMessage({ source: { kind: 'user' }, content: [{ type: 'file', attachment: reference }] }),
+      { surfaceOp: 'append' })
+    const presentation = modelValue(await tool(ctx, session, 'ask_knowledge_session_document', { filename: reference.name }))
+    check(presentation.status === 'unsupported' && presentation.text === '' &&
+      presentation.diagnostics.omissions.includes('entire presentation') &&
+      presentation.diagnostics.warnings.some(warning => warning.includes('network-confined')),
+      'Windows session attachment visibly refuses unconfined native presentation conversion')
+    const originalChunks = []
+    for await (const chunk of ctx.attachments.readFileStream(reference)) originalChunks.push(Buffer.from(chunk))
+    check(Buffer.concat(originalChunks).equals(bytes), 'Windows native conversion refusal preserves the official original byte-for-byte')
+  }
   const wikiResult = modelValue(await tool(ctx, session, 'ask_knowledge_retrieve', { terms: ['培训预算'] }))
   check(wikiResult.items.length > 0 && wikiResult.items.every(item => item.verification === 'unverified-wiki-summary' && item.passageId), 'installed rendered wiki results expose IDs and unverified-summary labels')
   const wikiRead = modelValue(await tool(ctx, session, 'ask_knowledge_read', { passageId: wikiResult.items[0].passageId, wikiAttemptId: wikiResult.wikiAttemptId }))
