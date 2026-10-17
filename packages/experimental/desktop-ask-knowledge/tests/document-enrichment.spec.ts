@@ -95,6 +95,86 @@ describe('approved complete document enrichment', () => {
   const plan = () => sidecar({ command: 'plan-document', vault, libraryId: 'library-1',
     documentId: 'doc-1', revisionId, rawPath: 'raw/source.md', chunkChars: 4000 })
 
+  it('rejects invalid saved-reply Resume, retries only pending work and retires the old job', async () => {
+    const pending = await plan()
+    invalidResponseAt = 3
+    const execute = { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate }
+    await expect(sidecar(execute)).rejects.toThrow()
+    const before = requests.length
+    await expect(sidecar({ ...execute, requireExistingApproval: true })).rejects.toThrow(/explicitly Retry/)
+    expect(requests).toHaveLength(before)
+    const retry = await sidecar({ command: 'document-action', vault, libraryId: 'library-1', documentId: 'doc-1', action: 'retry' })
+    expect(retry.completedChunks).toBe(2)
+    expect(Number(retry.tokenEstimate)).toBeLessThan(Number(pending.tokenEstimate))
+    const oldJob = await sidecar({ command: 'get-job', vault, jobId: pending.jobId })
+    expect(oldJob.job).toMatchObject({ status: 'cancelled' })
+    const result = await sidecar({ ...execute, expectedPlanHash: retry.planHash, approvedTokens: retry.tokenEstimate })
+    expect(result.status).toBe('completed')
+    expect(requests.length - before).toBe(Number(pending.totalChunks) - 2)
+    expect(result.tokensUsed).toBe(requests.length * 38)
+    const completedRetry = await sidecar({ command: 'document-action', vault, libraryId: 'library-1', documentId: 'doc-1', action: 'retry' })
+    expect(completedRetry.status).toBe('completed')
+    expect(completedRetry.planHash).toBe(retry.planHash)
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('checkpoints a one-chunk batch so the Host can continue under a fresh deadline', async () => {
+    const pending = await plan()
+    const execute = { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate, maxChunks: 1 }
+    let result = await sidecar(execute)
+    expect(result.status).toBe('queued')
+    expect(result.completedChunks).toBe(1)
+    expect(requests).toHaveLength(1)
+    while (result.status === 'queued') result = await sidecar({ ...execute, requireExistingApproval: true })
+    expect(result.status).toBe('completed')
+    expect(requests.length).toBe(pending.totalChunks)
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('marks bounded wiki context as partial and excludes processing logs from synthesis', async () => {
+    await writeFile(join(vault, 'wiki', 'Policy.md'), '---\ntitle: 社区培训\ntype: note\nrole: note\nlayer: wiki\nlang: zh\nsummary: Policy\n---\n' + '人工核验规则。'.repeat(2000))
+    await writeFile(join(vault, 'wiki', 'LOG.md'), '# LOG\nFALSE_TRUNCATION_FROM_LOG_4481')
+    const pending = await plan()
+    await sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate, maxChunks: 1 })
+    const prompt = JSON.parse(requests[0]!).messages[0].content as string
+    expect(prompt).toContain('not the full wiki')
+    expect(prompt).toContain('"truncated":true')
+    expect(prompt).not.toContain('FALSE_TRUNCATION_FROM_LOG_4481')
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('reduces fresh-plan request overhead with larger excerpts without treating the ceiling as billed usage', async () => {
+    const small = await sidecar({ command: 'plan-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      revisionId, rawPath: 'raw/source.md', chunkChars: 1500, outputReserve: 2048 })
+    const larger = await sidecar({ command: 'plan-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      revisionId, rawPath: 'raw/source.md', chunkChars: 6000, outputReserve: 4096 })
+    expect(Number(larger.tokenEstimate)).toBeLessThan(Number(small.tokenEstimate) * 0.6)
+    expect(larger.tokensUsed).toBe(0)
+    expect(larger.budgetApproved).toBe(false)
+    expect(requests).toHaveLength(0)
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('requires approval parameters on the public sidecar Resume instead of raising KeyError', async () => {
+    await plan()
+    await expect(sidecar({ command: 'document-action', vault, libraryId: 'library-1', documentId: 'doc-1', action: 'resume' }))
+      .rejects.toThrow(/Expected plan hash and explicit approved token allowance/)
+    expect(requests).toHaveLength(0)
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('explicit output-limit Retry increases the reserve and still requires a new approval', async () => {
+    const pending = await plan()
+    customResponder = () => ({ content: '{}', finishReason: 'length' })
+    await expect(sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate })).rejects.toThrow(/output limit/)
+    const retry = await sidecar({ command: 'document-action', vault, libraryId: 'library-1', documentId: 'doc-1', action: 'retry' })
+    expect(retry.budgetApproved).toBe(false)
+    expect(requests).toHaveLength(1)
+    customResponder = undefined
+    await sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: retry.planHash, approvedTokens: retry.tokenEstimate, maxChunks: 1 })
+    expect(JSON.parse(requests[1]!).max_tokens).toBe(JSON.parse(requests[0]!).max_tokens * 2)
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
   it('publishes cited create_page, add_alias and the reported append_log together', async () => {
     const reported = JSON.parse(await readFile(new URL('./fixtures/append-log-with-source-span.json', import.meta.url), 'utf8'))
     const pending = await plan()
@@ -183,6 +263,51 @@ describe('approved complete document enrichment', () => {
       expect(await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')).not.toContain('不得发布')
     }, PROCESS_INTEGRATION_TIMEOUT,
   )
+
+  it('durably queues admission without inference and pauses an orphaned queue after restart', async () => {
+    const pending = await plan()
+    const request = { command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate }
+    const admitted = await sidecar({ ...request, admitOnly: true })
+    expect(admitted.status).toBe('queued')
+    expect(admitted.budgetApproved).toBe(true)
+    expect(requests).toHaveLength(0)
+    await sidecar({ command: 'increment-startup-attempt', vault, libraryId: 'library-1' })
+    const staleFailure = await sidecar({ command: 'document-action', vault, libraryId: 'library-1', documentId: 'doc-1',
+      action: 'pause', expectedPlanHash: pending.planHash, expectedStartupAttempt: admitted.startupAttempt,
+      error: 'STALE_BACKGROUND_FAILURE' })
+    expect(staleFailure.ignored).toBe(true)
+    const status = await sidecar({ command: 'document-status', vault, libraryId: 'library-1' })
+    expect(status.documents).toEqual(expect.arrayContaining([expect.objectContaining({ status: 'paused', budgetApproved: true })]))
+    expect(requests).toHaveLength(0)
+    expect((await sidecar({ ...request, requireExistingApproval: true })).status).toBe('completed')
+    expect(requests).toHaveLength(Number(pending.totalChunks))
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('labels every inference input as an excerpt and reports chunks without content pages', async () => {
+    const pending = await plan()
+    const result = await sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate })
+    expect(requests[0]).toContain('EXCERPT 1 OF')
+    expect(requests[0]).toContain('Do not infer that the original document is truncated')
+    const prompt = JSON.parse(requests[0]!).messages[0].content as string
+    const providerSchema = JSON.parse(prompt.split('PROPOSAL SCHEMA:\n')[1]!.split('\n\nOutput')[0]!)
+    expect(Object.keys(providerSchema.properties)).toEqual(['operations'])
+    expect(prompt.split('\n')[0]).toMatchInlineSnapshot('"EXCERPT 1 OF 5. This is a bounded excerpt, not the whole source. The document may continue before and after this excerpt. Do not infer that the original document is truncated. Summarize only facts supported by this excerpt; do not turn chunk boundaries into document claims."')
+    expect(result.chunksWithoutPages).toBe(pending.totalChunks)
+    expect(result.wikiReady).toBe(false)
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('refuses append_log against an ordinary content page without changing it', async () => {
+    const page = '---\ntitle: Existing\ntype: note\nrole: note\nlang: zh\nlayer: wiki\nsummary: 原文内容\n---\n# Existing\n原文内容。\n'
+    await writeFile(join(vault, 'wiki', 'Existing.md'), page)
+    const pending = await plan()
+    customResponder = () => ({ content: JSON.stringify({ operations: [{ op: 'append_log', path: 'wiki/Existing.md',
+      entry: '- 源文件在第3节处截断', rationale: 'wrong log target', confidence: 1 }] }) })
+    await expect(sidecar({ command: 'execute-document', vault, libraryId: 'library-1', documentId: 'doc-1',
+      expectedPlanHash: pending.planHash, approvedTokens: pending.tokenEstimate })).rejects.toThrow(/proposal rejected/i)
+    expect(await readFile(join(vault, 'wiki', 'Existing.md'), 'utf8')).toBe(page)
+  }, PROCESS_INTEGRATION_TIMEOUT)
 
   it('plans every character without inference and rejects an inadequate approval', async () => {
     const pending = await plan()

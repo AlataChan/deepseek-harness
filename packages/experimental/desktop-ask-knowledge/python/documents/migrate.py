@@ -29,6 +29,28 @@ def _sync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
+def _discard_safe_stale_backup(db_path: Path, bak_path: Path) -> None:
+    """Discard an interrupted-run backup only after validating the live database."""
+    if db_path.is_symlink() or bak_path.is_symlink() or not db_path.is_file() or not bak_path.is_file():
+        raise ValueError("migration backup recovery requires regular live database and backup files")
+    con = sqlite3.connect(db_path.resolve().as_uri() + '?mode=ro', uri=True)
+    try:
+        if con.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
+            raise ValueError('live database integrity check failed; migration backup preserved')
+        tables = {row[0] for row in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if not {'schema_info', 'documents', 'source_revisions'}.issubset(tables):
+            raise ValueError('live database has no complete document schema; migration backup preserved')
+        version = con.execute("SELECT value FROM schema_info WHERE key='schema_version'").fetchone()
+        if not version or not 1 <= int(version[0]) <= SCHEMA_VERSION:
+            raise ValueError('live database schema version is unsupported; migration backup preserved')
+        if con.execute('PRAGMA foreign_key_check').fetchall():
+            raise ValueError('live database references are invalid; migration backup preserved')
+    finally:
+        con.close()
+    bak_path.unlink()
+    _sync_directory(bak_path.parent)
+
+
 def migrate_legacy_library(
     vault: Path,
     library_id: str,
@@ -43,8 +65,12 @@ def migrate_legacy_library(
     bak_path = vault / ".octopus-kb" / "documents.sqlite.bak"
 
     existed = db_path.is_file()
-    if bak_path.exists():
-        return {"ok": False, "code": "backup-recovery-required", "error": "an earlier migration backup requires recovery", "backupPath": str(bak_path)}
+    if bak_path.exists() or bak_path.is_symlink():
+        try:
+            _discard_safe_stale_backup(db_path, bak_path)
+        except Exception as exc:
+            return {"ok": False, "code": "backup-recovery-required",
+                    "error": "an earlier migration backup requires recovery: " + str(exc), "backupPath": str(bak_path)}
 
     # Back up a coherent committed snapshot, including frames still in the WAL.
     if db_path.is_file():
@@ -83,6 +109,11 @@ def migrate_legacy_library(
         con = ensure_schema(db_path)
         cur = con.cursor()
 
+        managed_paths = set()
+        for row in cur.execute('SELECT document_id, revision_id, object_path FROM source_revisions WHERE library_id=?', (library_id,)):
+            managed_paths.add(row[2])
+            managed_paths.add(f'raw/{row[0]}-{row[1]}.md')
+
         # Find all markdown files in raw/
         md_files = sorted(raw_dir.glob("**/*.md"))
 
@@ -95,6 +126,8 @@ def migrate_legacy_library(
             file_path.resolve(strict=True).relative_to(raw_dir.resolve(strict=True))
             rel_path = f"raw/{file_path.relative_to(raw_dir).as_posix()}"
             total_docs += 1
+            if rel_path in managed_paths:
+                continue
 
             stat = file_path.stat()
             content_bytes = file_path.read_bytes()

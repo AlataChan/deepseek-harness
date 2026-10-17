@@ -34,6 +34,43 @@ class MigrationDurability(unittest.TestCase):
             finally:
                 writer.close()
 
+    def test_stale_backup_recovery_reads_committed_wal_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vault = Path(directory)
+            (vault / 'raw').mkdir()
+            db = vault / '.octopus-kb' / 'documents.sqlite'
+            writer = ensure_schema(db)
+            try:
+                writer.execute('CREATE TABLE durable_marker(value TEXT)')
+                writer.execute('INSERT INTO durable_marker VALUES (?)', ('committed WAL source',))
+                writer.commit()
+                backup = db.with_name('documents.sqlite.bak')
+                backup.write_bytes(b'stale backup')
+                result = migration.migrate_legacy_library(vault, 'library')
+                self.assertTrue(result['ok'], result)
+                self.assertFalse(backup.exists())
+                self.assertEqual(writer.execute('SELECT value FROM durable_marker').fetchall(), [('committed WAL source',)])
+            finally:
+                writer.close()
+
+    def test_future_schema_preserves_stale_backup_and_live_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vault = Path(directory)
+            db = vault / '.octopus-kb' / 'documents.sqlite'
+            writer = ensure_schema(db)
+            try:
+                writer.execute("UPDATE schema_info SET value='999' WHERE key='schema_version'")
+                writer.commit()
+                backup = db.with_name('documents.sqlite.bak')
+                backup.write_bytes(b'preserve recovery bytes')
+                result = migration.migrate_legacy_library(vault, 'library')
+                self.assertFalse(result['ok'])
+                self.assertEqual(result['code'], 'backup-recovery-required')
+                self.assertEqual(backup.read_bytes(), b'preserve recovery bytes')
+                self.assertEqual(writer.execute("SELECT value FROM schema_info WHERE key='schema_version'").fetchone()[0], '999')
+            finally:
+                writer.close()
+
     def test_revision_registration_rejects_changed_immutable_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             db = Path(directory) / "documents.sqlite"

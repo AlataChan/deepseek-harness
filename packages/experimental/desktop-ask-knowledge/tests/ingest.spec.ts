@@ -3,7 +3,7 @@
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
 import { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
@@ -11,6 +11,7 @@ import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import type { AskKnowledge } from '@deepseek-ai/dsh-host-ask-knowledge'
 import DesktopAskKnowledge, { type Config as DesktopAskKnowledgeConfig } from '../src/index.ts'
 import { finishIngestPipeline, healRejectedProposals, isPageMetaRejection, isPostLintRejection } from '../src/ingest.ts'
+import * as retrieval from '../src/document-retrieve.ts'
 import { withLibraryLock } from '../src/library-lock.ts'
 import { decodeIngestChunk, MAX_INGEST_CHUNK_BYTES, recoverUploadTemp } from '../src/upload-temp.ts'
 import { installFakeSidecar, installPythonSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
@@ -556,6 +557,52 @@ describe('ask-knowledge ingest', () => {
       const docs = await service.remoteDocuments(library.id as never)
       expect(docs.every(d => !d.searchable)).toBe(true)
     }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('records cancellation after raw publication instead of leaving a processing conversion', async () => {
+    const { capability, root } = await boot({ realSidecar: true })
+    const service = capability as DesktopAskKnowledge
+    const library = await capability.createLibrary({ displayName: '发布后取消' })
+    const handle = await capability.beginIngest({ libraryId: library.id, filename: 'cancel-published.md' })
+    await capability.appendIngestChunk({ handle, bytes: Buffer.from('CANCEL_AFTER_PUBLISH_9031').toString('base64') })
+    const entered = Promise.withResolvers<undefined>()
+    const release = Promise.withResolvers<undefined>()
+    const original = retrieval.indexLibraryVault
+    const mock = vi.spyOn(retrieval, 'indexLibraryVault').mockImplementationOnce(async (...args) => {
+      entered.resolve(undefined)
+      await release.promise
+      return original(...args)
+    })
+    const finishing = capability.finishIngest({ handle })
+    const outcome = finishing.then(() => undefined, error => error)
+    try {
+      await entered.promise
+      const vault = join(root, 'knowledge-bases', 'libraries', library.id)
+      expect((await readdir(join(vault, 'raw'))).some(name => name.endsWith('.md'))).toBe(true)
+      await service.abortIngest({ handle })
+      release.resolve(undefined)
+      expect(await outcome).toBeInstanceOf(Error)
+      const docs = await service.remoteDocuments(library.id)
+      expect(docs).toHaveLength(1)
+      expect(docs[0]).toMatchObject({ status: 'cancelled', searchable: false })
+    } finally {
+      release.resolve(undefined)
+      await outcome
+      mock.mockRestore()
+    }
+  }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('opens old libraries through the public document list and keeps modern imports distinct', async () => {
+    const { capability, root } = await boot({ realSidecar: true })
+    const service = capability as DesktopAskKnowledge
+    const library = await capability.createLibrary({ displayName: '旧库列表' })
+    const vault = join(root, 'knowledge-bases', 'libraries', library.id)
+    await writeFile(join(vault, 'raw', 'old-policy.md'), 'LEGACY_POLICY_1199')
+    const docs = await service.remoteDocuments(library.id)
+    expect(docs).toHaveLength(1)
+    expect(docs[0]).toMatchObject({ filename: 'old-policy.md', originalAvailable: false, searchable: true })
+    await ingestText(capability, library.id, 'new-policy.md', 'MODERN_POLICY_1199')
+    expect(await service.remoteDocuments(library.id)).toHaveLength(2)
+  }, PROCESS_INTEGRATION_TIMEOUT)
 
   it('enforces configurable maxConvertedBytes and maxDocxXmlBytes at the boundary and retains source on refusal', async () => {
     const { capability } = await boot({

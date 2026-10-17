@@ -41,6 +41,8 @@ export type AskKnowledgeKey =
   | 'batchQueued'
   | 'batchRunning'
   | 'batchDone'
+  | 'settings.addDocuments'
+  | 'settings.addedDocuments'
   | 'settings.section'
   | 'settings.remove'
   | 'settings.removeFailed'
@@ -60,6 +62,7 @@ export type AskKnowledgeKey =
   | 'docs.estimate'
   | 'docs.statusCancelled'
   | 'docs.partialConversion'
+  | 'docs.migrationWarning'
   | 'docs.title'
   | 'docs.originalSaved'
   | 'docs.originalUnavailable'
@@ -83,6 +86,12 @@ export type AskKnowledgeKey =
   | 'docs.statusConverting'
   | 'docs.statusChunking'
   | 'docs.statusEnriching'
+  | 'docs.statusAwaitingApproval'
+  | 'docs.statusWikiIncomplete'
+  | 'docs.usage'
+  | 'docs.usagePartial'
+  | 'docs.chunksWithoutPages'
+  | 'docs.retryRequired'
   | 'docs.statusPaused'
   | 'docs.statusFailed'
   | 'docs.statusCompleted'
@@ -125,6 +134,8 @@ const zh = {
   batchQueued: '排队中',
   batchRunning: '正在处理',
   batchDone: '已入库',
+  'settings.addDocuments': '添加文档',
+  'settings.addedDocuments': '已添加 {count} 份文档，可在下方查看处理状态',
   'settings.section': '我的知识库',
   'settings.remove': '从名单移除',
   'settings.removeFailed': '没能从名单移除。',
@@ -141,10 +152,11 @@ const zh = {
   'ingest.retained': '原件和全文已保存，可直接提问；可在设置的“我的知识库”批准整理预算。',
   'ingest.deferred': '这次没有写进去，需要人工确认后才能入库。',
   'ingest.failed': '文档没有写进知识库。',
-  'docs.estimate': '完整文档预计预算：{tokens} token，{chunks} 段。批准后才会请求模型。',
-  'docs.approvedEstimate': '已批准完整文档预算：{tokens} token，{chunks} 段。实际用量以模型服务报告为准。',
+  'docs.estimate': '完整文档批准额度上限（保守估算，非预计实际消耗）：{tokens} token，{chunks} 段。批准后才会请求模型。',
+  'docs.approvedEstimate': '已批准额度上限（保守估算）：{tokens} token，{chunks} 段。实际用量以模型服务报告为准。',
   'docs.statusCancelled': '处理已取消；已有文件保留。',
   'docs.partialConversion': '部分文本；原件可能还有未提取内容',
+  'docs.migrationWarning': '旧文档登记失败，已登记文档仍可使用。本次启动不再自动重试；排除问题后请重启应用。详情：{error}',
   'docs.title': '库内文档管理',
   'docs.originalSaved': '原始文件已保存',
   'docs.originalUnavailable': '原始文件不可用',
@@ -167,6 +179,12 @@ const zh = {
   'docs.statusConverting': '正在转换格式',
   'docs.statusChunking': '正在分块规划',
   'docs.statusEnriching': '正在提取知识',
+  'docs.statusAwaitingApproval': '等待批准预算',
+  'docs.statusWikiIncomplete': '处理已结束；Wiki覆盖待核验',
+  'docs.usage': '模型报告实际用量：{tokens} token。',
+  'docs.usagePartial': '已知实际用量：{tokens} token；部分请求未报告用量。',
+  'docs.chunksWithoutPages': '{chunks} 段未产生知识页（可能为重复内容）；不代表所有事实均已进入 Wiki。',
+  'docs.retryRequired': '该次模型回复无法采用。请重试失败步骤，并重新确认新增请求的预算。',
   'docs.statusPaused': '提取已暂停',
   'docs.statusFailed': '处理失败',
   'docs.statusCompleted': '提取完成',
@@ -210,6 +228,8 @@ const en = {
   batchQueued: 'Queued',
   batchRunning: 'Working',
   batchDone: 'Added',
+  'settings.addDocuments': 'Add documents',
+  'settings.addedDocuments': 'Added {count} documents. Review processing status below.',
   'settings.section': 'My knowledge libraries',
   'settings.remove': 'Remove from the list',
   'settings.removeFailed': 'Could not remove the library from the list.',
@@ -226,10 +246,11 @@ const en = {
   'ingest.retained': 'Original and full text saved; ready to ask. Approve wiki enrichment in Settings → My libraries.',
   'ingest.deferred': 'Nothing was written this time: the entries need a human confirmation first.',
   'ingest.failed': 'The document was not written into the knowledge library.',
-  'docs.estimate': 'Whole-document allowance: {tokens} tokens across {chunks} chunks. Model calls start only after approval.',
-  'docs.approvedEstimate': 'Approved whole-document allowance: {tokens} tokens across {chunks} chunks. Actual usage comes from the model provider.',
+  'docs.estimate': 'Conservative approval ceiling (not predicted usage): {tokens} tokens across {chunks} chunks. Model calls start only after approval.',
+  'docs.approvedEstimate': 'Approved conservative ceiling: {tokens} tokens across {chunks} chunks. Actual usage comes from the model provider.',
   'docs.statusCancelled': 'Processing cancelled; existing files are retained.',
   'docs.partialConversion': 'Partial text; the original may contain additional unextracted content',
+  'docs.migrationWarning': 'Legacy document import failed; registered documents remain usable. No automatic retry this launch; restart after resolving the problem. Details: {error}',
   'docs.title': 'Document Management',
   'docs.originalSaved': 'Original saved',
   'docs.originalUnavailable': 'Original unavailable',
@@ -252,6 +273,12 @@ const en = {
   'docs.statusConverting': 'Converting format',
   'docs.statusChunking': 'Planning chunks',
   'docs.statusEnriching': 'Extracting knowledge',
+  'docs.statusAwaitingApproval': 'Waiting for budget approval',
+  'docs.statusWikiIncomplete': 'Processing finished; wiki coverage needs review',
+  'docs.usage': 'Provider-reported usage: {tokens} tokens.',
+  'docs.usagePartial': 'Known usage: {tokens} tokens; some requests did not report usage.',
+  'docs.chunksWithoutPages': '{chunks} chunks produced no knowledge page (possibly duplicates); full wiki fact coverage is not established.',
+  'docs.retryRequired': 'The saved model reply cannot be used. Retry the failed step and approve the additional request allowance.',
   'docs.statusPaused': 'Extraction paused',
   'docs.statusFailed': 'Processing failed',
   'docs.statusCompleted': 'Extraction completed',

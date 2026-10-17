@@ -2,6 +2,8 @@ import json
 import tempfile
 from pathlib import Path
 
+from octopus_kb_compound.ckr.operations import AppendLogOp
+from octopus_kb_compound.ckr.models import StorageRef
 from octopus_kb_compound.heal import heal_page_meta_rejections
 from octopus_kb_compound.lookup import lookup_term
 from octopus_kb_compound.retrieve import build_retrieval_bundle
@@ -82,7 +84,7 @@ PROPOSAL = {
         },
         {
             "op": "append_log",
-            "path": "wiki/INDEX.md",
+            "path": "wiki/LOG.md",
             "confidence": 0.9,
             "rationale": "index",
             "entry": "- [[pension-childcare]]",
@@ -105,6 +107,16 @@ def _bootstrap(vault: Path) -> None:
         encoding="utf-8",
     )
 
+
+# Canonical operation callers cannot bypass the JSON-schema log restriction.
+for forbidden in ["wiki/Existing.md", "wiki/INDEX.md", "wiki/../wiki/LOG.md"]:
+    try:
+        AppendLogOp(StorageRef(adapter="obsidian", locator=forbidden), "false truncation", "control", 1.0)
+    except ValueError as error:
+        if "wiki/LOG.md" not in str(error):
+            raise
+    else:
+        raise SystemExit(f"canonical append_log accepted forbidden target: {forbidden}")
 
 with tempfile.TemporaryDirectory() as tmp:
     vault = Path(tmp)

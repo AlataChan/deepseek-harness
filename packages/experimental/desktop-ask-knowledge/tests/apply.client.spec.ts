@@ -263,8 +263,8 @@ describe('registered document actions', () => {
     const action = vi.fn(async () => refuse
       ? { ok: false as const, error: { message: 'durable cancellation refused' } }
       : { ok: true as const, value: undefined })
-    const documents = vi.fn(async () => ({ ok: true as const, value: [item] }))
-    b.ctx.provide('remote.askKnowledge', { documentAction: action, documents } as never)
+    const documents = vi.fn(async () => ({ ok: true as const, value: { documents: [item] } }))
+    b.ctx.provide('remote.askKnowledge', { documentAction: action, startDocumentAction: action, documentList: documents } as never)
     try {
       const settings = injectedOf<LibrarySettingsRemotes>(b.slots.entries('settings.section')[0])
       expect(await settings.listDocuments!('library-verified')).toEqual({ ok: true, value: [item] })
@@ -300,15 +300,16 @@ it('loads pending documents and approves their displayed budget through a real C
   const item = { id: 'doc-qinghe', libraryId: 'qinghe', filename: '青禾原版.md',
     originalAvailable: true, searchable: true, status: 'paused' as const, stage: 'awaiting_approval',
     estimatedTokens: 42000, totalChunks: 32, completedChunks: 0, budgetApproved: false, planHash: 'visible-plan' }
-  const documents = vi.fn(async () => ({ ok: true as const, value: [item] }))
+  const documents = vi.fn(async () => ({ ok: true as const, value: { documents: [item], migrationWarning: 'MIGRATION_WARNING_4721' } }))
   const documentAction = vi.fn(async () => ({ ok: true as const, value: undefined }))
   await b.ctx.plugin({ name: 'document-remote-provider', apply: (scope: Context) => {
-    scope.provide('remote.askKnowledge', { documents, documentAction } as never)
+    scope.provide('remote.askKnowledge', { documentList: documents, documentAction, startDocumentAction: documentAction } as never)
   } }).await()
   const settings = injectedOf<LibrarySettingsRemotes>(b.slots.entries('settings.section')[0])
   const view = render(createElement(LibrarySettingsSection, { ...settings, t: key => zh[key] }))
   try {
     fireEvent.click(await view.findByRole('button', { name: /青禾培训测试库/ }))
+    expect((await view.findByRole('alert')).textContent).toContain('MIGRATION_WARNING_4721')
     fireEvent.click(await view.findByRole('button', { name: '批准预算' }))
     expect(documents).toHaveBeenCalledWith('qinghe')
     expect(documentAction).toHaveBeenCalledWith({ libraryId: 'qinghe', documentId: item.id,
@@ -329,20 +330,39 @@ it.each([
     stage: operation === 'approve' ? 'awaiting_approval' : operation === 'replay' ? 'uncertain' : 'paused',
     error: operation === 'retry' ? 'Recoverable source failure' : undefined,
     estimatedTokens: 42000, budgetApproved: operation !== 'approve', planHash: 'visible-action-plan' }
-  const documents = vi.fn(async () => ({ ok: true as const, value: [item] }))
+  const documents = vi.fn(async () => ({ ok: true as const, value: { documents: [item], migrationWarning: 'MIGRATION_WARNING_4721' } }))
   const documentAction = vi.fn(async () => ({ ok: true as const, value: undefined }))
+  const startDocumentAction = vi.fn(async () => ({ ok: true as const, value: undefined }))
   await b.ctx.plugin({ name: 'actions-remote-provider', apply: (scope: Context) => {
-    scope.provide('remote.askKnowledge', { documents, documentAction } as never)
+    scope.provide('remote.askKnowledge', { documentList: documents, documentAction, startDocumentAction } as never)
   } }).await()
   const settings = injectedOf<LibrarySettingsRemotes>(b.slots.entries('settings.section')[0])
   const view = render(createElement(LibrarySettingsSection, { ...settings, t: key => zh[key] }))
   try {
     fireEvent.click(await view.findByRole('button', { name: /按钮验收库/ }))
     fireEvent.click(await view.findByRole('button', { name: zh[label] }))
-    await waitFor(() => expect(documentAction).toHaveBeenCalledExactlyOnceWith({
+    const background = ['retry', 'resume', 'approve', 'replay'].includes(operation)
+    await waitFor(() => expect(background ? startDocumentAction : documentAction).toHaveBeenCalledExactlyOnceWith({
       libraryId: 'actions', documentId: 'doc-actions', action: operation === 'replay' ? 'resume' : operation,
       planHash: 'visible-action-plan', approvedTokens: 42000,
       ...operation === 'replay' ? { uncertainOutcome: 'replay' } : {},
     }))
+    expect(background ? documentAction : startDocumentAction).not.toHaveBeenCalled()
+  } finally { view.unmount(); await b.dispose(); await b.ctx.fiber.dispose() }
+})
+
+it('routes settings uploads through the existing ingestion remotes without changing the session binding', async () => {
+  const b = await bench({ namespacedRemote: true, libraries: [{ id: 'target', displayName: 'Training' }] })
+  const settings = injectedOf<LibrarySettingsRemotes>(b.slots.entries('settings.section')[0])
+  const view = render(createElement(LibrarySettingsSection, { ...settings, t: key => zh[key] }))
+  try {
+    const input = await view.findByLabelText('添加文档: Training')
+    fireEvent.change(input, { target: { files: [new File(['policy body'], 'policy.md')] } })
+    await waitFor(() => expect(b.remotes.finishAskKnowledgeIngest).toHaveBeenCalledWith({ handle: 'h1' }))
+    expect(b.remotes.beginAskKnowledgeIngest).toHaveBeenCalledWith({ libraryId: 'target', filename: 'policy.md' })
+    expect(b.remotes.appendAskKnowledgeIngestChunk).toHaveBeenCalledWith({ handle: 'h1', bytes: btoa('policy body') })
+    expect(b.remotes.attachAskKnowledge).not.toHaveBeenCalled()
+    expect(b.remotes.createAskKnowledgeLibrary).not.toHaveBeenCalled()
+    await waitFor(() => expect(view.getByRole('status').textContent).toContain('已添加 1 份文档'))
   } finally { view.unmount(); await b.dispose(); await b.ctx.fiber.dispose() }
 })

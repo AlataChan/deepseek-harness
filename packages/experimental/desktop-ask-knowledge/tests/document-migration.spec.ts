@@ -3,7 +3,8 @@
  * @module
  */
 
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdtemp, mkdir, readFile, rm, writeFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -59,6 +60,43 @@ describe('document migration and library lifecycle cleanup', () => {
 
   afterEach(async () => {
     await rm(tempDir, { recursive: true, force: true })
+  })
+
+  it('recovers a stale backup only when the live database is healthy and supported', async () => {
+    await writeFile(join(vaultDir, 'raw', 'retained.md'), 'RETAINED_MIGRATION_SOURCE_4721')
+    const service = new DocumentsServiceImpl(config)
+    await service.migrateLibrary(TEST_LIB)
+    const before = await service.listDocuments(TEST_LIB)
+    const backup = join(vaultDir, '.octopus-kb', 'documents.sqlite.bak')
+    await writeFile(backup, 'stale backup from an interrupted prior run')
+    expect((await service.migrateLibrary(TEST_LIB)).ok).toBe(true)
+    await expect(stat(backup)).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await service.listDocuments(TEST_LIB)).toEqual(before)
+  })
+
+  it('preserves a stale backup when the live database is corrupt', async () => {
+    const backup = join(vaultDir, '.octopus-kb', 'documents.sqlite.bak')
+    await writeFile(backup, 'RECOVERY_BYTES_MUST_BE_PRESERVED_4721')
+    await writeFile(join(vaultDir, '.octopus-kb', 'documents.sqlite'), 'corrupt live database')
+    await expect(new DocumentsServiceImpl(config).migrateLibrary(TEST_LIB)).rejects.toThrow(/recovery|database|backup/i)
+    expect(await readFile(backup, 'utf8')).toBe('RECOVERY_BYTES_MUST_BE_PRESERVED_4721')
+    expect(await readFile(join(vaultDir, '.octopus-kb', 'documents.sqlite'), 'utf8')).toBe('corrupt live database')
+  })
+
+  it('does not import registered modern raw text as a second legacy source', async () => {
+    const bytes = Buffer.from('MODERN_RETAINED_SOURCE')
+    const registered = await runSidecar(config, { command: 'register-source-revision', vault: vaultDir,
+      documentId: 'doc-modern', libraryId: TEST_LIB, filename: 'modern.txt', byteLength: bytes.length,
+      sha256: createHash('sha256').update(bytes).digest('hex'), objectPath: 'objects/modern' })
+    const revision = registered.revision as { revisionId: string }
+    await writeFile(join(vaultDir, 'raw', `doc-modern-${revision.revisionId}.md`), 'MODERN_NORMALIZED')
+    await writeFile(join(vaultDir, 'raw', 'old.md'), 'LEGACY_NORMALIZED')
+    const service = new DocumentsServiceImpl(config)
+    const result = await service.migrateLibrary(TEST_LIB)
+    expect(result.migratedDocuments).toBe(1)
+    const docs = await service.listDocuments(TEST_LIB)
+    expect(docs).toHaveLength(2)
+    expect(docs.filter(doc => doc.displayFilename === 'modern.txt')).toHaveLength(1)
   })
 
   it('migrates legacy markdown files to documents store with original_unavailable and enables search (AC12)', async () => {

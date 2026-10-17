@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/plans/2026-10-16-ask-knowledge-baseline-audit.md
 /ask-knowledge-task-1-baseline-audit:
-  en: 77013d2d24a3bd13
-  zh: 4f6e87d187ebd369
+  en: 413e92f9aced7b62
+  zh: 735e156f09ff4e44
 /ask-knowledge-task-1-baseline-audit/summary:
   en: d8f97f9e53491687
   zh: c271cb77616b7be1

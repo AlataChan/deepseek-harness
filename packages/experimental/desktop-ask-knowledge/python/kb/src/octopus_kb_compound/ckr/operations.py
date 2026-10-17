@@ -86,6 +86,8 @@ class AppendLogOp:
 
     def __post_init__(self) -> None:
         _validate_confidence(self.confidence)
+        if self.target.adapter == "obsidian" and self.target.locator != "wiki/LOG.md":
+            raise ValueError("append_log may only target wiki/LOG.md")
 
     def to_dict(self) -> dict[str, Any]:
         return {

@@ -1,0 +1,58 @@
+# Bilingual-pair consistency record for 2026-10-15-composer-predictions-completion.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-10-15-composer-predictions-completion.md
+/composer-predictions-completion-and-acceptance-implementation-plan:
+  en: acb78bfffc22f75d
+  zh: ec5dfd8c0c843ae0
+/composer-predictions-completion-and-acceptance-implementation-plan/summary:
+  en: 3120f6365f1bd099
+  zh: 406ffd62e63725fb
+/composer-predictions-completion-and-acceptance-implementation-plan/contents:
+  en: 07fd10381f100756
+  zh: dadeea8c73a65db5
+/composer-predictions-completion-and-acceptance-implementation-plan/observed-implementation:
+  en: 05adef42d9bfb8b0
+  zh: 39ffbe324be290aa
+/composer-predictions-completion-and-acceptance-implementation-plan/product-and-architecture-decisions:
+  en: 4be3a9514e9a3307
+  zh: 5988622d17de1219
+/composer-predictions-completion-and-acceptance-implementation-plan/required-behavior:
+  en: 03062b3ccc9d1b6b
+  zh: 0165ec02767e18ed
+/composer-predictions-completion-and-acceptance-implementation-plan/required-behavior/host-eligibility-and-context:
+  en: 4c3543fc4ad32caa
+  zh: b5e980445db8b780
+/composer-predictions-completion-and-acceptance-implementation-plan/required-behavior/client-lifecycle-and-adoption:
+  en: df6210a31b871083
+  zh: 20ba35b147e4cb32
+/composer-predictions-completion-and-acceptance-implementation-plan/required-behavior/in-input-presentation-feasibility:
+  en: f6b5ba5c289f0464
+  zh: d9a2efa667472e7d
+/composer-predictions-completion-and-acceptance-implementation-plan/implementation-tasks:
+  en: ab0d08aec5d61377
+  zh: ea6fd10a781dfaf4
+/composer-predictions-completion-and-acceptance-implementation-plan/implementation-tasks/task-1-prove-the-editor-integration-and-lock-the-visual-direction:
+  en: 27a4e31d36e1b707
+  zh: e8f51ccc63018397
+/composer-predictions-completion-and-acceptance-implementation-plan/implementation-tasks/task-2-make-host-requests-authoritative-and-cover-ordinary-conversations:
+  en: e7b6c37b27e9d985
+  zh: c4827df14c223205
+/composer-predictions-completion-and-acceptance-implementation-plan/implementation-tasks/task-3-improve-bounded-suggestion-context-and-output:
+  en: 07bd882b538ac01a
+  zh: a05dab9cdfcf8830
+/composer-predictions-completion-and-acceptance-implementation-plan/implementation-tasks/task-4-add-the-paid-feature-control-and-update-client-state:
+  en: d119671fe4f13c8c
+  zh: 79ae6e5ac1059437
+/composer-predictions-completion-and-acceptance-implementation-plan/implementation-tasks/task-5-ship-inline-presentation-with-editor-safe-acceptance:
+  en: a6a34106e6d5be06
+  zh: 820173dddd06464b
+/composer-predictions-completion-and-acceptance-implementation-plan/implementation-tasks/task-6-verify-installed-behavior-and-document-the-feature:
+  en: 097f84b008c57647
+  zh: 493b93f5474308a3
+/composer-predictions-completion-and-acceptance-implementation-plan/acceptance-and-release:
+  en: 1a933e8f582b4b99
+  zh: b6a18a582a93ef85
+/composer-predictions-completion-and-acceptance-implementation-plan/remaining-verification-limits:
+  en: 6cc21a84ce34cf52
+  zh: 2b090a7193a2b0f8

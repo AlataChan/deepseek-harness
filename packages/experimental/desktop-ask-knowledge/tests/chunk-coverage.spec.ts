@@ -23,6 +23,18 @@ describe('document chunking and span coverage', () => {
     }
   })
 
+  it('uses paragraph boundaries on the production plain-text path without dropping characters', async () => {
+    await expect(runSidecar({ sidecarRuntimePath: sidecarHome }, { command: 'create-chunks',
+      documentId: 'invalid', revisionId: 'revision', fullText: 'text', maxChunkChars: 0 })).rejects.toThrow(/positive integer/)
+    const paragraph = '每项支出必须保留完整的原始凭证。'.repeat(8) + '\n\n'
+    const fullText = paragraph.repeat(10)
+    const result = await runSidecar({ sidecarRuntimePath: sidecarHome }, { command: 'create-chunks',
+      documentId: 'natural-boundaries', revisionId: 'revision', fullText, maxChunkChars: 250, overlapChars: 0 })
+    const chunks = result.chunks as Array<{ primaryText: string }>
+    expect(chunks.map(chunk => chunk.primaryText).join('')).toBe(fullText)
+    for (const chunk of chunks.slice(0, -1)) expect(chunk.primaryText.endsWith('\n\n')).toBe(true)
+  })
+
   it('divides long document into contiguous chunks with 100% verified coverage', async () => {
     const longDocPath = join(FIXTURES_DIR, 'long-document.md')
     const fullText = await readFile(longDocPath, 'utf8')

@@ -796,7 +796,7 @@ def cmd_create_chunks(req: dict) -> dict:
 
     doc_id = req["documentId"]
     rev_id = req["revisionId"]
-    blocks = req.get("blocks", [])
+    blocks = req.get("blocks")
     full_text = req.get("fullText", "")
     max_chars = req.get("maxChunkChars", 1500)
     overlap = req.get("overlapChars", 200)
@@ -861,7 +861,9 @@ def cmd_migrate_library(req: dict) -> dict:
 
     vault = Path(req["vault"])
     library_id = req["libraryId"]
-    return migrate_legacy_library(vault, library_id)
+    from documents.commit_lock import commit_lock
+    with commit_lock(vault):
+        return migrate_legacy_library(vault, library_id)
 
 
 def cmd_cancel_library_jobs(req: dict) -> dict:

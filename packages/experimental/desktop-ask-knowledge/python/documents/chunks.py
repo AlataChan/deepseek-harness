@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any
 
 
@@ -24,6 +25,8 @@ def create_chunks_from_blocks(
     Every character in full_text is assigned to exactly one chunk's primary range.
     Table headers are repeated in subsequent table chunks for context.
     """
+    if type(max_chunk_chars) is not int or max_chunk_chars < 1:
+        raise ValueError("max_chunk_chars must be a positive integer")
     if not full_text or (blocks is not None and len(blocks) == 0):
         return {
             "documentId": document_id,
@@ -91,8 +94,20 @@ def create_chunks_from_blocks(
         current_chars = 0
 
     if blocks is None:
-        for start in range(0, len(full_text), max_chunk_chars):
-            flush_chunk(min(len(full_text), start + max_chunk_chars))
+        while current_start < len(full_text):
+            end = min(len(full_text), current_start + max_chunk_chars)
+            if end < len(full_text):
+                lower = current_start + max_chunk_chars // 2
+                for separator in ('\n\n', '\n'):
+                    boundary = full_text.rfind(separator, lower, end)
+                    if boundary >= lower:
+                        end = boundary + len(separator)
+                        break
+                else:
+                    boundaries = list(re.finditer(r'[。！？]|[.!?](?=\s)', full_text[lower:end]))
+                    if boundaries:
+                        end = lower + boundaries[-1].end()
+            flush_chunk(end)
     else:
         for block in blocks:
             block_text = block.get("text", "")

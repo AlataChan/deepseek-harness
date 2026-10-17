@@ -64,6 +64,21 @@ def _normalize_generated_page_categories(proposal):
             meta['role'] = meta['type'] if meta['type'] in properties['role']['enum'] else 'note'
 
 
+def _provider_schema(schema_text):
+    """Ask only for operations; source and attempt metadata are assigned by the executor."""
+    schema = json.loads(schema_text)
+    return _json({'$schema': schema['$schema'], 'type': 'object', 'required': ['operations'],
+                  'additionalProperties': False, 'properties': {'operations': schema['properties']['operations']},
+                  '$defs': schema['$defs']})
+
+
+def _excerpt_notice(chunk, total):
+    """Identify the bounded primary range without implying a truncated original."""
+    return (f"EXCERPT {chunk['index'] + 1} OF {total}. This is a bounded excerpt, not the whole source. "
+            "The document may continue before and after this excerpt. Do not infer that the original document is truncated. "
+            "Summarize only facts supported by this excerpt; do not turn chunk boundaries into document claims.\n")
+
+
 def _safe_raw(vault, rel):
     root = vault.resolve()
     path = root / rel
@@ -82,7 +97,7 @@ def _safe_raw(vault, rel):
 def _frozen_plan(plan):
     return {key: plan[key] for key in ('version', 'documentId', 'revisionId', 'libraryId', 'rawPath',
         'rawSha256', 'route', 'promptVersion', 'conversion', 'chunks', 'tokenEstimate', 'retryReserve', 'estimator',
-        'totalChunks', 'totalChars', 'retryNonce', 'chunkChars', 'outputReserve', 'contextChars', 'conversionStatus') if key in plan}
+        'totalChunks', 'totalChars', 'retryNonce', 'priorTokensUsed', 'chunkChars', 'outputReserve', 'contextChars', 'conversionStatus') if key in plan}
 
 
 def _plan_path(vault, document_id):
@@ -152,6 +167,8 @@ def resolve_candidate_wiki_context(vault: Path, chunk: dict, context_chars: int)
         for heading in headings:
             if heading and (heading in title_lower or title_lower in heading):
                 score += 60
+        if page.name == 'LOG.md':
+            continue
         if role == 'index' or page.name == 'INDEX.md':
             score += 10
         elif page.name != 'LOG.md':
@@ -174,13 +191,13 @@ def resolve_candidate_wiki_context(vault: Path, chunk: dict, context_chars: int)
         lo, hi = 0, min(len(raw_content), context_chars)
         while lo < hi:
             end = (lo + hi + 1) // 2
-            trial = context + [{'path': candidate['rel_path'], 'text': raw_content[:end]}]
+            trial = context + [{'path': candidate['rel_path'], 'text': raw_content[:end], 'truncated': end < len(raw_content)}]
             if len(_json(trial)) <= context_chars:
                 lo = end
             else:
                 hi = end - 1
         if lo:
-            context.append({'path': candidate['rel_path'], 'text': raw_content[:lo]})
+            context.append({'path': candidate['rel_path'], 'text': raw_content[:lo], 'truncated': lo < len(raw_content)})
     return context
 
 
@@ -313,16 +330,16 @@ def plan_document(req):
             raise ValueError('Document revision does not belong to this library')
         raw = _safe_raw(vault, req['rawPath'])
         text = raw.read_text(encoding='utf-8')
-        chunk_chars = int(req.get('chunkChars', 4000))
-        output_reserve = int(req.get('outputReserve', 2048))
+        chunk_chars = int(req.get('chunkChars', 6000))
+        output_reserve = int(req.get('outputReserve', 4096))
         context_chars = int(req.get('contextChars', 2000))
         retry_reserve = int(req.get('retryReserve', output_reserve * 2))
         if not 100 <= chunk_chars <= 16000 or not 64 <= output_reserve <= 16000 or not 0 <= context_chars <= 8000:
             raise ValueError('Invalid chunk, output, or context allowance')
         route, _ = _route(vault)
         template = _prompt_path().read_text(encoding='utf-8')
-        schema = _proposal_schema_path().read_text(encoding='utf-8')
-        prompt_version = 'document-manifest-v1'
+        schema = _provider_schema(_proposal_schema_path().read_text(encoding='utf-8'))
+        prompt_version = 'document-manifest-v2-excerpts'
 
         manifest = create_chunks_from_blocks(
             document_id,
@@ -332,6 +349,12 @@ def plan_document(req):
             max_chunk_chars=chunk_chars,
             overlap_chars=int(req.get('overlapChars', 0)),
         )
+        previous_path = _plan_path(vault, document_id)
+        previous_retry = json.loads(previous_path.read_text(encoding='utf-8')) if req.get('freshRetry') and previous_path.is_file() else None
+        if previous_retry:
+            manifest['chunks'] = previous_retry['chunks']
+            if any(p.get('finishReason') == 'length' for p in (json.loads(cp.read_text(encoding='utf-8')) for cp in previous_path.parent.glob(previous_retry['planHash'] + '-*.json'))):
+                output_reserve = min(16000, max(output_reserve, previous_retry['outputReserve'] * 2))
         chunks = []
         for span in manifest['chunks']:
             index = span['index']
@@ -341,7 +364,7 @@ def plan_document(req):
             # Serialized context contains no raw controls: four UTF-8 bytes per character
             # also bounds ASCII quote/backslash escaping in the outer request JSON.
             context_ceiling = '\U00010000' * context_chars if context_chars >= 2 else '[]'
-            prompt_scaffold = _render_template(template, {
+            prompt_scaffold = _excerpt_notice(span, len(manifest['chunks'])) + _render_template(template, {
                 'raw_path': req['rawPath'],
                 'raw_body': span['primaryText'],
                 'existing_bundle': context_ceiling,
@@ -408,13 +431,24 @@ def plan_document(req):
                         old_chunk = previous['chunks'][chunk['index']]
                         if (old_chunk['start'], old_chunk['end']) == (chunk['start'], chunk['end']):
                             chunk['alreadyApplied'] = True
+                            saved_old = json.loads(old.read_text(encoding='utf-8'))
+                            chunk['contentPages'] = saved_old.get('contentPages') or [op['path'] for op in saved_old.get('proposal', {}).get('operations', []) if op['op'] == 'create_page']
+                    elif chunk['index'] < len(previous['chunks']) and previous['chunks'][chunk['index']].get('alreadyApplied'):
+                        chunk['alreadyApplied'] = True
+                        chunk['contentPages'] = previous['chunks'][chunk['index']].get('contentPages', [])
+                pending = [c for c in plan['chunks'] if not c.get('alreadyApplied')]
+                if not pending:
+                    return _public_plan(previous)
+                required = sum(c['inputEstimate'] + c['outputReserve'] for c in pending) + (retry_reserve if pending else 0)
+                plan['tokenEstimate'] = required
+                plan['priorTokensUsed'] = _reported_usage(previous_path, previous)
                 plan['retryNonce'] = uuid.uuid4().hex
                 plan_hash = _hash(plan)
             if previous['planHash'] == plan_hash and previous['status'] != 'cancelled':
                 return _public_plan(previous)
         plan.update({'planHash': plan_hash, 'jobId': req.get('jobId') or 'job-' + uuid.uuid4().hex,
                      'status': 'awaiting_approval', 'budgetApproved': False, 'completedChunks': 0,
-                     'tokensUsed': 0, 'usageKnown': True, 'approvedTokens': 0})
+                     'tokensUsed': plan.get('priorTokensUsed', 0), 'usageKnown': previous_retry.get('usageKnown', True) if previous_retry else True, 'approvedTokens': 0})
         db = vault / '.octopus-kb' / 'documents.sqlite'
         attempt = get_or_increment_startup_attempt(db, library_id, increment=False)
         existing = get_job(db, plan['jobId'])
@@ -433,6 +467,11 @@ def plan_document(req):
                 con.commit()
             finally:
                 con.close()
+        if previous_retry and previous_retry['jobId'] != plan['jobId']:
+            old_job = get_job(db, previous_retry['jobId'])
+            if old_job and old_job['status'] not in {'completed', 'cancelled', 'failed'}:
+                cancel_job(db, previous_retry['jobId'])
+        plan['completedChunks'] = sum(bool(c.get('alreadyApplied')) for c in chunks)
         plan['startupAttempt'] = attempt
         # Keep every approved/requestable generation for audit after retry replaces the current view.
         manifest_path = _plan_path(vault, document_id).parent / 'manifests' / (plan_hash + '.json')
@@ -445,12 +484,12 @@ def plan_document(req):
 def _public_plan(plan):
     return {key: plan[key] for key in ('documentId', 'revisionId', 'libraryId', 'jobId', 'planHash',
             'status', 'budgetApproved', 'tokenEstimate', 'totalChunks', 'completedChunks',
-            'tokensUsed', 'usageKnown', 'rawPath', 'error') if key in plan and plan[key] is not None
+            'tokensUsed', 'usageKnown', 'rawPath', 'error', 'retryRequired', 'chunksWithoutPages', 'wikiReady') if key in plan and plan[key] is not None
             and not (key == 'error' and plan['status'] == 'completed')} | {'ok': True, 'estimatedTokens': plan['tokenEstimate']}
 
 
 def _reported_usage(plan_path, plan):
-    total = 0
+    total = plan.get('priorTokensUsed', 0)
     seen_attempts = set()
     attempts_dir = plan_path.parent / 'attempts'
     if attempts_dir.is_dir():
@@ -480,6 +519,11 @@ def execute_document(req):
     from octopus_kb_compound.proposals import validate_proposal_dict
     from octopus_kb_compound.apply import validate_proposal_file, recover_proposal
     from octopus_kb_compound import audit
+    if not req.get('expectedPlanHash') or not isinstance(req.get('approvedTokens'), int):
+        raise ValueError('Expected plan hash and explicit approved token allowance are required')
+    batch_limit = req.get('maxChunks')
+    if batch_limit is not None and (type(batch_limit) is not int or batch_limit < 1):
+        raise ValueError('maxChunks must be a positive integer')
     vault = Path(req['vault'])
     plan_path = _plan_path(vault, req['documentId'])
     db = vault / '.octopus-kb' / 'documents.sqlite'
@@ -491,6 +535,8 @@ def execute_document(req):
             return _public_plan(plan)
         if req.get('requireExistingApproval') and not plan.get('budgetApproved'):
             raise ValueError('Budget approval is required before resuming extraction')
+        if req.get('requireExistingApproval') and plan.get('retryRequired'):
+            raise ValueError('Saved provider reply is invalid; explicitly Retry and approve a new attempt')
         approved = req['approvedTokens']
         if not isinstance(approved, int) or approved < plan['tokenEstimate']:
             raise ValueError('Explicit approval must cover the full manifest estimate')
@@ -523,26 +569,31 @@ def execute_document(req):
         # A recovered, checkpointed job can transfer to the current startup generation.
         con = open_db(db)
         try:
-            con.execute("UPDATE document_jobs SET startup_attempt=?, status='active', is_uncertain=0, error=NULL WHERE job_id=? AND status NOT IN ('cancelled','failed')", (attempt, plan['jobId']))
+            con.execute("UPDATE document_jobs SET startup_attempt=?, status=?, is_uncertain=0, error=NULL WHERE job_id=? AND status NOT IN ('cancelled','failed')", (attempt, 'queued' if req.get('admitOnly') else 'active', plan['jobId']))
             con.commit()
         finally:
             con.close()
         _fence(vault, plan, attempt)
-        plan.update(status='running', startupAttempt=attempt, budgetApproved=True, approvedTokens=approved)
+        plan.update(status='queued' if req.get('admitOnly') else 'running', startupAttempt=attempt, budgetApproved=True, approvedTokens=approved)
         plan.pop('error', None)
         plan['tokensUsed'] = _reported_usage(plan_path, plan)
         _write(plan_path, plan)
         _write(plan_path.parent / 'approvals' / (plan['planHash'] + '.json'),
                {'planHash': plan['planHash'], 'approvedTokens': approved,
                 'startupAttempt': attempt, 'approvedAt': datetime.now(timezone.utc).isoformat()})
+    if req.get('admitOnly'):
+        return {**_public_plan(plan), 'startupAttempt': attempt}
     kwargs = profile.as_client_kwargs()
     kwargs['max_retries'] = 0
     client = ChatClient(**kwargs)
     from octopus_kb_compound.propose import _prompt_path, _proposal_schema_path, _render_template
     template = _prompt_path().read_text(encoding='utf-8')
-    schema = _proposal_schema_path().read_text(encoding='utf-8')
+    schema = _provider_schema(_proposal_schema_path().read_text(encoding='utf-8'))
+    phase = 'request'
+    processed_chunks = 0
     try:
         for chunk in plan['chunks']:
+            phase = 'request'
             if chunk.get('alreadyApplied'):
                 plan['completedChunks'] = chunk['index'] + 1
                 continue
@@ -568,7 +619,7 @@ def execute_document(req):
                         raise RuntimeError('Previous inference outcome is uncertain; explicit outcome decision required to resume (uncertainOutcome: replay)')
                 if not saved:
                     context = resolve_candidate_wiki_context(vault, chunk, plan.get('contextChars', 2000))
-                    prompt = _render_template(template, {
+                    prompt = _excerpt_notice(chunk, plan['totalChunks']) + _render_template(template, {
                         'raw_path': plan['rawPath'],
                         'raw_body': chunk['primaryText'],
                         'existing_bundle': _json(context),
@@ -585,9 +636,9 @@ def execute_document(req):
                     request_hash = _hash(request)
                     actual_input_tokens = estimate_tokens(_json(request))
                     remaining_chunks = plan['chunks'][chunk['index'] + 1:]
-                    remaining_need = sum(c['inputEstimate'] + c['outputReserve'] for c in remaining_chunks)
+                    remaining_need = sum(c['inputEstimate'] + c['outputReserve'] for c in remaining_chunks if not c.get('alreadyApplied'))
                     projected_tokens = plan['tokensUsed'] + actual_input_tokens + plan['outputReserve'] + remaining_need
-                    if projected_tokens > approved:
+                    if projected_tokens > approved + plan.get('priorTokensUsed', 0):
                         raise RuntimeError('Remaining approved allowance does not cover pending requests')
                     attempt_id = f"att-{plan['planHash'][:12]}-{chunk['index']}-{uuid.uuid4().hex[:8]}"
                     calling_record = {
@@ -644,6 +695,7 @@ def execute_document(req):
                     _write(plan_path, plan)
                     update_job_checkpoint(db, plan['jobId'], attempt, plan['completedChunks'],
                         chunk['index'], plan['tokensUsed'], stage='response_saved')
+            phase = 'response_validation'
             if saved.get('finishReason') == 'length':
                 raise RuntimeError("Provider output limit reached (finish_reason='length'); enrichment incomplete")
             if saved.get('finishReason') not in {None, 'stop', 'end_turn'}:
@@ -658,7 +710,7 @@ def execute_document(req):
                     created_at=datetime.now(timezone.utc).isoformat(), status='pending',
                     source={'kind': 'raw_file', 'path': plan['rawPath'], 'sha256': plan['rawSha256']},
                     produced_by={'provider_profile': plan['route']['profile'], 'model': saved['model'],
-                                 'prompt_version': f"document-manifest-v1:{plan['revisionId']}:{chunk['index']}:{saved.get('requestHash')}"})
+                                 'prompt_version': f"{plan.get('promptVersion', 'document-manifest-v1')}:{plan['revisionId']}:{chunk['index']}:{saved.get('requestHash')}"})
                 for op in proposal.get('operations', []):
                     if 'source_span' in op:
                         span = op['source_span']
@@ -689,6 +741,7 @@ def execute_document(req):
                 attempts_dir = plan_path.parent / 'attempts'
                 attempts_dir.mkdir(parents=True, exist_ok=True)
                 _write(attempts_dir / f"{saved['attemptId']}.json", saved)
+            phase = 'publication'
             proposal_path = vault / '.octopus-kb' / 'proposals' / (proposal['id'] + '.json')
             with publication_guard(vault, plan, attempt):
                 existing_id = proposal['id'] + ('-recovery-' + str(saved['applyAttempt']) if saved.get('applyAttempt') else '')
@@ -716,9 +769,11 @@ def execute_document(req):
                         details = '; '.join(
                             str(row.get('rule_id', 'validation')) + ': ' + str(row.get('reason', 'rejected'))
                             for row in result.rule_results if row.get('verdict') == 'reject')
+                        phase = 'response_validation'
                         raise RuntimeError('Wiki publication ' + result.status +
                             (': ' + details if details else ''))
                 _link_accepted_pages_to_index(vault, proposal)
+                saved['contentPages'] = [op['path'] for op in proposal['operations'] if op['op'] == 'create_page']
                 saved['state'] = 'applied'
                 _write(checkpoint, saved)
                 if saved.get('attemptId'):
@@ -730,6 +785,11 @@ def execute_document(req):
                 _write(plan_path, plan)
                 update_job_checkpoint(db, plan['jobId'], attempt, plan['completedChunks'],
                                       plan['completedChunks'], plan['tokensUsed'], stage='enriching')
+                processed_chunks += 1
+                if batch_limit is not None and processed_chunks >= batch_limit and chunk['index'] + 1 < plan['totalChunks']:
+                    plan['status'] = 'queued'
+                    _write(plan_path, plan)
+                    return _public_plan(plan)
         with publication_guard(vault, plan, attempt):
             final_coverage = verify_chunk_coverage(raw.read_text(encoding='utf-8'), plan['chunks'])
             if not final_coverage['ok']:
@@ -740,6 +800,15 @@ def execute_document(req):
                 cp = plan_path.parent / (plan['planHash'] + '-' + str(chunk['index']) + '.json')
                 if not cp.is_file() or json.loads(cp.read_text(encoding='utf-8')).get('state') != 'applied':
                     raise RuntimeError(f"Chunk {chunk['index']} was not applied; refusing completed status")
+            content_chunks = 0
+            for chunk in plan['chunks']:
+                cp = plan_path.parent / (plan['planHash'] + '-' + str(chunk['index']) + '.json')
+                saved_chunk = json.loads(cp.read_text(encoding='utf-8')) if cp.is_file() else {}
+                pages = saved_chunk.get('contentPages') or [op['path'] for op in saved_chunk.get('proposal', {}).get('operations', []) if op['op'] == 'create_page']
+                if pages or chunk.get('contentPages'):
+                    content_chunks += 1
+            plan['chunksWithoutPages'] = plan['totalChunks'] - content_chunks
+            plan['wikiReady'] = plan['chunksWithoutPages'] == 0
             plan['status'] = 'completed'
             _write(plan_path, plan)
             finish_job(db, plan['jobId'], attempt)
@@ -750,6 +819,7 @@ def execute_document(req):
             if current['status'] != 'cancelled':
                 current['status'] = 'uncertain' if any(json.loads(p.read_text(encoding='utf-8')).get('state') == 'calling' for p in plan_path.parent.glob(plan['planHash'] + '-*.json')) else 'paused'
                 current['error'] = str(exc)
+                current['retryRequired'] = phase == 'response_validation'
                 _write(plan_path, current)
                 if verify_startup_attempt(db, plan['libraryId'], attempt):
                     con = open_db(db)
@@ -788,6 +858,13 @@ def record_conversion(req):
                 cancel_job(vault / '.octopus-kb' / 'documents.sqlite', job['jobId'])
             else:
                 finish_job(vault / '.octopus-kb' / 'documents.sqlite', job['jobId'], job['startupAttempt'], status='failed', error=error)
+        if status == 'cancelled':
+            plan_path = _plan_path(vault, req['documentId'])
+            if plan_path.is_file():
+                plan = json.loads(plan_path.read_text(encoding='utf-8'))
+                if job and plan['jobId'] == job['jobId'] and plan['status'] != 'completed':
+                    plan['status'] = 'cancelled'
+                    _write(plan_path, plan)
         _write(_conversion_path(vault, req['documentId']), {
             'status': status, 'conversion': req.get('conversion', {}), 'error': error})
     return {'ok': True}
@@ -892,7 +969,7 @@ def document_status(req):
                'stage': plan['status'] if plan else 'retained', 'totalChunks': 0, 'completedChunks': 0,
                'estimatedTokens': 0, 'budgetApproved': False, 'planHash': None, 'error': None}
         if plan:
-            if plan['status'] == 'running' and not verify_startup_attempt(db, plan['libraryId'], plan['startupAttempt']):
+            if plan['status'] in {'running', 'queued'} and not verify_startup_attempt(db, plan['libraryId'], plan['startupAttempt']):
                 plan['status'] = 'uncertain' if any(json.loads(p.read_text(encoding='utf-8')).get('state') == 'calling' for p in path.parent.glob(plan['planHash'] + '-*.json')) else 'paused'
             row.update(_public_plan(plan))
             row['conversionStatus'] = plan['conversionStatus']
@@ -941,6 +1018,24 @@ def document_action(req):
         plan = json.loads(path.read_text(encoding='utf-8'))
         if plan['libraryId'] != req['libraryId']:
             raise ValueError('Cross-library document action rejected')
+        if req['action'] == 'pause':
+            if plan['planHash'] != req['expectedPlanHash'] or not verify_startup_attempt(
+                    vault / '.octopus-kb' / 'documents.sqlite', plan['libraryId'], req['expectedStartupAttempt']):
+                return {**_public_plan(plan), 'ignored': True}
+            if plan['status'] not in {'cancelled', 'completed'}:
+                uncertain = any(json.loads(p.read_text(encoding='utf-8')).get('state') == 'calling'
+                                for p in path.parent.glob(plan['planHash'] + '-*.json'))
+                plan['status'] = 'uncertain' if uncertain else 'paused'
+                plan['error'] = req['error']
+                _write(path, plan)
+                con = open_db(vault / '.octopus-kb' / 'documents.sqlite')
+                try:
+                    con.execute("UPDATE document_jobs SET status='paused', is_uncertain=?, error=? WHERE job_id=? AND status NOT IN ('cancelled','completed')",
+                                (int(uncertain), req['error'], plan['jobId']))
+                    con.commit()
+                finally:
+                    con.close()
+            return _public_plan(plan)
         if req['action'] == 'cancel':
             if plan['status'] == 'completed':
                 raise RuntimeError('Completed document processing cannot be cancelled')
@@ -950,7 +1045,7 @@ def document_action(req):
             return _public_plan(plan)
         if req['action'] == 'retry':
             # Retry retains responses and never silently repeats uncertain provider calls.
-            if plan['status'] in {'running', 'uncertain'}:
+            if plan['status'] in {'running', 'queued', 'uncertain'}:
                 raise RuntimeError('Cannot retry active or uncertain paid inference')
             return plan_document({'vault': str(vault), 'documentId': plan['documentId'],
                 'revisionId': plan['revisionId'], 'libraryId': plan['libraryId'],

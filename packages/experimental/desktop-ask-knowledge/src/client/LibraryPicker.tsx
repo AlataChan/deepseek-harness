@@ -23,7 +23,7 @@ import {
   ingestFilenameStem,
   isAcceptedIngestExtension,
   isDefaultLibraryName,
-  streamFileIngestChunks,
+  uploadLibraryDocument,
   unusedLibraryName,
 } from './ingest-file.ts'
 import type { AskKnowledgeKey } from './locales.ts'
@@ -239,22 +239,8 @@ export function LibraryPicker({
     library: PickerLibrary,
     nameFromStem: boolean,
   ): Promise<IngestOutcome> => {
-    const begin = await beginIngest(library.id, file.name)
-    if (!begin.ok || begin.value === undefined) {
-      return { kind: 'failed', reason: begin.error?.message ?? t('ingest.failed') }
-    }
-    try {
-      for await (const bytes of streamFileIngestChunks(file)) {
-        const appended = await appendIngestChunk(begin.value, bytes)
-        if (!appended.ok) {
-          return { kind: 'failed', reason: appended.error?.message ?? t('ingest.failed') }
-        }
-      }
-    } catch (error: unknown) {
-      await abortIngest?.(begin.value)
-      throw error
-    }
-    const finished = await finishIngest(begin.value)
+    const finished = await uploadLibraryDocument({ beginIngest, appendIngestChunk, finishIngest,
+      ...abortIngest === undefined ? {} : { abortIngest } }, library.id, file, t('ingest.failed'))
     if (!finished.ok || finished.value === undefined || finished.value.status === 'failed') {
       return { kind: 'failed', reason: ingestFinishError(finished, t('ingest.failed'), t('ingest.timeout')) }
     }

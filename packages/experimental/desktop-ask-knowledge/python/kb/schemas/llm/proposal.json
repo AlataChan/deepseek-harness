@@ -100,7 +100,7 @@
       "additionalProperties": false,
       "properties": {
         "op": {"const": "append_log"},
-        "path": {"type": "string", "minLength": 1},
+        "path": {"const": "wiki/LOG.md"},
         "entry": {"type": "string"},
         "rationale": {"type": "string"},
         "confidence": {"$ref": "#/$defs/confidence"},

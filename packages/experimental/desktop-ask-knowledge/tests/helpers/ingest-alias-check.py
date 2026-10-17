@@ -137,7 +137,7 @@ with tempfile.TemporaryDirectory() as tmp:
     shared = _write_proposal(vault, "shared-tag", [
         _page("wiki/sources/a-hands-on-guide.md", "A Hands-On Guide to Fine-Tuning LLMs (Daniel Voigt Godoy)", ["pytorch", "lora"]),
         _page("wiki/entities/daniel-voigt-godoy.md", "Daniel Voigt Godoy", ["pytorch"]),
-        _log("wiki/log.md", "- [[a-hands-on-guide]]"),
+        _log("wiki/LOG.md", "- [[a-hands-on-guide]]"),
     ])
     result = validate_proposal_file(shared, vault, apply=True).to_dict()
     if result.get("status") != "applied":

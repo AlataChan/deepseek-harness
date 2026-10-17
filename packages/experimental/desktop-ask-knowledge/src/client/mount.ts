@@ -26,6 +26,8 @@ import type { AttachKnowledgeBridgeInjected } from './AttachKnowledgeBridge.tsx'
 import { AttachSessionDocumentBridge } from './AttachSessionDocumentBridge.tsx'
 import type { AttachSessionDocumentBridgeInjected } from './AttachSessionDocumentBridge.tsx'
 import { LibraryPicker } from './LibraryPicker.tsx'
+import { ingestFinishError } from './LibraryPicker.tsx'
+import { uploadLibraryDocument } from './ingest-file.ts'
 import type { LibraryPickerInjected, LibraryPickerRemotes } from './LibraryPicker.tsx'
 import { LibrarySettingsSection } from './LibrarySettingsSection.tsx'
 import type { LibrarySettingsRemotes } from './LibrarySettingsSection.tsx'
@@ -126,7 +128,6 @@ export function apply(ctx: ClientContext): void {
             })
             if (
               result.ok
-              && result.value?.sessionId !== undefined
               && result.value.sessionId !== session?.id
             ) {
               scope.uiWorkspace.openSession(SessionId(result.value.sessionId))
@@ -203,7 +204,7 @@ function remotesOf(ctx: ClientContext): LibrarySettingsRemotes & LibraryPickerRe
       error?: { message?: string }
     }>
   }
-  return {
+  const remotes: LibrarySettingsRemotes & LibraryPickerRemotes = {
     listLibraries: () => session.listAskKnowledgeLibraries(),
     createLibrary: displayName => session.createAskKnowledgeLibrary({ displayName }),
     attach: libraryId => session.attachAskKnowledge({ libraryId }),
@@ -217,9 +218,20 @@ function remotesOf(ctx: ClientContext): LibrarySettingsRemotes & LibraryPickerRe
       if (remote?.abortIngest !== undefined) return remote.abortIngest({ handle })
       return { ok: true, value: undefined }
     },
+    addDocument: async (libraryId, file) => {
+      const finished = await uploadLibraryDocument(remotes, libraryId, file, ctx.locale.resolveText({ zh: zh['ingest.failed'], en: en['ingest.failed'] }))
+      if (!finished.ok || finished.value === undefined || finished.value.status === 'failed'
+        || (finished.value.status === 'deferred' && !finished.value.rawRelPath)) {
+        throw new Error(ingestFinishError(finished, ctx.locale.resolveText({ zh: zh['ingest.failed'], en: en['ingest.failed'] }), ctx.locale.resolveText({ zh: zh['ingest.timeout'], en: en['ingest.timeout'] })))
+      }
+    },
     listDocuments: async (libraryId: string) => {
       const remote = documentRemotes(ctx)
-      if (remote !== undefined) return remote.documents(libraryId)
+      if (remote !== undefined) {
+        const result = await remote.documentList(libraryId)
+        return result.ok ? { ok: true, value: result.value.documents,
+          ...result.value.migrationWarning === undefined ? {} : { warning: result.value.migrationWarning } } : result
+      }
       // Legacy Host has raw pages but no retained source metadata.
       const result = await session.askKnowledgeListDocuments({ libraryId })
       return result.ok && result.value !== undefined
@@ -241,6 +253,7 @@ function remotesOf(ctx: ClientContext): LibrarySettingsRemotes & LibraryPickerRe
     cancelProcessing: item => documentAction(ctx, item, 'cancel'),
     approveBudget: item => documentAction(ctx, item, 'approve'),
   }
+  return remotes
 }
 
 function extractRemotesOf(ctx: ClientContext): AttachSessionDocumentBridgeInjected['remotes'] {
@@ -262,8 +275,12 @@ function extractRemotesOf(ctx: ClientContext): AttachSessionDocumentBridgeInject
 }
 
 interface DocumentRemotes {
-  documents(libraryId: string): Promise<RemoteResult<readonly DocumentStatusItem[]>>
-  documentAction(request: {
+  documentList(libraryId: string): Promise<RemoteResult<{
+    readonly documents: readonly DocumentStatusItem[]
+    readonly migrationWarning?: string
+  }>>
+  startDocumentAction: DocumentRemotes['documentAction']
+  documentAction(this: void, request: {
     libraryId: string
     documentId: string
     action: string
@@ -281,7 +298,8 @@ function documentRemotes(ctx: ClientContext): DocumentRemotes | undefined {
 async function documentAction(ctx: ClientContext, item: DocumentStatusItem, action: string): Promise<void> {
   const remote = documentRemotes(ctx)
   if (!remote || !item.libraryId) throw new Error(ctx.locale.resolveText({ zh: zh['error.docsFailed'], en: en['error.docsFailed'] }))
-  const result = await remote.documentAction({ libraryId: item.libraryId, documentId: item.id, action,
+  const invoke = ['approve', 'resume', 'retry'].includes(action) ? remote.startDocumentAction : remote.documentAction
+  const result = await invoke({ libraryId: item.libraryId, documentId: item.id, action,
     ...item.planHash === undefined ? {} : { planHash: item.planHash },
     ...item.estimatedTokens === undefined ? {} : { approvedTokens: item.estimatedTokens },
     ...item.uncertainOutcome === 'replay' ? { uncertainOutcome: item.uncertainOutcome } : {} })

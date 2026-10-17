@@ -660,8 +660,11 @@ fi
 if [[ -f "$ASK_K_CLIENT" ]] \
   && grep -q 'textAvailable' "$ASK_K_CLIENT" \
   && grep -q 'aria-busy' "$ASK_K_CLIENT" \
-  && grep -q 'docs.approvedEstimate' "$ASK_K_CLIENT"; then
-  ok "bundled knowledge buttons track text readiness, pending actions and approved budgets"
+  && grep -q 'docs.approvedEstimate' "$ASK_K_CLIENT" \
+  && grep -q 'startDocumentAction' "$ASK_K_CLIENT" \
+  && grep -q 'documentList' "$ASK_K_CLIENT" \
+  && grep -q 'docs.migrationWarning' "$ASK_K_CLIENT"; then
+  ok "bundled knowledge buttons track readiness, approved budgets and background admission"
 else
   bad "bundled knowledge document actions are stale — rebuild Client bundles"
 fi

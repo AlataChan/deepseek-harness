@@ -23,6 +23,11 @@ export interface DocumentStatusItem {
   readonly status: 'active' | 'completed' | 'failed' | 'paused' | 'queued' | 'retained' | 'cancelled'
   readonly totalChunks?: number
   readonly completedChunks?: number
+  readonly tokensUsed?: number
+  readonly usageKnown?: boolean
+  readonly retryRequired?: boolean
+  readonly chunksWithoutPages?: number
+  readonly wikiReady?: boolean
   readonly estimatedTokens?: number
   readonly budgetApproved?: boolean
   readonly uncertainOutcome?: 'replay'
@@ -85,7 +90,7 @@ export function DocumentStatus({
       .replace('{total}', String(item.totalChunks))
     : t('docs.textSearchable')
 
-  const estimateText = t(item.budgetApproved ? 'docs.approvedEstimate' : 'docs.estimate').replace('{tokens}', String(item.estimatedTokens ?? 0)).replace('{chunks}', String(item.totalChunks ?? 0))
+  const estimateText = t(item.budgetApproved ? 'docs.approvedEstimate' : 'docs.estimate').replace('{tokens}', (item.estimatedTokens ?? 0).toLocaleString()).replace('{chunks}', String(item.totalChunks ?? 0))
   const ocrText = typeof item.needsOcrPage === 'number'
     ? t('docs.partialNeedsOcr').replace('{page}', String(item.needsOcrPage))
     : undefined
@@ -118,7 +123,7 @@ export function DocumentStatus({
           )}
 
           {item.status === 'paused' && (
-            <span className={css.badgeWarning}>{t('docs.statusPaused')}</span>
+            <span className={css.badgeWarning}>{t(item.stage === 'awaiting_approval' ? 'docs.statusAwaitingApproval' : 'docs.statusPaused')}</span>
           )}
 
           {item.status === 'failed' && (
@@ -126,12 +131,15 @@ export function DocumentStatus({
           )}
 
           {item.status === 'completed' && (
-            <span className={css.badgeSuccess}>{t('docs.statusCompleted')}</span>
+            <span className={item.wikiReady === true ? css.badgeSuccess : css.badgeWarning}>{t(item.wikiReady === true ? 'docs.statusCompleted' : 'docs.statusWikiIncomplete')}</span>
           )}
         </div>
       </div>
 
       {item.estimatedTokens !== undefined && item.estimatedTokens > 0 && <p>{estimateText}</p>}
+      {item.tokensUsed !== undefined && <p>{t(item.usageKnown === false ? 'docs.usagePartial' : 'docs.usage').replace('{tokens}', item.tokensUsed.toLocaleString())}</p>}
+      {(item.chunksWithoutPages ?? 0) > 0 && <p>{t('docs.chunksWithoutPages').replace('{chunks}', String(item.chunksWithoutPages))}</p>}
+      {item.retryRequired && <p>{t('docs.retryRequired')}</p>}
       {item.stage === 'uncertain' && <p role="alert">{t('docs.uncertainWarning')}</p>}
       {item.error && <p role="alert">{item.error}</p>}
       {actionError && actionError !== item.error && <p role="alert">{actionError}</p>}
@@ -181,7 +189,7 @@ export function DocumentStatus({
           </button>
         )}
 
-        {item.status === 'paused' && item.stage !== 'uncertain' && item.budgetApproved && onResume !== undefined && (
+        {item.status === 'paused' && !item.retryRequired && item.stage !== 'uncertain' && item.budgetApproved && onResume !== undefined && (
           <button
             type="button"
             className={css.button}

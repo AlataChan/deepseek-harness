@@ -4,6 +4,35 @@
  */
 
 import { encodeAskKnowledgeBytes } from './bytes.ts'
+import type { LibraryPickerRemotes } from './LibraryPicker.tsx'
+
+/**
+ * Upload one document through the shared streaming ingestion API.
+ * @param remotes - existing library ingestion actions.
+ * @param libraryId - destination library.
+ * @param file - selected browser file.
+ * @param fallback - localized failure message.
+ * @returns the retained document's processing result.
+ */
+export async function uploadLibraryDocument(
+  remotes: Pick<LibraryPickerRemotes, 'beginIngest' | 'appendIngestChunk' | 'finishIngest' | 'abortIngest'>,
+  libraryId: string,
+  file: File,
+  fallback: string,
+): ReturnType<LibraryPickerRemotes['finishIngest']> {
+  const begin = await remotes.beginIngest(libraryId, file.name)
+  if (!begin.ok || begin.value === undefined) throw new Error(begin.error?.message ?? fallback)
+  try {
+    for await (const bytes of streamFileIngestChunks(file)) {
+      const appended = await remotes.appendIngestChunk(begin.value, bytes)
+      if (!appended.ok) throw new Error(appended.error?.message ?? fallback)
+    }
+  } catch (error) {
+    await remotes.abortIngest?.(begin.value)
+    throw error
+  }
+  return remotes.finishIngest(begin.value)
+}
 
 /** Decoded size of one append chunk. Must match the Host assembler. */
 export const MAX_INGEST_CHUNK_BYTES = 160 * 1024

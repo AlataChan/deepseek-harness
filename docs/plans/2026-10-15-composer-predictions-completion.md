@@ -1,5 +1,7 @@
 # Composer Predictions Completion and Acceptance Implementation Plan
 
+English | [中文](2026-10-15-composer-predictions-completion.zh.md)
+
 > **Builder:** implement this plan task-by-task in dependency order with the executing-plans workflow; land each task as its own scoped commit.
 
 **Goal:** After a foreground conversation completes, offer one context-aware next-message suggestion as gray text inside its empty composer, with Tab accepting an editable draft and never sending it.

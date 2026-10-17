@@ -4,7 +4,7 @@
 
 **状态：** 任务 1 的审计、测量与既有发现复核已完成。本审计为暂定状态，不宣称基线验收通过，因为已审批抽取这条验收路径在默认的知识子进程环境中会被拦截，且该拦截存在下文具名的产品侧共同成因（见「任务 1 处置结论」）。对产品代码只读：本审计没有在 `packages/`、`apps/`、`scripts/` 或本方案集之外的 `docs/` 下创建、修改或删除任何文件。
 
-**被审代码树：** `fix/assistant-lifecycle-2026-10-15` 分支工作区，提交 `a4b448d733`，其中包含尚未提交的问知识整改改动。2026-10-16 的计数由两条限定范围命令给出：`git status --porcelain | wc -l` 报告 278 项（88 项 ` M`、190 项 `??`），`git status --porcelain -- packages/experimental/desktop-ask-knowledge | wc -l` 报告其中 75 项。改写前检查点记录了它自己的限定范围清单（275 项：88 项已修改、187 项未跟踪；共 478 个检查点文件），并由 `.plans/desktop-ask-knowledge/baseline-checkpoint-2026-10-16/README.md` 统一承载代码树清单。
+**被审代码树：** `fix/assistant-lifecycle-2026-10-15` 分支工作区，提交 检查点 README 中记录的基线版本，其中包含尚未提交的问知识整改改动。2026-10-16 的计数由两条限定范围命令给出：`git status --porcelain | wc -l` 报告 278 项（88 项 ` M`、190 项 `??`），`git status --porcelain -- packages/experimental/desktop-ask-knowledge | wc -l` 报告其中 75 项。改写前检查点记录了它自己的限定范围清单（275 项：88 项已修改、187 项未跟踪；共 478 个检查点文件），并由 `.plans/desktop-ask-knowledge/baseline-checkpoint-2026-10-16/README.md` 统一承载代码树清单。
 
 ## 摘要
 

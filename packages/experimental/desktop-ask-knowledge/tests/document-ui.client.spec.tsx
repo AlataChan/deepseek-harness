@@ -19,6 +19,31 @@ afterEach(() => {
 const t = (key: keyof typeof zh) => zh[key]
 
 describe('DocumentStatus client component', () => {
+  it('shows the approval ceiling, formatted actual usage and missing-page coverage separately', () => {
+    const view = render(<DocumentStatus t={t} item={{ id: 'coverage', filename: 'source.md', originalAvailable: true,
+      searchable: true, status: 'completed', estimatedTokens: 786509, budgetApproved: true, tokensUsed: 138360,
+      usageKnown: true, chunksWithoutPages: 11, wikiReady: false }} />)
+    expect(view.getByText(/786,509/).textContent).toContain('保守估算')
+    expect(view.getByText(/138,360/).textContent).toContain('实际用量')
+    expect(view.getByText(/11 段未产生知识页/)).toBeTruthy()
+    expect(view.queryByText(zh['docs.statusCompleted'])).toBeNull()
+    view.rerender(<DocumentStatus t={t} item={{ id: 'legacy-completed', filename: 'old.md', originalAvailable: false,
+      searchable: true, status: 'completed' }} />)
+    expect(view.getByText(zh['docs.statusWikiIncomplete'])).toBeTruthy()
+  })
+
+  it('labels fresh approval correctly and refuses a Resume loop for invalid saved replies', () => {
+    const item: DocumentStatusItem = { id: 'fresh', filename: 'source.md', originalAvailable: true,
+      searchable: true, status: 'paused', stage: 'awaiting_approval', estimatedTokens: 5000, planHash: 'plan' }
+    const view = render(<DocumentStatus t={t} item={item} onApproveBudget={() => {}} />)
+    expect(view.getByText(zh['docs.statusAwaitingApproval'])).toBeTruthy()
+    expect(view.queryByText(zh['docs.statusPaused'])).toBeNull()
+    view.rerender(<DocumentStatus t={t} item={{ ...item, stage: 'paused', budgetApproved: true,
+      retryRequired: true, error: 'invalid saved reply' }} onResume={() => {}} onRetry={() => {}} />)
+    expect(view.queryByRole('button', { name: zh['docs.resumeExtraction'] })).toBeNull()
+    expect(view.getByRole('button', { name: zh['docs.retryStage'] })).toBeTruthy()
+  })
+
   it('requires a separate paid replay decision for an uncertain attempt', () => {
     const item: DocumentStatusItem = { id: 'uncertain', filename: 'policy.pdf', originalAvailable: true,
       searchable: true, status: 'paused', stage: 'uncertain', planHash: 'plan', estimatedTokens: 50000, budgetApproved: true }
@@ -146,6 +171,7 @@ describe('DocumentList client component', () => {
         originalAvailable: true,
         searchable: true,
         status: 'completed',
+        wikiReady: true,
       },
     ]
 
@@ -263,6 +289,23 @@ it('prevents repeated approval clicks while allowing cancellation', async () => 
 })
 
 
+it('shows a separate migration warning while keeping document controls usable', async () => {
+  const approve = vi.fn(async () => {})
+  const item: DocumentStatusItem = { id: 'usable', libraryId: 'warning', filename: 'Still usable.md', originalAvailable: true,
+    searchable: true, status: 'paused', stage: 'awaiting_approval', estimatedTokens: 1000, planHash: 'plan' }
+  const view = render(<LibrarySettingsSection t={t}
+    listLibraries={async () => ({ ok: true, value: [{ id: 'warning', displayName: 'Migration warning library' }] })}
+    removeLibrary={async () => ({ ok: true })} approveBudget={approve}
+    listDocuments={async () => ({ ok: true, value: [item], warning: 'Legacy migration blocked by backup' })} />)
+  fireEvent.click(await view.findByRole('button', { name: /Migration warning library/ }))
+  expect((await view.findByRole('alert')).textContent).toContain('Legacy migration blocked by backup')
+  expect(view.getByRole('alert').textContent).toContain('已登记文档仍可使用')
+  expect(view.getByRole('alert').textContent).toContain('本次启动不再自动重试')
+  expect(view.getByText('Still usable.md')).toBeTruthy()
+  fireEvent.click(view.getByRole('button', { name: zh['docs.approveBudget'] }))
+  await waitFor(() => expect(approve).toHaveBeenCalledWith(item))
+})
+
 it('keeps a newer document poll when an older request settles last', async () => {
   const old = Promise.withResolvers<{ ok: boolean; value: readonly DocumentStatusItem[] }>()
   const recent = Promise.withResolvers<{ ok: boolean; value: readonly DocumentStatusItem[] }>()
@@ -292,6 +335,7 @@ it('records document action availability for every processing state', () => {
     conversionFailure: { ...base, status: 'failed', stage: 'conversion', searchable: false, textAvailable: false },
     awaitingApproval: base,
     pausedError: { ...base, stage: 'paused', budgetApproved: true, error: 'Recoverable failure' },
+    invalidSavedReply: { ...base, stage: 'paused', budgetApproved: true, retryRequired: true, error: 'Invalid reply' },
     uncertain: { ...base, stage: 'uncertain', budgetApproved: true },
     running: { ...base, status: 'active', stage: 'running', budgetApproved: true },
     completed: { ...base, status: 'completed', stage: 'completed', budgetApproved: true },
@@ -326,6 +370,13 @@ it('records document action availability for every processing state', () => {
         "打开原始文件",
         "查看来源",
         "重试失败步骤",
+      ],
+      "invalidSavedReply": [
+        "打开原始文件",
+        "查看提取文本",
+        "查看来源",
+        "重试失败步骤",
+        "取消处理",
       ],
       "pausedError": [
         "打开原始文件",
@@ -365,4 +416,41 @@ it('reports a viewer failure and enables another attempt without leaving the but
   await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false))
   expect(viewSources).toHaveBeenCalledTimes(2)
   expect(view.queryByRole('alert')).toBeNull()
+})
+
+it('adds several files into the selected library, retains failures, and refreshes counts and documents', async () => {
+  const addDocument = vi.fn().mockRejectedValueOnce(new Error('refused file')).mockResolvedValue(undefined)
+  const listLibraries = vi.fn().mockResolvedValue({ ok: true, value: [{ id: 'library-a', displayName: 'Training', documentCount: 1 }] })
+  const listDocuments = vi.fn().mockResolvedValue({ ok: true, value: [] })
+  const view = render(<LibrarySettingsSection t={t} listLibraries={listLibraries}
+    listDocuments={listDocuments} removeLibrary={vi.fn()} addDocument={addDocument} />)
+  const input = await view.findByLabelText('添加文档: Training')
+  const first = new File(['first'], 'first.md')
+  const second = new File(['second'], 'second.pdf')
+  fireEvent.change(input, { target: { files: [first, second] } })
+  await waitFor(() => expect(addDocument).toHaveBeenCalledTimes(2))
+  expect(addDocument).toHaveBeenNthCalledWith(1, 'library-a', first)
+  expect(addDocument).toHaveBeenNthCalledWith(2, 'library-a', second)
+  await waitFor(() => expect(view.getByRole('status').textContent).toContain('已添加 1 份文档'))
+  expect(view.getByRole('alert').textContent).toContain('first.md: refused file')
+  expect(listLibraries).toHaveBeenCalledTimes(2)
+  expect(listDocuments).toHaveBeenCalledWith('library-a')
+  expect(view.getByText('Training')).toBeTruthy()
+})
+
+it('prevents duplicate upload gestures while an addition is still pending', async () => {
+  const wait = Promise.withResolvers<undefined>()
+  const addDocument = vi.fn(() => wait.promise)
+  const view = render(<LibrarySettingsSection t={t}
+    listLibraries={async () => ({ ok: true, value: [{ id: 'a', displayName: 'Training' }] })}
+    removeLibrary={vi.fn()} addDocument={addDocument} />)
+  const input = await view.findByLabelText('添加文档: Training')
+  const file = new File(['text'], 'source.md')
+  fireEvent.change(input, { target: { files: [file] } })
+  fireEvent.change(input, { target: { files: [file] } })
+  expect(addDocument).toHaveBeenCalledTimes(1)
+  expect(input.hasAttribute('disabled')).toBe(true)
+  expect(view.getByRole('button', { name: zh['settings.remove'] }).hasAttribute('disabled')).toBe(true)
+  await act(async () => { wait.resolve(undefined); await wait.promise })
+  await waitFor(() => expect(input.hasAttribute('disabled')).toBe(false))
 })

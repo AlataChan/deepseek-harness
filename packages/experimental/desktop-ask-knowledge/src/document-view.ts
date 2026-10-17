@@ -22,12 +22,23 @@ export interface DocumentView {
   readonly status: 'active' | 'completed' | 'failed' | 'paused' | 'queued' | 'retained' | 'cancelled'
   readonly totalChunks: number
   readonly completedChunks: number
+  readonly tokensUsed?: number
+  readonly usageKnown?: boolean
+  readonly retryRequired?: boolean
+  readonly chunksWithoutPages?: number
+  readonly wikiReady?: boolean
   readonly estimatedTokens: number
   readonly budgetApproved: boolean
   readonly planHash?: string
   readonly error?: string
   readonly needsOcrPage?: number
   readonly uncertainOutcome?: 'replay'
+}
+
+/** Registered documents with a nonblocking legacy-import warning. */
+export interface DocumentListView {
+  readonly documents: readonly DocumentView[]
+  readonly migrationWarning?: string
 }
 
 /** Desktop-authorized action; inference requires the displayed plan hash and allowance. */

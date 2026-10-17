@@ -1550,7 +1550,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote(\'predictComposer\') async predictComposer(request: ComposerPredictionRequest, signal?: AbortSignal): Promise<ComposerPredictionResult | null>',
-        description: 'Generate one bounded tool-free prediction for an eligible completed turn. Authoritatively checks session existence, usability, scope, idle state, and latest completed turn. Disregards remote client-supplied context text; reconstructs context canonically on Host. Single-flights equivalent requests across windows. Bounded by maxPredictionTokens and predictionTimeoutMs. Accounts for auxiliary usage. Records auxiliary evidence without adding a conversation turn or public reply.',
+        description: 'Return one bounded tool-free prediction for an eligible completed turn. Reuse a matching suggestion started from the live reply when available. Authoritatively checks session existence, usability, scope, idle state, and latest completed turn. Disregards remote client-supplied context text; reconstructs context canonically on Host. Single-flights equivalent requests across windows. Bounded by maxPredictionTokens and predictionTimeoutMs. Accounts for auxiliary usage. Records auxiliary evidence without adding a conversation turn or public reply. Desktop consumers use streamComposerPrediction to keep the carrier available.',
         parameters: [{ name: 'request', description: 'composer prediction request parameters.' }, { name: 'signal', description: 'cancellation for the auxiliary model request.' }],
         returns: 'composer prediction result or null if disabled / ineligible / failed.',
       },
@@ -1559,6 +1559,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Prepare bounded completed-turn text for the active composer. Supports ordinary chats, assistants, and team coordinators.',
         parameters: [{ name: 'sessionId', description: 'active composer session.' }],
         returns: 'context for the latest successful completed turn, or null when ineligible.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *streamComposerPrediction(request: ComposerPredictionRequest, signal: AbortSignal): AsyncIterable<ComposerPredictionResult | null>',
+        description: 'Deliver one prediction without holding the desktop unary request queue.',
+        parameters: [{ name: 'request', description: 'prediction identity and current draft.' }, { name: 'signal', description: 'stream lifetime; closing the stream releases this subscriber.' }],
+        returns: 'one completed prediction or null, then closes.',
       },
       {
         signature: 'async dispose(): Promise<void>',
@@ -8488,7 +8494,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ReviewPredictionManagerOptions',
-    declaration: 'export interface ReviewPredictionManagerOptions {\n    readonly enableMemoryReview?: boolean | undefined;\n    readonly enableComposerPredictions?: boolean | Volatile<boolean> | undefined;\n    readonly isPredictionEnabled?: (() => boolean) | undefined;\n    readonly maxReviewTokens?: number | undefined;\n    readonly maxPredictionTokens?: number | undefined;\n    readonly predictionTimeoutMs?: number | undefined;\n    readonly reviewTimeoutMs?: number | undefined;\n    readonly maxReviewEventsPerTurn?: number | undefined;\n    readonly predictionContextMaxBytes?: number | undefined;\n}',
+    declaration: 'export interface ReviewPredictionManagerOptions {\n    readonly enableMemoryReview?: boolean | undefined;\n    readonly enableComposerPredictions?: boolean | Volatile<boolean> | undefined;\n    readonly isPredictionEnabled?: (() => boolean) | undefined;\n    readonly maxReviewTokens?: number | undefined;\n    readonly maxPredictionTokens?: number | undefined;\n    readonly predictionTimeoutMs?: number | undefined;\n    readonly predictionFirstTextTimeoutMs?: number | undefined;\n    readonly reviewTimeoutMs?: number | undefined;\n    readonly maxReviewEventsPerTurn?: number | undefined;\n    readonly predictionContextMaxBytes?: number | undefined;\n}',
   },
   {
     name: 'ReviewTurnRequest',

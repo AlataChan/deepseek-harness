@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import { createRequire, registerHooks } from 'node:module'
 import { existsSync, realpathSync } from 'node:fs'
-import { appendFile, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -266,6 +266,9 @@ try {
   await action(document, 'approve')
   const completed = (await service.remoteDocuments(library.id)).find(row => row.id === document.id)
   check(completed.status === 'completed' && completed.completedChunks === completed.totalChunks, 'public approval completes every planned primary span')
+  check(completed.wikiReady === false && completed.chunksWithoutPages === completed.totalChunks - 1, 'installed status reports log-only ranges without claiming complete wiki coverage')
+  check(completed.tokensUsed === requests.length * 38 && completed.usageKnown === true, 'installed document card receives provider-reported actual usage')
+  check(requests.every(request => request.messages[0].content.startsWith('EXCERPT ')), 'installed model requests explicitly identify bounded source excerpts')
   check(requests.length === completed.totalChunks, 'provider observes exactly one call for every manifest chunk')
   const policyPage = await readFile(join(vault, 'wiki', 'InstalledTrainingPolicy.md'), 'utf8')
   check(policyPage.includes('type: "note"') && policyPage.includes('role: "note"'), 'frozen runtime repairs generated policy categories before strict publication')
@@ -321,13 +324,18 @@ try {
   check(found.items.some(item => item.path.includes(document.id)), 'late search passage retains immutable source attribution')
   holdNext = true
   const beforeCancel = requests.length
-  const running = action(second, 'approve')
-  const outcome = running.then(() => 'completed', () => 'rejected')
+  let admissionSettled = false
+  const admission = service.remoteStartDocumentAction({ libraryId: second.libraryId, documentId: second.id,
+    action: 'approve', planHash: second.planHash, approvedTokens: second.estimatedTokens })
+    .then(() => { admissionSettled = true; return 'accepted' }, error => { admissionSettled = true; return String(error) })
+  await until(() => admissionSettled, 'background admission must return while the provider response is held')
+  check(await admission === 'accepted', 'installed background approval acknowledges before provider completion')
   await until(() => requests.length > beforeCancel, 'running provider request')
-  await rejects(() => action(second, 'approve'), 'duplicate approval cannot start a concurrent extraction')
+  await rejects(() => service.remoteStartDocumentAction({ libraryId: second.libraryId, documentId: second.id,
+    action: 'approve', planHash: second.planHash, approvedTokens: second.estimatedTokens }),
+  'duplicate background approval cannot start a concurrent extraction')
   check(requests.length === beforeCancel + 1, 'duplicate approval adds zero provider requests')
   await action(second, 'cancel')
-  check(await outcome === 'rejected', 'public cancel aborts the running owned inference')
   heldResponse?.()
   const cancelled = (await service.remoteDocuments(library.id)).find(row => row.id === second.id)
   check(cancelled.status === 'cancelled', 'cancel action persists terminal state')
@@ -356,12 +364,9 @@ try {
   const beforeRetry = requests.length
   await action(resumed, 'retry')
   const replanned = (await service.remoteDocuments(library.id)).find(row => row.id === resumeDocument.id)
-  check(replanned?.stage === 'awaiting_approval' && !replanned.budgetApproved && replanned.planHash !== resumed.planHash, 'retry creates a new explicitly unapproved plan')
-  check(requests.length === beforeRetry, 'retry planning performs zero model calls')
-  await action(replanned, 'approve')
-  const retried = (await service.remoteDocuments(library.id)).find(row => row.id === resumeDocument.id)
-  check(retried?.status === 'completed' && !retried.error, 'approved retry completes without stale errors')
-  check(requests.length === beforeRetry, 'retry preserves already applied ranges instead of repeating inference')
+  check(replanned?.status === 'completed' && replanned.planHash === resumed.planHash,
+    'retry with no pending ranges preserves the completed plan without a zero-budget approval trap')
+  check(requests.length === beforeRetry, 'completed retry performs zero model calls')
   const previewSource = '本会话文档的长文本内容。'.repeat(100_000)
   const extractHandle = await service.beginExtract({ filename: 'long-session.md' })
   const previewBytes = Buffer.from(previewSource)
@@ -422,11 +427,35 @@ try {
   const legacyVault = join(home, 'knowledge-bases', 'libraries', legacyLibrary.id)
   const legacyText = '# Legacy retained text\nLEGACY_VIEW_TAIL_20261017\n'
   await writeFile(join(legacyVault, 'raw', 'legacy-view.md'), legacyText)
-  await ctx.get('askKnowledgeDocuments').migrateLibrary(legacyLibrary.id)
-  const legacyDocument = (await service.remoteDocuments(legacyLibrary.id)).find(row => row.filename === 'legacy-view.md')
+  const legacyDocument = (await service.remoteDocumentList(legacyLibrary.id)).documents.find(row => row.filename === 'legacy-view.md')
   check(legacyDocument?.textAvailable && !legacyDocument.originalAvailable, 'migrated text is viewable without inventing an original')
   await action(legacyDocument, 'text')
   check(await readFile(nativeViews.at(-1).path, 'utf8') === legacyText, 'installed migrated document opens its complete extracted text without a plan')
+  const warningLibrary = await service.createLibrary({ displayName: 'Installed migration failure acceptance' })
+  await upload(warningLibrary.id, 'usable-after-migration-failure.md', '# Policy\nREGISTERED_AFTER_MIGRATION_FAILURE_4721\n')
+  const warningVault = join(home, 'knowledge-bases', 'libraries', warningLibrary.id)
+  const blockedBackup = join(warningVault, '.octopus-kb', 'documents.sqlite.bak')
+  await mkdir(blockedBackup)
+  const migrationFailure = await service.remoteDocumentList(warningLibrary.id)
+  check(migrationFailure.documents.length === 1 && !!migrationFailure.migrationWarning,
+    'installed migration failure produces a library warning without blocking registered documents')
+  await rm(blockedBackup, { recursive: true })
+  await writeFile(join(warningVault, 'raw', 'not-auto-retried.md'), '# Legacy\nNO_RETRY_CHURN_4721\n')
+  for (let poll = 0; poll < 3; poll++) {
+    const repeated = await service.remoteDocumentList(warningLibrary.id)
+    check(repeated.documents.length === 1 && repeated.migrationWarning === migrationFailure.migrationWarning,
+      'installed migration failure remains cached instead of restarting on document polls')
+  }
+  await action(migrationFailure.documents[0], 'cancel')
+  check((await service.remoteDocuments(warningLibrary.id))[0].status === 'cancelled',
+    'installed cancellation remains available after legacy migration failure')
+  const recoveredLibrary = await service.createLibrary({ displayName: 'Installed stale backup recovery acceptance' })
+  await upload(recoveredLibrary.id, 'safe-recovery.md', '# Policy\nSAFE_STALE_BACKUP_RECOVERY_4721\n')
+  const recoveredBackup = join(home, 'knowledge-bases', 'libraries', recoveredLibrary.id, '.octopus-kb', 'documents.sqlite.bak')
+  await writeFile(recoveredBackup, 'stale backup fixture')
+  const recoveredList = await service.remoteDocumentList(recoveredLibrary.id)
+  check(recoveredList.documents.length === 1 && recoveredList.migrationWarning === undefined && !existsSync(recoveredBackup),
+    'installed sidecar recovers stale backup only after validating its healthy live database')
   // Every continuation below comes from rendered model content, not private result.value.
   await writeFile(join(vault, 'wiki', 'InstalledPolicy.md'), '---\ntitle: 培训预算\nrole: concept\n---\n# 培训预算\n\n培训预算摘要由知识页提供，数字需核对原文。\n')
   const session = ctx.sessions.prepare(SessionId('installed-tools-session'))

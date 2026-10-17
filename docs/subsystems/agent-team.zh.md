@@ -1444,12 +1444,14 @@ async observeSessionScoped(sessionId: SessionId, auth: ScopedQueryAuthorization)
 @Remote('reviewTurn') async reviewTurn(request: ReviewTurnRequest): Promise<ReviewTurnResult>
 
 /**
- * Generate one bounded tool-free prediction for an eligible completed turn.
+ * Return one bounded tool-free prediction for an eligible completed turn.
+ * Reuse a matching suggestion started from the live reply when available.
  * Authoritatively checks session existence, usability, scope, idle state, and latest completed turn.
  * Disregards remote client-supplied context text; reconstructs context canonically on Host.
  * Single-flights equivalent requests across windows.
  * Bounded by maxPredictionTokens and predictionTimeoutMs. Accounts for auxiliary usage.
  * Records auxiliary evidence without adding a conversation turn or public reply.
+ * Desktop consumers use streamComposerPrediction to keep the carrier available.
  * @param request - composer prediction request parameters.
  * @param signal - cancellation for the auxiliary model request.
  * @returns composer prediction result or null if disabled / ineligible / failed.
@@ -1463,6 +1465,14 @@ async observeSessionScoped(sessionId: SessionId, auth: ScopedQueryAuthorization)
  * @returns context for the latest successful completed turn, or null when ineligible.
  */
 @Remote('getComposerContext') async getComposerContext(sessionId: SessionId): Promise<ComposerPredictionContext | null>
+
+/**
+ * Deliver one prediction without holding the desktop unary request queue.
+ * @param request - prediction identity and current draft.
+ * @param signal - stream lifetime; closing the stream releases this subscriber.
+ * @returns one completed prediction or null, then closes.
+ */
+@Remote({ mode: 'stream' }) async *streamComposerPrediction(request: ComposerPredictionRequest, signal: AbortSignal): AsyncIterable<ComposerPredictionResult | null>
 
 /**
  * Flush in-memory cursors and round journal to disk and close catalog if held.

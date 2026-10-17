@@ -49,7 +49,7 @@ import { runSidecar, KnowledgeProcessRunner, setKnowledgeProcessRunner } from '.
 import { bindTypertRemote, Remote } from '@deepseek-ai/dsh-typert-protocol'
 import { createReadStream } from 'node:fs'
 import { randomUUID } from 'node:crypto'
-import type { DocumentView, DocumentActionRequest, DocumentLibraryId, DocumentIngestHandle } from './document-view.ts'
+import type { DocumentView, DocumentListView, DocumentActionRequest, DocumentLibraryId, DocumentIngestHandle } from './document-view.ts'
 import { RevisionId } from './document-types.ts'
 import { resolveProposeEnv } from './credentials-bridge.ts'
 import { canOpenNativePath, openNativeAssociatedPath, openNativeTextFile } from '@deepseek-ai/dsh-native-command'
@@ -77,7 +77,7 @@ import {
 } from './document-jobs.ts'
 import { indexLibraryVault } from './document-retrieve.ts'
 export * from './document-types.ts'
-export type { DocumentView, DocumentActionRequest, DocumentLibraryId, DocumentIngestHandle } from './document-view.ts'
+export type { DocumentView, DocumentListView, DocumentActionRequest, DocumentLibraryId, DocumentIngestHandle } from './document-view.ts'
 export {
   DocumentsServiceImpl,
   registerDocumentsService,
@@ -126,7 +126,7 @@ export interface Config extends AskKnowledgeHomeConfig {
   readonly extractionChunkChars?: number
   /** Maximum serialized wiki-context characters, including paths and JSON framing, per extraction request. */
   readonly extractionContextChars?: number
-  /** Deadline in milliseconds for an explicitly approved extraction job. */
+  /** Deadline in milliseconds for one explicitly approved extraction chunk, not the whole document. */
   readonly extractionTimeoutMs?: number
   /** Reserved maximum output tokens per extraction request. */
   readonly extractionOutputTokens?: number
@@ -157,10 +157,10 @@ export default class DesktopAskKnowledge extends AskKnowledge {
   static Config: z<Config> = z.object({
     knowledgeHome: z.string().default(''),
     sidecarRuntimePath: z.string().default(''),
-    extractionChunkChars: z.number().step(1).min(128).max(8000).default(1500),
+    extractionChunkChars: z.number().step(1).min(128).max(8000).default(6000),
     extractionContextChars: z.number().step(1).min(0).max(8000).default(2000),
     extractionTimeoutMs: z.number().step(1).min(1000).max(3600000).default(1800000),
-    extractionOutputTokens: z.number().step(1).min(128).max(8192).default(2048),
+    extractionOutputTokens: z.number().step(1).min(128).max(8192).default(4096),
     conversionTimeoutMs: z.number().step(1).min(1000).max(3600000).default(CONVERT_FILE_TIMEOUT_MS),
     maxConvertedBytes: z.natural().min(1024).default(MAX_CONVERT_OUTPUT_BYTES),
     maxDocxXmlBytes: z.natural().min(1024).default(DEFAULT_MAX_DOCX_ENTRY_BYTES),
@@ -174,6 +174,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
   readonly typertRemote = bindTypertRemote(this, 'askKnowledge')
   private readonly ready: Promise<void>
   private readonly lifetime = new AbortController()
+  private readonly documentMigrations = new Map<string, Promise<string | undefined>>()
   private readonly documentRuns = new Map<string, { controller: AbortController; done: Promise<unknown> }>()
   private readonly config: Config
   private readonly uploads = new Map<string, IngestUpload>()
@@ -237,6 +238,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       }
       for (const run of this.documentRuns.values()) run.controller.abort()
       await Promise.allSettled([...this.documentRuns.values()].map(run => run.done))
+      await Promise.allSettled([...this.documentMigrations.values()])
       await runner.dispose()
       await this.ready.catch(error => ctx.logger('ask-knowledge').warn(error))
       await Promise.all([...this.uploads.values()].map(disposeUpload))
@@ -612,33 +614,37 @@ export default class DesktopAskKnowledge extends AskKnowledge {
           error: converted.error ?? converted.status }, { signal: operationSignal })
         return { status: 'failed', retryable: true, error: converted.error ?? converted.status }
       }
-      const rawRelPath = `raw/${stored.document.id}-${stored.revision.revisionId}.md`
-      await withLibraryLock(upload.libraryId, async () => {
+      try {
+        const rawRelPath = `raw/${stored.document.id}-${stored.revision.revisionId}.md`
+        await withLibraryLock(upload.libraryId, async () => {
+          assertNotCancelled()
+          conversionSignal.throwIfAborted()
+          await requireLibrary(this.home(), upload.libraryId)
+          assertNotCancelled()
+          conversionSignal.throwIfAborted()
+          await publishRawText(vault, rawRelPath, converted.markdown, conversionSignal)
+        })
         assertNotCancelled()
-        conversionSignal.throwIfAborted()
-        await requireLibrary(this.home(), upload.libraryId)
+        await indexLibraryVault(this.config, this.home(), upload.libraryId, operationSignal)
         assertNotCancelled()
-        conversionSignal.throwIfAborted()
-        await publishRawText(vault, rawRelPath, converted.markdown, conversionSignal)
-      })
-      assertNotCancelled()
-      await indexLibraryVault(this.config, this.home(), upload.libraryId, operationSignal)
-      assertNotCancelled()
-      try { await runSidecar(this.config, { command: 'plan-document', vault, libraryId: upload.libraryId,
-        documentId: stored.document.id, revisionId: stored.revision.revisionId, jobId: job.jobId, rawPath: rawRelPath,
-        conversion: converted.diagnostics, conversionStatus: converted.status,
-        chunkChars: this.config.extractionChunkChars ?? 1500,
-        contextChars: this.config.extractionContextChars ?? 2000,
-        outputReserve: this.config.extractionOutputTokens ?? 2048 }, { signal: operationSignal }) } catch (error) {
+        await runSidecar(this.config, { command: 'plan-document', vault, libraryId: upload.libraryId,
+          documentId: stored.document.id, revisionId: stored.revision.revisionId, jobId: job.jobId, rawPath: rawRelPath,
+          conversion: converted.diagnostics, conversionStatus: converted.status,
+          chunkChars: this.config.extractionChunkChars ?? 6000,
+          contextChars: this.config.extractionContextChars ?? 2000,
+          outputReserve: this.config.extractionOutputTokens ?? 4096 }, { signal: operationSignal })
+        assertNotCancelled()
+        await indexLibraryVault(this.config, this.home(), upload.libraryId, conversionSignal)
+        assertNotCancelled()
+        return { status: 'deferred', rawRelPath, deferredCount: 1 }
+      } catch (error) {
         await runSidecar(this.config, { command: 'record-conversion', vault, libraryId: upload.libraryId,
-          documentId: stored.document.id, conversionStatus: 'failed', conversion: converted.diagnostics,
-          error: error instanceof Error ? error.message : String(error) }, { signal: this.lifetime.signal })
+          documentId: stored.document.id, jobId: job.jobId,
+          conversionStatus: conversionSignal.aborted || upload.cancelled ? 'cancelled' : 'failed',
+          conversion: converted.diagnostics, error: error instanceof Error ? error.message : String(error) },
+        { signal: this.lifetime.signal })
         throw error
       }
-      assertNotCancelled()
-      await indexLibraryVault(this.config, this.home(), upload.libraryId, conversionSignal)
-      assertNotCancelled()
-      return { status: 'deferred', rawRelPath, deferredCount: 1 }
     } finally {
       if (conversionRun) {
         this.documentRuns.delete(conversionRun.key)
@@ -867,9 +873,29 @@ export default class DesktopAskKnowledge extends AskKnowledge {
   async remoteDocuments(libraryId: DocumentLibraryId): Promise<readonly DocumentView[]> {
     await this.ready
     const vault = await assertVaultDir(this.home(), await requireLibrary(this.home(), libraryId))
+    let migration = this.documentMigrations.get(libraryId)
+    if (!migration) {
+      migration = new DocumentsServiceImpl(this.config).migrateLibrary(libraryId, this.lifetime.signal).then(
+        () => undefined, error => error instanceof Error ? error.message : String(error),
+      )
+      this.documentMigrations.set(libraryId, migration)
+    }
+    await migration
+    this.lifetime.signal.throwIfAborted()
     const result = await runSidecar(this.config, { command: 'document-status', vault, libraryId }, { signal: this.lifetime.signal })
     if (!Array.isArray(result.documents)) throw new Error('Invalid document status response')
     return result.documents as DocumentView[]
+  }
+
+  /** List registered documents even when legacy import fails.
+   * @param libraryId - catalog library to inspect.
+   * @returns documents and an independently displayed migration warning.
+   */
+  @Remote('documentList')
+  async remoteDocumentList(libraryId: DocumentLibraryId): Promise<DocumentListView> {
+    const documents = await this.remoteDocuments(libraryId)
+    const migrationWarning = await this.documentMigrations.get(libraryId)
+    return { documents, ...migrationWarning === undefined ? {} : { migrationWarning } }
   }
 
   /** Apply a document lifecycle operation; approval identifies the exact estimate displayed.
@@ -877,6 +903,24 @@ export default class DesktopAskKnowledge extends AskKnowledge {
    */
   @Remote('documentAction')
   async remoteDocumentAction(request: DocumentActionRequest): Promise<void> {
+    await this.performDocumentAction(request)
+  }
+
+  /**
+   * Acknowledge accepted processing without retaining the caller's RPC for the job duration.
+   * @param request - retry or explicitly approved extraction operation.
+   */
+  @Remote('startDocumentAction')
+  async remoteStartDocumentAction(request: DocumentActionRequest): Promise<void> {
+    if (!['approve', 'resume', 'retry'].includes(request.action)) throw new Error('Unsupported background document action')
+    const accepted = Promise.withResolvers<undefined>()
+    let admitted = false
+    const work = this.performDocumentAction(request, () => { admitted = true; accepted.resolve(undefined) })
+    void work.catch((error) => { if (admitted) this.ctx.logger('ask-knowledge').warn(error) })
+    await Promise.race([accepted.promise, work])
+  }
+
+  private async performDocumentAction(request: DocumentActionRequest, accepted?: () => void): Promise<void> {
     await this.ready
     const { libraryId, documentId, action } = request
     if (!['original', 'text', 'sources', 'retry', 'resume', 'cancel', 'approve'].includes(action)) {
@@ -943,6 +987,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
           retryJob = await createTrackedJob(this.config, this.home(), libraryId, documentId,
             RevisionId(document.revisionId), attempt, 'conversion')
           retrySignal.throwIfAborted()
+          accepted?.()
           const original = await readSourceOriginal(
             this.config, this.home(), libraryId, RevisionId(document.revisionId), retrySignal,
           )
@@ -970,8 +1015,8 @@ export default class DesktopAskKnowledge extends AskKnowledge {
           await runSidecar(this.config, { command: 'plan-document', vault, libraryId, documentId,
             revisionId: document.revisionId, jobId: retryJob.jobId, rawPath,
             conversion: converted.diagnostics, conversionStatus: converted.status,
-            chunkChars: this.config.extractionChunkChars ?? 1500, contextChars: this.config.extractionContextChars ?? 2000,
-            outputReserve: this.config.extractionOutputTokens ?? 2048 },
+            chunkChars: this.config.extractionChunkChars ?? 6000, contextChars: this.config.extractionContextChars ?? 2000,
+            outputReserve: this.config.extractionOutputTokens ?? 4096 },
           { signal: retrySignal })
           planned = true
           retrySignal.throwIfAborted()
@@ -1001,17 +1046,44 @@ export default class DesktopAskKnowledge extends AskKnowledge {
     }
     const controller = new AbortController()
     const runSignal = AbortSignal.any([controller.signal, this.lifetime.signal])
-    const done = (async () => {
+    const completion = Promise.withResolvers<undefined>()
+    this.documentRuns.set(key, { controller, done: completion.promise })
+    let admitted = false
+    let admittedStartupAttempt: number | undefined
+    const execute = { command: 'execute-document', vault, libraryId, documentId,
+      expectedPlanHash: request.planHash, approvedTokens: request.approvedTokens,
+      requireExistingApproval: action === 'resume',
+      ...request.uncertainOutcome === 'replay' ? { uncertainOutcome: request.uncertainOutcome } : {} }
+    try {
       const env = await resolveProposeEnv(this.ctx)
-      await runSidecar(this.config, { command: 'execute-document', vault, libraryId, documentId,
-        expectedPlanHash: request.planHash, approvedTokens: request.approvedTokens,
-        requireExistingApproval: action === 'resume',
-        ...request.uncertainOutcome === 'replay' ? { uncertainOutcome: request.uncertainOutcome } : {} }, {
-        env, signal: runSignal, timeoutMs: this.config.extractionTimeoutMs ?? 1800000,
-      })
-    })()
-    this.documentRuns.set(key, { controller, done })
-    try { await done } finally { this.documentRuns.delete(key) }
+      if (accepted) {
+        const admission = await runSidecar(this.config, { ...execute, admitOnly: true }, { env, signal: runSignal })
+        if (admission.status !== 'completed' && !Number.isSafeInteger(admission.startupAttempt)) {
+          throw new Error('Document admission omitted its startup generation')
+        }
+        admittedStartupAttempt = typeof admission.startupAttempt === 'number' ? admission.startupAttempt : undefined
+        admitted = true
+        runSignal.throwIfAborted()
+        accepted()
+      }
+      let status: unknown
+      do {
+        runSignal.throwIfAborted()
+        const batch = await runSidecar(this.config, { ...execute, maxChunks: 1 }, {
+          env, signal: runSignal, timeoutMs: this.config.extractionTimeoutMs ?? 1800000,
+        })
+        status = batch.status
+      } while (status === 'queued')
+    } catch (error) {
+      if (admitted && admittedStartupAttempt !== undefined && !this.lifetime.signal.aborted) {
+        await runSidecar(this.config, { command: 'document-action', vault, libraryId, documentId, action: 'pause', expectedPlanHash: request.planHash, expectedStartupAttempt: admittedStartupAttempt,
+          error: error instanceof Error ? error.message : String(error) }, { signal: this.lifetime.signal })
+      }
+      throw error
+    } finally {
+      if (this.documentRuns.get(key)?.controller === controller) this.documentRuns.delete(key)
+      completion.resolve(undefined)
+    }
   }
 
   private home(): string {

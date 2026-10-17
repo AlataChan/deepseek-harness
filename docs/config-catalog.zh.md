@@ -1109,7 +1109,7 @@ export interface Config extends AskKnowledgeHomeConfig {
   readonly extractionChunkChars?: number
   /** Maximum serialized wiki-context characters, including paths and JSON framing, per extraction request. */
   readonly extractionContextChars?: number
-  /** Deadline in milliseconds for an explicitly approved extraction job. */
+  /** Deadline in milliseconds for one explicitly approved extraction chunk, not the whole document. */
   readonly extractionTimeoutMs?: number
   /** Reserved maximum output tokens per extraction request. */
   readonly extractionOutputTokens?: number
