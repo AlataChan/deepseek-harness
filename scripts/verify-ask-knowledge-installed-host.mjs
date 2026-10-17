@@ -264,7 +264,7 @@ try {
   check(documents.length === 2 && second && second.id !== document.id, 'same-filename upload creates a distinct source identity')
   const raw = await Promise.all((await readdir(join(vault, 'raw'))).map(name => readFile(join(vault, 'raw', name), 'utf8')))
   check(raw.some(text => text.includes('INSTALLED_FINAL_SOURCE_9241')) && raw.some(text => text.includes('INSTALLED_SECOND_SOURCE_9241')), 'both same-name searchable raw sources survive')
-  const found = await searchLibraryPassages({ knowledgeHome: home, sidecarRuntimePath: runtime }, home, { libraryId: library.id, queries: ['INSTALLED_FINAL_SOURCE_9241'] })
+  const found = await searchLibraryPassages({ knowledgeHome: home, sidecarRuntimePath: runtime }, home, { libraryId: library.id, queries: ['INSTALLED_FINAL_SOURCE_9241'], layer: 'raw' })
   check(found.items.some(item => item.text.includes('INSTALLED_FINAL_SOURCE_9241')), 'installed Host search finds the late retained fact')
   check(found.items.some(item => item.path.includes(document.id)), 'late search passage retains immutable source attribution')
   holdNext = true
@@ -303,7 +303,7 @@ try {
   const latinOriginal = await ctx.get('askKnowledgeDocuments').readOriginal(library.id, latinDocument.revisionId)
   check(Buffer.from(latinOriginal.bytes).equals(latinBytes), 'installed text PDF retains original bytes')
   const latinHits = await searchLibraryPassages({ knowledgeHome: home, sidecarRuntimePath: runtime }, home,
-    { libraryId: library.id, queries: ['Budget'], documentFilter: latin.rawRelPath })
+    { libraryId: library.id, queries: ['Budget'], layer: 'raw', documentFilter: latin.rawRelPath })
   check(latinHits.items.some(item => item.text.includes('Community Training Plan') && item.text.includes('Budget 2000 dollars')),
     'installed public text PDF exposes actual converted text to search')
 
@@ -317,7 +317,7 @@ try {
   const mixedOriginal = await ctx.get('askKnowledgeDocuments').readOriginal(library.id, mixedDocument.revisionId)
   check(Buffer.from(mixedOriginal.bytes).equals(mixedBytes), 'installed mixed PDF retains original bytes')
   const mixedHits = await searchLibraryPassages({ knowledgeHome: home, sidecarRuntimePath: runtime }, home,
-    { libraryId: library.id, queries: ['Community'], documentFilter: mixed.rawRelPath })
+    { libraryId: library.id, queries: ['Community'], layer: 'raw', documentFilter: mixed.rawRelPath })
   check(mixedHits.items.some(item => item.text.includes('Community Training Plan')),
     'installed mixed PDF exposes its extractable page to search')
 
