@@ -1,0 +1,6 @@
+{
+  "name": "term-glossary",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local plain-language term glossary lookup for octopus_DSH (offline, no network)"
+}

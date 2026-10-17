@@ -52,3 +52,30 @@
   color: var(--dsw-alias-state-error-primary);
   font: var(--dsw-font-xxs-12);
 }
+
+.itemWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-secondary);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  flex: 1;
+}
+
+.details {
+  margin-top: 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--dsw-alias-border-l1);
+}

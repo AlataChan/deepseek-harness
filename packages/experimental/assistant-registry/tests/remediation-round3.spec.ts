@@ -131,10 +131,11 @@ describe('Stage C production repair controls', { timeout: 30000 }, () => {
     })
     try {
       const { createUserMessage } = await import('@deepseek-ai/dsh-llm')
-      h.lead.followup(createUserMessage({ content: [{ type: 'text', text: 'Start context' }], source: { kind: 'user' } }))
+      h.lead.followup(createUserMessage({ content: [{ type: 'text', text: 'PRIVATE_AUX_CONTEXT_773' }], source: { kind: 'user' } }))
       await h.lead.whenIdle()
+      const completedEnd = h.lead.session.snapshotEvents().findLast(e => e.type === 'turn/end' && e.data.reason.kind === 'completed')!
       const before = h.lead.session.snapshotEvents().length
-      const result = await h.assistants.predictComposer({ sessionId: h.lead.id, asOfSeq: 20, recentTexts: ['PRIVATE_AUX_CONTEXT_773'] })
+      const result = await h.assistants.predictComposer({ sessionId: h.lead.id, asOfSeq: completedEnd.seq })
       expect(result?.text).toBe('Useful next question')
       expect(JSON.stringify(h.lead.session.snapshotEvents().slice(before))).toContain('PRIVATE_AUX_CONTEXT_773')
     } finally {

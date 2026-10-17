@@ -11,7 +11,7 @@ import { parseAskKnowledgeLookupTerm, parseAskKnowledgeTerms } from '@deepseek-a
 import { assertVaultDir, requireLibrary } from './catalog.ts'
 import type { AskKnowledgeHomeConfig } from './knowledge-home.ts'
 import { withLibraryLock } from './library-lock.ts'
-import { boundRetrieveResult, resolveResultBounds, type ResultBounds } from './result-bounds.ts'
+import { boundRetrieveResult, resolveResultBounds, tokenEstimate, type ResultBounds } from './result-bounds.ts'
 import { runSidecar } from './sidecar.ts'
 
 /**
@@ -48,9 +48,12 @@ export async function retrieveLibraryBundle(
       const rawItems = Array.isArray(response.items) ? response.items : []
       for (const raw of rawItems) {
         if (typeof raw !== 'object' || raw === null) continue
-        const item = raw as { path?: unknown; title?: unknown; reason?: unknown; text?: unknown; kind?: unknown }
-        if (typeof item.path !== 'string' || seen.has(item.path)) continue
-        seen.add(item.path)
+        const item = raw as { path?: unknown; title?: unknown; reason?: unknown; text?: unknown; kind?: unknown; passageId?: unknown }
+        if (typeof item.path !== 'string') continue
+        const pId = typeof item.passageId === 'string' ? item.passageId : undefined
+        const itemKey = pId ? `${item.path}#${pId}` : item.path
+        if (seen.has(itemKey)) continue
+        seen.add(itemKey)
         const kind = item.kind === 'concept' || item.kind === 'entity' || item.kind === 'raw'
           ? item.kind
           : 'raw'
@@ -87,6 +90,7 @@ export async function retrieveLibraryBundle(
  * @param libraryId - catalog id.
  * @param term - validated term.
  * @param bounds - effective payload caps.
+ * @param cursor - continuation from the previous emitted page.
  * @param signal - caller lifetime.
  * @returns lookup fields.
  */
@@ -96,8 +100,14 @@ export async function lookupLibraryTerm(
   libraryId: AskKnowledgeLibraryId,
   term: string,
   bounds: ResultBounds,
+  cursor?: string,
   signal?: AbortSignal,
-): Promise<AskKnowledgeLookup> {
+): Promise<AskKnowledgeLookup & {
+  cursor?: string | null
+  citations?: readonly string[]
+  relatedLinks?: readonly string[]
+  coverageStatus?: string
+}> {
   const parsed = parseAskKnowledgeLookupTerm({ term })
   return await withLibraryLock(libraryId, async () => {
     const row = await requireLibrary(knowledgeHome, libraryId)
@@ -106,31 +116,37 @@ export async function lookupLibraryTerm(
       command: 'lookup',
       vault,
       term: parsed,
+      maxChars: Math.min(4000, bounds.maxChars),
+      maxBytes: Math.max(512, Math.floor(bounds.maxTokens / 3)),
+      ...cursor ? { cursor } : {},
     }, { signal })
     const text = typeof response.text === 'string' ? response.text : ''
     const path = typeof response.canonicalPath === 'string' ? response.canonicalPath : undefined
     if (path === undefined && text === '') {
       throw new AskKnowledgeError('no-hit', 'ask-knowledge/no-hit')
     }
-    const bundle = boundRetrieveResult(
-      [{
-        path: path ?? parsed,
-        title: parsed,
-        reason: 'lookup',
-        text,
-        kind: 'concept',
-      }],
-      [],
-      bounds,
-    )
-    return {
+    const result: AskKnowledgeLookup & {
+      cursor?: string | null
+      citations?: readonly string[]
+      relatedLinks?: readonly string[]
+      coverageStatus?: string
+    } = {
       term: parsed,
       ...path === undefined ? {} : { canonicalPath: path },
-      ...bundle.items[0]?.text === undefined ? {} : { text: bundle.items[0].text },
-      warnings: bundle.warnings,
+      ...text === '' ? {} : { text },
+      cursor: typeof response.cursor === 'string' ? response.cursor : null,
+      ...Array.isArray(response.citations) ? { citations: response.citations.map(String) } : {},
+      ...Array.isArray(response.relatedLinks) ? { relatedLinks: response.relatedLinks.map(String) } : {},
+      ...typeof response.coverageStatus === 'string' ? { coverageStatus: response.coverageStatus } : {},
+      warnings: [],
     }
+    if (tokenEstimate(JSON.stringify(result)) > bounds.maxTokens) {
+      throw new AskKnowledgeError('ingest-failed', 'lookup metadata exceeds the payload allowance')
+    }
+    return result
   })
 }
+
 
 /** Re-export for callers that only need the default bounds. */
 export { resolveResultBounds }

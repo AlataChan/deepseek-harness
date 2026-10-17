@@ -160,8 +160,8 @@ export const SERVICE_PAGE: Record<string, string> = {
  * or names itself here. Client-face keys (the projection analyzes the host
  * face only) name the package README that owns their surface.
  *
- * Two categories remain, and neither is a projection gap a scanning rule could
- * close. An OPTIONAL key (`key?: X`) is a value the launcher or boot code
+ * Exclusions include launcher values, interface-typed providers and client keys.
+ * A launcher-provided OPTIONAL key (`key?: X`) is a value the boot code
  * installs before the tree mounts, which the analyzer skips by rule because no
  * plugin provides it and `inject` cannot reach it. A client-face key belongs to
  * the browser Context, which this host-face program never sees; the browser
@@ -170,6 +170,7 @@ export const SERVICE_PAGE: Record<string, string> = {
  */
 export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   agentPresetSeat: 'client-face key: the seat control is owned by packages/client/ui-agent-preset/README.md',
+  askKnowledgeDocuments: 'interface-typed Host provider: DocumentsServiceImpl is owned by packages/experimental/desktop-ask-knowledge/README.md',
 
   invocation: 'not a service: per-call accessor (RemoteInvocation | undefined) the Gateway derives for each Remote call — packages/api/gateway/README.md owns the contract',
   webTerminals: 'client-side terminal view models — packages/api/terminal-controller/README.md owns the API',

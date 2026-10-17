@@ -18,6 +18,12 @@ function inspectCalls(client: ts.SourceFile, host: ts.SourceFile, discussion: ts
       if (ts.isCallExpression(call) && call.expression.getText(host) === 'Remote') {
         const name = call.arguments[0]
         if (name && ts.isStringLiteral(name)) hostArities.set(name.text, node.parameters.length)
+        else if (name && ts.isObjectLiteralExpression(name) && ts.isIdentifier(node.name)) {
+          const explicit = name.properties.find(property => ts.isPropertyAssignment(property) && property.name.getText(host) === 'name')
+          const remote = explicit && ts.isPropertyAssignment(explicit) && ts.isStringLiteral(explicit.initializer)
+            ? explicit.initializer.text : node.name.text
+          hostArities.set(remote, node.parameters.length)
+        }
       }
     }
     ts.forEachChild(node, visitHost)
@@ -80,11 +86,17 @@ describe('Assistant remote wire argument tuples', () => {
     expect(calls).toContain('updateProfile')
     expect(calls).toContain('updateSeat')
     expect(calls).toContain('cancelRound')
+    expect(calls).toContain('streamComposerPrediction')
   })
 
   it('rejects a missing optional profile revision position', () => {
     const invalid = ts.createSourceFile('invalid.ts', 'remote.updateProfile(id, options)', ts.ScriptTarget.Latest, true)
     expect(() => inspectCalls(invalid, host, discussion)).toThrow(/updateProfile/)
+  })
+
+  it('rejects a stream call missing its cancellation position', () => {
+    const invalid = ts.createSourceFile('invalid.ts', 'remote.streamComposerPrediction(request)', ts.ScriptTarget.Latest, true)
+    expect(() => inspectCalls(invalid, host, discussion)).toThrow(/streamComposerPrediction/)
   })
 
   it('rejects a missing optional cancellation reason position', () => {

@@ -8,8 +8,8 @@ import { join } from 'node:path'
 import { strFromU8, unzipSync } from 'fflate'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 
-/** Uncompressed cap for `word/document.xml`. */
-const MAX_DOCX_ENTRY_BYTES = 8 * 1024 * 1024
+/** Default uncompressed cap for `word/document.xml` (8 MiB). */
+export const DEFAULT_MAX_DOCX_ENTRY_BYTES = 8 * 1024 * 1024
 
 /**
  * Whether this upload is a Word file the Host unzips itself.
@@ -60,15 +60,19 @@ export function wordXmlToText(xml: string): string {
 /**
  * Unzip document.xml from a materialized .docx and return its text.
  * @param bytes - assembled upload bytes.
+ * @param maxEntryBytes - maximum uncompressed `word/document.xml` size in bytes.
  * @returns newline-joined paragraph text.
  */
-export function extractDocxBytes(bytes: Uint8Array): string {
+export function extractDocxBytes(
+  bytes: Uint8Array,
+  maxEntryBytes: number = DEFAULT_MAX_DOCX_ENTRY_BYTES,
+): string {
   let files: Record<string, Uint8Array>
   try {
     files = unzipSync(bytes, {
       filter: (entry) => {
         /* v8 ignore next 3 -- an 8MiB uncompressed document.xml is too large to allocate in unit tests */
-        if (entry.originalSize > MAX_DOCX_ENTRY_BYTES) {
+        if (entry.originalSize > maxEntryBytes) {
           throw new Error('docx-too-large')
         }
         return entry.name.replace(/\\/g, '/') === 'word/document.xml'
@@ -98,9 +102,10 @@ export async function writeDocxMarkdownForIngest(input: {
   path: string
   dir: string
   filename: string
+  maxEntryBytes?: number
 }): Promise<string> {
   if (!isDocxExtractFilename(input.filename)) return input.path
-  const text = extractDocxBytes(new Uint8Array(await readFile(input.path)))
+  const text = extractDocxBytes(new Uint8Array(await readFile(input.path)), input.maxEntryBytes)
   if (text.trim() === '') {
     throw new AskKnowledgeError('ingest-failed', '这份 Word 没有可提取的文字')
   }

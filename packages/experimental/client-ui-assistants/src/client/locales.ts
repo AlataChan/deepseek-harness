@@ -170,6 +170,10 @@ export const zh = {
   predictionDismiss: '忽略',
   predictionLabel: '建议追问',
   predictionHint: '按 Tab 或点击采用建议文本（不自动发送）',
+  settingPredictionTitle: '显示下一步建议',
+  settingPredictionDescription: '根据当前对话生成下一步建议，会使用当前模型额度；Tab 仅填入，不会自动发送',
+  settingSaved: '设置已保存',
+  settingSaveFailed: '保存设置失败',
 } satisfies Record<string, string>
 
 /** Valid translation keys for the assistants namespace. */
@@ -342,4 +346,8 @@ export const en: Record<AssistantLocaleKey, string> = {
   predictionDismiss: 'Dismiss',
   predictionLabel: 'Suggested follow-up',
   predictionHint: 'Press Tab or click to insert suggestion (never submits)',
+  settingPredictionTitle: 'Show next-step suggestions',
+  settingPredictionDescription: 'Generate next-step suggestions based on conversation context using current model quota; Tab inserts into draft without submitting',
+  settingSaved: 'Setting saved',
+  settingSaveFailed: 'Failed to save setting',
 }

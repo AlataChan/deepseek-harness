@@ -43,7 +43,7 @@ const PYINSTALLER_VERSION = '6.22.3'
  * `scripts/verify-desktop-exe.spec.ts` keeps this list in step with the checks
  * `scripts/build-kb-sidecar.sh` and `scripts/verify-desktop-bundle.sh` run.
  */
-const SELF_TEST_KEYS = ['pdf', 'xlsx', 'proposalSchema', 'applyRules', 'rulesSchema', 'pageMetaFill', 'retrieveFold', 'convertFile']
+const SELF_TEST_KEYS = ['pypdf', 'documentPdf', 'sqliteRuntime', 'pdf', 'xlsx', 'proposalSchema', 'applyRules', 'rulesSchema', 'pageMetaFill', 'retrieveFold', 'convertFile']
 
 /** PyInstaller `--add-data` separates source and destination by `;` on Windows. */
 const ADD_DATA_SEP = process.platform === 'win32' ? ';' : ':'
@@ -158,6 +158,7 @@ run(VENV_PYTHON, [
   `pyinstaller==${PYINSTALLER_VERSION}`,
   'markitdown[pdf]>=0.1',
   'openpyxl',
+  'pypdf==6.11.0',
   'jsonschema>=4.18',
   'pydantic>=2.5',
   'pyyaml>=6.0',
@@ -178,10 +179,12 @@ run(VENV_PYTHON, [
   '--workpath', join(CACHE, 'build'),
   '--specpath', CACHE,
   '--collect-all', 'octopus_kb_compound',
+  '--collect-all', 'documents',
   '--collect-all', 'markitdown',
   '--collect-all', 'magika',
   '--collect-all', 'pdfminer',
   '--collect-all', 'pdfplumber',
+  '--collect-all', 'pypdf',
   '--hidden-import', 'jsonschema',
   '--hidden-import', 'pydantic',
   '--hidden-import', 'yaml',
@@ -189,6 +192,9 @@ run(VENV_PYTHON, [
   '--hidden-import', 'openpyxl',
   '--hidden-import', 'pdfminer',
   '--hidden-import', 'pdfplumber',
+  '--hidden-import', 'pypdf',
+  '--hidden-import', 'sqlite3',
+  '--hidden-import', '_sqlite3',
   '--add-data', `${join(KB_DIR, 'src', 'octopus_kb_compound', 'validators', 'builtins.yaml')}${ADD_DATA_SEP}${join('octopus_kb_compound', 'validators')}`,
   'sidecar.py',
 ], { cwd: PYTHON_DIR })

@@ -3,7 +3,7 @@
  * @module @deepseek-ai/dsh-experimental-desktop-ask-knowledge/client/extract-file
  */
 
-import { encodeIngestChunks } from './ingest-file.ts'
+import { streamFileIngestChunks } from './ingest-file.ts'
 
 /** Remote result used by the session-document bridge. */
 type ExtractRemote<T> = Promise<{ ok: true; value: T } | { ok: false; error: { message: string } }>
@@ -17,6 +17,7 @@ export interface SessionDocumentExtractRemotes {
     text: string
     truncated: boolean
   }>
+  abortExtract?(request: { handle: string }): ExtractRemote<void>
 }
 
 /** Settled extract handed to the composer. */
@@ -36,10 +37,14 @@ export async function extractSessionDocumentFile(
 ): Promise<SessionDocumentExtractOutcome> {
   const begun = await remotes.beginExtract({ filename: file.name })
   if (!begun.ok) return { ok: false, error: begun.error.message }
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  for (const chunk of encodeIngestChunks(bytes)) {
-    const appended = await remotes.appendExtractChunk({ handle: begun.value, bytes: chunk })
-    if (!appended.ok) return { ok: false, error: appended.error.message }
+  try {
+    for await (const chunk of streamFileIngestChunks(file)) {
+      const appended = await remotes.appendExtractChunk({ handle: begun.value, bytes: chunk })
+      if (!appended.ok) return { ok: false, error: appended.error.message }
+    }
+  } catch (error: unknown) {
+    await remotes.abortExtract?.({ handle: begun.value })
+    throw error
   }
   const finished = await remotes.finishExtract({ handle: begun.value })
   if (!finished.ok) return { ok: false, error: finished.error.message }

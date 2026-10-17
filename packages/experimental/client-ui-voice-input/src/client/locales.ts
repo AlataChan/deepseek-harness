@@ -91,7 +91,9 @@ export const zh = {
   empty: '未识别到语音', cancelled: '已取消语音输入。',
   conflict: '草稿已被修改。识别文字已保留，可在当前光标位置插入。',
   failed: '语音识别失败：{message}',
-  unavailable: '当前浏览器不支持录音，请使用支持麦克风的浏览器。',
+  unavailable: '当前环境没有开放麦克风录音接口。桌面版请更新应用并检查系统麦克风权限；网页版请使用支持录音的浏览器。',
+  insecure: '当前页面不是安全连接，无法使用麦克风。请使用桌面版，或通过 HTTPS、localhost 打开网页版。',
+  recorderUnavailable: '当前环境缺少录音编码器。请更新桌面应用或浏览器；无需重新安装语音识别模型。',
   permission: '麦克风权限未开启，请在浏览器和系统设置中允许访问。',
   tooLarge: '录音超过服务限制，请缩短录音后重试。',
 } as const
@@ -187,7 +189,9 @@ export const en: Record<VoiceKey, string> = {
   empty: 'No speech recognized', cancelled: 'Voice input cancelled.',
   conflict: 'Your draft changed. The transcript is preserved and can be inserted at the current cursor.',
   failed: 'Speech recognition failed: {message}',
-  unavailable: 'This browser cannot record audio. Use a browser with microphone support.',
+  unavailable: 'This environment does not expose microphone capture. Update the desktop app and check system microphone access, or use a browser that supports recording.',
+  insecure: 'Microphone capture requires a secure page. Use the desktop app, or open the web app over HTTPS or localhost.',
+  recorderUnavailable: 'The recording encoder is unavailable. Update the desktop app or browser; reinstalling the speech model will not fix capture.',
   permission: 'Microphone access is disabled. Allow it in browser and system settings.',
   tooLarge: 'The recording exceeds the service limit. Try a shorter recording.',
 }

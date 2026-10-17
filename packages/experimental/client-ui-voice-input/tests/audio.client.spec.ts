@@ -134,3 +134,14 @@ it('contains a failing interruption callback and still releases the microphone',
     expect(report).toHaveBeenCalledWith('Speech recording error handler failed', error)
   } finally { report.mockRestore(); await b.recording.dispose() }
 })
+
+it('distinguishes insecure capture from an unavailable microphone interface', async () => {
+  vi.stubGlobal('isSecureContext', false)
+  await expect(new Recording(() => {}).start()).rejects.toMatchObject({ kind: 'insecure' })
+})
+
+it('distinguishes a missing recorder from a missing microphone', async () => {
+  vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: vi.fn() } })
+  vi.stubGlobal('MediaRecorder', undefined)
+  await expect(new Recording(() => {}).start()).rejects.toMatchObject({ kind: 'recorderUnavailable' })
+})

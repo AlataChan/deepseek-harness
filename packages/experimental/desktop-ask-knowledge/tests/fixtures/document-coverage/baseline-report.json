@@ -1,0 +1,52 @@
+{
+  "report_version": "1.0.0",
+  "evaluated_at": "2026-10-15",
+  "production_caps": {
+    "RAW_PROPOSE_CHARS": 12000,
+    "ASK_KNOWLEDGE_EXTRACT_MAX_CHARS": 32000,
+    "ITEM_TEXT_LIMIT": 4000,
+    "DEFAULT_MAX_RESULT_CHARS": 24000,
+    "DEFAULT_MAX_RESULT_TOKENS": 6000
+  },
+  "observed_production_behavior": {
+    "propose_reads_prefix_only": {
+      "limit": 12000,
+      "impact": "Facts appearing after character 12,000 (middle, final, late table) are never proposed for wiki extraction.",
+      "verified_in": "packages/experimental/desktop-ask-knowledge/python/kb/src/octopus_kb_compound/propose.py"
+    },
+    "session_extract_clips_prefix": {
+      "limit": 32000,
+      "impact": "Content after character 32,000 is truncated with truncated=true and omitted from session-only text.",
+      "verified_in": "packages/experimental/desktop-ask-knowledge/src/extract.ts"
+    },
+    "retrieve_clips_item_prefix": {
+      "limit": 4000,
+      "impact": "Individual items returned by retrieve-bundle clip at 4,000 chars, dropping later passage context.",
+      "verified_in": "packages/experimental/desktop-ask-knowledge/python/kb/src/octopus_kb_compound/retrieve.py"
+    },
+    "word_extraction_flattens_structure": {
+      "impact": "extract-docx.ts extracts plain w:t tags without headings, tables, or footnotes.",
+      "verified_in": "packages/experimental/desktop-ask-knowledge/src/extract-docx.ts"
+    },
+    "upload_bytes_discarded": {
+      "impact": "Original uploaded file is unlinked immediately after conversion; original bytes not preserved.",
+      "verified_in": "packages/experimental/desktop-ask-knowledge/src/upload-temp.ts"
+    },
+    "in_process_mutex_insufficient": {
+      "impact": "createMutex in library-lock.ts is an in-process Promise map; cannot coordinate cross-process companion/workers.",
+      "verified_in": "packages/experimental/desktop-ask-knowledge/src/library-lock.ts"
+    }
+  },
+  "format_routing_baseline": {
+    "md_txt": "Preserved UTF-8; full file written to raw/",
+    "docx": "Flattened to plain paragraphs; footnotes/headings omitted",
+    "xlsx": "Sheet tables converted; uncached formulas empty",
+    "csv": "Parsed with csv.reader; quoted commas preserved",
+    "html_json": "Converted via local readers; preserved",
+    "pptx": "Rejected by current product entry; requires optional python-pptx",
+    "epub_rtf": "Rejected by current product entry",
+    "pdf_text": "Extracted via pypdf/markitdown; CID-font Chinese supported",
+    "pdf_mixed": "Page 1 extracted, page 2 image dropped without warning",
+    "pdf_scan": "Empty extraction fails with ingest-failed"
+  }
+}

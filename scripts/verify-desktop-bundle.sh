@@ -47,6 +47,12 @@ else
   bad "icon.icns missing at Contents/Resources/icon.icns"
 fi
 
+if node "$REPO_ROOT/scripts/desktop-microphone.mjs" --check "$APP"; then
+  ok "Microphone usage declaration present"
+else
+  bad "Microphone usage declaration missing or empty"
+fi
+
 # ── 2. Embedded Node ────────────────────────────────────────────────────────
 
 if [[ -x "$RES/node" ]]; then
@@ -285,6 +291,14 @@ if [[ -d "$RES/bundled-skills/conversation-media-creation" \
   ok "bundled-skills/conversation-media-creation present with no-playback wording"
 else
   bad "bundled-skills/conversation-media-creation incomplete — desktop users will not get the creation skill"
+fi
+if [[ -d "$RES/bundled-skills/term-glossary" \
+   && -f "$RES/bundled-skills/term-glossary/SKILL.md" \
+   && -f "$RES/bundled-skills/term-glossary/data/glossary.json" \
+   && -f "$RES/bundled-skills/term-glossary/scripts/lookup.mjs" ]]; then
+  ok "bundled-skills/term-glossary present (offline term hints)"
+else
+  bad "bundled-skills/term-glossary incomplete — desktop users will not get term hints"
 fi
 
 DIRTY_PROFILE=$(mktemp -d)
@@ -652,16 +666,21 @@ else
   bad "bundled ask-knowledge Client missing 删除 — run tsc -b then tsdown before packaging"
 fi
 if [[ -f "$ASK_K_HOST" ]] \
-  && grep -q '整理词条没有产出可写入的提案' "$ASK_K_HOST"; then
-  ok "bundled ask-knowledge Host returns finishIngest error text"
+  && grep -q 'Review the complete document estimate and approve its budget first' "$ASK_K_HOST"; then
+  ok "bundled ask-knowledge Host requires complete-document budget approval"
 else
-  bad "bundled ask-knowledge Host missing finishIngest error text — run tsc -b then tsdown before packaging"
+  bad "bundled ask-knowledge Host missing the extraction approval guard — run tsc -b then tsdown before packaging"
 fi
 if [[ -f "$ASK_K_HOST" ]] \
-  && grep -q '模型没有按词条格式返回' "$ASK_K_HOST"; then
-  ok "bundled ask-knowledge Host maps LLM non-JSON to Chinese"
+  && grep -q 'record-conversion' "$ASK_K_HOST"; then
+  ok "bundled ask-knowledge Host records conversion failures durably"
 else
-  bad "bundled ask-knowledge Host missing LLM non-JSON Chinese — run tsc -b then tsdown before packaging"
+  bad "bundled ask-knowledge Host missing durable conversion failure handling — run tsc -b then tsdown before packaging"
+fi
+if [[ -f "$ASK_K_HOST" ]] && grep -q 'ask_knowledge_session_document' "$ASK_K_HOST" && grep -q 'wikiAttempt' "$ASK_K_HOST"; then
+  ok "bundled ask-knowledge Host includes official session-document tools and logged wiki receipts"
+else
+  bad "bundled ask-knowledge Host predates complete session-document and wiki-receipt support"
 fi
 # Vite minifies 180_000 to 18e4. The WebView is baked from apps/desktop/dist
 # at `cargo tauri build`; a stale connection-process lib/types emit leaves
@@ -814,7 +833,10 @@ if [[ -x "$SIDECAR" ]]; then
     && printf '%s' "$SELFTEST" | grep -q '"rulesSchema": true' \
     && printf '%s' "$SELFTEST" | grep -q '"pageMetaFill": true' \
     && printf '%s' "$SELFTEST" | grep -q '"retrieveFold": true' \
-    && printf '%s' "$SELFTEST" | grep -q '"convertFile": true'; then
+    && printf '%s' "$SELFTEST" | grep -q '"convertFile": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"pypdf": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"documentPdf": true' \
+    && printf '%s' "$SELFTEST" | grep -q '"sqliteRuntime": true'; then
     ok "bundled sidecar self-test passed in place"
   else
     bad "bundled sidecar self-test failed in place — must load proposal.json and builtins.yaml via the frozen package"
@@ -846,7 +868,10 @@ if [[ -x "$SIDECAR" ]]; then
     && printf '%s' "$RELOC_OUT" | grep -q '"rulesSchema": true' \
     && printf '%s' "$RELOC_OUT" | grep -q '"pageMetaFill": true' \
     && printf '%s' "$RELOC_OUT" | grep -q '"retrieveFold": true' \
-    && printf '%s' "$RELOC_OUT" | grep -q '"convertFile": true'; then
+    && printf '%s' "$RELOC_OUT" | grep -q '"convertFile": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"pypdf": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"documentPdf": true' \
+    && printf '%s' "$RELOC_OUT" | grep -q '"sqliteRuntime": true'; then
     ok "sidecar self-test passed after relocating kb-runtime"
   else
     bad "sidecar self-test failed after relocating kb-runtime — runtime is not relocatable"
@@ -885,6 +910,22 @@ if codesign --verify --deep "$APP" 2>/dev/null; then
   fi
 else
   bad "Code signature missing or stale — Gatekeeper will say the app is damaged after a WeChat/browser download"
+fi
+
+# Public operations must pass against installed code before packaging.
+head_ "Checking installed Ask Knowledge operations"
+if node "$REPO_ROOT/scripts/verify-ask-knowledge-installed-flows.mjs" "$APP"; then
+  ok "Installed Ask Knowledge source, worker and approved Host flows"
+else
+  bad "Installed Ask Knowledge acceptance failed"
+fi
+
+# Prediction streams must leave the serial desktop carrier available while waiting.
+head_ "Checking installed composer predictions"
+if node "$REPO_ROOT/scripts/verify-composer-predictions-installed-flows.mjs" "$APP"; then
+  ok "Installed prediction delay, responsive settings, cancellation and cold restart"
+else
+  bad "Installed composer prediction acceptance failed"
 fi
 
 # ── Result ──────────────────────────────────────────────────────────────────

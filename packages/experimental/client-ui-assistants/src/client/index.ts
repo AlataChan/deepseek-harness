@@ -38,6 +38,10 @@ export type {
   AssistantPredictionDockProps,
   AssistantPredictionDockInjected,
 } from './ComposerPrediction.tsx'
+export { PredictionSettingRow, PredictionSettingToast } from './PredictionSettingRow.tsx'
+export type { PredictionSettingInjected } from './PredictionSettingRow.tsx'
+export { PredictionSettingPreference } from './prediction-preference.ts'
+export type { PredictionSettings, PredictionMutation } from './prediction-preference.ts'
 export { NS, zh, en } from './locales.ts'
 export type { AssistantLocaleKey } from './locales.ts'
 

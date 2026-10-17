@@ -1162,7 +1162,16 @@ function stableSessionFixture(
   return stable
 }
 
-async function assertReplaySession(
+/**
+ * Compare persisted Sessions against a recorded fixture, including auxiliary events.
+ * @param sessions - live Sessions observed during the scenario.
+ * @param fixturePath - owning recorded Session fixture.
+ * @param mode - replay compares; refresh records the current writer generation.
+ * @param webUrl - test server origin to normalize.
+ * @param harnessHome - isolated profile directory to normalize.
+ * @returns completion after the persisted log and configured header pins match.
+ */
+export async function assertReplaySession(
   sessions: readonly Session[],
   fixturePath: string,
   mode: WebSnapshotMode,

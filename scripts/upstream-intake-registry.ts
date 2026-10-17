@@ -242,6 +242,8 @@ export const PATCHES: readonly PatchEntry[] = [
   { path: 'packages/fs/tool-fs/src/edit.ts', klass: 'A', reason: 'Fork edit tool behaviour.' },
   { path: 'packages/fs/tool-str-replace-editor/src/index.ts', klass: 'A', reason: 'Fork string replace editor behaviour.' },
   { path: 'packages/boot/app-boot/src/profile.ts', klass: 'A', reason: "The fork's profile resolution." },
+  { path: 'packages/llm/llm-pi-ai/package.json', klass: 'A', reason: 'Fork pins @earendil-works/pi-ai at ^1.3.0 for the desktop model catalog (0.87.1 predates the opencode free models); the streaming-arguments patch and release-age exception that travel with the pin live in patches/ and pnpm-workspace.yaml.' },
+  { path: 'packages/llm/llm-pi-ai/src/catalog.ts', klass: 'A', reason: "Mechanical drift-gate classification for pi-ai 1.3.0's new OpenAIResponsesCompat field supportsMidConvoEffort (withhold), required for catalog.ts to compile against the upgraded upstream type." },
   { path: 'packages/preset/agent-preset-registry/src/index.ts', klass: 'A', reason: 'Ported fork admitSelect hook (was agent-presets before the upstream split): the data-source gate must run before every preset swap, including a direct Remote select.' },
   { path: 'packages/preset/agent-preset-registry/src/definition.ts', klass: 'A', reason: 'Fork `listed` flag on PresetDefinition: the 公益项目助手 preset installs through the profile seed while its roster menu entry stays on the fork capabilities chip, so the menu omits it but id selection still works.' },
   { path: 'packages/web/tool-web/src/search.ts', klass: 'A', reason: 'Fork web search behaviour.' },

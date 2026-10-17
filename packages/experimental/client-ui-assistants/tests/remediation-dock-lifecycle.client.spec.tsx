@@ -10,10 +10,14 @@ import type {
   ComposerPredictionRequest,
   ComposerPredictionResult,
 } from '@deepseek-ai/dsh-experimental-assistant-registry/types'
-import { AssistantPredictionDock, type AssistantPredictionDockProps } from '../src/client/ComposerPrediction.tsx'
+import {
+  AssistantPredictionDock,
+  type AssistantPredictionDockProps,
+} from '../src/client/ComposerPrediction.tsx'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
+
 const session: SessionSnapshot = {
   sessionId: SessionId('real-dock'),
   pendingSubmissions: [],
@@ -48,6 +52,12 @@ function props(extra: Partial<AssistantPredictionDockProps> = {}): AssistantPred
   } as AssistantPredictionDockProps
 }
 
+function renderCompleted(p: AssistantPredictionDockProps) {
+  const view = render(<AssistantPredictionDock {...p} session={{ ...session, running: true }} />)
+  view.rerender(<AssistantPredictionDock {...p} />)
+  return view
+}
+
 describe('Mounted prediction lifecycle', () => {
   it.each(['typing', 'unmount', 'navigation', 'running'] as const)('aborts the in-flight remote inference on %s', async (change) => {
     const pending = Promise.withResolvers<ComposerPredictionResult | null>()
@@ -55,7 +65,7 @@ describe('Mounted prediction lifecycle', () => {
       request.sessionId === session.sessionId ? pending.promise : Promise.resolve(null),
     )
     const p = props({ predictComposer })
-    const view = render(<AssistantPredictionDock {...p} />)
+    const view = renderCompleted(p)
     await waitFor(() => expect(predictComposer).toHaveBeenCalledOnce())
     const signal = predictComposer.mock.calls[0]![1] as AbortSignal
     expect(signal.aborted).toBe(false)
@@ -77,7 +87,7 @@ describe('Mounted prediction lifecycle', () => {
   it('never resurrects the same completed-turn suggestion after typing and clearing', async () => {
     const predictComposer = vi.fn(async () => result)
     const p = props({ predictComposer })
-    const view = render(<AssistantPredictionDock {...p} />)
+    const view = renderCompleted(p)
     await screen.findByText(result.text)
     view.rerender(<AssistantPredictionDock {...p} input={{ ...p.input!, draft: 'Typed draft' }} />)
     view.rerender(<AssistantPredictionDock {...p} input={{ ...p.input!, draft: '' }} />)
@@ -98,7 +108,7 @@ describe('Mounted prediction lifecycle', () => {
       predictionId: `prediction-${request.asOfSeq}`,
     }))
     const p = props({ getComposerContext, predictComposer })
-    const view = render(<AssistantPredictionDock {...p} />)
+    const view = renderCompleted(p)
     await waitFor(() => expect(predictComposer).toHaveBeenCalledOnce())
     view.rerender(<AssistantPredictionDock {...p} session={{ ...session, running: true }} />)
     completedSeq = 29
@@ -112,7 +122,7 @@ describe('Mounted prediction lifecycle', () => {
     const getComposerContext = vi.fn(() => deferred.promise)
     const predictComposer = vi.fn(async () => result)
     const p = props({ getComposerContext, predictComposer })
-    const view = render(<AssistantPredictionDock {...p} />)
+    const view = renderCompleted(p)
     await waitFor(() => expect(getComposerContext).toHaveBeenCalledOnce())
     view.rerender(<AssistantPredictionDock {...p} input={{ ...p.input!, draft: 'Typing' }} />)
     await act(async () => {
@@ -129,7 +139,7 @@ describe('Mounted prediction lifecycle', () => {
     const insertText = vi.fn(() => true)
     const submit = vi.fn()
     const p = props({ inputActions: { captureInsertion, insertText, submit } as never })
-    render(<AssistantPredictionDock {...p} />)
+    renderCompleted(p)
     await screen.findByText(result.text)
     fireEvent.click(screen.getByRole('button', { name: zh.predictionAdoptTab }))
     expect(captureInsertion).toHaveBeenCalledOnce()

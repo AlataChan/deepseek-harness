@@ -6,7 +6,10 @@
   },
   "include": [
     "src/client",
-    "src/css-modules.d.ts"
+    "src/css-modules.d.ts",
+    "src/types.ts",
+    "src/document-view.ts",
+    "src/document-types.ts"
   ],
   "references": [
     {
@@ -50,6 +53,9 @@
     },
     {
       "path": "../../host/ask-knowledge"
+    },
+    {
+      "path": "../../util/brand"
     }
   ]
 }

@@ -181,16 +181,26 @@ describe('S24: Memory review and composer predictions', () => {
       try {
         const { assistants, ctx } = harness
         const sessionId = harness.lead.id
+        await harness.controller.prompt({
+          sessionId,
+          mode: 'queue',
+          requestId: 'test-turn-req' as never,
+          content: [{ type: 'text', text: 'What is the performance implication of this design?' }],
+        }, new AbortController().signal)
+        await harness.lead.whenIdle()
+
+        const liveSession = ctx.sessions.get(sessionId)!
+        const completedEnd = liveSession.snapshotEvents().findLast(e => e.type === 'turn/end' && e.data.reason.kind === 'completed')!
 
         const prediction = await assistants.predictComposer({
           sessionId,
-          asOfSeq: 5,
-          draftText: 'What are the',
+          asOfSeq: completedEnd.seq,
+          draftText: '',
         })
 
         expect(prediction).not.toBeNull()
         expect(prediction?.sessionId).toBe(sessionId)
-        expect(prediction?.asOfSeq).toBe(5)
+        expect(prediction?.asOfSeq).toBe(completedEnd.seq)
         expect(typeof prediction?.text).toBe('string')
         expect(prediction?.text.length).toBeGreaterThan(0)
         expect(prediction?.usage?.purpose).toBe('prediction')
@@ -210,9 +220,8 @@ describe('S24: Memory review and composer predictions', () => {
         expect(summary?.auxiliaryTokens.totalTokens).toBeGreaterThan(0)
 
         // Auxiliary evidence is logged without adding a user turn to the conversation.
-        const liveSession = ctx.sessions.get(sessionId)
-        expect(liveSession?.snapshotEvents().filter(e => e.type === 'assistant/auxiliary')).toHaveLength(2)
-        expect(liveSession?.snapshotEvents().some(e => e.type === 'user/message')).toBe(false)
+        expect(liveSession.snapshotEvents().filter(e => e.type === 'assistant/auxiliary')).toHaveLength(2)
+        expect(liveSession.snapshotEvents().filter(e => e.type === 'user/message')).toHaveLength(1)
       } finally {
         await harness.dispose()
       }

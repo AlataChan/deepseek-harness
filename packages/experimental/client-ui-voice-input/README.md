@@ -63,6 +63,7 @@ No direct effect; ordinary submission owns the message content.
 
 <a id="known-limitations-and-deferred-work"></a>
 
+- Recognition readiness does not establish microphone availability. Capture reports an insecure page, a missing microphone interface, and a missing recording encoder separately; none requires reinstalling the recognition model. macOS distributions declare microphone usage before signing and verify it during bundle readiness checks.
 - No automatic send, always-on microphone, wake word, streaming captions or speech synthesis. “Local” means the Host machine, which can differ from the browser’s machine.
 
 -----

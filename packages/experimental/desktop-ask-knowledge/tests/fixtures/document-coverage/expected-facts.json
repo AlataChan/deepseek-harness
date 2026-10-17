@@ -1,0 +1,100 @@
+{
+  "version": "1.0.0",
+  "long_document": {
+    "filename": "long-document.md",
+    "facts": [
+      {
+        "id": "fact-beginning",
+        "location": "beginning",
+        "section": "第一章 总则与基本原则",
+        "query": "基础津贴",
+        "text": "第一条：基础津贴标准为每月五百元整，由街道社会工作服务站按月统计发放。",
+        "must_appear_before_char": 1000
+      },
+      {
+        "id": "fact-middle",
+        "location": "middle",
+        "section": "第五章 中期运营与跨期审批",
+        "query": "中途审批",
+        "text": "第四十五条：中途审批必须在三个工作日内由财务部复核，超时未答复视为需要补充资料。",
+        "must_appear_between_chars": [
+          12000,
+          25000
+        ]
+      },
+      {
+        "id": "fact-footnote",
+        "location": "middle",
+        "section": "第五章 中期运营与跨期审批",
+        "query": "涉外项目",
+        "text": "[^1]: 补充说明：涉外项目开支执行单独的外币兑换核算标准。",
+        "must_appear_between_chars": [
+          12000,
+          25000
+        ]
+      },
+      {
+        "id": "fact-final",
+        "location": "final",
+        "section": "第十章 终期考核与资产清算",
+        "query": "年终清算",
+        "text": "第一百二十条：末尾条款特别声明：所有年终清算款项必须在十二月三十一日前结算归零。",
+        "must_appear_after_char": 32000
+      },
+      {
+        "id": "fact-exception",
+        "location": "final",
+        "section": "第十章 终期考核与资产清算",
+        "query": "紧急救援",
+        "text": "例外规定：紧急救援支出不受第一百二十条清算期限限制。",
+        "must_appear_after_char": 32000
+      },
+      {
+        "id": "fact-late-table",
+        "location": "final",
+        "section": "第十章 终期考核与资产清算",
+        "query": "结算尾项",
+        "text": "| 结算尾项 | 9999元 | 最终确认无误 |",
+        "must_appear_after_char": 32000
+      }
+    ]
+  },
+  "distractor_document": {
+    "filename": "distractor.md",
+    "description": "Same keywords (津贴, 审批, 清算) but irrelevant narrative context.",
+    "keywords": [
+      "津贴",
+      "审批",
+      "清算",
+      "财务部"
+    ]
+  },
+  "short_terms": {
+    "filename": "short-terms.md",
+    "terms": [
+      "报销",
+      "条例",
+      "纪律",
+      "津贴",
+      "审批",
+      "清算"
+    ]
+  },
+  "evaluation_fixtures": {
+    "sample.docx": {
+      "has_footnote": true,
+      "footnote_text": "电子发票同样需要归档。",
+      "table_text": "社区培训 2000",
+      "heading": "社区项目执行规范"
+    },
+    "text.pdf": {
+      "has_cid_font": true,
+      "chinese_text": "社区培训计划",
+      "latin_table": "Project Budget Training 2000"
+    },
+    "mixed-pages.pdf": {
+      "page_1_has_text": true,
+      "page_2_is_scanned": true
+    }
+  }
+}

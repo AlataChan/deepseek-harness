@@ -1,6 +1,7 @@
 /** Overlay Provider registers as ctx.askKnowledge. */
 
 import { describe, expect, it } from 'vitest'
+import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { Context } from '@deepseek-ai/cordis'
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -16,7 +17,7 @@ describe('DesktopAskKnowledge', () => {
       section: (spec: { name: string; text: (context: { agent?: { session: object } }) => string }) => {
         sections.push(spec.name)
         expect(spec.text({})).toBe('')
-        expect(spec.text({ agent: { session: {} } })).toContain('terms')
+        expect(spec.text({ agent: { session: Session.create(SessionId('seam-session')) } })).toContain('terms')
         return () => {}
       },
     })

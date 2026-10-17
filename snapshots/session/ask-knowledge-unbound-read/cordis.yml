@@ -1,0 +1,13 @@
+# Authored model script; real Ask Knowledge tools refuse unbound source access.
+- insert:
+    - id: ask-knowledge-snapshot
+      name: ./provider.mjs
+      config:
+        knowledgeHome: !!js dshHomePath('ask-knowledge-unbound-read')
+        sidecarRuntimePath: !!js dshHomePath('no-sidecar-required')
+
+- id: agent-instructions
+  disabled: true
+
+- id: skill-filesystem
+  disabled: true

@@ -765,19 +765,40 @@ describe('ask-knowledge picker', () => {
     const beginIngest = vi.fn(async (_libraryId: string, filename: string) => {
       if (filename === '炸.md') throw new Error('传输中断')
       if (filename === '非错误.md') throw '连接被切断'
+      if (filename === '切片失败.md') return { ok: true as const, value: 'h-slice-fail' }
       return { ok: true as const, value: 'h1' }
     })
-    const { view } = renderPicker({ beginIngest })
+    const abortIngest = vi.fn(async () => ({ ok: true as const }))
+    const { view } = renderPicker({ beginIngest, abortIngest })
     await waitFor(() => {
       expect(view.getByText('制度 A')).toBeTruthy()
     })
     view.getByRole('button', { name: '+ 新建知识库' }).click()
-    await changeFiles(view, ['一.md', '炸.md', '非错误.md', '四.md'])
     await waitFor(() => {
-      expect(beginIngest).toHaveBeenCalledTimes(4)
+      expect(fileInput(view)).toBeTruthy()
     })
+    const brokenSliceFile = new File([new Uint8Array([97])], '切片失败.md')
+    vi.spyOn(brokenSliceFile, 'slice').mockImplementation(() => {
+      throw new Error('切片读取失败')
+    })
+    fireEvent.change(fileInput(view), {
+      target: {
+        files: [
+          new File([new Uint8Array([97])], '一.md'),
+          new File([new Uint8Array([97])], '炸.md'),
+          new File([new Uint8Array([97])], '非错误.md'),
+          brokenSliceFile,
+          new File([new Uint8Array([97])], '四.md'),
+        ],
+      },
+    })
+    await waitFor(() => {
+      expect(beginIngest).toHaveBeenCalledTimes(5)
+    })
+    expect(abortIngest).toHaveBeenCalledWith('h-slice-fail')
     expect(view.getAllByText('已入库')).toHaveLength(2)
     expect(view.getByText('传输中断')).toBeTruthy()
+    expect(view.getByText('切片读取失败')).toBeTruthy()
     // A thrown non-Error carries no trusted message, so it takes the generic copy.
     expect(view.getByText('文档没有写进知识库。')).toBeTruthy()
     expect(view.queryByText('连接被切断')).toBeNull()
@@ -1147,4 +1168,16 @@ describe('ask-knowledge picker', () => {
     })
     expect(attach).not.toHaveBeenCalled()
   })
+})
+
+it('attaches retained searchable uploads while wiki extraction awaits spending approval', async () => {
+  const attach = vi.fn(async () => ({ ok: true as const }))
+  const close = vi.fn()
+  const { view } = renderPicker({ attach, close,
+    finishIngest: async () => ({ ok: true, value: { status: 'deferred', rawRelPath: 'raw/doc-unique.md', deferredCount: 1 } }),
+  })
+  fireEvent.click(await view.findByRole('button', { name: '+ 新建知识库' }))
+  await changeFile(view, new File(['retained content'], 'retained.md', { type: 'text/markdown' }))
+  await waitFor(() => expect(attach).toHaveBeenCalled())
+  expect(close).toHaveBeenCalled()
 })

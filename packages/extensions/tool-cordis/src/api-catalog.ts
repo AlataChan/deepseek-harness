@@ -646,6 +646,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Service managing persistent assistant profiles, conversation bindings, scoped model routing, and lifecycle states.',
     methods: [
       {
+        signature: 'isComposerPredictionsEnabled(): boolean',
+        description: 'Whether composer predictions are currently enabled via live volatile getter or boolean.',
+        parameters: [],
+        returns: 'true if enabled.',
+      },
+      {
         signature: 'public readonly creationToolsDisposer: () => void',
         description: 'Disposer for registered assistant and team creation tools.',
         parameters: [],
@@ -1544,13 +1550,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote(\'predictComposer\') async predictComposer(request: ComposerPredictionRequest, signal?: AbortSignal): Promise<ComposerPredictionResult | null>',
-        description: 'Generate one bounded tool-free prediction for an eligible completed turn. Bounded by maxPredictionTokens and predictionTimeoutMs. Accounts for auxiliary usage. Records auxiliary evidence without adding a conversation turn or public reply.',
+        description: 'Generate one bounded tool-free prediction for an eligible completed turn. Authoritatively checks session existence, usability, scope, idle state, and latest completed turn. Disregards remote client-supplied context text; reconstructs context canonically on Host. Single-flights equivalent requests across windows. Bounded by maxPredictionTokens and predictionTimeoutMs. Accounts for auxiliary usage. Records auxiliary evidence without adding a conversation turn or public reply.',
         parameters: [{ name: 'request', description: 'composer prediction request parameters.' }, { name: 'signal', description: 'cancellation for the auxiliary model request.' }],
-        returns: 'composer prediction result or null if disabled / failed.',
+        returns: 'composer prediction result or null if disabled / ineligible / failed.',
       },
       {
         signature: '@Remote(\'getComposerContext\') async getComposerContext(sessionId: SessionId): Promise<ComposerPredictionContext | null>',
-        description: 'Prepare bounded completed-turn text for the current persistent-assistant composer.',
+        description: 'Prepare bounded completed-turn text for the active composer. Supports ordinary chats, assistants, and team coordinators.',
         parameters: [{ name: 'sessionId', description: 'active composer session.' }],
         returns: 'context for the latest successful completed turn, or null when ineligible.',
       },
@@ -8478,11 +8484,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ReviewPredictionManager',
-    declaration: 'export class ReviewPredictionManager {\n    constructor(private readonly ctx: Context, private readonly memoryStore: ReviewMemoryStore, private readonly usage: UsageAggregator, private readonly options: ReviewPredictionManagerOptions = {});\n    cancelSession(sessionId: SessionId): void;\n    dispose(): void;\n    async reviewTurn(request: ReviewTurnRequest): Promise<ReviewTurnResult>;\n    async predictComposer(request: ComposerPredictionRequest, signal?: AbortSignal): Promise<ComposerPredictionResult | null>;\n}',
+    declaration: 'export class ReviewPredictionManager {\n    constructor(private readonly ctx: Context, private readonly memoryStore: ReviewMemoryStore, private readonly usage: UsageAggregator, private readonly options: ReviewPredictionManagerOptions = {});\n    cancelSession(sessionId: SessionId): void;\n    hasInFlight(sessionId: SessionId, asOfSeq: number): boolean;\n    cancelAllPredictions(): void;\n    dispose(): void;\n    async reviewTurn(request: ReviewTurnRequest): Promise<ReviewTurnResult>;\n    async predictComposer(request: ComposerPredictionRequest, signal?: AbortSignal, routeResolver?: () => {\n        provider: string;\n        model: string;\n        reasoningEffort?: string;\n    } | undefined, validator?: () => boolean): Promise<ComposerPredictionResult | null>;\n}',
   },
   {
     name: 'ReviewPredictionManagerOptions',
-    declaration: 'export interface ReviewPredictionManagerOptions {\n    readonly enableMemoryReview?: boolean | undefined;\n    readonly enableComposerPredictions?: boolean | undefined;\n    readonly maxReviewTokens?: number | undefined;\n    readonly maxPredictionTokens?: number | undefined;\n    readonly predictionTimeoutMs?: number | undefined;\n    readonly reviewTimeoutMs?: number | undefined;\n    readonly maxReviewEventsPerTurn?: number | undefined;\n}',
+    declaration: 'export interface ReviewPredictionManagerOptions {\n    readonly enableMemoryReview?: boolean | undefined;\n    readonly enableComposerPredictions?: boolean | Volatile<boolean> | undefined;\n    readonly isPredictionEnabled?: (() => boolean) | undefined;\n    readonly maxReviewTokens?: number | undefined;\n    readonly maxPredictionTokens?: number | undefined;\n    readonly predictionTimeoutMs?: number | undefined;\n    readonly reviewTimeoutMs?: number | undefined;\n    readonly maxReviewEventsPerTurn?: number | undefined;\n    readonly predictionContextMaxBytes?: number | undefined;\n}',
   },
   {
     name: 'ReviewTurnRequest',

@@ -83,3 +83,26 @@ export function encodeIngestChunks(bytes: Uint8Array): string[] {
   if (chunks.length === 0) chunks.push(encodeAskKnowledgeBytes(new Uint8Array()))
   return chunks
 }
+
+/**
+ * Sequentially slice a browser File/Blob and base64-encode one bounded chunk
+ * at a time so the WebView never buffers or base64-inflates the whole file at once.
+ * An empty file yields one empty chunk so `append` still runs.
+ * @param file - browser File or Blob.
+ * @param chunkBytes - maximum decoded bytes per chunk.
+ * @returns async generator of canonical base64 chunk strings.
+ */
+export async function* streamFileIngestChunks(
+  file: Blob,
+  chunkBytes: number = MAX_INGEST_CHUNK_BYTES,
+): AsyncGenerator<string, void, void> {
+  if (file.size === 0) {
+    yield encodeAskKnowledgeBytes(new Uint8Array())
+    return
+  }
+  for (let offset = 0; offset < file.size; offset += chunkBytes) {
+    const slice = file.slice(offset, Math.min(file.size, offset + chunkBytes))
+    const bytes = new Uint8Array(await slice.arrayBuffer())
+    yield encodeAskKnowledgeBytes(bytes)
+  }
+}

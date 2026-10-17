@@ -2,7 +2,7 @@
 
 /** Capture failure whose message is localized by the caller. */
 export class RecordingError extends Error {
-  constructor(readonly kind: 'unavailable' | 'permission' | 'empty' | 'cancelled' | 'interrupted') { super(kind); this.name = 'RecordingError' }
+  constructor(readonly kind: 'unavailable' | 'insecure' | 'recorderUnavailable' | 'permission' | 'empty' | 'cancelled' | 'interrupted') { super(kind); this.name = 'RecordingError' }
 }
 
 /**
@@ -56,8 +56,10 @@ export class Recording {
    * @returns after capture starts; a cancelled permission grant immediately releases its tracks.
    */
   async start(onError?: (error: RecordingError) => void): Promise<void> {
+    if (globalThis.isSecureContext === false) throw new RecordingError('insecure')
     const devices = (navigator as Partial<Navigator>).mediaDevices
-    if (!devices || typeof MediaRecorder === 'undefined') throw new RecordingError('unavailable')
+    if (!devices || typeof devices.getUserMedia !== 'function') throw new RecordingError('unavailable')
+    if (typeof MediaRecorder !== 'function') throw new RecordingError('recorderUnavailable')
     let stream: MediaStream
     try {
       stream = await devices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false })

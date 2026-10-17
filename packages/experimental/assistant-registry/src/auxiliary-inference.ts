@@ -19,9 +19,11 @@ export interface AuxiliaryInferenceResult {
  * @param ctx - live service context.
  * @param accounting - durable auxiliary billing owner.
  * @param sessionId - exact owning session.
- * @param asOfSeq - completed turn or explicit manual review revision.
+ * @param asOfSeq - owning turn start, completed turn, or explicit manual review revision.
  * @param purpose - auxiliary task.
  * @param options - resolved model request, including cancellation.
+ * @param canDispatch - optional live eligibility check after durable request checkpoint.
+ * @param onText - observes the first available nonblank generated text without publishing partial suggestions.
  * @returns observed output, terminal outcome and billed usage.
  */
 export async function runAuxiliaryInference(
@@ -31,6 +33,8 @@ export async function runAuxiliaryInference(
   asOfSeq: number,
   purpose: 'memory_review' | 'prediction',
   options: GenerateOptions,
+  canDispatch?: () => boolean,
+  onText?: () => void,
 ): Promise<AuxiliaryInferenceResult> {
   const sessions = ctx.get('sessions') as SessionStore | undefined
   const session = sessions?.get(sessionId)
@@ -45,9 +49,21 @@ export async function runAuxiliaryInference(
   const llm = ctx.get('llm') as LlmRuntime | undefined
   if (!llm) throw new Error('Auxiliary inference requires the model runtime')
   let finish = 'error'
+  let receivedText = false
   try {
-    for await (const chunk of llm.stream(options)) assembler.push(chunk)
-    finish = assembler.finish?.kind ?? 'error'
+    if (options.signal?.aborted || (canDispatch && !canDispatch())) {
+      finish = 'aborted'
+    } else {
+      for await (const chunk of llm.stream(options)) {
+        assembler.push(chunk)
+        if (!receivedText && ((chunk.type === 'text-delta' && chunk.text.trim()) ||
+          (chunk.type === 'block-end' && chunk.block.type === 'text' && chunk.block.text.trim()))) {
+          receivedText = true
+          onText?.()
+        }
+      }
+      finish = assembler.finish?.kind ?? 'error'
+    }
   } catch (error) {
     // Provider failures are normalized by LlmRuntime; middleware failures retain observed chunks.
     finish = options.signal?.aborted ? 'aborted' : 'error'

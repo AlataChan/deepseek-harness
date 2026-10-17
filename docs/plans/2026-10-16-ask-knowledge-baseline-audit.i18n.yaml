@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for 2026-10-16-ask-knowledge-baseline-audit.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-10-16-ask-knowledge-baseline-audit.md
+/ask-knowledge-task-1-baseline-audit:
+  en: 77013d2d24a3bd13
+  zh: 4f6e87d187ebd369
+/ask-knowledge-task-1-baseline-audit/summary:
+  en: d8f97f9e53491687
+  zh: c271cb77616b7be1
+/ask-knowledge-task-1-baseline-audit/scope-and-method:
+  en: 3b2a3c7b04056f0a
+  zh: 9cd4113f4785ca4a
+/ask-knowledge-task-1-baseline-audit/finding-ledger:
+  en: 3ecfd7ddd071772a
+  zh: cee24b2150dd9094
+/ask-knowledge-task-1-baseline-audit/measurement-a-whole-file-upload-path:
+  en: 239499630fb70f44
+  zh: 5eca1c817841c70a
+/ask-knowledge-task-1-baseline-audit/measurement-b-conversion-and-resource-caps:
+  en: 323d9746d03d1429
+  zh: 8f8b4046030f7885
+/ask-knowledge-task-1-baseline-audit/measurement-c-official-attachment-public-apis:
+  en: cfb279193b41c7ce
+  zh: 523506a09d6cd923
+/ask-knowledge-task-1-baseline-audit/archived-control-rerun:
+  en: 7ccfc4600da61e72
+  zh: 431a3606441768b4
+/ask-knowledge-task-1-baseline-audit/approved-extraction-environmental-interception-with-a-product-co-cause:
+  en: e3f44dadb869a81a
+  zh: 726ba76a52d78a3d
+/ask-knowledge-task-1-baseline-audit/100-mib-ceiling-recommendation:
+  en: e10f7600e6d341b6
+  zh: bc7a628c6029fe1e
+/ask-knowledge-task-1-baseline-audit/verified-versus-unverified:
+  en: a430ceeb2665e524
+  zh: 9e7a9b9e2c27effa
+/ask-knowledge-task-1-baseline-audit/task-1-disposition:
+  en: bdb59f5a693afb6f
+  zh: a8fd4539726d6f21
+/ask-knowledge-task-1-baseline-audit/evidence-index:
+  en: c5222a420d185797
+  zh: 7cafc9bf5a81b089

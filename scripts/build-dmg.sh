@@ -194,6 +194,7 @@ ok "kb-runtime embedded"
 # Ad-hoc signing is not Apple notarization; the DMG still ships an installer
 # that clears quarantine on the user's machine.
 info "Ad-hoc signing the bundle after embedding..."
+node "$REPO_ROOT/scripts/desktop-microphone.mjs" --apply "$APP_BUNDLE"
 codesign --force --sign - --timestamp=none "$RESOURCES/node"
 if [[ -x "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar" ]]; then
   codesign --force --sign - --timestamp=none \

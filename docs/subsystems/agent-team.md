@@ -316,6 +316,12 @@ Service managing persistent assistant profiles, conversation bindings, scoped mo
 
 ```ts cordis-catalog
 /**
+ * Whether composer predictions are currently enabled via live volatile getter or boolean.
+ * @returns true if enabled.
+ */
+isComposerPredictionsEnabled(): boolean
+
+/**
  * Initializes and opens the persistent catalog if available in the current context.
  * @param options - optional catalog open options.
  * @returns opened catalog or undefined if storageDomain is absent.
@@ -1439,16 +1445,20 @@ async observeSessionScoped(sessionId: SessionId, auth: ScopedQueryAuthorization)
 
 /**
  * Generate one bounded tool-free prediction for an eligible completed turn.
+ * Authoritatively checks session existence, usability, scope, idle state, and latest completed turn.
+ * Disregards remote client-supplied context text; reconstructs context canonically on Host.
+ * Single-flights equivalent requests across windows.
  * Bounded by maxPredictionTokens and predictionTimeoutMs. Accounts for auxiliary usage.
  * Records auxiliary evidence without adding a conversation turn or public reply.
  * @param request - composer prediction request parameters.
  * @param signal - cancellation for the auxiliary model request.
- * @returns composer prediction result or null if disabled / failed.
+ * @returns composer prediction result or null if disabled / ineligible / failed.
  */
 @Remote('predictComposer') async predictComposer(request: ComposerPredictionRequest, signal?: AbortSignal): Promise<ComposerPredictionResult | null>
 
 /**
- * Prepare bounded completed-turn text for the current persistent-assistant composer.
+ * Prepare bounded completed-turn text for the active composer.
+ * Supports ordinary chats, assistants, and team coordinators.
  * @param sessionId - active composer session.
  * @returns context for the latest successful completed turn, or null when ineligible.
  */

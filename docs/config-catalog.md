@@ -899,7 +899,8 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-assistant-registry`
 
 - `inject`: `storageDomain` · `storage`
-- `source`: [`packages/experimental/assistant-registry/src/index.ts:265`](../packages/experimental/assistant-registry/src/index.ts)
+- `refs`: `Volatile` (`@deepseek-ai/cordis`)
+- `source`: [`packages/experimental/assistant-registry/src/index.ts:287`](../packages/experimental/assistant-registry/src/index.ts)
 
 ```ts config-catalog
 /** Deployment configuration for assistant registry. */
@@ -923,15 +924,21 @@ export interface Config {
   /** Whether bounded memory review is enabled (defaults to false). */
   readonly enableMemoryReview?: boolean
   /** Whether composer follow-up predictions are enabled (defaults to false). */
-  readonly enableComposerPredictions?: boolean
+  readonly enableComposerPredictions?: Volatile<boolean> | boolean
   /** Token ceiling for memory review auxiliary calls (defaults to 500). */
   readonly maxReviewTokens?: number
-  /** Token ceiling for composer prediction auxiliary calls (defaults to 150). */
+  /** Token ceiling including provider reasoning for composer predictions (defaults to 1024). */
   readonly maxPredictionTokens?: number
-  /** Timeout in ms for composer prediction (defaults to 3000). */
+  /** Whole-request deadline in ms; 0 disables it (default 0). */
   readonly predictionTimeoutMs?: number
+  /** First nonblank-text deadline in ms; 0 disables it (default 0). */
+  readonly predictionFirstTextTimeoutMs?: number
   /** Timeout in ms for memory review auxiliary calls (defaults to 3000). */
   readonly reviewTimeoutMs?: number
+  /** Byte ceiling for serialized prediction context (defaults to 8192). */
+  readonly predictionContextMaxBytes?: number
+  /** Visible reply characters before an early suggestion can start (defaults to 30). */
+  readonly predictionEarlyMinChars?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-assistant-registry -->
@@ -1091,12 +1098,26 @@ export type BrandMarkId = typeof BRAND_MARK_IDS[number]
 ## `@deepseek-ai/dsh-experimental-desktop-ask-knowledge`
 
 - `inject`: `sessionProjections` · `systemPrompt`
-- `source`: [`packages/experimental/desktop-ask-knowledge/src/index.ts:58`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
+- `source`: [`packages/experimental/desktop-ask-knowledge/src/index.ts:123`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
 
 ```ts config-catalog
 /** Validated plugin configuration. */
 export interface Config extends AskKnowledgeHomeConfig {
-  /** Ceiling of one ingest file in bytes after the last chunk is joined. */
+  /** Maximum source characters included in one extraction request. */
+  readonly extractionChunkChars?: number
+  /** Maximum serialized wiki-context characters, including paths and JSON framing, per extraction request. */
+  readonly extractionContextChars?: number
+  /** Deadline in milliseconds for an explicitly approved extraction job. */
+  readonly extractionTimeoutMs?: number
+  /** Reserved maximum output tokens per extraction request. */
+  readonly extractionOutputTokens?: number
+  /** Deadline in milliseconds for document or file conversion subprocesses. */
+  readonly conversionTimeoutMs?: number
+  /** Maximum converted markdown or file-result payload size in bytes. */
+  readonly maxConvertedBytes?: number
+  /** Maximum uncompressed `word/document.xml` size in bytes when extracting `.docx` files. */
+  readonly maxDocxXmlBytes?: number
+  /** Maximum accepted source file size in bytes. */
   readonly maxIngestBytes?: number
   /** Maximum retrieve items kept in the full tool result. */
   readonly maxResultItems?: number
@@ -1108,10 +1129,24 @@ export interface Config extends AskKnowledgeHomeConfig {
 
 /** Validated plugin configuration. */
 export interface AskKnowledgeHomeConfig {
+  /** Input conversion admission; official originals remain retained when conversion is refused. */
+  readonly maxIngestBytes?: number
+  /** Complete serialized tool result bounds. */
+  readonly maxResultTokens?: number
+  /** Maximum text characters in a result. */
+  readonly maxResultChars?: number
+  /** Maximum items in a result. */
+  readonly maxResultItems?: number
   /** Absolute Tauri app-data directory. Empty falls through to `OCTOPUS_APP_DATA`. */
   readonly knowledgeHome?: string
   /** Absolute sidecar runtime root. Empty falls through to `OCTOPUS_SIDECAR_HOME`. */
   readonly sidecarRuntimePath?: string
+  /** Deadline in milliseconds for document or file conversion subprocesses. */
+  readonly conversionTimeoutMs?: number
+  /** Maximum converted markdown or file-result payload size in bytes. */
+  readonly maxConvertedBytes?: number
+  /** Maximum uncompressed `word/document.xml` size in bytes when extracting `.docx` files. */
+  readonly maxDocxXmlBytes?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-ask-knowledge -->

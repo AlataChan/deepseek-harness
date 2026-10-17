@@ -1108,9 +1108,6 @@
     "0a83ecbbd83aff377381cd617da9cfa8d675e628b29381476b93949cfbbf9974": 1,
     "bfc9642ac51c90129e3895e8cbb1dcf8f5e07c61cadf197faf0346e89a85d8a1": 1
   },
-  "packages/experimental/desktop-ask-knowledge/src/client/index.ts": {
-    "48584e11058a7a43845bad499c865d8eeed32ce2bfee55d71cc969abc9fbb232": 2
-  },
   "packages/experimental/desktop-ask-knowledge/src/ingest.ts": {
     "745f48d4389ebd211b9db49da44ac42993e6823ca2fa7fb6f43fb80cfaff73a8": 1
   },

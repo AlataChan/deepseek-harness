@@ -6,7 +6,10 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
-import { Context, Service } from '@deepseek-ai/cordis'
+import { Context, Service, type Volatile } from '@deepseek-ai/cordis'
+import { completedPredictionContext, streamingPredictionContext } from './prediction-context.ts'
+import type {} from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import { SessionId, type Session, type SessionStore } from '@deepseek-ai/dsh-session'
@@ -128,6 +131,11 @@ import {
   INSTRUCTION_PATTERN,
   isDuplicateMemory,
   evaluateMemoryCandidate,
+  truncateToUtf8Bytes,
+  buildBoundedConversationContext,
+  buildBoundedPredictionPrompt,
+  parseAndValidatePrediction,
+  ASSISTANT_PREFIX_PATTERN,
   type ReviewPredictionManagerOptions,
 } from './review-prediction.ts'
 import { TEAM_TEMPLATES, getTeamTemplate } from './templates.ts'
@@ -216,6 +224,11 @@ export {
   INSTRUCTION_PATTERN,
   isDuplicateMemory,
   evaluateMemoryCandidate,
+  truncateToUtf8Bytes,
+  buildBoundedConversationContext,
+  buildBoundedPredictionPrompt,
+  parseAndValidatePrediction,
+  ASSISTANT_PREFIX_PATTERN,
   type ReviewPredictionManagerOptions,
 }
 export { TEAM_TEMPLATES, getTeamTemplate }
@@ -261,6 +274,15 @@ const CATALOG_DEPENDENCY_SETTLE_TIMEOUT_MS = 5_000
 /** Delay between catalog open attempts while the storage facility settles. */
 const CATALOG_DEPENDENCY_SETTLE_RETRY_MS = 10
 
+type EarlyPrediction = {
+  session: Session
+  attemptId: string
+  binding: string
+  route: { provider: string; model: string; reasoningEffort?: string }
+  controller: AbortController
+  promise: Promise<ComposerPredictionResult | null>
+}
+
 /** Deployment configuration for assistant registry. */
 export interface Config {
   /** Maximum number of active assistant profiles. */
@@ -282,15 +304,21 @@ export interface Config {
   /** Whether bounded memory review is enabled (defaults to false). */
   readonly enableMemoryReview?: boolean
   /** Whether composer follow-up predictions are enabled (defaults to false). */
-  readonly enableComposerPredictions?: boolean
+  readonly enableComposerPredictions?: Volatile<boolean> | boolean
   /** Token ceiling for memory review auxiliary calls (defaults to 500). */
   readonly maxReviewTokens?: number
-  /** Token ceiling for composer prediction auxiliary calls (defaults to 150). */
+  /** Token ceiling including provider reasoning for composer predictions (defaults to 1024). */
   readonly maxPredictionTokens?: number
-  /** Timeout in ms for composer prediction (defaults to 3000). */
+  /** Whole-request deadline in ms; 0 disables it (default 0). */
   readonly predictionTimeoutMs?: number
+  /** First nonblank-text deadline in ms; 0 disables it (default 0). */
+  readonly predictionFirstTextTimeoutMs?: number
   /** Timeout in ms for memory review auxiliary calls (defaults to 3000). */
   readonly reviewTimeoutMs?: number
+  /** Byte ceiling for serialized prediction context (defaults to 8192). */
+  readonly predictionContextMaxBytes?: number
+  /** Visible reply characters before an early suggestion can start (defaults to 30). */
+  readonly predictionEarlyMinChars?: number
 }
 
 /**
@@ -300,7 +328,7 @@ export interface Config {
 export class AssistantService extends TypertRemoteService {
   static inject = ['storageDomain', 'storage']
 
-  static Config: z<Config> = z.object({
+  static Config = z.object({
     maxProfiles: z.natural().default(64),
     lockPath: z.string(),
     autoOpen: z.boolean().default(true),
@@ -310,12 +338,27 @@ export class AssistantService extends TypertRemoteService {
     deploymentAllowTerminal: z.boolean().required(false),
     deploymentAllowSubagents: z.boolean().required(false),
     enableMemoryReview: z.boolean().default(false),
-    enableComposerPredictions: z.boolean().default(false),
+    enableComposerPredictions: z.boolean().default(false).volatile(),
     maxReviewTokens: z.natural().default(500),
-    maxPredictionTokens: z.natural().default(150),
-    predictionTimeoutMs: z.natural().default(3000),
+    maxPredictionTokens: z.natural().default(1024),
+    predictionTimeoutMs: z.natural().default(0),
+    predictionFirstTextTimeoutMs: z.natural().default(0),
     reviewTimeoutMs: z.natural().default(3000),
+    predictionContextMaxBytes: z.natural().default(8192),
+    predictionEarlyMinChars: z.natural().min(1).default(30),
   })
+
+  /**
+   * Whether composer predictions are currently enabled via live volatile getter or boolean.
+   * @returns true if enabled.
+   */
+  isComposerPredictionsEnabled(): boolean {
+    const val = this.config.enableComposerPredictions
+    if (val && typeof val === 'object' && 'get' in val && typeof (val as { get: () => unknown }).get === 'function') {
+      return (val as Volatile<boolean>).get() === true
+    }
+    return val === true
+  }
 
   private get agents(): AgentRegistry | undefined {
     return this.ctx.get('agents')
@@ -389,6 +432,9 @@ export class AssistantService extends TypertRemoteService {
 
   private catalogInitPromise?: Promise<AssistantCatalog | undefined> | undefined
   private readonly completedReviewTasks = new Map<string, Promise<void>>()
+  private readonly predictionTurnStarts = new Map<SessionId, { session: Session; seq: number; turn: number }>()
+  private readonly predictionReplyPrefixes = new Map<SessionId, { attemptId: string; turn: number; text: string }>()
+  private readonly earlyPredictions = new Map<SessionId, EarlyPrediction>()
   private readonly backgroundRoundTasks = new Map<GroupRoundId, Promise<void>>()
   private readonly backgroundRoundErrors = new Map<GroupRoundId, Error>()
   private disposed = false
@@ -447,10 +493,13 @@ export class AssistantService extends TypertRemoteService {
       {
         enableMemoryReview: config.enableMemoryReview,
         enableComposerPredictions: config.enableComposerPredictions,
+        isPredictionEnabled: () => this.isComposerPredictionsEnabled(),
         maxReviewTokens: config.maxReviewTokens,
         maxPredictionTokens: config.maxPredictionTokens,
         predictionTimeoutMs: config.predictionTimeoutMs,
+        predictionFirstTextTimeoutMs: config.predictionFirstTextTimeoutMs,
         reviewTimeoutMs: config.reviewTimeoutMs,
+        predictionContextMaxBytes: config.predictionContextMaxBytes,
       },
     )
     installRouteOverride(ctx, this)
@@ -458,8 +507,29 @@ export class AssistantService extends TypertRemoteService {
     this.memoryInstaller = installMemoryInjection(ctx, this)
     this.creationToolsDisposer = installCreationTools(ctx, this)
 
+    ctx.inject(['settings'], (child) => {
+      child.effect(() => child.settings.configure({ auto: false }, ctx.fiber))
+    })
+
+    ctx.on('loader/volatile-update', () => {
+      if (!this.isComposerPredictionsEnabled()) {
+        this.reviewPredictions.cancelAllPredictions()
+        this.cancelEarlyPredictions()
+      }
+    })
+
     ctx.on('session/event', (session, event) => {
-      if (event.type === 'turn/start') this.reviewPredictions.cancelSession(session.id)
+      if (event.type === 'turn/start') {
+        this.reviewPredictions.cancelSession(session.id)
+        this.cancelEarlyPrediction(session.id)
+        this.predictionTurnStarts.set(session.id, { session, seq: event.seq, turn: event.data.turn })
+      }
+      if (event.type === 'turn/end' && event.data.reason.kind !== 'completed') {
+        this.cancelEarlyPrediction(session.id)
+        this.predictionTurnStarts.delete(session.id)
+      }
+      if (event.type === 'turn/end' && event.data.reason.kind === 'completed' &&
+        !this.earlyPredictions.has(session.id)) this.predictionTurnStarts.delete(session.id)
       if (event.type === 'model/selection') {
         const convId = this.conversationBySession.get(String(session.id))
         if (!convId) return
@@ -488,7 +558,7 @@ export class AssistantService extends TypertRemoteService {
         if (this.completedReviewTasks.has(key)) return
         const review = Promise.resolve()
           .then(async () => {
-            const context = await this.readCompletedTurnContext(session.id, event.seq)
+            const context = await this.readCompletedTurnContext(session.id, event.seq, false)
             if (!context) return
             await this.reviewTurn({
               sessionId: session.id,
@@ -498,7 +568,7 @@ export class AssistantService extends TypertRemoteService {
               turnTexts: context.recentTexts,
             })
           })
-          .catch((error) => {
+          .catch((error: unknown) => {
             this.ctx.logger.warn('Automatic memory review failed: %s', error)
           })
         this.completedReviewTasks.set(key, review)
@@ -506,6 +576,40 @@ export class AssistantService extends TypertRemoteService {
           this.completedReviewTasks.delete(key)
         })
       }
+    })
+
+    ctx.on('agent/assistant-stream', ({ agent, frame }) => {
+      if (!this.isComposerPredictionsEnabled()) return
+      const sessionId = agent.session.id
+      if (frame.type === 'start') {
+        this.predictionReplyPrefixes.set(sessionId, { attemptId: String(frame.attemptId), turn: frame.turn, text: '' })
+        return
+      }
+      if (frame.type === 'end') {
+        const early = this.earlyPredictions.get(sessionId)
+        if (early?.attemptId === String(frame.attemptId) &&
+          (frame.outcome.kind === 'abandoned' || frame.outcome.eventType === 'assistant/attempt')) {
+          this.cancelEarlyPrediction(sessionId)
+        } else {
+          this.predictionReplyPrefixes.delete(sessionId)
+        }
+        return
+      }
+      if (frame.chunk.type !== 'text-delta' || this.earlyPredictions.has(sessionId)) return
+      const prefix = this.predictionReplyPrefixes.get(sessionId)
+      if (!prefix || prefix.attemptId !== String(frame.attemptId)) return
+      prefix.text = (prefix.text + frame.chunk.text).slice(0, this.config.predictionContextMaxBytes ?? 8192)
+      const minChars = this.config.predictionEarlyMinChars ?? 30
+      for (const ending of prefix.text.matchAll(/[。！？]|[.!?](?:\s|$)/gu)) {
+        if (ending.index + 1 < minChars) continue
+        this.startEarlyPrediction(agent, prefix.attemptId, prefix.turn, prefix.text.slice(0, ending.index + 1))
+        break
+      }
+    }, { global: true })
+
+    ctx.on('agent/disposed', ({ agent }) => {
+      this.cancelEarlyPrediction(agent.session.id)
+      this.predictionTurnStarts.delete(agent.session.id)
     })
 
     ctx.on('agent/created', ({ agent }) => {
@@ -783,7 +887,17 @@ export class AssistantService extends TypertRemoteService {
    */
   getTeamIdBySessionSync(sessionId: SessionId | string): TeamDefinitionId | undefined {
     const seat = this.getSeatBySessionSync(sessionId)
-    return this.sessionToTeam.get(String(sessionId)) ?? seat?.teamId
+    if (seat?.teamId) return seat.teamId
+    const sid = String(sessionId)
+    const direct = this.sessionToTeam.get(sid)
+    if (direct) return direct
+    for (const team of this.teams.values()) {
+      if (team.leadSessionId && String(team.leadSessionId) === sid) {
+        this.sessionToTeam.set(sid, team.id)
+        return team.id
+      }
+    }
+    return undefined
   }
 
   /**
@@ -1374,6 +1488,14 @@ export class AssistantService extends TypertRemoteService {
       }
       const deleted = await this.catalog.deleteProfile(id, expectedRevision)
       this.profiles.set(id, deleted)
+      for (const conv of this.conversations.values()) {
+        if (conv.profileId === id) this.reviewPredictions.cancelSession(conv.rootSessionId)
+      }
+      for (const seat of this.seats.values()) {
+        if (seat.profileId === id) {
+          for (const sessionId of seat.runtimeInstances) this.reviewPredictions.cancelSession(sessionId)
+        }
+      }
       for (const [key, entry] of this.memories) {
         if (entry.scope.kind === 'profile' && entry.scope.profileId === id) this.memories.delete(key)
       }
@@ -1403,6 +1525,10 @@ export class AssistantService extends TypertRemoteService {
       }
       const deleted = await this.catalog.deleteTeam(id, expectedRevision)
       this.teams.set(id, deleted)
+      if (team?.leadSessionId) this.reviewPredictions.cancelSession(team.leadSessionId)
+      for (const seat of this.listSeatsSync(id)) {
+        for (const sessionId of seat.runtimeInstances) this.reviewPredictions.cancelSession(sessionId)
+      }
       for (const [key, entry] of this.memories) {
         if (entry.scope.kind === 'team' && entry.scope.teamId === id) this.memories.delete(key)
       }
@@ -2220,6 +2346,8 @@ export class AssistantService extends TypertRemoteService {
       }
     }
     this.seats.set(id, retired)
+    for (const sessionId of existing.runtimeInstances) this.reviewPredictions.cancelSession(sessionId)
+    if (existing.activeInstanceId) this.reviewPredictions.cancelSession(existing.activeInstanceId)
     return retired
   }
 
@@ -3333,8 +3461,10 @@ export class AssistantService extends TypertRemoteService {
   @Remote('saveMemory')
   async saveMemory(scope: MemoryScope, text: string, options?: SaveMemoryOptions): Promise<MemoryEntry> {
     await this.ensureCatalogReady()
-    if (scope.kind === 'profile' ? this.lifecycleChanges.has(scope.profileId) || this.getProfileSync(scope.profileId)?.deletedAt !== undefined
-      : this.lifecycleChanges.has(scope.teamId) || this.getTeamSync(scope.teamId)?.deletedAt !== undefined) throw new Error('Memory owner was deleted')
+    if (scope.kind === 'profile' ? this.lifecycleChanges.has(scope.profileId) ||
+      this.getProfileSync(scope.profileId)?.deletedAt !== undefined
+      : this.lifecycleChanges.has(scope.teamId) ||
+        this.getTeamSync(scope.teamId)?.deletedAt !== undefined) throw new Error('Memory owner was deleted')
     const trimmed = text.trim()
     if (!trimmed) {
       throw new Error('Memory text cannot be empty')
@@ -4087,54 +4217,361 @@ export class AssistantService extends TypertRemoteService {
   }
 
   /**
-   * Generate one bounded tool-free prediction for an eligible completed turn.
+   * Return one bounded tool-free prediction for an eligible completed turn.
+   * Reuse a matching suggestion started from the live reply when available.
+   * Authoritatively checks session existence, usability, scope, idle state, and latest completed turn.
+   * Disregards remote client-supplied context text; reconstructs context canonically on Host.
+   * Single-flights equivalent requests across windows.
    * Bounded by maxPredictionTokens and predictionTimeoutMs. Accounts for auxiliary usage.
    * Records auxiliary evidence without adding a conversation turn or public reply.
+   * Desktop consumers use streamComposerPrediction to keep the carrier available.
    * @param request - composer prediction request parameters.
    * @param signal - cancellation for the auxiliary model request.
-   * @returns composer prediction result or null if disabled / failed.
+   * @returns composer prediction result or null if disabled / ineligible / failed.
    */
   @Remote('predictComposer')
   async predictComposer(request: ComposerPredictionRequest, signal?: AbortSignal): Promise<ComposerPredictionResult | null> {
-    this.assertSessionUsable(request.sessionId)
-    return this.reviewPredictions.predictComposer(request, signal)
+    if (!this.isComposerPredictionsEnabled()) return null
+    if (signal?.aborted) return null
+    if (request.draftText !== undefined && request.draftText.length > 0) return null
+
+    // Ingress verification: session existence
+    const liveSession = this.sessions?.get(request.sessionId)
+    if (!liveSession) return null
+
+    try {
+      this.assertSessionUsable(request.sessionId)
+    } catch {
+      return null
+    }
+
+    // Ingress authorization: scope verification
+    if (request.scope?.profileId) {
+      const conv = this.getConversationBySessionSync(request.sessionId)
+      const seat = this.getSeatBySessionSync(request.sessionId)
+      const boundProfileId = conv?.profileId ?? seat?.profileId
+      if (boundProfileId !== request.scope.profileId) return null
+    }
+    if (request.scope?.teamId) {
+      const teamId = this.getTeamIdBySessionSync(request.sessionId)
+      if (teamId !== request.scope.teamId) return null
+    }
+
+    // Retired seat check
+    const seat = this.getSeatBySessionSync(request.sessionId)
+    if (seat?.retiredAt !== undefined) return null
+
+    // Agent running check
+    const agent = this.agents?.get(request.sessionId)
+    if (agent && agent.status === 'running') return null
+
+    const binding = this.predictionBindingIdentity(request.sessionId)
+    const early = this.earlyPredictions.get(request.sessionId)
+    const currentRoute = this.resolveRouteForPrediction(request.sessionId)
+    if (early?.session === liveSession && early.binding === binding && currentRoute &&
+      early.route.provider === currentRoute.provider && early.route.model === currentRoute.model &&
+      early.route.reasoningEffort === currentRoute.reasoningEffort &&
+      this.isPredictionSessionEligible(request, liveSession, request.asOfSeq, binding)) {
+      const result = await early.promise
+      return result && !signal?.aborted &&
+        this.isPredictionSessionEligible(request, liveSession, request.asOfSeq, binding)
+        ? { ...result, asOfSeq: request.asOfSeq } : null
+    }
+
+    // Canonical context reconstruction on Host (disregards client-supplied recentTexts)
+    const context = await this.readCompletedTurnContext(request.sessionId, request.asOfSeq)
+    if (!context) return null
+
+    const validate = () => this.isPredictionSessionEligible(request, liveSession, context.asOfSeq, binding)
+
+    return this.reviewPredictions.predictComposer(
+      {
+        ...request,
+        asOfSeq: context.asOfSeq,
+        recentTexts: context.recentTexts,
+      },
+      signal,
+      () => this.resolveRouteForPrediction(request.sessionId),
+      validate,
+    )
+  }
+
+  private cancelEarlyPrediction(sessionId: SessionId): void {
+    this.predictionReplyPrefixes.delete(sessionId)
+    const early = this.earlyPredictions.get(sessionId)
+    this.earlyPredictions.delete(sessionId)
+    early?.controller.abort()
+  }
+
+  private cancelEarlyPredictions(): void {
+    for (const sessionId of this.earlyPredictions.keys()) this.cancelEarlyPrediction(sessionId)
+    this.predictionReplyPrefixes.clear()
+  }
+
+  private startEarlyPrediction(agent: Agent, attemptId: string, turn: number, partialReply: string): void {
+    const sessionId = agent.session.id
+    const session = this.sessions?.get(sessionId)
+    if (!session || this.earlyPredictions.has(sessionId) || agent.status !== 'running') return
+    if ((session.header.delegationDepth ?? 0) > 0 || this.getSeatBySessionSync(sessionId)?.role === 'teammate') return
+    const start = this.predictionTurnStarts.get(sessionId)
+    if (!start || start.session !== session || start.turn !== turn) return
+    try {
+      this.assertSessionUsable(sessionId)
+    } catch {
+      return
+    }
+    if (this.getSeatBySessionSync(sessionId)?.retiredAt !== undefined) return
+    const query = this.ctx.get('sessionQuery')
+    if (!query) return
+    const route = this.resolveRouteForPrediction(sessionId)
+    if (!route) return
+    const binding = this.predictionBindingIdentity(sessionId)
+    const controller = new AbortController()
+    const early: EarlyPrediction = {
+      session, attemptId, binding, route, controller,
+      promise: Promise.resolve(null),
+    }
+    const valid = (): boolean => {
+      if (this.disposed || !this.isComposerPredictionsEnabled() || controller.signal.aborted) return false
+      if (this.earlyPredictions.get(sessionId) !== early || this.sessions?.get(sessionId) !== session ||
+        this.agents?.get(sessionId) !== agent || this.predictionTurnStarts.get(sessionId) !== start) return false
+      if (this.predictionBindingIdentity(sessionId) !== binding ||
+        this.getSeatBySessionSync(sessionId)?.retiredAt !== undefined) return false
+      try {
+        this.assertSessionUsable(sessionId)
+      } catch {
+        return false
+      }
+      return true
+    }
+    this.earlyPredictions.set(sessionId, early)
+    early.promise = (async () => {
+      const observation = await query.observeSession(sessionId, { signal: controller.signal })
+      try {
+        if (!valid()) return null
+        const context = streamingPredictionContext(
+          observation.events, start.seq, partialReply, this.config.predictionContextMaxBytes ?? 8192,
+        )
+        if (!context) {
+          if (this.earlyPredictions.get(sessionId) === early) this.earlyPredictions.delete(sessionId)
+          return null
+        }
+        return await this.reviewPredictions.predictComposer(
+          { sessionId, asOfSeq: start.seq, draftText: '', recentTexts: context.recentTexts },
+          controller.signal,
+          () => this.resolveRouteForPrediction(sessionId),
+          valid,
+        )
+      } finally {
+        observation[Symbol.dispose]()
+      }
+    })().catch((error: unknown) => {
+      if (!controller.signal.aborted) this.ctx.logger.warn('Early composer prediction failed: %s', error)
+      return null
+    })
   }
 
   /**
-   * Prepare bounded completed-turn text for the current persistent-assistant composer.
+   * Prepare bounded completed-turn text for the active composer.
+   * Supports ordinary chats, assistants, and team coordinators.
    * @param sessionId - active composer session.
    * @returns context for the latest successful completed turn, or null when ineligible.
    */
   @Remote('getComposerContext')
   async getComposerContext(sessionId: SessionId): Promise<ComposerPredictionContext | null> {
-    if (!this.config.enableComposerPredictions || !this.isAssistantBound(sessionId)) return null
-    this.assertSessionUsable(sessionId)
-    const agent = (this.ctx.get('agents') as AgentRegistry | undefined)?.get(sessionId)
-    if (!agent || agent.status === 'running') return null
-    return this.readCompletedTurnContext(sessionId)
+    if (!this.isComposerPredictionsEnabled()) return null
+    try {
+      this.assertSessionUsable(sessionId)
+    } catch {
+      return null
+    }
+
+    const seat = this.getSeatBySessionSync(sessionId)
+    if (seat?.retiredAt !== undefined) return null
+
+    const agent = this.agents?.get(sessionId)
+    if (agent && agent.status === 'running') return null
+
+    const liveSession = this.sessions?.get(sessionId)
+    if (!liveSession) return null
+    const binding = this.predictionBindingIdentity(sessionId)
+    const context = await this.readCompletedTurnContext(sessionId)
+    if (!context || !this.isPredictionSessionEligible(
+      { sessionId, asOfSeq: context.asOfSeq }, liveSession, context.asOfSeq, binding,
+    )) return null
+    return context
   }
 
-  private async readCompletedTurnContext(sessionId: SessionId, endSeq?: number): Promise<ComposerPredictionContext | null> {
+  /**
+   * Deliver one prediction without holding the desktop unary request queue.
+   * @param request - prediction identity and current draft.
+   * @param signal - stream lifetime; closing the stream releases this subscriber.
+   * @returns one completed prediction or null, then closes.
+   */
+  @Remote({ mode: 'stream' })
+  async *streamComposerPrediction(request: ComposerPredictionRequest, signal: AbortSignal): AsyncIterable<ComposerPredictionResult | null> {
+    yield await this.predictComposer(request, signal)
+  }
+
+  private predictionBindingIdentity(sessionId: SessionId): string {
+    return JSON.stringify([
+      this.getConversationBySessionSync(sessionId)?.id,
+      this.getConversationBySessionSync(sessionId)?.profileId,
+      this.getSeatBySessionSync(sessionId)?.id,
+      this.getSeatBySessionSync(sessionId)?.profileId,
+      this.getTeamIdBySessionSync(sessionId),
+    ])
+  }
+
+  private isPredictionSessionEligible(
+    request: ComposerPredictionRequest,
+    session: Session,
+    endSeq: number,
+    binding: string,
+  ): boolean {
+    if (this.disposed || !this.isComposerPredictionsEnabled()) return false
+    if (this.sessions?.get(request.sessionId) !== session) return false
+    try {
+      this.assertSessionUsable(request.sessionId)
+    } catch {
+      return false
+    }
+    if (this.predictionBindingIdentity(request.sessionId) !== binding) return false
+    const seat = this.getSeatBySessionSync(request.sessionId)
+    if (seat?.retiredAt !== undefined) return false
+    if (request.scope?.profileId && request.scope.profileId !==
+      (this.getConversationBySessionSync(request.sessionId)?.profileId ?? seat?.profileId)) return false
+    if (request.scope?.teamId && request.scope.teamId !== this.getTeamIdBySessionSync(request.sessionId)) return false
+    if (this.agents?.get(request.sessionId)?.status === 'running') return false
+    const events = session.snapshotEvents()
+    const lastEnd = events.findLast(event => event.type === 'turn/end')
+    return lastEnd?.seq === endSeq && lastEnd.data.reason.kind === 'completed'
+  }
+
+  private resolveRouteForPrediction(sessionId: SessionId): { provider: string; model: string; reasoningEffort?: string } | undefined {
+    const captured = this.resolveEffectiveRoute(sessionId)
+    if (captured?.route.provider && captured?.route.model) {
+      return {
+        provider: captured.route.provider,
+        model: captured.route.model,
+        ...(captured.route.reasoningEffort ? { reasoningEffort: captured.route.reasoningEffort } : {}),
+      }
+    }
+
+    const session = this.sessions?.get(sessionId)
+    if (session) {
+      const projections = this.ctx.get('sessionProjections') as {
+        snapshot?: (s: unknown) => {
+          values?: {
+            modelSelection?: {
+              next?: { provider: string; model: string; reasoningEffort?: string } | null
+              lastUsed?: { provider: string; model: string; reasoningEffort?: string } | null
+            }
+          }
+        }
+      } | undefined
+      if (projections?.snapshot) {
+        try {
+          const snapshot = projections.snapshot(session)
+          const sel = snapshot.values?.modelSelection?.next ?? snapshot.values?.modelSelection?.lastUsed
+          if (sel?.provider && sel?.model) {
+            return {
+              provider: sel.provider,
+              model: sel.model,
+              ...(sel.reasoningEffort ? { reasoningEffort: sel.reasoningEffort } : {}),
+            }
+          }
+        } catch {
+          // projection not available
+        }
+      }
+
+      const header = session.requestHeader()
+      if (header?.config.provider && header?.config.model) {
+        return {
+          provider: header.config.provider,
+          model: header.config.model,
+          ...(header.config.reasoningEffort ? { reasoningEffort: String(header.config.reasoningEffort) } : {}),
+        }
+      }
+    }
+
+    const defaultModel = this.ctx.get('agentDefaultModel') as { currentSelection: () => { provider: string; model: string } } | undefined
+    if (defaultModel) {
+      const sel = defaultModel.currentSelection()
+      if (sel?.provider && sel?.model) {
+        return { provider: sel.provider, model: sel.model }
+      }
+    }
+
+    return undefined
+  }
+
+  private async readCompletedTurnContext(sessionId: SessionId, endSeq?: number,
+    prediction = true): Promise<ComposerPredictionContext | null> {
     const query = this.ctx.get('sessionQuery') as import('@deepseek-ai/dsh-session-query').SessionQueryEngine | undefined
     if (!query) throw new Error('Assistant completed-turn context requires sessionQuery')
-    const observation = await query.observeSession(sessionId)
+    let observation
+    try {
+      observation = await query.observeSession(sessionId)
+    } catch {
+      return null
+    }
     try {
       const events = observation.events
-      const end = events.findLast(
-        e => e.type === 'turn/end' && e.data.reason.kind === 'completed' && (endSeq === undefined || e.seq === endSeq),
-      )
-      if (!end || end.type !== 'turn/end') return null
-      const start = events.findLast(e => e.type === 'turn/start' && e.data.turn === end.data.turn && e.seq < end.seq)
+      const lastEnd = events.findLast(e => e.type === 'turn/end')
+      if (!lastEnd || lastEnd.data.reason.kind !== 'completed') return null
+      if (endSeq !== undefined && lastEnd.seq !== endSeq) return null
+      if (prediction) return completedPredictionContext(events, lastEnd.seq, this.config.predictionContextMaxBytes ?? 8192)
+      const start = events.findLast(e => e.type === 'turn/start' && e.data.turn === lastEnd.data.turn && e.seq < lastEnd.seq)
       if (!start) return null
-      const recentTexts = events
-        .filter(e => e.seq > start.seq && e.seq < end.seq)
-        .flatMap((e) => {
-          const content = e.type === 'user/message' ? e.data.content : e.type === 'assistant/message' ? e.data.message.content : []
-          return content.filter(c => c.type === 'text').map(c => c.text)
-        })
-        .slice(-10)
-        .map(text => text.slice(0, 500))
-      return { asOfSeq: end.seq, recentTexts }
+
+      // Retain event references only; large message bodies are sliced before text processing.
+      const selected: typeof events[number][] = []
+      let firstUser: typeof events[number] | undefined
+      for (const event of events) {
+        if (event.seq > lastEnd.seq) break
+        if (event.type === 'user/message' && event.data.source.kind === 'user') { firstUser = event; break }
+      }
+      for (let index = events.length - 1; index >= 0 && selected.length < 20; index--) {
+        const event = (events[index] as typeof events[number])
+        if (event.seq <= lastEnd.seq && ((event.type === 'user/message' && event.data.source.kind === 'user') ||
+          event.type === 'assistant/message')) {
+          selected.unshift(event)
+        }
+      }
+      if (firstUser && !selected.includes(firstUser)) selected.unshift(firstUser)
+      const maxBytes = this.config.predictionContextMaxBytes ?? 2048
+      const conversationMessages: string[] = []
+      const envelopeBytes = Buffer.byteLength(JSON.stringify({ asOfSeq: lastEnd.seq, recentTexts: [] }), 'utf8')
+      let remaining = Math.max(0, maxBytes - envelopeBytes)
+      for (let index = 0; index < selected.length && remaining > 0; index++) {
+        const event = (selected[index] as typeof selected[number])
+        const content = event.type === 'user/message' ? event.data.content
+          : event.type === 'assistant/message' ? event.data.message.content : []
+        const prefix = event.type === 'user/message' ? 'User: ' : 'Assistant: '
+        const entryAllowance = Math.floor(remaining / (selected.length - index))
+        let text = ''
+        for (const block of content) {
+          if (block.type !== 'text') continue
+          const allowance = entryAllowance - Buffer.byteLength(JSON.stringify(prefix + text), 'utf8') - 1
+          if (allowance <= 0) break
+          const bounded = truncateToUtf8Bytes(block.text, allowance).trim()
+          if (bounded) text += (text ? '\n' : '') + bounded
+        }
+        if (!text) continue
+        let entry = prefix + text
+        while (Buffer.byteLength(JSON.stringify(entry), 'utf8') + 1 > entryAllowance && entry.length > prefix.length) {
+          const overage = Buffer.byteLength(JSON.stringify(entry), 'utf8') + 1 - entryAllowance
+          entry = truncateToUtf8Bytes(entry, Buffer.byteLength(entry, 'utf8') - overage)
+        }
+        if (entry.length <= prefix.length) continue
+        conversationMessages.push(entry)
+        remaining -= Buffer.byteLength(JSON.stringify(entry), 'utf8') + 1
+      }
+
+      if (conversationMessages.length === 0) return null
+      return { asOfSeq: lastEnd.seq, recentTexts: conversationMessages }
     } finally {
       observation[Symbol.dispose]()
     }
@@ -4145,7 +4582,11 @@ export class AssistantService extends TypertRemoteService {
    */
   async dispose(): Promise<void> {
     this.disposed = true
+    const earlyTasks = [...this.earlyPredictions.values()].map(entry => entry.promise)
+    this.cancelEarlyPredictions()
+    this.predictionTurnStarts.clear()
     this.reviewPredictions.dispose()
+    await Promise.allSettled(earlyTasks)
     await Promise.allSettled(
       [...this.backgroundRoundTasks.keys()].map(roundId => this.roundScheduler.cancelRound(roundId, 'Assistant service disposed')),
     )

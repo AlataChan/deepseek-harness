@@ -1,0 +1,3922 @@
+{
+  "site": "https://vibe-hub.org",
+  "revision": "8bd0124c23d96f32",
+  "fetchedAt": "2026-10-17",
+  "count": 360,
+  "entries": [
+    {
+      "id": "acceptance-criteria",
+      "term": "验收标准",
+      "en": "Acceptance Criteria",
+      "aliases": [
+        "验收条件",
+        "AC",
+        "验收准则"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/acceptance-criteria"
+    },
+    {
+      "id": "contract-testing",
+      "term": "契约测试",
+      "en": "Contract Testing",
+      "aliases": [
+        "Contract Test",
+        "接口契约测试",
+        "契约校验"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/contract-testing"
+    },
+    {
+      "id": "e2e-test",
+      "term": "端到端测试",
+      "en": "End-to-End Test",
+      "aliases": [
+        "E2E",
+        "链路测试",
+        "跨端测试"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/e2e-test"
+    },
+    {
+      "id": "flaky-test",
+      "term": "不稳定测试",
+      "en": "Flaky Test",
+      "aliases": [
+        "Flaky Test",
+        "不稳定用例",
+        "间歇性失败测试"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/flaky-test"
+    },
+    {
+      "id": "integration-test",
+      "term": "集成测试",
+      "en": "Integration Test",
+      "aliases": [
+        "Integration Test",
+        "集成测"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/integration-test"
+    },
+    {
+      "id": "load-testing",
+      "term": "负载测试",
+      "en": "Load Testing",
+      "aliases": [
+        "压测",
+        "性能测试",
+        "容量测试",
+        "负载压测"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/load-testing"
+    },
+    {
+      "id": "quality-gate",
+      "term": "质量门禁",
+      "en": "Quality Gate",
+      "aliases": [
+        "Quality Gates",
+        "代码门禁",
+        "发布门禁",
+        "PR 门禁",
+        "CI 门禁"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/quality-gate"
+    },
+    {
+      "id": "regression-test",
+      "term": "回归测试",
+      "en": "Regression Test",
+      "aliases": [
+        "Regression Test",
+        "回归检查"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/regression-test"
+    },
+    {
+      "id": "smoke-test",
+      "term": "冒烟测试",
+      "en": "Smoke Test",
+      "aliases": [
+        "冒烟测试",
+        "主流程冒烟",
+        "基线可用性测试"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/smoke-test"
+    },
+    {
+      "id": "test-case",
+      "term": "测试用例",
+      "en": "Test Case",
+      "aliases": [
+        "Test Case",
+        "测试案例"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/test-case"
+    },
+    {
+      "id": "test-coverage",
+      "term": "测试覆盖率",
+      "en": "Test Coverage",
+      "aliases": [
+        "Test Coverage",
+        "Code Coverage",
+        "代码覆盖率",
+        "Coverage"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/test-coverage"
+    },
+    {
+      "id": "test-double",
+      "term": "测试替身",
+      "en": "Test Double",
+      "aliases": [
+        "Test Double",
+        "Mock",
+        "测试替身",
+        "Stub",
+        "Fake",
+        "Spy"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/test-double"
+    },
+    {
+      "id": "test-fixture",
+      "term": "测试数据与 Fixture",
+      "en": "Test Data and Fixture",
+      "aliases": [
+        "Test Fixture",
+        "Fixture",
+        "测试夹具",
+        "测试数据"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/test-fixture"
+    },
+    {
+      "id": "unit-test",
+      "term": "单元测试",
+      "en": "Unit Test",
+      "aliases": [
+        "单元测试",
+        "单测",
+        "UT"
+      ],
+      "cat": "测试 · 测试",
+      "url": "https://vibe-hub.org/unit-test"
+    },
+    {
+      "id": "gantt-chart",
+      "term": "甘特图",
+      "en": "Gantt Chart",
+      "aliases": [
+        "Gantt",
+        "甘特排期",
+        "甘特图表",
+        "Gantt Diagram"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/gantt-chart"
+    },
+    {
+      "id": "moodboard",
+      "term": "情绪板",
+      "en": "Moodboard",
+      "aliases": [
+        "灵感板",
+        "风格拼贴",
+        "氛围板"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/moodboard"
+    },
+    {
+      "id": "mvp",
+      "term": "MVP",
+      "en": null,
+      "aliases": [
+        "最小可行产品",
+        "Minimum Viable Product",
+        "最小可行版本",
+        "最小化可行产品"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/mvp"
+    },
+    {
+      "id": "prd",
+      "term": "PRD",
+      "en": null,
+      "aliases": [
+        "产品需求文档",
+        "Product Requirements Document",
+        "产品需求",
+        "需求文档"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/prd"
+    },
+    {
+      "id": "product-backlog",
+      "term": "产品待办列表",
+      "en": "Product Backlog",
+      "aliases": [
+        "产品积压",
+        "产品待办",
+        "Backlog",
+        "Product Backlog Item",
+        "PBI"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/product-backlog"
+    },
+    {
+      "id": "product-discovery",
+      "term": "产品发现",
+      "en": "Product Discovery",
+      "aliases": [
+        "产品探索",
+        "需求探索",
+        "Product Discovery Phase",
+        "需求发现",
+        "机会评估"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/product-discovery"
+    },
+    {
+      "id": "product-roadmap",
+      "term": "产品路线图",
+      "en": "Product Roadmap",
+      "aliases": [
+        "产品规划路线图",
+        "Roadmap",
+        "Agile Roadmap",
+        "路线图"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/product-roadmap"
+    },
+    {
+      "id": "prototype",
+      "term": "可点击原型",
+      "en": "Prototype",
+      "aliases": [
+        "原型",
+        "Prototype"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/prototype"
+    },
+    {
+      "id": "scope-creep",
+      "term": "范围蔓延",
+      "en": "Scope Creep",
+      "aliases": [
+        "Scope Creep",
+        "需求蔓延"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/scope-creep"
+    },
+    {
+      "id": "technical-debt",
+      "term": "技术债",
+      "en": "Technical Debt",
+      "aliases": [
+        "技术债",
+        "Technical Debt",
+        "代码债"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/technical-debt"
+    },
+    {
+      "id": "wireframe",
+      "term": "线框图",
+      "en": "Wireframe",
+      "aliases": [
+        "线框",
+        "原型草图",
+        "页面草图",
+        "低保真原型"
+      ],
+      "cat": "产品 · 产品规划",
+      "url": "https://vibe-hub.org/wireframe"
+    },
+    {
+      "id": "ab-test",
+      "term": "A/B 测试",
+      "en": "A/B Test",
+      "aliases": [
+        "AB 测试",
+        "A/B Testing",
+        "Split Test",
+        "分流实验",
+        "对照实验"
+      ],
+      "cat": "产品 · 数据与验证",
+      "url": "https://vibe-hub.org/ab-test"
+    },
+    {
+      "id": "conversion-funnel",
+      "term": "转化漏斗",
+      "en": "Conversion Funnel",
+      "aliases": [
+        "漏斗分析",
+        "Funnel Analysis",
+        "转化路径",
+        "Conversion Funnel Analysis"
+      ],
+      "cat": "产品 · 数据与验证",
+      "url": "https://vibe-hub.org/conversion-funnel"
+    },
+    {
+      "id": "crud",
+      "term": "增删改查",
+      "en": "CRUD",
+      "aliases": [
+        "增删改查",
+        "CRUD 操作",
+        "数据的四种基本操作"
+      ],
+      "cat": "产品 · 数据与验证",
+      "url": "https://vibe-hub.org/crud"
+    },
+    {
+      "id": "data-type",
+      "term": "数据类型",
+      "en": "Data Type",
+      "aliases": [
+        "字段类型",
+        "数据格式"
+      ],
+      "cat": "产品 · 数据与验证",
+      "url": "https://vibe-hub.org/data-type"
+    },
+    {
+      "id": "event-tracking",
+      "term": "埋点",
+      "en": "Event Tracking",
+      "aliases": [
+        "埋点",
+        "Event Tracking",
+        "事件追踪"
+      ],
+      "cat": "产品 · 数据与验证",
+      "url": "https://vibe-hub.org/event-tracking"
+    },
+    {
+      "id": "field",
+      "term": "字段",
+      "en": "Field",
+      "aliases": [
+        "表单字段",
+        "数据字段",
+        "信息项"
+      ],
+      "cat": "产品 · 数据与验证",
+      "url": "https://vibe-hub.org/field"
+    },
+    {
+      "id": "heuristic-evaluation",
+      "term": "启发式评估",
+      "en": "Heuristic Evaluation",
+      "aliases": [
+        "启发式检查",
+        "可用性走查",
+        "专家走查",
+        "启发式评价"
+      ],
+      "cat": "产品 · 数据与验证",
+      "url": "https://vibe-hub.org/heuristic-evaluation"
+    },
+    {
+      "id": "import-export",
+      "term": "导入导出",
+      "en": "Import & Export",
+      "aliases": [
+        "导入",
+        "导出",
+        "数据导入导出"
+      ],
+      "cat": "产品 · 数据与验证",
+      "url": "https://vibe-hub.org/import-export"
+    },
+    {
+      "id": "regex",
+      "term": "正则表达式",
+      "en": "Regex",
+      "aliases": [
+        "正则表达式",
+        "Regex",
+        "正则"
+      ],
+      "cat": "产品 · 数据与验证",
+      "url": "https://vibe-hub.org/regex"
+    },
+    {
+      "id": "persona",
+      "term": "用户画像",
+      "en": "Persona",
+      "aliases": [
+        "用户画像",
+        "Persona"
+      ],
+      "cat": "产品 · 用户与需求",
+      "url": "https://vibe-hub.org/persona"
+    },
+    {
+      "id": "use-case",
+      "term": "用户用例",
+      "en": "Use Case",
+      "aliases": [
+        "用例",
+        "System Use Case",
+        "系统用例",
+        "使用案例"
+      ],
+      "cat": "产品 · 用户与需求",
+      "url": "https://vibe-hub.org/use-case"
+    },
+    {
+      "id": "user-flow",
+      "term": "用户流程",
+      "en": "User Flow",
+      "aliases": [
+        "用户流",
+        "UX Flow",
+        "用户流程图",
+        "User Flow Chart"
+      ],
+      "cat": "产品 · 用户与需求",
+      "url": "https://vibe-hub.org/user-flow"
+    },
+    {
+      "id": "user-journey",
+      "term": "用户旅程",
+      "en": "User Journey",
+      "aliases": [
+        "用户旅程图",
+        "客户旅程图",
+        "User Journey Map",
+        "Customer Journey",
+        "Customer Journey Map"
+      ],
+      "cat": "产品 · 用户与需求",
+      "url": "https://vibe-hub.org/user-journey"
+    },
+    {
+      "id": "user-story",
+      "term": "用户故事",
+      "en": "User Story",
+      "aliases": [
+        "用户叙事",
+        "User Stories",
+        "故事卡"
+      ],
+      "cat": "产品 · 用户与需求",
+      "url": "https://vibe-hub.org/user-story"
+    },
+    {
+      "id": "atomicity",
+      "term": "原子性",
+      "en": "Atomicity",
+      "aliases": [
+        "原子操作",
+        "不可分割性",
+        "Atomic"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/atomicity"
+    },
+    {
+      "id": "backend",
+      "term": "后端",
+      "en": "Backend",
+      "aliases": [],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/backend"
+    },
+    {
+      "id": "backend-framework",
+      "term": "后端框架",
+      "en": "Backend Framework",
+      "aliases": [],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/backend-framework"
+    },
+    {
+      "id": "backpressure",
+      "term": "背压",
+      "en": "Backpressure",
+      "aliases": [
+        "反压"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/backpressure"
+    },
+    {
+      "id": "coroutine",
+      "term": "协程",
+      "en": "Coroutine",
+      "aliases": [
+        "纤程",
+        "轻量级线程",
+        "用户态线程"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/coroutine"
+    },
+    {
+      "id": "distributed-system",
+      "term": "分布式系统",
+      "en": "Distributed System",
+      "aliases": [
+        "分布式架构",
+        "分布式集群",
+        "分布式计算"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/distributed-system"
+    },
+    {
+      "id": "lease",
+      "term": "租约",
+      "en": "Lease",
+      "aliases": [
+        "租约机制"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/lease"
+    },
+    {
+      "id": "lock",
+      "term": "锁",
+      "en": "Lock",
+      "aliases": [
+        "互斥锁",
+        "排他锁",
+        "并发锁",
+        "分布式锁"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/lock"
+    },
+    {
+      "id": "message-queue",
+      "term": "消息队列",
+      "en": "Message Queue",
+      "aliases": [
+        "MQ",
+        "Message Broker",
+        "消息中间件",
+        "消息代理",
+        "异步任务队列"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/message-queue"
+    },
+    {
+      "id": "process",
+      "term": "进程",
+      "en": "Process",
+      "aliases": [
+        "操作系统进程",
+        "系统进程",
+        "后台进程",
+        "PID"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/process"
+    },
+    {
+      "id": "race-condition",
+      "term": "竞态条件",
+      "en": "Race Condition",
+      "aliases": [
+        "竞态",
+        "竞争条件",
+        "时序竞争",
+        "并发竞态"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/race-condition"
+    },
+    {
+      "id": "route",
+      "term": "路由与端点",
+      "en": "Route & Endpoint",
+      "aliases": [
+        "路由",
+        "Endpoint",
+        "API Endpoint",
+        "接口端点"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/route"
+    },
+    {
+      "id": "side-effect",
+      "term": "副作用",
+      "en": "Side Effect",
+      "aliases": [
+        "附带效应",
+        "副作用操作",
+        "外部影响",
+        "状态变更"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/side-effect"
+    },
+    {
+      "id": "thread",
+      "term": "线程",
+      "en": "Thread",
+      "aliases": [
+        "执行线程",
+        "工作线程",
+        "子线程",
+        "并发线程"
+      ],
+      "cat": "后端 · 后端开发",
+      "url": "https://vibe-hub.org/thread"
+    },
+    {
+      "id": "api",
+      "term": "API",
+      "en": null,
+      "aliases": [
+        "API 接口",
+        "应用程序编程接口"
+      ],
+      "cat": "后端 · 接口与数据",
+      "url": "https://vibe-hub.org/api"
+    },
+    {
+      "id": "cors",
+      "term": "CORS",
+      "en": null,
+      "aliases": [
+        "跨源资源共享",
+        "跨域资源共享",
+        "Cross-Origin Resource Sharing"
+      ],
+      "cat": "后端 · 接口与数据",
+      "url": "https://vibe-hub.org/cors"
+    },
+    {
+      "id": "data-validation",
+      "term": "数据校验",
+      "en": "Validation",
+      "aliases": [],
+      "cat": "后端 · 接口与数据",
+      "url": "https://vibe-hub.org/data-validation"
+    },
+    {
+      "id": "enqueue",
+      "term": "入队",
+      "en": "Enqueue",
+      "aliases": [
+        "入列",
+        "进队",
+        "推入队列",
+        "投递任务"
+      ],
+      "cat": "后端 · 接口与数据",
+      "url": "https://vibe-hub.org/enqueue"
+    },
+    {
+      "id": "http-methods",
+      "term": "HTTP 方法",
+      "en": "HTTP Methods",
+      "aliases": [
+        "HTTP 方法",
+        "请求方法",
+        "GET / POST"
+      ],
+      "cat": "后端 · 接口与数据",
+      "url": "https://vibe-hub.org/http-methods"
+    },
+    {
+      "id": "idempotency",
+      "term": "幂等",
+      "en": "Idempotency",
+      "aliases": [
+        "幂等性",
+        "幂等处理",
+        "幂等设计",
+        "幂等键"
+      ],
+      "cat": "后端 · 接口与数据",
+      "url": "https://vibe-hub.org/idempotency"
+    },
+    {
+      "id": "json",
+      "term": "JSON",
+      "en": null,
+      "aliases": [
+        "JSON 数据",
+        "JavaScript Object Notation"
+      ],
+      "cat": "后端 · 接口与数据",
+      "url": "https://vibe-hub.org/json"
+    },
+    {
+      "id": "message-consumer",
+      "term": "消费者（消息队列）",
+      "en": "Message Consumer",
+      "aliases": [
+        "消息消费者",
+        "队列消费者",
+        "Worker 进程",
+        "订阅者"
+      ],
+      "cat": "后端 · 接口与数据",
+      "url": "https://vibe-hub.org/message-consumer"
+    },
+    {
+      "id": "webhook",
+      "term": "Webhook",
+      "en": null,
+      "aliases": [
+        "Webhook",
+        "回调通知"
+      ],
+      "cat": "后端 · 接口与数据",
+      "url": "https://vibe-hub.org/webhook"
+    },
+    {
+      "id": "blue-green-deployment",
+      "term": "蓝绿部署",
+      "en": "Blue-Green Deployment",
+      "aliases": [
+        "Blue-Green Deployment",
+        "Blue/Green Deployment",
+        "蓝绿发布",
+        "红黑部署"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/blue-green-deployment"
+    },
+    {
+      "id": "cache",
+      "term": "缓存",
+      "en": "Cache",
+      "aliases": [
+        "HTTP 缓存",
+        "缓存副本"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/cache"
+    },
+    {
+      "id": "canary-release",
+      "term": "金丝雀发布",
+      "en": "Canary Release",
+      "aliases": [
+        "Canary Release",
+        "Canary Deployment",
+        "金丝雀部署",
+        "灰度发布"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/canary-release"
+    },
+    {
+      "id": "canonical-url",
+      "term": "规范网址",
+      "en": "Canonical URL",
+      "aliases": [
+        "规范 URL",
+        "rel=canonical"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/canonical-url"
+    },
+    {
+      "id": "cd",
+      "term": "持续交付 / 持续部署",
+      "en": "CD",
+      "aliases": [
+        "CD",
+        "Continuous Delivery",
+        "Continuous Deployment",
+        "持续交付",
+        "持续部署",
+        "CI/CD"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/cd"
+    },
+    {
+      "id": "circuit-breaker",
+      "term": "熔断器",
+      "en": "Circuit Breaker",
+      "aliases": [
+        "断路器",
+        "熔断机制",
+        "服务熔断"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/circuit-breaker"
+    },
+    {
+      "id": "deployment",
+      "term": "部署上线",
+      "en": "Deployment",
+      "aliases": [],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/deployment"
+    },
+    {
+      "id": "env-var",
+      "term": "环境变量",
+      "en": "Env Var",
+      "aliases": [],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/env-var"
+    },
+    {
+      "id": "feature-flag",
+      "term": "功能开关",
+      "en": "Feature Flag",
+      "aliases": [
+        "Feature Flag",
+        "Feature Toggle",
+        "Feature Gate",
+        "功能旗标",
+        "特性开关",
+        "功能门禁"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/feature-flag"
+    },
+    {
+      "id": "monitoring",
+      "term": "监控",
+      "en": "Monitoring",
+      "aliases": [
+        "Monitoring",
+        "生产监控",
+        "应用监控"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/monitoring"
+    },
+    {
+      "id": "multi-instance",
+      "term": "多实例部署",
+      "en": "Multi-Instance Deployment",
+      "aliases": [
+        "多实例",
+        "多副本部署",
+        "集群部署",
+        "水平扩展部署"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/multi-instance"
+    },
+    {
+      "id": "not-found-page",
+      "term": "找不到页面",
+      "en": "Not Found Page",
+      "aliases": [
+        "404 页面",
+        "404 Not Found"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/not-found-page"
+    },
+    {
+      "id": "robots-txt",
+      "term": "Robots.txt",
+      "en": null,
+      "aliases": [
+        "robots 文件",
+        "Robots Exclusion Protocol"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/robots-txt"
+    },
+    {
+      "id": "rollback",
+      "term": "回滚",
+      "en": "Rollback",
+      "aliases": [
+        "Rollback",
+        "版本回滚",
+        "回退"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/rollback"
+    },
+    {
+      "id": "seo",
+      "term": "SEO",
+      "en": null,
+      "aliases": [
+        "搜索引擎优化",
+        "Search Engine Optimization"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/seo"
+    },
+    {
+      "id": "server-log",
+      "term": "服务端日志",
+      "en": "Server Logs",
+      "aliases": [],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/server-log"
+    },
+    {
+      "id": "serverless",
+      "term": "Serverless",
+      "en": null,
+      "aliases": [
+        "Serverless 函数",
+        "无服务器计算"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/serverless"
+    },
+    {
+      "id": "single-instance",
+      "term": "单实例部署",
+      "en": "Single-Instance Deployment",
+      "aliases": [
+        "单实例",
+        "单机部署",
+        "单节点部署",
+        "单副本部署"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/single-instance"
+    },
+    {
+      "id": "stack-trace",
+      "term": "报错与调用栈",
+      "en": "Stack Trace",
+      "aliases": [
+        "调用栈",
+        "错误堆栈",
+        "Stack Trace"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/stack-trace"
+    },
+    {
+      "id": "staging",
+      "term": "预发布环境",
+      "en": "Staging",
+      "aliases": [
+        "Staging",
+        "Staging Environment",
+        "预发布环境",
+        "预生产环境",
+        "准生产环境"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/staging"
+    },
+    {
+      "id": "timeout",
+      "term": "超时",
+      "en": "Timeout",
+      "aliases": [
+        "等待上限",
+        "请求超时"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/timeout"
+    },
+    {
+      "id": "web-hosting",
+      "term": "网站托管",
+      "en": "Web Hosting",
+      "aliases": [
+        "网站主机",
+        "Hosting"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/web-hosting"
+    },
+    {
+      "id": "xml-sitemap",
+      "term": "XML 站点地图",
+      "en": "XML Sitemap",
+      "aliases": [
+        "sitemap.xml",
+        "XML 网站地图"
+      ],
+      "cat": "后端 · 上线与排错",
+      "url": "https://vibe-hub.org/xml-sitemap"
+    },
+    {
+      "id": "browser-storage",
+      "term": "浏览器存储",
+      "en": "Browser Storage",
+      "aliases": [
+        "客户端存储",
+        "本地存储",
+        "Web Storage",
+        "localStorage",
+        "sessionStorage"
+      ],
+      "cat": "后端 · 数据库",
+      "url": "https://vibe-hub.org/browser-storage"
+    },
+    {
+      "id": "database",
+      "term": "数据库",
+      "en": "Database",
+      "aliases": [],
+      "cat": "后端 · 数据库",
+      "url": "https://vibe-hub.org/database"
+    },
+    {
+      "id": "database-migration",
+      "term": "数据库迁移",
+      "en": "Database Migration",
+      "aliases": [
+        "DB Migration",
+        "Schema Migration",
+        "数据库版本管理",
+        "数据库表迁移"
+      ],
+      "cat": "后端 · 数据库",
+      "url": "https://vibe-hub.org/database-migration"
+    },
+    {
+      "id": "database-write",
+      "term": "写入数据库",
+      "en": "Database Write",
+      "aliases": [
+        "落库",
+        "写库",
+        "数据库写入",
+        "数据持久化"
+      ],
+      "cat": "后端 · 数据库",
+      "url": "https://vibe-hub.org/database-write"
+    },
+    {
+      "id": "object-storage",
+      "term": "对象存储",
+      "en": "Object Storage",
+      "aliases": [
+        "对象存储",
+        "Object Storage"
+      ],
+      "cat": "后端 · 数据库",
+      "url": "https://vibe-hub.org/object-storage"
+    },
+    {
+      "id": "postgresql",
+      "term": "PostgreSQL",
+      "en": null,
+      "aliases": [
+        "Postgres",
+        "PG",
+        "PostgreSQL 数据库",
+        "Postgres 数据库"
+      ],
+      "cat": "后端 · 数据库",
+      "url": "https://vibe-hub.org/postgresql"
+    },
+    {
+      "id": "primary-key",
+      "term": "主键",
+      "en": "Primary Key",
+      "aliases": [
+        "主键",
+        "Primary Key",
+        "ID"
+      ],
+      "cat": "后端 · 数据库",
+      "url": "https://vibe-hub.org/primary-key"
+    },
+    {
+      "id": "sql",
+      "term": "SQL",
+      "en": null,
+      "aliases": [
+        "SQL 查询",
+        "结构化查询语言"
+      ],
+      "cat": "后端 · 数据库",
+      "url": "https://vibe-hub.org/sql"
+    },
+    {
+      "id": "transaction",
+      "term": "事务",
+      "en": "Transaction",
+      "aliases": [
+        "数据库事务",
+        "DB 事务",
+        "ACID 事务"
+      ],
+      "cat": "后端 · 数据库",
+      "url": "https://vibe-hub.org/transaction"
+    },
+    {
+      "id": "cdn",
+      "term": "CDN",
+      "en": null,
+      "aliases": [
+        "CDN 加速",
+        "内容分发网络"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/cdn"
+    },
+    {
+      "id": "cookie",
+      "term": "Cookie",
+      "en": null,
+      "aliases": [
+        "HTTP Cookie",
+        "浏览器 Cookie",
+        "网页 Cookie"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/cookie"
+    },
+    {
+      "id": "dns",
+      "term": "DNS",
+      "en": null,
+      "aliases": [
+        "DNS 解析",
+        "域名系统"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/dns"
+    },
+    {
+      "id": "domain",
+      "term": "域名",
+      "en": "Domain",
+      "aliases": [],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/domain"
+    },
+    {
+      "id": "http",
+      "term": "HTTP",
+      "en": null,
+      "aliases": [
+        "HTTP 请求",
+        "超文本传输协议"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/http"
+    },
+    {
+      "id": "http-status-code",
+      "term": "HTTP 状态码",
+      "en": "HTTP Status Code",
+      "aliases": [
+        "状态码",
+        "Status Code"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/http-status-code"
+    },
+    {
+      "id": "https",
+      "term": "HTTPS",
+      "en": null,
+      "aliases": [
+        "安全连接",
+        "HTTPS 连接"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/https"
+    },
+    {
+      "id": "ip-address",
+      "term": "IP 地址",
+      "en": "IP Address",
+      "aliases": [
+        "IP 地址",
+        "IP Address",
+        "IP"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/ip-address"
+    },
+    {
+      "id": "port",
+      "term": "端口",
+      "en": "Port",
+      "aliases": [
+        "端口号",
+        "Port Number",
+        "localhost 端口"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/port"
+    },
+    {
+      "id": "redirect",
+      "term": "重定向",
+      "en": "Redirect",
+      "aliases": [
+        "URL 重定向",
+        "跳转"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/redirect"
+    },
+    {
+      "id": "url",
+      "term": "URL",
+      "en": null,
+      "aliases": [
+        "网址",
+        "网页地址"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/url"
+    },
+    {
+      "id": "websocket",
+      "term": "WebSocket",
+      "en": null,
+      "aliases": [
+        "WebSocket",
+        "长连接",
+        "双向连接"
+      ],
+      "cat": "后端 · 网络与地址",
+      "url": "https://vibe-hub.org/websocket"
+    },
+    {
+      "id": "audit-log",
+      "term": "审计日志",
+      "en": "Audit Log",
+      "aliases": [
+        "操作日志",
+        "安全审计日志",
+        "审计记录"
+      ],
+      "cat": "后端 · 账号与权限",
+      "url": "https://vibe-hub.org/audit-log"
+    },
+    {
+      "id": "authentication",
+      "term": "身份认证",
+      "en": "Authentication",
+      "aliases": [
+        "登录认证",
+        "Auth",
+        "JWT",
+        "JWT 认证",
+        "用户登录"
+      ],
+      "cat": "后端 · 账号与权限",
+      "url": "https://vibe-hub.org/authentication"
+    },
+    {
+      "id": "authorization",
+      "term": "权限控制",
+      "en": "Authorization",
+      "aliases": [],
+      "cat": "后端 · 账号与权限",
+      "url": "https://vibe-hub.org/authorization"
+    },
+    {
+      "id": "entitlement",
+      "term": "功能权益",
+      "en": "Entitlement",
+      "aliases": [
+        "Entitlements",
+        "订阅权益",
+        "功能解锁",
+        "付费权限",
+        "Feature Entitlement"
+      ],
+      "cat": "后端 · 账号与权限",
+      "url": "https://vibe-hub.org/entitlement"
+    },
+    {
+      "id": "oauth",
+      "term": "OAuth 授权",
+      "en": "OAuth",
+      "aliases": [
+        "OAuth",
+        "OAuth 2.0",
+        "授权框架"
+      ],
+      "cat": "后端 · 账号与权限",
+      "url": "https://vibe-hub.org/oauth"
+    },
+    {
+      "id": "session",
+      "term": "会话",
+      "en": "Session",
+      "aliases": [
+        "会话",
+        "Session"
+      ],
+      "cat": "后端 · 账号与权限",
+      "url": "https://vibe-hub.org/session"
+    },
+    {
+      "id": "javascript",
+      "term": "JavaScript",
+      "en": null,
+      "aliases": [
+        "JS"
+      ],
+      "cat": "技术栈 · 编程语言",
+      "url": "https://vibe-hub.org/javascript"
+    },
+    {
+      "id": "node-js",
+      "term": "Node.js",
+      "en": null,
+      "aliases": [
+        "Node",
+        "node"
+      ],
+      "cat": "技术栈 · 编程语言",
+      "url": "https://vibe-hub.org/node-js"
+    },
+    {
+      "id": "pointer",
+      "term": "指针",
+      "en": "Pointer",
+      "aliases": [
+        "数据指针",
+        "内存指针",
+        "分支指针",
+        "HEAD 指针"
+      ],
+      "cat": "技术栈 · 编程语言",
+      "url": "https://vibe-hub.org/pointer"
+    },
+    {
+      "id": "python",
+      "term": "Python",
+      "en": null,
+      "aliases": [
+        "Py"
+      ],
+      "cat": "技术栈 · 编程语言",
+      "url": "https://vibe-hub.org/python"
+    },
+    {
+      "id": "typescript",
+      "term": "TypeScript",
+      "en": null,
+      "aliases": [
+        "TS"
+      ],
+      "cat": "技术栈 · 编程语言",
+      "url": "https://vibe-hub.org/typescript"
+    },
+    {
+      "id": "tech-stack",
+      "term": "技术栈",
+      "en": "Tech Stack",
+      "aliases": [
+        "技术选型",
+        "开发栈"
+      ],
+      "cat": "技术栈 · 技术栈",
+      "url": "https://vibe-hub.org/tech-stack"
+    },
+    {
+      "id": "browser-devtools",
+      "term": "浏览器开发者工具",
+      "en": "Browser DevTools",
+      "aliases": [
+        "DevTools",
+        "开发者工具",
+        "浏览器开发工具"
+      ],
+      "cat": "技术栈 · 开发工具",
+      "url": "https://vibe-hub.org/browser-devtools"
+    },
+    {
+      "id": "build",
+      "term": "构建",
+      "en": "Build",
+      "aliases": [
+        "Build",
+        "项目构建",
+        "打包"
+      ],
+      "cat": "技术栈 · 开发工具",
+      "url": "https://vibe-hub.org/build"
+    },
+    {
+      "id": "ci",
+      "term": "持续集成",
+      "en": "CI",
+      "aliases": [
+        "CI",
+        "Continuous Integration",
+        "持续集成"
+      ],
+      "cat": "技术栈 · 开发工具",
+      "url": "https://vibe-hub.org/ci"
+    },
+    {
+      "id": "dependency",
+      "term": "依赖",
+      "en": "Dependency",
+      "aliases": [
+        "依赖包",
+        "Dependency"
+      ],
+      "cat": "技术栈 · 开发工具",
+      "url": "https://vibe-hub.org/dependency"
+    },
+    {
+      "id": "hash",
+      "term": "哈希",
+      "en": "Hash",
+      "aliases": [
+        "哈希值",
+        "散列",
+        "散列函数",
+        "内容哈希",
+        "文件指纹"
+      ],
+      "cat": "技术栈 · 开发工具",
+      "url": "https://vibe-hub.org/hash"
+    },
+    {
+      "id": "lint",
+      "term": "代码规范检查",
+      "en": "Lint",
+      "aliases": [
+        "Lint",
+        "Linter",
+        "代码检查",
+        "静态检查"
+      ],
+      "cat": "技术栈 · 开发工具",
+      "url": "https://vibe-hub.org/lint"
+    },
+    {
+      "id": "npm",
+      "term": "npm",
+      "en": null,
+      "aliases": [
+        "包管理",
+        "Node 包管理"
+      ],
+      "cat": "技术栈 · 开发工具",
+      "url": "https://vibe-hub.org/npm"
+    },
+    {
+      "id": "semantic-versioning",
+      "term": "语义化版本",
+      "en": "Semantic Versioning",
+      "aliases": [
+        "语义化版本号",
+        "SemVer"
+      ],
+      "cat": "技术栈 · 开发工具",
+      "url": "https://vibe-hub.org/semantic-versioning"
+    },
+    {
+      "id": "terminal",
+      "term": "终端命令行",
+      "en": "Terminal",
+      "aliases": [],
+      "cat": "技术栈 · 开发工具",
+      "url": "https://vibe-hub.org/terminal"
+    },
+    {
+      "id": "nextjs",
+      "term": "Next.js",
+      "en": null,
+      "aliases": [
+        "Next"
+      ],
+      "cat": "技术栈 · 前端框架",
+      "url": "https://vibe-hub.org/nextjs"
+    },
+    {
+      "id": "react",
+      "term": "React",
+      "en": null,
+      "aliases": [
+        "React.js"
+      ],
+      "cat": "技术栈 · 前端框架",
+      "url": "https://vibe-hub.org/react"
+    },
+    {
+      "id": "vue",
+      "term": "Vue",
+      "en": null,
+      "aliases": [
+        "Vue.js"
+      ],
+      "cat": "技术栈 · 前端框架",
+      "url": "https://vibe-hub.org/vue"
+    },
+    {
+      "id": "shadcn-ui",
+      "term": "shadcn/ui",
+      "en": null,
+      "aliases": [
+        "shadcn"
+      ],
+      "cat": "技术栈 · CSS 与组件",
+      "url": "https://vibe-hub.org/shadcn-ui"
+    },
+    {
+      "id": "tailwind-css",
+      "term": "Tailwind CSS",
+      "en": null,
+      "aliases": [
+        "Tailwind"
+      ],
+      "cat": "技术栈 · CSS 与组件",
+      "url": "https://vibe-hub.org/tailwind-css"
+    },
+    {
+      "id": "button",
+      "term": "按钮",
+      "en": "Button",
+      "aliases": [
+        "操作按钮"
+      ],
+      "cat": "前端 · 按钮与链接",
+      "url": "https://vibe-hub.org/button"
+    },
+    {
+      "id": "link",
+      "term": "链接",
+      "en": "Link",
+      "aliases": [],
+      "cat": "前端 · 按钮与链接",
+      "url": "https://vibe-hub.org/link"
+    },
+    {
+      "id": "auto-complete",
+      "term": "自动完成",
+      "en": "Autocomplete",
+      "aliases": [
+        "AutoComplete",
+        "自动补全",
+        "输入建议"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/auto-complete"
+    },
+    {
+      "id": "cascader",
+      "term": "级联选择器",
+      "en": "Cascader",
+      "aliases": [],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/cascader"
+    },
+    {
+      "id": "checkbox",
+      "term": "复选框",
+      "en": "Checkbox",
+      "aliases": [],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/checkbox"
+    },
+    {
+      "id": "color-picker",
+      "term": "颜色选择器",
+      "en": "Color Picker",
+      "aliases": [
+        "ColorPicker",
+        "色彩选择器"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/color-picker"
+    },
+    {
+      "id": "date-picker",
+      "term": "日期选择器",
+      "en": "Date Picker",
+      "aliases": [
+        "DatePicker"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/date-picker"
+    },
+    {
+      "id": "form",
+      "term": "表单",
+      "en": "Form",
+      "aliases": [],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/form"
+    },
+    {
+      "id": "input",
+      "term": "输入框",
+      "en": "Input",
+      "aliases": [
+        "文本输入框",
+        "单行输入框"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/input"
+    },
+    {
+      "id": "input-number",
+      "term": "数字输入框",
+      "en": "Number Input",
+      "aliases": [
+        "InputNumber",
+        "数字步进器",
+        "Numeric Stepper"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/input-number"
+    },
+    {
+      "id": "label",
+      "term": "表单标签",
+      "en": "Label",
+      "aliases": [
+        "字段标签",
+        "输入标签"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/label"
+    },
+    {
+      "id": "placeholder",
+      "term": "占位文字",
+      "en": "Placeholder",
+      "aliases": [
+        "占位符",
+        "输入框提示文字",
+        "输入提示"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/placeholder"
+    },
+    {
+      "id": "radio",
+      "term": "单选框",
+      "en": "Radio",
+      "aliases": [],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/radio"
+    },
+    {
+      "id": "rate",
+      "term": "评分",
+      "en": "Rate",
+      "aliases": [],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/rate"
+    },
+    {
+      "id": "select",
+      "term": "选择器",
+      "en": "Select",
+      "aliases": [
+        "下拉选择框",
+        "Select Box"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/select"
+    },
+    {
+      "id": "slider",
+      "term": "滑块",
+      "en": "Slider",
+      "aliases": [],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/slider"
+    },
+    {
+      "id": "switch",
+      "term": "开关",
+      "en": "Switch",
+      "aliases": [
+        "Toggle",
+        "拨动开关",
+        "切换开关"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/switch"
+    },
+    {
+      "id": "textarea",
+      "term": "多行文本框",
+      "en": "Textarea",
+      "aliases": [],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/textarea"
+    },
+    {
+      "id": "time-picker",
+      "term": "时间选择器",
+      "en": "Time Picker",
+      "aliases": [
+        "TimePicker"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/time-picker"
+    },
+    {
+      "id": "tree-select",
+      "term": "树选择",
+      "en": "Tree Select",
+      "aliases": [
+        "TreeSelect"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/tree-select"
+    },
+    {
+      "id": "upload",
+      "term": "上传",
+      "en": "Upload",
+      "aliases": [
+        "文件上传",
+        "上传控件"
+      ],
+      "cat": "前端 · 表单",
+      "url": "https://vibe-hub.org/upload"
+    },
+    {
+      "id": "alert",
+      "term": "警告提示",
+      "en": "Alert",
+      "aliases": [],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/alert"
+    },
+    {
+      "id": "drawer",
+      "term": "抽屉",
+      "en": "Drawer",
+      "aliases": [
+        "抽屉组件",
+        "侧边滑出面板",
+        "侧边抽屉"
+      ],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/drawer"
+    },
+    {
+      "id": "modal",
+      "term": "弹窗",
+      "en": "Modal",
+      "aliases": [
+        "弹窗",
+        "模态窗",
+        "对话框",
+        "模态框",
+        "Dialog"
+      ],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/modal"
+    },
+    {
+      "id": "notification",
+      "term": "通知",
+      "en": "Notification",
+      "aliases": [],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/notification"
+    },
+    {
+      "id": "popconfirm",
+      "term": "气泡确认框",
+      "en": "Popconfirm",
+      "aliases": [
+        "气泡确认框",
+        "就近确认框",
+        "行内确认"
+      ],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/popconfirm"
+    },
+    {
+      "id": "popover",
+      "term": "气泡卡片",
+      "en": "Popover",
+      "aliases": [],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/popover"
+    },
+    {
+      "id": "progress",
+      "term": "进度条",
+      "en": "Progress",
+      "aliases": [
+        "进度指示器"
+      ],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/progress"
+    },
+    {
+      "id": "result",
+      "term": "结果页",
+      "en": "Result",
+      "aliases": [],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/result"
+    },
+    {
+      "id": "skeleton",
+      "term": "骨架屏",
+      "en": "Skeleton",
+      "aliases": [],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/skeleton"
+    },
+    {
+      "id": "spinner",
+      "term": "旋转加载指示器",
+      "en": "Spinner",
+      "aliases": [
+        "加载圈",
+        "Loading Spinner"
+      ],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/spinner"
+    },
+    {
+      "id": "toast",
+      "term": "轻提示",
+      "en": "Toast",
+      "aliases": [],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/toast"
+    },
+    {
+      "id": "tooltip",
+      "term": "文字提示",
+      "en": "Tooltip",
+      "aliases": [
+        "文字提示",
+        "气泡提示",
+        "提示标签"
+      ],
+      "cat": "前端 · 弹窗与提示",
+      "url": "https://vibe-hub.org/tooltip"
+    },
+    {
+      "id": "anchor",
+      "term": "锚点",
+      "en": "Anchor",
+      "aliases": [],
+      "cat": "前端 · 导航",
+      "url": "https://vibe-hub.org/anchor"
+    },
+    {
+      "id": "back-top",
+      "term": "回到顶部",
+      "en": "Back to Top Button",
+      "aliases": [
+        "BackTop"
+      ],
+      "cat": "前端 · 导航",
+      "url": "https://vibe-hub.org/back-top"
+    },
+    {
+      "id": "breadcrumb",
+      "term": "面包屑",
+      "en": "Breadcrumb",
+      "aliases": [],
+      "cat": "前端 · 导航",
+      "url": "https://vibe-hub.org/breadcrumb"
+    },
+    {
+      "id": "dropdown",
+      "term": "下拉菜单",
+      "en": "Dropdown",
+      "aliases": [
+        "操作菜单",
+        "更多菜单"
+      ],
+      "cat": "前端 · 导航",
+      "url": "https://vibe-hub.org/dropdown"
+    },
+    {
+      "id": "menu",
+      "term": "导航菜单",
+      "en": "Menu",
+      "aliases": [],
+      "cat": "前端 · 导航",
+      "url": "https://vibe-hub.org/menu"
+    },
+    {
+      "id": "pagination",
+      "term": "分页",
+      "en": "Pagination",
+      "aliases": [],
+      "cat": "前端 · 导航",
+      "url": "https://vibe-hub.org/pagination"
+    },
+    {
+      "id": "search",
+      "term": "搜索",
+      "en": "Search",
+      "aliases": [
+        "站内搜索",
+        "关键词搜索",
+        "内容搜索"
+      ],
+      "cat": "前端 · 导航",
+      "url": "https://vibe-hub.org/search"
+    },
+    {
+      "id": "skip-link",
+      "term": "跳过导航链接",
+      "en": "Skip Link",
+      "aliases": [
+        "SkipLink",
+        "跳到主内容",
+        "Skip to content"
+      ],
+      "cat": "前端 · 导航",
+      "url": "https://vibe-hub.org/skip-link"
+    },
+    {
+      "id": "steps",
+      "term": "步骤条",
+      "en": "Steps",
+      "aliases": [
+        "Stepper",
+        "步骤指示器",
+        "流程步骤条"
+      ],
+      "cat": "前端 · 导航",
+      "url": "https://vibe-hub.org/steps"
+    },
+    {
+      "id": "animation",
+      "term": "动画",
+      "en": "Animation",
+      "aliases": [
+        "动效",
+        "CSS 动画",
+        "关键帧动画"
+      ],
+      "cat": "前端 · 动画",
+      "url": "https://vibe-hub.org/animation"
+    },
+    {
+      "id": "easing",
+      "term": "缓动",
+      "en": "Easing",
+      "aliases": [
+        "动效曲线",
+        "动画曲线",
+        "Easing Curve"
+      ],
+      "cat": "前端 · 动画",
+      "url": "https://vibe-hub.org/easing"
+    },
+    {
+      "id": "fade",
+      "term": "渐入渐出",
+      "en": "Fade In / Out",
+      "aliases": [],
+      "cat": "前端 · 动画",
+      "url": "https://vibe-hub.org/fade"
+    },
+    {
+      "id": "keyframe",
+      "term": "关键帧",
+      "en": "Keyframe",
+      "aliases": [
+        "关键帧",
+        "Keyframe",
+        "@keyframes"
+      ],
+      "cat": "前端 · 动画",
+      "url": "https://vibe-hub.org/keyframe"
+    },
+    {
+      "id": "spring",
+      "term": "弹性",
+      "en": "Spring",
+      "aliases": [
+        "弹簧动画",
+        "回弹动效",
+        "Spring Animation"
+      ],
+      "cat": "前端 · 动画",
+      "url": "https://vibe-hub.org/spring"
+    },
+    {
+      "id": "transition",
+      "term": "过渡",
+      "en": "Transition",
+      "aliases": [
+        "平滑过渡",
+        "过渡效果",
+        "CSS过渡"
+      ],
+      "cat": "前端 · 动画",
+      "url": "https://vibe-hub.org/transition"
+    },
+    {
+      "id": "cta",
+      "term": "CTA",
+      "en": null,
+      "aliases": [
+        "行动号召",
+        "核心行动入口",
+        "转化按钮",
+        "Call to Action"
+      ],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/cta"
+    },
+    {
+      "id": "faq",
+      "term": "FAQ",
+      "en": null,
+      "aliases": [
+        "常见问题",
+        "Frequently Asked Questions"
+      ],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/faq"
+    },
+    {
+      "id": "footer",
+      "term": "页脚",
+      "en": "Footer",
+      "aliases": [],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/footer"
+    },
+    {
+      "id": "header",
+      "term": "页头",
+      "en": "Header",
+      "aliases": [
+        "网站页头",
+        "站点页头",
+        "Site Header"
+      ],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/header"
+    },
+    {
+      "id": "hero",
+      "term": "首屏",
+      "en": "Hero",
+      "aliases": [],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/hero"
+    },
+    {
+      "id": "logo",
+      "term": "标志",
+      "en": "Logo",
+      "aliases": [
+        "品牌标志",
+        "品牌 Logo",
+        "wordmark"
+      ],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/logo"
+    },
+    {
+      "id": "navbar",
+      "term": "顶部导航栏",
+      "en": "Navbar",
+      "aliases": [
+        "导航栏",
+        "主导航栏"
+      ],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/navbar"
+    },
+    {
+      "id": "pricing",
+      "term": "定价区",
+      "en": "Pricing",
+      "aliases": [],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/pricing"
+    },
+    {
+      "id": "social-proof",
+      "term": "社会证明",
+      "en": "Social Proof",
+      "aliases": [
+        "社会认同",
+        "从众背书",
+        "信任证据",
+        "用户见证"
+      ],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/social-proof"
+    },
+    {
+      "id": "user-voice",
+      "term": "用户原声",
+      "en": "Customer Testimonial",
+      "aliases": [
+        "用户原声",
+        "用户反馈",
+        "用户之声",
+        "Testimonial"
+      ],
+      "cat": "前端 · 官网区块",
+      "url": "https://vibe-hub.org/user-voice"
+    },
+    {
+      "id": "app-icon",
+      "term": "应用图标",
+      "en": "App Icon",
+      "aliases": [
+        "应用程序图标",
+        "App 图标",
+        "application icon"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/app-icon"
+    },
+    {
+      "id": "avatar",
+      "term": "头像",
+      "en": "Avatar",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/avatar"
+    },
+    {
+      "id": "badge",
+      "term": "徽标",
+      "en": "Badge",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/badge"
+    },
+    {
+      "id": "card",
+      "term": "卡片",
+      "en": "Card",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/card"
+    },
+    {
+      "id": "carousel",
+      "term": "走马灯",
+      "en": "Carousel",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/carousel"
+    },
+    {
+      "id": "chart",
+      "term": "图表",
+      "en": "Chart",
+      "aliases": [
+        "数据图表",
+        "可视化图表",
+        "Data Visualization"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/chart"
+    },
+    {
+      "id": "chat-ui",
+      "term": "聊天界面",
+      "en": "Chat UI",
+      "aliases": [
+        "聊天 UI",
+        "聊天窗口",
+        "Chat Interface"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/chat-ui"
+    },
+    {
+      "id": "collapse",
+      "term": "折叠面板",
+      "en": "Collapse",
+      "aliases": [
+        "可折叠面板"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/collapse"
+    },
+    {
+      "id": "descriptions",
+      "term": "描述列表",
+      "en": "Descriptions",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/descriptions"
+    },
+    {
+      "id": "empty",
+      "term": "空状态",
+      "en": "Empty",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/empty"
+    },
+    {
+      "id": "file",
+      "term": "文件项",
+      "en": "File",
+      "aliases": [
+        "文件卡片",
+        "文件列表项"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/file"
+    },
+    {
+      "id": "filter",
+      "term": "筛选",
+      "en": "Filter",
+      "aliases": [
+        "筛选条件",
+        "过滤",
+        "内容筛选"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/filter"
+    },
+    {
+      "id": "icon",
+      "term": "图标",
+      "en": "Icon",
+      "aliases": [
+        "界面图标",
+        "功能图标"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/icon"
+    },
+    {
+      "id": "image",
+      "term": "图片",
+      "en": "Image",
+      "aliases": [
+        "图像",
+        "图片组件"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/image"
+    },
+    {
+      "id": "list",
+      "term": "列表",
+      "en": "List",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/list"
+    },
+    {
+      "id": "quote",
+      "term": "引用",
+      "en": "Quote",
+      "aliases": [
+        "引文",
+        "引用块"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/quote"
+    },
+    {
+      "id": "segmented",
+      "term": "分段控件",
+      "en": "Segmented",
+      "aliases": [
+        "分段选择器",
+        "Segmented Control"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/segmented"
+    },
+    {
+      "id": "sort",
+      "term": "排序",
+      "en": "Sort",
+      "aliases": [
+        "排序方式",
+        "升序降序",
+        "正序倒序"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/sort"
+    },
+    {
+      "id": "statistic",
+      "term": "统计数值",
+      "en": "Statistic",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/statistic"
+    },
+    {
+      "id": "table",
+      "term": "表格",
+      "en": "Table",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/table"
+    },
+    {
+      "id": "tabs",
+      "term": "标签页",
+      "en": "Tabs",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/tabs"
+    },
+    {
+      "id": "tag",
+      "term": "标签",
+      "en": "Tag",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/tag"
+    },
+    {
+      "id": "timeline",
+      "term": "时间轴",
+      "en": "Timeline",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/timeline"
+    },
+    {
+      "id": "tree",
+      "term": "树形控件",
+      "en": "Tree",
+      "aliases": [],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/tree"
+    },
+    {
+      "id": "video",
+      "term": "视频",
+      "en": "Video",
+      "aliases": [
+        "视频播放器",
+        "嵌入视频"
+      ],
+      "cat": "前端 · 内容展示",
+      "url": "https://vibe-hub.org/video"
+    },
+    {
+      "id": "active",
+      "term": "按下",
+      "en": "Active",
+      "aliases": [
+        "按下态",
+        "激活态",
+        ":active"
+      ],
+      "cat": "前端 · 鼠标",
+      "url": "https://vibe-hub.org/active"
+    },
+    {
+      "id": "cursor",
+      "term": "鼠标指针",
+      "en": "Cursor",
+      "aliases": [
+        "光标"
+      ],
+      "cat": "前端 · 鼠标",
+      "url": "https://vibe-hub.org/cursor"
+    },
+    {
+      "id": "disabled",
+      "term": "禁用",
+      "en": "Disabled",
+      "aliases": [],
+      "cat": "前端 · 鼠标",
+      "url": "https://vibe-hub.org/disabled"
+    },
+    {
+      "id": "drag",
+      "term": "拖拽",
+      "en": "Drag",
+      "aliases": [],
+      "cat": "前端 · 鼠标",
+      "url": "https://vibe-hub.org/drag"
+    },
+    {
+      "id": "focus",
+      "term": "聚焦",
+      "en": "Focus",
+      "aliases": [
+        "聚焦态",
+        "焦点状态",
+        ":focus"
+      ],
+      "cat": "前端 · 鼠标",
+      "url": "https://vibe-hub.org/focus"
+    },
+    {
+      "id": "hover",
+      "term": "悬停",
+      "en": "Hover",
+      "aliases": [
+        "鼠标悬停",
+        "悬停态",
+        ":hover"
+      ],
+      "cat": "前端 · 鼠标",
+      "url": "https://vibe-hub.org/hover"
+    },
+    {
+      "id": "selection",
+      "term": "选中高亮",
+      "en": "Selection",
+      "aliases": [],
+      "cat": "前端 · 鼠标",
+      "url": "https://vibe-hub.org/selection"
+    },
+    {
+      "id": "backdrop-blur",
+      "term": "毛玻璃",
+      "en": "Backdrop Blur",
+      "aliases": [],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/backdrop-blur"
+    },
+    {
+      "id": "border-radius",
+      "term": "圆角",
+      "en": "Border Radius",
+      "aliases": [
+        "圆角",
+        "边角弧度",
+        "胶囊角"
+      ],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/border-radius"
+    },
+    {
+      "id": "contrast",
+      "term": "对比度",
+      "en": "Contrast",
+      "aliases": [
+        "颜色对比",
+        "明暗对比",
+        "前景背景对比"
+      ],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/contrast"
+    },
+    {
+      "id": "corner-feel",
+      "term": "圆角的气质",
+      "en": "Corner Feel",
+      "aliases": [],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/corner-feel"
+    },
+    {
+      "id": "dark-mode",
+      "term": "深色模式",
+      "en": "Dark Mode",
+      "aliases": [
+        "暗色模式",
+        "夜间模式",
+        "深色主题",
+        "Dark Theme"
+      ],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/dark-mode"
+    },
+    {
+      "id": "design-token",
+      "term": "设计令牌",
+      "en": "Design Token",
+      "aliases": [
+        "设计变量",
+        "Design Tokens"
+      ],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/design-token"
+    },
+    {
+      "id": "divider",
+      "term": "分割线",
+      "en": "Divider",
+      "aliases": [],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/divider"
+    },
+    {
+      "id": "gradient",
+      "term": "渐变",
+      "en": "Gradient",
+      "aliases": [],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/gradient"
+    },
+    {
+      "id": "opacity",
+      "term": "透明度",
+      "en": "Opacity",
+      "aliases": [],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/opacity"
+    },
+    {
+      "id": "prefers-reduced-motion",
+      "term": "减少动效",
+      "en": "Prefers Reduced Motion",
+      "aliases": [
+        "减少动效",
+        "Prefers-reduced-motion"
+      ],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/prefers-reduced-motion"
+    },
+    {
+      "id": "shadow",
+      "term": "阴影",
+      "en": "Shadow",
+      "aliases": [
+        "阴影",
+        "盒阴影",
+        "投影",
+        "box-shadow"
+      ],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/shadow"
+    },
+    {
+      "id": "visual-hierarchy",
+      "term": "视觉层级",
+      "en": "Visual Hierarchy",
+      "aliases": [
+        "信息层级",
+        "视觉优先级"
+      ],
+      "cat": "前端 · 外观",
+      "url": "https://vibe-hub.org/visual-hierarchy"
+    },
+    {
+      "id": "accessibility",
+      "term": "无障碍",
+      "en": "Accessibility",
+      "aliases": [
+        "可访问性",
+        "a11y",
+        "无障碍设计"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/accessibility"
+    },
+    {
+      "id": "component",
+      "term": "组件",
+      "en": "Component",
+      "aliases": [
+        "UI 组件",
+        "界面组件",
+        "UI Component"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/component"
+    },
+    {
+      "id": "css",
+      "term": "CSS",
+      "en": null,
+      "aliases": [
+        "层叠样式表",
+        "Cascading Style Sheets"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/css"
+    },
+    {
+      "id": "dom",
+      "term": "文档对象模型",
+      "en": "DOM",
+      "aliases": [
+        "Document Object Model",
+        "文档对象模型树"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/dom"
+    },
+    {
+      "id": "favicon",
+      "term": "网站图标",
+      "en": "Favicon",
+      "aliases": [
+        "浏览器网站图标",
+        "标签页图标",
+        "site icon"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/favicon"
+    },
+    {
+      "id": "frontend",
+      "term": "前端",
+      "en": "Frontend",
+      "aliases": [],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/frontend"
+    },
+    {
+      "id": "html",
+      "term": "HTML",
+      "en": null,
+      "aliases": [
+        "HTML 页面结构",
+        "超文本标记语言"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/html"
+    },
+    {
+      "id": "markdown",
+      "term": "Markdown",
+      "en": null,
+      "aliases": [
+        "Markdown 文档",
+        "MD 文档",
+        "Markdown 文件"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/markdown"
+    },
+    {
+      "id": "open-graph",
+      "term": "Open Graph",
+      "en": null,
+      "aliases": [
+        "OG",
+        "og 标签",
+        "分享元数据"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/open-graph"
+    },
+    {
+      "id": "page-metadata",
+      "term": "页面元数据",
+      "en": "Page Metadata",
+      "aliases": [
+        "网页元数据",
+        "head 信息",
+        "meta 信息"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/page-metadata"
+    },
+    {
+      "id": "semantic-html",
+      "term": "语义化标签与标题层级",
+      "en": "Semantic HTML",
+      "aliases": [
+        "语义化标签",
+        "Semantic HTML",
+        "标题层级"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/semantic-html"
+    },
+    {
+      "id": "state",
+      "term": "状态",
+      "en": "State",
+      "aliases": [
+        "UI 状态",
+        "界面状态",
+        "UI State",
+        "组件状态",
+        "State Management",
+        "状态管理"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/state"
+    },
+    {
+      "id": "title-tag",
+      "term": "页面标题",
+      "en": "Title Tag",
+      "aliases": [
+        "title 元素",
+        "HTML title",
+        "浏览器标题"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/title-tag"
+    },
+    {
+      "id": "undo",
+      "term": "撤销",
+      "en": "Undo",
+      "aliases": [
+        "撤回",
+        "回退一步",
+        "Ctrl+Z"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/undo"
+    },
+    {
+      "id": "web-app-manifest",
+      "term": "Web 应用清单",
+      "en": "Web App Manifest",
+      "aliases": [
+        "Manifest",
+        "manifest.json",
+        "Web 应用清单文件"
+      ],
+      "cat": "前端 · 网页基础",
+      "url": "https://vibe-hub.org/web-app-manifest"
+    },
+    {
+      "id": "serif-sans",
+      "term": "衬线与非衬线",
+      "en": "Serif & Sans",
+      "aliases": [],
+      "cat": "前端 · 文字",
+      "url": "https://vibe-hub.org/serif-sans"
+    },
+    {
+      "id": "text-truncate",
+      "term": "文本截断",
+      "en": "Text Truncate",
+      "aliases": [],
+      "cat": "前端 · 文字",
+      "url": "https://vibe-hub.org/text-truncate"
+    },
+    {
+      "id": "typography",
+      "term": "排版",
+      "en": "Typography",
+      "aliases": [
+        "文字排版",
+        "文本样式"
+      ],
+      "cat": "前端 · 文字",
+      "url": "https://vibe-hub.org/typography"
+    },
+    {
+      "id": "mini-program",
+      "term": "小程序",
+      "en": "Mini Program",
+      "aliases": [
+        "Mini App",
+        "微信小程序",
+        "轻应用"
+      ],
+      "cat": "前端 · 小程序",
+      "url": "https://vibe-hub.org/mini-program"
+    },
+    {
+      "id": "page-lifecycle",
+      "term": "页面生命周期",
+      "en": "Page Lifecycle",
+      "aliases": [
+        "页面回调",
+        "onLoad",
+        "onShow",
+        "onHide",
+        "onUnload"
+      ],
+      "cat": "前端 · 小程序",
+      "url": "https://vibe-hub.org/page-lifecycle"
+    },
+    {
+      "id": "rpx",
+      "term": "rpx",
+      "en": null,
+      "aliases": [
+        "responsive pixel",
+        "小程序相对单位"
+      ],
+      "cat": "前端 · 小程序",
+      "url": "https://vibe-hub.org/rpx"
+    },
+    {
+      "id": "subpackage",
+      "term": "分包加载",
+      "en": "Subpackage Loading",
+      "aliases": [
+        "小程序分包",
+        "代码分包",
+        "Subpackage"
+      ],
+      "cat": "前端 · 小程序",
+      "url": "https://vibe-hub.org/subpackage"
+    },
+    {
+      "id": "wxml",
+      "term": "WXML",
+      "en": null,
+      "aliases": [
+        "WX Markup Language",
+        "小程序模板"
+      ],
+      "cat": "前端 · 小程序",
+      "url": "https://vibe-hub.org/wxml"
+    },
+    {
+      "id": "wxss",
+      "term": "WXSS",
+      "en": null,
+      "aliases": [
+        "WX Style Sheets",
+        "小程序样式"
+      ],
+      "cat": "前端 · 小程序",
+      "url": "https://vibe-hub.org/wxss"
+    },
+    {
+      "id": "card-grid-layout",
+      "term": "卡片网格布局",
+      "en": "Card Grid",
+      "aliases": [],
+      "cat": "前端 · 页面布局",
+      "url": "https://vibe-hub.org/card-grid-layout"
+    },
+    {
+      "id": "centered-layout",
+      "term": "居中窄栏布局",
+      "en": "Centered Column",
+      "aliases": [],
+      "cat": "前端 · 页面布局",
+      "url": "https://vibe-hub.org/centered-layout"
+    },
+    {
+      "id": "doc-layout",
+      "term": "文档三栏布局",
+      "en": "Doc Layout",
+      "aliases": [],
+      "cat": "前端 · 页面布局",
+      "url": "https://vibe-hub.org/doc-layout"
+    },
+    {
+      "id": "masonry-layout",
+      "term": "瀑布流",
+      "en": "Masonry",
+      "aliases": [
+        "瀑布流布局",
+        "Masonry 布局",
+        "Masonry Layout"
+      ],
+      "cat": "前端 · 页面布局",
+      "url": "https://vibe-hub.org/masonry-layout"
+    },
+    {
+      "id": "responsive-design",
+      "term": "响应式设计",
+      "en": "Responsive Design",
+      "aliases": [
+        "响应式",
+        "自适应布局",
+        "CSS Media Query",
+        "媒体查询",
+        "响应式网页设计",
+        "自适应设计",
+        "Responsive Web Design",
+        "断点",
+        "Breakpoint",
+        "像素断点"
+      ],
+      "cat": "前端 · 页面布局",
+      "url": "https://vibe-hub.org/responsive-design"
+    },
+    {
+      "id": "sidebar-layout",
+      "term": "左侧栏布局",
+      "en": "Sidebar",
+      "aliases": [],
+      "cat": "前端 · 页面布局",
+      "url": "https://vibe-hub.org/sidebar-layout"
+    },
+    {
+      "id": "single-page-layout",
+      "term": "单页滚动布局",
+      "en": "Single Page",
+      "aliases": [
+        "单页布局",
+        "长页面",
+        "Single Page Layout"
+      ],
+      "cat": "前端 · 页面布局",
+      "url": "https://vibe-hub.org/single-page-layout"
+    },
+    {
+      "id": "split-screen-layout",
+      "term": "分屏布局",
+      "en": "Split-screen",
+      "aliases": [
+        "分屏",
+        "Split Screen",
+        "Split-screen Layout"
+      ],
+      "cat": "前端 · 页面布局",
+      "url": "https://vibe-hub.org/split-screen-layout"
+    },
+    {
+      "id": "top-nav-layout",
+      "term": "顶部导航布局",
+      "en": "Top Nav",
+      "aliases": [],
+      "cat": "前端 · 页面布局",
+      "url": "https://vibe-hub.org/top-nav-layout"
+    },
+    {
+      "id": "box-model",
+      "term": "盒模型",
+      "en": "Box Model",
+      "aliases": [
+        "盒模型",
+        "盒子模型",
+        "box-sizing"
+      ],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/box-model"
+    },
+    {
+      "id": "centering",
+      "term": "居中",
+      "en": "Centering",
+      "aliases": [],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/centering"
+    },
+    {
+      "id": "flex",
+      "term": "弹性布局",
+      "en": "Flex",
+      "aliases": [
+        "弹性盒",
+        "弹性布局",
+        "Flexbox",
+        "Flex布局"
+      ],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/flex"
+    },
+    {
+      "id": "grid",
+      "term": "网格布局",
+      "en": "Grid",
+      "aliases": [
+        "网格布局",
+        "栅格布局",
+        "Grid布局",
+        "CSS Grid"
+      ],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/grid"
+    },
+    {
+      "id": "margin",
+      "term": "外边距",
+      "en": "Margin",
+      "aliases": [
+        "外边距",
+        "外留白",
+        "间距"
+      ],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/margin"
+    },
+    {
+      "id": "overflow",
+      "term": "内容溢出",
+      "en": "Overflow",
+      "aliases": [
+        "内容溢出",
+        "溢出截断",
+        "溢出隐藏"
+      ],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/overflow"
+    },
+    {
+      "id": "padding",
+      "term": "内边距",
+      "en": "Padding",
+      "aliases": [
+        "内边距",
+        "内留白",
+        "内边留白"
+      ],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/padding"
+    },
+    {
+      "id": "position",
+      "term": "定位",
+      "en": "Position",
+      "aliases": [],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/position"
+    },
+    {
+      "id": "space",
+      "term": "间距",
+      "en": "Space",
+      "aliases": [],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/space"
+    },
+    {
+      "id": "sticky",
+      "term": "吸顶",
+      "en": "Sticky",
+      "aliases": [],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/sticky"
+    },
+    {
+      "id": "z-index",
+      "term": "层级",
+      "en": "Z-Index",
+      "aliases": [
+        "层叠顺序",
+        "层级",
+        "Z轴层级",
+        "深度层级"
+      ],
+      "cat": "前端 · CSS 布局",
+      "url": "https://vibe-hub.org/z-index"
+    },
+    {
+      "id": "style-apple",
+      "term": "苹果风",
+      "en": "Apple HIG",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-apple"
+    },
+    {
+      "id": "style-art-deco",
+      "term": "装饰艺术",
+      "en": "Art Deco",
+      "aliases": [
+        "装饰艺术运动",
+        "装饰艺术风格"
+      ],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-art-deco"
+    },
+    {
+      "id": "style-bauhaus",
+      "term": "包豪斯",
+      "en": "Bauhaus",
+      "aliases": [
+        "包豪斯风格",
+        "包豪斯学派"
+      ],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-bauhaus"
+    },
+    {
+      "id": "style-bento",
+      "term": "Bento 便当格",
+      "en": "Bento Grid",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-bento"
+    },
+    {
+      "id": "style-brutalism",
+      "term": "新粗野",
+      "en": "Neo-Brutalism",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-brutalism"
+    },
+    {
+      "id": "style-commerce",
+      "term": "DTC 品牌电商",
+      "en": "DTC E-commerce",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-commerce"
+    },
+    {
+      "id": "style-dark-tech",
+      "term": "深色界面",
+      "en": "Dark UI",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-dark-tech"
+    },
+    {
+      "id": "style-editorial",
+      "term": "杂志编辑风",
+      "en": "Editorial",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-editorial"
+    },
+    {
+      "id": "style-enterprise",
+      "term": "B2B 企业官网",
+      "en": "B2B Corporate Site",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-enterprise"
+    },
+    {
+      "id": "style-flat",
+      "term": "扁平化",
+      "en": "Flat Design",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-flat"
+    },
+    {
+      "id": "style-glass",
+      "term": "玻璃拟态",
+      "en": "Glassmorphism",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-glass"
+    },
+    {
+      "id": "style-material",
+      "term": "材料设计",
+      "en": "Material Design",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-material"
+    },
+    {
+      "id": "style-memphis",
+      "term": "孟菲斯",
+      "en": "Memphis",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-memphis"
+    },
+    {
+      "id": "style-minimal",
+      "term": "现代简约",
+      "en": "Minimalism",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-minimal"
+    },
+    {
+      "id": "style-neumorphism",
+      "term": "新拟态",
+      "en": "Neumorphism",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-neumorphism"
+    },
+    {
+      "id": "style-notion",
+      "term": "Notion 风",
+      "en": "Notion Style",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-notion"
+    },
+    {
+      "id": "style-organic",
+      "term": "有机设计",
+      "en": "Organic Design",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-organic"
+    },
+    {
+      "id": "style-playful",
+      "term": "趣味插画",
+      "en": "Playful Illustration",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-playful"
+    },
+    {
+      "id": "style-saas",
+      "term": "SaaS 产品官网",
+      "en": "SaaS Marketing Site",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-saas"
+    },
+    {
+      "id": "style-skeuomorphism",
+      "term": "拟物化",
+      "en": "Skeuomorphism",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-skeuomorphism"
+    },
+    {
+      "id": "style-swiss",
+      "term": "瑞士排版",
+      "en": "Swiss Style",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-swiss"
+    },
+    {
+      "id": "style-terminal",
+      "term": "终端极客风",
+      "en": "Terminal Aesthetic",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-terminal"
+    },
+    {
+      "id": "style-wabisabi",
+      "term": "日式侘寂",
+      "en": "Wabi-sabi",
+      "aliases": [],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-wabisabi"
+    },
+    {
+      "id": "style-y2k",
+      "term": "Y2K",
+      "en": null,
+      "aliases": [
+        "Y2K 千禧风",
+        "千禧风"
+      ],
+      "cat": "设计风格 · 设计风格",
+      "url": "https://vibe-hub.org/style-y2k"
+    },
+    {
+      "id": "hook",
+      "term": "生命周期钩子",
+      "en": "Hook",
+      "aliases": [
+        "钩子",
+        "事件钩子",
+        "自动化钩子",
+        "Git Hook"
+      ],
+      "cat": "AI · 规则与扩展",
+      "url": "https://vibe-hub.org/hook"
+    },
+    {
+      "id": "mcp",
+      "term": "MCP",
+      "en": "Model Context Protocol",
+      "aliases": [
+        "模型上下文协议",
+        "MCP协议",
+        "MCP Server",
+        "MCP Client",
+        "MCP 服务器"
+      ],
+      "cat": "AI · 规则与扩展",
+      "url": "https://vibe-hub.org/mcp"
+    },
+    {
+      "id": "plugin",
+      "term": "插件",
+      "en": "Plugin",
+      "aliases": [
+        "扩展",
+        "IDE 扩展",
+        "编辑器插件",
+        "Extension"
+      ],
+      "cat": "AI · 规则与扩展",
+      "url": "https://vibe-hub.org/plugin"
+    },
+    {
+      "id": "project-rules",
+      "term": "项目规则",
+      "en": "Project Rules",
+      "aliases": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "项目规范",
+        "Agent 指南",
+        "Cursor Rules"
+      ],
+      "cat": "AI · 规则与扩展",
+      "url": "https://vibe-hub.org/project-rules"
+    },
+    {
+      "id": "skill",
+      "term": "Skill",
+      "en": null,
+      "aliases": [
+        "技能",
+        "Agent Skill",
+        "技能包",
+        "Agent 技能",
+        "SKILL.md"
+      ],
+      "cat": "AI · 规则与扩展",
+      "url": "https://vibe-hub.org/skill"
+    },
+    {
+      "id": "api-key",
+      "term": "API 密钥",
+      "en": "API Key",
+      "aliases": [
+        "接口密钥",
+        "服务密钥",
+        "Access Key",
+        "Secret Key",
+        "Token"
+      ],
+      "cat": "AI · 连接与配置",
+      "url": "https://vibe-hub.org/api-key"
+    },
+    {
+      "id": "api-proxy",
+      "term": "API 代理 / 中转站",
+      "en": "API Proxy",
+      "aliases": [
+        "中转站",
+        "API 中转",
+        "反向代理",
+        "Relay",
+        "Reverse Proxy"
+      ],
+      "cat": "AI · 连接与配置",
+      "url": "https://vibe-hub.org/api-proxy"
+    },
+    {
+      "id": "base-url",
+      "term": "服务基准地址",
+      "en": "Base URL",
+      "aliases": [],
+      "cat": "AI · 连接与配置",
+      "url": "https://vibe-hub.org/base-url"
+    },
+    {
+      "id": "config-file",
+      "term": "配置文件",
+      "en": "Configuration File",
+      "aliases": [
+        "设置文件",
+        "配置项",
+        "config.json",
+        "config.toml"
+      ],
+      "cat": "AI · 连接与配置",
+      "url": "https://vibe-hub.org/config-file"
+    },
+    {
+      "id": "openai-compatible-api",
+      "term": "OpenAI 兼容 API",
+      "en": "OpenAI-Compatible API",
+      "aliases": [
+        "兼容接口",
+        "OpenAI 格式接口",
+        "ChatCompletions 兼容"
+      ],
+      "cat": "AI · 连接与配置",
+      "url": "https://vibe-hub.org/openai-compatible-api"
+    },
+    {
+      "id": "profile",
+      "term": "配置档案",
+      "en": "Profile",
+      "aliases": [
+        "配置预设",
+        "配置组",
+        "配置文件预设",
+        "环境档案"
+      ],
+      "cat": "AI · 连接与配置",
+      "url": "https://vibe-hub.org/profile"
+    },
+    {
+      "id": "provider",
+      "term": "模型提供方",
+      "en": "Provider",
+      "aliases": [
+        "模型服务商",
+        "模型平台",
+        "API 提供商",
+        "AI 供应商"
+      ],
+      "cat": "AI · 连接与配置",
+      "url": "https://vibe-hub.org/provider"
+    },
+    {
+      "id": "stateless-request",
+      "term": "无状态请求",
+      "en": "Stateless Request",
+      "aliases": [
+        "无状态 API"
+      ],
+      "cat": "AI · 请求与输出",
+      "url": "https://vibe-hub.org/stateless-request"
+    },
+    {
+      "id": "streaming-response",
+      "term": "流式响应",
+      "en": "Streaming Response",
+      "aliases": [
+        "Streaming",
+        "流式输出"
+      ],
+      "cat": "AI · 请求与输出",
+      "url": "https://vibe-hub.org/streaming-response"
+    },
+    {
+      "id": "structured-output",
+      "term": "结构化输出",
+      "en": "Structured Output",
+      "aliases": [
+        "响应格式"
+      ],
+      "cat": "AI · 请求与输出",
+      "url": "https://vibe-hub.org/structured-output"
+    },
+    {
+      "id": "temperature",
+      "term": "温度",
+      "en": "Temperature",
+      "aliases": [
+        "Temperature",
+        "随机性参数"
+      ],
+      "cat": "AI · 请求与输出",
+      "url": "https://vibe-hub.org/temperature"
+    },
+    {
+      "id": "permission-mode",
+      "term": "权限模式",
+      "en": "Permission Mode",
+      "aliases": [
+        "审批模式",
+        "权限策略",
+        "自主执行级别",
+        "安全模式"
+      ],
+      "cat": "AI · 权限与运行",
+      "url": "https://vibe-hub.org/permission-mode"
+    },
+    {
+      "id": "prompt-injection",
+      "term": "提示词注入",
+      "en": "Prompt Injection",
+      "aliases": [
+        "提示注入",
+        "Prompt Injection"
+      ],
+      "cat": "AI · 权限与运行",
+      "url": "https://vibe-hub.org/prompt-injection"
+    },
+    {
+      "id": "sandbox",
+      "term": "沙箱",
+      "en": "Sandbox",
+      "aliases": [
+        "隔离沙盒",
+        "安全沙箱",
+        "沙盒环境",
+        "隔离容器"
+      ],
+      "cat": "AI · 权限与运行",
+      "url": "https://vibe-hub.org/sandbox"
+    },
+    {
+      "id": "agent-memory",
+      "term": "Agent 记忆",
+      "en": "Agent Memory",
+      "aliases": [
+        "记忆",
+        "跨会话记忆",
+        "Agent Memory"
+      ],
+      "cat": "AI · 上下文",
+      "url": "https://vibe-hub.org/agent-memory"
+    },
+    {
+      "id": "context-engineering",
+      "term": "上下文工程",
+      "en": "Context Engineering",
+      "aliases": [
+        "Context Management",
+        "上下文管理"
+      ],
+      "cat": "AI · 上下文",
+      "url": "https://vibe-hub.org/context-engineering"
+    },
+    {
+      "id": "context-window",
+      "term": "上下文窗口",
+      "en": "Context Window",
+      "aliases": [
+        "上下文长度",
+        "Context Length"
+      ],
+      "cat": "AI · 上下文",
+      "url": "https://vibe-hub.org/context-window"
+    },
+    {
+      "id": "conversation-history",
+      "term": "对话历史",
+      "en": "Conversation History",
+      "aliases": [
+        "聊天记录",
+        "消息历史"
+      ],
+      "cat": "AI · 上下文",
+      "url": "https://vibe-hub.org/conversation-history"
+    },
+    {
+      "id": "prompt",
+      "term": "提示词",
+      "en": "Prompt",
+      "aliases": [
+        "提示词工程",
+        "Prompt Engineering",
+        "AI提示词",
+        "Prompt Template",
+        "提示词模板",
+        "Few-shot Prompting"
+      ],
+      "cat": "AI · 上下文",
+      "url": "https://vibe-hub.org/prompt"
+    },
+    {
+      "id": "system-prompt",
+      "term": "系统提示词",
+      "en": "System Prompt",
+      "aliases": [
+        "系统指令",
+        "System Instructions"
+      ],
+      "cat": "AI · 上下文",
+      "url": "https://vibe-hub.org/system-prompt"
+    },
+    {
+      "id": "token",
+      "term": "Token",
+      "en": null,
+      "aliases": [
+        "词元",
+        "文本令牌"
+      ],
+      "cat": "AI · 上下文",
+      "url": "https://vibe-hub.org/token"
+    },
+    {
+      "id": "rate-limit",
+      "term": "速率限制",
+      "en": "Rate Limit",
+      "aliases": [
+        "限流",
+        "请求频率限制"
+      ],
+      "cat": "AI · 性能与成本",
+      "url": "https://vibe-hub.org/rate-limit"
+    },
+    {
+      "id": "response-speed",
+      "term": "TTFT / TPS",
+      "en": null,
+      "aliases": [
+        "TTFT 与 TPS",
+        "TTFT & TPS",
+        "首 Token 延迟",
+        "每秒 Token 数"
+      ],
+      "cat": "AI · 性能与成本",
+      "url": "https://vibe-hub.org/response-speed"
+    },
+    {
+      "id": "token-cost",
+      "term": "Token 用量与成本",
+      "en": "Token Usage & Cost",
+      "aliases": [
+        "Token 费用",
+        "模型调用成本"
+      ],
+      "cat": "AI · 性能与成本",
+      "url": "https://vibe-hub.org/token-cost"
+    },
+    {
+      "id": "agent-loop",
+      "term": "Agent 循环",
+      "en": "Agent Loop",
+      "aliases": [
+        "Agentic Loop",
+        "智能体循环"
+      ],
+      "cat": "AI · Agent 与工具",
+      "url": "https://vibe-hub.org/agent-loop"
+    },
+    {
+      "id": "ai-agent",
+      "term": "AI Agent",
+      "en": null,
+      "aliases": [
+        "智能体",
+        "智能代理",
+        "Agent"
+      ],
+      "cat": "AI · Agent 与工具",
+      "url": "https://vibe-hub.org/ai-agent"
+    },
+    {
+      "id": "harness-engineering",
+      "term": "Agent 运行框架工程",
+      "en": "Harness Engineering",
+      "aliases": [
+        "Agent Harness Engineering",
+        "Agent Harness",
+        "智能体脚手架工程"
+      ],
+      "cat": "AI · Agent 与工具",
+      "url": "https://vibe-hub.org/harness-engineering"
+    },
+    {
+      "id": "human-in-the-loop",
+      "term": "人在回路",
+      "en": "Human-in-the-loop",
+      "aliases": [
+        "HITL",
+        "Human in the Loop",
+        "人工介入",
+        "人类监督",
+        "人机协同确认",
+        "关键节点人工审批"
+      ],
+      "cat": "AI · Agent 与工具",
+      "url": "https://vibe-hub.org/human-in-the-loop"
+    },
+    {
+      "id": "react-pattern",
+      "term": "ReAct",
+      "en": null,
+      "aliases": [
+        "ReAct 机制",
+        "Reason + Act",
+        "推理行动模式"
+      ],
+      "cat": "AI · Agent 与工具",
+      "url": "https://vibe-hub.org/react-pattern"
+    },
+    {
+      "id": "sub-agent",
+      "term": "Sub-agent",
+      "en": null,
+      "aliases": [
+        "子 Agent",
+        "子智能体",
+        "Worker Agent"
+      ],
+      "cat": "AI · Agent 与工具",
+      "url": "https://vibe-hub.org/sub-agent"
+    },
+    {
+      "id": "tool-calling",
+      "term": "工具调用",
+      "en": "Tool Calling",
+      "aliases": [
+        "Function Calling",
+        "函数调用"
+      ],
+      "cat": "AI · Agent 与工具",
+      "url": "https://vibe-hub.org/tool-calling"
+    },
+    {
+      "id": "ai-basics",
+      "term": "AI 应用基础",
+      "en": "AI Application Basics",
+      "aliases": [
+        "生成式 AI 基础",
+        "LLM 应用基础"
+      ],
+      "cat": "AI · AI 基础",
+      "url": "https://vibe-hub.org/ai-basics"
+    },
+    {
+      "id": "ai-hallucination",
+      "term": "AI 幻觉",
+      "en": "AI Hallucination",
+      "aliases": [
+        "模型幻觉",
+        "Hallucination",
+        "AI 编造"
+      ],
+      "cat": "AI · AI 基础",
+      "url": "https://vibe-hub.org/ai-hallucination"
+    },
+    {
+      "id": "fine-tuning",
+      "term": "微调",
+      "en": "Fine-tuning",
+      "aliases": [
+        "微调模型",
+        "Fine tuning"
+      ],
+      "cat": "AI · AI 基础",
+      "url": "https://vibe-hub.org/fine-tuning"
+    },
+    {
+      "id": "multimodal",
+      "term": "多模态",
+      "en": "Multimodal AI",
+      "aliases": [
+        "多模态 AI",
+        "多模态模型",
+        "Multimodality"
+      ],
+      "cat": "AI · AI 基础",
+      "url": "https://vibe-hub.org/multimodal"
+    },
+    {
+      "id": "rag",
+      "term": "RAG",
+      "en": null,
+      "aliases": [
+        "检索增强生成",
+        "Retrieval-Augmented Generation"
+      ],
+      "cat": "AI · AI 基础",
+      "url": "https://vibe-hub.org/rag"
+    },
+    {
+      "id": "reasoning-model",
+      "term": "推理模型",
+      "en": "Reasoning Model",
+      "aliases": [
+        "思考模型",
+        "Reasoning model"
+      ],
+      "cat": "AI · AI 基础",
+      "url": "https://vibe-hub.org/reasoning-model"
+    },
+    {
+      "id": "vibe-coding",
+      "term": "Vibe Coding",
+      "en": null,
+      "aliases": [
+        "氛围编程",
+        "凭感觉编程"
+      ],
+      "cat": "AI · AI 基础",
+      "url": "https://vibe-hub.org/vibe-coding"
+    },
+    {
+      "id": "branch",
+      "term": "分支",
+      "en": "Branch",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/branch"
+    },
+    {
+      "id": "clone",
+      "term": "克隆",
+      "en": "Clone",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/clone"
+    },
+    {
+      "id": "commit",
+      "term": "提交",
+      "en": "Commit",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/commit"
+    },
+    {
+      "id": "diff",
+      "term": "差异对比",
+      "en": "Diff",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/diff"
+    },
+    {
+      "id": "git",
+      "term": "Git",
+      "en": null,
+      "aliases": [
+        "Git 版本控制",
+        "版本控制"
+      ],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/git"
+    },
+    {
+      "id": "gitignore",
+      "term": "忽略文件",
+      "en": ".gitignore",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/gitignore"
+    },
+    {
+      "id": "merge",
+      "term": "合并",
+      "en": "Merge",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/merge"
+    },
+    {
+      "id": "merge-conflict",
+      "term": "代码冲突",
+      "en": "Merge Conflict",
+      "aliases": [
+        "冲突",
+        "Merge Conflict"
+      ],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/merge-conflict"
+    },
+    {
+      "id": "pull",
+      "term": "拉取",
+      "en": "Pull",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/pull"
+    },
+    {
+      "id": "pull-request",
+      "term": "合并请求",
+      "en": "Pull Request",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/pull-request"
+    },
+    {
+      "id": "push",
+      "term": "推送",
+      "en": "Push",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/push"
+    },
+    {
+      "id": "remote-repository",
+      "term": "远程仓库",
+      "en": "Remote Repository",
+      "aliases": [
+        "远程",
+        "Remote",
+        "origin"
+      ],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/remote-repository"
+    },
+    {
+      "id": "reset-revert",
+      "term": "重置与回退提交",
+      "en": "Reset & Revert",
+      "aliases": [
+        "Reset",
+        "Revert",
+        "撤销提交"
+      ],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/reset-revert"
+    },
+    {
+      "id": "stash",
+      "term": "贮藏",
+      "en": "Stash",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/stash"
+    },
+    {
+      "id": "worktree",
+      "term": "工作树",
+      "en": "Worktree",
+      "aliases": [],
+      "cat": "Git · Git",
+      "url": "https://vibe-hub.org/worktree"
+    }
+  ]
+}

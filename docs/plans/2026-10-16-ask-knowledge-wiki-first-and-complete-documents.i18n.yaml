@@ -1,0 +1,58 @@
+# Bilingual-pair consistency record for 2026-10-16-ask-knowledge-wiki-first-and-complete-documents.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-10-16-ask-knowledge-wiki-first-and-complete-documents.md
+/ask-knowledge-wiki-first-answers-and-complete-documents:
+  en: 7accdffba6ae850f
+  zh: 8032c39eee5de79e
+/ask-knowledge-wiki-first-answers-and-complete-documents/summary:
+  en: 655e1647a2fb0812
+  zh: 57f31e1454eb6ca8
+/ask-knowledge-wiki-first-answers-and-complete-documents/table-of-contents:
+  en: 0049b54950522807
+  zh: 61e51bbb2b1a1638
+/ask-knowledge-wiki-first-answers-and-complete-documents/requirements:
+  en: ff7e424f26697204
+  zh: c1fa458e8d3add4b
+/ask-knowledge-wiki-first-answers-and-complete-documents/current-implementation:
+  en: c729cfbb0393e7c8
+  zh: 952313016a5908fe
+/ask-knowledge-wiki-first-answers-and-complete-documents/scope:
+  en: d1c3f6019dc0774b
+  zh: 9d4f8a52388d36fb
+/ask-knowledge-wiki-first-answers-and-complete-documents/architecture-and-behavior:
+  en: 51734aee0aceafb3
+  zh: 4f315ce6ee17d5db
+/ask-knowledge-wiki-first-answers-and-complete-documents/architecture-and-behavior/1-separate-completeness-from-model-context:
+  en: e543d13a90b0f0af
+  zh: 9bd649399e5a8a8a
+/ask-knowledge-wiki-first-answers-and-complete-documents/architecture-and-behavior/2-use-one-complete-document-manifest:
+  en: fcc3fc41e32836a0
+  zh: 6700b3bb3e6fcb7e
+/ask-knowledge-wiki-first-answers-and-complete-documents/architecture-and-behavior/3-compile-a-maintained-wiki:
+  en: 51125030f4a9c988
+  zh: f08036e7636e5b6a
+/ask-knowledge-wiki-first-answers-and-complete-documents/architecture-and-behavior/4-make-the-answering-path-wiki-first:
+  en: 2b6006543a6ef763
+  zh: fce6bc34ddb74c3a
+/ask-knowledge-wiki-first-answers-and-complete-documents/architecture-and-behavior/5-provide-complete-session-only-document-access:
+  en: 92a7a8c6015a5cee
+  zh: c280a0893c45b4cd
+/ask-knowledge-wiki-first-answers-and-complete-documents/architecture-and-behavior/6-keep-the-interface-simple:
+  en: 3435288a690ea1b2
+  zh: fef59745c9248e11
+/ask-knowledge-wiki-first-answers-and-complete-documents/implementation-sequence:
+  en: f227eb282909914e
+  zh: 895c72bf7f8bd217
+/ask-knowledge-wiki-first-answers-and-complete-documents/implementation-sequence/baseline-checkpoint-and-keep-replace-inventory:
+  en: accb7dffffa04c48
+  zh: 836bb0dcb1e9bf13
+/ask-knowledge-wiki-first-answers-and-complete-documents/acceptance-matrix:
+  en: a7011bf2f2ee917e
+  zh: 6b0e5370c5adf10b
+/ask-knowledge-wiki-first-answers-and-complete-documents/verification-and-release:
+  en: 06ec2ca00df6c957
+  zh: d448e6e7c4f63345
+/ask-knowledge-wiki-first-answers-and-complete-documents/dev-note:
+  en: 22df5d16242c4f39
+  zh: 41081812f9f45841

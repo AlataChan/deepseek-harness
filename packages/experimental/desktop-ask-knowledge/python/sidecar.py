@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import sys
@@ -39,7 +40,8 @@ def _read_page_text(vault: Path, rel_path: str, limit: int = 4000) -> str:
     path = vault / rel_path
     if not path.is_file():
         return ""
-    text = path.read_text(encoding="utf-8", errors="replace")
+    from documents.search import safe_read
+    text = safe_read(vault, path).decode("utf-8", errors="replace")
     return text if len(text) <= limit else text[:limit]
 
 
@@ -100,6 +102,18 @@ def cmd_self_test(req: dict) -> dict:
         has_xlsx = True
     except ImportError:
         has_xlsx = False
+    try:
+        import pypdf
+        from documents import convert as document_convert
+
+        has_pypdf = callable(pypdf.PdfReader)
+        has_document_pdf = document_convert.pypdf is not None and callable(document_convert.inspect_pdf)
+    except ImportError:
+        has_pypdf = False
+        has_document_pdf = False
+    from documents.runtime_check import check_sqlite_runtime
+
+    sqlite_runtime = check_sqlite_runtime()
     filled = {
         "operations": [
             {
@@ -129,6 +143,9 @@ def cmd_self_test(req: dict) -> dict:
         "convertFile": True,
         "markitdown": has_markitdown,
         "pdf": has_pdf,
+        "pypdf": has_pypdf,
+        "documentPdf": has_document_pdf,
+        "sqliteRuntime": sqlite_runtime["ok"],
         "xlsx": has_xlsx,
         "hasDeepseekKey": bool(key),
     }
@@ -400,7 +417,6 @@ def cmd_retrieve_bundle(req: dict) -> dict:
     for group, kind in (
         (inner.get("concepts", []), "concept"),
         (inner.get("entities", []), "entity"),
-        (inner.get("raw_sources", []), "raw"),
     ):
         for item in group:
             path = item.get("path")
@@ -416,6 +432,57 @@ def cmd_retrieve_bundle(req: dict) -> dict:
                     "text": _read_page_text(vault, path),
                 }
             )
+
+    # Integrated full-text passage retrieval for raw pages
+    try:
+        from documents.search import search_passages
+        passage_res = search_passages(vault, [query], limit=12)
+        p_items = passage_res.get("items", [])
+        if p_items:
+            for p in p_items:
+                p_key = p.get("passageId") or p.get("path")
+                if p_key in seen:
+                    continue
+                seen.add(p_key)
+                items.append({
+                    "path": p.get("path"),
+                    "title": p.get("title"),
+                    "reason": "passage_match",
+                    "kind": "raw",
+                    "text": p.get("text", ""),
+                    "passageId": p.get("passageId"),
+                })
+        else:
+            for item in inner.get("raw_sources", []):
+                path = item.get("path")
+                if not path or path in seen:
+                    continue
+                seen.add(path)
+                items.append(
+                    {
+                        "path": path,
+                        "title": item.get("title") or path,
+                        "reason": item.get("reason") or "",
+                        "kind": "raw",
+                        "text": _read_page_text(vault, path),
+                    }
+                )
+    except Exception:
+        for item in inner.get("raw_sources", []):
+            path = item.get("path")
+            if not path or path in seen:
+                continue
+            seen.add(path)
+            items.append(
+                {
+                    "path": path,
+                    "title": item.get("title") or path,
+                    "reason": item.get("reason") or "",
+                    "kind": "raw",
+                    "text": _read_page_text(vault, path),
+                }
+            )
+
     return {
         "ok": True,
         "query": query,
@@ -425,12 +492,109 @@ def cmd_retrieve_bundle(req: dict) -> dict:
     }
 
 
+def cmd_passage_search(req: dict) -> dict:
+    _ensure_path()
+    from documents.search import search_passages
+
+    vault = Path(req["vault"])
+    queries = req.get("queries") or ([req["query"]] if "query" in req else [])
+    limit = int(req.get("limit", 12))
+    cursor = req.get("cursor")
+    doc_filter = req.get("documentFilter") or req.get("document_filter")
+    max_chars = int(req.get("maxChars", 24000))
+    layer = req.get("layer", "auto")
+    return search_passages(
+        vault,
+        queries,
+        limit=limit,
+        cursor=cursor,
+        document_filter=doc_filter,
+        max_chars=max_chars,
+        max_bytes=int(req.get("maxBytes", 5000)),
+        layer=layer,
+    )
+
+
+def cmd_index_vault(req: dict) -> dict:
+    _ensure_path()
+    from documents.search import index_raw_vault
+
+    vault = Path(req["vault"])
+    return index_raw_vault(vault)
+
+
+def cmd_runtime_check(req: dict) -> dict:
+    _ensure_path()
+    from documents.runtime_check import check_sqlite_runtime
+
+    return check_sqlite_runtime()
+
+
+def cmd_register_source_revision(req: dict) -> dict:
+    _ensure_path()
+    from documents.store import register_source_revision
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    return register_source_revision(
+        db_path,
+        document_id=req["documentId"],
+        library_id=req["libraryId"],
+        filename=req["filename"],
+        sha256_hash=req["sha256"],
+        byte_length=int(req["byteLength"]),
+        object_path=req["objectPath"],
+        mime_type=req.get("mimeType"),
+    )
+
+
+def cmd_get_document(req: dict) -> dict:
+    _ensure_path()
+    from documents.store import get_document
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    doc = get_document(db_path, req["documentId"])
+    return {"ok": True, "document": doc}
+
+
+def cmd_list_documents(req: dict) -> dict:
+    _ensure_path()
+    from documents.store import list_documents
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    docs = list_documents(db_path, req["libraryId"])
+    return {"ok": True, "documents": docs}
+
+
+def cmd_get_source_revision(req: dict) -> dict:
+    _ensure_path()
+    from documents.store import get_source_revision
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    rev = get_source_revision(db_path, req["revisionId"])
+    return {"ok": True, "revision": rev}
+
+
+def cmd_verify_source_integrity(req: dict) -> dict:
+    _ensure_path()
+    from documents.store import verify_source_integrity
+
+    vault = Path(req["vault"])
+    return verify_source_integrity(vault, req["revisionId"])
+
+
 def cmd_lookup(req: dict) -> dict:
     _ensure_path()
     from octopus_kb_compound.lookup import lookup_term
+    from documents.search import extract_wiki_frontmatter, extract_wikilinks, make_cursor, decode_cursor, safe_read
 
     vault = Path(req["vault"])
     term = req["term"]
+    cursor = req.get("cursor")
+    max_chars = int(req.get("maxChars", 24000))
     from octopus_kb_compound.heal import heal_page_meta_rejections
 
     heal_page_meta_rejections(vault)
@@ -438,18 +602,55 @@ def cmd_lookup(req: dict) -> dict:
     canonical = result.get("canonical")
     text = ""
     path = None
+    citations: list[str] = []
+    related_links: list[str] = []
+    coverage_status = "wiki-ready"
     if isinstance(canonical, dict):
         path = canonical.get("path")
         if path:
-            text = _read_page_text(vault, path)
-    return {
+            full_file = vault / path
+            if full_file.is_file():
+                raw_text = safe_read(vault, full_file).decode("utf-8", errors="replace")
+                meta = extract_wiki_frontmatter(raw_text)
+                c_val = meta.get("citations", [])
+                citations = [c_val] if isinstance(c_val, str) else list(c_val)
+                coverage_status = meta.get("coverage_status", "wiki-ready")
+                related_links = extract_wikilinks(raw_text)
+                text = raw_text
+            else:
+                text = _read_page_text(vault, path)
+
+    start = 0
+    q_hash = hashlib.sha256(term.encode()).hexdigest()[:16]
+    if cursor:
+        _, start = decode_cursor(cursor, str(vault), hashlib.sha256(text.encode()).hexdigest(), q_hash)
+    max_bytes = int(req.get("maxBytes", 5000))
+    if not 1 <= max_chars <= 24000 or not 512 <= max_bytes <= 64000:
+        raise ValueError("Invalid wiki lookup allowance")
+    end = min(len(text), start + max_chars)
+    result = {
         "ok": True,
         "term": term,
         "canonicalPath": path,
-        "text": text or None,
+        "text": "",
+        "cursor": None,
+        "citations": citations,
+        "relatedLinks": related_links,
+        "coverageStatus": coverage_status,
         "ambiguous": result.get("ambiguous", False),
         "collisions": result.get("collisions", []),
+        "warnings": [],
     }
+    while end >= start:
+        result['text'] = text[start:end] or None
+        result['cursor'] = make_cursor(str(vault), hashlib.sha256(text.encode()).hexdigest(), q_hash, 0, text_offset=end) if end < len(text) else None
+        if len(json.dumps(result, ensure_ascii=False).encode('utf-8')) <= max_bytes:
+            return result
+        if end == start:
+            break
+        end -= max(1, (end - start) // 8)
+    raise ValueError('Wiki lookup metadata exceeds allowance')
+
 
 
 def cmd_inbox_list(req: dict) -> dict:
@@ -465,21 +666,306 @@ def cmd_inbox_list(req: dict) -> dict:
     return {"ok": True, "deferredCount": 0, "items": []}
 
 
+def cmd_get_startup_attempt(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import get_or_increment_startup_attempt
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    attempt = get_or_increment_startup_attempt(db_path, req["libraryId"], req.get("increment", False))
+    return {"ok": True, "startupAttempt": attempt}
+
+
+def cmd_increment_startup_attempt(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import get_or_increment_startup_attempt
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    attempt = get_or_increment_startup_attempt(db_path, req["libraryId"], increment=True)
+    return {"ok": True, "startupAttempt": attempt}
+
+
+def cmd_create_job(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import create_job
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    return create_job(
+        db_path,
+        req["jobId"],
+        req["libraryId"],
+        req["documentId"],
+        req["revisionId"],
+        req["startupAttempt"],
+        req.get("stage", "queued"),
+        req.get("totalChunks", 0),
+        req.get("tokenEstimate", 0),
+    )
+
+
+def cmd_update_job_checkpoint(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import update_job_checkpoint
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    return update_job_checkpoint(
+        db_path,
+        req["jobId"],
+        req["expectedStartupAttempt"],
+        req["completedChunks"],
+        req["currentChunkIndex"],
+        req["tokensUsed"],
+        req.get("checkpointJson"),
+        req.get("stage"),
+    )
+
+
+def cmd_finish_job(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import finish_job
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    return finish_job(
+        db_path,
+        req["jobId"],
+        req["expectedStartupAttempt"],
+        req.get("status", "completed"),
+        req.get("error"),
+    )
+
+
+def cmd_mark_job_uncertain(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import mark_job_uncertain
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    return mark_job_uncertain(
+        db_path,
+        req["jobId"],
+        req.get("reason", "uncertain paid request response"),
+    )
+
+
+def cmd_cancel_job(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import cancel_job
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    return cancel_job(db_path, req["jobId"])
+
+
+def cmd_get_job(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import get_job
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    job = get_job(db_path, req["jobId"])
+    return {"ok": True, "job": job}
+
+
+def cmd_list_jobs(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import list_jobs
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    jobs = list_jobs(db_path, req["libraryId"])
+    return {"ok": True, "jobs": jobs}
+
+
+def cmd_convert_document(req: dict) -> dict:
+    _ensure_path()
+    from documents.convert import convert_file
+
+    path = req.get("path")
+    max_bytes = req.get("maxOutputBytes", 50 * 1024 * 1024)
+    res = convert_file(path, max_bytes)
+    return {"ok": True, **res}
+
+
+def cmd_create_chunks(req: dict) -> dict:
+    _ensure_path()
+    from documents.chunks import create_chunks_from_blocks
+
+    doc_id = req["documentId"]
+    rev_id = req["revisionId"]
+    blocks = req.get("blocks", [])
+    full_text = req.get("fullText", "")
+    max_chars = req.get("maxChunkChars", 1500)
+    overlap = req.get("overlapChars", 200)
+
+    manifest = create_chunks_from_blocks(doc_id, rev_id, blocks, full_text, max_chars, overlap)
+    return {"ok": True, **manifest}
+
+
+def cmd_verify_chunks(req: dict) -> dict:
+    _ensure_path()
+    from documents.chunks import verify_chunk_coverage
+
+    full_text = req.get("fullText", "")
+    chunks = req.get("chunks", [])
+    res = verify_chunk_coverage(full_text, chunks)
+    return {
+        "ok": True,
+        "valid": res["ok"],
+        "coveredChars": res["coveredChars"],
+        "totalChars": res["totalChars"],
+        "errors": res["errors"],
+    }
+
+
+def cmd_calculate_budget(req: dict) -> dict:
+    _ensure_path()
+    from documents.token_budget import calculate_manifest_budget
+
+    chunks = req.get("chunks", [])
+    policy = req.get("policy", "byte-fallback")
+    approved = req.get("approvedBudget")
+
+    try:
+        budget = calculate_manifest_budget(chunks, policy=policy, approved_budget=approved)
+        return {"ok": True, **budget}
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc), "code": "unknown-policy"}
+
+
+def cmd_enrich_chunks(req: dict) -> dict:
+    _ensure_path()
+    from documents.enrich import enrich_document_chunks
+
+    vault = Path(req["vault"])
+    lib_id = req["libraryId"]
+    job_id = req["jobId"]
+    doc_id = req["documentId"]
+    rev_id = req["revisionId"]
+    chunks = req.get("chunks", [])
+    attempt = req["expectedStartupAttempt"]
+    budget = req.get("maxTokensBudget")
+
+    res = enrich_document_chunks(
+        vault, lib_id, job_id, doc_id, rev_id, chunks, attempt, budget
+    )
+    return res
+
+
+def cmd_migrate_library(req: dict) -> dict:
+    _ensure_path()
+    from documents.migrate import migrate_legacy_library
+
+    vault = Path(req["vault"])
+    library_id = req["libraryId"]
+    return migrate_legacy_library(vault, library_id)
+
+
+def cmd_cancel_library_jobs(req: dict) -> dict:
+    _ensure_path()
+    from documents.jobs import cancel_all_library_jobs
+
+    vault = Path(req["vault"])
+    db_path = vault / ".octopus-kb" / "documents.sqlite"
+    return cancel_all_library_jobs(db_path, req["libraryId"])
+
+
+def cmd_passage_read(req: dict) -> dict:
+    _ensure_path()
+    from documents.search import read_passage
+    return read_passage(Path(req['vault']), req['passageId'], req.get('cursor'))
+
+
+def cmd_record_conversion(req: dict) -> dict:
+    _ensure_path()
+    from documents.pipeline import record_conversion
+    return record_conversion(req)
+
+
+def cmd_document_location(req: dict) -> dict:
+    _ensure_path()
+    from documents.pipeline import document_location
+    return document_location(req)
+
+
+def cmd_plan_document(req: dict) -> dict:
+    _ensure_path()
+    from documents.pipeline import plan_document
+    return plan_document(req)
+
+
+def cmd_execute_document(req: dict) -> dict:
+    _ensure_path()
+    from documents.pipeline import execute_document
+    return execute_document(req)
+
+
+def cmd_document_status(req: dict) -> dict:
+    _ensure_path()
+    from documents.pipeline import document_status
+    return document_status(req)
+
+
+def cmd_document_action(req: dict) -> dict:
+    _ensure_path()
+    from documents.pipeline import document_action
+    return document_action(req)
+
+
 COMMANDS = {
+    "passage-read": cmd_passage_read,
+    "record-conversion": cmd_record_conversion,
+    "document-location": cmd_document_location,
+    "plan-document": cmd_plan_document,
+    "execute-document": cmd_execute_document,
+    "document-status": cmd_document_status,
+    "document-action": cmd_document_action,
     "self-test": cmd_self_test,
     "bootstrap": cmd_bootstrap,
     "recover": cmd_recover,
     "ingest-file": cmd_ingest_file,
     "convert-file": cmd_convert_file,
+    "convert-document": cmd_convert_document,
+    "create-chunks": cmd_create_chunks,
+    "verify-chunks": cmd_verify_chunks,
+    "calculate-budget": cmd_calculate_budget,
+    "enrich-chunks": cmd_enrich_chunks,
+    "migrate-library": cmd_migrate_library,
+    "cancel-library-jobs": cmd_cancel_library_jobs,
     "propose": cmd_propose,
     "validate-apply": cmd_validate_apply,
     "retrieve-bundle": cmd_retrieve_bundle,
     "lookup": cmd_lookup,
     "inbox-list": cmd_inbox_list,
+    "passage-search": cmd_passage_search,
+    "index-vault": cmd_index_vault,
+    "runtime-check": cmd_runtime_check,
+    "register-source-revision": cmd_register_source_revision,
+    "get-document": cmd_get_document,
+    "list-documents": cmd_list_documents,
+    "get-source-revision": cmd_get_source_revision,
+    "verify-source-integrity": cmd_verify_source_integrity,
+    "get-startup-attempt": cmd_get_startup_attempt,
+    "increment-startup-attempt": cmd_increment_startup_attempt,
+    "create-job": cmd_create_job,
+    "update-job-checkpoint": cmd_update_job_checkpoint,
+    "finish-job": cmd_finish_job,
+    "mark-job-uncertain": cmd_mark_job_uncertain,
+    "cancel-job": cmd_cancel_job,
+    "get-job": cmd_get_job,
+    "list-jobs": cmd_list_jobs,
 }
 
 
 def main() -> int:
+    # Node encodes this process channel as UTF-8, independently of OS locale.
+    # StringIO callers already supply decoded text and do not expose reconfigure.
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8")
     raw = sys.stdin.read()
     try:
         req = json.loads(raw) if raw.strip() else {}
@@ -502,6 +988,28 @@ def main() -> int:
         return 1
     if "ok" not in result:
         result = {"ok": True, **result}
+
+    result_path = req.get("resultPath") or req.get("result_file")
+    if result_path and result.get("ok"):
+        p = Path(result_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        content_bytes = json.dumps(result, ensure_ascii=False).encode("utf-8")
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as output:
+            output.write(content_bytes)
+            output.flush()
+            os.fsync(output.fileno())
+        envelope = {
+            "ok": True,
+            "protocol": "file-result-v1",
+            "resultPath": str(p),
+            "byteLength": len(content_bytes),
+            "sha256": hashlib.sha256(content_bytes).hexdigest(),
+        }
+        json.dump(envelope, sys.stdout, ensure_ascii=False)
+        sys.stdout.write("\n")
+        return 0
+
     json.dump(result, sys.stdout, ensure_ascii=False)
     sys.stdout.write("\n")
     return 0 if result.get("ok") else 1

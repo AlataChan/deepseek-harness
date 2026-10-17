@@ -9,11 +9,12 @@ import { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import type { AskKnowledge } from '@deepseek-ai/dsh-host-ask-knowledge'
-import DesktopAskKnowledge from '../src/index.ts'
-import { healRejectedProposals, isPageMetaRejection, isPostLintRejection } from '../src/ingest.ts'
+import DesktopAskKnowledge, { type Config as DesktopAskKnowledgeConfig } from '../src/index.ts'
+import { finishIngestPipeline, healRejectedProposals, isPageMetaRejection, isPostLintRejection } from '../src/ingest.ts'
 import { withLibraryLock } from '../src/library-lock.ts'
-import { decodeIngestChunk, MAX_INGEST_CHUNK_BYTES } from '../src/upload-temp.ts'
-import { installFakeSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
+import { decodeIngestChunk, MAX_INGEST_CHUNK_BYTES, recoverUploadTemp } from '../src/upload-temp.ts'
+import { installFakeSidecar, installPythonSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
+import { PROCESS_INTEGRATION_TIMEOUT } from './helpers/process-integration-timeout.ts'
 
 const KEY = credentialRef('DEEPSEEK_API_KEY')
 const cleanups: Array<() => Promise<void> | void> = []
@@ -24,16 +25,22 @@ afterEach(async () => {
 
 async function boot(options: {
   sidecarEnv?: NodeJS.ProcessEnv
+  realSidecar?: boolean
+  config?: Partial<DesktopAskKnowledgeConfig>
+  seedBeforeBoot?: (root: string) => Promise<void>
 } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'ask-knowledge-ingest-'))
   const sidecarHome = join(root, 'sidecar')
-  await installFakeSidecar(sidecarHome)
+  await (options.realSidecar ? installPythonSidecar(sidecarHome) : installFakeSidecar(sidecarHome))
   if (options.sidecarEnv !== undefined) {
     const overlay: Record<string, string> = {}
     for (const [key, value] of Object.entries(options.sidecarEnv)) {
       if (value !== undefined) overlay[key] = value
     }
     await writeFakeSidecarEnv(sidecarHome, overlay)
+  }
+  if (options.seedBeforeBoot !== undefined) {
+    await options.seedBeforeBoot(root)
   }
   const previousKey = process.env.DEEPSEEK_API_KEY
   delete process.env.DEEPSEEK_API_KEY
@@ -54,6 +61,7 @@ async function boot(options: {
   const fiber = ctx.plugin(DesktopAskKnowledge, {
     knowledgeHome: root,
     sidecarRuntimePath: sidecarHome,
+    ...options.config,
   })
   await fiber.await()
   cleanups.push(() => fiber.dispose())
@@ -93,16 +101,31 @@ async function ingestText(
   })
 }
 
+async function legacyText(
+  harness: Awaited<ReturnType<typeof boot>>,
+  libraryId: Parameters<AskKnowledge['beginIngest']>[0]['libraryId'],
+  filename: string,
+  body: string,
+  reuseRawPath?: string,
+) {
+  const tempPath = join(harness.root, filename)
+  await writeFile(tempPath, body, 'utf8')
+  return finishIngestPipeline(harness.ctx, { sidecarRuntimePath: harness.sidecarHome }, harness.root, {
+    libraryId, tempPath, ...(reuseRawPath === undefined ? {} : { reuseRawPath }),
+  })
+}
+
 describe('ask-knowledge ingest', () => {
-  it('applies a markdown fixture through begin/append/finish', async () => {
-    const { capability } = await boot()
+  it('retains and indexes a markdown fixture while awaiting explicit extraction approval', async () => {
+    const { capability } = await boot({ realSidecar: true })
     const library = await capability.createLibrary({ displayName: '制度' })
     const result = await ingestText(capability, library.id, '报销.md', '# 报销\n\n流程\n')
-    expect(result).toMatchObject({ status: 'applied', rawRelPath: 'raw/报销.md' })
+    expect(result.status).toBe('deferred')
+    expect(result.rawRelPath).toMatch(/^raw\/doc-.+-rev-.+\.md$/)
   })
 
   it('unzips Word on the Host and ingests the markdown copy', async () => {
-    const { capability, root } = await boot()
+    const { capability, root } = await boot({ realSidecar: true })
     const library = await capability.createLibrary({ displayName: '制度' })
     const result = await ingestBytes(
       capability,
@@ -110,19 +133,18 @@ describe('ask-knowledge ingest', () => {
       '制度.docx',
       docxWithParagraphs(['报销流程']),
     )
-    expect(result).toMatchObject({ status: 'applied', rawRelPath: 'raw/制度.md' })
+    expect(result.status).toBe('deferred')
+    expect(result.rawRelPath).toMatch(/^raw\/doc-.+-rev-.+\.md$/)
     expect(await readFile(
-      join(root, 'knowledge-bases', 'libraries', library.id, 'raw', '制度.md'),
+      join(root, 'knowledge-bases', 'libraries', library.id, result.rawRelPath!),
       'utf8',
     )).toContain('报销流程')
     await expect(ingestBytes(capability, library.id, '空.docx', docxWithParagraphs([])))
       .rejects.toMatchObject({ message: '这份 Word 没有可提取的文字' })
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 
-  it('serializes two overlapping finishIngest calls on one library', async () => {
-    const { capability, root } = await boot({
-      sidecarEnv: { ASK_KNOWLEDGE_FAKE_HOLD_MS: '40' },
-    })
+  it('retains both same-name files across overlapping public uploads', async () => {
+    const { capability, root } = await boot({ realSidecar: true })
     const library = await capability.createLibrary({ displayName: '并发' })
     const started: number[] = []
     const finished: number[] = []
@@ -133,11 +155,15 @@ describe('ask-knowledge ingest', () => {
       return result
     }
     const [a, b] = await Promise.all([
-      run(1, 'one.md'),
-      run(2, 'two.md'),
+      run(1, 'same.md'),
+      run(2, 'same.md'),
     ])
-    expect(a.status).toBe('applied')
-    expect(b.status).toBe('applied')
+    expect(a.status).toBe('deferred')
+    expect(b.status).toBe('deferred')
+    expect(a.rawRelPath).not.toBe(b.rawRelPath)
+    const vault = join(root, 'knowledge-bases', 'libraries', library.id)
+    expect(await readFile(join(vault, a.rawRelPath!), 'utf8')).toContain('doc 1')
+    expect(await readFile(join(vault, b.rawRelPath!), 'utf8')).toContain('doc 2')
     expect(finished).toHaveLength(2)
     const raw = await readdir(join(root, 'knowledge-bases', 'libraries', library.id, 'raw'))
     expect(raw).toHaveLength(2)
@@ -145,11 +171,12 @@ describe('ask-knowledge ingest', () => {
   })
 
   it('keeps exactly one raw when propose fails and retries via reuseRawPath', async () => {
-    const { capability, root, sidecarHome } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_PROPOSE: 'fail' },
     })
+    const { capability, root, sidecarHome } = harness
     const library = await capability.createLibrary({ displayName: '重试' })
-    const failed = await ingestText(capability, library.id, '报销.md', '# 报销\n')
+    const failed = await legacyText(harness, library.id, '报销.md', '# 报销\n')
     expect(failed).toMatchObject({
       status: 'failed',
       retryable: true,
@@ -159,34 +186,36 @@ describe('ask-knowledge ingest', () => {
     const vault = join(root, 'knowledge-bases', 'libraries', library.id)
     expect(await readdir(join(vault, 'raw'))).toEqual(['报销.md'])
     await writeFakeSidecarEnv(sidecarHome, {})
-    const retried = await ingestText(capability, library.id, '报销.md', '# unused\n', 'raw/报销.md')
+    const retried = await legacyText(harness, library.id, '报销.md', '# unused\n', 'raw/报销.md')
     expect(retried.status).toBe('applied')
     expect(await readdir(join(vault, 'raw'))).toEqual(['报销.md'])
   })
 
   it('maps sidecar propose English to Chinese', async () => {
-    const { capability, sidecarHome } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_PROPOSE: 'LLM returned non-JSON output' },
     })
+    const { capability, sidecarHome } = harness
     const library = await capability.createLibrary({ displayName: '映射' })
-    const failed = await ingestText(capability, library.id, '意见.md', '# 意见\n')
+    const failed = await legacyText(harness, library.id, '意见.md', '# 意见\n')
     expect(failed.error).toBe('模型没有按词条格式返回。原文已经放进库，请再试一次。')
     await writeFakeSidecarEnv(sidecarHome, { ASK_KNOWLEDGE_FAKE_PROPOSE: 'proposal schema invalid' })
     const second = await capability.createLibrary({ displayName: '格式' })
-    const invalid = await ingestText(capability, second.id, '意见.md', '# 意见\n')
+    const invalid = await legacyText(harness, second.id, '意见.md', '# 意见\n')
     expect(invalid.error).toBe('模型给出的词条格式不对，请再试一次。')
   })
 
   it('recovers a pending apply failure and rejects the old proposal id', async () => {
-    const { capability, sidecarHome } = await boot({
+    const harness = await boot({
       sidecarEnv: {
         ASK_KNOWLEDGE_FAKE_APPLY: 'fail',
         ASK_KNOWLEDGE_FAKE_PROPOSAL_ID: 'prop-old',
         ASK_KNOWLEDGE_FAKE_INBOX: JSON.stringify([{ proposal_id: 'prop-old' }]),
       },
     })
+    const { capability, sidecarHome } = harness
     const library = await capability.createLibrary({ displayName: '补偿' })
-    const failed = await ingestText(capability, library.id, '报销.md', '# 报销\n')
+    const failed = await legacyText(harness, library.id, '报销.md', '# 报销\n')
     expect(failed).toMatchObject({
       status: 'failed',
       retryable: true,
@@ -198,16 +227,17 @@ describe('ask-knowledge ingest', () => {
       ASK_KNOWLEDGE_FAKE_OLD_PROPOSAL_ID: 'prop-old',
       ASK_KNOWLEDGE_FAKE_PROPOSAL_ID: 'prop-new',
     })
-    const retried = await ingestText(capability, library.id, '报销.md', '# unused\n', failed.rawRelPath)
+    const retried = await legacyText(harness, library.id, '报销.md', '# unused\n', failed.rawRelPath)
     expect(retried).toMatchObject({ status: 'applied', proposalId: 'prop-new' })
   })
 
   it('does not treat sidecar apply rejected as applied', async () => {
-    const { capability } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'rejected' },
     })
+    const { capability } = harness
     const library = await capability.createLibrary({ displayName: '拒写' })
-    const result = await ingestText(capability, library.id, '意见.md', '# 意见\n')
+    const result = await legacyText(harness, library.id, '意见.md', '# 意见\n')
     expect(result).toMatchObject({
       status: 'failed',
       error: '整理词条没有写出可检索的页面。',
@@ -215,20 +245,22 @@ describe('ask-knowledge ingest', () => {
   })
 
   it('reports deferred ingest as not fully written', async () => {
-    const { capability } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'deferred' },
     })
+    const { capability } = harness
     const library = await capability.createLibrary({ displayName: '延期' })
-    const result = await ingestText(capability, library.id, '报销.md', '# 报销\n')
+    const result = await legacyText(harness, library.id, '报销.md', '# 报销\n')
     expect(result).toMatchObject({ status: 'deferred', deferredCount: 1 })
   })
 
   it('names the lint rule and page when a proposal fails the post-apply lint', async () => {
-    const { capability } = await boot({
+    const harness = await boot({
       sidecarEnv: { ASK_KNOWLEDGE_FAKE_APPLY: 'rejected-post-lint' },
     })
+    const { capability } = harness
     const library = await capability.createLibrary({ displayName: '词条冲突' })
-    const result = await ingestText(capability, library.id, '冲突.md', '# 冲突\n')
+    const result = await legacyText(harness, library.id, '冲突.md', '# 冲突\n')
     expect(result).toMatchObject({ status: 'failed', retryable: true })
     expect(result.error).toContain('同一个别名指向了多个词条')
     expect(result.error).toContain('wiki/a.md,wiki/b.md')
@@ -338,7 +370,8 @@ describe('ask-knowledge ingest', () => {
     const page = (id: string, type: string) => ({
       id,
       status: 'pending',
-      operations: [{ op: 'create_page', path: 'wiki/a.md', frontmatter: { title: 'A', type, lang: 'zh', role: type, layer: 'wiki', summary: '摘要' } }],
+      operations: [{ op: 'create_page', path: 'wiki/a.md', frontmatter: { title: 'A', type, lang: 'zh', role: type,
+        layer: 'wiki', summary: '摘要' } }],
     })
     const rejection = (id: string, frontmatter: Record<string, unknown>, rule_id: string) => ({
       ...page(id, String(frontmatter.type)),
@@ -437,4 +470,131 @@ describe('ask-knowledge ingest', () => {
       clearTimeout(aborting)
     }
   })
+
+  it('cleans up upload temp directories on append failure, abortIngest, finish abort, and cold startup', async () => {
+    const { capability, root } = await boot({
+      seedBeforeBoot: async (home) => {
+        const orphanDir = join(home, 'tmp', 'orphan-before-boot')
+        await mkdir(orphanDir, { recursive: true })
+        await writeFile(join(orphanDir, 'stale.md'), 'orphan', 'utf8')
+      },
+    })
+    const library = await capability.createLibrary({ displayName: '清理' })
+
+    // 1. appendIngestChunk failure disposes upload immediately (and beginIngest awaited this.ready, removing orphan-before-boot)
+    const hFail = await capability.beginIngest({ libraryId: library.id, filename: 'fail.md' })
+    expect(await readdir(join(root, 'tmp'))).not.toContain('orphan-before-boot')
+    expect((await readdir(join(root, 'tmp'))).length).toBe(1)
+    const huge = Buffer.alloc(MAX_INGEST_CHUNK_BYTES + 1).toString('base64')
+    await expect(capability.appendIngestChunk({ handle: hFail, bytes: huge }))
+      .rejects.toMatchObject({ code: 'chunk-too-large' })
+    expect(await readdir(join(root, 'tmp'))).toEqual([])
+    await expect(capability.finishIngest({ handle: hFail }))
+      .rejects.toMatchObject({ code: 'ingest-failed' })
+
+    // 2. abortIngest and remoteAbortIngest dispose open uploads and no-op unknown handles
+    const service = capability as DesktopAskKnowledge
+    const hAbort = await capability.beginIngest({ libraryId: library.id, filename: 'abort.md' })
+    await capability.appendIngestChunk({ handle: hAbort, bytes: Buffer.from('partial', 'utf8').toString('base64') })
+    expect((await readdir(join(root, 'tmp'))).length).toBe(1)
+    await service.remoteAbortIngest({ handle: hAbort })
+    expect(await readdir(join(root, 'tmp'))).toEqual([])
+    // Second abort on already-disposed handle is a safe no-op
+    await service.abortIngest({ handle: hAbort })
+    await service.abortExtract({ handle: hAbort })
+
+    // 3. Aborted signal passed to finishIngest still cleans up the staging directory
+    const hFinishAbort = await capability.beginIngest({ libraryId: library.id, filename: 'abort-finish.md' })
+    await capability.appendIngestChunk({ handle: hFinishAbort, bytes: Buffer.from('body', 'utf8').toString('base64') })
+    const aborted = new AbortController()
+    aborted.abort()
+    await expect(capability.finishIngest({ handle: hFinishAbort }, aborted.signal))
+      .rejects.toThrow()
+    expect(await readdir(join(root, 'tmp'))).toEqual([])
+
+    // 4. recoverUploadTemp preserves active directories and removes stale ones
+    const activeDir = join(root, 'tmp', 'active-1')
+    const staleDir = join(root, 'tmp', 'stale-2')
+    await mkdir(activeDir, { recursive: true })
+    await mkdir(staleDir, { recursive: true })
+    await recoverUploadTemp(root, new Set([activeDir]))
+    expect(await readdir(join(root, 'tmp'))).toEqual(['active-1'])
+  })
+
+  it('fences finishIngest when abortIngest is called after conversion reads input so cancelled uploads never publish raw text',
+    async () => {
+      const { capability, root } = await boot({ realSidecar: true })
+      const service = capability as DesktopAskKnowledge
+      const library = await capability.createLibrary({ displayName: '取消围栏' })
+      const handle = await capability.beginIngest({ libraryId: library.id, filename: 'cancel-mid-convert.docx' })
+      const docxBytes = docxWithParagraphs(['CANCEL9911'])
+      await capability.appendIngestChunk({ handle, bytes: Buffer.from(docxBytes).toString('base64') })
+
+      // Hold the library lock while finishIngest reads the input and runs convertSourceFile, call abortIngest before publication, then
+      // release the lock.
+      let releaseLock!: () => void
+      const lockHeld = new Promise<void>((resolve) => { releaseLock = resolve })
+      let lockAcquired!: () => void
+      const acquiredPromise = new Promise<void>((resolve) => { lockAcquired = resolve })
+      const lockTask = withLibraryLock(library.id, async () => {
+        lockAcquired()
+        await lockHeld
+      })
+      await acquiredPromise
+
+      const finishPromise = capability.finishIngest({ handle })
+      // Give finishIngest time to read input and complete convertSourceFile while waiting on withLibraryLock
+      await new Promise(resolve => setTimeout(resolve, 250))
+      await service.abortIngest({ handle })
+      releaseLock()
+      await lockTask
+
+      await expect(finishPromise).rejects.toThrow(/cancelled|aborted/)
+      expect(await readdir(join(root, 'tmp'))).toEqual([])
+      await expect(capability.retrieveBundle({ libraryId: library.id, terms: ['CANCEL9911'] }))
+        .rejects.toMatchObject({ code: 'no-hit' })
+      const docs = await service.remoteDocuments(library.id as never)
+      expect(docs.every(d => !d.searchable)).toBe(true)
+    }, PROCESS_INTEGRATION_TIMEOUT)
+
+  it('enforces configurable maxConvertedBytes and maxDocxXmlBytes at the boundary and retains source on refusal', async () => {
+    const { capability } = await boot({
+      realSidecar: true,
+      config: {
+        maxConvertedBytes: 1024,
+        maxDocxXmlBytes: 1024,
+        conversionTimeoutMs: 30_000,
+      },
+    })
+    const service = capability as DesktopAskKnowledge
+    const library = await capability.createLibrary({ displayName: '配额' })
+
+    // Boundary pass for maxConvertedBytes (1024 UTF-8 bytes)
+    const exact1024 = `# ${'a'.repeat(1021)}\n`
+    expect(Buffer.byteLength(exact1024, 'utf8')).toBe(1024)
+    const okMd = await ingestText(capability, library.id, 'boundary-ok.md', exact1024)
+    expect(okMd.status).toBe('deferred')
+
+    // 1 byte beyond maxConvertedBytes (1025 UTF-8 bytes) fails conversion while retaining original source
+    const over1025 = `# ${'a'.repeat(1022)}\n`
+    expect(Buffer.byteLength(over1025, 'utf8')).toBe(1025)
+    await expect(ingestText(capability, library.id, 'boundary-over.md', over1025))
+      .rejects.toThrow(/exceeds maximum allowed 1024 bytes/)
+
+    // DOCX XML entry within maxDocxXmlBytes (1024 bytes) succeeds
+    const smallDocx = docxWithParagraphs(['短段落'])
+    const okDocx = await ingestBytes(capability, library.id, 'small.docx', smallDocx)
+    expect(okDocx.status).toBe('deferred')
+
+    // DOCX XML entry exceeding maxDocxXmlBytes (1024 bytes) fails conversion while retaining original source
+    const bigDocx = docxWithParagraphs(['超长段落'.repeat(120)])
+    await expect(ingestBytes(capability, library.id, 'big.docx', bigDocx))
+      .rejects.toMatchObject({ code: 'ingest-failed', message: '这份 Word 太大，读不了' })
+
+    const docs = await service.remoteDocuments(library.id as never)
+    const overDoc = docs.find(d => d.filename === 'boundary-over.md')
+    const bigDoc = docs.find(d => d.filename === 'big.docx')
+    expect(overDoc).toMatchObject({ status: 'failed', originalAvailable: true })
+    expect(bigDoc).toMatchObject({ status: 'failed', originalAvailable: true })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 })

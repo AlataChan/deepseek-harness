@@ -9,28 +9,40 @@ describe('Auxiliary review lifetime', () => {
       const profile = await h.assistants.createProfile({ name: 'Review lifetime', responsibility: 'Remember preferences' })
       let release!: () => void
       const barrier = new Promise<void>((resolve) => { release = resolve })
+      const entered = Promise.withResolvers<undefined>()
       let captured: AbortSignal | undefined
       const original = h.adapter.stream.bind(h.adapter)
       vi.spyOn(h.adapter, 'stream').mockImplementation(async function* (options: GenerateOptions): AsyncIterable<StreamChunk> {
         captured = options.signal
+        entered.resolve(undefined)
         await barrier
         yield { type: 'finish', reason: { kind: 'stop' } }
       })
+      // Freeze only the owned deadline while the durable request checkpoint uses real IO.
+      if (stop === 'timeout') vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
       const review = h.assistants.reviewTurn({ sessionId: h.lead.id, scope: { profileId: profile.id }, turnSeq: 1,
         trigger: 'manual', turnTexts: ['Remember that the user prefers brief replies'] })
       const settled = Promise.allSettled([review])
       try {
-        await vi.waitFor(() => expect(captured).toBeDefined())
+        await entered.promise
+        expect(captured).toBeDefined()
         if (stop === 'new-turn') {
           h.adapter.stream = original
           h.lead.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Start a different turn' }] }))
         }
         if (stop === 'dispose') h.assistants.reviewPredictions.dispose()
-        await vi.waitFor(() => expect(captured?.aborted).toBe(true), { timeout: 1000 })
+        if (stop === 'timeout') {
+          expect(captured?.aborted).toBe(false)
+          await vi.advanceTimersByTimeAsync(200)
+          expect(captured?.aborted).toBe(true)
+          vi.useRealTimers()
+        } else {
+          await vi.waitFor(() => expect(captured?.aborted).toBe(true), { timeout: 1000 })
+        }
         release()
         await settled
         expect(await h.assistants.listMemory({ kind: 'profile', profileId: profile.id })).toHaveLength(0)
-      } finally { release(); await settled; await h.dispose(); vi.restoreAllMocks() }
+      } finally { if (stop === 'timeout') vi.useRealTimers(); release(); await settled; await h.dispose(); vi.restoreAllMocks() }
     })
   }
 })

@@ -8,7 +8,7 @@ import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import DesktopAskKnowledge from '../../src/index.ts'
-import { installFakeSidecar } from './install-sidecar.ts'
+import { installFakeSidecar, installPythonSidecar } from './install-sidecar.ts'
 
 /** Recorded system-prompt section. */
 export interface RecordedSection {
@@ -32,19 +32,24 @@ interface ProjectionDef {
 }
 
 /**
- * Start the overlay with a fake sidecar. Sessions and projections are
+ * Start the overlay with a fake or Python sidecar. Sessions and projections are
  * in-memory so tests do not wait on SessionStore / SessionProjectionRegistry.
- * @param options - tools / credentials.
+ * @param options - tools / credentials / python sidecar.
  * @returns the live context.
  */
 export async function bootOverlay(options: {
   sessions?: boolean
   tools?: boolean
+  pythonSidecar?: boolean
   credentials?: { resolve(): Promise<{ value: string } | undefined> }
 } = {}): Promise<OverlayBoot> {
   const root = await mkdtemp(join(tmpdir(), 'ask-knowledge-boot-'))
   const sidecarHome = join(root, 'sidecar')
-  await installFakeSidecar(sidecarHome)
+  if (options.pythonSidecar) {
+    await installPythonSidecar(sidecarHome)
+  } else {
+    await installFakeSidecar(sidecarHome)
+  }
   const ctx = new Context()
   const sections = new Map<string, RecordedSection>()
   ctx.provide('systemPrompt', {

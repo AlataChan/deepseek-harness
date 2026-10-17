@@ -35,6 +35,7 @@ const EXECUTABLE_SOURCE_ALLOWLIST = new Map<string, string>([
   ['apps/cli/src/desktop-companion.ts', 'desktop companion carrier spawned by the shell'],
   ['apps/desktop/scripts/logged-notarytool.mjs', 'build-only notarization logging wrapper'],
   ['packages/boot/installed-runtime/src/cli.ts', 'private packaging-only runtime dispatcher'],
+  ['packages/experimental/desktop-ask-knowledge/src/converter-worker.ts', 'private conversion worker spawned by companion host'],
   ['packages/experimental/desktop-ask-knowledge/tests/helpers/fake-sidecar.mjs', 'test-only sidecar stub'],
   ['packages/context/time-context/tests/fixtures/driver.ts', 'test-only subprocess driver'],
   ['packages/experimental/webworker-packer/bin.js', 'build-only wrapper'],

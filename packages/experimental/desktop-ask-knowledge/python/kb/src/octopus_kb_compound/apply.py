@@ -71,7 +71,15 @@ def validate_proposal_file(
     *,
     apply: bool = False,
     override: dict[str, list[str]] | None = None,
+    commit_guard=None,
 ) -> ApplyResult:
+    if commit_guard is not None:
+        with commit_guard():
+            return _validate_proposal_file(proposal_path, vault, apply=apply, override=override)
+    return _validate_proposal_file(proposal_path, vault, apply=apply, override=override)
+
+
+def _validate_proposal_file(proposal_path, vault, *, apply=False, override=None):
     root = Path(vault)
     path = Path(proposal_path)
     if not root.exists() or not root.is_dir():
@@ -207,14 +215,29 @@ def recover_proposal(proposal_id: str, vault: Path | str) -> ApplyResult:
 
     staging = root / entry.get("staging_path", "")
     backup = staging / "backup"
+    new_dir = staging / "new"
     for rel_path in entry.get("modified", []):
         source = backup / rel_path
         destination = root / rel_path
-        if source.exists():
+        staged_new = new_dir / rel_path
+        if source.exists() and destination.exists():
+            cur_bytes = destination.read_bytes()
+            if staged_new.exists() and cur_bytes != staged_new.read_bytes() and cur_bytes != source.read_bytes():
+                # Concurrent manual edit detected; preserve it rather than overwriting with backup
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+        elif source.exists():
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
     for rel_path in entry.get("created", []):
-        (root / rel_path).unlink(missing_ok=True)
+        target = root / rel_path
+        staged_new = new_dir / rel_path
+        if target.exists():
+            if staged_new.exists() and target.read_bytes() != staged_new.read_bytes():
+                # Concurrent manual edit created/modified this file; preserve it
+                continue
+            target.unlink(missing_ok=True)
     shutil.rmtree(staging, ignore_errors=True)
     audit.mark_rolled_back(audit_path)
     return ApplyResult(status="rolled_back", audit_path=_rel(audit_path, root))

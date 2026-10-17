@@ -9,10 +9,24 @@ import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 
 /** Validated plugin configuration. */
 export interface AskKnowledgeHomeConfig {
+  /** Input conversion admission; official originals remain retained when conversion is refused. */
+  readonly maxIngestBytes?: number
+  /** Complete serialized tool result bounds. */
+  readonly maxResultTokens?: number
+  /** Maximum text characters in a result. */
+  readonly maxResultChars?: number
+  /** Maximum items in a result. */
+  readonly maxResultItems?: number
   /** Absolute Tauri app-data directory. Empty falls through to `OCTOPUS_APP_DATA`. */
   readonly knowledgeHome?: string
   /** Absolute sidecar runtime root. Empty falls through to `OCTOPUS_SIDECAR_HOME`. */
   readonly sidecarRuntimePath?: string
+  /** Deadline in milliseconds for document or file conversion subprocesses. */
+  readonly conversionTimeoutMs?: number
+  /** Maximum converted markdown or file-result payload size in bytes. */
+  readonly maxConvertedBytes?: number
+  /** Maximum uncompressed `word/document.xml` size in bytes when extracting `.docx` files. */
+  readonly maxDocxXmlBytes?: number
 }
 
 /**

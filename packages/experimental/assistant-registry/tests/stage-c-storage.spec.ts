@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import { MessageId } from '@deepseek-ai/dsh-llm'
 import { setupAssistantHarness, textResponse } from './harness.ts'
 import { describe, expect, it } from 'vitest'
 import { DurableReadCursorManager, UsageAggregator } from '../src/cursors-usage.ts'
@@ -170,10 +171,21 @@ describe('Stage C durable storage validation', () => {
       const sessionId = harness.lead.id
       let tokens = 0
       try {
+        harness.lead.session.append('turn/start', { turn: 1 })
+        harness.lead.session.append(
+          'user/message',
+          {
+            id: MessageId('msg-audit-1'),
+            role: 'user',
+            source: { kind: 'user' },
+            content: [{ type: 'text', text: 'Distinctive auxiliary audit context' }],
+          },
+          { surfaceOp: 'append' },
+        )
+        const endEvent = harness.lead.session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
         const prediction = await harness.assistants.predictComposer({
           sessionId,
-          asOfSeq: 0,
-          recentTexts: ['Distinctive auxiliary audit context'],
+          asOfSeq: endEvent.seq,
         })
         expect(prediction).not.toBeNull()
         tokens = prediction!.usage!.usage.totalTokens

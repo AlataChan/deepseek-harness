@@ -37,8 +37,18 @@ export async function convertUploadToText(
   upload: IngestUpload,
   signal?: AbortSignal,
 ): Promise<AskKnowledgeExtractResult> {
+  const combinedSignal = signal === undefined
+    ? upload.controller.signal
+    : AbortSignal.any([signal, upload.controller.signal])
+  if (upload.cancelled || combinedSignal.aborted) {
+    throw new AskKnowledgeError('ingest-failed', 'upload was cancelled')
+  }
   if (isDocxExtractFilename(upload.filename)) {
-    const text = extractDocxBytes(new Uint8Array(await readFile(upload.path)))
+    const raw = await readFile(upload.path)
+    if (upload.cancelled || combinedSignal.aborted) {
+      throw new AskKnowledgeError('ingest-failed', 'upload was cancelled')
+    }
+    const text = extractDocxBytes(new Uint8Array(raw), config.maxDocxXmlBytes)
     if (text.trim() === '') {
       throw new AskKnowledgeError('ingest-failed', '这份 Word 没有可提取的文字')
     }
@@ -48,7 +58,10 @@ export async function convertUploadToText(
   const result = await runSidecar(config, {
     command: 'convert-file',
     path: upload.path,
-  }, { signal, timeoutMs: CONVERT_FILE_TIMEOUT_MS })
+  }, { signal: combinedSignal, timeoutMs: config.conversionTimeoutMs ?? CONVERT_FILE_TIMEOUT_MS })
+  if (upload.cancelled || combinedSignal.aborted) {
+    throw new AskKnowledgeError('ingest-failed', 'upload was cancelled')
+  }
   const body = typeof result.body === 'string' ? result.body : ''
   if (body.trim() === '') {
     throw new AskKnowledgeError('ingest-failed', '这份文件没有可提取的文字。')

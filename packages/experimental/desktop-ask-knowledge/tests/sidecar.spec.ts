@@ -1,12 +1,12 @@
 /** Sidecar spawn, env isolation, abort, and vault bootstrap. */
 
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 import { BOOTSTRAP_CONFIG_TOML } from '../src/bootstrap-vault.ts'
-import { packagePythonDir, runSidecar } from '../src/sidecar.ts'
+import { packagePythonDir, resolveSidecarExecutable, runSidecar } from '../src/sidecar.ts'
 import { installFakeSidecar, installPythonSidecar } from './helpers/install-sidecar.ts'
 
 const cleanups: Array<() => void> = []
@@ -76,6 +76,60 @@ describe('ask-knowledge sidecar', () => {
       code: 'ingest-failed',
       message: '这份文件没有可提取的文字。',
     })
+  })
+
+  it('returns a large session conversion through file results without losing its tail', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-knowledge-large-file-result-'))
+    try {
+      await installPythonSidecar(home)
+      const source = join(home, 'large.md')
+      await writeFile(source, '全量文档。'.repeat(200_000) + 'SESSION_FINAL_MARKER_9241')
+      const result = await runSidecar({ sidecarRuntimePath: home }, { command: 'convert-file', path: source })
+      expect(result.ok).toBe(true)
+      expect(typeof result.body).toBe('string')
+      expect(String(result.body)).toContain('SESSION_FINAL_MARKER_9241')
+      expect(Buffer.byteLength(String(result.body))).toBeGreaterThan(2 * 1024 * 1024)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it.each(['ascii', 'cp1252'])('keeps the JSON wire UTF-8 under a %s process locale', async (encoding) => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-knowledge-json-encoding-'))
+    try {
+      await installPythonSidecar(home)
+      const source = join(home, '中文资料.md')
+      await writeFile(source, '# 中文标题\n保留完整中文内容。\n', 'utf8')
+      const result = await runSidecar({ sidecarRuntimePath: home }, { command: 'convert-file', path: source }, {
+        env: { PYTHONIOENCODING: encoding },
+      })
+      expect(result.body).toContain('保留完整中文内容。')
+      expect(result.title).toBe('中文资料')
+      await expect(runSidecar({ sidecarRuntimePath: home }, { command: '不存在命令' }, {
+        env: { PYTHONIOENCODING: encoding },
+      })).rejects.toMatchObject({ code: 'ingest-failed', message: 'unknown command: 不存在命令' })
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it('resolves the Windows onedir executable under its extensionless directory', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ask-knowledge-platform-layout-'))
+    try {
+      const directory = join(home, 'octopus-kb-sidecar')
+      await mkdir(directory)
+      const windowsExecutable = join(directory, 'octopus-kb-sidecar.exe')
+      await writeFile(windowsExecutable, 'synthetic PE placeholder')
+      expect(resolveSidecarExecutable(home, 'win32')).toBe(windowsExecutable)
+      const posixExecutable = join(directory, 'octopus-kb-sidecar')
+      await writeFile(posixExecutable, 'synthetic POSIX placeholder')
+      expect(resolveSidecarExecutable(home, 'darwin')).toBe(posixExecutable)
+      const flatWindowsExecutable = join(home, 'octopus-kb-sidecar.exe')
+      await writeFile(flatWindowsExecutable, 'synthetic flat PE placeholder')
+      expect(resolveSidecarExecutable(home, 'win32')).toBe(flatWindowsExecutable)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
   })
 
   it('fails retrieve when sidecar home is missing', async () => {

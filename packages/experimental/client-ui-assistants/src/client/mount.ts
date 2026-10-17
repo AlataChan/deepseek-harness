@@ -1,7 +1,7 @@
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { ModelCatalog, ModelSelectionProjection } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { RemoteResult, TypertRemoteContribution, TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
 import type {
@@ -51,6 +51,8 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-experimental-client-ui-agent-team/client'
+import { PredictionSettingPreference, type PredictionSettings } from './prediction-preference.ts'
+import { PredictionSettingRow, PredictionSettingToast, type PredictionSettingInjected } from './PredictionSettingRow.tsx'
 import { en, NS, zh, type AssistantLocaleKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -207,6 +209,7 @@ interface AssistantRemoteMethods extends DiscussionRemoteMethods {
     authorized: boolean,
   ) => Promise<RemoteResult<MemoryEntry>>
   predictComposer: (request: ComposerPredictionRequest, signal?: AbortSignal) => Promise<RemoteResult<ComposerPredictionResult | null>>
+  streamComposerPrediction: (request: ComposerPredictionRequest, signal?: AbortSignal) => AsyncIterable<ComposerPredictionResult | null>
   getComposerContext: (sessionId: SessionId) => Promise<RemoteResult<ComposerPredictionContext | null>>
 }
 
@@ -391,7 +394,10 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
       (remote?.getComposerContext ? async sessionId => unwrapRemote(await remote.getComposerContext(sessionId)) : undefined),
     predictComposer:
       ops?.predictComposer ??
-      (remote?.predictComposer ? async (req, signal) => unwrapRemote(await remote.predictComposer(req, signal)) : undefined),
+      (remote?.streamComposerPrediction ? async (req, signal) => {
+        for await (const result of remote.streamComposerPrediction(req, signal)) return result
+        return null
+      } : undefined),
   }
 
   const discussionOps: TeamDiscussionOps | undefined =
@@ -747,22 +753,79 @@ export function registerUi(ctx: ClientContext, ops?: AssistantClientOps): void {
     ),
   )
 
-  // 6. Input Dock: AssistantPredictionDock
-  ctx.slots.inject('conversation.input.dock', () =>
+  // 6. Input Overlay: AssistantPredictionDock
+  ctx.slots.inject('conversation.input.overlay', () =>
     ctx.slots.register(
       {
-        name: 'conversation.input.dock',
+        name: 'conversation.input.overlay',
         id: 'assistants.composer-prediction',
         order: 10,
         locale: NS,
-        inject: (): AssistantPredictionDockInjected => ({
-          predictComposer: activeOps.predictComposer,
-          getComposerContext: activeOps.getComposerContext,
-        }),
+        inject: (sessionId: SessionId): AssistantPredictionDockInjected => {
+          const form = ctx.get('configForms')?.get<PredictionSettings>('assistant-registry')
+          const isPredictionEnabled = () => form?.getSnapshot().value?.enableComposerPredictions === true
+          const subscribePredictionEnabled = form
+            ? (listener: () => void) => form.subscribe(listener)
+            : undefined
+          const selection = clientSessions?.binding?.(sessionId)?.session.projections.faceOf('modelSelection')
+          const getPredictionRouteIdentity = () => {
+            const next = (selection?.getSnapshot() as ModelSelectionProjection | undefined)?.next
+            return JSON.stringify([next?.provider, next?.model, next?.reasoningEffort])
+          }
+          return {
+            predictComposer: activeOps.predictComposer,
+            getComposerContext: activeOps.getComposerContext,
+            isPredictionEnabled,
+            subscribePredictionEnabled,
+            getPredictionRouteIdentity,
+            subscribePredictionRoute: selection ? listener => selection.subscribe(listener) : undefined,
+          }
+        },
       },
       AssistantPredictionDock,
     ),
   )
+
+  // 7. General settings row for composer predictions
+  ctx.inject(['configForms', 'slots'], (scope) => {
+    const namespace = 'assistant-registry'
+    const form = scope.configForms.get<PredictionSettings>(namespace)
+    const preference = new PredictionSettingPreference(form)
+    const settingFace = (): PredictionSettingInjected => ({
+      hooks: { form, mutation: preference.state },
+      setEnabled: enabled => preference.setEnabled(enabled),
+      dismiss: () => { preference.dismiss() },
+    })
+
+    scope.effect(() =>
+      scope.configForms.whileServed([namespace], () =>
+        scope.slots.inject('settings.general.item', () =>
+          scope.slots.register(
+            {
+              name: 'settings.general.item',
+              id: 'assistant-registry-predictions',
+              order: 85,
+              locale: NS,
+              inject: settingFace,
+            },
+            PredictionSettingRow,
+          ),
+        ),
+      ),
+    )
+
+    scope.slots.inject('shell.overlay', () =>
+      scope.slots.register(
+        {
+          name: 'shell.overlay',
+          id: 'assistant-registry-predictions-toast',
+          locale: NS,
+          inject: settingFace,
+        },
+        PredictionSettingToast,
+      ),
+    )
+  })
 }
 
 /**

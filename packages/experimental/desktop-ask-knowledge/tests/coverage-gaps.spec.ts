@@ -34,6 +34,7 @@ import {
 import { placeLibraryShortcut } from '../src/shortcut.ts'
 import { installFakeSidecar, writeFakeSidecarEnv } from './helpers/install-sidecar.ts'
 import { resolveResultBounds as retrieveBounds } from '../src/retrieve.ts'
+import { PROCESS_INTEGRATION_TIMEOUT } from './helpers/process-integration-timeout.ts'
 
 const cleanups: Array<() => Promise<void> | void> = []
 
@@ -182,13 +183,11 @@ describe('result bounds leftover', () => {
       maxChars: 24_000,
       maxTokens: 6000,
     })
-    const bounded = boundRetrieveResult(
+    expect(() => boundRetrieveResult(
       [{ path: 'a', title: 'a', reason: '', text: 'abcd', kind: 'raw' }],
       [{ ruleId: 'w', message: 'warn' }],
       { maxItems: 12, maxChars: 24_000, maxTokens: 0 },
-    )
-    expect(bounded.items).toEqual([])
-    expect(bounded.warnings.some(item => item.ruleId === 'result-truncated')).toBe(true)
+    )).toThrow(/metadata.*allowance/)
     expect(retrieveBounds({ maxItems: 2 }).maxItems).toBe(2)
   })
 })
@@ -371,15 +370,13 @@ describe('retrieve leftover', () => {
     await writeFakeSidecarEnv(sidecarHome, {
       ASK_KNOWLEDGE_FAKE_LOOKUP_JSON: JSON.stringify({ canonicalPath: 'wiki/a.md', text: 'clipped' }),
     })
-    const clipped = await lookupLibraryTerm(
+    await expect(lookupLibraryTerm(
       { sidecarRuntimePath: sidecarHome },
       root,
       created.id,
       '报销',
       { maxItems: 12, maxChars: 24_000, maxTokens: 0 },
-    )
-    expect(clipped.canonicalPath).toBe('wiki/a.md')
-    expect(clipped.text).toBeUndefined()
+    )).rejects.toThrow(/metadata.*allowance/)
     await writeFakeSidecarEnv(sidecarHome, {
       ASK_KNOWLEDGE_FAKE_RETRIEVE_JSON: JSON.stringify({ items: 1 }),
     })
@@ -721,5 +718,5 @@ describe('ingest leftover helpers', () => {
       'prop-old',
     )
     expect(camel).toBe('prop-camel')
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 })

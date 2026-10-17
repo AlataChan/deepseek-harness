@@ -33,7 +33,8 @@ it('requests a prediction after a completed turn using the real Client snapshot 
     t: makeTranslate(zh),
   } as AssistantPredictionDockProps
   try {
-    render(<AssistantPredictionDock {...props} />)
+    const view = render(<AssistantPredictionDock {...props} session={{ ...session, running:true }} />)
+    view.rerender(<AssistantPredictionDock {...props} />)
     await waitFor(() => expect(predictComposer).toHaveBeenCalledTimes(1), { timeout: 250 })
   } finally {
     cleanup()

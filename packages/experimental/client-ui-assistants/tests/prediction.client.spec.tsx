@@ -44,7 +44,7 @@ describe('ComposerPrediction (S24 Client UI)', () => {
     const onSubmitForm = vi.fn()
 
     render(
-      <form onSubmit={onSubmitForm}>
+      <form onSubmit={onSubmitForm}><div data-composer-card><div role="textbox" contentEditable data-composer-input aria-label="editor" />
         <ComposerPrediction
           prediction={samplePrediction}
           currentSeq={12}
@@ -53,7 +53,7 @@ describe('ComposerPrediction (S24 Client UI)', () => {
           onDismiss={vi.fn()}
           t={tZh}
         />
-      </form>,
+      </div></form>,
     )
 
     const adoptBtn = screen.getByRole('button', { name: 'Tab 采用' })
@@ -70,7 +70,7 @@ describe('ComposerPrediction (S24 Client UI)', () => {
     const onSubmitForm = vi.fn()
 
     render(
-      <form onSubmit={onSubmitForm}>
+      <form onSubmit={onSubmitForm}><div data-composer-card><div role="textbox" contentEditable data-composer-input aria-label="editor" />
         <ComposerPrediction
           prediction={samplePrediction}
           currentSeq={12}
@@ -79,7 +79,7 @@ describe('ComposerPrediction (S24 Client UI)', () => {
           onDismiss={vi.fn()}
           t={tZh}
         />
-      </form>,
+      </div></form>,
     )
 
     const tabEvent = new KeyboardEvent('keydown', {
@@ -87,7 +87,8 @@ describe('ComposerPrediction (S24 Client UI)', () => {
       bubbles: true,
       cancelable: true,
     })
-    window.dispatchEvent(tabEvent)
+    screen.getByLabelText('editor').focus()
+    screen.getByLabelText('editor').dispatchEvent(tabEvent)
 
     expect(onAdopt).toHaveBeenCalledTimes(1)
     expect(onAdopt).toHaveBeenCalledWith('Can you summarize the performance implications?')
@@ -118,14 +119,14 @@ describe('ComposerPrediction (S24 Client UI)', () => {
     const onDismiss = vi.fn()
 
     render(
-      <ComposerPrediction
+      <div data-composer-card><div role="textbox" contentEditable data-composer-input aria-label="editor" /><ComposerPrediction
         prediction={samplePrediction}
         currentSeq={12}
         draftText=""
         onAdopt={vi.fn()}
         onDismiss={onDismiss}
         t={tZh}
-      />,
+      /></div>,
     )
 
     const escapeEvent = new KeyboardEvent('keydown', {
@@ -133,7 +134,8 @@ describe('ComposerPrediction (S24 Client UI)', () => {
       bubbles: true,
       cancelable: true,
     })
-    window.dispatchEvent(escapeEvent)
+    screen.getByLabelText('editor').focus()
+    screen.getByLabelText('editor').dispatchEvent(escapeEvent)
 
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })

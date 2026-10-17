@@ -381,3 +381,14 @@ it.each(['later', 'escape', 'ready', 'session'])('dismisses unavailable recognit
     expect(screen.getByRole('dialog')).toBeTruthy()
   }
 })
+
+it.each(['unavailable', 'insecure', 'recorderUnavailable'] as const)('reports capture %s independently of the ready default recognizer', async (kind) => {
+  const b = fixture()
+  b.capture.start.mockRejectedValueOnce(new RecordingError(kind))
+  fireEvent.click(screen.getByRole('button', { name: zh.start }))
+  await screen.findByText(zh[kind])
+  expect(b.readiness.getSnapshot().catalog?.selection.providerId).toBe(id)
+  expect(b.props.prepare).not.toHaveBeenCalled()
+  expect(b.transcribe).not.toHaveBeenCalled()
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
