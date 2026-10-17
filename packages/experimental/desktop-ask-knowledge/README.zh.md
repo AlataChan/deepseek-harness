@@ -78,7 +78,7 @@ kind: "package-bundle"
 
 #### 模型看见什么
 
-存在 `ctx.tools` 时，overlay 注册 `ask_knowledge_retrieve`、`ask_knowledge_read`、`ask_knowledge_lookup`、`ask_knowledge_session_document` 及其别名 `ask_knowledge_attachment_read`。模型可见 JSON 保留段落 ID、续读游标、转换诊断和核实标签。知识库原文操作要求同一会话、同一知识库、同一轮中已有成功落盘的 Wiki 工具结果；Wiki 不可用也必须先记录，再另行读取原文。凭据校验支持标准 external-data 安全围栏内的权威 JSON，同时保留会话、轮次、知识库和来源工具调用的校验。读取 Wiki 仍标为未核实摘要。原文结果包含索引源文版本和本次返回的段落偏移。查阅词条先分页再返回，不会再次裁掉已交付的范围。实验工具不进官方工具目录；`terms[]` 和 `term` 接受专名，不接受整句。
+存在 `ctx.tools` 时，overlay 注册 `ask_knowledge_retrieve`、`ask_knowledge_read`、`ask_knowledge_lookup`、`ask_knowledge_session_document` 及其别名 `ask_knowledge_attachment_read`。响应额度包含完整文本内容包装、external-data 围栏及安全转义。模型可见 JSON 保留段落 ID、续读游标、转换诊断和核实标签。知识库原文操作要求同一会话、同一知识库、同一轮中已有成功落盘的 Wiki 工具结果；Wiki 不可用也必须先记录，再另行读取原文。凭据校验支持标准 external-data 安全围栏内的权威 JSON，同时保留会话、轮次、知识库和来源工具调用的校验。读取 Wiki 仍标为未核实摘要。原文结果包含索引源文版本和本次返回的段落偏移。查阅词条先分页再返回，不会再次裁掉已交付的范围。实验工具不进官方工具目录；`terms[]` 和 `term` 接受专名，不接受整句。
 
 #### Token 影响
 

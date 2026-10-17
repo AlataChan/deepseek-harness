@@ -8426,6 +8426,9 @@ importers:
 
   packages/experimental/desktop-ask-knowledge:
     dependencies:
+      '@deepseek-ai/dsh-fence-policy':
+        specifier: workspace:*
+        version: link:../../guard/fence-policy
       '@deepseek-ai/dsh-host-ask-knowledge':
         specifier: workspace:*
         version: link:../../host/ask-knowledge
@@ -8505,9 +8508,6 @@ importers:
       '@deepseek-ai/dsh-experimental-desktop-ask-data':
         specifier: workspace:*
         version: link:../desktop-ask-data
-      '@deepseek-ai/dsh-fence-policy':
-        specifier: workspace:*
-        version: link:../../guard/fence-policy
       '@deepseek-ai/dsh-llm':
         specifier: workspace:*
         version: link:../../llm/llm

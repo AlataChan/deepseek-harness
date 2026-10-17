@@ -13,6 +13,7 @@ import { getOrConvertSessionAttachment, readSessionAttachment, searchSessionAtta
 import * as conversionModule from '../src/conversion.ts'
 import * as sidecarModule from '../src/sidecar.ts'
 import LocalAttachmentStore from '@deepseek-ai/dsh-attachment-local'
+import * as FencePolicy from '@deepseek-ai/dsh-fence-policy'
 import type DesktopAskKnowledge from '../src/index.ts'
 
 const cleanups: Array<() => Promise<void>> = []
@@ -351,4 +352,44 @@ it('a changed converter identity invalidates a complete conversion cache', async
   const converted = await getOrConvertSessionAttachment(config, b.ctx, reference)
   expect(reads).toBe(2)
   expect(converted.markdown).toContain(text)
+})
+
+it('the public document service resolves only its own library records and respects cancelled reads', async () => {
+  const b = await boot(true)
+  const library = await b.ctx.askKnowledge.createLibrary({ displayName: 'Document owner' })
+  const foreign = await b.ctx.askKnowledge.createLibrary({ displayName: 'Other documents' })
+  const documents = b.ctx.get('askKnowledgeDocuments')
+  if (!documents) throw new Error('Document service did not activate')
+  const original = Buffer.from('Registered source original')
+  const stored = await documents.storeOriginal(library.id, 'record.txt', original)
+  const record = await documents.getDocument(library.id, stored.document.id)
+  expect(record?.displayFilename).toBe('record.txt')
+  expect(record?.activeRevisionId).toBe(stored.revision.revisionId)
+  expect(await documents.getDocument(foreign.id, stored.document.id)).toBeNull()
+  const controller = new AbortController()
+  controller.abort(new Error('record read cancelled'))
+  await expect(documents.getDocument(library.id, stored.document.id, controller.signal)).rejects.toThrow('record read cancelled')
+  expect((await documents.listDocuments(library.id)).map(item => item.id)).toEqual([stored.document.id])
+  const restored = await documents.readOriginal(library.id, stored.revision.revisionId)
+  expect(Buffer.from(restored.bytes).equals(original)).toBe(true)
+})
+
+it('attachment continuation respects its complete byte allowance after production safety escaping', async () => {
+  const b = await boot()
+  await b.ctx.plugin(FencePolicy, { tools: ['ask_knowledge_*'], maxMixedTextBytes: 6000 })
+  const text = '中文😀<&>'.repeat(5000)
+  const digest = createHash('sha256').update(text).digest('hex')
+  const attachment = { attachmentId: AttachmentId(digest), name: 'escaped.txt', bytes: Buffer.byteLength(text) }
+  b.session.append('user/message', createUserMessage({ content: [{ type: 'file', attachment }], source: { kind: 'user' } }),
+    { surfaceOp: 'append' })
+  b.ctx.provide('attachments', { readFileStream: async function* () { yield Buffer.from(text) } })
+  vi.spyOn(conversionModule, 'convertSourceFile').mockResolvedValue(conversion(text))
+  const result = await b.call('ask_knowledge_session_document', { action: 'read', filename: attachment.name })
+  expect(result.isError).toBe(false)
+  expect(Buffer.byteLength(JSON.stringify(result.content))).toBeLessThanOrEqual(6000)
+  const block = result.content[0]
+  if (block?.type !== 'text') throw new Error('missing model-visible attachment read')
+  expect(block.text).toMatch(/^<external-data>\n/)
+  const value = JSON.parse(block.text.slice('<external-data>\n'.length, -'\n</external-data>'.length)) as { cursor?: string }
+  expect(value.cursor).toBeTypeOf('string')
 })

@@ -6,7 +6,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { resolveResultBounds } from './result-bounds.ts'
+import { knowledgeResultBytes, resolveResultBounds } from './result-bounds.ts'
 import type { Session } from '@deepseek-ai/dsh-session'
 import type { PassageSearchItem, PassageSearchRequest, PassageSearchResult, PassageReadRequest, WikiLookupRequest,
   WikiLookupResult } from './document-retrieve.ts'
@@ -203,8 +203,7 @@ export function registerAskKnowledgeTools(
   const maxSerializedBytes = bounds.maxTokens
   const renderJson = (value: object): string => {
     const text = JSON.stringify(value)
-    if (Buffer.byteLength(JSON.stringify([{ type: 'text',
-      text }])) > maxSerializedBytes) throw new AskKnowledgeError('ingest-failed', 'Tool result metadata exceeds its serialized allowance')
+    if (knowledgeResultBytes(value) > maxSerializedBytes) throw new AskKnowledgeError('ingest-failed', 'Tool result metadata exceeds its serialized allowance')
     return text
   }
 

@@ -3,8 +3,20 @@
  * @module @deepseek-ai/dsh-experimental-desktop-ask-knowledge/result-bounds
  */
 
+import { fenceText, sanitizeUntrusted } from '@deepseek-ai/dsh-fence-policy'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 import type { AskKnowledgeBundle, AskKnowledgeBundleItem } from '@deepseek-ai/dsh-host-ask-knowledge'
+
+/**
+ * Measure complete text content with and without the standard safety policy.
+ * @param value - JSON payload rendered by a knowledge tool.
+ * @returns conservative UTF-8 byte count including safety escaping and content wrappers.
+ */
+export function knowledgeResultBytes(value: object): number {
+  const text = JSON.stringify(value)
+  const bytes = (text: string) => Buffer.byteLength(JSON.stringify([{ type: 'text', text }]))
+  return Math.max(bytes(text), bytes(fenceText(sanitizeUntrusted(text))))
+}
 
 /** Default item cap. */
 export const DEFAULT_MAX_RESULT_ITEMS = 12

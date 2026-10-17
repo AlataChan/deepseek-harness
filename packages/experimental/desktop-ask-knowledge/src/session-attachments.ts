@@ -8,6 +8,7 @@ import { chmod, mkdir, mkdtemp, open, readFile, rename, rm, stat } from 'node:fs
 import { createRequire } from 'node:module'
 import { extname, join } from 'node:path'
 import { z } from 'zod'
+import { knowledgeResultBytes } from './result-bounds.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import type { FileAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
@@ -370,7 +371,7 @@ function formatSessionDocDiagnostics(d: ConversionDiagnostics): SessionDocDiagno
 
 /** Serialized model-visible payload, including the content-block wrapper. */
 function emittedBytes(value: object): number {
-  return Buffer.byteLength(JSON.stringify([{ type: 'text', text: JSON.stringify(value) }]))
+  return knowledgeResultBytes(value)
 }
 
 function fitText<T extends object>(text: string, make: (text: string) => T, maxBytes: number): T {

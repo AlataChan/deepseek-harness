@@ -213,7 +213,10 @@ coverage_status: wiki-ready
     const res = await executeTool(ctx, 'ask_knowledge_retrieve', { terms: ['单据凭证'] }, agent)
     expect(res.isError).toBe(false)
     if (res.isError) throw new Error('expected retrieve success')
-    const val = res.value as {
+    const block = res.content[0]
+    if (block?.type !== 'text') throw new Error('expected rendered wiki receipt')
+    expect(block.text).toMatch(/^<external-data>\n/)
+    const val = JSON.parse(block.text.slice('<external-data>\n'.length, -'\n</external-data>'.length)) as {
       items: Array<{ text: string }>
       warnings: Array<{ ruleId: string; message: string }>
       wikiAttemptId?: string
