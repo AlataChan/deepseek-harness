@@ -584,7 +584,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       const completion = Promise.withResolvers<undefined>()
       const key = `${upload.libraryId}:${stored.document.id}`
       this.documentRuns.set(key, { controller, done: completion.promise })
-      conversionRun = { key, settle: completion.resolve }
+      conversionRun = { key, settle: () => completion.resolve(undefined) }
       let converted: ConversionResult
       try {
         assertNotCancelled()
