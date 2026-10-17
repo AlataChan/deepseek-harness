@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { bootOverlay } from './helpers/boot.ts'
 import { installPythonSidecar } from './helpers/install-sidecar.ts'
+import { PROCESS_INTEGRATION_TIMEOUT } from './helpers/process-integration-timeout.ts'
 
 const cleanups: Array<() => Promise<void> | void> = []
 const originalCwd = process.cwd()
@@ -45,5 +46,5 @@ describe('ask-knowledge first-ask', () => {
     process.chdir(other)
     const listed = await ctx.askKnowledge.listLibraries()
     expect(listed.map(row => row.id)).toEqual([library.id])
-  })
+  }, PROCESS_INTEGRATION_TIMEOUT)
 })
