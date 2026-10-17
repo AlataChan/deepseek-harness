@@ -72,7 +72,7 @@
   cursor: pointer;
 }
 
-.button:hover {
+.button:hover:not(:disabled) {
   background: var(--dsw-alias-bg-hover);
 }
 
@@ -84,4 +84,10 @@
   color: var(--dsw-alias-state-error-primary);
   font: var(--dsw-font-xxs-12);
   cursor: pointer;
+}
+
+.button:disabled,
+.buttonDanger:disabled {
+  cursor: progress;
+  color: var(--dsw-alias-label-tertiary);
 }

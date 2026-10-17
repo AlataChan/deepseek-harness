@@ -6,9 +6,9 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import { link, lstat, mkdir, open, readdir, realpath, rm } from 'node:fs/promises'
+import { link, lstat, mkdir, open, readdir, realpath, rename, rm } from 'node:fs/promises'
 import { constants } from 'node:fs'
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
 import type { AskKnowledgeLibraryId } from '@deepseek-ai/dsh-host-ask-knowledge'
 import { assertVaultDir, requireLibrary } from './catalog.ts'
@@ -48,7 +48,7 @@ function assertStagedPath(vault: string, path: string): void {
 }
 
 /** Flush file contents before publication and always release the descriptor. */
-async function durableWrite(path: string, content: string): Promise<void> {
+async function durableWrite(path: string, content: string | Uint8Array): Promise<void> {
   const file = await open(path, 'wx', 0o600)
   try { await file.writeFile(content); await file.sync() } finally { await file.close() }
 }
@@ -353,4 +353,44 @@ export async function recoverSourceRegistrations(
     const vault = await assertVaultDir(knowledgeHome, row)
     await recoverRegistrations(config, vault, libraryId, signal)
   })
+}
+
+/**
+ * Materialize an independent, named desktop viewing copy without exposing retained bytes to editors.
+ * @param vault - validated library directory.
+ * @param documentId - registered document owning the preview.
+ * @param filename - display filename; separators and platform-reserved names are sanitized.
+ * @param bytes - verified original or generated view bytes.
+ * @param signal - action lifetime.
+ * @returns private view path with its application-recognizable extension.
+ */
+export async function createDocumentViewFile(
+  vault: string, documentId: DocumentId, filename: string, bytes: Uint8Array, signal: AbortSignal,
+): Promise<string> {
+  signal.throwIfAborted()
+  const views = join(vault, '.octopus-kb', 'document-views')
+  await assertSourcePath(vault, dirname(views))
+  await mkdir(views, { recursive: true, mode: 0o700 })
+  await assertSourcePath(vault, views)
+  const directory = join(views, createHash('sha256').update(documentId + ':' + filename).digest('hex'))
+  await mkdir(directory, { recursive: true, mode: 0o700 })
+  await assertSourcePath(vault, directory)
+  const clean = basename(filename.replaceAll('\\', '/')).replace(/[<>:"|?*\x00-\x1f]/g, '_').replace(/[. ]+$/, '') || 'document'
+  const dot = clean.lastIndexOf('.')
+  const extension = dot > 0 ? clean.slice(dot).slice(0, 16) : ''
+  let stem = [...(dot > 0 ? clean.slice(0, dot) : clean)].slice(0, 48).join('')
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(stem)) stem = '_' + stem
+  const target = join(directory, stem + extension)
+  try {
+    if ((await readObject(vault, target)).equals(Buffer.from(bytes))) return target
+  } catch (error) {
+    if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error
+  }
+  const temporary = join(directory, '.' + randomUUID() + '.tmp')
+  try {
+    await durableWrite(temporary, bytes)
+    signal.throwIfAborted()
+    await rename(temporary, target)
+  } finally { await rm(temporary, { force: true }) }
+  return target
 }

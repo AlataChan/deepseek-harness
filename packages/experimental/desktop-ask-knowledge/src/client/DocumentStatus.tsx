@@ -3,6 +3,7 @@
  * @module @deepseek-ai/dsh-experimental-desktop-ask-knowledge/client/DocumentStatus
  */
 
+import { useRef, useState } from 'react'
 import type { AskKnowledgeKey } from './locales.ts'
 import css from './DocumentStatus.module.css'
 
@@ -16,6 +17,7 @@ export interface DocumentStatusItem {
   readonly revisionId?: string
   readonly conversionStatus?: string
   readonly originalAvailable: boolean
+  readonly textAvailable?: boolean
   readonly searchable: boolean
   readonly stage?: string
   readonly status: 'active' | 'completed' | 'failed' | 'paused' | 'queued' | 'retained' | 'cancelled'
@@ -56,6 +58,25 @@ export function DocumentStatus({
   onCancel,
   onApproveBudget,
 }: DocumentStatusProps) {
+  const pending = useRef(new Set<string>())
+  const [pendingActions, setPendingActions] = useState<ReadonlySet<string>>(new Set())
+  const [actionError, setActionError] = useState<string>()
+  const paidBusy = ['approve', 'resume', 'retry', 'cancel'].some(action => pendingActions.has(action))
+  const runAction = (kind: string, action: ((target: DocumentStatusItem) => void | Promise<void>) | undefined, target = item) => {
+    if (!action || pending.current.has(kind) ||
+      (kind !== 'cancel' && ['approve', 'resume', 'retry'].includes(kind) &&
+        ['approve', 'resume', 'retry', 'cancel'].some(value => pending.current.has(value)))) return
+    pending.current.add(kind)
+    setPendingActions(new Set(pending.current))
+    setActionError(undefined)
+    const finish = () => { pending.current.delete(kind); setPendingActions(new Set(pending.current)) }
+    const failed = (error: unknown) => { setActionError(error instanceof Error ? error.message : t('error.docsFailed')) }
+    try {
+      const result = action(target)
+      if (result === undefined) finish()
+      else void result.catch(failed).finally(finish)
+    } catch (error) { failed(error); finish() }
+  }
   const isOriginalSaved = item.originalAvailable
   const showProgress = typeof item.totalChunks === 'number' && typeof item.completedChunks === 'number' && item.totalChunks > 0
   const progressText = showProgress
@@ -64,13 +85,13 @@ export function DocumentStatus({
       .replace('{total}', String(item.totalChunks))
     : t('docs.textSearchable')
 
-  const estimateText = t('docs.estimate').replace('{tokens}', String(item.estimatedTokens ?? 0)).replace('{chunks}', String(item.totalChunks ?? 0))
+  const estimateText = t(item.budgetApproved ? 'docs.approvedEstimate' : 'docs.estimate').replace('{tokens}', String(item.estimatedTokens ?? 0)).replace('{chunks}', String(item.totalChunks ?? 0))
   const ocrText = typeof item.needsOcrPage === 'number'
     ? t('docs.partialNeedsOcr').replace('{page}', String(item.needsOcrPage))
     : undefined
 
   return (
-    <div className={css.card} data-testid={`doc-${item.id}`}>
+    <div className={css.card} data-testid={`doc-${item.id}`} aria-busy={pendingActions.size > 0}>
       <div className={css.header}>
         <span className={css.filename} title={item.filename}>{item.filename}</span>
         <div className={css.badges}>
@@ -92,6 +113,10 @@ export function DocumentStatus({
             <span className={css.badgeWarning}>{ocrText}</span>
           )}
 
+          {(item.status === 'active' || item.status === 'queued') && (
+            <span className={css.badge}>{t(item.stage === 'conversion' ? 'docs.statusConverting' : 'docs.statusEnriching')}</span>
+          )}
+
           {item.status === 'paused' && (
             <span className={css.badgeWarning}>{t('docs.statusPaused')}</span>
           )}
@@ -109,23 +134,26 @@ export function DocumentStatus({
       {item.estimatedTokens !== undefined && item.estimatedTokens > 0 && <p>{estimateText}</p>}
       {item.stage === 'uncertain' && <p role="alert">{t('docs.uncertainWarning')}</p>}
       {item.error && <p role="alert">{item.error}</p>}
+      {actionError && actionError !== item.error && <p role="alert">{actionError}</p>}
       {item.status === 'cancelled' && <p>{t('docs.statusCancelled')}</p>}
       <div className={css.actions}>
         {isOriginalSaved && onOpenOriginal !== undefined && (
           <button
             type="button"
             className={css.button}
-            onClick={() => onOpenOriginal(item)}
+            disabled={pendingActions.has('original')}
+            onClick={() => runAction('original', onOpenOriginal)}
           >
             {t('docs.openOriginal')}
           </button>
         )}
 
-        {onViewText !== undefined && (
+        {(item.textAvailable ?? item.searchable) && onViewText !== undefined && (
           <button
             type="button"
             className={css.button}
-            onClick={() => onViewText(item)}
+            disabled={pendingActions.has('text')}
+            onClick={() => runAction('text', onViewText)}
           >
             {t('docs.viewExtracted')}
           </button>
@@ -135,17 +163,19 @@ export function DocumentStatus({
           <button
             type="button"
             className={css.button}
-            onClick={() => onViewSources(item)}
+            disabled={pendingActions.has('sources')}
+            onClick={() => runAction('sources', onViewSources)}
           >
             {t('docs.viewSources')}
           </button>
         )}
 
-        {item.status === 'failed' && onRetry !== undefined && (
+        {(item.status === 'failed' || (item.status === 'paused' && item.stage !== 'uncertain' && !!item.error)) && onRetry !== undefined && (
           <button
             type="button"
             className={css.button}
-            onClick={() => onRetry(item)}
+            disabled={paidBusy}
+            onClick={() => runAction('retry', onRetry)}
           >
             {t('docs.retryStage')}
           </button>
@@ -155,14 +185,15 @@ export function DocumentStatus({
           <button
             type="button"
             className={css.button}
-            onClick={() => onResume(item)}
+            disabled={paidBusy}
+            onClick={() => runAction('resume', onResume)}
           >
             {t('docs.resumeExtraction')}
           </button>
         )}
 
         {item.stage === 'uncertain' && item.planHash && onResume !== undefined && (
-          <button type="button" className={css.button} onClick={() => onResume({ ...item, uncertainOutcome: 'replay' })}>
+          <button type="button" className={css.button} disabled={paidBusy} onClick={() => runAction('resume', onResume, { ...item, uncertainOutcome: 'replay' })}>
             {t('docs.replayUncertain')}
           </button>
         )}
@@ -171,17 +202,19 @@ export function DocumentStatus({
           <button
             type="button"
             className={css.buttonDanger}
-            onClick={() => onCancel(item)}
+            disabled={pendingActions.has('cancel')}
+            onClick={() => runAction('cancel', onCancel)}
           >
             {t('docs.cancelProcessing')}
           </button>
         )}
 
-        {(item.estimatedTokens ?? 0) > 0 && item.planHash !== undefined && item.stage !== 'uncertain' && item.status !== 'cancelled' && !item.budgetApproved && onApproveBudget !== undefined && (
+        {(item.estimatedTokens ?? 0) > 0 && item.planHash !== undefined && item.stage !== 'uncertain' && item.status === 'paused' && item.stage === 'awaiting_approval' && !item.budgetApproved && onApproveBudget !== undefined && (
           <button
             type="button"
             className={css.button}
-            onClick={() => onApproveBudget(item)}
+            disabled={paidBusy}
+            onClick={() => runAction('approve', onApproveBudget)}
           >
             {t('docs.approveBudget')}
           </button>

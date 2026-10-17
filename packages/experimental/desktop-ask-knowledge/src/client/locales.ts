@@ -74,6 +74,7 @@ export type AskKnowledgeKey =
   | 'docs.replayUncertain'
   | 'docs.resumeExtraction'
   | 'docs.cancelProcessing'
+  | 'docs.approvedEstimate'
   | 'docs.estimateLabel'
   | 'docs.approveBudget'
   | 'docs.budgetApproved'
@@ -141,7 +142,8 @@ const zh = {
   'ingest.deferred': '这次没有写进去，需要人工确认后才能入库。',
   'ingest.failed': '文档没有写进知识库。',
   'docs.estimate': '完整文档预计预算：{tokens} token，{chunks} 段。批准后才会请求模型。',
-  'docs.statusCancelled': '处理已取消；原件和已索引文本保留。',
+  'docs.approvedEstimate': '已批准完整文档预算：{tokens} token，{chunks} 段。实际用量以模型服务报告为准。',
+  'docs.statusCancelled': '处理已取消；已有文件保留。',
   'docs.partialConversion': '部分文本；原件可能还有未提取内容',
   'docs.title': '库内文档管理',
   'docs.originalSaved': '原始文件已保存',
@@ -225,7 +227,8 @@ const en = {
   'ingest.deferred': 'Nothing was written this time: the entries need a human confirmation first.',
   'ingest.failed': 'The document was not written into the knowledge library.',
   'docs.estimate': 'Whole-document allowance: {tokens} tokens across {chunks} chunks. Model calls start only after approval.',
-  'docs.statusCancelled': 'Processing cancelled; the original and indexed text are retained.',
+  'docs.approvedEstimate': 'Approved whole-document allowance: {tokens} tokens across {chunks} chunks. Actual usage comes from the model provider.',
+  'docs.statusCancelled': 'Processing cancelled; existing files are retained.',
   'docs.partialConversion': 'Partial text; the original may contain additional unextracted content',
   'docs.title': 'Document Management',
   'docs.originalSaved': 'Original saved',

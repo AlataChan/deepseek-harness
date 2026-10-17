@@ -445,7 +445,8 @@ def plan_document(req):
 def _public_plan(plan):
     return {key: plan[key] for key in ('documentId', 'revisionId', 'libraryId', 'jobId', 'planHash',
             'status', 'budgetApproved', 'tokenEstimate', 'totalChunks', 'completedChunks',
-            'tokensUsed', 'usageKnown', 'rawPath', 'error') if key in plan and plan[key] is not None} | {'ok': True, 'estimatedTokens': plan['tokenEstimate']}
+            'tokensUsed', 'usageKnown', 'rawPath', 'error') if key in plan and plan[key] is not None
+            and not (key == 'error' and plan['status'] == 'completed')} | {'ok': True, 'estimatedTokens': plan['tokenEstimate']}
 
 
 def _reported_usage(plan_path, plan):
@@ -488,6 +489,8 @@ def execute_document(req):
             raise ValueError('Document approval does not match the frozen plan')
         if plan['status'] == 'completed':
             return _public_plan(plan)
+        if req.get('requireExistingApproval') and not plan.get('budgetApproved'):
+            raise ValueError('Budget approval is required before resuming extraction')
         approved = req['approvedTokens']
         if not isinstance(approved, int) or approved < plan['tokenEstimate']:
             raise ValueError('Explicit approval must cover the full manifest estimate')
@@ -520,12 +523,13 @@ def execute_document(req):
         # A recovered, checkpointed job can transfer to the current startup generation.
         con = open_db(db)
         try:
-            con.execute("UPDATE document_jobs SET startup_attempt=?, status='active', is_uncertain=0 WHERE job_id=? AND status NOT IN ('cancelled','failed')", (attempt, plan['jobId']))
+            con.execute("UPDATE document_jobs SET startup_attempt=?, status='active', is_uncertain=0, error=NULL WHERE job_id=? AND status NOT IN ('cancelled','failed')", (attempt, plan['jobId']))
             con.commit()
         finally:
             con.close()
         _fence(vault, plan, attempt)
         plan.update(status='running', startupAttempt=attempt, budgetApproved=True, approvedTokens=approved)
+        plan.pop('error', None)
         plan['tokensUsed'] = _reported_usage(plan_path, plan)
         _write(plan_path, plan)
         _write(plan_path.parent / 'approvals' / (plan['planHash'] + '.json'),
@@ -770,7 +774,9 @@ def record_conversion(req):
         doc = get_document(vault / '.octopus-kb' / 'documents.sqlite', req['documentId'])
         if not doc or doc['libraryId'] != req['libraryId']:
             raise ValueError('Cross-library conversion status rejected')
-        job = get_job(vault / '.octopus-kb' / 'documents.sqlite', req['jobId']) if req.get('jobId') else None
+        job = get_job(vault / '.octopus-kb' / 'documents.sqlite', req['jobId']) if req.get('jobId') else next(
+            (item for item in list_jobs(vault / '.octopus-kb' / 'documents.sqlite', req['libraryId'])
+             if item['documentId'] == req['documentId']), None)
         if job and (job['documentId'] != req['documentId'] or job['libraryId'] != req['libraryId']):
             raise ValueError('Conversion job belongs to another document')
         previous_status_path = _conversion_path(vault, req['documentId'])
@@ -798,14 +804,38 @@ def document_location(req):
     action = req.get('action', 'text')
     if action not in {'original', 'text', 'sources'}:
         raise ValueError('Unsupported document location action')
+    if action == 'sources':
+        revision = get_source_revision(db, doc['activeRevisionId'])
+        plan_path = _plan_path(vault, req['documentId'])
+        plan = json.loads(plan_path.read_text(encoding='utf-8')) if plan_path.is_file() else None
+        lines = ['文档来源 / Document sources', '', '文件 / File: ' + doc['displayFilename']]
+        if revision:
+            lines.extend(['版本 / Revision: ' + revision['revisionId'],
+                          'SHA-256: ' + revision['sha256'], '字节数 / Bytes: ' + str(revision['byteLength'])])
+        if plan:
+            lines.extend(['文本 / Text: ' + plan['rawPath'],
+                          '知识提取 / Extraction: ' + str(plan['completedChunks']) + '/' + str(plan['totalChunks']),
+                          '', '原文区间 / Source ranges (Unicode code points):'])
+            for chunk in plan['chunks']:
+                lines.append(str(chunk['index'] + 1) + ': ' + str(chunk['start']) + '–' + str(chunk['end']))
+        else:
+            failure = _conversion_path(vault, req['documentId'])
+            if failure.is_file():
+                diagnostic = json.loads(failure.read_text(encoding='utf-8'))
+                lines.append('转换 / Conversion: ' + diagnostic['status'])
+            lines.append('尚未生成知识提取计划 / No extraction plan has been created')
+        return {'ok': True, 'text': '\n'.join(lines) + '\n'}
     if action == 'original':
         revision = get_source_revision(db, doc['activeRevisionId'])
         if not revision:
             raise ValueError('Original source is unavailable')
         rel = revision['objectPath']
     else:
-        plan = json.loads(_plan_path(vault, req['documentId']).read_text(encoding='utf-8'))
-        rel = plan['rawPath'] if action == 'text' else _plan_path(vault, req['documentId']).relative_to(vault).as_posix()
+        plan_path = _plan_path(vault, req['documentId'])
+        if not plan_path.is_file():
+            raise ValueError('Document has no extracted text')
+        plan = json.loads(plan_path.read_text(encoding='utf-8'))
+        rel = plan['rawPath']
     path = vault / rel
     if not path.is_file() or not path.resolve().is_relative_to(vault.resolve()):
         raise ValueError('Document location is missing or outside this library')
@@ -839,9 +869,11 @@ def document_status(req):
         plan = json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
         raw_rel = plan['rawPath'] if plan else (revision['objectPath'] if revision and revision['objectPath'].startswith('raw/') else None)
         searchable = False
+        text_available = False
         if raw_rel:
             try:
                 _safe_raw(vault, raw_rel)
+                text_available = True
                 con = open_db(db)
                 try:
                     searchable = con.execute('SELECT 1 FROM raw_documents WHERE rel_path=?', (raw_rel,)).fetchone() is not None
@@ -851,7 +883,7 @@ def document_status(req):
                 searchable = False
         row = {'id': document_id, 'documentId': document_id, 'libraryId': req['libraryId'],
                'filename': doc.get('displayFilename', ''), 'revisionId': revision_id,
-               'originalAvailable': available, 'searchable': searchable,
+               'originalAvailable': available, 'searchable': searchable, 'textAvailable': text_available,
                'status': plan['status'] if plan else doc.get('status', 'retained'),
                'stage': plan['status'] if plan else 'retained', 'totalChunks': 0, 'completedChunks': 0,
                'estimatedTokens': 0, 'budgetApproved': False, 'planHash': None, 'error': None}
@@ -884,7 +916,7 @@ def document_action(req):
     vault = Path(req['vault'])
     path = _plan_path(vault, req['documentId'])
     if req['action'] in {'resume', 'approve'}:
-        return execute_document(req)
+        return execute_document({**req, 'requireExistingApproval': req['action'] == 'resume'})
     with commit_lock(vault):
         if not path.is_file():
             from .store import get_document

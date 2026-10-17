@@ -52,7 +52,7 @@ import { randomUUID } from 'node:crypto'
 import type { DocumentView, DocumentActionRequest, DocumentLibraryId, DocumentIngestHandle } from './document-view.ts'
 import { RevisionId } from './document-types.ts'
 import { resolveProposeEnv } from './credentials-bridge.ts'
-import { canOpenNativePath, openNativePath } from '@deepseek-ai/dsh-native-command'
+import { canOpenNativePath, openNativeAssociatedPath, openNativeTextFile } from '@deepseek-ai/dsh-native-command'
 import { searchLibraryPassages, readLibraryPassage } from './document-retrieve.ts'
 import { mkdir, readFile, readdir, rm, realpath, lstat, open, link, unlink } from 'node:fs/promises'
 import { join, relative, isAbsolute } from 'node:path'
@@ -64,6 +64,7 @@ import {
 } from './documents-service.ts'
 import {
   readSourceOriginal,
+  createDocumentViewFile,
   recoverSourceRegistrations,
   storeSourceOriginal,
   verifySourceRevision,
@@ -878,6 +879,9 @@ export default class DesktopAskKnowledge extends AskKnowledge {
   async remoteDocumentAction(request: DocumentActionRequest): Promise<void> {
     await this.ready
     const { libraryId, documentId, action } = request
+    if (!['original', 'text', 'sources', 'retry', 'resume', 'cancel', 'approve'].includes(action)) {
+      throw new Error('Unsupported document action')
+    }
     const vault = await assertVaultDir(this.home(), await requireLibrary(this.home(), libraryId))
     const key = `${libraryId}:${documentId}`
     if (action === 'cancel') {
@@ -891,22 +895,33 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       const documents = await this.remoteDocuments(libraryId)
       const document = documents.find(item => item.id === documentId)
       if (!document) throw new Error('Document is not in this library')
-      let path: string
+      if (!canOpenNativePath()) throw new Error('Host cannot open local files')
+      let bytes: Uint8Array
+      let filename: string
       if (action === 'original') {
         const original = await readSourceOriginal(
           this.config, this.home(), libraryId, RevisionId(document.revisionId), this.lifetime.signal,
         )
-        path = original.absPath
+        bytes = original.bytes
+        filename = document.filename
       } else {
         const result = await runSidecar(this.config, { command: 'document-location', vault, libraryId, documentId, action },
           { signal: this.lifetime.signal })
-        if (typeof result.path !== 'string') throw new Error('Document has no extracted text')
-        path = join(vault, result.path)
-        const rel = relative(await realpath(vault), await realpath(path))
-        if (rel.startsWith('..') || isAbsolute(rel) || (await lstat(path)).isSymbolicLink()) throw new Error('Linked document refused')
+        if (action === 'sources') {
+          if (typeof result.text !== 'string') throw new Error('Document source information is unavailable')
+          bytes = Buffer.from(result.text)
+          filename = document.filename + '-sources.txt'
+        } else {
+          if (typeof result.path !== 'string') throw new Error('Document has no extracted text')
+          const path = join(vault, result.path)
+          const rel = relative(await realpath(vault), await realpath(path))
+          if (rel.startsWith('..') || isAbsolute(rel) || (await lstat(path)).isSymbolicLink()) throw new Error('Linked document refused')
+          bytes = await readFile(path)
+          filename = document.filename + '-text.txt'
+        }
       }
-      if (!canOpenNativePath()) throw new Error('Host cannot open local files')
-      await openNativePath(path, this.lifetime.signal)
+      const path = await createDocumentViewFile(vault, documentId, filename, bytes, this.lifetime.signal)
+      await (action === 'original' ? openNativeAssociatedPath : openNativeTextFile)(path, this.lifetime.signal)
       return
     }
     if (action === 'retry') {
@@ -919,7 +934,13 @@ export default class DesktopAskKnowledge extends AskKnowledge {
         const retrySignal = AbortSignal.any([controller.signal, this.lifetime.signal])
         const settled = Promise.withResolvers<undefined>()
         this.documentRuns.set(key, { controller, done: settled.promise })
+        let retryJob: Awaited<ReturnType<typeof createTrackedJob>> | undefined
+        let planned = false
         try {
+          const attempt = await getLibraryStartupAttempt(this.config, this.home(), libraryId)
+          retryJob = await createTrackedJob(this.config, this.home(), libraryId, documentId,
+            RevisionId(document.revisionId), attempt, 'conversion')
+          retrySignal.throwIfAborted()
           const original = await readSourceOriginal(
             this.config, this.home(), libraryId, RevisionId(document.revisionId), retrySignal,
           )
@@ -943,12 +964,21 @@ export default class DesktopAskKnowledge extends AskKnowledge {
           await indexLibraryVault(this.config, this.home(), libraryId, retrySignal)
           retrySignal.throwIfAborted()
           await runSidecar(this.config, { command: 'plan-document', vault, libraryId, documentId,
-            revisionId: document.revisionId, rawPath, conversion: converted.diagnostics,
-            chunkChars: this.config.extractionChunkChars ?? 1500, outputReserve: this.config.extractionOutputTokens ?? 2048 },
+            revisionId: document.revisionId, jobId: retryJob.jobId, rawPath,
+            conversion: converted.diagnostics, conversionStatus: converted.status,
+            chunkChars: this.config.extractionChunkChars ?? 1500, contextChars: this.config.extractionContextChars ?? 2000,
+            outputReserve: this.config.extractionOutputTokens ?? 2048 },
           { signal: retrySignal })
+          planned = true
           retrySignal.throwIfAborted()
           await indexLibraryVault(this.config, this.home(), libraryId, retrySignal)
           return
+        } catch (error) {
+          if (!planned) await runSidecar(this.config, { command: 'record-conversion', vault, libraryId, documentId,
+            ...retryJob ? { jobId: retryJob.jobId } : {},
+            conversionStatus: retrySignal.aborted ? 'cancelled' : 'failed',
+            error: error instanceof Error ? error.message : String(error) }, { signal: this.lifetime.signal })
+          throw error
         } finally {
           if (this.documentRuns.get(key)?.controller === controller) this.documentRuns.delete(key)
           settled.resolve(undefined)
@@ -967,6 +997,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       const env = await resolveProposeEnv(this.ctx)
       await runSidecar(this.config, { command: 'execute-document', vault, libraryId, documentId,
         expectedPlanHash: request.planHash, approvedTokens: request.approvedTokens,
+        requireExistingApproval: action === 'resume',
         ...request.uncertainOutcome === 'replay' ? { uncertainOutcome: request.uncertainOutcome } : {} }, {
         env, signal: runSignal, timeoutMs: this.config.extractionTimeoutMs ?? 1800000,
       })

@@ -1098,7 +1098,7 @@ export type BrandMarkId = typeof BRAND_MARK_IDS[number]
 ## `@deepseek-ai/dsh-experimental-desktop-ask-knowledge`
 
 - `inject`: `sessionProjections` · `systemPrompt`
-- `source`: [`packages/experimental/desktop-ask-knowledge/src/index.ts:123`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
+- `source`: [`packages/experimental/desktop-ask-knowledge/src/index.ts:124`](../packages/experimental/desktop-ask-knowledge/src/index.ts)
 
 ```ts config-catalog
 /** Validated plugin configuration. */

@@ -3,7 +3,7 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import { createElement } from 'react'
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, waitFor } from '@testing-library/react'
 import { LibrarySettingsSection } from '../src/client/LibrarySettingsSection.tsx'
 import { zh } from '../src/client/locales.ts'
 import { describe, expect, it, vi } from 'vitest'
@@ -314,5 +314,35 @@ it('loads pending documents and approves their displayed budget through a real C
     expect(documentAction).toHaveBeenCalledWith({ libraryId: 'qinghe', documentId: item.id,
       action: 'approve', planHash: 'visible-plan', approvedTokens: 42000 })
     expect(view.queryByText('该知识库暂无文档')).toBeNull()
+  } finally { view.unmount(); await b.dispose(); await b.ctx.fiber.dispose() }
+})
+
+
+it.each([
+  ['original', 'docs.openOriginal'], ['text', 'docs.viewExtracted'], ['sources', 'docs.viewSources'],
+  ['retry', 'docs.retryStage'], ['resume', 'docs.resumeExtraction'], ['cancel', 'docs.cancelProcessing'],
+  ['approve', 'docs.approveBudget'], ['replay', 'docs.replayUncertain'],
+] as const)('routes the mounted %s button through the real Cordis document namespace', async (operation, label) => {
+  const b = await bench({ namespacedRemote: true, libraries: [{ id: 'actions', displayName: '按钮验收库' }] })
+  const item = { id: 'doc-actions', libraryId: 'actions', filename: '按钮验证.md', originalAvailable: true,
+    textAvailable: true, searchable: true, status: 'paused' as const,
+    stage: operation === 'approve' ? 'awaiting_approval' : operation === 'replay' ? 'uncertain' : 'paused',
+    error: operation === 'retry' ? 'Recoverable source failure' : undefined,
+    estimatedTokens: 42000, budgetApproved: operation !== 'approve', planHash: 'visible-action-plan' }
+  const documents = vi.fn(async () => ({ ok: true as const, value: [item] }))
+  const documentAction = vi.fn(async () => ({ ok: true as const, value: undefined }))
+  await b.ctx.plugin({ name: 'actions-remote-provider', apply: (scope: Context) => {
+    scope.provide('remote.askKnowledge', { documents, documentAction } as never)
+  } }).await()
+  const settings = injectedOf<LibrarySettingsRemotes>(b.slots.entries('settings.section')[0])
+  const view = render(createElement(LibrarySettingsSection, { ...settings, t: key => zh[key] }))
+  try {
+    fireEvent.click(await view.findByRole('button', { name: /按钮验收库/ }))
+    fireEvent.click(await view.findByRole('button', { name: zh[label] }))
+    await waitFor(() => expect(documentAction).toHaveBeenCalledExactlyOnceWith({
+      libraryId: 'actions', documentId: 'doc-actions', action: operation === 'replay' ? 'resume' : operation,
+      planHash: 'visible-action-plan', approvedTokens: 42000,
+      ...operation === 'replay' ? { uncertainOutcome: 'replay' } : {},
+    }))
   } finally { view.unmount(); await b.dispose(); await b.ctx.fiber.dispose() }
 })

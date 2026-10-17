@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AskKnowledgeKey } from './locales.ts'
 import { SourceIdentity } from './SourceIdentity.tsx'
 import { DocumentList } from './DocumentList.tsx'
@@ -27,8 +27,8 @@ export interface LibrarySettingsRemotes {
 }
 
 type DocumentLoadState =
-  | { readonly state: 'ready'; readonly items: readonly DocumentStatusItem[] }
-  | { readonly state: 'failed' }
+  | { readonly state: 'ready'; readonly items: readonly DocumentStatusItem[]; readonly error?: string }
+  | { readonly state: 'failed'; readonly error?: string }
 
 /** Injected remotes and locale. */
 export interface LibrarySettingsSectionProps extends LibrarySettingsRemotes {
@@ -58,22 +58,39 @@ export function LibrarySettingsSection({
   const [expandedLibraryId, setExpandedLibraryId] = useState<string | undefined>()
   const [docMap, setDocMap] = useState<Record<string, DocumentLoadState>>({})
 
+  const mounted = useRef(true)
+  const requestSequences = useRef(new Map<string, number>())
+  const cancellations = useRef(new Set<string>())
   useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+
+  useEffect(() => {
+    let current = true
     void listLibraries().then((result) => {
+      if (!current) return
       if (result.ok && result.value !== undefined) setRows(result.value)
-    })
+      else setError(t('error.docsFailed'))
+    }).catch((error: unknown) => { if (current) setError(error instanceof Error ? error.message : t('error.docsFailed')) })
+    return () => { current = false }
   }, [listLibraries])
 
   const refreshDocuments = async (libraryId: string) => {
-    if (!listDocuments) return
+    if (!listDocuments || !mounted.current) return
+    const sequence = (requestSequences.current.get(libraryId) ?? 0) + 1
+    requestSequences.current.set(libraryId, sequence)
+    const isCurrent = () => mounted.current && requestSequences.current.get(libraryId) === sequence
     try {
       const result = await listDocuments(libraryId)
+      if (!isCurrent()) return
       if (!result.ok || !result.value) throw new Error(t('error.docsFailed'))
       setDocMap(current => ({ ...current, [libraryId]: { state: 'ready', items: result.value ?? [] } }))
     } catch (error) {
-      setError(error instanceof Error ? error.message : t('error.docsFailed'))
-      setDocMap(current => current[libraryId]?.state === 'ready' ? current
-        : { ...current, [libraryId]: { state: 'failed' } })
+      if (!isCurrent()) return
+      const message = error instanceof Error ? error.message : t('error.docsFailed')
+      setDocMap(current => ({ ...current, [libraryId]: current[libraryId]?.state === 'ready'
+        ? { ...current[libraryId], error: message } : { state: 'failed', error: message } }))
     }
   }
   useEffect(() => {
@@ -84,11 +101,18 @@ export function LibrarySettingsSection({
   }, [expandedLibraryId, listDocuments])
 
   const toggleExpand = (id: string) => setExpandedLibraryId(current => current === id ? undefined : id)
-  const operate = (action: ((item: DocumentStatusItem) => Promise<void>) | undefined) => action === undefined ? undefined
+  const operate = (action: ((item: DocumentStatusItem) => Promise<void>) | undefined, kind: 'other' | 'paid' | 'cancel' = 'other') => action === undefined ? undefined
     : async (item: DocumentStatusItem) => {
       setError(undefined)
-      try { await action(item) } catch (error) { setError(error instanceof Error ? error.message : t('error.docsFailed')) }
-      if (item.libraryId) await refreshDocuments(item.libraryId)
+      if (kind === 'cancel') cancellations.current.add(item.id)
+      else if (kind === 'paid') cancellations.current.delete(item.id)
+      try { await action(item) } catch (error) {
+        if (kind === 'cancel') cancellations.current.delete(item.id)
+        if (mounted.current && (kind === 'cancel' || !cancellations.current.has(item.id))) {
+          setError(error instanceof Error ? error.message : t('error.docsFailed'))
+        }
+      }
+      if (mounted.current && item.libraryId) await refreshDocuments(item.libraryId)
     }
 
   return (
@@ -125,7 +149,7 @@ export function LibrarySettingsSection({
                         return
                       }
                       setError(result.error?.message ?? t('settings.removeFailed'))
-                    })
+                    }).catch((error: unknown) => { if (mounted.current) setError(error instanceof Error ? error.message : t('settings.removeFailed')) })
                   }}
                 >
                   {t('settings.remove')}
@@ -139,11 +163,12 @@ export function LibrarySettingsSection({
                     onOpenOriginal={operate(openOriginal)}
                     onViewText={operate(viewText)}
                     onViewSources={operate(viewSources)}
-                    onRetry={operate(retryStage)}
-                    onResume={operate(resumeExtraction)}
-                    onCancel={operate(cancelProcessing)}
-                    onApproveBudget={operate(approveBudget)}
-                  /> : <p role="status">{documents?.state === 'failed' ? t('error.docsFailed') : t('docs.loading')}</p>}
+                    onRetry={operate(retryStage, 'paid')}
+                    onResume={operate(resumeExtraction, 'paid')}
+                    onCancel={operate(cancelProcessing, 'cancel')}
+                    onApproveBudget={operate(approveBudget, 'paid')}
+                  /> : documents?.state !== 'failed' ? <p role="status">{t('docs.loading')}</p> : null}
+                  {documents?.error && <p className={css.error} role="alert">{documents.error}</p>}
                 </div>
               )}
             </li>

@@ -122,6 +122,14 @@ describe('approved complete document enrichment', () => {
     expect((await sidecar(request)).status).toBe('completed')
     expect(requests).toHaveLength(calls)
     expect(await readFile(join(vault, 'wiki', 'LOG.md'), 'utf8')).toBe(log)
+    const planPath = join(vault, '.octopus-kb', 'document-plans', createHash('sha256').update('doc-1').digest('hex') + '.json')
+    const historical = JSON.parse(await readFile(planPath, 'utf8'))
+    historical.error = 'Old publication error from a previous build'
+    await writeFile(planPath, JSON.stringify(historical), 'utf8')
+    expect((await sidecar(request)).error).toBeUndefined()
+    const status = await sidecar({ command: 'document-status', vault, libraryId: 'library-1' })
+    expect(status.documents).toEqual(expect.arrayContaining([expect.objectContaining({ status: 'completed' })]))
+    expect(JSON.stringify(status.documents)).not.toContain(historical.error)
   }, PROCESS_INTEGRATION_TIMEOUT)
 
   it('publishes generated policy metadata as a note without weakening page validation', async () => {
@@ -160,6 +168,7 @@ describe('approved complete document enrichment', () => {
     await writeFile(checkpointPath, JSON.stringify(saved), 'utf8')
     const result = await sidecar(execute)
     expect(result.status).toBe('completed')
+    expect(result.error).toBeUndefined()
     expect(result.tokensUsed).toBe(Number(pending.totalChunks) * 38)
     expect(requests).toHaveLength(Number(pending.totalChunks))
     const repaired = JSON.parse(await readFile(checkpointPath, 'utf8'))

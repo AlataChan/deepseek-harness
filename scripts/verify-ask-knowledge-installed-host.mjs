@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import { createRequire, registerHooks } from 'node:module'
 import { existsSync, realpathSync } from 'node:fs'
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { appendFile, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -25,8 +25,23 @@ const inside = path => {
   const rel = relative(resources, path)
   return !rel.startsWith('..') && !isAbsolute(rel)
 }
+const nativeViews = []
+globalThis[Symbol.for('ask-knowledge-installed-native-views')] = nativeViews
+const nativeModule = pathToFileURL(insideBundle(harnessRequire.resolve('@deepseek-ai/dsh-native-command'))).href
+const nativeViewAdapter = 'data:text/javascript,' + encodeURIComponent(`
+  export * from ${JSON.stringify(nativeModule)};
+  export const canOpenNativePath = () => true;
+  const record = (path, intent) => { globalThis[Symbol.for('ask-knowledge-installed-native-views')].push({ path, intent }); return Promise.resolve(); };
+  export const openNativeAssociatedPath = path => record(path, 'associated');
+  export const openNativeTextFile = path => record(path, 'text');
+`)
+const knowledgeHostUrl = pathToFileURL(join(resources, 'profile-plugins', '@deepseek-ai', 'dsh-experimental-desktop-ask-knowledge', 'lib', 'index.js')).href
 const hooks = registerHooks({
   resolve(specifier, context, next) {
+    // Only the external OS-open effect is recorded; installed Host logic and filesystem operations remain real.
+    if (specifier === '@deepseek-ai/dsh-native-command' && context.parentURL === knowledgeHostUrl) {
+      return { url: nativeViewAdapter, shortCircuit: true }
+    }
     const productParent = context.parentURL?.startsWith('file:') && inside(fileURLToPath(context.parentURL))
     const bare = !specifier.startsWith('.') && !specifier.startsWith('file:') && !isAbsolute(specifier)
     let result
@@ -137,6 +152,7 @@ async function until(predicate, label) {
   throw new Error(`Bounded wait expired: ${label}`)
 }
 let policySourcePath
+let mutateSourceAtNextRequest
 const server = createServer(async (request, response) => {
   try {
     let body = ''
@@ -146,6 +162,10 @@ const server = createServer(async (request, response) => {
     }
     const decoded = JSON.parse(body)
     requests.push(decoded)
+    if (mutateSourceAtNextRequest) {
+      await appendFile(mutateSourceAtNextRequest, '\nINJECTED_TEMPORARY_TAIL_CHANGE')
+      mutateSourceAtNextRequest = undefined
+    }
     const proposal = { operations: [{ op: 'append_log', path: 'wiki/LOG.md',
       entry: `- INSTALLED_APPROVED_CHUNK_${requests.length}`, rationale: 'Synthetic recorded source fact', confidence: 1 }] }
     if (requests.length === 1) proposal.operations.push({
@@ -232,6 +252,8 @@ try {
   check(Buffer.from(original.bytes).equals(Buffer.from(source)), 'installed Host retains byte-identical original')
   await rejects(() => action(document, 'approve', { planHash: 'deliberately-wrong-plan' }), 'changed-plan approval is refused')
   await rejects(() => action(document, 'approve', { approvedTokens: 1 }), 'inadequate complete-job allowance is refused')
+  await rejects(() => action(document, 'resume'), 'resume cannot grant the initial spending approval')
+  await rejects(() => action(document, 'unknown-action'), 'unknown document actions cannot dispatch inference')
   check(requests.length === 0, 'invalid approvals dispatch no provider calls')
   policySourcePath = 'raw/' + (await readdir(join(vault, 'raw')))[0]
   await action(document, 'approve')
@@ -243,12 +265,29 @@ try {
   check(policyPage.includes('社区培训预算必须保留正规凭证。'), 'category repair retains the generated source fact')
   check(JSON.stringify(requests).includes('INSTALLED_FINAL_SOURCE_9241'), 'provider observes final source marker beyond old prefix limit')
   check(requests.every(request => request.model === 'installed-recording-model'), 'provider receives the configured model route')
-  const storedPlan = JSON.parse(await readFile(join(vault, '.octopus-kb', 'document-plans', createHash('sha256').update(document.id).digest('hex') + '.json'), 'utf8'))
+  const storedPlanPath = join(vault, '.octopus-kb', 'document-plans', createHash('sha256').update(document.id).digest('hex') + '.json')
+  const storedPlan = JSON.parse(await readFile(storedPlanPath, 'utf8'))
   check(storedPlan.tokensUsed === requests.length * 38, 'actual provider-reported token usage is retained without estimates')
+  await action(completed, 'original')
+  check(nativeViews.at(-1)?.intent === 'associated' && nativeViews.at(-1).path.endsWith('same.md'), 'original button passes a named viewing copy to the native file association')
+  const originalView = nativeViews.at(-1).path
+  check(await readFile(originalView, 'utf8') === source, 'original viewing copy retains every original byte')
+  await writeFile(originalView, 'Edited viewing copy')
+  const retainedAfterViewEdit = await ctx.get('askKnowledgeDocuments').readOriginal(library.id, document.revisionId)
+  check(Buffer.from(retainedAfterViewEdit.bytes).equals(Buffer.from(source)), 'editing an opened copy cannot corrupt the retained original')
+  await action(completed, 'text')
+  check(nativeViews.at(-1)?.intent === 'text' && nativeViews.at(-1).path.endsWith('.txt'), 'text button selects a native text editor with a readable filename')
+  check((await readFile(nativeViews.at(-1).path, 'utf8')).includes('INSTALLED_FINAL_SOURCE_9241'), 'text viewing copy includes the source tail')
+  await action(completed, 'sources')
+  const sourceReport = await readFile(nativeViews.at(-1).path, 'utf8')
+  check(sourceReport.includes('same.md') && sourceReport.includes(document.revisionId), 'sources button opens readable filename and revision information')
+  check(sourceReport.includes(createHash('sha256').update(source).digest('hex')), 'source report includes the retained original digest')
   check(storedPlan.chunks[0].start === 0 && storedPlan.chunks.at(-1).end === source.length && storedPlan.chunks.every((chunk, index) => index === 0 || chunk.start === storedPlan.chunks[index - 1].end), 'durable primary spans cover the full original converted text contiguously')
   const wikiPath = join(vault, 'wiki', 'LOG.md')
   const wiki = await readFile(wikiPath, 'utf8')
   check(wiki.includes(`INSTALLED_APPROVED_CHUNK_${requests.length}`), 'actual provider proposals produce durable wiki effects')
+  await writeFile(storedPlanPath, JSON.stringify({ ...storedPlan, error: 'HISTORICAL_COMPLETED_ERROR_4471' }))
+  check(!(await service.remoteDocuments(library.id)).find(row => row.id === document.id).error, 'completed records from older builds hide their historical error')
   const callsBeforeRestart = requests.length
   await shutdown()
   await boot()
@@ -272,6 +311,8 @@ try {
   const running = action(second, 'approve')
   const outcome = running.then(() => 'completed', () => 'rejected')
   await until(() => requests.length > beforeCancel, 'running provider request')
+  await rejects(() => action(second, 'approve'), 'duplicate approval cannot start a concurrent extraction')
+  check(requests.length === beforeCancel + 1, 'duplicate approval adds zero provider requests')
   await action(second, 'cancel')
   check(await outcome === 'rejected', 'public cancel aborts the running owned inference')
   heldResponse?.()
@@ -284,6 +325,30 @@ try {
   check(cancelledAfterRestart.status === 'cancelled', 'cold restart preserves cancellation')
   await rejects(() => action(cancelledAfterRestart, 'approve'), 'cancelled document cannot silently resume paid work')
   check(requests.length === callsAtCancel, 'cancelled replay issues no provider calls')
+  const resumeSource = '# Recoverable document\n社区培训预算须保留凭证。\n'
+  await upload(library.id, 'resume-recovery.md', resumeSource)
+  const resumeDocument = (await service.remoteDocuments(library.id)).find(row => row.filename === 'resume-recovery.md')
+  check(resumeDocument?.stage === 'awaiting_approval', 'recovery fixture starts with an unapproved plan')
+  const resumeRaw = join(vault, 'raw', `${resumeDocument.id}-${resumeDocument.revisionId}.md`)
+  mutateSourceAtNextRequest = resumeRaw
+  await rejects(() => action(resumeDocument, 'approve'), 'a concurrent converted-text change pauses completion')
+  const paused = (await service.remoteDocuments(library.id)).find(row => row.id === resumeDocument.id)
+  check(paused?.status === 'paused' && !!paused.error && paused.budgetApproved, 'paused recovery preserves approval and shows the current error')
+  await writeFile(resumeRaw, resumeSource)
+  const callsBeforeResume = requests.length
+  await action(paused, 'resume')
+  const resumed = (await service.remoteDocuments(library.id)).find(row => row.id === resumeDocument.id)
+  check(resumed?.status === 'completed' && !resumed.error, 'successful resume clears the historical error')
+  check(requests.length === callsBeforeResume, 'successful resume reuses the saved response without another paid call')
+  const beforeRetry = requests.length
+  await action(resumed, 'retry')
+  const replanned = (await service.remoteDocuments(library.id)).find(row => row.id === resumeDocument.id)
+  check(replanned?.stage === 'awaiting_approval' && !replanned.budgetApproved && replanned.planHash !== resumed.planHash, 'retry creates a new explicitly unapproved plan')
+  check(requests.length === beforeRetry, 'retry planning performs zero model calls')
+  await action(replanned, 'approve')
+  const retried = (await service.remoteDocuments(library.id)).find(row => row.id === resumeDocument.id)
+  check(retried?.status === 'completed' && !retried.error, 'approved retry completes without stale errors')
+  check(requests.length === beforeRetry, 'retry preserves already applied ranges instead of repeating inference')
   const previewSource = '本会话文档的长文本内容。'.repeat(100_000)
   const extractHandle = await service.beginExtract({ filename: 'long-session.md' })
   const previewBytes = Buffer.from(previewSource)
@@ -383,6 +448,9 @@ try {
   await upload(library.id, 'cancelled-conversion.docx', Buffer.from('invalid zip')).catch(error => ({ status: 'failed', error: String(error) }))
   const orphanDocument = (await service.remoteDocuments(library.id)).find(row => row.filename === 'cancelled-conversion.docx')
   check(orphanDocument?.stage === 'conversion' && !orphanDocument.searchable, 'installed invalid original is retained as an unsearchable conversion failure')
+  await action(orphanDocument, 'sources')
+  check((await readFile(nativeViews.at(-1).path, 'utf8')).includes(orphanDocument.filename), 'sources remain viewable when conversion produced no plan')
+  await rejects(() => action(orphanDocument, 'text'), 'text is unavailable until conversion actually produces it')
   await service.remoteDocumentAction({ libraryId: library.id, documentId: orphanDocument.id, action: 'cancel' })
   const orphanPath = join(vault, 'raw', `${orphanDocument.id}-${orphanDocument.revisionId}.md`)
   await writeFile(orphanPath, '# Cancelled conversion\nCANCEL4471\n')

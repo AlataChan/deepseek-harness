@@ -16,6 +16,7 @@ export interface DocumentView {
   readonly revisionId: RevisionId
   readonly conversionStatus?: string
   readonly originalAvailable: boolean
+  readonly textAvailable?: boolean
   readonly searchable: boolean
   readonly stage: string
   readonly status: 'active' | 'completed' | 'failed' | 'paused' | 'queued' | 'retained' | 'cancelled'

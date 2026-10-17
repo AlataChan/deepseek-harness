@@ -657,6 +657,14 @@ if [[ -f "$ASK_K_CLIENT" ]] \
 else
   bad "bundled knowledge settings lack scoped document loading or budget approval — rebuild Client bundles"
 fi
+if [[ -f "$ASK_K_CLIENT" ]] \
+  && grep -q 'textAvailable' "$ASK_K_CLIENT" \
+  && grep -q 'aria-busy' "$ASK_K_CLIENT" \
+  && grep -q 'docs.approvedEstimate' "$ASK_K_CLIENT"; then
+  ok "bundled knowledge buttons track text readiness, pending actions and approved budgets"
+else
+  bad "bundled knowledge document actions are stale — rebuild Client bundles"
+fi
 ASK_DATA_CLIENT="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-data/lib/client.js"
 if [[ -f "$ASK_DATA_CLIENT" ]] \
   && grep -q '专业能力' "$ASK_DATA_CLIENT" \

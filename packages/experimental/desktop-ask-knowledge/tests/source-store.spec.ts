@@ -10,7 +10,7 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, mkdtemp, rm, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -19,6 +19,7 @@ import { AskKnowledgeError, AskKnowledgeLibraryId } from '@deepseek-ai/dsh-host-
 import DesktopAskKnowledge from '../src/index.ts'
 import { DocumentId, RevisionId } from '../src/document-types.ts'
 import {
+  createDocumentViewFile,
   readSourceOriginal,
   storeSourceOriginal,
   verifySourceRevision,
@@ -295,4 +296,46 @@ describe('source-store retention and integrity', () => {
     expect(readBack.bytes).toEqual(new Uint8Array(rawBytes))
     expect(readBack.revision.sha256).toBe(expectedHash)
   })
+})
+
+
+it('keeps named viewing copies private, independent and safe across platform filenames', async () => {
+  const { vaultDir } = await setupTestEnvironment()
+  await mkdir(join(vaultDir, '.octopus-kb'), { recursive: true })
+  const id = DocumentId('doc-view-safety')
+  const bytes = Buffer.from('verified viewing bytes')
+  const signal = new AbortController().signal
+  const first = await createDocumentViewFile(vaultDir, id, '../CON.pdf', bytes, signal)
+  expect(first).toMatch(/_CON\.pdf$/)
+  expect(first.startsWith(join(vaultDir, '.octopus-kb', 'document-views'))).toBe(true)
+  expect(await readFile(first)).toEqual(bytes)
+  expect(await createDocumentViewFile(vaultDir, id, '../CON.pdf', bytes, signal)).toBe(first)
+  await writeFile(first, 'user edits the copy')
+  expect(await createDocumentViewFile(vaultDir, id, '../CON.pdf', bytes, signal)).toBe(first)
+  expect(await readFile(first)).toEqual(bytes)
+  const long = await createDocumentViewFile(vaultDir, id, '鲸'.repeat(150) + '.docx', bytes, signal)
+  expect(long.endsWith('.docx')).toBe(true)
+  const other = await createDocumentViewFile(vaultDir, id, '鲸'.repeat(150) + '-text.txt', bytes, signal)
+  expect(other).not.toBe(long)
+  if (process.platform !== 'win32') {
+    expect((await stat(first)).mode & 0o777).toBe(0o600)
+  }
+})
+
+it.skipIf(process.platform === 'win32')('refuses linked document viewing directories without writing outside the library', async () => {
+  const { vaultDir, root } = await setupTestEnvironment()
+  await mkdir(join(vaultDir, '.octopus-kb'), { recursive: true })
+  const outside = join(root, 'outside')
+  await mkdir(outside)
+  await symlink(outside, join(vaultDir, '.octopus-kb', 'document-views'))
+  await expect(createDocumentViewFile(vaultDir, DocumentId('linked'), 'source.pdf', Buffer.from('private'),
+    new AbortController().signal)).rejects.toThrow(/symbolic link/i)
+})
+
+it('refuses an already cancelled native viewing action', async () => {
+  const { vaultDir } = await setupTestEnvironment()
+  const controller = new AbortController()
+  controller.abort(new Error('cancel view'))
+  await expect(createDocumentViewFile(vaultDir, DocumentId('cancelled-view'), 'source.pdf', Buffer.from('private'),
+    controller.signal)).rejects.toThrow('cancel view')
 })

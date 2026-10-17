@@ -45,6 +45,8 @@ Configured HTTP(S) proxy URLs, including their authentication, are forwarded onl
 
 Generated page categories outside the PageMeta enums are normalized to `note` before strict validation, including saved proposals resumed after rejection. This repair retains the original response, attempt identity and reported usage without repeating inference for that range. Other publication failures report the rejecting rule and leave extraction paused.
 
+Document actions reflect the current conversion and approval state. Native viewers receive private, named copies, so editing a viewed file does not alter retained originals or extraction input. Source information remains available when conversion fails before planning. Resume requires prior approval; retry prepares a fresh plan without inference and requires a new approval. Controls prevent duplicate requests while leaving cancellation available. Recovery clears historical errors, and older status polls cannot replace newer results.
+
 ## Model Experience
 
 ### Bound retrieve prompt
