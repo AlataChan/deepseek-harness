@@ -49,6 +49,7 @@ assert.equal(typeof searchLibraryPassages, 'function', 'Installed search capabil
 const { SessionStore, SessionId } = await import(pathToFileURL(insideBundle(harnessRequire.resolve('@deepseek-ai/dsh-session'))).href)
 const { default: Projections } = await import(pathToFileURL(insideBundle(harnessRequire.resolve('@deepseek-ai/dsh-session-projection'))).href)
 const { default: Tools } = await import(pathToFileURL(insideBundle(harnessRequire.resolve('@deepseek-ai/dsh-tools'))).href)
+const FencePolicy = await import(pathToFileURL(insideBundle(harnessRequire.resolve('@deepseek-ai/dsh-fence-policy'))).href)
 const { default: Attachments } = await import(pathToFileURL(insideBundle(harnessRequire.resolve('@deepseek-ai/dsh-attachment-local'))).href)
 const { createToolResultMessage, createUserMessage, ToolCallId } = await import(pathToFileURL(insideBundle(harnessRequire.resolve('@deepseek-ai/dsh-llm'))).href)
 
@@ -56,6 +57,7 @@ async function installToolServices(context, profileHome) {
   await context.plugin(SessionStore)
   await context.plugin(Projections)
   await context.plugin(Tools)
+  await context.plugin(FencePolicy, { tools: ['ask_knowledge_*'], maxMixedTextBytes: 6000 })
   await context.plugin(Attachments, { dshHome: join(profileHome, 'official-attachments') })
 }
 let nextToolId = 0
@@ -72,14 +74,18 @@ function modelValue(result) {
   assert.equal(result.isError, false, JSON.stringify(result.error))
   assert.equal(result.content.length, 1)
   assert.equal(result.content[0].type, 'text')
-  return JSON.parse(result.content[0].text)
+  const prefix = '<external-data>\n'
+  const suffix = '\n</external-data>'
+  const text = result.content[0].text
+  assert.ok(text.startsWith(prefix) && text.endsWith(suffix), 'Installed production safety policy must fence every knowledge result')
+  return JSON.parse(text.slice(prefix.length, -suffix.length))
 }
 
 if (process.argv[3] === '--restore-tools') {
   const profileHome = process.argv[4]
   const seed = JSON.parse(await readFile(process.argv[5], 'utf8'))
   const context = new Context()
-  context.provide('systemPrompt', { section: () => () => {}, tools: () => () => {} })
+  context.provide('systemPrompt', { getSectionOrder: () => 0, section: () => () => {}, tools: () => () => {} })
   await installToolServices(context, profileHome)
   await context.plugin(DesktopAskKnowledge, { knowledgeHome: profileHome, sidecarRuntimePath: join(resources, 'kb-runtime') })
   try {
@@ -158,7 +164,7 @@ assert.ok(address && typeof address === 'object')
 
 async function boot() {
   ctx = new Context()
-  ctx.provide('systemPrompt', { section: () => () => {}, tools: () => () => {} })
+  ctx.provide('systemPrompt', { getSectionOrder: () => 0, section: () => () => {}, tools: () => () => {} })
   await installToolServices(ctx, home)
   // Deliberate synthetic credential: no personal profile or real provider is read.
   ctx.provide('credentials', { resolve: async () => ({ value: 'synthetic-installed-only' }) })

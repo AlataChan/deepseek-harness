@@ -17,6 +17,7 @@ import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { bootOverlay } from './helpers/boot.ts'
 import { currentTurnOf } from '../src/tools.ts'
+import * as FencePolicy from '@deepseek-ai/dsh-fence-policy'
 import { indexLibraryVault } from '../src/document-retrieve.ts'
 
 const signal = new AbortController().signal
@@ -192,8 +193,9 @@ coverage_status: wiki-ready
     expect(staleRes.content.map(b => 'text' in b ? b.text : '').join('')).toContain('previous turn')
   }, 25_000)
 
-  it('A5: Source-only library logs wiki unavailability before a separate source read', async () => {
+  it('A5: Source-only fallback accepts an authoritative receipt fenced by the production safety policy', async () => {
     const { ctx, root, sidecarHome } = await bootWithPython()
+    await ctx.plugin(FencePolicy, { tools: ['ask_knowledge_*'], maxMixedTextBytes: 6000 })
     const session = ctx.sessions.prepare(SessionId('ses-src-only'))
     ctx.sessions.enter(session)
     ctx.sessions.announce(session)
@@ -218,6 +220,7 @@ coverage_status: wiki-ready
     }
     // Should disclose fallback
     expect(val.warnings.some(w => w.ruleId.includes('fallback') || w.message.includes('fallback') || w.message.includes('unavailable'))).toBe(true)
+    expect(res.content[0]).toMatchObject({ type: 'text', text: expect.stringMatching(/^<external-data>\n/) })
     // Must issue a valid wikiAttemptId so subsequent source reads are authorized
     expect(typeof val.wikiAttemptId).toBe('string')
     expect(val.items).toEqual([])

@@ -53,6 +53,7 @@ export async function bootOverlay(options: {
   const ctx = new Context()
   const sections = new Map<string, RecordedSection>()
   ctx.provide('systemPrompt', {
+    getSectionOrder: () => 0,
     section: (spec: RecordedSection) => {
       sections.set(spec.name, spec)
       return () => {

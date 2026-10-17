@@ -139,7 +139,11 @@ function requireLoggedWikiAttempt(session: Session | undefined, libraryId: strin
       for (const block of event.data.message.content) {
         if (block.type !== 'text') continue
         let body: unknown
-        try { body = JSON.parse(block.text) } catch (error) {
+        const prefix = '<external-data>\n'
+        const suffix = '\n</external-data>'
+        const text = block.text.startsWith(prefix) && block.text.endsWith(suffix)
+          ? block.text.slice(prefix.length, -suffix.length) : block.text
+        try { body = JSON.parse(text) } catch (error) {
           // Legacy or failed tool output contains no reusable wiki receipt.
           if (error instanceof SyntaxError) continue
           throw error

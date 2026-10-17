@@ -83,6 +83,9 @@
     },
     {
       "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../guard/fence-policy"
     }
   ]
 }
