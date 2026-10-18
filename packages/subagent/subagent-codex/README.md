@@ -127,6 +127,7 @@ Read these pages when the package-level contract is not enough. They move from t
 - [dsh-subagent seam](../subagent/README.md) — the registry and start API this provider registers on.
 - [Claude Code subagent provider](../subagent-claude-code/README.md) — the sibling product backend over the official Agent SDK.
 - [historical Claude Code and Codex backends](../../../.agents/notes/archived/feature/2026-08-04-claude-code-and-codex-subagent-backends.md) — the design record for the product providers.
+- [Keyless Codex answer-selection session](../../../snapshots/session/codex-partial-answer/snapshot.yml) — two parent tool calls exercise real child-process JSON-RPC and persisted partial/final selection; the fixture substitutes only the external executable, not the provider or tool. This does not verify the native Codex binary or login.
 - [Generated configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-subagent-codex) — every accepted config field and its source declaration.
 
 -----

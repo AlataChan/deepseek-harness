@@ -1,0 +1,12 @@
+version: 1
+scenario: codex-partial-answer
+profile: headless
+composition: codex-partial-answer
+recording: authored
+header:
+  class: codex-partial-answer
+  pin: true
+  systemPromptSource: product-subagent-codex
+  toolSchemasSource: product-subagent-codex
+workspace:
+  final: true

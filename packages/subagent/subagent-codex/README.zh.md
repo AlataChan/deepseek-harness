@@ -127,6 +127,7 @@ dsh --profile <name>
 - [dsh-subagent seam](../subagent/README.zh.md)——本提供方注册于其上的注册表与启动 API。
 - [Claude Code subagent 提供方](../subagent-claude-code/README.zh.md)——经官方 Agent SDK 的兄弟产品后端。
 - [历史Claude Code 与 Codex 后端](../../../.agents/notes/archived/feature/2026-08-04-claude-code-and-codex-subagent-backends.md)——产品提供方的设计记录。
+- [无密钥 Codex 答案选择会话](../../../snapshots/session/codex-partial-answer/snapshot.yml)——两次父级工具调用通过真实子进程 JSON-RPC 验证持久化的部分答案与最终答案选择；夹具只替换外部可执行文件，不替换提供方或工具。这不验证原生 Codex 二进制或登录。
 - [生成配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-subagent-codex)——每个受支持配置字段及其源声明。
 
 -----
