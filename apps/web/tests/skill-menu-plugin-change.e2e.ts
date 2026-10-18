@@ -1,6 +1,6 @@
 // Web e2e scenario: switching a plugin on the Plugins page updates the `/`
 // menu of a Session that is already open. One chromium page holds a blank
-// Session while a second page switches the official badge skill bundle; a
+// Session while a second page switches the isolated fixture skill bundle; a
 // global skill seeded in the harness home stays listed throughout. No model
 // call is issued, so a stray stream fails loud on the open LLM seam.
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -11,8 +11,8 @@ import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
 import { launchWebScaffold, watchConsole, type WebScaffold } from './scaffold.ts'
 import { connectFreshWorkspace, newEnglishPage, saveFailureShot, writeComposerDraft } from './support.ts'
 
-const BUNDLE_DIR = fileURLToPath(new URL('../../../packages/experimental/badge-skill-bundle', import.meta.url))
-const BUNDLE = '@deepseek-ai/dsh-experimental-badge-skill-bundle'
+const BUNDLE_DIR = fileURLToPath(new URL('./fixtures/plugins/fixture-skill-bundle', import.meta.url))
+const BUNDLE = '@fixture/skill-bundle'
 const GLOBAL_SKILL = 'dsh-global-skill'
 
 describe('web e2e: the slash menu follows plugin switches', () => {
@@ -47,7 +47,6 @@ describe('web e2e: the slash menu follows plugin switches', () => {
     await plugins.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await plugins.getByRole('navigation', { name: 'Global panels' }).getByRole('button', { name: 'Plugins', exact: true }).click()
     const panel = plugins.locator('[data-plugin-panel]')
-    await panel.getByRole('button', { name: 'More', exact: true }).click()
     toggle = panel.locator(`[data-plugin-package="${BUNDLE}"]`).getByRole('switch')
     await toggle.waitFor({ timeout: 10_000 })
   }, 120_000)
@@ -58,19 +57,19 @@ describe('web e2e: the slash menu follows plugin switches', () => {
   })
 
   /**
-   * Retype the query in the open Session and read whether the badge skill is listed.
-   * @returns whether the menu lists `dsh-badge` beside the global skill.
+   * Retype the query in the open Session and read whether the fixture skill is listed.
+   * @returns whether the menu lists `dsh-fixture-switch` beside the global skill.
    */
-  async function badgeListed(): Promise<boolean> {
+  async function fixtureSkillListed(): Promise<boolean> {
     await writeComposerDraft(page, page.locator('[data-composer-input]').first(), '/dsh-')
     const menu = page.getByRole('listbox', { name: 'Trigger suggestions' })
     // The skill source answers with one list, so the global entry marks a settled skill group.
     await menu.getByRole('option', { name: new RegExp(`^${GLOBAL_SKILL} `) }).waitFor({ timeout: 10_000 })
-    return await menu.getByRole('option', { name: /^dsh-badge / }).count() === 1
+    return await menu.getByRole('option', { name: /^dsh-fixture-switch / }).count() === 1
   }
 
   /**
-   * Switch the badge bundle on the second page and wait for the switch to settle.
+   * Switch the fixture bundle on the second page and wait for the switch to settle.
    * @param enabled - the requested bundle state.
    */
   async function switchBundle(enabled: boolean): Promise<void> {
@@ -85,12 +84,12 @@ describe('web e2e: the slash menu follows plugin switches', () => {
       await saveFailureShot(plugins, 'web-e2e-skill-menu-plugin-change-plugins')
     })
     // The open Session cached its catalog while the bundle was off.
-    expect(await badgeListed()).toBe(false)
+    expect(await fixtureSkillListed()).toBe(false)
 
     // Each switch re-reads the catalog of the Session that stayed open.
     for (const enabled of [true, false, true]) {
       await switchBundle(enabled)
-      await expect.poll(badgeListed, { timeout: 10_000 }).toBe(enabled)
+      await expect.poll(fixtureSkillListed, { timeout: 10_000 }).toBe(enabled)
     }
     expect(tripwire.pageErrors).toEqual([])
     expect(tripwire.warnings).toEqual([])

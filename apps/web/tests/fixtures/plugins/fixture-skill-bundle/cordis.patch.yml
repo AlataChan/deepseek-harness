@@ -1,0 +1,4 @@
+# Runtime skill contribution owned by the Web plugin-switch scenario.
+- insert:
+    - id: fixture-skill
+      name: '@fixture/skill-bundle'

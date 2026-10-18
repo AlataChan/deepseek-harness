@@ -1,0 +1,17 @@
+{
+  "name": "@fixture/skill-bundle",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Web test bundle contributing one removable skill.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
