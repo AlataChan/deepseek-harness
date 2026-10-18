@@ -38,6 +38,7 @@ let root: string | undefined
 const contexts: { ctx: Context; ready?: Promise<WebRoute> }[] = []
 
 afterEach(async () => {
+  vi.unstubAllEnvs()
   await Promise.all(contexts.splice(0).map(async ({ ctx, ready }) => {
     await ready
     await ctx.fiber.dispose()
@@ -79,25 +80,34 @@ it.each([false, true])('tracks the Web carrier lifetime when server-first is %s'
   expect(routes.size).toBe(0)
 })
 
-it('publishes this package version and the build commit as the Host release in every composed graph', async () => {
+it.each([undefined, 'abc1234', 'a'.repeat(40)])('ignores legacy display commit %s in the Host release', (displayCommit) => {
+  vi.stubEnv('DSH_CLIENT_COMMIT_HASH', displayCommit)
+  vi.stubEnv('DSH_CLIENT_RELEASE_COMMIT', undefined)
+  vi.stubEnv('DSH_CLIENT_RELEASE_VERSION', undefined)
   const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }
-  const mount = async (commit: string | undefined) => {
-    vi.stubEnv('DSH_CLIENT_COMMIT_HASH', commit)
-    const ctx = new Context()
-    contexts.push({ ctx })
-    ctx.provide('loader', { entries: () => [] })
-    await ctx.plugin(ClientModuleRegistry)
-    vi.unstubAllEnvs()
-    return ctx.get('clientModules')!.graph()
-  }
-  const graph = await mount('abc1234')
-  expect(graph.release).toEqual({ version, commit: 'abc1234' })
+  const graph = constructWithRoute([], { contextBaseUrl: import.meta.url }).service.graph()
+  expect(graph.release).toEqual({ version })
   expect(bootInjections(graph).at(-1)).toEqual({ kind: 'global', name: '__DSH_BOOT__', value: graph })
-  expect(modulesClient.parseBootManifest(graph).release).toEqual({ version, commit: 'abc1234' })
-  expect((await mount(undefined)).release).toEqual({ version })
+  expect(modulesClient.parseBootManifest(graph).release).toEqual({ version })
+})
+
+it('publishes the canonical full commit and runtime version in the Host graph', () => {
+  vi.stubEnv('DSH_CLIENT_COMMIT_HASH', 'display-only')
   vi.stubEnv('DSH_CLIENT_RELEASE_VERSION', 'runtime-version')
   vi.stubEnv('DSH_CLIENT_RELEASE_COMMIT', 'a'.repeat(40))
-  expect((await mount('display-only')).release).toEqual({ version: 'runtime-version', commit: 'a'.repeat(40) })
+  const graph = constructWithRoute([], { contextBaseUrl: import.meta.url }).service.graph()
+  expect(graph.release).toEqual({ version: 'runtime-version', commit: 'a'.repeat(40) })
+  expect(modulesClient.parseBootManifest(graph).release).toEqual(graph.release)
+})
+
+it.each(['', 'abc1234', 'A'.repeat(40), 'g'.repeat(40)])('rejects invalid explicit canonical release commit %j', (commit) => {
+  vi.stubEnv('DSH_CLIENT_RELEASE_COMMIT', commit)
+  expect(() => constructWithRoute([], { contextBaseUrl: import.meta.url })).toThrow('DSH_CLIENT_RELEASE_COMMIT must be a full lowercase Git commit hash')
+})
+
+it('rejects an empty explicit runtime release version', () => {
+  vi.stubEnv('DSH_CLIENT_RELEASE_VERSION', ' ')
+  expect(() => constructWithRoute([], { contextBaseUrl: import.meta.url })).toThrow('DSH_CLIENT_RELEASE_VERSION must be a non-empty runtime version')
 })
 
 /** Create a resolvable package whose client export points at the returned path. */

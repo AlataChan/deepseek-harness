@@ -1,10 +1,28 @@
 # Trusted installer helper: hash files without loading candidate code or following reparse points.
-param([ValidateSet('seal','verify')][string]$Operation, [string]$Root, [string]$Token)
+param([ValidateSet('seal','verify','recognize','clean-stage','clean-backup')][string]$Operation, [string]$Root, [string]$Token)
 $ErrorActionPreference = 'Stop'
 $markerName = '.octopus-installer-ready.json'
-if (-not $Root -or $Token -notmatch '^[0-9]+-[0-9]+$') { throw 'Invalid installer state identity' }
+if (-not $Root -or ($Operation -ne 'recognize' -and $Token -notmatch '^[0-9]+-[0-9]+$')) { throw 'Invalid installer state identity' }
+$cleanup = $Operation -in @('clean-stage','clean-backup')
+if ($cleanup -and -not (Test-Path -LiteralPath $Root)) { return }
+if ($cleanup) {
+  $kind = if ($Operation -eq 'clean-stage') { 'stage' } else { 'backup' }
+  if (-not $Root.EndsWith(".octopus-$kind-$Token", [StringComparison]::Ordinal)) { throw 'Cleanup root is not the transaction sibling' }
+}
 $rootInfo = [IO.DirectoryInfo]::new($Root)
 if (-not $rootInfo.Exists -or ($rootInfo.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Unsafe payload root' }
+if ($Operation -eq 'recognize') {
+  if ($rootInfo.GetFileSystemInfos().Count -eq 0) { return }
+  $marker = Join-Path $Root $markerName
+  if (([IO.FileInfo]::new($marker)).Length -gt 4096) { throw 'Invalid installer marker' }
+  $record = [IO.File]::ReadAllText($marker) | ConvertFrom-Json
+  if ($record.schemaVersion -ne 1 -or $record.token -notmatch '^[0-9]+-[0-9]+$' -or $record.sha256 -notmatch '^[0-9a-f]{64}$') { throw 'Invalid installer marker identity' }
+  return
+}
+if ($Operation -eq 'clean-backup' -and -not [IO.File]::Exists((Join-Path $Root $markerName))) {
+  Write-Output 'Legacy backup retained for explicit recovery'
+  return
+}
 $paths = [Collections.Generic.List[string]]::new()
 $directories = [Collections.Generic.List[string]]::new()
 function Collect([IO.DirectoryInfo]$Directory) {
@@ -15,6 +33,20 @@ function Collect([IO.DirectoryInfo]$Directory) {
   }
 }
 Collect $rootInfo
+if ($Operation -eq 'clean-stage') {
+  $owner = Join-Path $Root '.octopus-installer-stage.ini'
+  if (-not [IO.File]::Exists($owner) -or ([IO.FileInfo]::new($owner)).Length -gt 256) { throw 'Unmarked staging is retained' }
+  $identity = [IO.File]::ReadAllText($owner)
+  if ($identity -notmatch ('(?m)^token=' + [Regex]::Escape($Token) + '\r?$')) { throw 'Foreign staging is retained' }
+  # Collect rejected every reparse point before deletion; never follow links during cleanup.
+  foreach ($path in $paths) { [IO.File]::Delete($path) }
+  $directories.Sort([StringComparer]::Ordinal)
+  for ($i = $directories.Count - 1; $i -ge 0; $i--) { [IO.Directory]::Delete($directories[$i]) }
+  [IO.File]::Delete((Join-Path $Root $markerName))
+  [IO.Directory]::Delete($rootInfo.FullName)
+  Write-Output 'owned-stage-removed'
+  return
+}
 $paths.Sort([StringComparer]::Ordinal)
 $text = [Text.StringBuilder]::new()
 $directories.Sort([StringComparer]::Ordinal)
@@ -43,6 +75,14 @@ if ($Operation -eq 'seal') {
 } else {
   if (([IO.FileInfo]::new($marker)).Length -gt 4096) { throw 'Invalid installer marker' }
   $record = [IO.File]::ReadAllText($marker) | ConvertFrom-Json
-  if ($record.schemaVersion -ne 1 -or $record.token -ne $Token -or $record.sha256 -cne $digest) { throw 'Payload changed since staging' }
+  if ($record.token -notmatch '^[0-9]+-[0-9]+$') { throw 'Invalid installer marker identity' }
+  if ($record.schemaVersion -ne 1 -or ($Operation -eq 'verify' -and $record.token -ne $Token) -or $record.sha256 -cne $digest) { throw 'Payload changed since staging' }
+}
+if ($Operation -eq 'clean-backup') {
+  # Retire the validity marker before destructive cleanup; partial leftovers are never reusable payloads.
+  [IO.File]::Delete($marker)
+  foreach ($path in $paths) { [IO.File]::Delete($path) }
+  for ($i = $directories.Count - 1; $i -ge 0; $i--) { [IO.Directory]::Delete($directories[$i]) }
+  [IO.Directory]::Delete($rootInfo.FullName)
 }
 Write-Output 'payload-state-ok'

@@ -19,6 +19,7 @@
       "resources/kb-runtime"
     ],
     "windows": {
+      "allowDowngrades": false,
       "nsis": {
         "template": "../../../scripts/desktop-installer-template.nsi",
         "installerHooks": "../../../scripts/desktop-installer-transaction.nsh"

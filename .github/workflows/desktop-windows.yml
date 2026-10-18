@@ -39,9 +39,10 @@ env:
 jobs:
   build-exe:
     runs-on: windows-2025
+    environment: ${{ inputs.build_mode == 'public' && 'desktop-signing' || 'desktop-internal' }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
       - name: Enable Developer Mode (symlink support)
@@ -49,13 +50,13 @@ jobs:
         run: >-
           reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
           /t REG_DWORD /f /v "AllowDevelopmentWithoutDevLicense" /d "1"
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           dest: ${{ runner.temp }}/setup-pnpm-js-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
-      - uses: actions/setup-python@v6.3.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.12'
           # The frozen sidecar's dependency pins live in that script.
@@ -80,14 +81,14 @@ jobs:
           $store = pnpm store path --silent
           "path=$store" >> $env:GITHUB_OUTPUT
       - name: Restore pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
       - name: Restore cargo registry caches
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cargo/registry
@@ -99,14 +100,14 @@ jobs:
       # tree for the next iteration (a plain cache action saves only on success).
       - name: Restore Tauri build cache
         id: tauri-target
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: apps/desktop/src-tauri/target
           key: desktop-windows-target-production-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock', 'apps/desktop/src-tauri/src/**', 'apps/desktop/src-tauri/build.rs', 'apps/desktop/src-tauri/tauri*.json') }}
           restore-keys: |
             desktop-windows-target-
       - name: Restore Tauri toolchain cache (NSIS)
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/AppData/Local/tauri
           key: desktop-windows-tauri-tools-2.11.4
@@ -123,6 +124,22 @@ jobs:
           } else {
             pnpm install --frozen-lockfile
           }
+      - name: Import public Windows signing certificate
+        if: inputs.build_mode == 'public'
+        shell: pwsh
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.DSH_WINDOWS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DSH_WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if (-not $env:CERTIFICATE_BASE64 -or -not $env:CERTIFICATE_PASSWORD) { throw 'Missing Windows signing certificate credentials' }
+          $certificatePath = Join-Path $env:RUNNER_TEMP 'desktop-signing.pfx'
+          try {
+            [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
+            $password = ConvertTo-SecureString $env:CERTIFICATE_PASSWORD -AsPlainText -Force
+            $certificates = @(Import-PfxCertificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\My -Password $password)
+            $matching = @($certificates | Where-Object { $_.HasPrivateKey -and $_.Thumbprint -eq $env:DSH_WINDOWS_CERTIFICATE_THUMBPRINT })
+            if ($matching.Count -ne 1) { throw 'Imported certificate does not match the configured signing identity' }
+          } finally { Remove-Item $certificatePath -Force -ErrorAction SilentlyContinue }
       - name: Check public signing prerequisites
         shell: pwsh
         run: node --import tsx/esm scripts/verify-desktop-release.ts preflight $env:DSH_DESKTOP_BUILD_MODE windows-x64
@@ -201,7 +218,7 @@ jobs:
           & 'D:\octo-dsh\resources\node.exe' scripts/verify-ask-knowledge-installed-host.mjs 'D:\octo-dsh\resources'
           if ($LASTEXITCODE -ne 0) { throw "Installed Ask Knowledge acceptance failed" }
       - name: Upload the installer
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ${{ env.DSH_BUILD_ARTIFACT_NAME }}
           path: |
@@ -210,7 +227,15 @@ jobs:
           if-no-files-found: error
       - name: Save Tauri build cache
         if: always() && steps.tauri-target.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: apps/desktop/src-tauri/target
           key: ${{ steps.tauri-target.outputs.cache-primary-key }}
+      - name: Remove public Windows signing certificate
+        if: always() && inputs.build_mode == 'public'
+        shell: pwsh
+        run: |
+          if ($env:DSH_WINDOWS_CERTIFICATE_THUMBPRINT) {
+            $certificate = "Cert:\CurrentUser\My\$env:DSH_WINDOWS_CERTIFICATE_THUMBPRINT"
+            if (Test-Path $certificate) { Remove-Item $certificate -DeleteKey -Force }
+          }

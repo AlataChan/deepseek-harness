@@ -23,7 +23,7 @@ function Invoke-Scrubbed([scriptblock]$Action) {
 $plan = Join-Path $manifests[0].DirectoryName 'publication-plan.json'
 if ($env:DSH_RELEASE_OPERATION -ne 'plan') {
   if (-not $env:DSH_REVIEWED_PLAN) { throw 'Reviewed plan JSON is required' }
-  [IO.File]::WriteAllText($plan, $env:DSH_REVIEWED_PLAN)
+  [IO.File]::WriteAllText($plan, $env:DSH_REVIEWED_PLAN, [Text.UTF8Encoding]::new($false))
 }
 $install = Join-Path ([IO.Path]::GetTempPath()) ('octopus-publication-' + [Guid]::NewGuid().ToString('N').Substring(0,8))
 $mount = $null

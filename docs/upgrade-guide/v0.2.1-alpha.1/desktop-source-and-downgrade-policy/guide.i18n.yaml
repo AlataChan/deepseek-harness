@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-alpha.1/desktop-source-and-downgrade-policy/guide.md
+/:
+  en: 0bf2537d9ddaa717
+  zh: beae468eb4a05cc5
+/desktop-source-state-and-windows-downgrades:
+  en: 1cce7a343c78effb
+  zh: 711125d071acf565
+/desktop-source-state-and-windows-downgrades/change:
+  en: ec86a04fe13c01c1
+  zh: 09f508d46bf4d57a
+/desktop-source-state-and-windows-downgrades/migration:
+  en: e9135196389fa4e8
+  zh: 91988fb51d4ae5a0

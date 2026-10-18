@@ -11,6 +11,14 @@ export interface DesktopBuildIdentity {
   readonly commit: string
 }
 
+/** Source modification flags retained for internal artifact auditing. */
+export interface DesktopSourceState {
+  /** Whether Git reported modifications when the complete root build started. */
+  readonly modifiedAtBuild: boolean
+  /** Whether Git reported modifications when packaging read the build record. */
+  readonly modifiedAtPackaging: boolean
+}
+
 /**
  * Validate a persisted or wire build identity.
  * @param value - decoded JSON value.

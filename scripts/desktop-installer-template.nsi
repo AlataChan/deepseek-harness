@@ -535,22 +535,22 @@ FunctionEnd
 
 
 Section EarlyChecks
-  ; Abort silent installer if downgrades is disabled
+  Call TxRequirePowerShell
+  ; Read the installed version here: silent mode skips the reinstall page.
   !if "${ALLOWDOWNGRADES}" == "false"
-  ${If} ${Silent}
-    ; If downgrading
-    ${If} $R0 = -1
-      System::Call 'kernel32::AttachConsole(i -1)i.r0'
-      ${If} $0 <> 0
-        System::Call 'kernel32::GetStdHandle(i -11)i.r0'
-        System::call 'kernel32::SetConsoleTextAttribute(i r0, i 0x0004)' ; set red color
-        FileWrite $0 "$(silentDowngrades)"
+    ReadRegStr $R0 SHCTX "${UNINSTKEY}" "DisplayVersion"
+    ${If} $R0 != ""
+      nsis_tauri_utils::SemverCompare "${VERSION}" $R0
+      Pop $R0
+      ${If} $R0 = -1
+        DetailPrint "Refusing to replace a newer installed application with ${VERSION}."
+        SetErrorLevel 2
+        IfSilent +2
+          MessageBox MB_ICONSTOP "$(silentDowngrades)"
+        Quit
       ${EndIf}
-      Abort
     ${EndIf}
-  ${EndIf}
   !endif
-
 SectionEnd
 
 Section WebView2
@@ -689,8 +689,13 @@ Section Install
   SetOutPath $INSTDIR
   Goto tx_staging_done
   tx_staging_failed:
+    System::Call 'kernel32::GetLastError() i.r0'
+    StrCpy $TxError $0
+    ${If} $TxError == 0
+      ; NSIS extraction may not retain a Win32 error; report unspecified failure rather than disk full.
+      StrCpy $TxError 31
+    ${EndIf}
     StrCpy $INSTDIR $TxTarget
-    StrCpy $TxError 112
     Call TxFail
   tx_staging_done:
 
@@ -814,10 +819,8 @@ Section Uninstall
 
   !insertmacro CheckIfAppIsRunning "${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
 
-  ; Delete the app directory and its content from disk
-  Call TxBegin
-  StrCpy $INSTDIR $TxStage
-  SetOutPath $INSTDIR
+  ; Delete only installed files from the original target; never start an install transaction.
+  SetOutPath $TEMP
   ClearErrors
 
   ; Copy main executable
@@ -849,7 +852,9 @@ Section Uninstall
   {{/each}}
 
 
-  ; Delete uninstaller
+  ; Delete installer-owned state and the uninstaller.
+  Delete "$INSTDIR\.octopus-installer-ready.json"
+  Delete "$INSTDIR\.octopus-installer-stage.ini"
   Delete "$INSTDIR\uninstall.exe"
 
   {{#each resources_ancestors}}

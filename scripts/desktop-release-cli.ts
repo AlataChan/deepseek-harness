@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { desktopBuildIdentity } from './desktop-build-identity.ts'
+import { desktopArtifactIdentity, resolveDesktopBuildMode } from './desktop-artifact-identity.ts'
 import { artifactDigest, desktopShellVersion, payloadDigest, validateReleaseManifest } from './desktop-release-manifest.ts'
 import { assertArtifactBytes, assertRunEvidence, verifyNativeSignatures, verifyDownloadedArtifact } from './verify-desktop-release.ts'
 import { GitHubDesktopReleaseTransport } from './desktop-release-github.ts'
@@ -22,22 +22,22 @@ const envInt = (key: string): number => {
 if (command === 'identity') {
   const path = args[0]
   if (!path) throw new Error('identity <build-info-path>')
-  const release = desktopBuildIdentity(root)
+  const { release, sourceState } = desktopArtifactIdentity(root, resolveDesktopBuildMode(args[1]))
   let existing: unknown = {}
   try { existing = read(path) } catch (error) {
     if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error
   }
   if (typeof existing !== 'object' || existing === null || Array.isArray(existing)) throw new Error('Invalid build info')
-  save(path, { ...existing, release, runtimeVersion: release.version })
+  save(path, { ...existing, release, sourceState, runtimeVersion: release.version })
 } else if (command === 'manifest') {
   const [artifact, payload, target, mode, out, signaturePayload] = args
   if (!artifact || !payload || !out) throw new Error('manifest <artifact> <payload-root> <target> <internal|public> <output>')
-  const release = desktopBuildIdentity(root)
+  const { release, sourceState } = desktopArtifactIdentity(root, resolveDesktopBuildMode(mode))
   const workflow = process.env.GITHUB_RUN_ID === undefined ? undefined : {
     path: process.env.DSH_BUILD_WORKFLOW, commit: process.env.GITHUB_SHA, runId: envInt('GITHUB_RUN_ID'), attempt: envInt('GITHUB_RUN_ATTEMPT'), artifactName: process.env.DSH_BUILD_ARTIFACT_NAME,
   }
   const manifest = validateReleaseManifest({ schemaVersion: 1, mode, repository: process.env.GITHUB_REPOSITORY ?? 'AlataChan/deepseek-harness',
-    ref: process.env.GITHUB_REF ?? 'local', release, shellVersion: desktopShellVersion(root), target, payloadSha256: payloadDigest(payload), artifact: artifactDigest(artifact), workflow })
+    sourceState, ref: process.env.GITHUB_REF ?? 'local', release, shellVersion: desktopShellVersion(root), target, payloadSha256: payloadDigest(payload), artifact: artifactDigest(artifact), workflow })
   assertArtifactBytes(manifest, artifact, payload)
   if (manifest.mode === 'public' && !signaturePayload) throw new Error('Explicit signed app/executable path is required')
   verifyNativeSignatures(manifest, artifact, signaturePayload ?? payload)

@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto'
 import { lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
-import { validateDesktopBuildIdentity, type DesktopBuildIdentity } from './desktop-build-identity.ts'
+import { validateDesktopBuildIdentity, type DesktopBuildIdentity, type DesktopSourceState } from './desktop-build-identity.ts'
 
 /** Inputs that identify one CI execution, independently of artifact names. */
 export interface DesktopWorkflowIdentity {
@@ -19,6 +19,8 @@ export interface DesktopReleaseManifest {
   repository: string
   ref: string
   release: DesktopBuildIdentity
+  /** Modification flags from the complete build and packaging checkout. */
+  sourceState: DesktopSourceState
   /** Executable version from apps/desktop/src-tauri/tauri.conf.json. */
   shellVersion: string
   target: 'windows-x64' | 'macos-arm64' | 'macos-x64'
@@ -132,8 +134,17 @@ export function validateReleaseManifest(value: unknown): DesktopReleaseManifest 
       || typeof w.artifactName !== 'string' || !/^[A-Za-z0-9._-]+$/.test(w.artifactName)) throw new Error('Invalid workflow execution')
     workflow = { path: w.path, commit: w.commit, runId: w.runId, attempt: w.attempt, artifactName: w.artifactName }
   }
+  if (typeof v.sourceState !== 'object' || v.sourceState === null
+    || !('modifiedAtBuild' in v.sourceState) || typeof v.sourceState.modifiedAtBuild !== 'boolean'
+    || !('modifiedAtPackaging' in v.sourceState) || typeof v.sourceState.modifiedAtPackaging !== 'boolean') {
+    throw new Error('Manifest source modification flags are required')
+  }
+  const sourceState = { modifiedAtBuild: v.sourceState.modifiedAtBuild, modifiedAtPackaging: v.sourceState.modifiedAtPackaging }
+  if (v.mode === 'public' && (sourceState.modifiedAtBuild || sourceState.modifiedAtPackaging)) {
+    throw new Error('Public artifacts require clean build and packaging source')
+  }
   const result: DesktopReleaseManifest = { schemaVersion: 1, mode: v.mode, repository, ref: text('ref'),
-    release: validateDesktopBuildIdentity(v.release), shellVersion: text('shellVersion'), target, payloadSha256,
+    sourceState, release: validateDesktopBuildIdentity(v.release), shellVersion: text('shellVersion'), target, payloadSha256,
     artifact: { name: a.name, bytes: a.bytes, sha256: a.sha256 }, ...(workflow === undefined ? {} : { workflow }) }
   if (result.mode === 'public' && workflow === undefined) throw new Error('Public artifacts require CI identity')
   if (workflow !== undefined && workflow.commit !== result.release.commit) throw new Error('Workflow and source commits differ')

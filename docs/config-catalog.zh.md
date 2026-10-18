@@ -1227,7 +1227,7 @@ export interface ImportLimits {
 
 ## `@deepseek-ai/dsh-experimental-desktop-speech-transcribe`
 
-- `inject`: `tools` · `speechToText` · `subprocess`
+- `inject`: `tools` · `subprocess`
 - `source`: [`packages/experimental/desktop-speech-transcribe/src/index.ts:59`](../packages/experimental/desktop-speech-transcribe/src/index.ts)
 
 ```ts config-catalog

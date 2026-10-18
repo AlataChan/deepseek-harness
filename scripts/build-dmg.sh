@@ -11,24 +11,45 @@
 #
 # After opening the app, users only need to enter their API Key.
 #
+# Internal builds may use modified source and record it; public builds require clean source.
+# Every mode requires a completed root build at the same HEAD with matching Client artifacts.
+#
 # Prerequisites: built Tauri app, pnpm, node, create-dmg (brew install create-dmg)
-# Usage: bash scripts/build-dmg.sh [--arch arm64|x64]
+# Public mode requires preparation/readiness before credential import; signing never runs bundled code.
+# Usage: bash scripts/build-dmg.sh [--arch arm64|x64] [--prepare-only|--sign-prepared]
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ARCH="${1:-arm64}"
-if [[ "${1:-}" == "--arch" ]]; then ARCH="${2:-arm64}"; fi
+ARCH=arm64
+PHASE=complete
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --arch) ARCH="${2:?Missing architecture}"; shift 2 ;;
+    --prepare-only) PHASE=prepare; shift ;;
+    --sign-prepared) PHASE=sign; shift ;;
+    arm64|x64) ARCH="$1"; shift ;;
+    *) printf 'Unknown argument: %s\n' "$1" >&2; exit 1 ;;
+  esac
+done
+[[ "$ARCH" == arm64 || "$ARCH" == x64 ]] || exit 1
 
 NODE_VERSION="24.14.0"
 APP_NAME="octopus_DSH"
 APP_BUNDLE="$REPO_ROOT/apps/desktop/src-tauri/target/release/bundle/macos/${APP_NAME}.app"
 BUILD_MODE="${DSH_DESKTOP_BUILD_MODE:-internal}"
+if [[ "$BUILD_MODE" == public && "$PHASE" == complete ]]; then
+  printf 'Public builds require --prepare-only before importing credentials, then --sign-prepared.\n' >&2
+  exit 1
+fi
 ARTIFACT_DIR="${DSH_DESKTOP_ARTIFACT_DIR:-$REPO_ROOT/dist}"
 RELEASE_VERSION="$(node -p "require('$REPO_ROOT/apps/cli/package.json').version")"
 DMG_OUTPUT="$ARTIFACT_DIR/${APP_NAME}.dmg"
 if [[ "$BUILD_MODE" == public ]]; then DMG_OUTPUT="$ARTIFACT_DIR/${APP_NAME}-${RELEASE_VERSION}-macos-${ARCH}.dmg"; fi
-node --import tsx/esm "$REPO_ROOT/scripts/verify-desktop-release.ts" preflight "$BUILD_MODE" "macos-$ARCH"
+node --import tsx/esm "$REPO_ROOT/scripts/verify-desktop-release.ts" config-preflight "$BUILD_MODE" "macos-$ARCH"
+if [[ "$PHASE" != prepare ]]; then
+  node --import tsx/esm "$REPO_ROOT/scripts/verify-desktop-release.ts" preflight "$BUILD_MODE" "macos-$ARCH"
+fi
 SIGN_ARGS=(--sign - --timestamp=none)
 if [[ "$BUILD_MODE" == public ]]; then SIGN_ARGS=(--sign "$DSH_MAC_SIGNING_IDENTITY" --options runtime --timestamp); fi
 
@@ -42,6 +63,10 @@ if [[ ! -d "$APP_BUNDLE" ]]; then
   fail "Tauri app bundle not found at $APP_BUNDLE — run 'pnpm tauri build' first"
 fi
 
+RESOURCES="$APP_BUNDLE/Contents/Resources/resources"
+if [[ "$PHASE" != sign ]]; then
+# Failed preparation must not leave an earlier successful seal reusable.
+rm -f "${APP_BUNDLE}.prepared.json"
 # Tauri can leave a Contents tree that has Resources and Info.plist but no
 # MacOS executable. Embedding then spends minutes only to fail the readiness
 # gate. Restore from the cargo release binary when that skeleton is hollow.
@@ -58,7 +83,6 @@ if [[ ! -x "$MACOS_BIN" ]]; then
 fi
 [[ -x "$MACOS_BIN" ]] || fail "Contents/MacOS/dsh-desktop is not executable after restore"
 
-RESOURCES="$APP_BUNDLE/Contents/Resources/resources"
 mkdir -p "$RESOURCES"
 
 # Runtime accepts nested or flat CLI; the readiness gate requires nested.
@@ -196,47 +220,48 @@ ditto "$REPO_ROOT/dist/.cache/kb-runtime" "$RESOURCES/kb-runtime"
   || fail "kb-runtime missing octopus-kb-sidecar after embed"
 ok "kb-runtime embedded"
 
-# Embedding files after `tauri build` invalidates the bundle signature.
-# Resign here so Gatekeeper does not report a stale signature as “已损坏”.
-# Ad-hoc signing is not Apple notarization; the DMG still ships an installer
-# that clears quarantine on the user's machine.
-info "Signing the $BUILD_MODE bundle after embedding..."
-node "$REPO_ROOT/scripts/desktop-microphone.mjs" --apply "$APP_BUNDLE"
-node --import tsx/esm "$REPO_ROOT/scripts/desktop-release-cli.ts" identity "$RESOURCES/build-info.json"
-NODE_SIGN_ARGS=()
-if [[ "$BUILD_MODE" == public ]]; then NODE_SIGN_ARGS=(--entitlements "$REPO_ROOT/scripts/desktop-node-entitlements.plist"); fi
-codesign --force "${SIGN_ARGS[@]}" ${NODE_SIGN_ARGS[@]+"${NODE_SIGN_ARGS[@]}"} "$RESOURCES/node"
-if [[ -x "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar" ]]; then
-  codesign --force "${SIGN_ARGS[@]}" \
-    "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar"
+# Embedding invalidates the prior signature. Preparation uses ad-hoc signing
+# for readiness; public signing follows verified preparation.
 fi
-while IFS= read -r lib; do
-  [[ -z "$lib" ]] && continue
-  codesign --force "${SIGN_ARGS[@]}" "$lib"
-done < <(find "$RESOURCES/kb-runtime" \( -name '*.so' -o -name '*.dylib' \) -type f 2>/dev/null)
+info "Validating the $BUILD_MODE application before signing..."
+node "$REPO_ROOT/scripts/desktop-microphone.mjs" --apply "$APP_BUNDLE"
+node --import tsx/esm "$REPO_ROOT/scripts/desktop-release-cli.ts" identity "$RESOURCES/build-info.json" "$BUILD_MODE"
+if [[ "$PHASE" == sign ]]; then
+  node --import tsx/esm "$REPO_ROOT/scripts/desktop-macos-preparation.ts" verify "$APP_BUNDLE" "$ARCH" "$BUILD_MODE"
+else
+  # The readiness check executes bundled code before a Developer ID key is imported.
+  /usr/bin/codesign --force --sign - --timestamp=none "$RESOURCES/node"
+  /usr/bin/codesign --force --sign - --timestamp=none "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar"
+  while IFS= read -r lib; do
+    [[ -z "$lib" ]] && continue
+    /usr/bin/codesign --force --sign - --timestamp=none "$lib"
+  done < <(find "$RESOURCES/kb-runtime" \( -name '*.so' -o -name '*.dylib' \) -type f 2>/dev/null)
+  /usr/bin/codesign --force --deep --sign - --timestamp=none "$APP_BUNDLE"
+  /usr/bin/codesign --verify --deep --strict "$APP_BUNDLE"
+  info "Running readiness checklist before sealing prepared bytes..."
+  if ! bash "$REPO_ROOT/scripts/verify-desktop-bundle.sh" "$APP_BUNDLE"; then
+    fail "Readiness checklist failed — no prepared application or DMG produced"
+  fi
+  if [[ "$PHASE" == prepare ]]; then
+    node --import tsx/esm "$REPO_ROOT/scripts/desktop-macos-preparation.ts" record "$APP_BUNDLE" "$ARCH" "$BUILD_MODE"
+    ok "Readiness-verified application prepared; import signing credentials before --sign-prepared"
+    exit 0
+  fi
+fi
 if [[ "$BUILD_MODE" == public ]]; then
-  while IFS= read -r -d '' native_library; do
-    codesign --force "${SIGN_ARGS[@]}" "$native_library"
-  done < <(find "$RESOURCES" -type f \( -name '*.node' -o -name Python \) -print0)
+  node --import tsx/esm "$REPO_ROOT/scripts/sign-desktop-macos.ts" "$APP_BUNDLE" \
+    "$DSH_MAC_SIGNING_IDENTITY" "$DSH_MAC_TEAM_ID" "$REPO_ROOT/scripts/desktop-node-entitlements.plist"
 fi
 ROOT_SIGN_ARGS=(--deep)
-if [[ "$BUILD_MODE" == public ]]; then ROOT_SIGN_ARGS=(); fi
-codesign --force ${ROOT_SIGN_ARGS[@]+"${ROOT_SIGN_ARGS[@]}"} "${SIGN_ARGS[@]}" "$APP_BUNDLE"
-if ! codesign --verify --deep "$APP_BUNDLE"; then
+if [[ "$BUILD_MODE" == public ]]; then ROOT_SIGN_ARGS=(--entitlements "$REPO_ROOT/scripts/desktop-app-entitlements.plist"); fi
+/usr/bin/codesign --force ${ROOT_SIGN_ARGS[@]+"${ROOT_SIGN_ARGS[@]}"} "${SIGN_ARGS[@]}" "$APP_BUNDLE"
+if ! /usr/bin/codesign --verify --deep --strict "$APP_BUNDLE"; then
   fail "codesign --verify failed after embedding"
 fi
 ok "Bundle re-signed ($BUILD_MODE)"
 
-# ── 4. Readiness gate ───────────────────────────────────────────────────────
-#
-# The bundle is smoke-tested before it can become a DMG: a companion that
-# cannot resolve its own module graph, or a symlink into this build machine,
-# fails here rather than on a user's laptop.
-
-info "Running readiness checklist..."
-if ! bash "$REPO_ROOT/scripts/verify-desktop-bundle.sh" "$APP_BUNDLE"; then
-  fail "Readiness checklist failed — no DMG produced"
-fi
+# Prepared public inputs already passed readiness before the signing key was imported.
+# The workflow repeats mounted checks only after removing the signing keychain.
 
 # ── 5. Create DMG ───────────────────────────────────────────────────────────
 
@@ -279,7 +304,7 @@ fi
 
 echo ""
 if [[ "$BUILD_MODE" == public ]]; then
-  codesign --force --sign "$DSH_MAC_SIGNING_IDENTITY" --timestamp "$DMG_OUTPUT"
+  /usr/bin/codesign --force --sign "$DSH_MAC_SIGNING_IDENTITY" --timestamp "$DMG_OUTPUT"
   xcrun notarytool submit "$DMG_OUTPUT" --keychain-profile "$DSH_NOTARY_PROFILE" --wait
   xcrun stapler staple "$DMG_OUTPUT"
   xcrun stapler validate "$DMG_OUTPUT"

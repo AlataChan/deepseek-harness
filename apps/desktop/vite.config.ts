@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
+import { desktopArtifactIdentity, resolveDesktopBuildMode } from '../../scripts/desktop-artifact-identity.ts'
 
 const src = (relative: string): string => fileURLToPath(new URL(relative, import.meta.url))
 
@@ -29,7 +30,7 @@ function literalLoaderConfig(): Plugin {
 }
 
 /** Build the desktop WebView from `index.html`. */
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [literalLoaderConfig(), react()],
   root: src('.'),
   build: {
@@ -43,8 +44,10 @@ export default defineConfig({
     ],
   },
   define: {
+    '__DSH_DESKTOP_RELEASE__': command === 'build'
+      ? JSON.stringify(desktopArtifactIdentity(src('../..'), resolveDesktopBuildMode(process.env.DSH_DESKTOP_BUILD_MODE)).release) : 'undefined',
     'process.versions.node': '"0.0.0"',
     'process.execArgv': '[]',
     'process.env': '{"NODE_ENV":"production"}',
   },
-})
+}))

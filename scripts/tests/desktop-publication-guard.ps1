@@ -25,7 +25,7 @@ SectionEnd
 & $nsis.FullName /V2 $nsi | Write-Host
 if ($LASTEXITCODE -ne 0) { throw 'Marker compile failed' }
 $commit = 'a' * 40
-$base = @{ schemaVersion=1; mode='public'; repository='AlataChan/deepseek-harness'; ref='refs/heads/release';
+$base = @{ schemaVersion=1; mode='public'; sourceState=@{modifiedAtBuild=$false;modifiedAtPackaging=$false}; repository='AlataChan/deepseek-harness'; ref='refs/heads/release';
   release=@{version='1.2.3';commit=$commit}; shellVersion='1.2.3'; target='windows-x64'; payloadSha256=('b' * 64);
   artifact=@{name=(Split-Path -Leaf $exe); bytes=(Get-Item $exe).Length; sha256=(Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()};
   workflow=@{path='.github/workflows/desktop-windows.yml';commit=$commit;runId=123;attempt=2;artifactName='build-123-2'} }
@@ -43,8 +43,18 @@ try {
       unsafe-name { $record.artifact.name='../outside.exe' }
     }
     $record | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $candidate 'installer.release.json') -Encoding utf8
-    & pwsh -NoProfile -File (Join-Path $root 'scripts/tests/desktop-publication-native.ps1')
-    if ($LASTEXITCODE -eq 0) { throw "$kind candidate was accepted" }
+    $output = & pwsh -NoProfile -File (Join-Path $root 'scripts/tests/desktop-publication-native.ps1') 2>&1 | Out-String
+    $exitCode = $LASTEXITCODE
+    $output | Write-Host
+    $reason = switch ($kind) {
+      internal { 'Internal artifacts cannot enter public qualification' }
+      invalid-schema { 'Unsupported manifest version or mode' }
+      tampered-hash { 'Downloaded installer differs from its manifest' }
+      unsafe-name { 'Invalid artifact identity' }
+      unsigned { 'Authenticode verification failed' }
+    }
+    if (-not $output.Contains($reason)) { throw "$kind was rejected for the wrong reason; expected $reason" }
+    if ($exitCode -eq 0) { throw "$kind candidate was accepted" }
     if (Test-Path $marker) { throw "$kind candidate executed before qualification" }
   }
   Write-Output 'PASS: all invalid download cases refused before installer marker execution'

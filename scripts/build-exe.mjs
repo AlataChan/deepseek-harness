@@ -345,7 +345,7 @@ const buildInfo = {
   runtimeVersion: JSON.parse(readFileSync(join(REPO_ROOT, 'apps', 'cli', 'package.json'), 'utf8')).version,
 }
 writeFileSync(join(RESOURCES, 'build-info.json'), `${JSON.stringify(buildInfo, undefined, 2)}\n`)
-run(process.execPath, ['--import', 'tsx/esm', 'scripts/desktop-release-cli.ts', 'identity', join(RESOURCES, 'build-info.json')])
+run(process.execPath, ['--import', 'tsx/esm', 'scripts/desktop-release-cli.ts', 'identity', join(RESOURCES, 'build-info.json'), BUILD_MODE])
 ok(`build-info.json written (kb: ${buildInfo.kb}, presets: ${buildInfo.presets})`)
 
 // ── 7. Verify the staged resource tree ──────────────────────────────────────

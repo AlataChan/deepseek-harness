@@ -208,7 +208,7 @@ export function patchRegistryViolations(
   const backports = registry.backports ?? []
   return changedUpstreamFiles
     .filter(path => !isForkOwned(path, registry) && !registered.has(path)
-      && !backports.some(entry => entry.paths.some(owned => owned.endsWith('/') ? path.startsWith(owned) : path === owned)))
+      && !backports.some(entry => entry.paths.includes(path)))
     .map(path => `${path}: edits an upstream file with no registry entry`)
 }
 
@@ -231,12 +231,13 @@ export function backportViolations(
     ids.add(entry.id)
     if (entry.basePin !== wholeReleasePin) failures.push(`${entry.id}: whole-release pin changed without reconciling selected backports`)
     if (!entry.sourceTag || entry.sourceChanges.length === 0 || entry.paths.length === 0) failures.push(`${entry.id}: incomplete selected-backport source or ownership`)
+    if (entry.paths.some(path => path.endsWith('/'))) failures.push(`${entry.id}: selected backports require exact file paths`)
     if (entry.verification.length === 0) failures.push(`${entry.id}: missing verification`)
   }
   for (const entry of entries) for (const prerequisite of entry.prerequisites) {
     if (!ids.has(prerequisite) || prerequisite === entry.id) failures.push(`${entry.id}: unresolved prerequisite ${prerequisite}`)
   }
-  for (const path of selectedPaths) if (!entries.some(entry => entry.paths.some(owned => owned.endsWith('/') ? path.startsWith(owned) : path === owned))) {
+  for (const path of selectedPaths) if (!entries.some(entry => entry.paths.includes(path))) {
     failures.push(`${path}: no selected-backport entry`)
   }
   return failures

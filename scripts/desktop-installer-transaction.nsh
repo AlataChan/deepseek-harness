@@ -1,5 +1,6 @@
 ; Fork-owned payload transaction. All paths are installation siblings, never user-data homes.
 !include LogicLib.nsh
+!include FileFunc.nsh
 Var TxStage
 Var TxBackup
 Var TxJournal
@@ -32,10 +33,16 @@ Var TxMissing
 !macroend
 
 Function TxFail
-  ; Before any replacement, remove only the journal; staged bytes stay recoverable.
+  ; Failed or ambiguous replacement keeps its only recovery journal and payloads.
   ${If} $TxJournalOwned = 1
   ${AndIf} $TxPreviousMoved = 0
-    Delete "$TxJournal"
+    ; Pre-replacement failure can discard only its own staged files.
+    StrCpy $TxCheckRoot $TxStage
+    StrCpy $TxCheckOperation "clean-stage"
+    Call TxTryCleanup
+    ${If} $0 == 0
+      Delete "$TxJournal"
+    ${EndIf}
   ${EndIf}
   DetailPrint "Payload replacement failed (Windows error $TxError; recovery error $TxRecoveryError). Existing payload: $TxTarget; backup: $TxBackup; staged candidate: $TxStage; recovery journal: $TxJournal"
   SetErrorLevel 2
@@ -146,11 +153,65 @@ Function TxCheckPayload
     Return
   ${EndIf}
   tx_state_invalid:
+    DetailPrint "Windows PowerShell inventory validation failed for $TxCheckRoot: $1. Check Windows PowerShell availability and script execution policy."
     StrCpy $TxError 13
     Call TxFail
 FunctionEnd
 
+Function TxTryCleanup
+  ; Cleanup failure is diagnostic, never a reason to discard recovery data.
+  InitPluginsDir
+  File /oname=$PLUGINSDIR\octopus-installer-state.ps1 "${__FILEDIR__}\desktop-installer-state.ps1"
+  nsExec::ExecToStack /TIMEOUT=120000 '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\octopus-installer-state.ps1" -Operation "$TxCheckOperation" -Root "$TxCheckRoot" -Token "$TxToken"'
+  Pop $0
+  Pop $1
+  ${If} $0 != 0
+    DetailPrint "Installer cleanup retained $TxCheckRoot: $1"
+  ${EndIf}
+FunctionEnd
+
+Function TxCheckTargetOwnership
+  IfFileExists "$TxTarget\*.*" 0 tx_owned_target_done
+  StrCpy $TxCheckRoot $TxTarget
+  StrCpy $TxCheckOperation "recognize"
+  Call TxTryCleanup
+  ${If} $0 == 0
+    IfFileExists "$TxTarget\.octopus-installer-ready.json" 0 tx_owned_target_done
+    IfFileExists "$TxTarget\${MAINBINARYNAME}.exe" 0 tx_foreign_target
+    IfFileExists "$TxTarget\resources\node.exe" 0 tx_foreign_target
+    Return
+  ${EndIf}
+  ; Pre-transaction releases need their exact registered install location and expected files.
+  !ifdef UNINSTKEY
+    ReadRegStr $0 SHCTX "${UNINSTKEY}" "InstallLocation"
+    StrCmp $0 '$\"$TxTarget$\"' 0 tx_foreign_target
+    ReadRegStr $0 SHCTX "${UNINSTKEY}" "Publisher"
+    StrCmp $0 "${MANUFACTURER}" 0 tx_foreign_target
+    IfFileExists "$TxTarget\${MAINBINARYNAME}.exe" 0 tx_foreign_target
+    IfFileExists "$TxTarget\resources\node.exe" 0 tx_foreign_target
+    IfFileExists "$TxTarget\uninstall.exe" tx_owned_target_done tx_foreign_target
+  !endif
+  Goto tx_foreign_target
+  tx_owned_target_done:
+    Return
+  tx_foreign_target:
+    DetailPrint "Refusing nonempty target without an owned payload: $TxTarget. Choose an empty application folder."
+    StrCpy $TxError 183
+    Call TxFail
+FunctionEnd
+
+Function TxRequirePowerShell
+  IfFileExists "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" tx_powershell_ready
+  DetailPrint "Windows PowerShell is required to validate installation and recovery files. Restore or enable Windows PowerShell, then retry."
+  SetErrorLevel 2
+  IfSilent +2
+    MessageBox MB_ICONSTOP "Windows PowerShell is unavailable. Restore or enable Windows PowerShell, then retry installation. No installed files were changed."
+  Quit
+  tx_powershell_ready:
+FunctionEnd
+
 Function TxBegin
+  Call TxRequirePowerShell
   ; Keep simultaneous installers from modifying one transaction journal.
   System::Call 'kernel32::CreateMutexW(p 0, i 1, w "Local\octopus_DSH_PayloadInstaller") p.r0 ?e'
   Pop $TxError
@@ -191,7 +252,13 @@ Function TxBegin
       StrCpy $R9 $TxBackup
       Call TxPathMissing
       ${If} $TxMissing = 1
-        ; No old payload was moved: preserve the candidate and allow a clean rerun.
+        ; No old payload was moved: discard only marked transaction staging.
+        StrCpy $TxCheckRoot $TxStage
+        StrCpy $TxCheckOperation "clean-stage"
+        Call TxTryCleanup
+        ${If} $0 != 0
+          Goto tx_unresolved
+        ${EndIf}
         Call TxRemoveJournal
         Goto tx_prepare
       ${EndIf}
@@ -204,6 +271,12 @@ Function TxBegin
         Call TxPathMissing
         ${If} $TxMissing = 0
           ; The old installation was never renamed, including first-install interruptions.
+          StrCpy $TxCheckRoot $TxStage
+          StrCpy $TxCheckOperation "clean-stage"
+          Call TxTryCleanup
+          ${If} $0 != 0
+            Goto tx_unresolved
+          ${EndIf}
           Call TxRemoveJournal
           Goto tx_prepare
         ${EndIf}
@@ -219,8 +292,17 @@ Function TxBegin
         Goto tx_unresolved
       ${EndIf}
       StrCpy $TxCheckRoot $TxTarget
-      StrCpy $TxCheckOperation "verify"
+      ${If} $TxState == "committed"
+        ; A committed installation may already have run and generated local runtime files.
+        StrCpy $TxCheckOperation "recognize"
+      ${Else}
+        StrCpy $TxCheckOperation "verify"
+      ${EndIf}
       Call TxCheckPayload
+      StrCpy $TxCheckRoot $TxBackup
+      StrCpy $TxCheckOperation "clean-backup"
+      ; The live publication is complete; backup cleanup never changes its outcome.
+      Call TxTryCleanup
       Call TxRemoveJournal
       Goto tx_prepare
     ${EndIf}
@@ -232,8 +314,13 @@ Function TxBegin
     System::Call 'kernel32::MoveFileExW(w "$TxBackup", w "$INSTDIR", i 8) i.r0 ?e'
     Pop $TxRecoveryError
     ${If} $0 != 0
-      Call TxRemoveJournal
-      DetailPrint "Restored interrupted installation from $TxBackup; rerun the installer. Candidate retained at $TxStage."
+      StrCpy $TxCheckRoot $TxStage
+      StrCpy $TxCheckOperation "clean-stage"
+      Call TxTryCleanup
+      ${If} $0 == 0
+        Call TxRemoveJournal
+      ${EndIf}
+      DetailPrint "Restored interrupted installation from $TxBackup; rerun the installer. Unresolved staging retains its journal."
     ${EndIf}
   tx_unresolved:
     StrCpy $TxError 183
@@ -242,16 +329,29 @@ Function TxBegin
     ${EndIf}
     Call TxFail
   tx_prepare:
+    Call TxCheckTargetOwnership
     System::Call 'kernel32::GetCurrentProcessId() i.r0'
     System::Call 'kernel32::GetTickCount64() l.r1'
     StrCpy $TxToken "$0-$1"
     StrCpy $TxStage "$INSTDIR.octopus-stage-$TxToken"
     StrCpy $TxBackup "$INSTDIR.octopus-backup-$TxToken"
     ; No overwrite of stale staging or recovery content.
-    IfFileExists "$TxStage\*.*" tx_collision 0
-    IfFileExists "$TxBackup\*.*" tx_collision 0
+    StrCpy $R9 $TxBackup
+    Call TxPathMissing
+    ${If} $TxMissing != 1
+      Goto tx_collision
+    ${EndIf}
+    ${GetParent} "$TxStage" $0
     ClearErrors
-    CreateDirectory "$TxStage"
+    CreateDirectory "$0"
+    IfErrors tx_collision
+    System::Call 'kernel32::CreateDirectoryW(w "$TxStage", p 0) i.r0 ?e'
+    Pop $TxError
+    ${If} $0 == 0
+      Goto tx_collision
+    ${EndIf}
+    ClearErrors
+    WriteINIStr "$TxStage\.octopus-installer-stage.ini" "stage" "token" "$TxToken"
     IfErrors tx_collision
     StrCpy $TxJournalOwned 1
     WriteINIStr "$TxJournal" "transaction" "token" "$TxToken"
@@ -282,6 +382,7 @@ FunctionEnd
 !macroend
 
 Function TxCommit
+  Call TxCheckTargetOwnership
   StrCpy $TxCheckRoot $TxStage
   StrCpy $TxCheckOperation "seal"
   Call TxCheckPayload
@@ -292,6 +393,8 @@ Function TxCommit
   !insertmacro TxProbeFile "resources\kb-runtime\octopus-kb-sidecar\octopus-kb-sidecar.exe" sidecar
   WriteINIStr "$TxJournal" "transaction" "state" "replacing"
   Call TxFlushJournal
+  ; Remove an existing empty destination without retaining a useless backup.
+  RMDir "$TxTarget"
   ClearErrors
   IfFileExists "$TxTarget\*.*" 0 tx_publish
   StrCpy $TxRetries 40
@@ -318,8 +421,12 @@ Function TxCommit
     WriteINIStr "$TxJournal" "transaction" "state" "committed"
     IfErrors tx_commit_failed
     Call TxFlushJournal
-    ; Backups are deliberately retained: an install root may hold unowned files.
-    DetailPrint "Installed payload committed. Previous installation retained at $TxBackup"
+    ; A matching sealed inventory owns every byte; legacy or modified backups stay recoverable.
+    StrCpy $TxCheckRoot $TxBackup
+    StrCpy $TxCheckOperation "clean-backup"
+    Call TxTryCleanup
+    DetailPrint "Installed payload committed."
+    ; Backup retention cannot turn a committed installation into a failed upgrade.
     Call TxRemoveJournal
     Return
   tx_rollback:

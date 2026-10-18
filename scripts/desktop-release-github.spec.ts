@@ -13,9 +13,9 @@ describe('fork GitHub release adapter', () => {
       const url = (typeof input === 'string' ? input : input instanceof URL ? input.href : input.url); requests.push({ url, method: init?.method ?? 'GET' })
       if (url.includes('/git/ref/tags/')) return Promise.resolve(Response.json({ object: { type: 'commit', sha: commit } }))
       if (url.includes('/releases/tags/')) return Promise.resolve(Response.json({ id: 11 }))
-      if (url.includes('/assets?per_page=')) return Promise.resolve(Response.json([{ id: 22, name: 'octopus-1.2.3.exe', updated_at: '2026-10-18T00:00:00Z' }]))
+      if (url.includes('/assets?per_page=')) return Promise.resolve(Response.json([{ id: 22, state: 'uploaded', name: 'octopus-1.2.3.exe', updated_at: '2026-10-18T00:00:00Z' }]))
       if (url.includes('/releases/assets/22')) return Promise.resolve(new Response('artifact bytes'))
-      if (url.startsWith('https://uploads.github.com/')) return Promise.resolve(Response.json({ id: 23 }, { status: 201 }))
+      if (url.startsWith('https://uploads.github.com/')) return Promise.resolve(Response.json({ id: 23, state: 'uploaded' }, { status: 201 }))
       throw new Error(`Unexpected fixture URL: ${url}`)
     }
     const remote = new GitHubDesktopReleaseTransport('desktop-v1.2.3', 'stable-windows-x64', 'synthetic-secret', request)
@@ -30,7 +30,7 @@ describe('fork GitHub release adapter', () => {
       if (init?.method === 'DELETE' || init?.method === 'POST') throw new Error('A stale writer must not mutate')
       const url = (typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
       if (url.includes('/releases/tags/')) return Promise.resolve(Response.json({ id: 11 }))
-      if (url.includes('/assets?per_page=')) return Promise.resolve(Response.json([{ id: 22, name: 'channel-stable-windows-x64.json', updated_at: 'new' }]))
+      if (url.includes('/assets?per_page=')) return Promise.resolve(Response.json([{ id: 22, state: 'uploaded', name: 'channel-stable-windows-x64.json', updated_at: 'new' }]))
       return Promise.resolve(new Response('changed channel'))
     }
     const remote = new GitHubDesktopReleaseTransport('desktop-v1.2.3', 'stable-windows-x64', 'synthetic-secret', request)
@@ -46,7 +46,7 @@ describe('workflow archive verification', () => {
       const binary = Buffer.from('actual workflow installer')
       writeFileSync(join(dir, name), binary)
       const manifest = {
-        schemaVersion: 1 as const, mode: 'public' as const, repository: 'AlataChan/deepseek-harness', ref: 'refs/heads/release',
+        schemaVersion: 1 as const, mode: 'public' as const, sourceState: { modifiedAtBuild: false, modifiedAtPackaging: false }, repository: 'AlataChan/deepseek-harness', ref: 'refs/heads/release',
         release: { version: '1.2.3', commit }, shellVersion: '1.2.3', target: 'windows-x64' as const, payloadSha256: 'b'.repeat(64),
         artifact: { name, bytes: binary.length, sha256: createHash('sha256').update(binary).digest('hex') },
         workflow: { path: '.github/workflows/desktop-windows.yml', commit, runId: 123, attempt: 2, artifactName: 'build-123-2' },
@@ -71,4 +71,34 @@ describe('workflow archive verification', () => {
       await expect(remote.verifyArtifactArchive({ ...manifest, artifact: { ...manifest.artifact, sha256: 'c'.repeat(64) } })).rejects.toThrow(/actual GitHub workflow artifact/)
     } finally { rmSync(dir, { recursive: true, force: true }) }
   })
+})
+
+it('rejects publication qualification from an unapproved branch before trusting job steps', async () => {
+  const request: ReleaseFetch = async () => Response.json({
+    repository: { full_name: 'AlataChan/deepseek-harness' }, head_sha: commit, run_attempt: 2,
+    head_branch: 'unreviewed', path: '.github/workflows/desktop-publish.yml',
+  })
+  const remote = new GitHubDesktopReleaseTransport('desktop-v0.2.1', 'stable-windows-x64', 'synthetic', request)
+  await expect(remote.assertReadOnlyQualification(123, 2, commit)).rejects.toThrow(/workflow identity/)
+})
+
+it.each(['starter', 'uploading', undefined])('refuses unfinished remote release assets in state %s', async (state) => {
+  const mutations: string[] = []
+  const request: ReleaseFetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    if (init?.method) mutations.push(init.method)
+    if (url.includes('/releases/tags/')) return Response.json({ id: 11 })
+    if (url.includes('/assets?per_page=')) return Response.json([{ id: 22, state, name: 'channel-stable-windows-x64.json', updated_at: 'new' }])
+    throw new Error('Incomplete assets must never be downloaded or mutated')
+  }
+  const remote = new GitHubDesktopReleaseTransport('desktop-v1.2.3', 'stable-windows-x64', 'synthetic', request)
+  await expect(remote.read('channel-stable-windows-x64.json')).rejects.toThrow(/upload is incomplete/)
+  await expect(remote.replaceChannel('channel-stable-windows-x64.json', Buffer.from('new'), null)).rejects.toThrow(/upload is incomplete/)
+  expect(mutations).toEqual([])
+})
+
+it('refuses an unfinished upload response instead of accepting HTTP success as completion', async () => {
+  const request: ReleaseFetch = async (_input, init) => Response.json(init?.method === 'POST' ? { id: 22, state: 'starter' } : { id: 11 })
+  const remote = new GitHubDesktopReleaseTransport('desktop-v1.2.3', 'stable-windows-x64', 'synthetic', request)
+  await expect(remote.create('octopus-1.2.3.exe', Buffer.from('bytes'))).rejects.toThrow(/upload is incomplete/)
 })

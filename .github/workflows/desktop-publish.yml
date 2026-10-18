@@ -62,17 +62,17 @@ jobs:
       DSH_MAC_TEAM_ID: ${{ vars.DSH_MAC_TEAM_ID }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
       - name: Install dependencies
         shell: pwsh
         run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           repository: AlataChan/deepseek-harness
           run-id: ${{ inputs.source_run }}
@@ -84,18 +84,19 @@ jobs:
         run: ./scripts/tests/desktop-publication-native.ps1
       - name: Preserve reviewed publication plan
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: desktop-publication-plan-${{ github.run_id }}-${{ github.run_attempt }}
           path: candidate/publication-plan.json
           if-no-files-found: warn
 
   publish:
-    if: inputs.operation == 'publish'
+    if: inputs.operation == 'publish' && github.repository == 'AlataChan/deepseek-harness' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')
+    environment: desktop-public-release
     needs: qualify-and-plan
     runs-on: ${{ inputs.target == 'windows-x64' && 'windows-2025' || inputs.target == 'macos-x64' && 'macos-15-intel' || 'macos-15' }}
     permissions:
-      contents: write
+      contents: read
       actions: read
     env:
       GH_TOKEN: ${{ github.token }}
@@ -104,30 +105,35 @@ jobs:
       DSH_RELEASE_CHANNEL: ${{ inputs.channel }}-${{ inputs.target }}
       DSH_EXPECTED_COMMIT: ${{ inputs.source_commit }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
       - name: Install trusted workspace dependencies
         shell: pwsh
         run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           repository: AlataChan/deepseek-harness
           run-id: ${{ inputs.source_run }}
           github-token: ${{ github.token }}
           name: ${{ inputs.artifact_name }}
           path: candidate
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: desktop-publication-plan-${{ github.run_id }}-${{ github.run_attempt }}
           path: handoff
       - name: Publish independently qualified bytes without executing the candidate
+        env:
+          GH_TOKEN: ${{ secrets.DSH_DESKTOP_PUBLISH_TOKEN }}
+          DSH_REVIEWED_PLAN: ${{ inputs.reviewed_plan }}
         shell: pwsh
         run: |
+          node --import tsx/esm scripts/verify-desktop-reviewed-plan.ts handoff/publication-plan.json
+          if ($LASTEXITCODE -ne 0) { throw 'Original reviewed plan and qualification handoff differ' }
           $records = @(Get-ChildItem candidate -Filter '*.release.json')
           if ($records.Count -ne 1) { throw 'Expected one manifest' }
           $json = & node --import tsx/esm scripts/desktop-release-cli.ts inspect-download $records[0].FullName

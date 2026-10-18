@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/cookbook/desktop-releases.md
 /desktop-release-preparation-and-publication:
-  en: d1b86d2aadf16431
-  zh: 230108cb83fb0535
+  en: 56891871aef578d5
+  zh: d390b77b9d3204eb
 /desktop-release-preparation-and-publication/prepare-a-candidate:
-  en: a7c821e057fc09b4
-  zh: 59cf5fd6ec09b9b9
+  en: 0a123bfa1f70e88b
+  zh: 88fe06fbf753dd6f
 /desktop-release-preparation-and-publication/recover-an-interrupted-windows-upgrade:
-  en: e72c147b6d2e6369
-  zh: 7492e6806ac4dc74
+  en: b4bdb19bc8f9d1e5
+  zh: 9eec44c280143e16
 /desktop-release-preparation-and-publication/plan-and-publish-explicitly:
-  en: be3d1cc0562403f4
-  zh: 9d9b33c42b457a23
+  en: 71c7285f3497b2f1
+  zh: af9b6441ffa5579f

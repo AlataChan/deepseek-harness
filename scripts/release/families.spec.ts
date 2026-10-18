@@ -51,6 +51,7 @@ describe('release families', () => {
       '@deepseek-ai/dsh-experimental-agent-team-profile',
       '@deepseek-ai/dsh-experimental-agent-team',
       '@deepseek-ai/dsh-experimental-api-speech-to-text',
+      '@deepseek-ai/dsh-experimental-assistant-registry',
       '@deepseek-ai/dsh-experimental-auto-review',
       '@deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp',
       '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp',
@@ -58,10 +59,19 @@ describe('release families', () => {
       '@deepseek-ai/dsh-experimental-browser-use-stagehand-native',
       '@deepseek-ai/dsh-experimental-claude-code-mods',
       '@deepseek-ai/dsh-experimental-client-ui-agent-team',
+      '@deepseek-ai/dsh-experimental-client-ui-assistants',
       '@deepseek-ai/dsh-experimental-client-ui-claude-code-mods',
       '@deepseek-ai/dsh-experimental-client-ui-voice-input',
+      '@deepseek-ai/dsh-experimental-commerce-mode',
       '@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp',
       '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native',
+      '@deepseek-ai/dsh-experimental-desktop-ask-data',
+      '@deepseek-ai/dsh-experimental-desktop-ask-knowledge',
+      '@deepseek-ai/dsh-experimental-desktop-files',
+      '@deepseek-ai/dsh-experimental-desktop-hero-atmosphere',
+      '@deepseek-ai/dsh-experimental-desktop-media',
+      '@deepseek-ai/dsh-experimental-desktop-ngo',
+      '@deepseek-ai/dsh-experimental-desktop-speech-transcribe',
       '@deepseek-ai/dsh-experimental-inspector-profile',
       '@deepseek-ai/dsh-experimental-inspector',
       '@deepseek-ai/dsh-experimental-ptc-runtime-python',
@@ -189,6 +199,8 @@ describe('release families', () => {
     const vendor = releaseFamily('vendor')
     const officialEnvironment = officialClientBuildEnvironment(resolve(import.meta.dirname, '../..'))
     vi.stubEnv('DSH_CLIENT_COMMIT_HASH', officialEnvironment.DSH_CLIENT_COMMIT_HASH)
+    vi.stubEnv('DSH_CLIENT_RELEASE_COMMIT', officialEnvironment.DSH_CLIENT_RELEASE_COMMIT)
+    vi.stubEnv('DSH_CLIENT_RELEASE_VERSION', officialEnvironment.DSH_CLIENT_RELEASE_VERSION)
     const official = buildFixture(officialEnvironment)
     const defaultBuild = buildFixture({})
     const missing = join(defaultBuild, 'missing')

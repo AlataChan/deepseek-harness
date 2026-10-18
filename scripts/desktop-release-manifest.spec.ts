@@ -79,6 +79,28 @@ describe('desktop release manifest', () => {
     symlinkSync('actual/payload', join(parent, 'linked-root'), 'dir')
     expect(() => payloadDigest(join(parent, 'linked-root'))).toThrow()
   })
+  it('retains modified-source flags internally and refuses them for public qualification', () => {
+    const release = { version: '1.2.3', commit: 'a'.repeat(40) }
+    const fixture = {
+      schemaVersion: 1, mode: 'internal', repository: 'AlataChan/deepseek-harness', ref: 'local', release,
+      sourceState: { modifiedAtBuild: true, modifiedAtPackaging: true }, shellVersion: '1.0.0',
+      target: 'macos-arm64', payloadSha256: 'b'.repeat(64),
+      artifact: { name: 'test.dmg', bytes: 42, sha256: 'c'.repeat(64) },
+    }
+    expect(validateReleaseManifest(fixture).sourceState).toEqual(fixture.sourceState)
+    const workflow = { path: '.github/workflows/desktop-macos.yml', commit: release.commit, runId: 1, attempt: 1, artifactName: 'candidate' }
+    for (const sourceState of [
+      fixture.sourceState,
+      { modifiedAtBuild: true, modifiedAtPackaging: false },
+      { modifiedAtBuild: false, modifiedAtPackaging: true },
+    ]) {
+      expect(() => validateReleaseManifest({ ...fixture, mode: 'public', sourceState, workflow })).toThrow('require clean')
+    }
+    expect(validateReleaseManifest({ ...fixture, mode: 'public', workflow,
+      sourceState: { modifiedAtBuild: false, modifiedAtPackaging: false } }).mode).toBe('public')
+    expect(() => validateReleaseManifest({ ...fixture, sourceState: undefined })).toThrow('modification flags')
+    expect(() => validateReleaseManifest({ ...fixture, sourceState: { modifiedAtBuild: 'false', modifiedAtPackaging: false } })).toThrow('modification flags')
+  })
   it('rejects unsupported or incomplete manifests at the file parser', () => {
     expect(() => validateReleaseManifest({ schemaVersion: 999 })).toThrow()
     expect(() => validateReleaseManifest({ schemaVersion: 1, mode: 'public' })).toThrow()

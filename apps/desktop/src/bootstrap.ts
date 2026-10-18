@@ -38,6 +38,9 @@ import { renderHome } from './home.ts'
 import { attachSettingsButton, renderSettings, type RuntimeConfigFields } from './settings.ts'
 import './desktop.css'
 
+declare const __DSH_DESKTOP_RELEASE__: WebBootGraph['release']
+const embeddedRelease = typeof __DSH_DESKTOP_RELEASE__ === 'undefined' ? undefined : __DSH_DESKTOP_RELEASE__
+
 const CLIENT_MODULES_ID = '@deepseek-ai/dsh-client-modules'
 
 /**
@@ -73,6 +76,8 @@ export interface BootDesktopOptions {
   root: HTMLElement
   /** `control/hello.extensionVersion` (the Tauri application version). */
   extensionVersion: string
+  /** Build identity embedded in the desktop WebView; defaults to the packaged value. */
+  pageRelease?: WebBootGraph['release']
   /** Hello locale. */
   locale?: string
   /** Handshake deadline. */
@@ -408,6 +413,11 @@ async function finishDesktopClient(
     throw new Error(
       `Host graph release version mismatch: manifest ${resolved.runtimeVersion}, graph ${ready.graph.release.version}`,
     )
+  }
+  const pageRelease = options.pageRelease ?? embeddedRelease
+  if (pageRelease !== undefined && (ready.graph.release?.version !== pageRelease.version
+    || ready.graph.release?.commit !== pageRelease.commit)) {
+    throw new Error('Desktop WebView release differs from the companion; reload or reinstall the matching release')
   }
   handshaking = false
   decoder.dispose()

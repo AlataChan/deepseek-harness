@@ -3,11 +3,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { artifactDigest, payloadDigest } from './desktop-release-manifest.ts'
 import { describe, expect, it } from 'vitest'
-import { assertRunEvidence, assertPublicPreflight, assertArtifactBytes, verifyNativeSignatures } from './verify-desktop-release.ts'
+import { assertRunEvidence, assertPublicPreflight, assertArtifactBytes, verifyNativeSignatures, verifyDownloadedArtifact } from './verify-desktop-release.ts'
 import type { DesktopReleaseManifest } from './desktop-release-manifest.ts'
 const commit = 'a'.repeat(40)
 const manifest: DesktopReleaseManifest = {
   schemaVersion: 1, mode: 'public', repository: 'AlataChan/deepseek-harness', ref: 'refs/heads/release',
+  sourceState: { modifiedAtBuild: false, modifiedAtPackaging: false },
   release: { version: '0.2.1', commit }, shellVersion: '0.2.1', target: 'windows-x64', payloadSha256: 'b'.repeat(64),
   artifact: { name: 'octopus-0.2.1-windows-x64.exe', bytes: 42, sha256: 'c'.repeat(64) },
   workflow: { path: '.github/workflows/desktop-windows.yml', commit, runId: 123, attempt: 2, artifactName: 'octopus_DSH_Setup' },
@@ -63,5 +64,42 @@ it.skipIf(process.platform !== 'win32')('rejects an unsigned installer through n
     expect(() => {
       verifyNativeSignatures(manifest, file, file, { ...process.env, DSH_WINDOWS_PUBLISHER: 'CN=Synthetic Publisher' })
     }).toThrow(/Authenticode verification failed/)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+it('refuses self-consistent but unapproved producer branches and workflow paths', () => {
+  for (const change of [{ ref: 'refs/heads/unreviewed' }, { workflow: '.github/workflows/arbitrary.yml' },
+    { workflow: '.github/workflows/desktop-macos.yml' }]) {
+    const candidate = { ...manifest, ref: change.ref ?? manifest.ref,
+      workflow: { ...manifest.workflow!, path: change.workflow ?? manifest.workflow!.path } }
+    expect(() => { assertRunEvidence(candidate, { ...run, ...change }, 'windows-x64') }).toThrow(/CI execution/)
+  }
+  expect(() => { assertRunEvidence({ ...manifest, ref: 'refs/heads/master' }, { ...run, ref: 'refs/heads/master' }, 'windows-x64') }).not.toThrow()
+})
+
+it('binds source modification flags to the installed build information', () => {
+  const root = mkdtempSync(join(tmpdir(), 'source-state-identity-'))
+  try {
+    const file = join(root, manifest.artifact.name)
+    writeFileSync(file, 'synthetic binary')
+    const sourceState = { modifiedAtBuild: true, modifiedAtPackaging: false }
+    writeFileSync(join(root, 'build-info.json'), JSON.stringify({ release: manifest.release, sourceState }))
+    const internal = { ...manifest, mode: 'internal' as const, sourceState, artifact: artifactDigest(file), payloadSha256: payloadDigest(root) }
+    expect(() => { assertArtifactBytes(internal, file, root) }).not.toThrow()
+    expect(() => { assertArtifactBytes({ ...internal, sourceState: { modifiedAtBuild: false, modifiedAtPackaging: false } }, file, root) })
+      .toThrow('source modification flags differ')
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+it('checks a downloaded container without requiring installed-payload metadata', () => {
+  const root = mkdtempSync(join(tmpdir(), 'container-only-qualification-'))
+  try {
+    const file = join(root, 'synthetic.dmg')
+    writeFileSync(file, 'synthetic container')
+    const downloaded = { ...manifest, target: 'macos-arm64' as const, artifact: artifactDigest(file) }
+    expect(() => { verifyDownloadedArtifact({ ...downloaded, artifact: { ...downloaded.artifact, bytes: 1 } }, file, {}) })
+      .toThrow('Downloaded installer differs')
+    expect(() => { verifyDownloadedArtifact(downloaded, file, {}) })
+      .toThrow('Native macOS publisher verification is required')
   } finally { rmSync(root, { recursive: true, force: true }) }
 })

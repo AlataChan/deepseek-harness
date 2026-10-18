@@ -210,6 +210,16 @@ describe('client build environment', () => {
     expect(repositoryGitDirty(fixtureRoot)).toBe(true)
   })
 
+  it('keeps the official profile identical after moving artifacts outside Git', () => {
+    const fixtureRoot = repositoryFixture()
+    const expected = officialClientBuildEnvironment(fixtureRoot, {})
+    rmSync(join(fixtureRoot, '.git'), { recursive: true })
+    expect(officialClientBuildEnvironment(fixtureRoot, expected)).toEqual(expected)
+    expect(() => officialClientBuildEnvironment(fixtureRoot, {
+      DSH_CLIENT_COMMIT_HASH: expected.DSH_CLIENT_COMMIT_HASH,
+    })).toThrow('full source commit')
+  })
+
   it('omits dirty metadata when repository metadata is unavailable', () => {
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'dsh-client-build-no-git-'))
     roots.push(fixtureRoot)

@@ -598,7 +598,7 @@ export class ClientModuleRegistry extends Service {
 
   /**
    * Host runtime identity fixed into the built artifact by the shared desktop build producer.
-   * Partial/source builds fall back to this package's version and optional display commit.
+   * Partial/source builds fall back to this package's version without a canonical commit.
    */
   private readonly release: WebBootRelease
   private readonly table = new Map<string, WebPluginRecord>()
@@ -625,8 +625,14 @@ export class ClientModuleRegistry extends Service {
     super(ctx, 'clientModules')
     const { version } = createRequire(import.meta.url)('../package.json') as { version: string }
     // The client build fixes this read into the built Host artifact.
-    const commit = process.env.DSH_CLIENT_RELEASE_COMMIT ?? process.env.DSH_CLIENT_COMMIT_HASH
+    const commit = process.env.DSH_CLIENT_RELEASE_COMMIT
     const runtimeVersion = process.env.DSH_CLIENT_RELEASE_VERSION ?? version
+    if (commit !== undefined && !/^[a-f0-9]{40}$/.test(commit)) {
+      throw new Error('DSH_CLIENT_RELEASE_COMMIT must be a full lowercase Git commit hash')
+    }
+    if (runtimeVersion.trim() === '') {
+      throw new Error('DSH_CLIENT_RELEASE_VERSION must be a non-empty runtime version')
+    }
     this.release = commit === undefined ? { version: runtimeVersion } : { version: runtimeVersion, commit }
     // Subscribe before seeding so a fiber arriving mid-activation lands in the
     // same dirty set (Set idempotence makes the overlap harmless). An entry-less

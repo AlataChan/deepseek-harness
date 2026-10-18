@@ -26,7 +26,9 @@ export interface DesktopRunEvidence {
  */
 export function assertRunEvidence(manifest: DesktopReleaseManifest, run: DesktopRunEvidence, target: DesktopReleaseManifest['target']): void {
   const w = manifest.workflow
-  if (w === undefined || manifest.target !== target || run.repository !== manifest.repository || run.ref !== manifest.ref
+  const approvedWorkflow = target === 'windows-x64' ? '.github/workflows/desktop-windows.yml' : '.github/workflows/desktop-macos.yml'
+  if (w === undefined || !['refs/heads/master', 'refs/heads/release'].includes(run.ref)
+    || run.workflow !== approvedWorkflow || run.repository !== 'AlataChan/deepseek-harness' || manifest.target !== target || run.repository !== manifest.repository || run.ref !== manifest.ref
     || run.commit !== manifest.release.commit || run.commit !== w.commit || run.runId !== w.runId || run.attempt !== w.attempt
     || run.workflow !== w.path || run.status !== 'completed' || run.conclusion !== 'success'
     || run.jobs.length === 0 || run.jobs.some(job => job.conclusion !== 'success') || !run.installedVerified) {
@@ -143,6 +145,12 @@ export function assertArtifactBytes(manifest: DesktopReleaseManifest, artifact: 
     || buildInfo.release.version !== manifest.release.version || buildInfo.release.commit !== manifest.release.commit) {
     throw new Error('Installed payload release identity differs from the artifact manifest')
   }
+  if (!('sourceState' in buildInfo) || typeof buildInfo.sourceState !== 'object' || buildInfo.sourceState === null
+    || !('modifiedAtBuild' in buildInfo.sourceState) || !('modifiedAtPackaging' in buildInfo.sourceState)
+    || buildInfo.sourceState.modifiedAtBuild !== manifest.sourceState.modifiedAtBuild
+    || buildInfo.sourceState.modifiedAtPackaging !== manifest.sourceState.modifiedAtPackaging) {
+    throw new Error('Installed source modification flags differ from the artifact manifest')
+  }
   const actual = artifactDigest(artifact)
   if (actual.name !== manifest.artifact.name || actual.bytes !== manifest.artifact.bytes || actual.sha256 !== manifest.artifact.sha256
     || payloadDigest(payload) !== manifest.payloadSha256) throw new Error('Artifact or installed payload bytes differ from the manifest')
@@ -150,16 +158,17 @@ export function assertArtifactBytes(manifest: DesktopReleaseManifest, artifact: 
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [command, manifestPath, artifact, payload, signaturePayload] = process.argv.slice(2)
-  if (command === 'preflight') {
+  if (command === 'preflight' || command === 'config-preflight') {
     const mode = manifestPath
     if (mode !== 'internal' && mode !== 'public') throw new Error('Expected internal or public mode')
     if (artifact !== 'windows-x64' && artifact !== 'macos-arm64' && artifact !== 'macos-x64') throw new Error('Expected desktop target')
-    verifySigningPrerequisites(mode, artifact, process.env)
+    if (command === 'config-preflight') assertPublicPreflight(mode, artifact, process.env)
+    else verifySigningPrerequisites(mode, artifact, process.env)
   } else if (command === 'verify' && manifestPath && artifact && payload) {
     const manifest = validateReleaseManifest(JSON.parse(readFileSync(manifestPath, 'utf8')))
     assertArtifactBytes(manifest, artifact, payload)
     if (manifest.mode === 'public' && !signaturePayload) throw new Error('Public verification requires an explicit signed app/executable path')
     verifyNativeSignatures(manifest, artifact, signaturePayload ?? payload)
     console.log(`${basename(artifact)}: bytes and ${manifest.mode} native qualification verified`)
-  } else throw new Error('Usage: verify-desktop-release.ts preflight <internal|public> <target> | verify <manifest> <artifact> <installed-payload> <signed-app-or-executable>')
+  } else throw new Error('Usage: verify-desktop-release.ts preflight|config-preflight <internal|public> <target> | verify <manifest> <artifact> <installed-payload> <signed-app-or-executable>')
 }

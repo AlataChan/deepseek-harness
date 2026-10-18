@@ -77,14 +77,16 @@ export class GitHubDesktopReleaseTransport implements DesktopReleaseTransport {
   async read(name: string): Promise<ReleaseAsset | undefined> {
     const asset = await this.asset(name)
     if (asset === undefined) return undefined
+    if (asset.state !== 'uploaded') throw new Error('Release asset upload is incomplete')
     const response = await this.api(`${this.base}/releases/assets/${integer(asset.id)}`, { headers: { Accept: 'application/octet-stream' } })
     const bytes = new Uint8Array(await response.arrayBuffer())
     return { bytes, revision: `${integer(asset.id)}:${string(asset.updated_at)}:${createHash('sha256').update(bytes).digest('hex')}` }
   }
   async create(name: string, bytes: Uint8Array): Promise<void> {
     const release = await this.releaseId(name.startsWith('channel-'))
-    await this.api(`https://uploads.github.com/repos/AlataChan/deepseek-harness/releases/${release}/assets?name=${encodeURIComponent(name)}`,
+    const response = await this.api(`https://uploads.github.com/repos/AlataChan/deepseek-harness/releases/${release}/assets?name=${encodeURIComponent(name)}`,
       { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: Buffer.from(bytes) })
+    if (object(await response.json()).state !== 'uploaded') throw new Error('Release asset upload is incomplete')
   }
   async replaceChannel(name: string, bytes: Uint8Array, revision: string | null): Promise<void> {
     if (name !== `channel-${this.channel}.json`) throw new Error('Only the channel record may be replaced')
@@ -161,6 +163,7 @@ export class GitHubDesktopReleaseTransport implements DesktopReleaseTransport {
     const run = object(await (await this.api(`${this.base}/actions/runs/${runId}/attempts/${attempt}`)).json())
     const repo = object(run.repository)
     if (repo.full_name !== 'AlataChan/deepseek-harness' || run.head_sha !== commit || run.run_attempt !== attempt
+      || !['master', 'release'].includes(string(run.head_branch))
       || run.path !== '.github/workflows/desktop-publish.yml') throw new Error('Publication qualification workflow identity differs')
     const value = object(await (await this.api(`${this.base}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`)).json())
     if (!Array.isArray(value.jobs) || value.jobs.length !== value.total_count) throw new Error('Incomplete qualification job evidence')

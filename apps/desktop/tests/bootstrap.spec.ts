@@ -129,7 +129,7 @@ describe('bootDesktopClient', () => {
     const release = { version: '0.0.1-test', commit: 'a'.repeat(40) }
     const mock = createMockPort({ ready: readyFrame({ release }) })
     const outcome = await bootDesktopClient({
-      port: mock.port, root: document.createElement('div'), extensionVersion: 'independent-shell',
+      port: mock.port, root: document.createElement('div'), extensionVersion: 'independent-shell', pageRelease: release,
       loadBundle: async () => {}, createAppEntry: () => ({ run: async () => {} }),
     })
     expect(outcome.status).toBe('ready')
@@ -149,7 +149,23 @@ describe('bootDesktopClient', () => {
     expect(createAppEntry).not.toHaveBeenCalled()
   })
 
-  it('keeps cached running plugins when a reconnected Host announces another build of the same runtime', async () => {
+  it.each([undefined, { version: '0.0.1-test', commit: 'b'.repeat(40) }])(
+    'refuses missing or changed companion identity before caching or running bundles: %j', async (release) => {
+      const mock = createMockPort({ ready: readyFrame(release === undefined ? {} : { release }) })
+      const loadBundle = vi.fn(async () => {})
+      const createAppEntry = vi.fn(() => ({ run: async () => {} }))
+      const outcome = await bootDesktopClient({
+        port: mock.port, root: document.createElement('div'), extensionVersion: 'independent-shell',
+        pageRelease: { version: '0.0.1-test', commit: 'a'.repeat(40) }, loadBundle, createAppEntry,
+      })
+      expect(outcome).toMatchObject({ status: 'home', reason: expect.stringContaining('WebView release differs') })
+      expect(mock.commands.filter(row => row.cmd === 'cache_bundle')).toEqual([])
+      expect(loadBundle).not.toHaveBeenCalled()
+      expect(createAppEntry).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps running plugins when the module update API receives another build of the same runtime', async () => {
     const release = { version: '0.0.1-test', commit: 'a'.repeat(40) }
     const mock = createMockPort({ ready: readyFrame({ release }) })
     await bootDesktopClient({

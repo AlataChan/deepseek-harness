@@ -326,10 +326,18 @@ describe('the shipped registry satisfies the working-tree rules', () => {
 
 
 describe('selected upstream backports', () => {
-  const entry = { id: 'U4', sourceTag: 'dsh-v0.2.1-rc.2', basePin: 'dsh-v0.2.1-alpha.1', sourceChanges: ['PR #6272'], disposition: 'imported' as const, paths: ['packages/subagent/subagent-codex/'], prerequisites: [], verification: ['packages/subagent/subagent-codex/tests/subagent-codex.spec.ts'] }
+  const entry = { id: 'U4', sourceTag: 'dsh-v0.2.1-rc.2', basePin: 'dsh-v0.2.1-alpha.1', sourceChanges: ['PR #6272'], disposition: 'imported' as const, paths: ['packages/subagent/subagent-codex/src/process.ts'], prerequisites: [], verification: ['packages/subagent/subagent-codex/tests/subagent-codex.spec.ts'] }
   it('keeps selective adoption separate from whole-release advancement', () => {
     expect(backportViolations([entry], 'dsh-v0.2.1-alpha.1')).toEqual([])
     expect(backportViolations([entry], 'dsh-v0.2.1-rc.2')).toContainEqual(expect.stringContaining('whole-release'))
+  })
+  it('does not exempt new files beneath a selected backport directory', () => {
+    const registry = { ...fixtureRegistry(), backports: [entry] }
+    expect(patchRegistryViolations(['packages/subagent/subagent-codex/src/process.ts'], registry)).toEqual([])
+    expect(patchRegistryViolations(['packages/subagent/subagent-codex/src/unregistered.ts'], registry))
+      .toEqual([expect.stringContaining('no registry entry')])
+    expect(backportViolations([{ ...entry, paths: ['packages/subagent/subagent-codex/'] }], entry.basePin))
+      .toContainEqual(expect.stringContaining('exact file paths'))
   })
   it('rejects unresolved prerequisites and missing verification', () => {
     expect(backportViolations([{ ...entry, prerequisites: ['missing'], verification: [] }], entry.basePin))

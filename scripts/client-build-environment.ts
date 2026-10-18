@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { desktopBuildIdentity } from './desktop-build-identity.ts'
+import { desktopBuildIdentity, validateDesktopBuildIdentity } from './desktop-build-identity.ts'
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
   existsSync,
@@ -143,21 +143,24 @@ export function repositoryClientBuildEnvironment(
 /**
  * Resolve the exact public values required by an official build at one commit.
  * @param root - repository root whose HEAD must match the built source.
- * @param environment - optional explicit commit source for non-Git build environments.
+ * @param environment - full release commit and version for verification outside Git.
  * @returns complete official client environment.
  */
 export function officialClientBuildEnvironment(
   root: string,
   environment: NodeJS.ProcessEnv = process.env,
 ): Readonly<Record<`DSH_CLIENT_${string}`, string>> {
-  const release = repositoryGitDirty(root) === undefined ? undefined : desktopBuildIdentity(root)
+  const release = repositoryGitDirty(root) === undefined
+    ? validateDesktopBuildIdentity({
+      version: environment.DSH_CLIENT_RELEASE_VERSION ?? repositoryVersion(root),
+      commit: environment.DSH_CLIENT_RELEASE_COMMIT ?? environment.DSH_CLIENT_COMMIT_HASH,
+    })
+    : desktopBuildIdentity(root)
   return {
     DSH_CLIENT_COMMIT_HASH: repositoryCommitHash(root, environment),
     DSH_CLIENT_VERSION: repositoryVersion(root),
-    ...release === undefined ? {} : {
-      DSH_CLIENT_RELEASE_VERSION: release.version,
-      DSH_CLIENT_RELEASE_COMMIT: release.commit,
-    },
+    DSH_CLIENT_RELEASE_VERSION: release.version,
+    DSH_CLIENT_RELEASE_COMMIT: release.commit,
     ...OFFICIAL_CLIENT_BUILD_ENVIRONMENT,
   }
 }
