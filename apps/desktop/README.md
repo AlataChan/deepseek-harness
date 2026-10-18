@@ -46,7 +46,7 @@ On Windows every child process is spawned with `CREATE_NO_WINDOW` because the de
 
 ## Known Limitations and Deferred Work
 
-- **Unsigned installers** — no signing, notarization, updater, or public download.
+- **Public distribution** — internal builds remain unsigned or unnotarized; public builds require separate signing credentials and native qualification. [Release preparation](../../docs/cookbook/desktop-releases.md) covers recovery, manifests and explicit fork publication. No automatic updater is enabled.
 - **Source development requires a runtime** — distributable installers carry Node and Harness; source builds use the checkout runtime.
 - **Launch-time workspace only** — Client directory-picker rows do not change `--workspace-root`.
 - **One window** — no multi-window, tray, deep links, native dialogs, or editor context.

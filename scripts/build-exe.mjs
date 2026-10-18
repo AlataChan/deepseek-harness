@@ -54,7 +54,10 @@ const CACHE = join(REPO_ROOT, 'dist', '.cache')
 const DEPS_CACHE = join(CACHE, 'harness-nm')
 const KB_CACHE = join(CACHE, 'kb-runtime')
 const NSIS_DIR = join(TAURI_DIR, 'target', 'release', 'bundle', 'nsis')
-const INSTALLER_OUT = join(REPO_ROOT, 'dist', `${APP_NAME}_Setup.exe`)
+const BUILD_MODE = process.env.DSH_DESKTOP_BUILD_MODE ?? 'internal'
+const artifactDir = resolve(process.env.DSH_DESKTOP_ARTIFACT_DIR ?? join(REPO_ROOT, 'dist'))
+const releaseVersion = JSON.parse(readFileSync(join(REPO_ROOT, 'apps/cli/package.json'), 'utf8')).version
+const INSTALLER_OUT = join(artifactDir, BUILD_MODE === 'public' ? `${APP_NAME}-${releaseVersion}-windows-x64.exe` : `${APP_NAME}_Setup.exe`)
 
 /**
  * Report the start of one build phase.
@@ -167,6 +170,7 @@ for (let index = 0; index < argv.length; index += 1) {
 // ── Preflight ────────────────────────────────────────────────────────────────
 
 info('Preflight')
+run(process.execPath, ['--import', 'tsx/esm', 'scripts/verify-desktop-release.ts', 'preflight', BUILD_MODE, 'windows-x64'])
 if (process.platform !== 'win32') {
   fail('build-exe.mjs builds the Windows NSIS installer; run it on Windows (CI: .github/workflows/desktop-windows.yml)')
 }
@@ -341,6 +345,7 @@ const buildInfo = {
   runtimeVersion: JSON.parse(readFileSync(join(REPO_ROOT, 'apps', 'cli', 'package.json'), 'utf8')).version,
 }
 writeFileSync(join(RESOURCES, 'build-info.json'), `${JSON.stringify(buildInfo, undefined, 2)}\n`)
+run(process.execPath, ['--import', 'tsx/esm', 'scripts/desktop-release-cli.ts', 'identity', join(RESOURCES, 'build-info.json')])
 ok(`build-info.json written (kb: ${buildInfo.kb}, presets: ${buildInfo.presets})`)
 
 // ── 7. Verify the staged resource tree ──────────────────────────────────────
@@ -395,10 +400,16 @@ ok('Resource payload complete')
 // ── 8. Bundle the installer ─────────────────────────────────────────────────
 
 info('Bundling the NSIS installer')
+const signingArgs = []
+if (BUILD_MODE === 'public') {
+  const signingConfig = join(CACHE, 'tauri.public-signing.json')
+  writeFileSync(signingConfig, JSON.stringify({ bundle: { windows: { certificateThumbprint: process.env.DSH_WINDOWS_CERTIFICATE_THUMBPRINT, digestAlgorithm: 'sha256', timestampUrl: 'http://timestamp.digicert.com' } } }))
+  signingArgs.push('--config', signingConfig)
+}
 // The target directory is cache-restored, so a stale *-setup.exe from an
 // earlier run could otherwise win the newest-file copy below.
 rmSync(NSIS_DIR, { recursive: true, force: true })
-const bundle = spawnSync('pnpm', ['dlx', TAURI_CLI, 'build', '--bundles', 'nsis'], {
+const bundle = spawnSync('pnpm', ['dlx', TAURI_CLI, 'build', '--bundles', 'nsis', ...signingArgs], {
   cwd: TAURI_DIR,
   stdio: 'inherit',
   shell: process.platform === 'win32',
@@ -408,15 +419,18 @@ if (bundle.status !== 0) {
 }
 if (!existsSync(NSIS_DIR)) fail(`NSIS produced no bundle directory at ${NSIS_DIR}`)
 const installers = readdirSync(NSIS_DIR).filter(name => name.endsWith('-setup.exe'))
-if (installers.length === 0) fail(`NSIS produced no *-setup.exe in ${NSIS_DIR}`)
+if (installers.length !== 1) fail(`NSIS must produce exactly one *-setup.exe in ${NSIS_DIR}; found ${installers.length}`)
 const newest = installers
   .map(name => ({ name, mtime: statSync(join(NSIS_DIR, name)).mtimeMs }))
   .sort((left, right) => right.mtime - left.mtime)[0]
 mkdirSync(dirname(INSTALLER_OUT), { recursive: true })
 copyFileSync(join(NSIS_DIR, newest.name), INSTALLER_OUT)
+process.env.DSH_SIGNATURE_PAYLOAD = join(TAURI_DIR, 'target', 'release', 'dsh-desktop.exe')
+
+run(process.execPath, ['--import', 'tsx/esm', 'scripts/desktop-release-cli.ts', 'manifest', INSTALLER_OUT, RESOURCES, 'windows-x64', BUILD_MODE, `${INSTALLER_OUT}.release.json`])
 
 console.log('')
 ok(`Done! Distribute: ${INSTALLER_OUT}`)
 console.log('')
-console.log('  Unsigned installer: SmartScreen may show 「Windows protected your PC」.')
-console.log('  Users pick 「更多信息 → 仍要运行」 once.')
+if (BUILD_MODE === 'internal') console.log('  Unsigned installer: SmartScreen may show 「Windows protected your PC」.')
+if (BUILD_MODE === 'internal') console.log('  Users pick 「更多信息 → 仍要运行」 once.')

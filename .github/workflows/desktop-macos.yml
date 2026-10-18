@@ -1,0 +1,73 @@
+name: Desktop macOS DMG
+on:
+  workflow_dispatch:
+    inputs:
+      architecture:
+        type: choice
+        options: [arm64, x64]
+        default: arm64
+      build_mode:
+        description: Public mode requires pre-provisioned Developer ID and notary credentials
+        type: choice
+        options: [internal, public]
+        default: internal
+permissions:
+  contents: read
+concurrency:
+  group: desktop-macos-${{ github.ref }}-${{ inputs.architecture }}
+  cancel-in-progress: true
+jobs:
+  build-dmg:
+    runs-on: ${{ inputs.architecture == 'x64' && 'macos-15-intel' || 'macos-15' }}
+    timeout-minutes: 90
+    env:
+      NODE_OPTIONS: --max-old-space-size=12288
+      RAYON_NUM_THREADS: '2'
+      DSH_TELEMETRY_DISABLED: '1'
+      DSH_DESKTOP_BUILD_MODE: ${{ inputs.build_mode }}
+      DSH_BUILD_ARTIFACT_NAME: octopus_DSH_DMG-${{ inputs.architecture }}-${{ github.run_id }}-${{ github.run_attempt }}
+      DSH_BUILD_WORKFLOW: .github/workflows/desktop-macos.yml
+      DSH_MAC_SIGNING_IDENTITY: ${{ vars.DSH_MAC_SIGNING_IDENTITY }}
+      DSH_MAC_TEAM_ID: ${{ vars.DSH_MAC_TEAM_ID }}
+      DSH_NOTARY_PROFILE: ${{ vars.DSH_NOTARY_PROFILE }}
+      DSH_BUILD_ARCH: ${{ inputs.architecture }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v6.3.0
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check public signing prerequisites
+        run: node --import tsx/esm scripts/verify-desktop-release.ts preflight "$DSH_DESKTOP_BUILD_MODE" "macos-$DSH_BUILD_ARCH"
+      - name: Build workspace libraries and clients
+        run: pnpm run build
+      - name: Build Tauri application
+        working-directory: apps/desktop/src-tauri
+        run: pnpm dlx @tauri-apps/cli@2.11.4 build --bundles app
+      - name: Assemble DMG with freshly frozen sidecar
+        run: bash scripts/build-dmg.sh --arch "$DSH_BUILD_ARCH"
+      - name: Verify mounted desktop bundle
+        run: |
+          set -euo pipefail
+          images=(dist/*.dmg)
+          [[ ${#images[@]} == 1 ]] || exit 1
+          mountpoint="$(mktemp -d)"
+          trap 'hdiutil detach "$mountpoint"; rmdir "$mountpoint"' EXIT
+          hdiutil verify "${images[0]}"
+          hdiutil attach -readonly -nobrowse -mountpoint "$mountpoint" "${images[0]}"
+          bash scripts/verify-desktop-bundle.sh "$mountpoint/octopus_DSH.app"
+      - name: Upload the disk image
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.DSH_BUILD_ARTIFACT_NAME }}
+          path: |
+            dist/*.dmg
+            dist/*.dmg.release.json
+          if-no-files-found: error

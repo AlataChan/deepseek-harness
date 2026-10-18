@@ -18,12 +18,19 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ARCH="${1:-arm64}"
-if [[ "$1" == "--arch" ]]; then ARCH="${2:-arm64}"; fi
+if [[ "${1:-}" == "--arch" ]]; then ARCH="${2:-arm64}"; fi
 
 NODE_VERSION="24.14.0"
 APP_NAME="octopus_DSH"
 APP_BUNDLE="$REPO_ROOT/apps/desktop/src-tauri/target/release/bundle/macos/${APP_NAME}.app"
-DMG_OUTPUT="$REPO_ROOT/dist/${APP_NAME}.dmg"
+BUILD_MODE="${DSH_DESKTOP_BUILD_MODE:-internal}"
+ARTIFACT_DIR="${DSH_DESKTOP_ARTIFACT_DIR:-$REPO_ROOT/dist}"
+RELEASE_VERSION="$(node -p "require('$REPO_ROOT/apps/cli/package.json').version")"
+DMG_OUTPUT="$ARTIFACT_DIR/${APP_NAME}.dmg"
+if [[ "$BUILD_MODE" == public ]]; then DMG_OUTPUT="$ARTIFACT_DIR/${APP_NAME}-${RELEASE_VERSION}-macos-${ARCH}.dmg"; fi
+node --import tsx/esm "$REPO_ROOT/scripts/verify-desktop-release.ts" preflight "$BUILD_MODE" "macos-$ARCH"
+SIGN_ARGS=(--sign - --timestamp=none)
+if [[ "$BUILD_MODE" == public ]]; then SIGN_ARGS=(--sign "$DSH_MAC_SIGNING_IDENTITY" --options runtime --timestamp); fi
 
 info()  { printf '\033[1;34m▶ %s\033[0m\n' "$1"; }
 ok()    { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
@@ -195,16 +202,17 @@ ok "kb-runtime embedded"
 # that clears quarantine on the user's machine.
 info "Ad-hoc signing the bundle after embedding..."
 node "$REPO_ROOT/scripts/desktop-microphone.mjs" --apply "$APP_BUNDLE"
-codesign --force --sign - --timestamp=none "$RESOURCES/node"
+node --import tsx/esm "$REPO_ROOT/scripts/desktop-release-cli.ts" identity "$RESOURCES/build-info.json"
+codesign --force "${SIGN_ARGS[@]}" "$RESOURCES/node"
 if [[ -x "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar" ]]; then
-  codesign --force --sign - --timestamp=none \
+  codesign --force "${SIGN_ARGS[@]}" \
     "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar"
 fi
 while IFS= read -r lib; do
   [[ -z "$lib" ]] && continue
-  codesign --force --sign - --timestamp=none "$lib" || true
+  codesign --force "${SIGN_ARGS[@]}" "$lib"
 done < <(find "$RESOURCES/kb-runtime" \( -name '*.so' -o -name '*.dylib' \) -type f 2>/dev/null)
-codesign --force --deep --sign - --timestamp=none "$APP_BUNDLE"
+codesign --force --deep "${SIGN_ARGS[@]}" "$APP_BUNDLE"
 if ! codesign --verify --deep "$APP_BUNDLE"; then
   fail "codesign --verify failed after embedding"
 fi
@@ -259,6 +267,13 @@ else
 fi
 
 echo ""
+if [[ "$BUILD_MODE" == public ]]; then
+  codesign --force --sign "$DSH_MAC_SIGNING_IDENTITY" --timestamp "$DMG_OUTPUT"
+  xcrun notarytool submit "$DMG_OUTPUT" --keychain-profile "$DSH_NOTARY_PROFILE" --wait
+  xcrun stapler staple "$DMG_OUTPUT"
+  xcrun stapler validate "$DMG_OUTPUT"
+fi
+DSH_SIGNATURE_PAYLOAD="$APP_BUNDLE" node --import tsx/esm "$REPO_ROOT/scripts/desktop-release-cli.ts" manifest "$DMG_OUTPUT" "$RESOURCES" "macos-$ARCH" "$BUILD_MODE" "$DMG_OUTPUT.release.json"
 ok "Done! Distribute: $DMG_OUTPUT"
 echo ""
 echo "  微信发出后请附带这段话："

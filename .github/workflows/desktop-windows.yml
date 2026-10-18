@@ -9,6 +9,12 @@ name: Desktop Windows EXE
 
 on:
   workflow_dispatch:
+    inputs:
+      build_mode:
+        description: Internal testing or signed public artifact
+        type: choice
+        options: [internal, public]
+        default: internal
 
 permissions:
   contents: read
@@ -18,6 +24,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  DSH_DESKTOP_BUILD_MODE: ${{ inputs.build_mode }}
+  DSH_BUILD_ARTIFACT_NAME: octopus_DSH_Setup-${{ github.run_id }}-${{ github.run_attempt }}
+  DSH_BUILD_WORKFLOW: .github/workflows/desktop-windows.yml
+  DSH_WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.DSH_WINDOWS_CERTIFICATE_THUMBPRINT }}
+  DSH_WINDOWS_PUBLISHER: ${{ vars.DSH_WINDOWS_PUBLISHER }}
   PRIMARY_NODE_VERSION: '24'
   NODE_OPTIONS: '--max-old-space-size=12288'
   RAYON_NUM_THREADS: '2'
@@ -112,6 +123,9 @@ jobs:
           } else {
             pnpm install --frozen-lockfile
           }
+      - name: Check public signing prerequisites
+        shell: pwsh
+        run: node --import tsx/esm scripts/verify-desktop-release.ts preflight $env:DSH_DESKTOP_BUILD_MODE windows-x64
       - name: Build workspace libraries and clients
         shell: pwsh
         run: pnpm run build
@@ -131,13 +145,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Rust payload seed regression failed" }
           cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --features harness --bin carrier-harness
           if ($LASTEXITCODE -ne 0) { throw "Rust carrier harness build failed" }
+      - name: Verify native Windows installer upgrade recovery
+        shell: pwsh
+        run: ./scripts/tests/desktop-installer-upgrade.ps1 -NodePath apps/desktop/src-tauri/resources/node.exe
       - name: Install the EXE silently
         shell: pwsh
         run: |
           # NSIS is not long-path aware and the payload reaches deep into
           # resources\harness\node_modules, so the install root stays short.
           $install = 'D:\octo-dsh'
-          $setup = Join-Path $env:GITHUB_WORKSPACE 'dist\octopus_DSH_Setup.exe'
+          $setups = @(Get-ChildItem (Join-Path $env:GITHUB_WORKSPACE 'dist') -Filter '*.exe')
+          if ($setups.Count -ne 1) { throw 'Expected one installer artifact' }
+          $setup = $setups[0].FullName
           Write-Output "Installing $setup into $install"
           # `&` does not wait for a GUI-subsystem installer and leaves
           # $LASTEXITCODE unset; Start-Process -Wait owns the exit code.
@@ -161,7 +180,7 @@ jobs:
             throw "silent install produced no resources tree under $install (exit code $($proc.ExitCode))"
           }
           if ($proc.ExitCode -ne 0) {
-            Write-Output "::warning::installer exited with $($proc.ExitCode) but the resources tree exists; the readiness gate is the authority on install completeness"
+            throw "Installer returned unexpected exit $($proc.ExitCode); readiness cannot qualify a failed installation"
           }
       - name: Run the Windows readiness gate
         shell: pwsh
@@ -176,8 +195,10 @@ jobs:
       - name: Upload the installer
         uses: actions/upload-artifact@v7
         with:
-          name: octopus_DSH_Setup
-          path: dist/octopus_DSH_Setup.exe
+          name: ${{ env.DSH_BUILD_ARTIFACT_NAME }}
+          path: |
+            dist/*.exe
+            dist/*.exe.release.json
           if-no-files-found: error
       - name: Save Tauri build cache
         if: always() && steps.tauri-target.outputs.cache-hit != 'true'

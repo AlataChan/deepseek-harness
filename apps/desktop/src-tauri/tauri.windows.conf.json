@@ -1,8 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
-    "targets": ["nsis"],
-    "icon": ["icons/icon.ico"],
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/icon.ico"
+    ],
     "resources": [
       "resources/installed-runtime-cli.js",
       "resources/build-info.json",
@@ -13,6 +17,12 @@
       "resources/bundled-skills",
       "resources/presets",
       "resources/kb-runtime"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "template": "../../../scripts/desktop-installer-template.nsi",
+        "installerHooks": "../../../scripts/desktop-installer-transaction.nsh"
+      }
+    }
   }
 }

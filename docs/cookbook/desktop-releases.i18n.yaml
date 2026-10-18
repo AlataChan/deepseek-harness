@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for desktop-releases.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/cookbook/desktop-releases.md
+/desktop-release-preparation-and-publication:
+  en: e0bf431733806f66
+  zh: f6aeec5c9e62fcf0
+/desktop-release-preparation-and-publication/prepare-a-candidate:
+  en: a7c821e057fc09b4
+  zh: 59cf5fd6ec09b9b9
+/desktop-release-preparation-and-publication/recover-an-interrupted-windows-upgrade:
+  en: f913d17a5563c613
+  zh: b201a894387b04a4
+/desktop-release-preparation-and-publication/plan-and-publish-explicitly:
+  en: d2a4920fc9373c21
+  zh: 3637c2b6c57a9a11

@@ -1,0 +1,91 @@
+name: Desktop release publication
+# All supported channel writers use this single repository-wide concurrency group.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [plan, verify, publish]
+        default: plan
+        description: Publish requires the reviewed plan JSON and explicit source identity
+      target:
+        type: choice
+        options: [windows-x64, macos-arm64, macos-x64]
+        description: Native qualification platform
+        required: true
+      source_run:
+        type: string
+        required: true
+        description: Exact successful packaging workflow run ID
+      source_attempt:
+        type: string
+        required: true
+        description: Exact successful packaging workflow attempt
+      source_commit:
+        type: string
+        required: true
+        description: Full tested source commit
+      artifact_name:
+        type: string
+        required: true
+        description: GitHub Actions artifact containing installer and manifest
+      channel:
+        type: string
+        default: stable
+        description: Channel prefix; target is appended to preserve other platform channels
+      reviewed_plan:
+        type: string
+        default: ''
+        description: Exact JSON emitted by plan, required for verify or publish
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: desktop-release-channel-writer
+  cancel-in-progress: false
+jobs:
+  qualify-and-publish:
+    # Native signature verification is mandatory even for resuming a publication.
+    runs-on: ${{ inputs.target == 'windows-x64' && 'windows-2025' || inputs.target == 'macos-x64' && 'macos-15-intel' || 'macos-15' }}
+    permissions:
+      contents: write
+      actions: read
+    env:
+      DSH_EXPECTED_SOURCE_COMMIT: ${{ inputs.source_commit }}
+      DSH_EXPECTED_SOURCE_RUN: ${{ inputs.source_run }}
+      DSH_EXPECTED_SOURCE_ATTEMPT: ${{ inputs.source_attempt }}
+      DSH_REVIEWED_PLAN: ${{ inputs.reviewed_plan }}
+      DSH_RELEASE_OPERATION: ${{ inputs.operation }}
+      DSH_RELEASE_CHANNEL: ${{ inputs.channel }}-${{ inputs.target }}
+      DSH_RELEASE_TARGET: ${{ inputs.target }}
+      DSH_WINDOWS_PUBLISHER: ${{ vars.DSH_WINDOWS_PUBLISHER }}
+      DSH_MAC_TEAM_ID: ${{ vars.DSH_MAC_TEAM_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        shell: pwsh
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/download-artifact@v8
+        with:
+          repository: AlataChan/deepseek-harness
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ github.token }}
+          name: ${{ inputs.artifact_name }}
+          path: candidate
+      - name: Qualify downloaded artifact and execute explicit operation
+        shell: pwsh
+        run: ./scripts/tests/desktop-publication-native.ps1
+      - name: Preserve reviewed publication plan
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-publication-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: candidate/publication-plan.json
+          if-no-files-found: warn
