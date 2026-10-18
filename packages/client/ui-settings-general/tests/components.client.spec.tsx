@@ -288,6 +288,13 @@ describe('Host release change confirmation', () => {
     expect(dismissRelease).toHaveBeenCalledTimes(3)
   })
 
+  it('initially focuses Not now so Enter cannot reload a draft', () => {
+    const { reloadPage } = prompt({ page: { version: '0.2.1' }, previous: undefined, host: { version: '0.2.2' } })
+    expect(document.activeElement?.textContent).toBe('Not now')
+    expect(document.activeElement?.getAttribute('data-modal-autofocus')).not.toBeNull()
+    expect(reloadPage).not.toHaveBeenCalled()
+  })
+
   it('shows commits for a transition within one version and labels what the Host did not publish', () => {
     prompt({
       page: { version: '0.2.0' },

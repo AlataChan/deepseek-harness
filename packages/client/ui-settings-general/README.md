@@ -77,7 +77,7 @@ The shell is an explicit recovery consumer, so it injects Connection directly ra
 
 ### Host release changes
 
-The `shell.overlay` entry `host-release-change` binds `ctx.modules.entries.releaseChange` in its hooks compartment and receives two callbacks: one calls `ctx.modules.entries.dismissRelease()`, the other reloads the page. Release identities are Host data and render verbatim; [Client Modules](../modules/README.md#host-release-changes) owns which release counts as current.
+The `shell.overlay` entry `host-release-change` binds `ctx.modules.entries.releaseChange` in its hooks compartment and receives two callbacks: one calls `ctx.modules.entries.dismissRelease()`, the other reloads the page. The dialog initially focuses **Not now** to preserve an unsent draft when Enter is pending. Release identities are Host data and render verbatim; [Client Modules](../modules/README.md#host-release-changes) owns which release counts as current.
 
 ### Document availability
 

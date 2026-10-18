@@ -77,7 +77,7 @@ Web 与桌面端的通用设置底部显示当前发布版本，使用构建注�
 
 ### Host release 变化
 
-`shell.overlay` 条目 `host-release-change` 在其 hooks compartment 中绑定 `ctx.modules.entries.releaseChange`，并接收两个回调：一个调用 `ctx.modules.entries.dismissRelease()`，另一个刷新页面。release 身份是 Host 数据，按原样显示；哪个 release 算当前由 [Client Modules](../modules/README.zh.md#host-release-changes) 决定。
+`shell.overlay` 条目 `host-release-change` 在其 hooks compartment 中绑定 `ctx.modules.entries.releaseChange`，并接收两个回调：一个调用 `ctx.modules.entries.dismissRelease()`，另一个刷新页面。对话框初始聚焦**暂不刷新**，避免待处理的回车键刷新页面并丢失未发送的草稿。release 身份是 Host 数据，按原样显示；哪个 release 算当前由 [Client Modules](../modules/README.zh.md#host-release-changes) 决定。
 
 ### 文档可用性
 

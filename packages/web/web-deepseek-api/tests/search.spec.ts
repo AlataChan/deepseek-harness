@@ -75,7 +75,8 @@ describe('DeepSeekSearchApiProvider availability', () => {
     expect(searchProvider(options).available()).toBe(true)
   })
 
-  it('is available with only an account token resolver', () => {
+  it('is unavailable on an account route even with an API key', () => {
+    expect(searchProvider({ ...options, accountRoute: true }).available()).toBe(false)
   })
 
   it('is misconfigured when the base URL is unparseable', () => {
@@ -237,13 +238,20 @@ describe('Search API account route', () => {
     try {
       await ctx.plugin(SessionStore)
       await ctx.plugin(AgentRegistry)
-      await ctx.plugin(WebRuntime, { searchProvider: 'deepseek-search-api' })
+      await ctx.plugin(WebRuntime)
       await ctx.plugin(webApiPlugin, { apiKey: 'ds-key' })
       const session = ctx.sessions.create(SessionId('web-search-api-account'))
       session.append('turn/start', { turn: 1 })
       session.append('request/context', { provider: 'deepseek-account', model: 'deepseek-v4-flash' })
-      await expect(ctx.agents.withInitiator({ session } as Agent, () => ctx.web.search({ query: 'q' })))
+      await expect(searchProvider({ ...options, accountRoute: true }).search({ query: 'q' }))
         .rejects.toThrow('DeepSeek Account authentication is not supported')
+      await expect(ctx.agents.withInitiator({ session } as Agent, () => ctx.web.search({ query: 'q' })))
+        .rejects.toMatchObject({ code: 'WEB_PROVIDER_UNAVAILABLE' })
+      const fallbackSearch = vi.fn(async () => ({ sources: [], truncated: false }))
+      ctx.web.registerSearchProvider({ id: 'messages-fallback', available: () => true, search: fallbackSearch })
+      await expect(ctx.agents.withInitiator({ session } as Agent, () => ctx.web.search({ query: 'q' })))
+        .resolves.toEqual({ sources: [], truncated: false })
+      expect(fallbackSearch).toHaveBeenCalledOnce()
       expect(fetchMock).not.toHaveBeenCalled()
     } finally { await ctx.fiber.dispose() }
   })

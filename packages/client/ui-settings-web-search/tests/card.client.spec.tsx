@@ -48,6 +48,12 @@ describe('WebSearchCard', () => {
     return actions
   }
 
+  it.each([false, true])('explains missing credentials for the selected API (%s)', (useSearchApi) => {
+    renderWebSearch({ useSearchApi })
+    expect(screen.getByText(useSearchApi ? en.apiKeyUnsetApi : en.apiKeyUnset)).toBeTruthy()
+    expect(screen.queryByText(useSearchApi ? en.apiKeyUnset : en.apiKeyUnsetApi)).toBeNull()
+  })
+
   it('requires a separate opt-in before forwarding the triggering question', () => {
     const actions = renderWebSearch({ useSearchApi: true })
     const toggle = screen.getByRole('switch', { name: en.sendOriginalQuestion })

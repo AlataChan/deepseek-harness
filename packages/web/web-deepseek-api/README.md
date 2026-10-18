@@ -50,7 +50,7 @@ Run the real API tests with `DEEPSEEK_API_KEY` and `DEEPSEEK_SEARCH_API_TEST_BAS
 
 ### Authentication
 
-Account-routed Sessions are explicitly refused; no account service is imported or consulted. A non-empty literal `apiKey` wins over `apiKeyEnv`; the reference resolves through `ctx.credentials`, or the launch environment when that service is absent. API keys use `Authorization: Bearer`. Credential resolution and endpoint selection share one settings snapshot.
+Account-routed Sessions make both providers unavailable during selection, allowing another available provider to serve unpinned requests; direct Search / Fetch API dispatch on an account route is explicitly refused; no account service is imported or consulted. A non-empty literal `apiKey` wins over `apiKeyEnv`; the reference resolves through `ctx.credentials`, or the launch environment when that service is absent. API keys use `Authorization: Bearer`. Credential resolution and endpoint selection share one settings snapshot.
 
 ### Results and failures
 

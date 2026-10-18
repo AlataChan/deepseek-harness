@@ -831,6 +831,10 @@ describe('Node compatibility graph', () => {
 })
 
 describe('Node 24 lane ownership', () => {
+  it('checks provider model data freshness in CI', () => {
+    const subject = withPnpmEntrypoint(() => gatesForMode('ci-static'))
+    expect(subject.find(item => item.id === 'provider-data')?.args).toContain('verify-provider-data')
+  })
   it('keeps the static lane source-only', () => {
     const subject = withPnpmEntrypoint(() => gatesForMode('ci-static'))
 

@@ -17,6 +17,8 @@ const USER_AGENT = 'deepseek-harness/0.0.1'
 
 /** Authentication and endpoint values resolved once for an operation. */
 export interface DeepSeekWebAuth {
+  /** Account routes are unavailable in this distribution; only explicit API-key routes dispatch. */
+  accountRoute?: boolean
   /** Literal API key; takes precedence over the credential resolver. */
   apiKey?: string
   /** Resolve the current API key without retaining it. */
@@ -65,14 +67,13 @@ interface DeepSeekWebRequest<T> {
  * @returns Authentication sources for one operation.
  */
 export function deepSeekWebAuth(ctx: Context, config: { apiKey: string | undefined; apiKeyEnv: string }): DeepSeekWebAuth {
-  if (ctx.get('agents')?.currentInitiator()?.session.requestContext()?.provider === 'deepseek-account') {
-    throw new WebError('DeepSeek Account authentication is not supported by Search / Fetch APIs in this distribution; select an API-key model route.', 'WEB_PROVIDER_ERROR')
-  }
+  const accountRoute = ctx.get('agents')?.currentInitiator()?.session.requestContext()?.provider === 'deepseek-account'
   const apiKeyEnv = credentialRef(config.apiKeyEnv)
   const literalApiKey = config.apiKey !== undefined && config.apiKey.length > 0
     ? config.apiKey
     : undefined
   return {
+    accountRoute,
     ...literalApiKey === undefined ? {} : { apiKey: literalApiKey },
     resolveApiKey: async () => {
       const credentials = ctx.get('credentials')
@@ -87,12 +88,12 @@ export function deepSeekWebAuth(ctx: Context, config: { apiKey: string | undefin
 /* jscpd:ignore-end */
 
 /**
- * Check whether an authentication source exists; does not resolve credentials.
+ * Check whether this route supports an authentication source; does not resolve credentials.
  * @param auth - Sources for the operation.
- * @returns Whether a literal key or resolver is present.
+ * @returns Whether an API-key route has a literal key or resolver.
  */
 export function hasDeepSeekWebCredential(auth: DeepSeekWebAuth): boolean {
-  return (auth.apiKey?.length ?? 0) > 0 || auth.resolveApiKey !== undefined
+  return auth.accountRoute !== true && ((auth.apiKey?.length ?? 0) > 0 || auth.resolveApiKey !== undefined)
 }
 
 /** Narrow a remote JSON object.
@@ -125,6 +126,9 @@ interface SearchAuth {
 export async function dispatchDeepSeekWeb<T>(
   options: DeepSeekWebAuth, request: DeepSeekWebRequest<T>, signal?: AbortSignal,
 ): Promise<T> {
+  if (options.accountRoute === true) {
+    throw new WebError('DeepSeek Account authentication is not supported by Search / Fetch APIs in this distribution; select an API-key model route.', 'WEB_PROVIDER_ERROR')
+  }
   const { endpoint, body, decode, recordRequest, guidance } = request
   const auth = await authHeaders(options, request, signal)
   throwIfSearchAborted(signal)

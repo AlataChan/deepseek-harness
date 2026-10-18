@@ -67,7 +67,7 @@ export function WebSearchCard(props: WebSearchCardProps) {
         disabled={!state.apiKeyWritable}
         text={state.apiKey.text}
         configured={state.apiKeyConfigured}
-        stateLabel={state.apiKeyConfigured ? t('apiKeySet') : t('apiKeyUnset')}
+        stateLabel={state.apiKeyConfigured ? t('apiKeySet') : t(state.useSearchApi ? 'apiKeyUnsetApi' : 'apiKeyUnset')}
         onEdit={(text) => { props.edit('apiKey', text) }}
       />
       <SettingsValueField

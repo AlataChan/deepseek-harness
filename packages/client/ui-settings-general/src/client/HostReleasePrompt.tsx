@@ -74,8 +74,8 @@ export function HostReleasePrompt({ useReleaseChange, dismissRelease, reloadPage
       className={clsx(css.dialog)}
       footer={(
         <>
-          <Button variant="outline" onClick={dismissRelease}>{t('hostRelease.later')}</Button>
-          <Button variant="primary" data-modal-autofocus onClick={reloadPage}>{t('hostRelease.reload')}</Button>
+          <Button variant="outline" data-modal-autofocus onClick={dismissRelease}>{t('hostRelease.later')}</Button>
+          <Button variant="primary" onClick={reloadPage}>{t('hostRelease.reload')}</Button>
         </>
       )}
     >

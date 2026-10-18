@@ -349,6 +349,7 @@ function ciSharedStaticGates(): Gate[] {
     pnpmScript('constraints', 'constraints'),
     pnpmScript('package-dependencies', 'verify-package-dependencies', { label: 'package dependencies' }),
     pnpmScript('dsh-package-licenses', 'verify-dsh-package-licenses', { label: 'DSH package licenses' }),
+    pnpmScript('provider-data', 'verify-provider-data', { label: 'provider model data' }),
     pnpmScript('package-meta', 'verify-package-meta', { label: 'package metadata' }),
     pnpmScript('cordis-config', 'verify-cordis-config', { label: 'Cordis config' }),
     ...sharedHygieneGates(),

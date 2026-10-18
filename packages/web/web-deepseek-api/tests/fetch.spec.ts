@@ -11,6 +11,16 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 afterEach(() => { vi.unstubAllGlobals() })
 
 describe('DeepSeek Fetch API', () => {
+  it('declines account routes during selection and refuses direct dispatch', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const resolveApiKey = vi.fn(async () => 'must-not-resolve')
+    const provider = fetchProvider({ ...options, accountRoute: true, resolveApiKey })
+    expect(provider.available()).toBe(false)
+    await expect(provider.fetch({ url: 'https://example.com' })).rejects.toThrow('DeepSeek Account authentication is not supported')
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(resolveApiKey).not.toHaveBeenCalled()
+  })
   it('posts the URL and returns the Markdown as a retrieved page', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse({ title: 'Example', content: '# Article\n\nBody' }))
     vi.stubGlobal('fetch', fetchMock)

@@ -6,7 +6,7 @@ import type { SettingsFormLabels } from '@deepseek-ai/dsh-client-ui-primitives'
 export type WebSearchSettingsLocaleKey =
   | 'title' | 'description' | 'useSearchApi' | 'useSearchApiHint' | 'searchGuide' | 'searchGuideUrl'
   | 'sendOriginalQuestion' | 'sendOriginalQuestionHint'
-  | 'apiKey' | 'apiKeyHint' | 'apiKeySet' | 'apiKeyUnset'
+  | 'apiKey' | 'apiKeyHint' | 'apiKeySet' | 'apiKeyUnset' | 'apiKeyUnsetApi'
   | 'baseUrl' | 'baseUrlHint' | 'searchApiBaseUrl' | 'searchApiBaseUrlHint' | 'maxUses' | 'maxUsesHint' | 'count' | 'countHint'
   | 'overridden' | 'reset' | 'readOnly' | 'unavailable'
   | 'save' | 'saving' | 'saveFailed' | 'invalidNumber' | 'invalidCount'
@@ -24,7 +24,8 @@ export const en: Record<WebSearchSettingsLocaleKey, string> = {
   apiKey: 'API key',
   apiKeyHint: 'Stored outside the settings file. Leave blank to keep the current key.',
   apiKeySet: 'A key is configured.',
-  apiKeyUnset: 'No key is configured. The Search / Fetch APIs require an API key.',
+  apiKeyUnset: 'No key is configured. Messages search can use a DeepSeek Account model through its default endpoint; API-key model routes require a key.',
+  apiKeyUnsetApi: 'No key is configured. The Search / Fetch APIs require an API key and do not support DeepSeek Account model routes.',
   baseUrl: 'Messages API base URL',
   baseUrlHint: 'Include the API prefix, such as https://api.deepseek.com/anthropic/v1. The provider appends /messages. Leave blank to restore the default.',
   searchApiBaseUrl: 'Search / Fetch API base URL',
@@ -57,7 +58,8 @@ export const zh: Record<WebSearchSettingsLocaleKey, string> = {
   apiKey: 'API Key',
   apiKeyHint: '不写入设置文件。留空表示保持当前密钥。',
   apiKeySet: '已配置密钥。',
-  apiKeyUnset: '未配置密钥。Search / Fetch API 需要 API Key。',
+  apiKeyUnset: '未配置密钥。Messages 搜索可通过默认接口使用 DeepSeek 账号模型；API Key 模型路由需要密钥。',
+  apiKeyUnsetApi: '未配置密钥。Search / Fetch API 需要 API Key，不支持 DeepSeek 账号模型路由。',
   baseUrl: 'Messages API 基础地址',
   baseUrlHint: '填写含 API 前缀的地址，例如 https://api.deepseek.com/anthropic/v1；程序追加 /messages，留空恢复默认。',
   searchApiBaseUrl: 'Search / Fetch API 基础地址',

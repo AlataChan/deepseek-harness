@@ -50,7 +50,7 @@ kind: "package-reference"
 
 ### 鉴权
 
-账号路由会话被明确拒绝；不导入或调用账号服务。非空的字面 `apiKey` 优先于 `apiKeyEnv`；凭据引用通过 `ctx.credentials` 解析，该服务缺省时使用启动环境。API 密钥使用 `Authorization: Bearer`。凭据解析和端点选择使用同一份设置快照。
+账号路由会话使两个提供方在选择阶段均不可用，未指定提供方的请求可以选择其他可用提供方；直接在账号路由上调用 Search / Fetch API 会被明确拒绝；不导入或调用账号服务。非空的字面 `apiKey` 优先于 `apiKeyEnv`；凭据引用通过 `ctx.credentials` 解析，该服务缺省时使用启动环境。API 密钥使用 `Authorization: Bearer`。凭据解析和端点选择使用同一份设置快照。
 
 ### 结果与失败
 
