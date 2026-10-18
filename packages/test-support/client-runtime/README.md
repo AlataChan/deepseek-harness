@@ -11,8 +11,6 @@ English | [中文](README.zh.md)
 
 `SlotTestRuntime.create()` lets Vitest suites drive production slots, stores, typed Session and Workspace fixtures, and local DOM assertions in jsdom. For plugin activation, reload, reconnect, and cleanup tests, `createClientTest` starts the web profile's bundle roster with endpoint-named Remote mocks, without a business Host. Missing services and unstubbed calls fail explicitly. The whole-client fixture owns startup and disposal; the local runtime provides idempotent disposal. Use this package through `devDependencies` for client tests; it is not a product plugin.
 
-Bundle rows can refer to their own package without declaring a self dependency. Linked bundles resolve dependencies from their real package directories; dependencies next to any bundle take precedence over packages inherited from ancestor directories.
-
 ## Table of Contents
 
 - [Use this package](#use-this-package)
@@ -69,6 +67,8 @@ expect(view.getByRole('alert')).toHaveTextContent('goal/not-found')
 ```
 
 ### Whole-client tier
+
+Bundle rows can refer to their own package without declaring a self dependency. Linked bundles resolve dependencies from their real package directories; dependencies next to any bundle take precedence over packages inherited from ancestor directories.
 
 The slot tier above mounts one feature against doubles. The whole-client tier boots the real assembly: `TestClient.start(plan, mock, options)` imports every roster row's `/client` module in-process (or takes the plan's `provide` replacement), binds `{ rpc: mock.rpc }` to that client's Connection module, synthesizes the boot graph with `graphFromRoster` and hands the loaded modules to the production module system, boots through the production `bootClient`, optionally mounts `uiRenderer`, and waits for `ctx.connection.state === 'connected'`. It lives behind a deep import so slot-tier specs never load it:
 

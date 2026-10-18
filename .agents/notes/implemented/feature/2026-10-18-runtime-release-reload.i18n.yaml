@@ -5,6 +5,12 @@
 /agent-note-refuse-client-modules-from-another-host-runtime-release:
   en: 43791ee6a9506a31
   zh: 474ae2fbe9f220d3
+/agent-note-refuse-client-modules-from-another-host-runtime-release/problem:
+  en: 5b7c175947dad2dc
+  zh: 1454faf81b73cd4a
+/agent-note-refuse-client-modules-from-another-host-runtime-release/alternatives-considered:
+  en: 95b4723a72ae3e7f
+  zh: f621b37b277284f6
 /agent-note-refuse-client-modules-from-another-host-runtime-release/decision:
   en: 35b86824c1c797b1
   zh: c77ab20573876c8a

@@ -4,6 +4,16 @@ Status: implemented
 
 English | [中文](2026-10-18-runtime-release-reload.zh.md)
 
+## Problem
+
+A cached Client or a page reconnecting after reinstall can receive modules from another source commit even when the shell and companion runtime versions match.
+
+## Alternatives considered
+
+**Use only the existing Tauri version check.** That check protects the installed shell/companion pair but cannot distinguish stale Client bundles built from different commits with the same version.
+
+**Hot-apply a mismatched graph.** Replacing shared code beneath an active page risks mixing incompatible module state; requiring reload keeps the running page intact.
+
 ## Decision
 
 The graph carries a Host runtime release, separate from plugin revisions and the Tauri shell version. The shared desktop build producer reads the CLI runtime version and full source commit. Complete Git builds expose these as `DSH_CLIENT_RELEASE_VERSION` and `DSH_CLIENT_RELEASE_COMMIT`; the existing short `DSH_CLIENT_COMMIT_HASH` remains display metadata. Node and browser artifacts embed the release fields, and desktop artifact metadata uses the same producer.

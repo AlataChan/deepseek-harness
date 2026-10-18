@@ -11,8 +11,6 @@ kind: "package-library"
 
 `SlotTestRuntime.create()` 让 Vitest 套件在 jsdom 中驱动生产 slot、store、带类型的 Session 与 Workspace fixture，并对局部 DOM 断言。面向插件激活、重载、重连与清理的测试，`createClientTest` 使用具名端点 Remote mock 启动 web profile 的 bundle roster，无需业务 Host。缺失服务与未打桩调用会明确失败。整机 fixture 拥有启动和销毁，局部 runtime 提供幂等销毁。通过 `devDependencies` 将本包用于客户端测试；它不是产品插件。
 
-Bundle 条目可引用自身包，无需声明自身依赖。链接到工作区的 bundle 从实际包目录解析依赖；各 bundle 自身目录中的依赖优先于祖先目录中继承的包。
-
 ## 目录
 
 - [使用本包](#use-this-package)
@@ -69,6 +67,8 @@ expect(view.getByRole('alert')).toHaveTextContent('goal/not-found')
 ```
 
 ### 整体档
+
+Bundle 条目可引用自身包，无需声明自身依赖。链接到工作区的 bundle 从实际包目录解析依赖；各 bundle 自身目录中的依赖优先于祖先目录中继承的包。
 
 上面的 slot 档把一个功能挂在替身上。整体档起真实装配：`TestClient.start(plan, mock, options)` 进程内 import 每个 roster 行的 `/client` 模块（或取计划里的 `provide` 替换），把 `{ rpc: mock.rpc }` 绑定到该客户端的 Connection 模块，用 `graphFromRoster` 合成启动图并把已加载模块交给生产模块系统，经生产 `bootClient` 启动，按需挂载 `uiRenderer`，再等 `ctx.connection.state === 'connected'`。它藏在深 import 后面，slot 档测试永不加载它：
 

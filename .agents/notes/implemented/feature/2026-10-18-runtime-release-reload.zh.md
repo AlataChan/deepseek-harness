@@ -4,6 +4,16 @@
 
 [English](2026-10-18-runtime-release-reload.md) | 中文
 
+## 问题
+
+缓存的 Client 或重装后重新连接的页面，可能收到不同源码提交的模块，即使壳与 companion 的运行时版本相同。
+
+## 考虑过的替代方案
+
+**仅使用现有 Tauri 版本检查。** 该检查保护已安装的壳与 companion 组合，但无法区分版本号相同、提交不同的旧 Client 包。
+
+**热应用不匹配的图。** 在活动页面下替换共享代码可能混用不兼容的模块状态；要求重新加载可保留当前页面。
+
 ## 决策
 
 图携带 Host 运行时发布身份，与插件修订和 Tauri 外壳版本分开。共享桌面构建生成器读取 CLI 运行时版本和完整源码提交。完整 Git 构建通过 `DSH_CLIENT_RELEASE_VERSION` 与 `DSH_CLIENT_RELEASE_COMMIT` 提供身份；现有短 `DSH_CLIENT_COMMIT_HASH` 仍作为显示元数据。Node 和浏览器产物嵌入发布字段，桌面产物元数据使用同一生成器。
