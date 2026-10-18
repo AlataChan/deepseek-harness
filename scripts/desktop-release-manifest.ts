@@ -19,11 +19,25 @@ export interface DesktopReleaseManifest {
   repository: string
   ref: string
   release: DesktopBuildIdentity
+  /** Executable version from apps/desktop/src-tauri/tauri.conf.json. */
   shellVersion: string
   target: 'windows-x64' | 'macos-arm64' | 'macos-x64'
   payloadSha256: string
   artifact: { name: string; bytes: number; sha256: string }
   workflow?: DesktopWorkflowIdentity
+}
+/**
+ * Read the executable version from the Tauri configuration used by the installer.
+ * @param root - source checkout root.
+ * @returns shell version, independently of the JavaScript and Harness packages.
+ */
+export function desktopShellVersion(root: string): string {
+  const config: unknown = JSON.parse(readFileSync(join(root, 'apps/desktop/src-tauri/tauri.conf.json'), 'utf8'))
+  if (typeof config !== 'object' || config === null || !('version' in config)
+    || typeof config.version !== 'string' || config.version.trim() === '') {
+    throw new Error('Missing or invalid Tauri shell version')
+  }
+  return config.version
 }
 /** Compute the size and digest from the actual final artifact bytes. @param path - artifact file. @returns observed bytes and hash. */
 export function artifactDigest(path: string): DesktopReleaseManifest['artifact'] {

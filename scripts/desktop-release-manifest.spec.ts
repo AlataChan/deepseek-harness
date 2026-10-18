@@ -2,11 +2,24 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, unlinkSync,
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { artifactDigest, payloadDigest, validateReleaseManifest } from './desktop-release-manifest.ts'
+import { artifactDigest, desktopShellVersion, payloadDigest, validateReleaseManifest } from './desktop-release-manifest.ts'
 
 const dirs: string[] = []
 afterEach(() =>{  dirs.splice(0).forEach((dir) =>{  rmSync(dir, { recursive: true, force: true }) }) })
 describe('desktop release manifest', () => {
+  it('records the Tauri executable version independently of the JavaScript package', () => {
+    const root = mkdtempSync(join(tmpdir(), 'desktop-shell-version-')); dirs.push(root)
+    mkdirSync(join(root, 'apps/desktop/src-tauri'), { recursive: true })
+    writeFileSync(join(root, 'apps/desktop/package.json'), JSON.stringify({ version: '9.9.9' }))
+    writeFileSync(join(root, 'apps/desktop/src-tauri/tauri.conf.json'), JSON.stringify({ version: '0.1.2-rc.3' }))
+    expect(desktopShellVersion(root)).toBe('0.1.2-rc.3')
+  })
+  it.each([{}, { version: '' }, { version: '   ' }, { version: 12 }, null, []])('refuses an absent or invalid Tauri version: %j', (config) => {
+    const root = mkdtempSync(join(tmpdir(), 'desktop-shell-version-')); dirs.push(root)
+    mkdirSync(join(root, 'apps/desktop/src-tauri'), { recursive: true })
+    writeFileSync(join(root, 'apps/desktop/src-tauri/tauri.conf.json'), JSON.stringify(config))
+    expect(() => desktopShellVersion(root)).toThrow('Tauri shell version')
+  })
   it('hashes installed bytes deterministically and observes changes', () => {
     const root = mkdtempSync(join(tmpdir(), 'desktop-manifest-')); dirs.push(root)
     mkdirSync(join(root, 'resources')); writeFileSync(join(root, 'resources', 'node.exe'), 'node')

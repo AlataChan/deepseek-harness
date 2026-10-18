@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/cookbook/desktop-releases.md
 /desktop-release-preparation-and-publication:
-  en: 834045d3bf4e071c
-  zh: f2cca4a13866c291
+  en: d1b86d2aadf16431
+  zh: 230108cb83fb0535
 /desktop-release-preparation-and-publication/prepare-a-candidate:
   en: a7c821e057fc09b4
   zh: 59cf5fd6ec09b9b9

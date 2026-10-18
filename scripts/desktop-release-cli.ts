@@ -1,9 +1,9 @@
 /** Explicit desktop manifest creation, qualification, planning and publication commands. */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { desktopBuildIdentity } from './desktop-build-identity.ts'
-import { artifactDigest, payloadDigest, validateReleaseManifest } from './desktop-release-manifest.ts'
+import { artifactDigest, desktopShellVersion, payloadDigest, validateReleaseManifest } from './desktop-release-manifest.ts'
 import { assertArtifactBytes, assertRunEvidence, verifyNativeSignatures, verifyDownloadedArtifact } from './verify-desktop-release.ts'
 import { GitHubDesktopReleaseTransport } from './desktop-release-github.ts'
 import { planPublication, publishDesktopRelease, validatePublicationPlan, verifyPublication, qualifyReviewedPlan } from './desktop-release-publish.ts'
@@ -36,10 +36,8 @@ if (command === 'identity') {
   const workflow = process.env.GITHUB_RUN_ID === undefined ? undefined : {
     path: process.env.DSH_BUILD_WORKFLOW, commit: process.env.GITHUB_SHA, runId: envInt('GITHUB_RUN_ID'), attempt: envInt('GITHUB_RUN_ATTEMPT'), artifactName: process.env.DSH_BUILD_ARTIFACT_NAME,
   }
-  const shell: unknown = read(join(root, 'apps/desktop/package.json'))
-  if (typeof shell !== 'object' || shell === null || !('version' in shell)) throw new Error('Missing shell version')
   const manifest = validateReleaseManifest({ schemaVersion: 1, mode, repository: process.env.GITHUB_REPOSITORY ?? 'AlataChan/deepseek-harness',
-    ref: process.env.GITHUB_REF ?? 'local', release, shellVersion: shell.version, target, payloadSha256: payloadDigest(payload), artifact: artifactDigest(artifact), workflow })
+    ref: process.env.GITHUB_REF ?? 'local', release, shellVersion: desktopShellVersion(root), target, payloadSha256: payloadDigest(payload), artifact: artifactDigest(artifact), workflow })
   assertArtifactBytes(manifest, artifact, payload)
   if (manifest.mode === 'public' && !signaturePayload) throw new Error('Explicit signed app/executable path is required')
   verifyNativeSignatures(manifest, artifact, signaturePayload ?? payload)
