@@ -1173,6 +1173,15 @@ describe('headless recorded-session snapshots', () => {
               ? {}
               : { DSH_PERMISSION_MODE: scenario.manifest.permission }),
             ...scenario.manifest.environment,
+            ...(scenario.name === 'codex-partial-answer' ? {
+              HOME: spillRoot,
+              USERPROFILE: spillRoot,
+              CODEX_HOME: join(spillRoot, '.codex'),
+              CODEX_FIXTURE_HOME: spillRoot,
+              ...Object.fromEntries([...Object.keys(process.env), ...Object.keys(scenario.manifest.environment ?? {})]
+                .filter(key => /^(?:OPENAI_(?:API_KEY|ACCESS_TOKEN|AUTH_TOKEN)|CODEX_(?:API_KEY|ACCESS_TOKEN)|CHATGPT_(?:ACCESS_TOKEN|AUTH_TOKEN))$/i.test(key))
+                .map(key => [key, undefined])),
+            } : {}),
             ...(scenario.name === 'mcp-resources' || scenario.name === 'mcp-resources-ptc' ? {
               DSH_MCP_RESOURCES_FIXTURE: join(repoRoot, 'packages/mcp/mcp-client/tests/fixtures/resources-server.ts'),
             } : {}),

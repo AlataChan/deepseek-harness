@@ -1,6 +1,15 @@
 /** Keyless JSON-RPC app-server peer; no Codex executable, credentials, or network. */
 import { appendFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
+import { isAbsolute, join } from 'node:path'
+
+const home = process.env.CODEX_FIXTURE_HOME
+if (home === undefined || !isAbsolute(home) || process.env.HOME !== home
+  || process.env.USERPROFILE !== home || process.env.CODEX_HOME !== join(home, '.codex')
+  || Object.keys(process.env).some(key => /^(?:OPENAI_(?:API_KEY|ACCESS_TOKEN|AUTH_TOKEN)|CODEX_(?:API_KEY|ACCESS_TOKEN)|CHATGPT_(?:ACCESS_TOKEN|AUTH_TOKEN))$/i.test(key))) {
+  process.stderr.write('codex-partial-answer: private credential-free fixture environment required\n')
+  process.exit(1)
+}
 
 const threadId = 'fixture-thread'
 const turnId = 'fixture-turn'
