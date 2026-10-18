@@ -1,13 +1,12 @@
 /** Reject incomplete installed targets before any product process can run. */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 // This JavaScript verifier is also the supported standalone installed gate.
-// @ts-expect-error Standalone release scripts intentionally have no declaration file.
-import { validateInstalledTarget } from '../verify-composer-predictions-installed-flows.mjs'
+import { validateInstalledTarget, installedVerificationPath } from '../verify-composer-predictions-installed-flows.mjs'
 
 function withFixture(run: (root: string) => void) {
   const root = mkdtempSync(join(tmpdir(), 'prediction-verifier-negative-'))
@@ -15,6 +14,32 @@ function withFixture(run: (root: string) => void) {
 }
 
 describe('installed prediction verifier negative controls', () => {
+  it('excludes developer tools even when the invoking environment exposes them', () => {
+    withFixture((root) => {
+      const developer = join(root, 'developer-tools'); mkdirSync(developer)
+      const embedded = join(root, 'embedded'); mkdirSync(embedded)
+      const command = process.platform === 'win32' ? 'prediction-developer-only.exe' : 'prediction-developer-only'
+      const executable = join(developer, command)
+      writeFileSync(executable, '#!/bin/sh\nexit 73\n'); chmodSync(executable, 0o755)
+      vi.stubEnv('PATH', developer)
+      try {
+        const path = installedVerificationPath(join(embedded, process.platform === 'win32' ? 'node.exe' : 'node'))
+        expect(path).not.toContain(developer)
+        const result = spawnSync(command, [], { env: { ...process.env, PATH: path }, timeout: 5000 })
+        expect(result.error).toMatchObject({ code: 'ENOENT' })
+      } finally { vi.unstubAllEnvs() }
+    })
+  })
+  it.skipIf(process.platform !== 'darwin')('admits macOS system sqlite without a developer installation', () => {
+    withFixture((root) => {
+      const path = installedVerificationPath(join(root, 'node'))
+      const result = spawnSync('sqlite3', ['-safe', '-batch', ':memory:', 'SELECT 1;'], {
+        env: { PATH: path }, encoding: 'utf8', timeout: 5000,
+      })
+      expect(result.status).toBe(0)
+      expect(result.stdout.trim()).toBe('1')
+    })
+  })
   it('standalone command fails closed without a target', () => {
     const script = fileURLToPath(new URL('../verify-composer-predictions-installed-flows.mjs', import.meta.url))
     const result = spawnSync(process.execPath, [script], { encoding: 'utf8', timeout: 5000 })
@@ -26,10 +51,10 @@ describe('installed prediction verifier negative controls', () => {
     expect(() => validateInstalledTarget()).toThrow(/Explicit installed/)
   })
   it('rejects a nonexistent target', () => {
-    withFixture(root => expect(() => validateInstalledTarget(join(root, 'absent'))).toThrow())
+    withFixture((root) => { expect(() => validateInstalledTarget(join(root, 'absent'))).toThrow() })
   })
   it('rejects an empty application directory', () => {
-    withFixture(root => expect(() => validateInstalledTarget(root)).toThrow())
+    withFixture((root) => { expect(() => validateInstalledTarget(root)).toThrow() })
   })
   it('rejects the previous false-positive fixture with just two empty plugin folders', () => {
     withFixture((root) => {

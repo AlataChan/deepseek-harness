@@ -3,13 +3,14 @@
  * Execute synthetic prediction acceptance against an explicit installed app/resources directory.
  * This verifier never imports checkout product code or invokes workspace build/test commands.
  * Browser keyboard/presentation acceptance is a separate browser lane.
+ * Executable discovery admits the bundled runtime and platform system utilities only.
  */
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { accessSync, constants, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { delimiter, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 function requireInside(root, path) {
@@ -75,6 +76,23 @@ export function validateInstalledTarget(target) {
   return { resources, node, companion, plugins }
 }
 
+/**
+ * Keep installed verification independent of developer tools while admitting OS utilities.
+ * @param node - validated absolute path to the installed Node executable.
+ * @returns executable search path containing no inherited PATH entries.
+ */
+export function installedVerificationPath(node) {
+  let systemDirectories
+  if (process.platform === 'win32') {
+    assert(process.env.SystemRoot && isAbsolute(process.env.SystemRoot), 'Windows SystemRoot is required')
+    const windows = realpathSync(process.env.SystemRoot)
+    systemDirectories = [join(windows, 'System32'), windows]
+  } else {
+    systemDirectories = ['/usr/bin', '/bin', '/usr/sbin', '/sbin']
+  }
+  return [dirname(node), ...systemDirectories].join(delimiter)
+}
+
 const delay = ms => new Promise(done => setTimeout(done, ms))
 async function until(read, predicate, label, timeout = 12000) {
   const deadline = Date.now() + timeout
@@ -113,7 +131,7 @@ class InstalledClient {
     const env = {
       HOME: this.home, USERPROFILE: this.home, DSH_HOME: join(this.home, '.dsh'),
       OCTOPUS_APP_DATA: join(this.home, 'app-data'), OCTOPUS_SIDECAR_HOME: join(this.bundle.resources, 'kb-runtime'),
-      DEEPSEEK_API_KEY: 'synthetic-loopback-only', PATH: dirname(this.bundle.node),
+      DEEPSEEK_API_KEY: 'synthetic-loopback-only', PATH: installedVerificationPath(this.bundle.node),
       TMPDIR: this.home, TMP: this.home, TEMP: this.home,
       ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}),
     }
