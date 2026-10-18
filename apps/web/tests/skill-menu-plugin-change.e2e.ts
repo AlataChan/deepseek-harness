@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium, type Browser, type Locator, type Page } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
 import { launchWebScaffold, watchConsole, type WebScaffold } from './scaffold.ts'
-import { connectFreshWorkspace, newEnglishPage, PLUGIN_TOGGLE_SETTLE_MS, saveFailureShot, writeComposerDraft } from './support.ts'
+import { connectFreshWorkspace, newEnglishPage, saveFailureShot, writeComposerDraft } from './support.ts'
 
 const BUNDLE_DIR = fileURLToPath(new URL('../../../packages/experimental/badge-skill-bundle', import.meta.url))
 const BUNDLE = '@deepseek-ai/dsh-experimental-badge-skill-bundle'
@@ -76,7 +76,7 @@ describe('web e2e: the slash menu follows plugin switches', () => {
   async function switchBundle(enabled: boolean): Promise<void> {
     expect(await toggle.getAttribute('aria-checked')).toBe(String(!enabled))
     await toggle.click()
-    await expect.poll(() => toggle.getAttribute('aria-checked'), { timeout: PLUGIN_TOGGLE_SETTLE_MS }).toBe(String(enabled))
+    await expect.poll(() => toggle.getAttribute('aria-checked'), { timeout: 10_000 }).toBe(String(enabled))
   }
 
   it('lists a switched bundle\'s skill only while the bundle is on, keeping the global skill', async () => {
