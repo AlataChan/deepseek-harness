@@ -200,7 +200,7 @@ ok "kb-runtime embedded"
 # Resign here so Gatekeeper does not report a stale signature as “已损坏”.
 # Ad-hoc signing is not Apple notarization; the DMG still ships an installer
 # that clears quarantine on the user's machine.
-info "Ad-hoc signing the bundle after embedding..."
+info "Signing the $BUILD_MODE bundle after embedding..."
 node "$REPO_ROOT/scripts/desktop-microphone.mjs" --apply "$APP_BUNDLE"
 node --import tsx/esm "$REPO_ROOT/scripts/desktop-release-cli.ts" identity "$RESOURCES/build-info.json"
 codesign --force "${SIGN_ARGS[@]}" "$RESOURCES/node"
@@ -216,7 +216,7 @@ codesign --force --deep "${SIGN_ARGS[@]}" "$APP_BUNDLE"
 if ! codesign --verify --deep "$APP_BUNDLE"; then
   fail "codesign --verify failed after embedding"
 fi
-ok "Bundle re-signed (adhoc)"
+ok "Bundle re-signed ($BUILD_MODE)"
 
 # ── 4. Readiness gate ───────────────────────────────────────────────────────
 #

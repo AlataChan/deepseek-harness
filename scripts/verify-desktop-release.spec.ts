@@ -54,3 +54,14 @@ it('rejects a changed payload identity even when a producer recomputes its tree 
     }).toThrow(/release identity/)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+
+it.skipIf(process.platform !== 'win32')('rejects an unsigned installer through native Authenticode', () => {
+  const root = mkdtempSync(join(tmpdir(), 'unsigned-authenticode-'))
+  const file = join(root, 'unsigned.exe')
+  writeFileSync(file, 'not an Authenticode signed executable')
+  try {
+    expect(() => {
+      verifyNativeSignatures(manifest, file, file, { ...process.env, DSH_WINDOWS_PUBLISHER: 'CN=Synthetic Publisher' })
+    }).toThrow(/Authenticode verification failed/)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
