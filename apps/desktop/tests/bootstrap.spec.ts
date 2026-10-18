@@ -1,6 +1,10 @@
 /** @vitest-environment jsdom */
 
 import { createHash } from 'node:crypto'
+import { Context } from '@deepseek-ai/cordis'
+import Loader from '@deepseek-ai/cordis-plugin-loader'
+import { apply as provideModules, createClientModuleSystem } from '@deepseek-ai/dsh-client-modules/client'
+import type { ClientModuleLoaderTarget, ClientBundleRegistration, WebBootGraph } from '@deepseek-ai/dsh-client-modules/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { VSCODE_CARRIER_PROTOCOL_VERSION } from '@deepseek-ai/dsh-client-connection-process/protocol'
 import type { ClientTransportHooks } from '@deepseek-ai/dsh-client-connection/client'
@@ -28,6 +32,7 @@ function readyFrame(overrides: {
   protocolVersion?: number
   runtimeVersion?: string
   sha256?: string
+  release?: { version: string; commit?: string }
 } = {}) {
   const source = 'export {}\n'
   return {
@@ -36,6 +41,7 @@ function readyFrame(overrides: {
     runtimeVersion: overrides.runtimeVersion ?? '0.0.1-test',
     maxLogicalRpcBytes: 4096,
     graph: {
+      ...overrides.release === undefined ? {} : { release: overrides.release },
       rev: 'graph-1',
       entries: [
         { id: MODULES, url: 'pending', rev: '1' },
@@ -119,6 +125,75 @@ function createMockPort(options: {
 }
 
 describe('bootDesktopClient', () => {
+  it('retains the Host release when bundle URLs are rewritten into the local cache', async () => {
+    const release = { version: '0.0.1-test', commit: 'a'.repeat(40) }
+    const mock = createMockPort({ ready: readyFrame({ release }) })
+    const outcome = await bootDesktopClient({
+      port: mock.port, root: document.createElement('div'), extensionVersion: 'independent-shell',
+      loadBundle: async () => {}, createAppEntry: () => ({ run: async () => {} }),
+    })
+    expect(outcome.status).toBe('ready')
+    expect((globalThis as { __DSH_BOOT__?: { release?: object } }).__DSH_BOOT__?.release).toEqual(release)
+  })
+
+  it('refuses a graph from another runtime before caching or executing any factories', async () => {
+    const mock = createMockPort({ ready: readyFrame({ release: { version: 'other-runtime', commit: 'b'.repeat(40) } }) })
+    const loadBundle = vi.fn(async () => {})
+    const createAppEntry = vi.fn(() => ({ run: async () => {} }))
+    const outcome = await bootDesktopClient({
+      port: mock.port, root: document.createElement('div'), extensionVersion: 'independent-shell', loadBundle, createAppEntry,
+    })
+    expect(outcome).toMatchObject({ status: 'home', reason: expect.stringContaining('Host graph release version mismatch') })
+    expect(mock.commands.filter(row => row.cmd === 'cache_bundle')).toEqual([])
+    expect(loadBundle).not.toHaveBeenCalled()
+    expect(createAppEntry).not.toHaveBeenCalled()
+  })
+
+  it('keeps cached running plugins when a reconnected Host announces another build of the same runtime', async () => {
+    const release = { version: '0.0.1-test', commit: 'a'.repeat(40) }
+    const mock = createMockPort({ ready: readyFrame({ release }) })
+    await bootDesktopClient({
+      port: mock.port, root: document.createElement('div'), extensionVersion: 'independent-shell',
+      loadBundle: async () => {}, createAppEntry: () => ({ run: async () => {} }),
+    })
+    const graph = (globalThis as { __DSH_BOOT__?: WebBootGraph }).__DSH_BOOT__
+    if (graph === undefined) throw new Error('desktop did not install its cached graph')
+    const factory = vi.fn<ClientBundleRegistration['factory']>(() => ({ apply() {} }))
+    const ctx = new Context()
+    const target: ClientModuleLoaderTarget = {
+      mode: 'queue', pendingQueue: [], load: () => {},
+      create: options => createClientModuleSystem(target, { id: MODULES, exports: { inject: ['loader'], apply: provideModules } }, options),
+    }
+    const modules = target.create({
+      boot: graph, staticModules: {},
+      loadBundle: async () => { target.load({ id: SIDEBAR, factory }) },
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      await ctx.plugin(Loader)
+      ctx.loader.internal = modules as never
+      await modules.entries.start(ctx.loader, modules.manifest)
+      expect(factory).toHaveBeenCalledTimes(1)
+      const previous = modules.loadCache.get(SIDEBAR)
+      const nextRelease = { ...release, commit: 'b'.repeat(40) }
+      // A restarted Host may also change its graph format; compare identity before reading it.
+      await modules.entries.sync({ release: nextRelease, entries: 'new-format' })
+      await modules.entries.reload(SIDEBAR, 'other-build')
+      expect(factory).toHaveBeenCalledTimes(1)
+      expect(modules.loadCache.get(SIDEBAR)).toBe(previous)
+      expect(modules.entries.releaseChange.getSnapshot()).toEqual({ page: release, previous: release, host: nextRelease })
+      modules.entries.dismissRelease()
+      expect(modules.entries.releaseChange.getSnapshot()).toBeUndefined()
+      await modules.entries.sync({ release: nextRelease, entries: 'still-new-format' })
+      expect(modules.entries.releaseChange.getSnapshot()).toBeUndefined()
+      expect(factory).toHaveBeenCalledTimes(1)
+    } finally {
+      await ctx.fiber.dispose()
+      await ctx.fiber.await()
+      warn.mockRestore()
+    }
+  })
+
   it('passes a downlink Channel into carrier_open and sends control/hello as the first uplink', async () => {
     const { port, commands } = createMockPort({})
     const root = document.createElement('div')

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { desktopBuildIdentity } from './desktop-build-identity.ts'
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
   existsSync,
@@ -122,13 +123,20 @@ export function repositoryClientBuildEnvironment(
   const inherited = { ...clientBuildEnvironment(environment) }
   delete inherited.DSH_CLIENT_COMMIT_HASH
   delete inherited.DSH_CLIENT_GIT_DIRTY
+  delete inherited.DSH_CLIENT_RELEASE_VERSION
+  delete inherited.DSH_CLIENT_RELEASE_COMMIT
   delete inherited.DSH_CLIENT_VERSION
   const dirty = repositoryGitDirty(root)
+  const release = dirty === undefined ? undefined : desktopBuildIdentity(root)
   return {
     ...inherited,
     DSH_CLIENT_COMMIT_HASH: repositoryCommitHash(root, environment),
     ...(dirty === true ? { DSH_CLIENT_GIT_DIRTY: 'true' } : {}),
     DSH_CLIENT_VERSION: repositoryVersion(root),
+    ...release === undefined ? {} : {
+      DSH_CLIENT_RELEASE_VERSION: release.version,
+      DSH_CLIENT_RELEASE_COMMIT: release.commit,
+    },
   }
 }
 
@@ -142,9 +150,14 @@ export function officialClientBuildEnvironment(
   root: string,
   environment: NodeJS.ProcessEnv = process.env,
 ): Readonly<Record<`DSH_CLIENT_${string}`, string>> {
+  const release = repositoryGitDirty(root) === undefined ? undefined : desktopBuildIdentity(root)
   return {
     DSH_CLIENT_COMMIT_HASH: repositoryCommitHash(root, environment),
     DSH_CLIENT_VERSION: repositoryVersion(root),
+    ...release === undefined ? {} : {
+      DSH_CLIENT_RELEASE_VERSION: release.version,
+      DSH_CLIENT_RELEASE_COMMIT: release.commit,
+    },
     ...OFFICIAL_CLIENT_BUILD_ENVIRONMENT,
   }
 }
@@ -201,6 +214,12 @@ export function resolveClientBuildEnvironment(
     return {
       DSH_CLIENT_COMMIT_HASH: commitHash,
       DSH_CLIENT_VERSION: version,
+      ...environment.DSH_CLIENT_RELEASE_VERSION === undefined ? {} : {
+        DSH_CLIENT_RELEASE_VERSION: environment.DSH_CLIENT_RELEASE_VERSION,
+      },
+      ...environment.DSH_CLIENT_RELEASE_COMMIT === undefined ? {} : {
+        DSH_CLIENT_RELEASE_COMMIT: environment.DSH_CLIENT_RELEASE_COMMIT,
+      },
       ...OFFICIAL_CLIENT_BUILD_ENVIRONMENT,
     }
   }
@@ -265,7 +284,19 @@ export function assertClientBuildEnvironment(
 export function clientBuildEnvironmentDefines(
   environment: NodeJS.ProcessEnv,
 ): Record<string, string> {
-  const defines: Record<string, string> = { 'process.env': '{}' }
+  return { 'process.env': '{}', ...clientBuildValueDefines(environment) }
+}
+
+/**
+ * Create Node-face substitutions that fix each public client build value into the artifact.
+ * `process.env` itself stays untouched, so Host code keeps reading its other variables at runtime.
+ * @param environment - environment inherited by the build process.
+ * @returns one deterministic tsdown `define` expression per public value the build sets.
+ */
+export function clientBuildValueDefines(
+  environment: NodeJS.ProcessEnv,
+): Record<string, string> {
+  const defines: Record<string, string> = {}
   for (const [name, value] of Object.entries(clientBuildEnvironment(environment))) {
     defines[`process.env.${name}`] = JSON.stringify(value)
   }

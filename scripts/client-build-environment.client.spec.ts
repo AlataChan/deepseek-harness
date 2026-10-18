@@ -8,6 +8,7 @@ import {
   assertClientBuildEnvironment,
   clientBuildEnvironmentDefines,
   clientBuildProcessEnvironment,
+  clientBuildValueDefines,
   officialClientBuildEnvironment,
   readClientBuildRecord,
   repositoryClientBuildEnvironment,
@@ -67,12 +68,13 @@ function repositoryFixture(version = '1.2.3-rc.4'): string {
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'dsh-client-build-repository-'))
   roots.push(fixtureRoot)
   write(join(fixtureRoot, 'package.json'), `${JSON.stringify({ version })}\n`)
+  write(join(fixtureRoot, 'apps/cli/package.json'), `${JSON.stringify({ version })}\n`)
   write(join(fixtureRoot, 'tracked.txt'), 'committed\n')
   git(fixtureRoot, ['init'])
   git(fixtureRoot, ['config', 'user.name', 'DSH test'])
   git(fixtureRoot, ['config', 'user.email', 'dsh-test@example.invalid'])
   git(fixtureRoot, ['config', 'commit.gpgsign', 'false'])
-  git(fixtureRoot, ['add', 'package.json', 'tracked.txt'])
+  git(fixtureRoot, ['add', 'package.json', 'apps/cli/package.json', 'tracked.txt'])
   git(fixtureRoot, ['commit', '-m', 'fixture'])
   return fixtureRoot
 }
@@ -151,16 +153,22 @@ describe('client build environment', () => {
       DSH_CLIENT_EXTRA: 'preserved',
       DSH_CLIENT_GIT_DIRTY: 'true',
       DSH_CLIENT_VERSION: 'spoofed',
+      DSH_CLIENT_RELEASE_VERSION: 'spoofed-runtime',
+      DSH_CLIENT_RELEASE_COMMIT: 'b'.repeat(40),
     })).toEqual({
       DSH_CLIENT_COMMIT_HASH: COMMIT_HASH.slice(0, 7),
       DSH_CLIENT_EXTRA: 'preserved',
       DSH_CLIENT_VERSION: '1.2.3-rc.4',
+      DSH_CLIENT_RELEASE_VERSION: '1.2.3-rc.4',
+      DSH_CLIENT_RELEASE_COMMIT: git(fixtureRoot, ['rev-parse', 'HEAD']),
     })
     expect(officialClientBuildEnvironment(fixtureRoot)).toEqual({
       DSH_CLIENT_BUILD_PROFILE: 'official',
       DSH_CLIENT_COMMIT_HASH: commit,
       DSH_CLIENT_TITLE: 'DeepSeek Harness',
       DSH_CLIENT_VERSION: '1.2.3-rc.4',
+      DSH_CLIENT_RELEASE_VERSION: '1.2.3-rc.4',
+      DSH_CLIENT_RELEASE_COMMIT: git(fixtureRoot, ['rev-parse', 'HEAD']),
     })
 
     write(join(fixtureRoot, '.gitignore'), 'ignored.txt\n')
@@ -189,6 +197,8 @@ describe('client build environment', () => {
       DSH_CLIENT_COMMIT_HASH: COMMIT_HASH.slice(0, 7),
       DSH_CLIENT_GIT_DIRTY: 'true',
       DSH_CLIENT_VERSION: '1.2.3-rc.4',
+      DSH_CLIENT_RELEASE_VERSION: '1.2.3-rc.4',
+      DSH_CLIENT_RELEASE_COMMIT: git(fixtureRoot, ['rev-parse', 'HEAD']),
     })
 
     rmSync(join(fixtureRoot, 'untracked.txt'))
@@ -216,20 +226,23 @@ describe('client build environment', () => {
   })
 
   it('defines only public client values over a non-enumerable fallback', () => {
-    expect(clientBuildEnvironmentDefines({
+    const environment = {
       PATH: '/bin',
       DSH_TEST_API_KEY: 'secret',
       DSH_CLIENT_VARIANT: 'quoted "value"',
       DSH_CLIENT_EMPTY: '',
       DSH_CLIENT_UNSET: undefined,
-    })).toEqual({
-      'process.env': '{}',
+    }
+    const values = {
       'process.env.DSH_CLIENT_EMPTY': '""',
       'process.env.DSH_CLIENT_VARIANT': '"quoted \\"value\\""',
-    })
+    }
+    expect(clientBuildEnvironmentDefines(environment)).toEqual({ 'process.env': '{}', ...values })
+    // Node faces keep their runtime `process.env` and fix only the public values.
+    expect(clientBuildValueDefines(environment)).toEqual(values)
   })
 
-  it('feeds the same build-process value to dynamic tsdown bundles and the Vite shell', async () => {
+  it('feeds the same build-process value to dynamic tsdown bundles, their Node faces, and the Vite shell', async () => {
     process.env[PROBE_NAME] = 'shared-value'
 
     const configs = clientBundle('@deepseek-ai/dsh-client-ui-sidebar', [
@@ -241,6 +254,9 @@ describe('client build environment', () => {
       'process.env': '{}',
       [PROBE_KEY]: '"shared-value"',
     })
+    const node = configs.find(config => config.name === '@deepseek-ai/dsh-client-ui-sidebar')
+    expect(node?.define).toMatchObject({ [PROBE_KEY]: '"shared-value"' })
+    expect(node?.define).not.toHaveProperty(['process.env'])
 
     const viteConfigPath = '../apps/web/vite.config.ts'
     const viteModule: unknown = await import(viteConfigPath)

@@ -36,3 +36,5 @@ None; this package neither assembles nor sends a provider request.
 ### Dev Note
 
 One fragmented message per direction is the decoder's ceiling: a second start or inline frame closes that decoder instead of queuing unbounded work, and a fragment reserves its declared byte length before receiving chunks. Host apply uses an injected `NodeIpcPort`, else the current process channel; the carrier owns the unary deadlines (`finishAskKnowledgeIngest` 180s, `finishAskKnowledgeExtract` 90s, otherwise 30s).
+
+The carrier preserves the optional Host release identity in the ready graph. Its version describes the Harness runtime, not the desktop shell. Legacy peers may omit it; the module loader refuses transitions between missing and present identities until the page reloads.
