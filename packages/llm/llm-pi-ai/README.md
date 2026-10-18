@@ -243,3 +243,5 @@ This Dev Note is non-authoritative working context: undecided directions and not
 - The `compat` switch set is pinned to pi-ai's compat types by drift gates; an upstream upgrade that adds a field, gives a further protocol a compat type, or widens a value union fails the build until someone classifies it.
 
 </details>
+
+The provider directory includes generated endpoint defaults and native authentication variable names. Metadata is generated with synthetic credentials from the installed pi-ai version; it never probes real credentials or a model endpoint. Run `pnpm run gen-provider-data` after changing pi-ai, and `pnpm run verify-provider-data` to check freshness. Saved credential references take precedence over environment fallbacks.

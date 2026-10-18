@@ -243,3 +243,5 @@ pi-ai 事件变成 harness 的推理、文本、工具调用、用量与 finish 
 - `compat` 开关集合由漂移门禁钉在 pi-ai 的 compat 类型上；上游升级若新增字段、为更多协议赋予 compat 类型或扩大值联合，会在有人分类前让构建失败。
 
 </details>
+
+提供方目录包含生成的默认端点及原生认证环境变量名称。元数据使用已安装 pi-ai 版本和模拟凭据生成，不读取真实凭据，也不请求模型端点。更新 pi-ai 后运行 `pnpm run gen-provider-data`，通过 `pnpm run verify-provider-data` 检查是否最新。已保存凭据的优先级高于环境变量回退。
