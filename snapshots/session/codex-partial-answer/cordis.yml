@@ -43,5 +43,6 @@
   disabled: true
 
 # Keep real subprocess ownership; replace only the external app-server executable.
-- id: subprocess
-  name: './subprocess-fixture.mjs'
+- insert:
+    - id: codex-fixture-subprocess
+      name: './subprocess-fixture.mjs'
