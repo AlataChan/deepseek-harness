@@ -190,6 +190,7 @@ function rewriteCachedGraph(
   })
   return {
     rev: ready.graph.rev,
+    ...ready.graph.release === undefined ? {} : { release: ready.graph.release },
     entries,
     batches: entries.map(entry => ({
       phase: phaseById.get(entry.id) ?? 'application',
@@ -400,6 +401,12 @@ async function finishDesktopClient(
   if (ready.runtimeVersion !== resolved.runtimeVersion) {
     throw new Error(
       `Harness runtime version mismatch: manifest ${resolved.runtimeVersion}, companion ${ready.runtimeVersion}`,
+    )
+  }
+  // The shell version is independent; the graph and installed companion must name the same runtime.
+  if (ready.graph.release !== undefined && ready.graph.release.version !== resolved.runtimeVersion) {
+    throw new Error(
+      `Host graph release version mismatch: manifest ${resolved.runtimeVersion}, graph ${ready.graph.release.version}`,
     )
   }
   handshaking = false

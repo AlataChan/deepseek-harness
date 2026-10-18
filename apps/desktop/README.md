@@ -51,3 +51,5 @@ On Windows every child process is spawned with `CREATE_NO_WINDOW` because the de
 - **Launch-time workspace only** — Client directory-picker rows do not change `--workspace-root`.
 - **One window** — no multi-window, tray, deep links, native dialogs, or editor context.
 - **Shared home lease** — a second companion against the same `$DSH_HOME` fails with `home-busy`.
+
+The pre-boot runtime-version check detects inconsistent installations. The boot graph additionally carries the Host runtime release, preserved when script URLs move into the local cache. A graph with a different runtime version is refused before any factory loads. After boot, the shared module system refuses graph updates from another release and offers a localized reload prompt; deferring preserves the running page and sessions. The shell version remains independent.

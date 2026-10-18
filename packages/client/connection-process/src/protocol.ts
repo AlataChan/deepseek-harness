@@ -60,6 +60,8 @@ export interface WebBootBatch {
 
 /** Boot graph announced on `control/ready`; structurally the Host `WebBootGraph`. */
 export interface WebBootGraph {
+  /** Host runtime identity, independent of the desktop shell version. */
+  release?: { version: string; commit?: string }
   rev: string
   entries: WebBootEntry[]
   batches: WebBootBatch[]
@@ -171,6 +173,7 @@ const webBootBatchSchema = z.object({
 }).strict()
 
 const webBootGraphSchema = z.object({
+  release: z.object({ version: z.string().min(1), commit: z.string().optional() }).strict().optional(),
   rev: z.string().min(1),
   entries: z.array(webBootEntrySchema),
   batches: z.array(webBootBatchSchema),

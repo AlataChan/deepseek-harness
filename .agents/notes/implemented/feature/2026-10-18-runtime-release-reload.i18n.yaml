@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for 2026-10-18-runtime-release-reload.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-10-18-runtime-release-reload.md
+/agent-note-refuse-client-modules-from-another-host-runtime-release:
+  en: 43791ee6a9506a31
+  zh: 474ae2fbe9f220d3
+/agent-note-refuse-client-modules-from-another-host-runtime-release/decision:
+  en: 35b86824c1c797b1
+  zh: c77ab20573876c8a
+/agent-note-refuse-client-modules-from-another-host-runtime-release/consequences:
+  en: 8cb626aaad12de96
+  zh: adfb1bba10b64b46
