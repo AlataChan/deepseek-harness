@@ -177,7 +177,7 @@ const webBootGraphSchema = z.object({
   rev: z.string().min(1),
   entries: z.array(webBootEntrySchema),
   batches: z.array(webBootBatchSchema),
-}).strict() as unknown as z.ZodType<WebBootGraph>
+}).strict()
 
 /** Bundle-location parser used by the ready handshake. */
 export const clientBundleLocationSchema = z.object({
