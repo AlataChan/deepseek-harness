@@ -52,8 +52,8 @@ export type { TranscriptDocumentOptions } from './transcript.ts'
 /** Loader-facing plugin name. */
 export const name = 'desktop-speech-transcribe'
 
-/** Services the tool and staging service read at load and call time. */
-export const inject = ['tools', 'speechToText', 'subprocess']
+/** Required services; the optional voice-input registry is resolved for each tool call. */
+export const inject = ['tools', 'subprocess']
 
 /** Limits shared by the transcription tool and recording staging service. */
 export type Config = SpeechTranscribeConfig & TranscriptAudioConfig

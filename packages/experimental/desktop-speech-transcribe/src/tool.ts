@@ -34,6 +34,9 @@ const DECODER_LOG_BYTES = 64 * 1024
 /** Transcript name collisions tolerated before the write fails. */
 const MAX_TRANSCRIPT_ATTEMPTS = 100
 
+const MISSING_PROVIDER_MESSAGE = '未找到可用的语音识别服务。请打开「插件」→「语音输入」，'
+  + '启用语音输入并选择识别服务，完成「下载并准备」后再试。'
+
 /** Runtime validation shape for the transcription tool. */
 export interface SpeechTranscribeConfig {
   /** Maximum accepted recording duration in minutes. */
@@ -58,8 +61,7 @@ export function readinessOf(snapshot: SpeechSnapshot, providerId?: string): Read
   const selected = providerId ?? snapshot.selection.providerId
   const view = snapshot.providers.find(provider => provider.id === selected)
   if (view === undefined) {
-    return { kind: 'blocked', message: '未找到可用的语音识别服务。请打开「插件」→「语音输入」，'
-      + '启用语音输入并选择识别服务，完成「下载并准备」后再试。' }
+    return { kind: 'blocked', message: MISSING_PROVIDER_MESSAGE }
   }
   const phase = view.preparation.phase
   if (phase === 'unprepared' || phase === 'cancelled') {
@@ -189,6 +191,9 @@ export function registerSpeechTranscribeTool(ctx: Context, config: SpeechTranscr
       },
     },
     async execute(args, exec) {
+      exec.signal.throwIfAborted()
+      const speech = ctx.get('speechToText')
+      if (speech === undefined) return { preview: MISSING_PROVIDER_MESSAGE }
       const audioPath = resolveRequestedPath(args.audioPath, exec.agent?.session.header.cwd)
       const info = await statRecording(args.audioPath, audioPath)
       if (!info.isFile()) {
@@ -209,14 +214,14 @@ export function registerSpeechTranscribeTool(ctx: Context, config: SpeechTranscr
           resolve: executableResolver(ctx.subprocess, exec.signal),
           runner: subprocessRunner(ctx.subprocess),
         })
-        const decision = readinessOf(ctx.speechToText.snapshot(), args.providerId)
+        const decision = readinessOf(speech.snapshot(), args.providerId)
         if (decision.kind === 'blocked') return { preview: decision.message }
-        const spec = ctx.speechToText.resolve({
+        const spec = speech.resolve({
           audio,
           ...args.providerId === undefined ? {} : { providerId: args.providerId as SpeechProviderId },
           ...args.language === undefined ? {} : { language: args.language },
         })
-        const transcript = await ctx.speechToText.transcribe(spec, exec.signal)
+        const transcript = await speech.transcribe(spec, exec.signal)
         const text = transcript.text.trim()
         const written = await writeTranscriptFile(audioPath, renderTranscript({
           sourceName: basename(audioPath),

@@ -26,7 +26,7 @@ English | [中文](README.zh.md)
 
 The tool takes a workspace-relative or absolute `audioPath` plus optional `language` and `providerId`. It resolves relative paths against the calling Session's workspace, refuses directories and files over 2 GiB, and decodes anything that is not already the canonical 16 kHz mono PCM16 WAV the speech seam forwards. The transcript keeps the audio file's directory: `访谈.m4a` becomes `访谈.transcript.md`.
 
-Before transcription it reads the selected provider's preparation phase. An `unprepared`, `failed`, or `cancelled` provider does not trigger a download; the result carries Chinese guidance pointing at 插件 → 语音输入 → 下载并准备, and an in-flight preparation returns a 正在准备中 waiting notice. The tool never prepares models and never submits a message on the agent's behalf.
+The overlay boots even when the optional voice-input bundle is disabled. Each tool call resolves the live speech registry; if absent, it returns Chinese setup guidance before reading or decoding audio. Before transcription it reads the selected provider's preparation phase. An `unprepared`, `failed`, or `cancelled` provider does not trigger a download; the result carries Chinese guidance pointing at 插件 → 语音输入 → 下载并准备, and an in-flight preparation returns a 正在准备中 waiting notice. The tool never prepares models and never submits a message on the agent's behalf.
 
 The desktop profile seed installs this package from `scripts/desktop-profile-plugins.json`; official `dsh-desktop-app` and `PROFILE_TEMPLATES.desktop` do not name it. The 公益项目助手 preset loads the companion skill `env-ngo-audio-minutes`, which turns a transcript into meeting minutes.
 

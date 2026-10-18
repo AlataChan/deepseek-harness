@@ -26,7 +26,7 @@ kind: "package-bundle"
 
 工具接收工作区相对路径或绝对路径 `audioPath`，可选 `language` 与 `providerId`。相对路径按调用会话的工作目录解析；目录和超过 2 GiB 的文件被拒绝；凡不是 speech 能力层直接转发的规范 16 kHz 单声道 PCM16 WAV，一律先解码。文字稿与音频同目录：`访谈.m4a` 生成 `访谈.transcript.md`。
 
-转写前读取所选 provider 的准备状态。provider 处于 `unprepared`、`failed` 或 `cancelled` 时不触发下载，结果返回中文引导，指向 插件 → 语音输入 → 下载并准备；准备进行中则返回「正在准备中」的等待提示。本工具从不自行准备模型，也不代替用户向 Agent 提交消息。
+即使可选的语音输入 bundle 未启用，本 overlay 也可启动。每次工具调用读取当前语音注册表；注册表缺失时，在读取或解码音频前返回中文设置引导。转写前读取所选 provider 的准备状态。provider 处于 `unprepared`、`failed` 或 `cancelled` 时不触发下载，结果返回中文引导，指向 插件 → 语音输入 → 下载并准备；准备进行中则返回「正在准备中」的等待提示。本工具从不自行准备模型，也不代替用户向 Agent 提交消息。
 
 桌面 profile 通过 `scripts/desktop-profile-plugins.json` 播种安装本包；官方 `dsh-desktop-app` 与 `PROFILE_TEMPLATES.desktop` 不引用它。公益项目助手预设加载配套技能 `env-ngo-audio-minutes`，把文字稿整理成纪要。
 

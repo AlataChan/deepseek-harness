@@ -174,10 +174,34 @@ async function expectTempDirCleaned(): Promise<void> {
 }
 
 describe('plugin registration', () => {
+  it('boots without voice input and follows the registry becoming available or disappearing', async () => {
+    const ctx = new Context()
+    closers.push(() => ctx.fiber.dispose())
+    const registered: ToolDefinition[] = []
+    ctx.provide('tools', { register(definition: ToolDefinition) {
+      registered.push(definition)
+      return () => { registered.splice(registered.indexOf(definition), 1) }
+    } })
+    const subprocess = fakeSubprocess({})
+    ctx.provide('subprocess', subprocess)
+    ctx.plugin(plugin.default, { maxAudioMinutes: 120, maxUploadMiB: 64 })
+    await expect.poll(() => registered.length, { timeout: 500 }).toBe(1)
+    expect(ctx.get('transcriptAudio')).toBeInstanceOf(plugin.TranscriptAudio)
+    const definition = registered[0]!
+    const args = { audioPath: '/not-read-while-voice-input-is-disabled.wav' }
+    const result = await definition.execute(args, { signal } as never) as ResultValue
+    expect(result.preview).toContain('启用语音输入')
+    expect(fsp.stat).not.toHaveBeenCalled()
+    const base = await ctx.plugin(SpeechToText, { defaultProvider: 'stub-local', language: 'auto' })
+    expect(ctx.get('speechToText')).toBeDefined()
+    await base.dispose()
+    expect((await definition.execute(args, { signal } as never) as ResultValue).preview).toBe(result.preview)
+    expect(registered).toHaveLength(1)
+  })
   it('names the tool, waits for its seams, and disposes cleanly', async () => {
     const compositionResult = await composition()
     expect(plugin.name).toBe('desktop-speech-transcribe')
-    expect(plugin.inject).toEqual(['tools', 'speechToText', 'subprocess'])
+    expect(plugin.inject).toEqual(['tools', 'subprocess'])
     expect(plugin.Config).toBeDefined()
     expect(compositionResult.registered.map(row => row.name)).toEqual(['speech_transcribe'])
     expect(compositionResult.definition.description).toContain('Markdown transcript')
