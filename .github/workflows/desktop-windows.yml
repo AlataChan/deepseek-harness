@@ -126,6 +126,11 @@ jobs:
       - name: Check public signing prerequisites
         shell: pwsh
         run: node --import tsx/esm scripts/verify-desktop-release.ts preflight $env:DSH_DESKTOP_BUILD_MODE windows-x64
+      - name: Verify desktop release decisions and native unsigned refusal
+        shell: pwsh
+        run: |
+          pnpm exec vitest run scripts/desktop-release-manifest.spec.ts scripts/verify-desktop-release.spec.ts scripts/desktop-release-publish.spec.ts scripts/desktop-release-github.spec.ts --maxWorkers=2
+          if ($LASTEXITCODE -ne 0) { throw "Desktop release controls failed" }
       - name: Build workspace libraries and clients
         shell: pwsh
         run: pnpm run build
