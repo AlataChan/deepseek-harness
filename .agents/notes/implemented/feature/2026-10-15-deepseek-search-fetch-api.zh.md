@@ -4,6 +4,16 @@
 
 [English](2026-10-15-deepseek-search-fetch-api.md) | 中文
 
+## 问题
+
+基于 Messages 的搜索需要额外模型生成；直接检索则需要独立的端点、凭据与问题转发控制。
+
+## 考虑过的替代方案
+
+**默认替换 Messages 搜索。** 保留现有默认值，避免未经同意改变网络行为；直接搜索和抓取仍需主动启用。
+
+**包含账号路由。** 账号集成不在本次选择性升级范围内；拒绝该路由可保持 API Key 路径独立。
+
 ## 决策
 
 [web-deepseek-api 插件](../../../../packages/web/web-deepseek-api/README.zh.md)注册直接调用的 Search 和 Fetch 提供方。Messages 搜索保持独立，与本地 HTTP 抓取一同作为默认值。设置开关保存后同时选择两个直接调用提供方；每次操作读取当前选择。

@@ -4,6 +4,16 @@ Status: implemented
 
 English | [中文](2026-10-15-deepseek-search-fetch-api.zh.md)
 
+## Problem
+
+Messages-based search requires an auxiliary model generation, while direct retrieval needs separate endpoint, credential, and question-forwarding controls.
+
+## Alternatives considered
+
+**Replace Messages search by default.** Retaining the existing default avoids changing network behavior without consent; direct Search and Fetch remain opt-in.
+
+**Include account routing.** Account integration is outside this selective upgrade; refusing that route keeps the API-key path independent.
+
 ## Decision
 
 The [web-deepseek-api plugin](../../../../packages/web/web-deepseek-api/README.md) registers direct Search and Fetch providers. Messages search remains independent and is the default, alongside local HTTP fetch. The settings switch selects both direct providers after saving; each operation reads the current selection.
