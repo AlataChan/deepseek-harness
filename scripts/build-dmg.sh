@@ -203,7 +203,9 @@ ok "kb-runtime embedded"
 info "Signing the $BUILD_MODE bundle after embedding..."
 node "$REPO_ROOT/scripts/desktop-microphone.mjs" --apply "$APP_BUNDLE"
 node --import tsx/esm "$REPO_ROOT/scripts/desktop-release-cli.ts" identity "$RESOURCES/build-info.json"
-codesign --force "${SIGN_ARGS[@]}" "$RESOURCES/node"
+NODE_SIGN_ARGS=()
+if [[ "$BUILD_MODE" == public ]]; then NODE_SIGN_ARGS=(--entitlements "$REPO_ROOT/scripts/desktop-node-entitlements.plist"); fi
+codesign --force "${SIGN_ARGS[@]}" ${NODE_SIGN_ARGS[@]+"${NODE_SIGN_ARGS[@]}"} "$RESOURCES/node"
 if [[ -x "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar" ]]; then
   codesign --force "${SIGN_ARGS[@]}" \
     "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar"
@@ -212,7 +214,14 @@ while IFS= read -r lib; do
   [[ -z "$lib" ]] && continue
   codesign --force "${SIGN_ARGS[@]}" "$lib"
 done < <(find "$RESOURCES/kb-runtime" \( -name '*.so' -o -name '*.dylib' \) -type f 2>/dev/null)
-codesign --force --deep "${SIGN_ARGS[@]}" "$APP_BUNDLE"
+if [[ "$BUILD_MODE" == public ]]; then
+  while IFS= read -r -d '' native_library; do
+    codesign --force "${SIGN_ARGS[@]}" "$native_library"
+  done < <(find "$RESOURCES" -type f \( -name '*.node' -o -name Python \) -print0)
+fi
+ROOT_SIGN_ARGS=(--deep)
+if [[ "$BUILD_MODE" == public ]]; then ROOT_SIGN_ARGS=(); fi
+codesign --force ${ROOT_SIGN_ARGS[@]+"${ROOT_SIGN_ARGS[@]}"} "${SIGN_ARGS[@]}" "$APP_BUNDLE"
 if ! codesign --verify --deep "$APP_BUNDLE"; then
   fail "codesign --verify failed after embedding"
 fi
@@ -238,10 +247,12 @@ rm -f "$DMG_OUTPUT"
 STAGE="$REPO_ROOT/dist/.cache/dmg-root"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
-ditto "$APP_BUNDLE" "$STAGE/${APP_NAME}.app"
-cp "$REPO_ROOT/scripts/dmg-payload/安装说明.txt" "$STAGE/安装说明.txt"
-cp "$REPO_ROOT/scripts/dmg-payload/安装并打开.command" "$STAGE/安装并打开.command"
-chmod +x "$STAGE/安装并打开.command"
+node "$REPO_ROOT/scripts/stage-desktop-dmg.mjs" "$BUILD_MODE" "$APP_BUNDLE" "$STAGE"
+DMG_HELPER_ARGS=()
+if [[ "$BUILD_MODE" == internal ]]; then
+  chmod +x "$STAGE/安装并打开.command"
+  DMG_HELPER_ARGS=(--icon "安装并打开.command" 560 180)
+fi
 
 if command -v create-dmg &>/dev/null; then
   create-dmg \
@@ -251,7 +262,7 @@ if command -v create-dmg &>/dev/null; then
     --icon-size 80 \
     --icon "$APP_NAME.app" 140 180 \
     --app-drop-link 360 180 \
-    --icon "安装并打开.command" 560 180 \
+    ${DMG_HELPER_ARGS[@]+"${DMG_HELPER_ARGS[@]}"} \
     "$DMG_OUTPUT" \
     "$STAGE" || true
   # create-dmg exits 2 when signing is skipped; the DMG is still usable
@@ -273,7 +284,7 @@ if [[ "$BUILD_MODE" == public ]]; then
   xcrun stapler staple "$DMG_OUTPUT"
   xcrun stapler validate "$DMG_OUTPUT"
 fi
-DSH_SIGNATURE_PAYLOAD="$APP_BUNDLE" node --import tsx/esm "$REPO_ROOT/scripts/desktop-release-cli.ts" manifest "$DMG_OUTPUT" "$RESOURCES" "macos-$ARCH" "$BUILD_MODE" "$DMG_OUTPUT.release.json"
+node --import tsx/esm "$REPO_ROOT/scripts/desktop-release-cli.ts" manifest "$DMG_OUTPUT" "$RESOURCES" "macos-$ARCH" "$BUILD_MODE" "$DMG_OUTPUT.release.json" "$APP_BUNDLE"
 ok "Done! Distribute: $DMG_OUTPUT"
 echo ""
 echo "  微信发出后请附带这段话："

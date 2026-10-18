@@ -662,18 +662,22 @@ Section Install
 
   ; Copy main executable
   File "${MAINBINARYSRCPATH}"
+  IfErrors tx_staging_failed
 
   ; Copy resources
   {{#each resources_dirs}}
     CreateDirectory "$INSTDIR\\{{this}}"
+    IfErrors tx_staging_failed
   {{/each}}
   {{#each resources}}
     File /a "/oname={{this.[1]}}" "{{no-escape @key}}"
+    IfErrors tx_staging_failed
   {{/each}}
 
   ; Copy external binaries
   {{#each binaries}}
     File /a "/oname={{this}}" "{{no-escape @key}}"
+    IfErrors tx_staging_failed
   {{/each}}
 
   IfErrors tx_staging_failed

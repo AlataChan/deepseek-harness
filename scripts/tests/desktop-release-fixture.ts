@@ -5,8 +5,8 @@ import type { DesktopReleaseTransport, ReleaseAsset } from '../desktop-release-p
 export class FixtureReleaseTransport implements DesktopReleaseTransport {
   readonly assets = new Map<string, ReleaseAsset>()
   readonly writes: string[] = []
-  failAfterWrite?: string
-  afterBinaryRead?: () => void
+  failAfterWrite: string | undefined
+  afterBinaryRead: (() => void) | undefined
   constructor(private readonly commit: string) {}
   sourceCommit(): Promise<string> { return Promise.resolve(this.commit) }
   read(name: string): Promise<ReleaseAsset | undefined> {

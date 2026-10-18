@@ -44,18 +44,18 @@ concurrency:
   group: desktop-release-channel-writer
   cancel-in-progress: false
 jobs:
-  qualify-and-publish:
+  qualify-and-plan:
     # Native signature verification is mandatory even for resuming a publication.
     runs-on: ${{ inputs.target == 'windows-x64' && 'windows-2025' || inputs.target == 'macos-x64' && 'macos-15-intel' || 'macos-15' }}
     permissions:
-      contents: write
+      contents: read
       actions: read
     env:
       DSH_EXPECTED_SOURCE_COMMIT: ${{ inputs.source_commit }}
       DSH_EXPECTED_SOURCE_RUN: ${{ inputs.source_run }}
       DSH_EXPECTED_SOURCE_ATTEMPT: ${{ inputs.source_attempt }}
       DSH_REVIEWED_PLAN: ${{ inputs.reviewed_plan }}
-      DSH_RELEASE_OPERATION: ${{ inputs.operation }}
+      DSH_RELEASE_OPERATION: ${{ inputs.operation == 'publish' && 'qualify-plan' || inputs.operation }}
       DSH_RELEASE_CHANNEL: ${{ inputs.channel }}-${{ inputs.target }}
       DSH_RELEASE_TARGET: ${{ inputs.target }}
       DSH_WINDOWS_PUBLISHER: ${{ vars.DSH_WINDOWS_PUBLISHER }}
@@ -89,3 +89,52 @@ jobs:
           name: desktop-publication-plan-${{ github.run_id }}-${{ github.run_attempt }}
           path: candidate/publication-plan.json
           if-no-files-found: warn
+
+  publish:
+    if: inputs.operation == 'publish'
+    needs: qualify-and-plan
+    runs-on: ${{ inputs.target == 'windows-x64' && 'windows-2025' || inputs.target == 'macos-x64' && 'macos-15-intel' || 'macos-15' }}
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DSH_WINDOWS_PUBLISHER: ${{ vars.DSH_WINDOWS_PUBLISHER }}
+      DSH_MAC_TEAM_ID: ${{ vars.DSH_MAC_TEAM_ID }}
+      DSH_RELEASE_CHANNEL: ${{ inputs.channel }}-${{ inputs.target }}
+      DSH_EXPECTED_COMMIT: ${{ inputs.source_commit }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install trusted workspace dependencies
+        shell: pwsh
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/download-artifact@v8
+        with:
+          repository: AlataChan/deepseek-harness
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ github.token }}
+          name: ${{ inputs.artifact_name }}
+          path: candidate
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-publication-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: handoff
+      - name: Publish independently qualified bytes without executing the candidate
+        shell: pwsh
+        run: |
+          $records = @(Get-ChildItem candidate -Filter '*.release.json')
+          if ($records.Count -ne 1) { throw 'Expected one manifest' }
+          $json = & node --import tsx/esm scripts/desktop-release-cli.ts inspect-download $records[0].FullName
+          if ($LASTEXITCODE -ne 0) { throw 'Invalid public manifest' }
+          $record = $json | ConvertFrom-Json
+          if ($record.release.commit -ne $env:DSH_EXPECTED_COMMIT) { throw 'Wrong source commit' }
+          $artifact = Join-Path $records[0].DirectoryName $record.artifact.name
+          $env:DSH_CONFIRM_PUBLISH = "AlataChan/deepseek-harness:$($env:DSH_RELEASE_CHANNEL):$($record.release.commit)"
+          node --import tsx/esm scripts/desktop-release-cli.ts publish-qualified $records[0].FullName $artifact handoff/publication-plan.json $env:DSH_RELEASE_CHANNEL
+          if ($LASTEXITCODE -ne 0) { throw 'Qualified publication failed' }

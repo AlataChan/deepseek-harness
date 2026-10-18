@@ -108,6 +108,28 @@ export function verifyNativeSignatures(manifest: DesktopReleaseManifest, artifac
   }
 }
 /**
+ * Verify a downloaded installer before any code from its payload executes.
+ * @param manifest - validated public artifact record.
+ * @param artifact - downloaded installer file.
+ * @param env - expected native publisher.
+ */
+export function verifyDownloadedArtifact(manifest: DesktopReleaseManifest, artifact: string, env = process.env): void {
+  if (manifest.mode !== 'public') throw new Error('Internal artifacts cannot enter public qualification')
+  const actual = artifactDigest(artifact)
+  if (actual.name !== manifest.artifact.name || actual.bytes !== manifest.artifact.bytes || actual.sha256 !== manifest.artifact.sha256) {
+    throw new Error('Downloaded installer differs from its manifest')
+  }
+  if (manifest.target === 'windows-x64') {
+    verifyNativeSignatures(manifest, artifact, artifact, env)
+  } else {
+    if (process.platform !== 'darwin' || !env.DSH_MAC_TEAM_ID) throw new Error('Native macOS publisher verification is required')
+    native('codesign', ['--verify', '--strict', artifact])
+    native('codesign', ['--verify', '-R', `anchor apple generic and certificate leaf[subject.OU] = "${env.DSH_MAC_TEAM_ID}"`, artifact])
+    native('xcrun', ['stapler', 'validate', artifact])
+    native('spctl', ['--assess', '--type', 'open', '--context', 'context:primary-signature', artifact])
+  }
+}
+/**
  * Recompute artifact and installed tree hashes.
  * @param manifest - expected identities.
  * @param artifact - final installer path.
@@ -127,7 +149,7 @@ export function assertArtifactBytes(manifest: DesktopReleaseManifest, artifact: 
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [command, manifestPath, artifact, payload] = process.argv.slice(2)
+  const [command, manifestPath, artifact, payload, signaturePayload] = process.argv.slice(2)
   if (command === 'preflight') {
     const mode = manifestPath
     if (mode !== 'internal' && mode !== 'public') throw new Error('Expected internal or public mode')
@@ -136,7 +158,8 @@ if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(
   } else if (command === 'verify' && manifestPath && artifact && payload) {
     const manifest = validateReleaseManifest(JSON.parse(readFileSync(manifestPath, 'utf8')))
     assertArtifactBytes(manifest, artifact, payload)
-    verifyNativeSignatures(manifest, artifact, manifest.target === 'windows-x64' ? resolve(payload, 'dsh-desktop.exe') : payload)
+    if (manifest.mode === 'public' && !signaturePayload) throw new Error('Public verification requires an explicit signed app/executable path')
+    verifyNativeSignatures(manifest, artifact, signaturePayload ?? payload)
     console.log(`${basename(artifact)}: bytes and ${manifest.mode} native qualification verified`)
-  } else throw new Error('Usage: verify-desktop-release.ts preflight <internal|public> <target> | verify <manifest> <artifact> <installed-payload>')
+  } else throw new Error('Usage: verify-desktop-release.ts preflight <internal|public> <target> | verify <manifest> <artifact> <installed-payload> <signed-app-or-executable>')
 }
