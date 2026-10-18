@@ -1,0 +1,61 @@
+# Bilingual-pair consistency record for 2026-10-18-upstream-runtime-and-release-upgrade.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-10-18-upstream-runtime-and-release-upgrade.md
+/upstream-runtime-and-release-safety-upgrade-implementation-plan:
+  en: d9b440c04c644946
+  zh: cd781392fb690ade
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/summary:
+  en: aa8a0b762132f497
+  zh: 9fe29262248ade37
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/table-of-contents:
+  en: c43e906f9fd047a7
+  zh: 71cf45659658e070
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/scope-and-decisions:
+  en: 7a4a60f3506bd2dc
+  zh: 78856e5e69df6bac
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/baseline-and-integration-strategy:
+  en: accee7f174a49db3
+  zh: 67ba789047a1b6ce
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks:
+  en: bd523da4c9b773c6
+  zh: 48ed22b1040a7877
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-0-freeze-the-baseline-and-dependency-ledger:
+  en: 548cfd19327a86cd
+  zh: 383bd43fe13af098
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-1-codex-partial-answer-compatibility-u4:
+  en: 7d034584857c73de
+  zh: f0c40b055c9adea5
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-2-skill-refresh-and-sidebar-behavior-u5-u6:
+  en: c8d36fb912c158d2
+  zh: e178e44818cbacb5
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-3-credential-ordering-and-authentication-guidance-d4:
+  en: f2a7cb6e9df9cb4e
+  zh: 2f6c07b0e7f8666d
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-4-model-reasoning-editor-u3:
+  en: 6da8df7927eed050
+  zh: 5a7d44d291c89ca9
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-5-search-fetch-providers-and-auxiliary-search-fix-u1-u2:
+  en: 51c665e433642020
+  zh: 409f9ad95fd9329f
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-6-client-host-release-identity-and-reload-handling-u7:
+  en: e593e8ba9e0b16f2
+  zh: 8b6a7d6491e7f563
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-7-windows-upgrade-lock-recovery-d1:
+  en: 785543bde36e8e53
+  zh: e528c522244c1c2a
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-8-artifact-identity-and-public-release-qualification-d2:
+  en: 57477ece7c493b65
+  zh: 465f711da94205ef
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-9-resumable-fork-publication-d3:
+  en: 5b452d11a6cb7d54
+  zh: 261ec1caf51e864f
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/implementation-tasks/task-10-documentation-policy-checks-and-integrated-verification:
+  en: de449c0c8420c958
+  zh: dc1b936a26e7cafb
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/acceptance-and-delivery:
+  en: 6d72e90eb1f3daf9
+  zh: 3561b0fec4ab728d
+/upstream-runtime-and-release-safety-upgrade-implementation-plan/dev-note:
+  en: 836901687cf9905e
+  zh: 01355e61c66d3b77

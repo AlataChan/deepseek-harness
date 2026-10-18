@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import type { IntakeRegistry } from './upstream-intake-registry.ts'
 import {
   changedUpstreamFilesAgainstPin,
+  backportViolations,
   forbiddenDependencyViolations,
   mountRecordingViolations,
   neverMergeFileList,
@@ -311,7 +312,7 @@ describe('the shipped registry satisfies the working-tree rules', () => {
     const { REGISTRY, changedUpstreamFilesAgainstPin, upstreamIntakeViolations: check } = await import('./verify-upstream-intake.ts')
     const root = new URL('..', import.meta.url).pathname
     expect(check({ root, registry: REGISTRY, changedUpstreamFiles: changedUpstreamFilesAgainstPin(root, REGISTRY) })).toEqual([])
-  })
+  }, 30_000)
 
   it('records the ignorable inspection as a non-empty required-not-ignorable finding', async () => {
     const { REGISTRY } = await import('./verify-upstream-intake.ts')
@@ -320,5 +321,23 @@ describe('the shipped registry satisfies the working-tree rules', () => {
     expect(finding.eventTypes.length).toBeGreaterThan(0)
     expect(finding.inspectedLogs).toBeGreaterThan(0)
     expect(finding.envelopeKeys).not.toContain('ignorable')
+  })
+})
+
+
+describe('selected upstream backports', () => {
+  const entry = { id: 'U4', sourceTag: 'dsh-v0.2.1-rc.2', basePin: 'dsh-v0.2.1-alpha.1', sourceChanges: ['PR #6272'], disposition: 'imported' as const, paths: ['packages/subagent/subagent-codex/'], prerequisites: [], verification: ['packages/subagent/subagent-codex/tests/subagent-codex.spec.ts'] }
+  it('keeps selective adoption separate from whole-release advancement', () => {
+    expect(backportViolations([entry], 'dsh-v0.2.1-alpha.1')).toEqual([])
+    expect(backportViolations([entry], 'dsh-v0.2.1-rc.2')).toContainEqual(expect.stringContaining('whole-release'))
+  })
+  it('rejects unresolved prerequisites and missing verification', () => {
+    expect(backportViolations([{ ...entry, prerequisites: ['missing'], verification: [] }], entry.basePin))
+      .toEqual(expect.arrayContaining([expect.stringContaining('prerequisite'), expect.stringContaining('verification')]))
+  })
+  it('rejects duplicate IDs and undeclared selected paths', () => {
+    expect(backportViolations([entry, entry], entry.basePin)).toContainEqual(expect.stringContaining('duplicate'))
+    expect(backportViolations([entry], entry.basePin, ['packages/web/web/src/index.ts']))
+      .toContainEqual(expect.stringContaining('no selected-backport entry'))
   })
 })

@@ -21,6 +21,7 @@ import { relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { loadCordisYaml, isJsExpr } from './cordis-yaml.ts'
 import {
+  BACKPORTS,
   FORBIDDEN_DEPENDENCIES,
   FORBIDDEN_ENDPOINTS,
   FORK_OWNED_PATHS,
@@ -34,6 +35,7 @@ import {
   REMOVALS,
   UPSTREAM_ONLY_DIRECTORIES,
   UPSTREAM_PIN,
+  type BackportEntry,
   type IntakeRegistry,
   type MountEntry,
 } from './upstream-intake-registry.ts'
@@ -41,6 +43,7 @@ import {
 /** The live registry, assembled from `upstream-intake-registry.ts`. */
 export const REGISTRY: IntakeRegistry = {
   upstreamPin: UPSTREAM_PIN,
+  backports: BACKPORTS,
   ignorableInspection: IGNORABLE_INSPECTION,
   neverMerge: NEVER_MERGE,
   patches: PATCHES,
@@ -202,9 +205,41 @@ export function patchRegistryViolations(
   registry: IntakeRegistry,
 ): string[] {
   const registered = new Set(registry.patches.map(patch => patch.path))
+  const backports = registry.backports ?? []
   return changedUpstreamFiles
-    .filter(path => !isForkOwned(path, registry) && !registered.has(path))
+    .filter(path => !isForkOwned(path, registry) && !registered.has(path)
+      && !backports.some(entry => entry.paths.some(owned => owned.endsWith('/') ? path.startsWith(owned) : path === owned)))
     .map(path => `${path}: edits an upstream file with no registry entry`)
+}
+
+/**
+ * Check selected imports without advertising a complete upstream release upgrade.
+ * @param entries - selected source behavior records.
+ * @param wholeReleasePin - separately governed whole-release baseline.
+ * @param selectedPaths - optional newly selected paths requiring an owner.
+ * @returns missing dependencies, invalid records, and undeclared selected files.
+ */
+export function backportViolations(
+  entries: readonly BackportEntry[],
+  wholeReleasePin: string,
+  selectedPaths: readonly string[] = [],
+): string[] {
+  const failures: string[] = []
+  const ids = new Set<string>()
+  for (const entry of entries) {
+    if (ids.has(entry.id)) failures.push(`${entry.id}: duplicate selected-backport ID`)
+    ids.add(entry.id)
+    if (entry.basePin !== wholeReleasePin) failures.push(`${entry.id}: whole-release pin changed without reconciling selected backports`)
+    if (!entry.sourceTag || entry.sourceChanges.length === 0 || entry.paths.length === 0) failures.push(`${entry.id}: incomplete selected-backport source or ownership`)
+    if (entry.verification.length === 0) failures.push(`${entry.id}: missing verification`)
+  }
+  for (const entry of entries) for (const prerequisite of entry.prerequisites) {
+    if (!ids.has(prerequisite) || prerequisite === entry.id) failures.push(`${entry.id}: unresolved prerequisite ${prerequisite}`)
+  }
+  for (const path of selectedPaths) if (!entries.some(entry => entry.paths.some(owned => owned.endsWith('/') ? path.startsWith(owned) : path === owned))) {
+    failures.push(`${path}: no selected-backport entry`)
+  }
+  return failures
 }
 
 /**
@@ -473,6 +508,7 @@ export function upstreamIntakeViolations(inputs: IntakeInputs): string[] {
   })
   const mergeTime = inputs.changedUpstreamFiles !== undefined
   return [
+    ...backportViolations(registry.backports ?? [], registry.upstreamPin),
     ...neverMergeViolations(registry, files),
     ...forbiddenDependencyViolations(registry, readFile),
     ...mountRecordingViolations(registry, readFile),

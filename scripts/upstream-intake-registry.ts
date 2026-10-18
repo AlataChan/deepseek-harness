@@ -39,6 +39,33 @@ export interface PatchEntry {
   readonly reason: string
 }
 
+/** One selected backport; it does not advance the whole-release upstream pin. */
+export interface BackportEntry {
+  /** Stable scope item in the reviewed upgrade plan. */
+  readonly id: string
+  /** Upstream release containing the source behavior. */
+  readonly sourceTag: string
+  /** Whole-release baseline retained while this backport is active. */
+  readonly basePin: string
+  /** PRs or source change subjects; exact commit IDs live in scoped evidence. */
+  readonly sourceChanges: readonly string[]
+  /** Whether source was imported or adapted to the fork. */
+  readonly disposition: 'imported' | 'adapted'
+  /** Owned files or directory prefixes covered by the backport. */
+  readonly paths: readonly string[]
+  /** Other selected entries required for this behavior. */
+  readonly prerequisites: readonly string[]
+  /** Runnable behavior checks owned by this entry. */
+  readonly verification: readonly string[]
+}
+
+/** Selected behavior imports; the earlier upgrade plan still owns UPSTREAM_PIN. */
+export const BACKPORTS: readonly BackportEntry[] = [
+  { id: 'U4', sourceTag: 'dsh-v0.2.1-rc.2', basePin: 'dsh-v0.2.1-alpha.1', sourceChanges: ['PR #6272'], disposition: 'imported', paths: ['packages/subagent/subagent-codex/'], prerequisites: [], verification: ['packages/subagent/subagent-codex/tests/subagent-codex.spec.ts'] },
+  { id: 'U5', sourceTag: 'dsh-v0.2.1-rc.2', basePin: 'dsh-v0.2.1-alpha.1', sourceChanges: ['PR #6275'], disposition: 'imported', paths: ['packages/client/ui-skill/'], prerequisites: [], verification: ['packages/client/ui-skill/tests/browser-plugin.client.spec.ts'] },
+  { id: 'U6', sourceTag: 'dsh-v0.2.1-rc.2', basePin: 'dsh-v0.2.1-alpha.1', sourceChanges: ['PR #6353'], disposition: 'imported', paths: ['packages/client/ui-sidebar-right/', 'packages/client/ui-dockkit/'], prerequisites: [], verification: ['apps/web/tests/sidebar-right.e2e.ts'] },
+]
+
 /** One telemetry or account row a release composition must not add unrecorded. */
 export interface MountEntry {
   /** Composition file that carries the row. */
@@ -97,6 +124,8 @@ export interface RemovalEntry {
 export interface IntakeRegistry {
   /** Upstream tag this branch has merged through; the pin the changed-file diff reads. */
   readonly upstreamPin: string
+  /** Selected backports, independent of complete upstream intake. */
+  readonly backports?: readonly BackportEntry[]
   /** The `ignorable` envelope inspection over the fork's real session logs. */
   readonly ignorableInspection: IgnorableInspection
   /** Upstream paths the fork never merges. */
