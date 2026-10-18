@@ -1,7 +1,7 @@
 /** Versioned identities for an assembled desktop artifact and its installed payload. */
 import { createHash } from 'node:crypto'
-import { lstatSync, readdirSync, readFileSync } from 'node:fs'
-import { basename, join, relative } from 'node:path'
+import { lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync } from 'node:fs'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { validateDesktopBuildIdentity, type DesktopBuildIdentity } from './desktop-build-identity.ts'
 
 /** Inputs that identify one CI execution, independently of artifact names. */
@@ -31,22 +31,60 @@ export function artifactDigest(path: string): DesktopReleaseManifest['artifact']
   const data = readFileSync(path)
   return { name: basename(path), bytes: data.length, sha256: createHash('sha256').update(data).digest('hex') }
 }
-/** Hash the complete installed payload, including relative names. @param root - payload directory. @returns deterministic tree digest. */
+/**
+ * Hash file bytes and contained relative symlinks without hashing directory aliases twice.
+ * @param root - payload directory, not a symlink.
+ * @returns deterministic tree digest; invalid or cyclic links are refused.
+ */
 export function payloadDigest(root: string): string {
+  if (!lstatSync(root).isDirectory()) throw new Error(`Payload root must be a directory: ${root}`)
+  const physicalRoot = realpathSync(root)
   const hash = createHash('sha256')
+  const contained = (path: string): boolean => {
+    const local = relative(physicalRoot, path)
+    return local !== '..' && !local.startsWith(`..${sep}`) && !isAbsolute(local)
+  }
+  const directories = new Set<string>()
+  const active = new Set<string>()
+  const validateDirectory = (dir: string): void => {
+    if (active.has(dir)) throw new Error(`Payload directory links form a cycle: ${dir}`)
+    if (directories.has(dir)) return
+    active.add(dir)
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name)
+      let target = path
+      let stat = lstatSync(path)
+      if (stat.isSymbolicLink()) {
+        const literal = readlinkSync(path)
+        if (isAbsolute(literal) || !contained(resolve(dirname(path), literal))) {
+          throw new Error(`Payload link leaves its root: ${path}`)
+        }
+        target = realpathSync(path)
+        if (!contained(target)) throw new Error(`Payload link leaves its root: ${path}`)
+        stat = lstatSync(target)
+      }
+      if (stat.isDirectory()) validateDirectory(target)
+      else if (!stat.isFile()) throw new Error(`Unsupported payload entry: ${path}`)
+    }
+    active.delete(dir)
+    directories.add(dir)
+  }
   const visit = (dir: string): void => {
     for (const name of readdirSync(dir).sort()) {
       const path = join(dir, name)
+      const local = relative(physicalRoot, path).replaceAll('\\', '/')
       const stat = lstatSync(path)
-      if (stat.isSymbolicLink()) throw new Error(`Payload symlinks are forbidden: ${path}`)
-      if (stat.isDirectory()) visit(path)
+      if (stat.isSymbolicLink()) {
+        hash.update(JSON.stringify([local, 'symlink', readlinkSync(path)])).update('\n')
+      } else if (stat.isDirectory()) visit(path)
       else if (stat.isFile()) {
         const bytes = readFileSync(path)
-        hash.update(JSON.stringify([relative(root, path).replaceAll('\\', '/'), bytes.length])).update('\n').update(bytes)
+        hash.update(JSON.stringify([local, bytes.length])).update('\n').update(bytes)
       } else throw new Error(`Unsupported payload entry: ${path}`)
     }
   }
-  visit(root)
+  validateDirectory(physicalRoot)
+  visit(physicalRoot)
   return hash.digest('hex')
 }
 /** Parse an untrusted release record. @param value - JSON decoded from disk or a release asset. @returns validated manifest. */

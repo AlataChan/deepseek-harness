@@ -4,6 +4,8 @@ English | [中文](desktop-releases.zh.md)
 
 Desktop builds default to `internal`: unsigned Windows installers and ad-hoc-signed, unnotarized macOS images are for controlled testing. Set `DSH_DESKTOP_ARTIFACT_DIR` to an empty candidate directory to avoid replacing delivered installers. Every build writes an external `.release.json` containing the tested source, runtime and shell versions, target, CI run/attempt when present, installed payload digest, and final artifact size and SHA-256. A local build cannot qualify as a public CI artifact. Public DMGs contain normal drag-to-install instructions only; the quarantine-clearing helper and internal bypass instructions stay in internal images. Public Node signing permits V8 JIT and loading user-selected native plugins; those entitlements apply to the Node executable, not the application shell.
 
+The payload digest includes relative symlink names and literal targets only when they resolve inside the physical payload directory; absolute, escaping, broken and cyclic links are refused.
+
 ## Prepare a candidate
 
 1. Build the workspace and frozen knowledge sidecar, then run `node scripts/build-exe.mjs` on Windows or `bash scripts/build-dmg.sh --arch arm64` on macOS. The Windows custom template is based on Tauri CLI 2.11.4; its upstream template digest is recorded in the template header. Template updates must preserve the WebView installation, registry, shortcut, association and uninstaller behavior.
