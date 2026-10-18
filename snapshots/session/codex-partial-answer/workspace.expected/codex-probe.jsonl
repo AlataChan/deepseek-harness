@@ -1,0 +1,2 @@
+{"model":"codex-primary-model","ephemeral":true,"approvalPolicy":"never"}
+{"model":"codex-secondary-model","ephemeral":true,"approvalPolicy":"never"}
