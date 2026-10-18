@@ -153,6 +153,9 @@ jobs:
       - name: Verify native Windows installer upgrade recovery
         shell: pwsh
         run: ./scripts/tests/desktop-installer-upgrade.ps1 -NodePath apps/desktop/src-tauri/resources/node.exe
+      - name: Verify publication refuses unqualified candidates before execution
+        shell: pwsh
+        run: ./scripts/tests/desktop-publication-guard.ps1
       - name: Install the EXE silently
         shell: pwsh
         run: |

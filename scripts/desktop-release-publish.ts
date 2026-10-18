@@ -115,3 +115,14 @@ export async function publishDesktopRelease(
   await remote.replaceChannel(channelName(plan), expectedChannel, plan.channelRevision)
   await verifyPublication(plan, remote)
 }
+
+/**
+ * Qualify the exact reviewed plan without replacing it, including already-completed response-loss recovery.
+ * @param plan - reviewed immutable destinations and observed channel revision.
+ * @param remote - read-only observations.
+ */
+export async function qualifyReviewedPlan(plan: DesktopPublicationPlan, remote: DesktopReleaseTransport): Promise<void> {
+  const current = await planPublication({ repository: plan.repository, channel: plan.channel, version: plan.version,
+    commit: plan.commit, assets: plan.assets }, remote)
+  if (JSON.stringify(current) !== JSON.stringify(plan)) await verifyPublication(plan, remote)
+}

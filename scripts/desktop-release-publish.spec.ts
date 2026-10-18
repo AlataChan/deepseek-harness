@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { planPublication, publishDesktopRelease, verifyPublication } from './desktop-release-publish.ts'
+import { planPublication, publishDesktopRelease, verifyPublication, qualifyReviewedPlan } from './desktop-release-publish.ts'
 import { FixtureReleaseTransport } from './tests/desktop-release-fixture.ts'
 const digest = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 const asset = { name: 'octopus-1.2.3-windows-x64.exe', bytes: Buffer.from('signed binary') }
@@ -65,4 +65,17 @@ it('refuses moved tags and tampered local bytes before writing', async () => {
   await expect(publishDesktopRelease(plan, [asset], moved, qualify)).rejects.toThrow(/source commit/)
   expect(transport.writes).toEqual([])
   expect(moved.writes).toEqual([])
+})
+
+it('qualifies the original reviewed plan after response loss while refusing unrelated channel changes', async () => {
+  const remote = new FixtureReleaseTransport(input.commit)
+  const plan = await planPublication(input, remote)
+  await qualifyReviewedPlan(plan, remote)
+  remote.assets.set('channel-stable.json', { revision: 'unreviewed', bytes: Buffer.from('{}') })
+  await expect(qualifyReviewedPlan(plan, remote)).rejects.toThrow()
+  remote.assets.delete('channel-stable.json')
+  await publishDesktopRelease(plan, [asset], remote, qualify)
+  const writes = remote.writes.length
+  await expect(qualifyReviewedPlan(plan, remote)).resolves.toBeUndefined()
+  expect(remote.writes).toHaveLength(writes)
 })

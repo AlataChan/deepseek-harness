@@ -425,9 +425,8 @@ const newest = installers
   .sort((left, right) => right.mtime - left.mtime)[0]
 mkdirSync(dirname(INSTALLER_OUT), { recursive: true })
 copyFileSync(join(NSIS_DIR, newest.name), INSTALLER_OUT)
-process.env.DSH_SIGNATURE_PAYLOAD = join(TAURI_DIR, 'target', 'release', 'dsh-desktop.exe')
 
-run(process.execPath, ['--import', 'tsx/esm', 'scripts/desktop-release-cli.ts', 'manifest', INSTALLER_OUT, RESOURCES, 'windows-x64', BUILD_MODE, `${INSTALLER_OUT}.release.json`])
+run(process.execPath, ['--import', 'tsx/esm', 'scripts/desktop-release-cli.ts', 'manifest', INSTALLER_OUT, RESOURCES, 'windows-x64', BUILD_MODE, `${INSTALLER_OUT}.release.json`, join(TAURI_DIR, 'target', 'release', 'dsh-desktop.exe')])
 
 console.log('')
 ok(`Done! Distribute: ${INSTALLER_OUT}`)

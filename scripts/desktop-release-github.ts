@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 import type { DesktopReleaseTransport, ReleaseAsset } from './desktop-release-publish.ts'
 import type { DesktopRunEvidence } from './verify-desktop-release.ts'
-import type { DesktopReleaseManifest } from './desktop-release-manifest.ts'
+import { validateReleaseManifest, type DesktopReleaseManifest } from './desktop-release-manifest.ts'
 
 /** HTTP injection point used for recorded adapter controls. */
 export type ReleaseFetch = typeof fetch
@@ -122,7 +122,8 @@ export class GitHubDesktopReleaseTransport implements DesktopReleaseTransport {
       writeFileSync(zip, bytes, { flag: 'wx', mode: 0o600 })
       if (process.platform !== 'win32') {
         const listing = spawnSync('/usr/bin/unzip', ['-Z1', zip], { encoding: 'utf8', timeout: 30_000 })
-        if (listing.status !== 0 || listing.stdout.split('\n').filter(name => name === manifest.artifact.name).length !== 1) {
+        if (listing.status !== 0 || listing.stdout.split('\n').filter(name => name === manifest.artifact.name).length !== 1
+          || listing.stdout.split('\n').filter(name => name === `${manifest.artifact.name}.release.json`).length !== 1) {
           throw new Error('Ambiguous installer entries in workflow archive')
         }
       }
@@ -135,7 +136,42 @@ export class GitHubDesktopReleaseTransport implements DesktopReleaseTransport {
       const observed = typeof result.stdout === 'string' ? result.stdout.trim()
         : `${result.stdout.length}:${createHash('sha256').update(result.stdout).digest('hex')}`
       if (observed !== `${manifest.artifact.bytes}:${manifest.artifact.sha256}`) throw new Error('Local installer differs from actual GitHub workflow artifact')
+      const producerName = `${manifest.artifact.name}.release.json`
+      const producer = process.platform === 'win32'
+        ? spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command',
+          "Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[IO.Compression.ZipFile]::OpenRead($env:DSH_VERIFY_ZIP); try { $entries=@($z.Entries | Where-Object FullName -eq $env:DSH_VERIFY_ENTRY); if($entries.Count -ne 1 -or $entries[0].Length -gt 1048576){throw 'Missing or ambiguous producer manifest'}; $r=[IO.StreamReader]::new($entries[0].Open()); try {Write-Output $r.ReadToEnd()} finally {$r.Dispose()} } finally {$z.Dispose()}"],
+        { encoding: 'utf8', timeout: 30_000, maxBuffer: 1024 * 1024,
+          env: { ...process.env, DSH_VERIFY_ZIP: zip, DSH_VERIFY_ENTRY: producerName } })
+        : spawnSync('/usr/bin/unzip', ['-p', zip, producerName], { encoding: 'utf8', timeout: 30_000, maxBuffer: 1024 * 1024 })
+      if (producer.error !== undefined || producer.status !== 0) throw new Error('Cannot verify archived producer manifest')
+      const archived = validateReleaseManifest(JSON.parse(producer.stdout))
+      if (JSON.stringify(archived) !== JSON.stringify(validateReleaseManifest(manifest))) {
+        throw new Error('Archived producer manifest differs from the claimed source/run/attempt or artifact qualification')
+      }
+
     } finally { rmSync(dir, { recursive: true, force: true }) }
+  }
+  /**
+   * Require the same publication workflow's read-only native qualification job to have completed.
+   * @param runId - current publication run.
+   * @param attempt - current publication attempt.
+   * @param commit - workflow source commit checked out by the publisher.
+   */
+  async assertReadOnlyQualification(runId: number, attempt: number, commit: string): Promise<void> {
+    const run = object(await (await this.api(`${this.base}/actions/runs/${runId}/attempts/${attempt}`)).json())
+    const repo = object(run.repository)
+    if (repo.full_name !== 'AlataChan/deepseek-harness' || run.head_sha !== commit || run.run_attempt !== attempt
+      || run.path !== '.github/workflows/desktop-publish.yml') throw new Error('Publication qualification workflow identity differs')
+    const value = object(await (await this.api(`${this.base}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`)).json())
+    if (!Array.isArray(value.jobs) || value.jobs.length !== value.total_count) throw new Error('Incomplete qualification job evidence')
+    const jobs = value.jobs.map(object).filter(job => job.name === 'qualify-and-plan')
+    const qualification = jobs[0]
+    if (jobs.length !== 1 || qualification === undefined || qualification.conclusion !== 'success') throw new Error('Read-only native qualification did not succeed')
+    const steps: unknown = qualification.steps
+    if (!Array.isArray(steps) || !steps.some((step: unknown) => {
+      const s = object(step)
+      return s.name === 'Qualify downloaded artifact and execute explicit operation' && s.conclusion === 'success'
+    })) throw new Error('Native installed qualification step did not succeed')
   }
   /**
  * Read CI execution and installed-verification steps directly from GitHub.
@@ -154,7 +190,7 @@ export class GitHubDesktopReleaseTransport implements DesktopReleaseTransport {
       const steps: unknown = job.steps
       if (!Array.isArray(steps)) return false
       const names = manifest.target === 'windows-x64'
-        ? ['Run the Windows readiness gate', 'Verify installed Ask Knowledge public flows with a legacy code page', 'Verify native Windows installer upgrade recovery']
+        ? ['Run the Windows readiness gate', 'Verify installed Ask Knowledge public flows with a legacy code page', 'Verify native Windows installer upgrade recovery', 'Verify publication refuses unqualified candidates before execution']
         : ['Verify mounted desktop bundle']
       return names.every(name => steps.some((step: unknown) => { const s = object(step); return s.name === name && s.conclusion === 'success' }))
     })

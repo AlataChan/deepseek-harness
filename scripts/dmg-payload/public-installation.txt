@@ -1,0 +1,8 @@
+octopus_DSH 安装说明
+====================
+
+1. 将 octopus_DSH.app 拖到 Applications（应用程序）文件夹。
+2. 从 Applications 打开 octopus_DSH，按 macOS 的正常提示确认打开。
+3. 在设置 → 模型中填写 API Key，即可开始使用。
+
+如果系统拒绝验证此安装包，请停止安装并联系发布者核对文件完整性及签名。
