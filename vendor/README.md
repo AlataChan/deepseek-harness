@@ -26,12 +26,14 @@ Third-party dependencies of the vendored packages stay on npm: `@standard-schema
 
 Intentionally **not** vendored (verified unused by this set): `reggol`, `@cordisjs/utils`, `@cordisjs/element`, `@cordisjs/unyaml` (dev-time YAML import hook only).
 
+The selected rc.2 metadata alignment sets package manifests to Cordis 4.0.5, Cosmokit 1.8.6, Group 1.0.5, HMR 1.0.20, Include 1.0.10, Loader 1.0.6, Logger Console 1.0.5, Schemastery 3.18.5 and Timer 1.1.7. The source commits above remain unchanged. Timer publishes its English and Chinese JSON locale resources through `./locale/*.json`. No vendored runtime source is replaced.
+
 ## Local modifications
 
 Keep this log exhaustive — every divergence from upstream must be listed.
 
 1. **`hmr/src/index.ts`**: removed the `./locales/en-US.yml` / `./locales/zh-CN.yml` imports, the `.i18n({...})` call on the `Config` schema, and the `src/locales/` directory. Rationale: those imports require a runtime YAML loader hook (`@cordisjs/unyaml`) that we do not vendor; the i18n texts only localize config descriptions.
-2. **All `package.json` files**: regenerated for Harness releases with scoped names, release versions, publication metadata, precise bundled-runtime and `lib/types/**/*.d.ts` / `.d.ts.map` file entries, source exports where applicable, and declaration metadata pointing at `lib/types`. References within the vendored set use `workspace:~`. HMR declares `esbuild` as a direct dev dependency for its imported `BuildFailure` type, and Loader requires `node-addon-require-builtin@^0.1.4` to match published app runtimes.
+2. **All `package.json` files**: regenerated for Harness releases with scoped names, release versions, publication metadata, precise bundled-runtime and `lib/types/**/*.d.ts` / `.d.ts.map` file entries, source exports where applicable, and declaration metadata pointing at `lib/types`. References within the vendored set use `workspace:~`. HMR declares `esbuild` as a direct dev dependency for its imported `BuildFailure` type, and Loader requires `node-addon-require-builtin@^0.1.9` to match published app runtimes.
 3. **All `tsconfig.json` files**: regenerated to extend the repo-root `tsconfig.base.json`, emit TypeScript intermediates to `lib/types`, and declare project references.
 4. **Vendored TypeScript source internal specifiers**: changed local relative imports/exports from upstream's specifier shape to explicit `.ts` specifiers so TypeScript rewrites emitted JS to `.js` while declarations keep explicit, NodeNext-safe `.ts` specifiers. This includes `loader/src/config/isolate.ts` using `declare module './entry.ts'`. Type-only dependencies use `import type` or inline `type` modifiers so ESM output does not retain erased interfaces.
 5. **`schemastery/tsdown.config.ts` and `logger-console/tsdown.config.ts`**: ours, not upstream files — per-package build-shape overrides (dual ESM+CJS output; separate node/browser entries) for the repo-root tsdown build. They read the JS emitted under `lib/types` and then write the publish runtime entries under `lib/`. Like the regenerated tsconfigs, they are not part of the upstream sync surface.

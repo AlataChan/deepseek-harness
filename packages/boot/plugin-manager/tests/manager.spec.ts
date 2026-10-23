@@ -574,7 +574,11 @@ it('retains approved policy and reports it as changed when the registry fails be
 })
 
 it('runs a real pnpm dependency script only after approval and retry', async () => {
-  const { manager, dir, profile } = await fixture('startup')
+  // Temporary profiles have no packageManager field; select the repository-pinned pnpm explicitly.
+  const command = fileURLToPath(new URL('./bin/pnpm.mjs', import.meta.resolve('pnpm')))
+  const { manager, dir, profile } = await fixture('startup', false, undefined, {}, {
+    command: process.execPath, args: [command], env: {},
+  })
   const addon = join(profile.cwd, 'addon')
   mkdirSync(addon)
   writeFileSync(join(addon, 'package.json'), JSON.stringify({ name: 'approval-fixture-addon', version: '1.0.0',

@@ -19,6 +19,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { compatibilityOwnershipViolations } from './upstream-compatibility-policy.ts'
 import { loadCordisYaml, isJsExpr } from './cordis-yaml.ts'
 import {
   BACKPORTS,
@@ -510,6 +511,7 @@ export function upstreamIntakeViolations(inputs: IntakeInputs): string[] {
   const mergeTime = inputs.changedUpstreamFiles !== undefined
   return [
     ...backportViolations(registry.backports ?? [], registry.upstreamPin),
+    ...(mergeTime ? compatibilityOwnershipViolations(registry.backports ?? [], registry.upstreamPin) : []),
     ...neverMergeViolations(registry, files),
     ...forbiddenDependencyViolations(registry, readFile),
     ...mountRecordingViolations(registry, readFile),

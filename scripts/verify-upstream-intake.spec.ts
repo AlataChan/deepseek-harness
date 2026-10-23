@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { COMPATIBILITY_BASE_PIN, COMPATIBILITY_ITEMS } from './upstream-compatibility-policy.ts'
 import type { IntakeRegistry } from './upstream-intake-registry.ts'
 import {
   changedUpstreamFilesAgainstPin,
@@ -20,7 +21,11 @@ import {
 /** A registry with one entry per rule, so a seeded violation is unambiguous. */
 function fixtureRegistry(): IntakeRegistry {
   return {
-    upstreamPin: 'intake-pin',
+    upstreamPin: COMPATIBILITY_BASE_PIN,
+    backports: Object.entries(COMPATIBILITY_ITEMS).map(([id, paths]) => ({
+      id, paths, sourceTag: 'dsh-v0.2.1-rc.2', basePin: COMPATIBILITY_BASE_PIN,
+      sourceChanges: ['Fixture ownership'], disposition: 'adapted', prerequisites: [], verification: ['fixture'],
+    })),
     ignorableInspection: {
       eventTypes: ['ask-data/bound'],
       inspectedLogs: 1,
@@ -260,7 +265,7 @@ describe('the command supplies the pin diff to the merge-time rules', () => {
       const commit = ['-C', root, '-c', 'user.email=fixture@test.invalid', '-c', 'user.name=fixture']
       execFileSync('git', [...commit, 'add', '-A'])
       execFileSync('git', [...commit, 'commit', '-qm', 'pin state'])
-      execFileSync('git', ['-C', root, 'tag', 'intake-pin'])
+      execFileSync('git', ['-C', root, 'tag', COMPATIBILITY_BASE_PIN])
       writeFileSync(join(root, 'packages/llm/provider/src/index.ts'), 'edited\n')
       const changedUpstreamFiles = changedUpstreamFilesAgainstPin(root, fixtureRegistry())
       expect(changedUpstreamFiles).toEqual(['packages/llm/provider/src/index.ts'])
@@ -281,7 +286,7 @@ describe('the command supplies the pin diff to the merge-time rules', () => {
       const commit = ['-C', root, '-c', 'user.email=fixture@test.invalid', '-c', 'user.name=fixture']
       execFileSync('git', [...commit, 'add', '-A'])
       execFileSync('git', [...commit, 'commit', '-qm', 'pin state'])
-      execFileSync('git', ['-C', root, 'tag', 'intake-pin'])
+      execFileSync('git', ['-C', root, 'tag', COMPATIBILITY_BASE_PIN])
       writeFileSync(join(root, 'packages/llm/provider/package.json'), '{"name":"x","dependencies":{"@deepseek-ai/dsh-host-commerce":"workspace:^"}}\n')
       writeFileSync(join(root, 'packages/llm/provider/tsconfig.json'), '{"strict":true}\n')
       const changedUpstreamFiles = changedUpstreamFilesAgainstPin(root, fixtureRegistry())
