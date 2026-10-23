@@ -31,6 +31,8 @@ This package exports the transport library; the provider plugins register routes
 
 The adapter accepts the LLM service's [request-only user inputs](../llm/README.md#use-this-package) alongside durable history; omitting request-only identity and attribution does not alter provider content.
 
+The shipped `deepseek-flash` catalog entry displays `DeepSeek-V4.1-Flash`. This name is presentation-only; request IDs, saved selections and explicit deployment catalog names remain unchanged.
+
 ### When to choose it
 
 Choose this adapter for DeepSeek's official API or a Messages-compatible gateway through `baseURL`. Choose `dsh-llm-pi-ai` when the same composition also routes other providers or hand-declared gateways through pi-ai's catalogs; the two adapters can be mounted together because their route names do not collide. Registering any other adapter for `deepseek-official` fails with `DUPLICATE_ADAPTER`.

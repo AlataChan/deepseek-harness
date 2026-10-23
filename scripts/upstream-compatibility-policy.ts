@@ -6,6 +6,16 @@ export const COMPATIBILITY_BASE_PIN = 'dsh-v0.2.1-alpha.1'
 
 /** Required exact ownership, independent of the records the intake runner validates. */
 export const COMPATIBILITY_ITEMS: Readonly<Record<string, readonly string[]>> = {
+  C3: [
+    'packages/llm/llm-deepseek/src/models.ts',
+    'packages/llm/llm-deepseek/tests/adapter.spec.ts',
+    'packages/llm/llm-deepseek/tests/runtime.spec.ts',
+    'packages/llm/llm-deepseek/README.md',
+    'packages/llm/llm-deepseek/README.zh.md',
+    'packages/llm/llm-deepseek/README.i18n.yaml',
+    'apps/web/tests/flash-default-catalog.e2e.ts', 'tsconfig.host.json', 'apps/web/tsconfig.json',
+    'apps/web/tests/expected/flash-default-catalog/picker.expected.md',
+  ],
   C2: [
     'packages/client/ui-model-selection/src/client/slots.ts',
     'packages/client/ui-model-selection/src/client/ModelSelect.tsx',

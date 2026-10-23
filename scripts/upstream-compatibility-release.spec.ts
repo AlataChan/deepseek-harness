@@ -81,8 +81,18 @@ function runCli(omitted?: string, advancePin = false): ReturnType<typeof spawnSy
       'apps/web/tests/default-model.e2e.ts',
       'apps/web/tests/model-menu-observer.e2e.ts',
     ] }
+    const c3 = { ...entry, id: 'C3', paths: [
+      'packages/llm/llm-deepseek/src/models.ts',
+      'packages/llm/llm-deepseek/tests/adapter.spec.ts',
+      'packages/llm/llm-deepseek/tests/runtime.spec.ts',
+      'packages/llm/llm-deepseek/README.md',
+      'packages/llm/llm-deepseek/README.zh.md',
+      'packages/llm/llm-deepseek/README.i18n.yaml',
+      'apps/web/tests/flash-default-catalog.e2e.ts', 'tsconfig.host.json', 'apps/web/tsconfig.json',
+      'apps/web/tests/expected/flash-default-catalog/picker.expected.md',
+    ] }
     const exports = {
-      UPSTREAM_PIN: pin, BACKPORTS: [entry, c2].filter(record => record.id !== omitted)
+      UPSTREAM_PIN: pin, BACKPORTS: [entry, c2, c3].filter(record => record.id !== omitted)
         .map(record => ({ ...record, paths: record.paths.filter(path => path !== omitted) })),
       IGNORABLE_INSPECTION: { eventTypes: [], inspectedLogs: 0, envelopeKeys: [], conclusion: 'required-not-ignorable' },
       NEVER_MERGE: [], PATCHES: [], MOUNTS: [], REMOVALS: [], GATED_PACKAGE_NAMES: [], RELEASE_COMPOSITIONS: [],
@@ -113,8 +123,8 @@ describe('executed compatibility intake gate', () => {
     expect(result.status, String(result.stderr)).toBe(0)
     expect(String(result.stdout)).toContain('verify-upstream-intake: intake complete')
   })
-  for (const omitted of ['vendor/cordis/package.json', 'vendor/timer/locale/zh.json', 'C1', 'C2',
-    'packages/client/ui-slots/src/index.ts']) {
+  for (const omitted of ['vendor/cordis/package.json', 'vendor/timer/locale/zh.json', 'C1', 'C2', 'C3',
+    'packages/client/ui-slots/src/index.ts', 'packages/llm/llm-deepseek/src/models.ts']) {
     it(`rejects missing ownership: ${omitted}`, () => {
       const result = runCli(omitted)
       expect(result.error).toBeUndefined()
