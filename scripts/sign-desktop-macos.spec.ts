@@ -2,11 +2,33 @@ import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { machOFiles, nestedCodeBundles, signDesktopMachO } from './sign-desktop-macos.ts'
+import { machOFiles, nestedCodeBundles, prepareDesktopMachO, signDesktopMachO } from './sign-desktop-macos.ts'
 
 const native = vi.hoisted(() => vi.fn())
 vi.mock('node:child_process', () => ({ spawnSync: native }))
 afterEach(() => { native.mockReset() })
+
+it('prepares embedded addons and helpers while retaining the downloaded Node signature', () => {
+  const app = mkdtempSync(join(tmpdir(), 'desktop-preparation-signatures-'))
+  try {
+    const resources = join(app, 'Contents/Resources/resources')
+    mkdirSync(resources, { recursive: true })
+    const node = join(resources, 'node')
+    const addon = join(resources, 'addon.node')
+    const helper = join(resources, 'helper')
+    for (const path of [node, addon, helper]) writeFileSync(path, Buffer.from('cffaedfe00000000', 'hex'))
+    native.mockReturnValue({ status: 0, stderr: '' })
+    prepareDesktopMachO(app)
+    expect(native.mock.calls[0]?.[1]).toEqual(['--verify', '--strict', node])
+    const signed = native.mock.calls.filter(call => call[1].includes('--force')).map(call => call[1].at(-1))
+    expect(signed).toEqual([addon, helper])
+    native.mockImplementation((_command, args) => ({
+      status: args.includes('--verify') && args.at(-1) === addon ? 1 : 0,
+      stderr: 'invalid addon signature',
+    }))
+    expect(() => { prepareDesktopMachO(app) }).toThrow(/verify prepared native code/)
+  } finally { rmSync(app, { recursive: true, force: true }) }
+})
 
 describe('native desktop signing inventory', () => {
   it('includes extensionless helpers and dylibs while skipping aliases and data', () => {

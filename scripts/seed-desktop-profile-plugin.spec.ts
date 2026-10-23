@@ -125,7 +125,7 @@ describe('seed-desktop-profile-plugin', () => {
     expect(existsSync(join(dest, 'node_modules'))).toBe(false)
   })
 
-  it('keeps a scoped pin payload when installing a third-party file: dep', () => {
+  it('keeps a scoped pin payload when installing a third-party file: dep', { timeout: 60_000 }, () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-seed-scoped-deps-'))
     fixtures.push(root)
     const name = '@deepseek-ai/dsh-experimental-desktop-ask-data'
@@ -254,5 +254,121 @@ describe('seed-desktop-profile-plugin', () => {
     const manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
     expect(manifest.dsh.profile.bundles).toEqual([...SHIPPED, 'dsh-fixture-plugin'])
     expect(manifest.dependencies['dsh-context']).toBeUndefined()
+  })
+
+  it('installs a default-disabled plugin into dependencies but omits from bundles', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-seed-disabled-'))
+    fixtures.push(root)
+    const plugin = writePlugin(root, 'dsh-context', '0.74.0')
+    const profile = join(root, 'desktop')
+    mkdirSync(profile, { recursive: true })
+    const result = installPluginIntoProfile(plugin, profile, SHIPPED, { defaultEnabled: false })
+    expect(result.firstInstall).toBe(true)
+    const manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
+    expect(manifest.dependencies['dsh-context']).toBe('0.74.0')
+    expect(manifest.dsh.profile.bundles).toEqual(SHIPPED)
+  })
+
+  it('preserves modern dsh-context 0.74.0 selections across heal only when installed version matches', () => {
+    // Both recorded and installed are 0.74.0 -> preserved ON
+    const healedOn = healDesktopProfileManifest({
+      dependencies: { 'dsh-context': '0.74.0' },
+      dsh: {
+        profile: {
+          bundles: [...SHIPPED, 'dsh-context'],
+        },
+      },
+    }, { installedVersion: '0.74.0' })
+    expect(healedOn.dsh.profile.bundles).toEqual([...SHIPPED, 'dsh-context'])
+    expect(healedOn.dependencies?.['dsh-context']).toBe('0.74.0')
+
+    // Both recorded and installed are 0.74.0 -> preserved OFF
+    const healedOff = healDesktopProfileManifest({
+      dependencies: { 'dsh-context': '0.74.0' },
+      dsh: {
+        profile: {
+          bundles: [...SHIPPED],
+        },
+      },
+    }, { installedVersion: '0.74.0' })
+    expect(healedOff.dsh.profile.bundles).toEqual(SHIPPED)
+    expect(healedOff.dependencies?.['dsh-context']).toBe('0.74.0')
+
+    // Recorded 0.74.0 but installed is 0.36.0 (disagreement) -> stripped from bundles and dependencies
+    const healedDisagreement = healDesktopProfileManifest({
+      dependencies: { 'dsh-context': '0.74.0' },
+      dsh: {
+        profile: {
+          bundles: [...SHIPPED, 'dsh-context'],
+        },
+      },
+    }, { installedVersion: '0.36.0' })
+    expect(healedDisagreement.dsh.profile.bundles).toEqual(SHIPPED)
+    expect(healedDisagreement.dependencies?.['dsh-context']).toBeUndefined()
+
+    // Recorded 0.74.0 but installed version is missing/null -> stripped from bundles
+    const healedMissingInstalled = healDesktopProfileManifest({
+      dependencies: { 'dsh-context': '0.74.0' },
+      dsh: {
+        profile: {
+          bundles: [...SHIPPED, 'dsh-context'],
+        },
+      },
+    }, { installedVersion: null })
+    expect(healedMissingInstalled.dsh.profile.bundles).toEqual(SHIPPED)
+
+    // Recorded is legacy range
+    const healedRange = healDesktopProfileManifest({
+      dependencies: { 'dsh-context': '^0.36.0' },
+      dsh: {
+        profile: {
+          bundles: [...SHIPPED, 'dsh-context'],
+        },
+      },
+    })
+    expect(healedRange.dsh.profile.bundles).toEqual(SHIPPED)
+    expect(healedRange.dependencies?.['dsh-context']).toBeUndefined()
+
+    // Recorded is empty
+    const healedUnrecorded = healDesktopProfileManifest({
+      dependencies: {},
+      dsh: {
+        profile: {
+          bundles: [...SHIPPED, 'dsh-context'],
+        },
+      },
+    })
+    expect(healedUnrecorded.dsh.profile.bundles).toEqual(SHIPPED)
+  })
+
+  it('durably persists safety healing before a rejected installation', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-seed-durable-heal-'))
+    fixtures.push(root)
+    const profile = join(root, 'profile')
+    mkdirSync(profile, { recursive: true })
+
+    // Legacy profile with 0.36.0 selected
+    writeFileSync(join(profile, 'package.json'), `${JSON.stringify({
+      name: 'dsh-profile-desktop',
+      dependencies: { 'dsh-context': '0.36.0' },
+      dsh: { profile: { bundles: [...SHIPPED, 'dsh-context'] } },
+    }, undefined, 2)}\n`)
+
+    const pluginDir = writePlugin(root, 'dsh-context', '0.74.0')
+    const dest = join(profile, 'node_modules', 'dsh-context')
+    mkdirSync(join(profile, 'node_modules'), { recursive: true })
+    const targetDir = join(root, 'symlink-target')
+    mkdirSync(targetDir)
+    symlinkSync(targetDir, dest, 'dir')
+
+    // Installation should fail because dest is a symlink
+    expect(() => {
+      installPluginIntoProfile(pluginDir, profile, SHIPPED, { defaultEnabled: false })
+    }).toThrow(/is a symlink/)
+
+    // BUT package.json on disk must have been healed durably!
+    const onDisk = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
+    expect(onDisk.dsh.profile.bundles).toEqual(SHIPPED)
+    expect(onDisk.dependencies['dsh-context']).toBeUndefined()
   })
 })

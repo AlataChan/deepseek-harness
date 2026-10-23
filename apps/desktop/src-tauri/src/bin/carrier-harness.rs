@@ -29,6 +29,14 @@ struct SendArgs {
     line: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SeedProfileArgs {
+    profile_dir: PathBuf,
+    resources_dir: PathBuf,
+    revision: String,
+}
+
 fn env_dir(name: &str, default: PathBuf) -> PathBuf {
     std::env::var_os(name).map(PathBuf::from).unwrap_or(default)
 }
@@ -57,6 +65,16 @@ fn dispatch(
 ) -> Result<(), String> {
     let mut guard = shell.lock().map_err(|error| error.to_string())?;
     match request.cmd.as_str() {
+        "seed_profile" => {
+            let args: SeedProfileArgs = serde_json::from_value(request.args)
+                .map_err(|error| error.to_string())?;
+            match dsh_desktop::app::seed_profile_for_harness(
+                &args.profile_dir, &args.resources_dir, &args.revision,
+            ) {
+                Ok(outcome) => reply_ok(out, request.id, json!({ "outcome": outcome })),
+                Err(error) => reply_err(out, request.id, error),
+            }
+        }
         "runtime_configure" => {
             let args: ConfigureArgs =
                 serde_json::from_value(request.args).map_err(|error| error.to_string())?;

@@ -318,8 +318,10 @@ export class ProcessTransport {
       case 'control/error':
         this.terminate(new Error(`desktop companion ${frame.code}: ${frame.message}`))
         return
-      case 'control/hello':
       case 'control/ready':
+        // The surface owns graph reconciliation; snapshots share this physical RPC port.
+        return
+      case 'control/hello':
       case 'control/shutdown':
       case 'control/shutdown-complete':
       case 'stream/open':

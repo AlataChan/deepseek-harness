@@ -230,13 +230,10 @@ if [[ "$PHASE" == sign ]]; then
   node --import tsx/esm "$REPO_ROOT/scripts/desktop-macos-preparation.ts" verify "$APP_BUNDLE" "$ARCH" "$BUILD_MODE"
 else
   # The readiness check executes bundled code before a Developer ID key is imported.
-  /usr/bin/codesign --force --sign - --timestamp=none "$RESOURCES/node"
-  /usr/bin/codesign --force --sign - --timestamp=none "$RESOURCES/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar"
-  while IFS= read -r lib; do
-    [[ -z "$lib" ]] && continue
-    /usr/bin/codesign --force --sign - --timestamp=none "$lib"
-  done < <(find "$RESOURCES/kb-runtime" \( -name '*.so' -o -name '*.dylib' \) -type f 2>/dev/null)
+  node --import tsx/esm "$REPO_ROOT/scripts/sign-desktop-macos.ts" --prepare "$APP_BUNDLE"
   /usr/bin/codesign --force --deep --sign - --timestamp=none "$APP_BUNDLE"
+  /usr/bin/codesign --verify --deep --strict "$APP_BUNDLE"
+  node --import tsx/esm "$REPO_ROOT/scripts/desktop-macos-preparation.ts" refresh "$APP_BUNDLE"
   /usr/bin/codesign --verify --deep --strict "$APP_BUNDLE"
   info "Running readiness checklist before sealing prepared bytes..."
   if ! bash "$REPO_ROOT/scripts/verify-desktop-bundle.sh" "$APP_BUNDLE"; then
@@ -251,14 +248,12 @@ fi
 if [[ "$BUILD_MODE" == public ]]; then
   node --import tsx/esm "$REPO_ROOT/scripts/sign-desktop-macos.ts" "$APP_BUNDLE" \
     "$DSH_MAC_SIGNING_IDENTITY" "$DSH_MAC_TEAM_ID" "$REPO_ROOT/scripts/desktop-node-entitlements.plist"
+  /usr/bin/codesign --force --entitlements "$REPO_ROOT/scripts/desktop-app-entitlements.plist" "${SIGN_ARGS[@]}" "$APP_BUNDLE"
 fi
-ROOT_SIGN_ARGS=(--deep)
-if [[ "$BUILD_MODE" == public ]]; then ROOT_SIGN_ARGS=(--entitlements "$REPO_ROOT/scripts/desktop-app-entitlements.plist"); fi
-/usr/bin/codesign --force ${ROOT_SIGN_ARGS[@]+"${ROOT_SIGN_ARGS[@]}"} "${SIGN_ARGS[@]}" "$APP_BUNDLE"
 if ! /usr/bin/codesign --verify --deep --strict "$APP_BUNDLE"; then
   fail "codesign --verify failed after embedding"
 fi
-ok "Bundle re-signed ($BUILD_MODE)"
+ok "Bundle signature verified ($BUILD_MODE)"
 
 # Prepared public inputs already passed readiness before the signing key was imported.
 # The workflow repeats mounted checks only after removing the signing keychain.

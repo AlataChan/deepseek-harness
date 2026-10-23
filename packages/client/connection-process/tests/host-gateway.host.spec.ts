@@ -56,6 +56,7 @@ function createHarness(overrides: Partial<HostGatewayOptions> = {}) {
     clientModules: {
       graph: () => graph,
       clientPath: () => '/artifacts/client.js',
+      onGraphChanged: () => () => {},
     },
     expectedWorkspaceRoot: '/workspace',
     runtimeVersion: '0.1.2-rc.1',
@@ -73,6 +74,26 @@ async function ready(harness: ReturnType<typeof createHarness>): Promise<void> {
   await harness.gateway.accept(hello())
   expect(harness.sent[0]?.type).toBe('control/ready')
 }
+
+it('announces changed Client graphs over the carrier and detaches on disposal', async () => {
+  let changed: (() => void) | undefined
+  let current = graph
+  const detach = vi.fn(() => { changed = undefined })
+  const harness = createHarness({ clientModules: {
+    graph: () => current,
+    clientPath: () => '/artifacts/client.js',
+    onGraphChanged: (listener) => { changed = listener; return detach },
+  } })
+  await ready(harness)
+  current = { ...graph, rev: 'graph-2', entries: [] , batches: [] }
+  changed?.()
+  await vi.waitFor(() => expect(harness.sent).toContainEqual(expect.objectContaining({
+    type: 'control/ready', graph: current, bundles: [],
+  })))
+  await harness.gateway.dispose()
+  expect(detach).toHaveBeenCalledOnce()
+  expect(changed).toBeUndefined()
+})
 
 class AutoPort implements NodeIpcPort {
   connected = true

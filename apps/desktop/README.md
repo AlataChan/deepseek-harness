@@ -1,10 +1,24 @@
-# `@deepseek-ai/dsh-desktop`
+# Octopus DSH desktop (`@deepseek-ai/dsh-desktop`)
 
-Unsigned local Tauri 2 window that runs the existing browser Client against one Node companion. The Rust process discovers a real Node executable, runs the bundled installed-runtime CLI, spawns `dsh.companions.desktop`, and relays bounded carrier records. The WebView bootstrap owns `control/hello`, caches announced Client bundles, then mounts the Client tree. The companion boots `desktop = dsh-base + dsh-web-app + dsh-desktop-app`. The Host keeps a loopback webserver (`127.0.0.1`, port `0`); stdio carries handshake, bundle cache, and the `__DSH_TRANSPORT__` tunnel.
+Octopus DSH (Little Green Whale) provides a Tauri 2 desktop window for conversations, files, document libraries, data questions, saved assistants, and standing teams. It is this fork's desktop application, maintained independently of the official DeepSeek Harness distribution. See the [user guide](../../docs/user/guide/index.md) for first use.
+
+The shell runs the existing browser Client against one Node companion. The Rust process discovers a real Node executable, runs the bundled installed-runtime CLI, spawns `dsh.companions.desktop`, and relays bounded carrier records. The WebView bootstrap owns `control/hello`, caches announced Client bundles, then mounts the Client tree. The companion boots `desktop = dsh-base + dsh-web-app + dsh-desktop-app`. The Host keeps a loopback webserver (`127.0.0.1`, port `0`); stdio carries handshake, bundle cache, and the `__DSH_TRANSPORT__` tunnel.
+
+## Desktop additions
+
+The packaged profile includes the plugins pinned in [desktop-profile-plugins.json](../../scripts/desktop-profile-plugins.json): file workspace, ask data, ask knowledge, commerce and public-service entries, assistants and team UI, home atmosphere, media, and speech transcription. [desktop-bundled-skills.json](../../scripts/desktop-bundled-skills.json) owns the bundled skills. These additions are seeded into the desktop profile; they are not automatically part of the Web profile. Video composition uses a separately installed media runtime; FFmpeg is not bundled.
+
+## Local data and coexistence
+
+The packaged `dsh-context@0.74.0` dependency starts disabled. Plugin switches update the Host and send Client graphs through the existing carrier; Rust verifies each new bundle's digest before the WebView may load it. Profile refresh preserves a verified installation's ON/OFF selection, and a failed revision-stamp write reports an incomplete seed. `node scripts/verify-dsh-context-installed-flows.mjs <app>` checks the packaged Host, the production installer through the test-only `carrier-harness` binary, and the matching `apps/desktop/dist` page with real packaged Client modules. Build the harness with `cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --features harness --bin carrier-harness` before running that release check.
+
+The Harness home defaults to `~/.dsh` unless the launching process supplies `DSH_HOME`. Sessions live under `$DSH_HOME/sessions`; profiles, settings, and other Harness-managed data also use that home. Another DSH installation using the same home can expose the same conversations and configuration. App installation paths and Tauri app identifiers do not isolate this directory. A second desktop companion using the same home is rejected with `home-busy`.
+
+Tauri app data is separate: on macOS, `~/Library/Application Support/studio.octopus.dsh/` holds `companion.log` and the default knowledge-library directory. Changing `DSH_HOME` does not relocate that app-data directory. Stop running companions and back up both locations before deliberately changing data placement; a new Harness home does not migrate existing data.
 
 ## Toolchain
 
-Recorded while implementing this tree:
+The desktop build uses the following toolchain; installer qualification is documented in [release preparation](../../docs/cookbook/desktop-releases.md):
 
 - Rust stable `1.97.0` through rustup
 - `cargo` `1.97.0`
@@ -52,4 +66,6 @@ On Windows every child process is spawned with `CREATE_NO_WINDOW` because the de
 - **One window** — no multi-window, tray, deep links, native dialogs, or editor context.
 - **Shared home lease** — a second companion against the same `$DSH_HOME` fails with `home-busy`.
 
-The pre-boot runtime-version check detects inconsistent installations. The boot graph additionally carries the Host runtime release, preserved when script URLs move into the local cache. The packaged WebView embeds the completed build’s runtime version and full commit; a missing or different companion graph identity is refused before caching or executing any bundle. Desktop disables Client HMR and has no live graph-update channel: changing its runtime requires restarting the application. In Web compositions with Client HMR, the shared module system refuses updates from another release and offers a localized reload prompt; deferring preserves the running page and sessions. The shell version remains independent.
+The pre-boot runtime-version check detects inconsistent installations. The boot graph additionally carries the Host runtime release, preserved when script URLs move into the local cache. The packaged WebView embeds the completed build’s runtime version and full commit; a missing or different companion graph identity is refused before caching or executing any bundle. Desktop reconciles subsequent companion graph snapshots through the verified local cache, mounting and disposing plugin Clients as bundles are toggled. Changing the runtime release requires restarting the application. In Web compositions with Client HMR, the shared module system refuses updates from another release and offers a localized reload prompt; deferring preserves the running page and sessions. The shell version remains independent.
+
+macOS preparation verifies the downloaded Node signature and signs every embedded Mach-O helper and addon before readiness checks. It promotes a fresh application copy only after its payload digest matches, then checks that copy. Internal packaging preserves those tested bytes; public signing replaces their signatures with the selected Developer ID after preparation succeeds.

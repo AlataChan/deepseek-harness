@@ -58,13 +58,31 @@ export const RETIRED_DESKTOP_BUNDLES = Object.freeze({
 })
 
 /**
- * Leftover overlay names removed from a desktop profile on seed and first launch.
- * `dsh-context@0.36.0` imports `settingsNamespace`, which 0.1.2 no longer exports.
+ * Leftover overlay names removed unconditionally from a desktop profile on seed and first launch.
  */
-export const STRIP_DESKTOP_BUNDLES = Object.freeze(['dsh-context'])
+export const STRIP_DESKTOP_BUNDLES = Object.freeze([])
 
 /**
- * @typedef {{ name: string, version: string, source?: 'npm' | 'workspace', path?: string }} PluginPin
+ * Returns true if the dependency specification for dsh-context is a legacy or unverified version
+ * (<0.74.0, 0.36.0, ranges, or unresolvable specs) that must be purged to prevent boot crashes.
+ * Verified modern 0.74.0 returns false.
+ * @param {string | undefined | null} spec
+ * @returns {boolean}
+ */
+export function isLegacyDshContextSpec(spec) {
+  if (typeof spec !== 'string' || spec === '') return true
+  if (spec === '0.74.0') return false
+  if (spec.startsWith('0.36') || spec.startsWith('^0.36') || spec.startsWith('~0.36')) return true
+  const clean = spec.replace(/^[\^~>=<]+/, '')
+  const parts = clean.split('.').map(p => parseInt(p, 10))
+  if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    if (parts[0] === 0 && parts[1] < 74) return true
+  }
+  return true
+}
+
+/**
+ * @typedef {{ name: string, version: string, source?: 'npm' | 'workspace', path?: string, defaultEnabled?: boolean }} PluginPin
  * @typedef {{ profile: string, shippedBundles: string[], plugins: PluginPin[] }} PinFile
  */
 
@@ -77,6 +95,9 @@ export function readPinFile(path = PIN_PATH) {
   for (const plugin of parsed.plugins) {
     if (typeof plugin?.name !== 'string' || typeof plugin?.version !== 'string') {
       throw new Error(`seed: ${path} has a plugin pin without name/version`)
+    }
+    if (plugin.defaultEnabled !== undefined && typeof plugin.defaultEnabled !== 'boolean') {
+      throw new Error(`seed: ${path} plugin ${plugin.name} has invalid defaultEnabled (must be boolean)`)
     }
     if (plugin.source === 'workspace' && (typeof plugin.path !== 'string' || plugin.path === '')) {
       throw new Error(`seed: ${path} workspace pin ${plugin.name} is missing path`)
@@ -142,19 +163,50 @@ export function validatePluginDir(dir, expected) {
  * @param {{ firstInstall: boolean }} options
  */
 /**
+ * Read the installed package version from a profile's node_modules.
+ * @param {string | undefined} profileDir
+ * @param {string} packageName
+ * @returns {string | null}
+ */
+export function readInstalledPackageVersion(profileDir, packageName) {
+  if (!profileDir) return null
+  const pkgPath = join(profileDir, 'node_modules', ...packageName.split('/'), 'package.json')
+  if (!existsSync(pkgPath)) return null
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+    if (typeof pkg.name === 'string' && pkg.name === packageName && typeof pkg.version === 'string') {
+      return pkg.version
+    }
+  } catch {}
+  return null
+}
+
+/**
  * Rewrite leftover 0.1.1 desktop rows so a 0.1.2 companion can load.
  * `@deepseek-ai/dsh-client-app` becomes `@deepseek-ai/dsh-web-app`.
- * `dsh-context` is removed from bundles and dependencies.
+ * Legacy or unverified `dsh-context` is stripped from bundles and dependencies.
  * Extra bundles stay in place; duplicate mapped names are dropped.
  * @param {object} manifest
+ * @param {{ profileDir?: string, installedVersion?: string | null }} [options]
  * @returns {object}
  */
-export function healDesktopProfileManifest(manifest) {
+export function healDesktopProfileManifest(manifest, options = {}) {
   const next = structuredClone(manifest)
   const raw = [...(next.dsh?.profile?.bundles ?? [])]
   const bundles = []
   const seen = new Set()
+  const dshContextSpec = next.dependencies?.['dsh-context']
+
+  let installedVersion = options.installedVersion
+  if (installedVersion === undefined && options.profileDir) {
+    installedVersion = readInstalledPackageVersion(options.profileDir, 'dsh-context')
+  }
+
+  // Both recorded dependency and installed package version must be verified modern (0.74.0)
+  const isModernDshContext = dshContextSpec === '0.74.0' && installedVersion === '0.74.0'
+
   for (const name of raw) {
+    if (name === 'dsh-context' && !isModernDshContext) continue
     if (STRIP_DESKTOP_BUNDLES.includes(name)) continue
     const mapped = RETIRED_DESKTOP_BUNDLES[name] ?? name
     if (seen.has(mapped)) continue
@@ -166,18 +218,29 @@ export function healDesktopProfileManifest(manifest) {
     const dependencies = { ...next.dependencies }
     for (const name of STRIP_DESKTOP_BUNDLES) delete dependencies[name]
     for (const from of Object.keys(RETIRED_DESKTOP_BUNDLES)) delete dependencies[from]
+    if (dependencies['dsh-context'] !== undefined) {
+      if (isLegacyDshContextSpec(dependencies['dsh-context'])) {
+        delete dependencies['dsh-context']
+      } else if (dependencies['dsh-context'] === '0.74.0' && installedVersion !== undefined && installedVersion !== '0.74.0') {
+        // Disagreement between recorded 0.74.0 and installed legacy/missing version
+        delete dependencies['dsh-context']
+      }
+    }
     next.dependencies = dependencies
   }
   return next
 }
 
-export function mergeProfileManifest(manifest, plugin, options) {
+export function mergeProfileManifest(manifest, plugin, options = {}) {
   const next = structuredClone(manifest)
   next.private = true
   next.name ??= 'dsh-profile-desktop'
   next.dependencies = { ...next.dependencies, [plugin.name]: plugin.version }
   const bundles = [...(next.dsh?.profile?.bundles ?? [])]
-  if (options.firstInstall && !bundles.includes(plugin.name)) bundles.push(plugin.name)
+  const defaultEnabled = options?.defaultEnabled ?? (plugin?.defaultEnabled ?? true)
+  if (options.firstInstall && defaultEnabled && !bundles.includes(plugin.name)) {
+    bundles.push(plugin.name)
+  }
   next.dsh = { ...next.dsh, profile: { ...next.dsh?.profile, bundles } }
   return next
 }
@@ -186,10 +249,12 @@ export function mergeProfileManifest(manifest, plugin, options) {
  * @param {string} src
  * @param {string} profileDir
  * @param {string[]} shippedBundles
+ * @param {{ defaultEnabled?: boolean }} [options]
  */
-export function installPluginIntoProfile(src, profileDir, shippedBundles) {
+export function installPluginIntoProfile(src, profileDir, shippedBundles, options = {}) {
   const manifest = validatePluginDir(src)
-  const plugin = { name: manifest.name, version: manifest.version }
+  const defaultEnabled = options.defaultEnabled ?? true
+  const plugin = { name: manifest.name, version: manifest.version, defaultEnabled }
   mkdirSync(profileDir, { recursive: true })
   const profileManifestPath = join(profileDir, 'package.json')
   const created = !existsSync(profileManifestPath)
@@ -203,7 +268,9 @@ export function installPluginIntoProfile(src, profileDir, shippedBundles) {
       dsh: { profile: { bundles: [...shippedBundles] } },
     }
   } else {
-    profileManifest = healDesktopProfileManifest(JSON.parse(readFileSync(profileManifestPath, 'utf8')))
+    profileManifest = healDesktopProfileManifest(JSON.parse(readFileSync(profileManifestPath, 'utf8')), { profileDir })
+    // R4: Persist safety healing immediately before fallible replacement operations
+    writeFileSync(profileManifestPath, `${JSON.stringify(profileManifest, undefined, 2)}\n`)
   }
   const dest = join(profileDir, 'node_modules', ...plugin.name.split('/'))
   const firstInstall = !existsSync(join(dest, 'package.json'))
@@ -214,7 +281,10 @@ export function installPluginIntoProfile(src, profileDir, shippedBundles) {
   rmSync(dest, { recursive: true, force: true })
   copyPackageTree(src, dest, { includeModules: shouldCopyProductionModules(src) })
   validatePluginDir(dest, plugin)
-  const merged = mergeProfileManifest(profileManifest, plugin, { firstInstall: created || firstInstall })
+  const merged = mergeProfileManifest(profileManifest, plugin, {
+    firstInstall: created || firstInstall,
+    defaultEnabled,
+  })
   writeFileSync(profileManifestPath, `${JSON.stringify(merged, undefined, 2)}\n`)
   const patchPath = join(profileDir, 'cordis.patch.yml')
   if (!existsSync(patchPath)) writeFileSync(patchPath, PROFILE_PATCH_TEMPLATE)
@@ -336,6 +406,9 @@ function installProductionDependencies(dir) {
       'install',
       '--ignore-scripts',
       '--legacy-peer-deps',
+      '--prefer-offline',
+      '--no-audit',
+      '--no-fund',
     ], { cwd: staging, stdio: 'inherit', shell: process.platform === 'win32' })
     const stagedModules = join(staging, 'node_modules')
     if (existsSync(stagedModules)) {
@@ -451,6 +524,29 @@ function takeFlag(args, name) {
   return value
 }
 
+/**
+ * Export authoritative plugins.json metadata manifest into the resources outDir.
+ * @param {PinFile} pin
+ * @param {string} outDir
+ * @returns {object}
+ */
+export function exportPluginsManifest(pin, outDir) {
+  const manifest = {
+    schemaVersion: 1,
+    plugins: Object.fromEntries(
+      pin.plugins.map(plugin => [
+        plugin.name,
+        {
+          version: plugin.version,
+          defaultEnabled: plugin.defaultEnabled ?? true,
+        },
+      ])
+    ),
+  }
+  writeFileSync(join(outDir, 'plugins.json'), `${JSON.stringify(manifest, undefined, 2)}\n`)
+  return manifest
+}
+
 function main(argv) {
   const args = [...argv]
   const command = args.shift()
@@ -458,10 +554,13 @@ function main(argv) {
   if (command === 'fetch') {
     const out = takeFlag(args, '--out')
     if (out === undefined) fail('usage: seed-desktop-profile-plugin.mjs fetch --out <dir>')
+    const resolvedOut = resolve(out)
     for (const plugin of pin.plugins) {
-      const dest = fetchPlugin(plugin, resolve(out))
+      const dest = fetchPlugin(plugin, resolvedOut)
       console.log(`seed: fetched ${plugin.name}@${plugin.version} -> ${dest}`)
     }
+    exportPluginsManifest(pin, resolvedOut)
+    console.log(`seed: exported authoritative plugins.json -> ${join(resolvedOut, 'plugins.json')}`)
     return
   }
   if (command === 'validate') {
@@ -480,16 +579,22 @@ function main(argv) {
     if (from === undefined || profileDir === undefined) {
       fail('usage: seed-desktop-profile-plugin.mjs install --from <plugin-dir> --profile-dir <dir>')
     }
-    const result = installPluginIntoProfile(resolve(from), resolve(profileDir), pin.shippedBundles)
+    const resolvedFrom = resolve(from)
+    const manifestPath = join(resolvedFrom, 'package.json')
+    const listed = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    const found = pin.plugins.find(plugin => plugin.name === listed.name)
+    const defaultEnabled = found?.defaultEnabled ?? true
+    const result = installPluginIntoProfile(resolvedFrom, resolve(profileDir), pin.shippedBundles, { defaultEnabled })
     console.log(`seed: ${result.firstInstall ? 'installed' : 'refreshed'} ${result.name}@${result.version} -> ${result.dest}`)
     return
   }
   if (command === 'heal') {
     const profileDir = takeFlag(args, '--profile-dir')
     if (profileDir === undefined) fail('usage: seed-desktop-profile-plugin.mjs heal --profile-dir <dir>')
-    const manifestPath = join(resolve(profileDir), 'package.json')
+    const resolvedDir = resolve(profileDir)
+    const manifestPath = join(resolvedDir, 'package.json')
     if (!existsSync(manifestPath)) fail(`seed: missing ${manifestPath}`)
-    const healed = healDesktopProfileManifest(JSON.parse(readFileSync(manifestPath, 'utf8')))
+    const healed = healDesktopProfileManifest(JSON.parse(readFileSync(manifestPath, 'utf8')), { profileDir: resolvedDir })
     writeFileSync(manifestPath, `${JSON.stringify(healed, undefined, 2)}\n`)
     console.log(`seed: healed ${manifestPath}`)
     return
@@ -500,7 +605,9 @@ function main(argv) {
     const out = join(SCRIPT_DIR, '..', 'dist', '.cache', 'profile-plugins', 'unpacked')
     for (const plugin of pin.plugins) {
       const from = fetchPlugin(plugin, out)
-      const result = installPluginIntoProfile(from, resolve(profileDir), pin.shippedBundles)
+      const result = installPluginIntoProfile(from, resolve(profileDir), pin.shippedBundles, {
+        defaultEnabled: plugin.defaultEnabled ?? true,
+      })
       console.log(`seed: ${result.firstInstall ? 'installed' : 'refreshed'} ${result.name}@${result.version}`)
     }
     return

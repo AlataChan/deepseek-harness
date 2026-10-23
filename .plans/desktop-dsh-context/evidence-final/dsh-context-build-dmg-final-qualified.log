@@ -1,0 +1,457 @@
+[1;34m▶ Refreshing Contents/Resources/icon.icns[0m
+[1;34m▶ Extracting Node binary...[0m
+[1;32m✓ Node binary embedded[0m
+[1;34m▶ Assembling harness package for embedding...[0m
+[1;34m▶ Reusing third-party dep cache; refreshing workspace packages...[0m
+collect-runtime-deps: refreshed 299 workspace packages in /Users/apple/deepseek-harness/dist/.cache/harness-nm
+[1;32m✓ Harness package + dependencies embedded (self-contained)[0m
+[1;34m▶ Bundling presets...[0m
+[1;32m✓ 公益项目助手 preset bundled[0m
+[1;34m▶ Fetching desktop profile plugins...[0m
+
+added 1 package in 568ms
+seed: fetched @deepseek-ai/dsh-experimental-desktop-files@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-desktop-files
+
+added 16 packages in 2s
+seed: fetched @yejiming/dsh-data-agent@0.2.2 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@yejiming/dsh-data-agent
+
+added 1 package in 616ms
+seed: fetched dsh-context@0.74.0 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/dsh-context
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated fstream@1.0.12: This package is no longer supported.
+npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 198 packages in 4s
+seed: fetched @deepseek-ai/dsh-experimental-desktop-ask-data@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-data
+
+added 3 packages in 776ms
+seed: fetched @deepseek-ai/dsh-experimental-commerce-mode@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-commerce-mode
+
+added 2 packages in 257ms
+seed: fetched @deepseek-ai/dsh-experimental-desktop-ngo@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ngo
+
+added 4 packages in 752ms
+seed: fetched @deepseek-ai/dsh-experimental-desktop-ask-knowledge@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-knowledge
+
+added 3 packages in 302ms
+seed: fetched @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-client-ui-agent-team
+seed: fetched @deepseek-ai/dsh-experimental-desktop-hero-atmosphere@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-desktop-hero-atmosphere
+
+added 1 package in 585ms
+seed: fetched @deepseek-ai/dsh-experimental-desktop-media@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-desktop-media
+seed: fetched @deepseek-ai/dsh-experimental-desktop-speech-transcribe@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-desktop-speech-transcribe
+
+added 3 packages in 305ms
+seed: fetched @deepseek-ai/dsh-experimental-client-ui-assistants@0.2.1-alpha.1 -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-client-ui-assistants
+seed: exported authoritative plugins.json -> /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/plugins.json
+[1;32m✓ Desktop profile plugins embedded[0m
+[1;34m▶ Preparing bundled skills...[0m
+npm warn deprecated request-promise@4.2.6: request-promise has been deprecated because it extends the now deprecated request package, see https://github.com/request/request/issues/3142
+npm warn deprecated har-validator@5.1.5: this library is no longer supported
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated uuid@3.4.0: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+npm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142
+
+added 95 packages in 10s
+bundled skill ready: wechat-article-extractor
+npm notice
+npm notice 📦  @tt-a1i/archify-dsh@0.1.0
+npm notice Tarball Contents
+npm notice 1.1kB LICENSE
+npm notice 2.2kB README.md
+npm notice 640B cordis.patch.yml
+npm notice 682B lib/index.js
+npm notice 995B package.json
+npm notice 626.6kB skills/archify/assets/template.html
+npm notice 56.6kB skills/archify/bin/archify.mjs
+npm notice 2.2kB skills/archify/bin/open-artifact.mjs
+npm notice 23.6kB skills/archify/bin/preview.mjs
+npm notice 19.0kB skills/archify/bin/visual-check.mjs
+npm notice 70.5kB skills/archify/delta/architecture-delta.mjs
+npm notice 4.4kB skills/archify/examples/agent-run.lifecycle.json
+npm notice 6.4kB skills/archify/examples/agent-tool-call.workflow.json
+npm notice 4.4kB skills/archify/examples/async-job-roundtrip.sequence.json
+npm notice 4.3kB skills/archify/examples/cache-miss-request.sequence.json
+npm notice 2.2kB skills/archify/examples/checkout-platform.base.architecture.json
+npm notice 2.4kB skills/archify/examples/checkout-platform.head.architecture.json
+npm notice 644.1kB skills/archify/examples/dataflow-product-analytics.html
+npm notice 4.3kB skills/archify/examples/deployment-release.lifecycle.json
+npm notice 5.4kB skills/archify/examples/event-stream.dataflow.json
+npm notice 5.4kB skills/archify/examples/incident-response.workflow.json
+npm notice 637.7kB skills/archify/examples/lifecycle-agent-run.html
+npm notice 5.6kB skills/archify/examples/product-analytics.dataflow.json
+npm notice 5.5kB skills/archify/examples/production-deployment.architecture.json
+npm notice 5.2kB skills/archify/examples/release-delivery.workflow.json
+npm notice 640.5kB skills/archify/examples/sequence-cache-miss-request.html
+npm notice 637.9kB skills/archify/examples/web-app-rendered.html
+npm notice 3.8kB skills/archify/examples/web-app.architecture.json
+npm notice 644.0kB skills/archify/examples/workflow-agent-tool-call-rendered.html
+npm notice 1.1kB skills/archify/LICENSE
+npm notice 303B skills/archify/package.json
+npm notice 27.9kB skills/archify/recipes/scenarios.mjs
+npm notice 9.0kB skills/archify/references/authoring-contract.md
+npm notice 5.5kB skills/archify/references/delivery-contract.md
+npm notice 4.2kB skills/archify/references/viewer-runtime.md
+npm notice 2.1kB skills/archify/renderers/architecture/grid.mjs
+npm notice 33.5kB skills/archify/renderers/architecture/render-architecture.mjs
+npm notice 4.2kB skills/archify/renderers/dataflow/README.md
+npm notice 19.9kB skills/archify/renderers/dataflow/render-dataflow.mjs
+npm notice 5.0kB skills/archify/renderers/lifecycle/README.md
+npm notice 22.7kB skills/archify/renderers/lifecycle/render-lifecycle.mjs
+npm notice 4.8kB skills/archify/renderers/sequence/README.md
+npm notice 21.4kB skills/archify/renderers/sequence/render-sequence.mjs
+npm notice 9.3kB skills/archify/renderers/shared/cli.mjs
+npm notice 4.1kB skills/archify/renderers/shared/diagnostics.mjs
+npm notice 6.9kB skills/archify/renderers/shared/engineering-profiles.mjs
+npm notice 383.5kB skills/archify/renderers/shared/generated-validators.mjs
+npm notice 52.6kB skills/archify/renderers/shared/geometry.mjs
+npm notice 1.0kB skills/archify/renderers/shared/layout-report.mjs
+npm notice 8.5kB skills/archify/renderers/shared/legend.mjs
+npm notice 10.6kB skills/archify/renderers/shared/output-path.mjs
+npm notice 11.4kB skills/archify/renderers/shared/repository-evidence.mjs
+npm notice 2.2kB skills/archify/renderers/shared/text-fit.mjs
+npm notice 8.4kB skills/archify/renderers/shared/utils.mjs
+npm notice 3.5kB skills/archify/renderers/shared/validator.mjs
+npm notice 5.4kB skills/archify/renderers/workflow/README.md
+npm notice 27.5kB skills/archify/renderers/workflow/render-workflow.mjs
+npm notice 6.5kB skills/archify/schemas/architecture.schema.json
+npm notice 2.0kB skills/archify/schemas/common.schema.json
+npm notice 6.0kB skills/archify/schemas/dataflow.schema.json
+npm notice 6.7kB skills/archify/schemas/lifecycle.schema.json
+npm notice 9.6kB skills/archify/schemas/README.md
+npm notice 5.6kB skills/archify/schemas/sequence.schema.json
+npm notice 8.5kB skills/archify/schemas/workflow.schema.json
+npm notice 29.6kB skills/archify/scripts/check-render-output.mjs
+npm notice 1.2kB skills/archify/scripts/render-examples.mjs
+npm notice 13.0kB skills/archify/SKILL.md
+npm notice Tarball Details
+npm notice name: @tt-a1i/archify-dsh
+npm notice version: 0.1.0
+npm notice filename: tt-a1i-archify-dsh-0.1.0.tgz
+npm notice package size: 875.3 kB
+npm notice unpacked size: 4.9 MB
+npm notice shasum: 1840447f80d0f06eef92bebbefa646bede5336a9
+npm notice integrity: sha512-D8fDqV6DV/vo8[...]kTRPJ0hf7W0tA==
+npm notice total files: 67
+npm notice
+bundled skill ready: archify (no npm dependencies)
+bundled skill ready: conversation-media-creation (no npm dependencies)
+bundled skill ready: term-glossary (no npm dependencies)
+[1;32m✓ Bundled skills embedded[0m
+[1;34m▶ Recording the seed revision...[0m
+seed-rev.txt written (a89cca102559f68ee3474afd319486baca3aec31cba55ecf228078718d0bfb12)
+[1;32m✓ Seed revision recorded[0m
+[1;34m▶ Freezing and embedding kb-runtime...[0m
+[1;34m▶ Reusing dist/.cache/kb-runtime (REUSE_KB_RUNTIME=1)[0m
+[1;32m✓ kb-runtime embedded[0m
+[1;34m▶ Validating the internal application before signing...[0m
+Desktop microphone usage declaration verified
+/Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app: replacing existing signature
+[1;34m▶ Running readiness checklist before sealing prepared bytes...[0m
+[1;34m▶ Checking /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app[0m
+[1;32m  ✓ Tauri binary present and executable[0m
+[1;32m  ✓ installed-runtime-cli.js bundled[0m
+[1;32m  ✓ icon.icns bundled[0m
+Desktop microphone usage declaration verified
+[1;32m  ✓ Microphone usage declaration present[0m
+[1;32m  ✓ Embedded Node runs: v24.14.0[0m
+[1;32m  ✓ Harness package.json present[0m
+[1;32m  ✓ dsh.companions.desktop declared: ./lib/desktop-companion.js[0m
+[1;32m  ✓ desktop-companion.js present[0m
+[1;32m  ✓ composition preset providers present[0m
+[1;34m▶ Smoke-testing companion module graph[0m
+[1;32m  ✓ Module graph resolves (companion reached its own IPC startup check)[0m
+[1;34m▶ Driving a real companion handshake with pinned overlays[0m
+[1;32m  ✓ smoke: companion alive with an open pipe after ready in 2420ms + 6000ms hold[0m
+[1;34m▶ Checking for developer-machine leaks[0m
+[1;32m  ✓ No symlinks in bundled node_modules[0m
+[1;32m  ✓ No symlink points back into the source checkout[0m
+[1;32m  ✓ kb-runtime has no escaping or broken symlinks[0m
+[1;32m  ✓ 1 bundled preset(s) for first-run install[0m
+[1;32m  ✓   env-ngo-project-assistant: preset.yml + agent.cordis.yml present[0m
+[1;34m▶ Checking bundled desktop profile plugins[0m
+[1;32m  ✓ desktop-profile-plugins.json present[0m
+[1;32m  ✓ desktop-profile-plugins.json pins dsh-context@0.74.0 with defaultEnabled: false[0m
+[1;32m  ✓ packaged profile-plugins/plugins.json pins dsh-context@0.74.0 with defaultEnabled: false[0m
+[1;32m  ✓ packaged profile-plugins/dsh-context/package.json verified at 0.74.0[0m
+[1;32m  ✓ desktop-profile-plugins.json does not name dsh-client-app[0m
+[1;32m  ✓ app.rs first-launch template does not seed dsh-client-app[0m
+[1;32m  ✓ desktop-app disables client-hmr so the Tauri WebView can boot[0m
+[1;34m▶ Checking bundled skills[0m
+[1;32m  ✓ desktop-bundled-skills.json present[0m
+[1;32m  ✓ app.rs seeds bundled skills on launch[0m
+[1;32m  ✓ bundled-skills/wechat-article-extractor present with deps[0m
+[1;32m  ✓ bundled-skills/archify present (post-hoc Team diagram skill)[0m
+[1;32m  ✓ bundled-skills/conversation-media-creation present with no-playback wording[0m
+[1;32m  ✓ bundled-skills/term-glossary present (offline term hints)[0m
+seed: healed /var/folders/h2/bxwgfbt15zg3gz5hf37bhf2w0000gn/T/tmp.4BeKx33B5Y/package.json
+[1;32m  ✓ healDesktopProfileManifest rewrites a leftover 0.1.1 desktop profile[0m
+[1;32m  ✓ ask-data sample-sales.xlsx and sample-sales.sqlite are present with ASCII names[0m
+seed: @deepseek-ai/dsh-experimental-desktop-files@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-files is a loadable dsh.bundle + dsh.client package[0m
+seed: @yejiming/dsh-data-agent@0.2.2 is a loadable desktop profile plugin
+[1;32m  ✓ @yejiming/dsh-data-agent is a loadable dsh.bundle + dsh.client package[0m
+seed: dsh-context@0.74.0 is a loadable desktop profile plugin
+[1;32m  ✓ dsh-context is a loadable dsh.bundle + dsh.client package[0m
+seed: @deepseek-ai/dsh-experimental-desktop-ask-data@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-ask-data is a loadable dsh.bundle + dsh.client package[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-ask-data includes sample-sales.xlsx and sample-sales.sqlite[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-ask-data includes exceljs for Host spreadsheet import[0m
+seed: @deepseek-ai/dsh-experimental-commerce-mode@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-commerce-mode is a loadable dsh.bundle + dsh.client package[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-commerce-mode ships the packaged commerce preset[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-commerce-mode ships the fictional commerce sample tables[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-commerce-mode carries its adapted-skill NOTICE[0m
+seed: @deepseek-ai/dsh-experimental-desktop-ngo@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-ngo is a loadable dsh.bundle + dsh.client package[0m
+seed: @deepseek-ai/dsh-experimental-desktop-ask-knowledge@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-ask-knowledge is a loadable dsh.bundle + dsh.client package[0m
+seed: @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-client-ui-agent-team is a loadable dsh.bundle + dsh.client package[0m
+seed: @deepseek-ai/dsh-experimental-desktop-hero-atmosphere@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-hero-atmosphere is a loadable dsh.bundle + dsh.client package[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-hero-atmosphere omits motion/ compile intermediates[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-hero-atmosphere includes poster.jpg, k1.jpg, and hero.mp4[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-hero-atmosphere ships Host and Client faces[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-hero-atmosphere Client inlines the poster as a data URL[0m
+seed: @deepseek-ai/dsh-experimental-desktop-media@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-media is a loadable dsh.bundle + dsh.client package[0m
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-media Host inject is a Cordis service-name array[0m
+seed: @deepseek-ai/dsh-experimental-desktop-speech-transcribe@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-desktop-speech-transcribe is a loadable dsh.bundle + dsh.client package[0m
+seed: @deepseek-ai/dsh-experimental-client-ui-assistants@0.2.1-alpha.1 is a loadable desktop profile plugin
+[1;32m  ✓ @deepseek-ai/dsh-experimental-client-ui-assistants is a loadable dsh.bundle + dsh.client package[0m
+[1;32m  ✓ profile-plugins have no dangling npm bin stubs[0m
+[1;32m  ✓ source desktop-files patch connection-desktop injects sessionController[0m
+[1;32m  ✓ bundled desktop-files patch connection-desktop injects sessionController[0m
+[1;32m  ✓ harness includes @deepseek-ai/dsh-experimental-agent-team for Agent Team Host insert[0m
+[1;32m  ✓ harness includes @deepseek-ai/dsh-experimental-tool-agent-team for Agent Team Host insert[0m
+[1;32m  ✓ harness includes @deepseek-ai/dsh-brand for desktop-media Host[0m
+[1;32m  ✓ harness includes @deepseek-ai/dsh-credentials for desktop-media Host[0m
+[1;32m  ✓ harness includes @deepseek-ai/dsh-native-command for desktop-media Host[0m
+[1;34m▶ Checking session-controller client knows listEntries[0m
+[1;32m  ✓ bundled session-controller remote face includes listEntries[0m
+[1;32m  ✓ bundled session-controller remote face includes commitAskData[0m
+[1;32m  ✓ bundled session-controller remote face includes askKnowledgeRetrieve[0m
+[1;32m  ✓ bundled session-controller remote face includes askKnowledgeListDocuments[0m
+[1;32m  ✓ bundled session-controller remote face includes listMediaWorks[0m
+[1;32m  ✓ bundled desktop-media Client has Chinese shortcuts, Works empty state, and the 专业能力 menu rows[0m
+[1;32m  ✓ bundled desktop-media Client does not require Node module[0m
+[1;32m  ✓ bundled desktop-media Client paints panels with existing surface tokens[0m
+[1;32m  ✓ bundle does not embed ffmpeg or ffprobe[0m
+[1;32m  ✓ profile-plugins includes desktop-speech-transcribe[0m
+[1;32m  ✓ bundled desktop-speech-transcribe Host registers speech_transcribe[0m
+[1;32m  ✓ bundled desktop-speech-transcribe Host returns the 插件→语音输入 下载并准备 guidance[0m
+[1;32m  ✓ bundled desktop-speech-transcribe Client ships the 录音转文字 hero row[0m
+[1;32m  ✓ bundled desktop-speech-transcribe carries no model or audio assets[0m
+[1;32m  ✓ bundled ask-knowledge Host accepts .pdf, .xlsx, and .docx[0m
+[1;32m  ✓ bundled ask-knowledge Client maps finish timeout copy[0m
+[1;32m  ✓ bundled ask-knowledge Client does not require Node module[0m
+[1;32m  ✓ bundled ask-knowledge Client ingest list includes .docx[0m
+[1;32m  ✓ bundled ask-knowledge Client can add a document to an existing library[0m
+[1;32m  ✓ bundled ask-knowledge Client can list library documents and hang a selection[0m
+[1;32m  ✓ bundled ask-knowledge Client shows the hung library in the composer dock[0m
+[1;32m  ✓ bundled ask-knowledge Client contributes the 问知识 row to the 专业能力 menu[0m
+[1;32m  ✓ bundled knowledge settings resolve document remotes safely and expose budget approval[0m
+[1;32m  ✓ bundled knowledge buttons track readiness, approved budgets and background admission[0m
+[1;32m  ✓ bundled ask-data Client ships the 专业能力 menu with the 问数据 rename[0m
+[1;32m  ✓ bundled ask-knowledge Client can delete a catalog row[0m
+[1;32m  ✓ bundled ask-knowledge Host requires complete-document budget approval[0m
+[1;32m  ✓ bundled ask-knowledge Host records conversion failures durably[0m
+[1;32m  ✓ bundled ask-knowledge Host includes official session-document tools and logged wiki receipts[0m
+[1;32m  ✓ desktop WebView waits 180s for finishAskKnowledgeIngest[0m
+[1;34m▶ Checking bundled session event vocabulary[0m
+[1;32m  ✓ bundled dsh-session knows ask-knowledge/bound and ask-knowledge/unbound[0m
+[1;34m▶ Checking persistent assistants and teams runtime (Stage C)[0m
+[1;32m  ✓ bundled assistant-registry Host provides Stage C round scheduler, prediction manager, ownership manager, and cursors[0m
+[1;32m  ✓ bundled client-ui-assistants Client provides ComposerPrediction, AssistantPredictionDock, and locale copy[0m
+[1;32m  ✓ bundled assistants Client includes local avatars and their selection controls[0m
+[1;32m  ✓ bundled assistants avatars include default Seaside Friends and optional Soft Robots[0m
+Approved application icon and all eight embedded images match the packaged Client plugins
+[1;32m  ✓ approved whale brand and five generated portraits match the packaged Client plugins[0m
+[1;32m  ✓ bundled assistant and team forms retain viewport bounds and internal scrolling[0m
+[1;32m  ✓ bundled assistants Client includes standing-team roster and cancellable discussion controls[0m
+[1;32m  ✓ bundled assistants bind workspace sessions before navigation and display confirmed identity[0m
+[1;32m  ✓ bundled assistants Host includes read-only activity and explicit legacy roster repair[0m
+[1;34m▶ Checking kb-runtime sidecar[0m
+[1;32m  ✓ octopus-kb-sidecar executable present[0m
+[1;32m  ✓ kb-runtime/prompts/propose.md asks for a short create_page body with role[0m
+[1;32m  ✓ kb-runtime/schemas present[0m
+[1;32m  ✓ kb-runtime LICENSE and SOURCE.txt present[0m
+[1;32m  ✓ bundled sidecar self-test passed in place[0m
+[1;32m  ✓ bundled sidecar reports pdf and xlsx converters[0m
+[1;32m  ✓ bundled sidecar includes magika model for markitdown PDF[0m
+[1;32m  ✓ sidecar self-test passed after relocating kb-runtime[0m
+[1;32m  ✓ frozen sidecar apply reaches proposal validation[0m
+[1;34m▶ Checking code signature[0m
+[1;32m  ✓ Signature is intact (adhoc). Downloaded copies still need xattr -cr or the DMG installer[0m
+[1;34m▶ Checking installed Ask Knowledge operations[0m
+[1;34m▶ Verifying Ask Knowledge Release Acceptance Matrix (AC1-AC21)[0m
+[1;34m▶ Verifying Installed Bundle Structure at /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app[0m
+[1;32m  ✓ Bundled sidecar binary present at /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/kb-runtime/octopus-kb-sidecar/octopus-kb-sidecar[0m
+[1;32m  ✓ Bundled sidecar self-test passed in place[0m
+[1;32m  ✓ Bundled converter-worker.js present at /Users/apple/deepseek-harness/apps/desktop/src-tauri/target/release/bundle/macos/octopus_DSH.app/Contents/Resources/resources/profile-plugins/@deepseek-ai/dsh-experimental-desktop-ask-knowledge/lib/converter-worker.js[0m
+[1;32m  ✓ Bundled native addon converts a real DOCX under network confinement[0m
+[1;32m  ✓ Native converter rejects actual nonzero exits and actual missing-addon conversion[0m
+[1;34m▶ Installed Host public upload, approval, recovery and cancellation[0m
+[1;32m  ✓ Installed Host public upload/approval/search/cold restart/cancel: 148 checks passed[0m
+[1;34m▶ AC1: Original bytes/hash remain identical after restart and retry[0m
+[1;32m  ✓ AC1: Source revision registered successfully with identical SHA256[0m
+[1;32m  ✓ AC1: Stored source object matches expected hash[0m
+[1;32m  ✓ AC1 Invalid Control: Tampered source object is refused[0m
+[1;34m▶ AC2, AC5, AC8, AC21: Retrieval, Late Exceptions, Table Facts, Radical Folding[0m
+[1;32m  ✓ AC2: Raw vault indexed 1 file(s) into passage store[0m
+[1;32m  ✓ AC2: Table fact reached passage search[0m
+[1;32m  ✓ AC5: Late exception remains attached and retrievable[0m
+[1;32m  ✓ AC21: Radical equivalence preserved (一老一小 retrieved Kangxi radicals)[0m
+[1;32m  ✓ AC21 Invalid Control: Hostile FTS syntax handled safely via literal phrase quoting[0m
+[1;34m▶ AC9: Bounded Passage Search and Cursor Continuation[0m
+[1;32m  ✓ AC9: Bounded search returned 1 item with continuation cursor[0m
+[1;32m  ✓ AC9: Continuation cursor succeeded[0m
+[1;32m  ✓ AC9 Invalid Control: Forged/tampered cursor refused[0m
+[1;34m▶ AC4, AC10: Resumable Jobs, Monotonic Startup Attempt Fencing, Cold Restart[0m
+[1;32m  ✓ AC4: Active startup attempt initialized to 1[0m
+[1;32m  ✓ AC4: Tracked job created under active startup attempt[0m
+[1;32m  ✓ AC4: Job checkpoint updated successfully[0m
+[1;32m  ✓ AC4: Job finished successfully under active attempt[0m
+[1;32m  ✓ AC10: Cold restart incremented startup attempt to 2[0m
+[1;32m  ✓ AC10 Invalid Control: Stale worker attempt rejected by attempt fencing[0m
+[1;32m  ✓ AC10: Interrupted job marked uncertain to prevent duplicate paid execution[0m
+[1;34m▶ AC11: State Truthfulness on Failure[0m
+[1;32m  ✓ AC11: Missing vault path handles gracefully with 0 files[0m
+[1;34m▶ AC12: Legacy Library Migration[0m
+[1;32m  ✓ AC12: Legacy library migrated 1 document to passage index and database[0m
+[1;32m  ✓ AC12: Migrated document listed in catalog with displayFilename[0m
+[1;34m▶ AC20: Full-Document Token Budgeting[0m
+[1;32m  ✓ AC20: Full-document token budget calculated (30948 total tokens reserved for 5 chunks)[0m
+[1;34m▶ AC17: SQLite Runtime and Trigram Capability[0m
+[1;32m  ✓ AC17: SQLite 3.47.1 runtime verified with FTS5 and trigram tokenizer[0m
+
+[1;32m✓ READY: 29 acceptance criteria and invalid controls verified against installed application.[0m
+[1;32m  ✓ Installed Ask Knowledge source, worker and approved Host flows[0m
+[1;34m▶ Checking installed composer predictions[0m
+✓ Bundled companion boots from isolated installed profile
+✓ Public remote creates ordinary unbound session
+✓ Public selection exercises an available non-default model route
+✓ Predictions are disabled by default
+✓ Disabled request dispatches no model call
+✓ General setting enables ordinary-chat prediction context
+✓ Whitespace, nonempty drafts and stale sequence dispatch zero calls
+✓ Settings remain responsive during a prediction held beyond both former deadlines
+✓ Concurrent public requests share one actual provider dispatch
+✓ Both public subscribers receive actual synthetic provider result
+✓ Ordinary prediction uses explicitly selected next model route
+✓ Prediction is tool-free and uses canonical logged turn intent
+✓ Installed history retains linked auxiliary request and result
+✓ Logged prediction route and canonical context match actual provider dispatch
+✓ Provider-reported auxiliary billing is observed without estimates
+✓ Installed usage aggregation includes exactly the real prediction bill
+✓ Disabling live setting rejects in-flight prediction
+✓ Opt-out cancellation reaches actual provider connection
+✓ Cold restart restores persisted opt-in setting
+✓ Cold restart preserves real auxiliary billing evidence
+✓ Cold restart restores durable auxiliary usage totals
+✓ Opening retained history after restart dispatches no inference
+✓ A new completed ordinary turn after restart becomes eligible
+✓ Cold runtime executes fresh eligible prediction using persisted opt-in
+✓ Cold restart retains opt-out without background inference
+Installed Host prediction acceptance: 25 checks passed. Browser UI acceptance is separate.
+[1;32m  ✓ Installed prediction delay, responsive settings, cancellation and cold restart[0m
+[1;34m▶ Checking installed dsh-context operations (G1–G8)[0m
+▶ Verifying packaged dsh-context metadata and exports
+  ✓ Packaged inventory: plugins.json and dsh-context@0.74.0 verified with defaultEnabled: false
+▶ Verifying R6 Failure Cleanup & Bounded Startup Timeout Control
+  ✓ R6: Startup timeout cleanly terminates companion child process
+▶ Verifying G1: Offline isolation
+  ✓ G1: Offline isolation enforced and observed (loopback-only sockets)
+▶ Verifying G2: Default-OFF discovery
+  ✓ G2: Default-OFF discovery verified: bundle row disabled, projections absent
+▶ Verifying G3: Hot activation (OFF → ON)
+  ✓ G3 Host: activation applied and projections attached
+▶ Verifying G4: Hot deactivation (ON → OFF)
+  ✓ G4 Host: deactivation applied and projections disposed
+▶ Verifying G5: Repeated cycle idempotency
+  ✓ G5: Repeated live cycles (OFF→ON→OFF) verified without leakage
+▶ Verifying G8: Activation error boundary & negative controls
+  ✓ G8: Activation error boundary verified: invalid bundles fail safely
+▶ Verifying G6: Restart persistence without reseeding
+  ✓ G6: Cold restart persistence verified for both ON and OFF without reseeding
+▶ Verifying G7: production Rust payload refresh
+  ✓ G7: Rust installer copied the payload, wrote new stamps and preserved ON/OFF
+▶ Verifying built desktop Client through the native carrier and Rust cache
+WebView: production Rust installer seeded the packaged profile
+WebView: browser process started
+Page console: Loading the font 'data:font/woff2;base64,d09GMgABAAAAAA4oAA4AAAAAHbQAAA3TAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAAgRQIDgmcDBEICo1oijYBNgIkA14LMgAEIAWJAAeBHAyBHBvbGiMRdnO0IkRRkiYDgr9KsJ1NUAf2kILNxgUmgqIgq1P89vcbIcmsQbRps3vCcXdYOKSWEPEKgZgQkprQQsxIXUgq0DqpGKmIvrgkeVGtEQD9DzAO29fM9jYhxZEsL2FeURH2JN4MIcTdO049NCVdxQ/w9NrSYFEBKTDKpLKfNkCGDc1RwjZLQcm3vqJ2UW9Xfa3tgAHz6ivp6vgC2yD4/6352ndnN0X0TL7seypkjZlMsjmZnf0Mm5Q+JykRWQBKCVCVPbARPXWyQtb5VgLB6Biq7/Uixcj2WGqdI8tGSgkuRG+t910GKP2D7AQH0DB9FMDW/obJZ8giFI3Wg8Cvevz0M+5m0rTh7XDBlvo9Y4vm13EXmftt...mCahLsdlyA5fdQkRSan9LgnnLEyGSkaKJCJog0wAgvepWBt80+1yKln1bMVtCljfNWDu
+WebView: built desktop page loaded
+WebView bridge: runtime_get_config
+WebView bridge: runtime_resolve
+WebView bridge: carrier_open
+Page console: Failed to load resource: the server responded with a status of 404 (Not Found)
+Page console: Loading media from  'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAmjbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAF3AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAACM10cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAF3AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAABQAAAALQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAABdwAAAEAAABAAAAAAhFbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAAAwAAABIABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZ...OkwuvhwzruD3bWWC8ALOW4SNVw4MHQAAAAOAGfaHRfABGbGm+U041urAO2BshKQAO
+Page console: Failed to load resource: the server responded with a status of 404 (Not Found)
+Page console: Failed to load resource: the server responded with a status of 404 (Not Found)
+READY: built desktop page followed live carrier graphs through Rust cache, mounted and removed real packaged Client views over 3 cycles; /tmp/dsh-context-native-webview.png
+
+✓ READY: context Host, Rust refresh and built desktop Client acceptance passed
+[1;32m  ✓ Installed dsh-context default-disabled G1–G8 acceptance passed[0m
+
+[1;32m✓ READY: 114 checks passed. Safe to package.[0m
+[1;32m✓ Bundle signature verified (internal)[0m
+[1;34m▶ Creating DMG...[0m
+Creating disk image...
+created: /Users/apple/deepseek-harness/dist/rw.69420.octopus_DSH.dmg
+Mounting disk image...
+Device name:     /dev/disk4
+Searching for mounted interstitial disk image using /dev/disk4s...
+Mount dir:       /Volumes/dmg.tL4Pg9
+Making link to Applications dir...
+/Volumes/dmg.tL4Pg9
+Will sleep for 5 seconds to workaround occasions "Can't get disk (-1728)" issues...
+Running AppleScript to make Finder stuff pretty: /usr/bin/osascript "/var/folders/h2/bxwgfbt15zg3gz5hf37bhf2w0000gn/T/createdmg.tmp.XXXXXXXXXX.LbSwo4Cor1" "dmg.tL4Pg9" "/Volumes/dmg.tL4Pg9"
+waited 1 seconds for .DS_STORE to be created.
+Done running the AppleScript...
+Fixing permissions...
+Done fixing permissions
+Skipping blessing on sandbox
+Deleting .fseventsd
+Unmounting disk image...
+"disk4" ejected.
+Compressing disk image...
+Preparing imaging engine…
+Reading Protective Master Boot Record (MBR : 0)…
+   (CRC32 $66AA5D72: Protective Master Boot Record (MBR : 0))
+Reading GPT Header (Primary GPT Header : 1)…
+   (CRC32 $8312583E: GPT Header (Primary GPT Header : 1))
+Reading GPT Partition Data (Primary GPT Table : 2)…
+   (CRC32 $B9612E42: GPT Partition Data (Primary GPT Table : 2))
+Reading  (Apple_Free : 3)…
+   (CRC32 $00000000:  (Apple_Free : 3))
+Reading disk image (Apple_HFS : 4)…
+   (CRC32 $76326750: disk image (Apple_HFS : 4))
+Reading  (Apple_Free : 5)…
+   (CRC32 $00000000:  (Apple_Free : 5))
+Reading GPT Partition Data (Backup GPT Table : 6)…
+   (CRC32 $B9612E42: GPT Partition Data (Backup GPT Table : 6))
+Reading GPT Header (Backup GPT Header : 7)…
+   (CRC32 $33068A6A: GPT Header (Backup GPT Header : 7))
+Adding resources…
+Elapsed Time: 33.672s
+File size: 324293631 bytes, Checksum: CRC32 $F7357546
+Sectors processed: 3151948, 2409468 compressed
+Speed: 34.9MB/s
+Savings: 79.9%
+created: /Users/apple/deepseek-harness/dist/octopus_DSH.dmg
+hdiutil does not support internet-enable. Note it was removed in macOS 10.15.
+Disk image done
+[1;32m✓ DMG created at /Users/apple/deepseek-harness/dist/octopus_DSH.dmg[0m
+
+Created /Users/apple/deepseek-harness/dist/octopus_DSH.dmg.release.json
+[1;32m✓ Done! Distribute: /Users/apple/deepseek-harness/dist/octopus_DSH.dmg[0m
+
+  微信发出后请附带这段话：
+  若提示「已损坏」，不是文件坏了。把 app 拖到应用程序，打开终端粘贴：
+  xattr -cr /Applications/octopus_DSH.app
+  然后再从启动台打开。也可双击 DMG 里的「安装并打开.command」。

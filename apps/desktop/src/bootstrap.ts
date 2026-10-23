@@ -54,6 +54,7 @@ export const DEFAULT_HANDSHAKE_TIMEOUT_MS = 120_000
 let bootstrapStarted = false
 let carrierOpened = false
 let transport: ProcessTransport | undefined
+let detachGraphTransport: (() => void) | undefined
 
 interface ResolvedRuntimeState {
   nodePath: string
@@ -103,13 +104,15 @@ export function resetDesktopBootstrapForTests(): void {
   carrierOpened = false
   transport?.dispose()
   transport = undefined
+  detachGraphTransport?.()
+  detachGraphTransport = undefined
   const win = globalThis as DshWindow & { __DSH_TRANSPORT__?: ClientTransportHooks }
   delete win.__ModuleLoader__
   delete win.__DSH_BOOT__
   delete win.__DSH_TRANSPORT__
 }
 
-function installModuleLoaderQueue(): void {
+function installModuleLoaderQueue(onCreate: (modules: ClientModuleSystem) => void): void {
   const win = globalThis as DshWindow
   if (win.__ModuleLoader__ !== undefined) {
     throw new Error('desktop bootstrap: window.__ModuleLoader__ is already installed; reload the WebView')
@@ -149,7 +152,9 @@ function installModuleLoaderQueue(): void {
       if (typeof create !== 'function' || typeof (exports as { apply?: unknown }).apply !== 'function') {
         throw new Error(`client-modules: ${CLIENT_MODULES_ID}/client.js did not export the bootstrap module face`)
       }
-      return create(target, { id: registration.id, exports }, options)
+      const modules = create(target, { id: registration.id, exports }, options)
+      onCreate(modules)
+      return modules
     },
   }
   win.__ModuleLoader__ = target
@@ -159,11 +164,7 @@ function installBootGraph(graph: WebBootGraph): void {
   ;(globalThis as DshWindow).__DSH_BOOT__ = graph
 }
 
-function createVerifiedBundleLoader(graph: WebBootGraph): (url: string) => Promise<void> {
-  const allowed = new Set([
-    ...graph.entries.map(entry => entry.url),
-    ...graph.batches.map(batch => batch.url),
-  ])
+function createVerifiedBundleLoader(allowed: ReadonlySet<string>): (url: string) => Promise<void> {
   return async (url: string): Promise<void> => {
     if (!allowed.has(url)) throw new Error(`desktop WebView refused undeclared bundle URL ${url}`)
     await new Promise<void>((resolve, reject) => {
@@ -347,6 +348,11 @@ async function finishDesktopClient(
   const handshake = createFrameWaiter()
   const recordListeners = new Set<(value: unknown) => void>()
   let handshaking = true
+  const graphReceiver: { receive?: (frame: ControlReadyFrame) => void } = {}
+  let pendingGraph: ControlReadyFrame | undefined
+  let inbound: Promise<void> = Promise.resolve()
+  let live = true
+  detachGraphTransport = () => { live = false; decoder.dispose() }
   const downlink = options.port.createChannel((event: DesktopDownlinkEvent) => {
     if (event.event === 'closed') {
       handshake.fail(new Error(event.data.reason))
@@ -364,11 +370,18 @@ async function finishDesktopClient(
       return
     }
     for (const listener of recordListeners) listener(record)
-    if (!handshaking) return
-    void decoder.accept(record).then((frame) => {
-      if (frame !== undefined) handshake.push(frame)
+    inbound = inbound.then(async () => {
+      if (!live) return
+      const frame = await decoder.accept(record)
+      if (frame === undefined) return
+      if (handshaking) handshake.push(frame)
+      else if (frame.type === 'control/ready') {
+        if (graphReceiver.receive) graphReceiver.receive(frame)
+        else pendingGraph = frame
+      }
     }).catch((error: unknown) => {
       handshake.fail(error instanceof Error ? error : new Error(String(error)))
+      if (!handshaking) console.error('desktop Client graph decode failed', error)
     })
   })
   const opened = parseCarrierOpenState(await options.port.invoke('carrier_open', { downlink }))
@@ -420,9 +433,9 @@ async function finishDesktopClient(
     throw new Error('Desktop WebView release differs from the companion; reload or reinstall the matching release')
   }
   handshaking = false
-  decoder.dispose()
 
   const srcById = new Map<string, string>()
+  const cachedRevisions = new Map<string, string>()
   for (const [index, location] of ready.bundles.entries()) {
     const cached = parseCachedBundleState(await options.port.invoke('cache_bundle', {
       sourcePath: location.sourcePath,
@@ -432,11 +445,14 @@ async function finishDesktopClient(
       id: location.id,
     }))
     srcById.set(location.id, cached.src)
+    cachedRevisions.set(`${location.id}@${location.rev}`, cached.src)
   }
   const graph = rewriteCachedGraph(ready, srcById)
-  installModuleLoaderQueue()
+  let modules: ClientModuleSystem | undefined
+  installModuleLoaderQueue((created) => { modules = created })
   installBootGraph(graph)
-  const loadBundle = options.loadBundle ?? createVerifiedBundleLoader(graph)
+  const allowedUrls = new Set(graph.entries.map(row => row.url))
+  const loadBundle = options.loadBundle ?? createVerifiedBundleLoader(allowedUrls)
   const bootstrap = graph.entries.find(entry => entry.id === CLIENT_MODULES_ID)
   if (bootstrap === undefined) throw new Error(`desktop boot graph is missing ${CLIENT_MODULES_ID}`)
   await loadBundle(bootstrap.url)
@@ -464,6 +480,52 @@ async function finishDesktopClient(
     ?? ((root, next) => new AppWebEntry(root, next))
   const entry = createAppEntry(options.root, seams)
   await entry.run()
+  let cacheIndex = ready.bundles.length
+  let syncing = false
+  graphReceiver.receive = (snapshot) => {
+    pendingGraph = snapshot
+    if (syncing) return
+    syncing = true
+    void (async () => {
+      while (live && pendingGraph) {
+        const next = pendingGraph
+        pendingGraph = undefined
+        if (!modules) throw new Error('desktop Client module system was not created')
+        if (next.runtimeVersion !== ready.runtimeVersion || next.protocolVersion !== ready.protocolVersion) {
+          throw new Error('desktop Client graph runtime or protocol changed')
+        }
+        if (next.graph.release?.version !== ready.graph.release?.version
+          || next.graph.release?.commit !== ready.graph.release?.commit) {
+          await modules.entries.sync(next.graph)
+          continue
+        }
+        const nextUrls = new Map<string, string>()
+        for (const location of next.bundles) {
+          const key = `${location.id}@${location.rev}`
+          let src = cachedRevisions.get(key)
+          if (!src) {
+            const cached = parseCachedBundleState(await options.port.invoke('cache_bundle', {
+              sourcePath: location.sourcePath, sha256: location.sha256,
+              // All snapshots belong to this carrier's asset-protocol generation.
+              graphRev: ready.graph.rev, index: cacheIndex++, id: location.id,
+            }))
+            src = cached.src
+            cachedRevisions.set(key, src)
+          }
+          nextUrls.set(location.id, src)
+        }
+        if (!live) return
+        const updated = rewriteCachedGraph(next, nextUrls)
+        for (const row of updated.entries) allowedUrls.add(row.url)
+        await modules.entries.sync(updated)
+      }
+    })().catch((error: unknown) => { console.error('desktop Client graph synchronization failed', error) })
+      .finally(() => {
+        syncing = false
+        if (live && pendingGraph) graphReceiver.receive?.(pendingGraph)
+      })
+  }
+  if (pendingGraph) graphReceiver.receive(pendingGraph)
   attachSettingsButton(options.root, { port: options.port, config })
   return { status: 'ready', ready, generationId: opened.generationId }
 }

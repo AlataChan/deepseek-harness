@@ -1,0 +1,31 @@
+Analysis of sampling node (pid 81060) every 1 millisecond
+Process:         node [81060]
+Path:            /Volumes/VOLUME/octopus_DSH.app/Contents/Resources/resources/node
+Load Address:    0x102bec000
+Identifier:      node
+Version:         ???
+Code Type:       ARM64
+Parent Process:  node [78500]
+Target Type:     live task
+
+Date/Time:       2026-10-22 11:48:18.326 AM -0700
+Launch Time:     2026-10-22 11:47:52.809 AM -0700
+OS Version:      macOS 26.5 (25F71)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         112K
+Physical footprint (peak):  112K
+Idle exit:                  untracked
+----
+
+Call graph:
+    884 Thread_9385227: Main Thread   DispatchQueue_<multiple>
+      884 _dyld_start  (in dyld) + 0  [0x10a1989c0]
+
+Total number in stack (recursive counted multiple, when >=5):
+
+Sort by top of stack, same collapsed (when >= 5):
+        _dyld_start  (in dyld)        884
+
+Binary images description not available

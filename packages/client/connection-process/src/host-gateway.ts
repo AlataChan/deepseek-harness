@@ -74,6 +74,12 @@ export interface HostClientModules {
    * @param id - entry id (package name).
    */
   clientPath(id: string): string | undefined
+  /**
+   * Subscribe to settled graph changes.
+   * @param listener - notified after graph publication.
+   * @returns the subscription disposer.
+   */
+  onGraphChanged(listener: () => void): () => void
 }
 
 /** Injected gateway dependencies and platform ports. */
@@ -132,6 +138,9 @@ export class VsCodeHostGateway {
   private readonly sha256: NonNullable<HostGatewayOptions['sha256']>
   private state: GatewayState = 'awaiting-hello'
   private disposal: Promise<void> | undefined
+  private detachGraph: (() => void) | undefined
+  private graphUpdates: Promise<void> = Promise.resolve()
+  private announcedRevision: string | undefined
 
   /** @param options - Connection fetch, Typert streams, client graph, and ports. */
   constructor(private readonly options: HostGatewayOptions) {
@@ -164,7 +173,9 @@ export class VsCodeHostGateway {
   dispose(): Promise<void> {
     if (this.disposal !== undefined) return this.disposal
     this.state = 'closed'
-    this.disposal = this.stopStreams()
+    this.detachGraph?.()
+    this.detachGraph = undefined
+    this.disposal = Promise.all([this.stopStreams(), this.graphUpdates]).then(() => {})
     return this.disposal
   }
 
@@ -195,6 +206,27 @@ export class VsCodeHostGateway {
       maxLogicalRpcBytes: this.options.maxLogicalRpcBytes,
     })
     this.state = 'ready'
+    this.announcedRevision = graph.rev
+    this.detachGraph = this.options.clientModules.onGraphChanged(() => { this.queueGraph() })
+    this.queueGraph()
+  }
+
+  private queueGraph(): void {
+    this.graphUpdates = this.graphUpdates.then(async () => {
+      if (this.state !== 'ready') return
+      const graph = this.options.clientModules.graph()
+      if (graph.rev === this.announcedRevision) return
+      const bundles = await this.bundleLocations(graph)
+      if (this.state !== 'ready') return
+      await this.options.send({
+        type: 'control/ready', protocolVersion: VSCODE_CARRIER_PROTOCOL_VERSION,
+        runtimeVersion: this.options.runtimeVersion, graph, bundles,
+        maxLogicalRpcBytes: this.options.maxLogicalRpcBytes,
+      })
+      this.announcedRevision = graph.rev
+    }).catch((error: unknown) => {
+      void this.fail('client-graph-failure', error).catch(() => { this.options.close() })
+    })
   }
 
   private async bundleLocations(graph: WebBootGraph): Promise<ClientBundleLocation[]> {
@@ -315,6 +347,7 @@ export class VsCodeHostGateway {
   private async shutdown(): Promise<void> {
     this.state = 'closing'
     await this.stopStreams()
+    await this.graphUpdates
     await this.options.send({ type: 'control/shutdown-complete' })
     this.state = 'closed'
     this.options.close()
@@ -324,6 +357,7 @@ export class VsCodeHostGateway {
     if (this.state === 'closing' || this.state === 'closed') return
     this.state = 'closing'
     await this.stopStreams()
+    await this.graphUpdates
     const message = error instanceof Error ? error.message : String(error)
     try {
       await this.options.send({ type: 'control/error', code, message })
@@ -334,6 +368,8 @@ export class VsCodeHostGateway {
   }
 
   private async stopStreams(): Promise<void> {
+    this.detachGraph?.()
+    this.detachGraph = undefined
     const active = [...this.streams.values()]
     for (const stream of active) stream.abort.abort()
     await Promise.allSettled(active.map(stream => stream.promise))

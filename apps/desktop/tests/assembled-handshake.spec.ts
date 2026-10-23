@@ -103,6 +103,7 @@ function stageWorld(): {
     '  ctx.provide(\'typertGateway\', { wireStream: { open: async () => (async function * () {})() } })',
     '  ctx.provide(\'clientModules\', {',
     '    graph: () => graph,',
+    '    onGraphChanged: () => () => {},',
     '    clientPath: (id) => id === modules ? modulesPath : undefined,',
     '  })',
     '}',

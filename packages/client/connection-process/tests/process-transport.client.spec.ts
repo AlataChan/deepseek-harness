@@ -1,6 +1,6 @@
 /** Unary deadlines on the desktop/VS Code process carrier. */
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   ASK_KNOWLEDGE_FINISH_EXTRACT_METHOD,
   ASK_KNOWLEDGE_FINISH_EXTRACT_TIMEOUT_MS,
@@ -41,6 +41,40 @@ function asError(value: Promise<Response>): Promise<Error> {
     (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
   )
 }
+
+it('keeps unary correlation alive across graph snapshots owned by the surface', async () => {
+  let receive: (value: unknown) => void = () => { throw new Error('missing receiver') }
+  const transport = new ProcessTransport({
+    ...silentPort(),
+    subscribe(listener) { receive = listener; return () => {} },
+  })
+  onTestFinished(() => { transport.dispose() })
+  const response = transport.fetch('/api', { body: requestBody('session/list', 'graph-rpc') })
+  for (const rev of ['graph-1', 'graph-2']) receive({
+    type: 'wire/message', encoded: JSON.stringify({
+      type: 'control/ready', protocolVersion: 2, runtimeVersion: '1.0.0',
+      graph: { rev, entries: [], batches: [], release: { version: '1.0.0' } },
+      bundles: [], maxLogicalRpcBytes: 64000,
+    }),
+  })
+  receive({ type: 'wire/message', encoded: JSON.stringify({
+    type: 'rpc/message', message: { type: 'server-response', rpcId: 'graph-rpc', result: { ok: true, value: [] } },
+  }) })
+  expect(await (await response).json()).toMatchObject({ result: { ok: true, value: [] } })
+})
+
+it('continues rejecting a Host hello on the downlink', async () => {
+  let receive: (value: unknown) => void = () => { throw new Error('missing receiver') }
+  const transport = new ProcessTransport({
+    ...silentPort(), subscribe(listener) { receive = listener; return () => {} },
+  })
+  onTestFinished(() => { transport.dispose() })
+  const response = transport.fetch('/api', { body: requestBody('session/list', 'bad-control') })
+  receive({ type: 'wire/message', encoded: JSON.stringify({
+    type: 'control/hello', protocolVersion: 2, extensionVersion: '1.0.0', workspaceRoot: '/tmp/work', locale: 'en',
+  }) })
+  await expect(response).rejects.toThrow('control/hello is not accepted from the desktop downlink')
+})
 
 describe('unaryResponseTimeoutMs', () => {
   it('keeps the default 30s unary except finish ingest and finish extract', () => {

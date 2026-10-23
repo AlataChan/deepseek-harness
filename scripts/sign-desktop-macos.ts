@@ -54,6 +54,25 @@ export function nestedCodeBundles(root: string): string[] {
 }
 
 /**
+ * Prepare all embedded native code for readiness without importing signing credentials.
+ * The downloaded Node executable retains its verified signature until public signing.
+ * @param app - assembled application directory.
+ */
+export function prepareDesktopMachO(app: string): void {
+  const node = join(app, 'Contents/Resources/resources/node')
+  const verifiedNode = spawnSync('/usr/bin/codesign', ['--verify', '--strict', node], { encoding: 'utf8' })
+  if (verifiedNode.status !== 0) throw new Error(`Cannot verify downloaded Node: ${verifiedNode.stderr}`)
+  const contents = join(app, 'Contents')
+  for (const path of [...machOFiles(contents), ...nestedCodeBundles(contents)]) {
+    if (path === node) continue
+    const signed = spawnSync('/usr/bin/codesign', ['--force', '--sign', '-', '--timestamp=none', path], { encoding: 'utf8' })
+    if (signed.status !== 0) throw new Error(`Cannot prepare native code: ${path}: ${signed.stderr}`)
+    const verified = spawnSync('/usr/bin/codesign', ['--verify', '--strict', path], { encoding: 'utf8' })
+    if (verified.status !== 0) throw new Error(`Cannot verify prepared native code: ${path}: ${verified.stderr}`)
+  }
+}
+
+/**
  * Sign native leaves with hardened runtime and verify the expected Developer ID team.
  * @param app - assembled application directory.
  * @param identity - explicitly selected Developer ID identity.
@@ -79,6 +98,9 @@ export function signDesktopMachO(app: string, identity: string, team: string, en
 }
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [app, identity, team, entitlements] = process.argv.slice(2)
-  if (!app || !identity || !team || !entitlements) throw new Error('Expected app, identity, team and Node entitlements')
-  signDesktopMachO(app, identity, team, entitlements)
+  if (app === '--prepare' && identity) prepareDesktopMachO(identity)
+  else {
+    if (!app || !identity || !team || !entitlements) throw new Error('Expected app, identity, team and Node entitlements')
+    signDesktopMachO(app, identity, team, entitlements)
+  }
 }

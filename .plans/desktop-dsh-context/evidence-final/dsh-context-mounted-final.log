@@ -1,0 +1,26 @@
+Read-only mounted delivery: /Volumes/octopus_DSH
+Mounted app payload SHA-256: d3c18a3a14d6fb4d523ab47446b6e19af70f1004519d3b0040b60e1e1aa20997
+Strict mounted signature: PASS
+"disk4" ejected.
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: /Volumes/octopus_DSH/octopus_DSH.app/Contents/Resources/resources/node --version
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execFileSync (node:child_process:961:15)
+    at <anonymous> (/private/tmp/dsh-verify-mounted-final.mts:23:31)
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: null,
+  signal: 'SIGKILL',
+  output: [ null, '', '' ],
+  pid: 81060,
+  stdout: '',
+  stderr: ''
+}
+
+Node.js v24.14.0

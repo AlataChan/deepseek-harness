@@ -25,7 +25,7 @@ English | [中文](README.zh.md)
 
 #### What the model sees
 
-When `surfaceContext` is true, the `harness:source` section identifies the Harness implementation checkout and the `app:desktop-surface` section identifies the dsh desktop application, the selected workspace root, and the instruction to open requested files through the Host platform opener. When `surfaceContext` is false, neither section is registered.
+When `surfaceContext` is true, the `harness:source` section identifies the Harness implementation checkout and the `app:desktop-surface` section identifies the dsh desktop application, the selected workspace root, and the instruction to open requested files through the Host platform opener. The desktop bundle disables Web surface context so the two runtimes do not register the same source section. When `surfaceContext` is false, neither desktop section is registered.
 
 #### Token effect
 

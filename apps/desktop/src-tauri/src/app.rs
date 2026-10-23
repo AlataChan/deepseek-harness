@@ -189,7 +189,26 @@ const DESKTOP_SHIPPED_BUNDLES: &[&str] = &[
 const RETIRED_DESKTOP_BUNDLE: (&str, &str) =
     ("@deepseek-ai/dsh-client-app", "@deepseek-ai/dsh-web-app");
 
-const STRIP_DESKTOP_BUNDLES: &[&str] = &["dsh-context"];
+const STRIP_DESKTOP_BUNDLES: &[&str] = &[];
+
+fn is_legacy_dsh_context_spec(spec: &str) -> bool {
+    if spec == "0.74.0" {
+        return false;
+    }
+    if spec.starts_with("0.36") || spec.starts_with("^0.36") || spec.starts_with("~0.36") {
+        return true;
+    }
+    let clean = spec.trim_start_matches(|c| c == '^' || c == '~' || c == '>' || c == '=' || c == '<');
+    let parts: Vec<&str> = clean.split('.').collect();
+    if parts.len() >= 2 {
+        if let (Ok(major), Ok(minor)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+            if major == 0 && minor < 74 {
+                return true;
+            }
+        }
+    }
+    true
+}
 
 const PROFILE_PATCH_TEMPLATE: &str = "\
 # Your patch layer for this dsh profile, applied after every bundle layer:
@@ -246,11 +265,40 @@ fn install_bundled_presets(app: &AppHandle) {
     }
 }
 
+/// Read the installed package version from a profile's `node_modules/<name>/package.json`.
+fn read_installed_package_version(profile_dir: &Path, name: &str) -> Option<String> {
+    let pkg_path = package_node_modules_dest(profile_dir, name).join("package.json");
+    let raw = std::fs::read_to_string(&pkg_path).ok()?;
+    let pkg = serde_json::from_str::<serde_json::Value>(&raw).ok()?;
+    let pkg_name = pkg.get("name").and_then(|v| v.as_str())?;
+    let pkg_version = pkg.get("version").and_then(|v| v.as_str())?;
+    if pkg_name == name {
+        Some(pkg_version.to_string())
+    } else {
+        None
+    }
+}
+
 /// Rewrite leftover 0.1.1 desktop rows so a 0.1.2 companion can load.
-fn heal_desktop_profile_manifest(manifest: &mut serde_json::Value) {
+/// `@deepseek-ai/dsh-client-app` becomes `@deepseek-ai/dsh-web-app`.
+/// Legacy or unverified `dsh-context` is stripped from bundles and dependencies.
+/// Modern `dsh-context` (0.74.0) is preserved if and only if both recorded
+/// dependency and installed node_modules package version equal "0.74.0".
+fn heal_desktop_profile_manifest_with_installed(
+    manifest: &mut serde_json::Value,
+    installed_context_version: Option<&str>,
+) {
     let Some(object) = manifest.as_object_mut() else {
         return;
     };
+    let dsh_context_spec = object
+        .get("dependencies")
+        .and_then(|d| d.get("dsh-context"))
+        .and_then(|v| v.as_str());
+    // Modern dsh-context requires BOTH recorded 0.74.0 AND installed 0.74.0
+    let is_modern_dsh_context =
+        dsh_context_spec == Some("0.74.0") && installed_context_version == Some("0.74.0");
+
     if let Some(deps) = object
         .get_mut("dependencies")
         .and_then(|value| value.as_object_mut())
@@ -259,6 +307,17 @@ fn heal_desktop_profile_manifest(manifest: &mut serde_json::Value) {
             deps.remove(*name);
         }
         deps.remove(RETIRED_DESKTOP_BUNDLE.0);
+        if let Some(spec) = deps.get("dsh-context").and_then(|v| v.as_str()) {
+            if is_legacy_dsh_context_spec(spec) {
+                deps.remove("dsh-context");
+            } else if spec == "0.74.0"
+                && installed_context_version.is_some()
+                && installed_context_version != Some("0.74.0")
+            {
+                // Disagreement between recorded 0.74.0 and installed version
+                deps.remove("dsh-context");
+            }
+        }
     }
     let Some(bundles) = object
         .get_mut("dsh")
@@ -276,6 +335,9 @@ fn heal_desktop_profile_manifest(manifest: &mut serde_json::Value) {
         let Some(name) = item.as_str() else {
             continue;
         };
+        if name == "dsh-context" && !is_modern_dsh_context {
+            continue;
+        }
         if STRIP_DESKTOP_BUNDLES.contains(&name) {
             continue;
         }
@@ -291,22 +353,29 @@ fn heal_desktop_profile_manifest(manifest: &mut serde_json::Value) {
     *bundles = next;
 }
 
+#[cfg(test)]
+fn heal_desktop_profile_manifest(manifest: &mut serde_json::Value) {
+    heal_desktop_profile_manifest_with_installed(manifest, None);
+}
+
 /// Heal an existing desktop profile manifest in place. Missing or unreadable
 /// files are left untouched so first-launch copy can still create them.
-fn heal_desktop_profile_file(profile_dir: &Path) {
+fn heal_desktop_profile_file(profile_dir: &Path) -> std::io::Result<()> {
     let manifest_path = profile_dir.join("package.json");
     if !manifest_path.is_file() {
-        return;
+        return Ok(());
     }
-    let Ok(raw) = std::fs::read_to_string(&manifest_path) else {
-        return;
-    };
-    let Ok(mut manifest) = serde_json::from_str::<serde_json::Value>(&raw) else {
-        return;
-    };
-    heal_desktop_profile_manifest(&mut manifest);
-    let pretty = serde_json::to_string_pretty(&manifest).unwrap_or(raw);
-    let _ = std::fs::write(&manifest_path, format!("{pretty}\n"));
+    let raw = std::fs::read_to_string(&manifest_path)?;
+    let mut manifest = serde_json::from_str::<serde_json::Value>(&raw)
+        .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+    let installed_context_version = read_installed_package_version(profile_dir, "dsh-context");
+    heal_desktop_profile_manifest_with_installed(
+        &mut manifest,
+        installed_context_version.as_deref(),
+    );
+    let pretty = serde_json::to_string_pretty(&manifest)
+        .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+    std::fs::write(&manifest_path, format!("{pretty}\n"))
 }
 
 /// Name of the packaged payload revision file under `resources/`.
@@ -317,10 +386,10 @@ const SEED_STAMP_FILE: &str = ".dsh-seed-rev";
 
 /// Outcome of one payload seed phase, reported once per launch in `companion.log`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SeedOutcome {
+pub(crate) enum SeedOutcome {
     /// The bundled tree was copied into the installed location.
     Reseeded,
-    /// At least one copy failed; no stamp was written.
+    /// A copy or revision-stamp write failed; the phase is not complete.
     Failed,
     /// The installed copy already matches the announced revision.
     Skipped,
@@ -381,11 +450,140 @@ fn write_stamp(stamp: &Path, revision: &str) -> std::io::Result<()> {
     std::fs::write(stamp, format!("{revision}\n"))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ValidatedPlugin {
+    pub(crate) name: String,
+    pub(crate) version: String,
+    pub(crate) default_enabled: bool,
+    pub(crate) dir: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ValidatedInventory {
+    pub(crate) plugins: Vec<ValidatedPlugin>,
+}
+
+/// Validate the entire profile-plugins inventory under `src_root`:
+/// 1. `plugins.json` exists, is valid JSON, has `schemaVersion: 1`.
+/// 2. `plugins` is a non-empty object where each entry has non-empty `version`
+///    and boolean `defaultEnabled`.
+/// 3. Each plugin directory exists on disk, has valid `package.json` with matching
+///    name and matching declared version.
+/// 4. Every physical plugin directory under `src_root` is declared in `plugins.json`.
+fn validate_resource_inventory(src_root: &Path) -> Result<ValidatedInventory, String> {
+    let manifest_path = src_root.join("plugins.json");
+    let manifest_raw = std::fs::read_to_string(&manifest_path)
+        .map_err(|err| format!("missing or unreadable {}: {err}", manifest_path.display()))?;
+    let plugins_manifest: serde_json::Value = serde_json::from_str(&manifest_raw)
+        .map_err(|err| format!("invalid JSON in {}: {err}", manifest_path.display()))?;
+
+    let schema_version = plugins_manifest
+        .get("schemaVersion")
+        .and_then(|v| v.as_u64());
+    if schema_version != Some(1) {
+        return Err(format!(
+            "{}: missing or unsupported schemaVersion (expected 1)",
+            manifest_path.display()
+        ));
+    }
+
+    let expected_plugins = plugins_manifest
+        .get("plugins")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| format!("{}: missing 'plugins' object", manifest_path.display()))?;
+
+    if expected_plugins.is_empty() {
+        return Err(format!("{}: 'plugins' object is empty", manifest_path.display()));
+    }
+
+    let mut validated = Vec::new();
+    let mut expected_names = std::collections::HashSet::new();
+
+    for (name, entry) in expected_plugins {
+        expected_names.insert(name.clone());
+        let entry_obj = entry.as_object().ok_or_else(|| {
+            format!("seed: plugin {name} entry is not an object")
+        })?;
+        let version = entry_obj
+            .get("version")
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| format!("seed: plugin {name} missing non-empty string 'version'"))?;
+        let default_enabled = entry_obj
+            .get("defaultEnabled")
+            .and_then(|v| v.as_bool())
+            .ok_or_else(|| format!("seed: plugin {name} missing boolean 'defaultEnabled'"))?;
+
+        let plugin_dir = name
+            .split('/')
+            .fold(src_root.to_path_buf(), |acc, part| acc.join(part));
+        if !plugin_dir.is_dir() {
+            return Err(format!(
+                "seed: plugin directory missing at {}",
+                plugin_dir.display()
+            ));
+        }
+        let pkg_path = plugin_dir.join("package.json");
+        let pkg_raw = std::fs::read_to_string(&pkg_path)
+            .map_err(|err| format!("seed: missing package.json at {}: {err}", pkg_path.display()))?;
+        let pkg_json: serde_json::Value = serde_json::from_str(&pkg_raw)
+            .map_err(|err| format!("seed: malformed package.json at {}: {err}", pkg_path.display()))?;
+        let pkg_name = pkg_json.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        if pkg_name != name {
+            return Err(format!(
+                "seed: package.json name '{pkg_name}' does not match inventory name '{name}'"
+            ));
+        }
+        let pkg_version = pkg_json.get("version").and_then(|v| v.as_str()).unwrap_or("");
+        if pkg_version != version {
+            return Err(format!(
+                "seed: package.json version '{pkg_version}' does not match inventory version '{version}' for {name}"
+            ));
+        }
+
+        validated.push(ValidatedPlugin {
+            name: name.clone(),
+            version: version.to_string(),
+            default_enabled,
+            dir: plugin_dir,
+        });
+    }
+
+    // Ensure no uninventoried packages exist under src_root
+    let physical_dirs = bundled_profile_plugin_dirs(src_root);
+    for dir in physical_dirs {
+        let pkg_path = dir.join("package.json");
+        if !pkg_path.is_file() {
+            return Err(format!(
+                "seed: packaged plugin missing package.json at {}",
+                dir.display()
+            ));
+        }
+        let pkg_raw = std::fs::read_to_string(&pkg_path)
+            .map_err(|err| format!("seed: unreadable package.json at {}: {err}", pkg_path.display()))?;
+        let pkg_json: serde_json::Value = serde_json::from_str(&pkg_raw)
+            .map_err(|err| format!("seed: malformed package.json in packaged dir {}: {err}", dir.display()))?;
+        let name = pkg_json.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        if !expected_names.contains(name) {
+            return Err(format!(
+                "seed: packaged plugin '{name}' at {} is not declared in plugins.json",
+                dir.display()
+            ));
+        }
+    }
+
+    Ok(ValidatedInventory { plugins: validated })
+}
+
 /// Whether the installed desktop profile can be reused for `revision`: its
-/// stamp matches, its manifest parses and lists every bundled package, every
-/// bundled package is installed under `node_modules/`, and both profile
-/// template files exist.
-fn desktop_profile_seeded(profile_dir: &Path, bundled: &[String], revision: Option<&str>) -> bool {
+/// stamp matches, its manifest parses and lists every bundled package from the
+/// validated inventory, each bundled package is installed with the exact expected
+/// version under `node_modules/`, and both profile template files exist.
+fn desktop_profile_seeded(
+    profile_dir: &Path,
+    inventory: &ValidatedInventory,
+    revision: Option<&str>,
+) -> bool {
     let Some(revision) = revision else {
         return false;
     };
@@ -404,17 +602,24 @@ fn desktop_profile_seeded(profile_dir: &Path, bundled: &[String], revision: Opti
     else {
         return false;
     };
-    if !bundled.iter().all(|name| dependencies.contains_key(name)) {
-        return false;
-    }
-    // A package removed after the copy (hand deletion, quarantine) must be
-    // restored, so the installed copy is part of the completeness check.
-    if !bundled.iter().all(|name| {
-        package_node_modules_dest(profile_dir, name)
-            .join("package.json")
-            .is_file()
-    }) {
-        return false;
+    for plugin in &inventory.plugins {
+        if dependencies.get(&plugin.name).and_then(|v| v.as_str()) != Some(&plugin.version) {
+            return false;
+        }
+        let installed_pkg_path =
+            package_node_modules_dest(profile_dir, &plugin.name).join("package.json");
+        let Ok(pkg_raw) = std::fs::read_to_string(&installed_pkg_path) else {
+            return false;
+        };
+        let Ok(pkg_json) = serde_json::from_str::<serde_json::Value>(&pkg_raw) else {
+            return false;
+        };
+        if pkg_json.get("name").and_then(|v| v.as_str()) != Some(&plugin.name) {
+            return false;
+        }
+        if pkg_json.get("version").and_then(|v| v.as_str()) != Some(&plugin.version) {
+            return false;
+        }
     }
     profile_dir.join("cordis.patch.yml").is_file()
         && profile_dir.join("pnpm-workspace.yaml").is_file()
@@ -437,41 +642,82 @@ fn bundled_skills_seeded(skills_dir: &Path, bundled: &[String], revision: Option
 /// bundle the user removed. A revision stamp on a complete profile skips the
 /// copy; every launch also heals leftover `dsh-client-app` and `dsh-context`
 /// rows so a 0.1.1 profile can boot on 0.1.2.
-fn install_bundled_profile_plugins(app: &AppHandle, revision: Option<&str>) -> SeedOutcome {
-    let Ok(resource) = app.path().resource_dir() else {
-        return SeedOutcome::Absent;
+pub(crate) fn install_bundled_profile_plugins_in(
+    profile_dir: &Path,
+    src_root: Option<&Path>,
+    revision: Option<&str>,
+) -> Result<SeedOutcome, Box<dyn std::error::Error>> {
+    // 1. Safety heal runs FIRST. If healing fails (unreadable/unwritable), fail startup immediately!
+    if let Err(err) = heal_desktop_profile_file(profile_dir) {
+        eprintln!("seed: heal_desktop_profile_file failed: {err}");
+        return Err(Box::new(err));
+    }
+    let Some(src_root) = src_root else {
+        return Ok(SeedOutcome::Absent);
     };
-    let src_root = resource.join("resources").join("profile-plugins");
     if !src_root.is_dir() {
-        return SeedOutcome::Absent;
+        return Ok(SeedOutcome::Absent);
     }
-    let profile_dir = dsh_home().join("profiles").join("desktop");
-    heal_desktop_profile_file(&profile_dir);
-    let plugins = bundled_profile_plugin_dirs(&src_root)
-        .into_iter()
-        .filter_map(|src| package_json_name(&src).map(|name| (name, src)))
-        .collect::<Vec<_>>();
-    let bundled = plugins
-        .iter()
-        .map(|(name, _)| name.clone())
-        .collect::<Vec<_>>();
-    if desktop_profile_seeded(&profile_dir, &bundled, revision) {
-        return SeedOutcome::Skipped;
+    // 2. Validate entire resource inventory BEFORE any skip or mutation!
+    let inventory = match validate_resource_inventory(src_root) {
+        Ok(inv) => inv,
+        Err(err) => {
+            eprintln!("seed: validate_resource_inventory failed: {err}");
+            return Ok(SeedOutcome::Failed);
+        }
+    };
+    // 3. Derived completeness check
+    if desktop_profile_seeded(profile_dir, &inventory, revision) {
+        return Ok(SeedOutcome::Skipped);
     }
+    // 4. Install each plugin from validated inventory
     let mut failed = false;
-    for (name, src) in &plugins {
-        if install_one_profile_plugin(&profile_dir, name, src).is_err() {
+    for plugin in &inventory.plugins {
+        if install_one_profile_plugin(
+            profile_dir,
+            &plugin.name,
+            &plugin.dir,
+            plugin.default_enabled,
+        )
+        .is_err()
+        {
             failed = true;
         }
     }
     if failed {
-        return SeedOutcome::Failed;
+        return Ok(SeedOutcome::Failed);
     }
     if let Some(revision) = revision {
-        let _ = std::fs::create_dir_all(&profile_dir);
-        let _ = write_stamp(&profile_dir.join(SEED_STAMP_FILE), revision);
+        if let Err(error) = write_stamp(&profile_dir.join(SEED_STAMP_FILE), revision) {
+            eprintln!("seed: profile revision stamp failed: {error}");
+            return Ok(SeedOutcome::Failed);
+        }
     }
-    SeedOutcome::Reseeded
+    Ok(SeedOutcome::Reseeded)
+}
+
+fn install_bundled_profile_plugins(
+    app: &AppHandle,
+    revision: Option<&str>,
+) -> Result<SeedOutcome, Box<dyn std::error::Error>> {
+    let profile_dir = dsh_home().join("profiles").join("desktop");
+    let resource = app.path().resource_dir().ok();
+    let src_root = resource.map(|r| r.join("resources").join("profile-plugins"));
+    install_bundled_profile_plugins_in(&profile_dir, src_root.as_deref(), revision)
+}
+
+/// Run the production profile installer through the test-only carrier harness.
+#[cfg(feature = "harness")]
+pub fn seed_profile_for_harness(
+    profile_dir: &Path,
+    src_root: &Path,
+    revision: &str,
+) -> Result<&'static str, Box<dyn std::error::Error>> {
+    if !is_seed_revision(revision) {
+        return Err("invalid seed revision".into());
+    }
+    install_bundled_profile_plugins_in(profile_dir, Some(src_root), Some(revision))
+        .map(SeedOutcome::label)
 }
 
 /// Profile-plugin directories under Resources, including scoped `@scope/name` children.
@@ -508,12 +754,6 @@ fn bundled_profile_plugin_dirs(src_root: &Path) -> Vec<PathBuf> {
     dirs
 }
 
-/// npm package name from a plugin directory's package.json (scoped names included).
-fn package_json_name(src: &Path) -> Option<String> {
-    let raw = std::fs::read_to_string(src.join("package.json")).ok()?;
-    let value: serde_json::Value = serde_json::from_str(&raw).ok()?;
-    value.get("name")?.as_str().map(str::to_owned)
-}
 
 /// `node_modules/<name>` including scoped `@scope/name` children.
 fn package_node_modules_dest(profile_dir: &Path, name: &str) -> PathBuf {
@@ -521,7 +761,12 @@ fn package_node_modules_dest(profile_dir: &Path, name: &str) -> PathBuf {
         .fold(profile_dir.join("node_modules"), |acc, part| acc.join(part))
 }
 
-fn install_one_profile_plugin(profile_dir: &Path, name: &str, src: &Path) -> std::io::Result<()> {
+fn install_one_profile_plugin(
+    profile_dir: &Path,
+    name: &str,
+    src: &Path,
+    default_enabled: bool,
+) -> std::io::Result<()> {
     std::fs::create_dir_all(profile_dir)?;
     let manifest_path = profile_dir.join("package.json");
     let created = !manifest_path.is_file();
@@ -536,7 +781,14 @@ fn install_one_profile_plugin(profile_dir: &Path, name: &str, src: &Path) -> std
         let raw = std::fs::read_to_string(&manifest_path)?;
         let mut existing = serde_json::from_str(&raw)
             .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
-        heal_desktop_profile_manifest(&mut existing);
+        let installed_context_version = read_installed_package_version(profile_dir, "dsh-context");
+        heal_desktop_profile_manifest_with_installed(
+            &mut existing,
+            installed_context_version.as_deref(),
+        );
+        let pretty = serde_json::to_string_pretty(&existing)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+        std::fs::write(&manifest_path, format!("{pretty}\n"))?;
         existing
     };
     let dest = package_node_modules_dest(profile_dir, name);
@@ -573,7 +825,7 @@ fn install_one_profile_plugin(profile_dir: &Path, name: &str, src: &Path) -> std
         if let Some(deps) = dependencies.as_object_mut() {
             deps.insert(name.to_string(), serde_json::Value::String(version));
         }
-        if created || first_install {
+        if (created || first_install) && default_enabled {
             let bundles = object
                 .entry("dsh")
                 .or_insert_with(|| serde_json::json!({}))
@@ -732,7 +984,7 @@ pub fn run() {
             let seed_revision = read_seed_revision(app.app_handle());
             install_bundled_presets(app.app_handle());
             let plugins =
-                install_bundled_profile_plugins(app.app_handle(), seed_revision.as_deref());
+                install_bundled_profile_plugins(app.app_handle(), seed_revision.as_deref())?;
             let skills = install_bundled_skills(app.app_handle(), seed_revision.as_deref());
             log_seed_decision(
                 &cache_root.join("companion.log"),
@@ -795,7 +1047,7 @@ mod tests {
             std::fs::create_dir_all(&installed).expect("installed package dir");
             std::fs::write(
                 installed.join("package.json"),
-                format!("{{ \"name\": \"{name}\" }}\n"),
+                format!("{{ \"name\": \"{name}\", \"version\": \"1.0.0\" }}\n"),
             )
             .expect("installed package manifest");
         }
@@ -822,37 +1074,44 @@ mod tests {
     #[test]
     fn profile_seed_decision_requires_revision_stamp_and_complete_profile() {
         let dir = tempdir().expect("tempdir");
-        let bundled = vec!["@scope/plugin".to_string()];
+        let inventory = ValidatedInventory {
+            plugins: vec![ValidatedPlugin {
+                name: "@scope/plugin".to_string(),
+                version: "1.0.0".to_string(),
+                default_enabled: true,
+                dir: PathBuf::from("/mock/dir"),
+            }],
+        };
         let profile = dir.path().join("profiles").join("desktop");
         // Missing destination: nothing is installed yet.
-        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        assert!(!desktop_profile_seeded(&profile, &inventory, Some(REVISION)));
         write_profile(dir.path(), Some(REVISION), &["@scope/plugin"]);
         // Matching revision on a complete profile.
-        assert!(desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        assert!(desktop_profile_seeded(&profile, &inventory, Some(REVISION)));
         // Missing announced revision: the payload cannot be trusted.
-        assert!(!desktop_profile_seeded(&profile, &bundled, None));
+        assert!(!desktop_profile_seeded(&profile, &inventory, None));
         // Stale stamp: a changed payload must copy again.
         assert!(!desktop_profile_seeded(
             &profile,
-            &bundled,
+            &inventory,
             Some(OTHER_REVISION)
         ));
         // Missing profile manifest.
         std::fs::remove_file(profile.join("package.json")).expect("remove manifest");
-        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        assert!(!desktop_profile_seeded(&profile, &inventory, Some(REVISION)));
         // Manifest without the bundled dependency.
         write_profile(dir.path(), Some(REVISION), &[]);
-        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        assert!(!desktop_profile_seeded(&profile, &inventory, Some(REVISION)));
         // Missing profile template file.
         write_profile(dir.path(), Some(REVISION), &["@scope/plugin"]);
         std::fs::remove_file(profile.join("cordis.patch.yml")).expect("remove patch layer");
-        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        assert!(!desktop_profile_seeded(&profile, &inventory, Some(REVISION)));
         // Installed package removed after the copy (hand deletion, quarantine):
         // the stamp survives, so the installed copy itself must be checked.
         write_profile(dir.path(), Some(REVISION), &["@scope/plugin"]);
         std::fs::remove_dir_all(package_node_modules_dest(&profile, "@scope/plugin"))
             .expect("remove installed package");
-        assert!(!desktop_profile_seeded(&profile, &bundled, Some(REVISION)));
+        assert!(!desktop_profile_seeded(&profile, &inventory, Some(REVISION)));
     }
 
     #[test]
@@ -880,7 +1139,333 @@ mod tests {
         let target = dir.path().join("elsewhere");
         std::fs::write(&target, format!("{REVISION}\n")).expect("target");
         std::os::unix::fs::symlink(&target, profile.join(SEED_STAMP_FILE)).expect("symlink");
-        assert!(!desktop_profile_seeded(&profile, &[], Some(REVISION)));
+        let inventory = ValidatedInventory { plugins: vec![] };
+        assert!(!desktop_profile_seeded(&profile, &inventory, Some(REVISION)));
         assert!(write_stamp(&profile.join(SEED_STAMP_FILE), REVISION).is_err());
+    }
+
+    #[test]
+    fn heal_manifest_handles_legacy_and_modern_dsh_context() {
+        // Case 1: Legacy 0.36.0 in bundles -> stripped from bundles and dependencies
+        let mut legacy = serde_json::json!({
+            "dependencies": {
+                "dsh-context": "0.36.0",
+                "@deepseek-ai/dsh-client-app": "0.1.1"
+            },
+            "dsh": {
+                "profile": {
+                    "bundles": [
+                        "@deepseek-ai/dsh-base",
+                        "@deepseek-ai/dsh-client-app",
+                        "dsh-context"
+                    ]
+                }
+            }
+        });
+        heal_desktop_profile_manifest(&mut legacy);
+        let bundles = legacy["dsh"]["profile"]["bundles"].as_array().unwrap();
+        assert_eq!(
+            bundles,
+            &vec![
+                serde_json::json!("@deepseek-ai/dsh-base"),
+                serde_json::json!("@deepseek-ai/dsh-web-app"),
+            ]
+        );
+        assert!(legacy["dependencies"].get("dsh-context").is_none());
+
+        // Case 2: Modern 0.74.0 toggled ON with matching installed 0.74.0 -> preserved
+        let mut modern_on = serde_json::json!({
+            "dependencies": {
+                "dsh-context": "0.74.0"
+            },
+            "dsh": {
+                "profile": {
+                    "bundles": [
+                        "@deepseek-ai/dsh-base",
+                        "@deepseek-ai/dsh-web-app",
+                        "dsh-context"
+                    ]
+                }
+            }
+        });
+        heal_desktop_profile_manifest_with_installed(&mut modern_on, Some("0.74.0"));
+        let bundles_on = modern_on["dsh"]["profile"]["bundles"].as_array().unwrap();
+        assert_eq!(
+            bundles_on,
+            &vec![
+                serde_json::json!("@deepseek-ai/dsh-base"),
+                serde_json::json!("@deepseek-ai/dsh-web-app"),
+                serde_json::json!("dsh-context"),
+            ]
+        );
+        assert_eq!(
+            modern_on["dependencies"].get("dsh-context"),
+            Some(&serde_json::json!("0.74.0"))
+        );
+
+        // Case 2b: Modern 0.74.0 recorded but installed version is 0.36.0 (disagreement) -> stripped from bundles & deps
+        let mut modern_disagrees = modern_on.clone();
+        heal_desktop_profile_manifest_with_installed(&mut modern_disagrees, Some("0.36.0"));
+        let bundles_disagrees = modern_disagrees["dsh"]["profile"]["bundles"].as_array().unwrap();
+        assert_eq!(
+            bundles_disagrees,
+            &vec![
+                serde_json::json!("@deepseek-ai/dsh-base"),
+                serde_json::json!("@deepseek-ai/dsh-web-app"),
+            ]
+        );
+        assert!(modern_disagrees["dependencies"].get("dsh-context").is_none());
+
+        // Case 2c: Modern 0.74.0 recorded but installed version is missing (None) -> stripped from bundles
+        let mut modern_missing_installed = modern_on.clone();
+        heal_desktop_profile_manifest_with_installed(&mut modern_missing_installed, None);
+        let bundles_missing = modern_missing_installed["dsh"]["profile"]["bundles"].as_array().unwrap();
+        assert_eq!(
+            bundles_missing,
+            &vec![
+                serde_json::json!("@deepseek-ai/dsh-base"),
+                serde_json::json!("@deepseek-ai/dsh-web-app"),
+            ]
+        );
+
+        // Case 3: Modern 0.74.0 kept OFF with matching installed 0.74.0 -> preserved in dependencies
+        let mut modern_off = serde_json::json!({
+            "dependencies": {
+                "dsh-context": "0.74.0"
+            },
+            "dsh": {
+                "profile": {
+                    "bundles": [
+                        "@deepseek-ai/dsh-base",
+                        "@deepseek-ai/dsh-web-app"
+                    ]
+                }
+            }
+        });
+        heal_desktop_profile_manifest_with_installed(&mut modern_off, Some("0.74.0"));
+        let bundles_off = modern_off["dsh"]["profile"]["bundles"].as_array().unwrap();
+        assert_eq!(
+            bundles_off,
+            &vec![
+                serde_json::json!("@deepseek-ai/dsh-base"),
+                serde_json::json!("@deepseek-ai/dsh-web-app"),
+            ]
+        );
+        assert_eq!(
+            modern_off["dependencies"].get("dsh-context"),
+            Some(&serde_json::json!("0.74.0"))
+        );
+
+        // Case 4: Legacy range ^0.36.0 or unrecorded selection -> stripped
+        let mut legacy_range = serde_json::json!({
+            "dependencies": {
+                "dsh-context": "^0.36.0"
+            },
+            "dsh": {
+                "profile": {
+                    "bundles": [
+                        "@deepseek-ai/dsh-base",
+                        "dsh-context"
+                    ]
+                }
+            }
+        });
+        heal_desktop_profile_manifest(&mut legacy_range);
+        assert_eq!(
+            legacy_range["dsh"]["profile"]["bundles"].as_array().unwrap(),
+            &vec![serde_json::json!("@deepseek-ai/dsh-base")]
+        );
+        assert!(legacy_range["dependencies"].get("dsh-context").is_none());
+    }
+
+    #[test]
+    fn install_bundled_profile_plugins_in_fails_startup_when_heal_write_fails() {
+        let dir = tempdir().expect("tempdir");
+        let profile = dir.path().join("profiles").join("desktop");
+        std::fs::create_dir_all(&profile).expect("create profile dir");
+        let manifest_path = profile.join("package.json");
+        std::fs::write(&manifest_path, "not-json").expect("write invalid json");
+
+        let outcome = install_bundled_profile_plugins_in(&profile, None, Some(REVISION));
+        // Must return an Err so setup aborts instead of continuing companion launch
+        assert!(outcome.is_err());
+    }
+
+    #[test]
+    fn install_bundled_profile_plugins_in_validates_inventory_and_mismatched_packages() {
+        let dir = tempdir().expect("tempdir");
+        let profile = dir.path().join("profiles").join("desktop");
+        let resources = dir.path().join("resources").join("profile-plugins");
+        std::fs::create_dir_all(&resources).expect("create resources dir");
+
+        // Subcase A: missing plugins.json -> returns Ok(SeedOutcome::Failed)
+        let outcome = install_bundled_profile_plugins_in(&profile, Some(&resources), Some(REVISION));
+        assert_eq!(outcome.unwrap(), SeedOutcome::Failed);
+
+        // Subcase B: plugins.json with missing defaultEnabled -> returns Ok(SeedOutcome::Failed)
+        let manifest = serde_json::json!({
+            "schemaVersion": 1,
+            "plugins": {
+                "dsh-context": {
+                    "version": "0.74.0"
+                }
+            }
+        });
+        std::fs::write(resources.join("plugins.json"), manifest.to_string()).expect("write plugins.json");
+        let outcome = install_bundled_profile_plugins_in(&profile, Some(&resources), Some(REVISION));
+        assert_eq!(outcome.unwrap(), SeedOutcome::Failed);
+
+        // Subcase C: inventory claims 0.74.0 but directory package.json contains 0.36.0 -> returns Ok(SeedOutcome::Failed)
+        let plugin_dir = resources.join("dsh-context");
+        std::fs::create_dir_all(&plugin_dir).expect("plugin dir");
+        std::fs::write(
+            plugin_dir.join("package.json"),
+            "{\"name\": \"dsh-context\", \"version\": \"0.36.0\"}\n",
+        ).expect("write 0.36.0 pkg");
+        let valid_manifest = serde_json::json!({
+            "schemaVersion": 1,
+            "plugins": {
+                "dsh-context": {
+                    "version": "0.74.0",
+                    "defaultEnabled": false
+                }
+            }
+        });
+        std::fs::write(resources.join("plugins.json"), valid_manifest.to_string()).expect("write valid plugins.json");
+        let outcome = install_bundled_profile_plugins_in(&profile, Some(&resources), Some(REVISION));
+        assert_eq!(outcome.unwrap(), SeedOutcome::Failed);
+
+        // Subcase D: matching directory and inventory -> succeeds with Reseeded
+        std::fs::write(
+            plugin_dir.join("package.json"),
+            "{\"name\": \"dsh-context\", \"version\": \"0.74.0\"}\n",
+        ).expect("write 0.74.0 pkg");
+        let outcome = install_bundled_profile_plugins_in(&profile, Some(&resources), Some(REVISION));
+        assert_eq!(outcome.unwrap(), SeedOutcome::Reseeded);
+
+        // Subcase E: after seeding with stamp, calling again returns Skipped
+        let outcome_skip = install_bundled_profile_plugins_in(&profile, Some(&resources), Some(REVISION));
+        assert_eq!(outcome_skip.unwrap(), SeedOutcome::Skipped);
+
+        // Subcase F: if installed version is tampered/downgraded to 0.36.0, stamp matching does NOT skip
+        let installed_pkg = package_node_modules_dest(&profile, "dsh-context").join("package.json");
+        std::fs::write(&installed_pkg, "{\"name\": \"dsh-context\", \"version\": \"0.36.0\"}\n").expect("downgrade installed");
+        let outcome_tampered = install_bundled_profile_plugins_in(&profile, Some(&resources), Some(REVISION));
+        // It must NOT skip; it must repair and return Reseeded
+        assert_eq!(outcome_tampered.unwrap(), SeedOutcome::Reseeded);
+    }
+
+    #[test]
+    fn revision_refresh_preserves_context_selection_and_rejects_stamp_failure() {
+        let dir = tempdir().expect("tempdir");
+        let profile = dir.path().join("profile");
+        let resources = dir.path().join("resources");
+        let plugin = resources.join("dsh-context");
+        std::fs::create_dir_all(&plugin).unwrap();
+        std::fs::write(
+            plugin.join("package.json"),
+            r#"{"name":"dsh-context","version":"0.74.0"}"#,
+        )
+        .unwrap();
+        std::fs::write(resources.join("plugins.json"),
+            r#"{"schemaVersion":1,"plugins":{"dsh-context":{"version":"0.74.0","defaultEnabled":false}}}"#).unwrap();
+        assert_eq!(
+            install_bundled_profile_plugins_in(&profile, Some(&resources), Some(REVISION)).unwrap(),
+            SeedOutcome::Reseeded
+        );
+        for enabled in [true, false] {
+            let path = profile.join("package.json");
+            let mut manifest: serde_json::Value =
+                serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+            manifest["dsh"]["profile"]["bundles"] = if enabled {
+                serde_json::json!(["dsh-context"])
+            } else {
+                serde_json::json!([])
+            };
+            std::fs::write(&path, manifest.to_string()).unwrap();
+            write_stamp(&profile.join(SEED_STAMP_FILE), REVISION).unwrap();
+            std::fs::write(plugin.join("payload-marker"), enabled.to_string()).unwrap();
+            assert_eq!(
+                install_bundled_profile_plugins_in(
+                    &profile,
+                    Some(&resources),
+                    Some(OTHER_REVISION)
+                )
+                .unwrap(),
+                SeedOutcome::Reseeded
+            );
+            assert!(stamp_matches(
+                &profile.join(SEED_STAMP_FILE),
+                OTHER_REVISION
+            ));
+            let after: serde_json::Value =
+                serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+            assert_eq!(
+                after["dsh"]["profile"]["bundles"]
+                    .as_array()
+                    .unwrap()
+                    .contains(&serde_json::json!("dsh-context")),
+                enabled
+            );
+            assert_eq!(
+                std::fs::read_to_string(profile.join("node_modules/dsh-context/payload-marker"))
+                    .unwrap(),
+                enabled.to_string()
+            );
+        }
+        std::fs::remove_file(profile.join(SEED_STAMP_FILE)).unwrap();
+        std::fs::create_dir(profile.join(SEED_STAMP_FILE)).unwrap();
+        assert_eq!(
+            install_bundled_profile_plugins_in(&profile, Some(&resources), Some(REVISION)).unwrap(),
+            SeedOutcome::Failed
+        );
+    }
+
+    #[test]
+    fn install_one_profile_plugin_respects_default_enabled() {
+        let dir = tempdir().expect("tempdir");
+        let profile = dir.path().join("profiles").join("desktop");
+        let plugin_src = dir.path().join("plugin-src");
+        std::fs::create_dir_all(&plugin_src).expect("create plugin src");
+        std::fs::write(
+            plugin_src.join("package.json"),
+            "{\"name\": \"dsh-context\", \"version\": \"0.74.0\"}\n",
+        )
+        .expect("write plugin package.json");
+
+        // First install with default_enabled: false
+        install_one_profile_plugin(&profile, "dsh-context", &plugin_src, false)
+            .expect("install disabled");
+        let manifest: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(profile.join("package.json")).expect("read manifest"),
+        )
+        .expect("parse manifest");
+        assert_eq!(
+            manifest["dependencies"].get("dsh-context"),
+            Some(&serde_json::json!("0.74.0"))
+        );
+        let bundles = manifest["dsh"]["profile"]["bundles"].as_array().unwrap();
+        assert!(!bundles.contains(&serde_json::json!("dsh-context")));
+
+        // Re-installing when user toggled it ON must preserve ON
+        let mut toggled_on = manifest.clone();
+        toggled_on["dsh"]["profile"]["bundles"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!("dsh-context"));
+        std::fs::write(
+            profile.join("package.json"),
+            serde_json::to_string_pretty(&toggled_on).unwrap(),
+        )
+        .expect("write manifest");
+
+        install_one_profile_plugin(&profile, "dsh-context", &plugin_src, false)
+            .expect("reinstall");
+        let reinstalled: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(profile.join("package.json")).expect("read manifest"),
+        )
+        .expect("parse manifest");
+        let reinstalled_bundles = reinstalled["dsh"]["profile"]["bundles"].as_array().unwrap();
+        assert!(reinstalled_bundles.contains(&serde_json::json!("dsh-context")));
     }
 }

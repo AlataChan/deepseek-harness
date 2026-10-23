@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "mode": "internal",
+  "repository": "AlataChan/deepseek-harness",
+  "ref": "local",
+  "sourceState": {
+    "modifiedAtBuild": true,
+    "modifiedAtPackaging": true
+  },
+  "release": {
+    "version": "0.2.1-alpha.1",
+    "commit": "47675a706f4f1cf3ce20b78d4d3e8a46e993d0ca"
+  },
+  "shellVersion": "0.1.2-rc.3",
+  "target": "macos-arm64",
+  "payloadSha256": "ed2a96bb0a2313fd3df99490bff87a5bdc972a634b8c07c4d357983480d46afc",
+  "artifact": {
+    "name": "octopus_DSH.dmg",
+    "bytes": 324293631,
+    "sha256": "198eafc40ce7835dd076095efe68dc7c543406577d841929cfdabaebcafc95be"
+  }
+}

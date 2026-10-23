@@ -233,10 +233,36 @@ else
   bad "desktop-profile-plugins.json missing"
 fi
 
-if grep -q 'dsh-context' "$PIN"; then
-  bad "desktop-profile-plugins.json still names dsh-context — companion boot fails on that leftover"
+if grep -q '"name": "dsh-context"' "$PIN"; then
+  if grep -A 3 '"name": "dsh-context"' "$PIN" | grep -q '"version": "0.74.0"' && \
+     grep -A 3 '"name": "dsh-context"' "$PIN" | grep -q '"defaultEnabled": false'; then
+    ok "desktop-profile-plugins.json pins dsh-context@0.74.0 with defaultEnabled: false"
+  else
+    bad "desktop-profile-plugins.json has dsh-context without version 0.74.0 or defaultEnabled: false"
+  fi
 else
-  ok "desktop-profile-plugins.json does not name dsh-context"
+  bad "desktop-profile-plugins.json missing dsh-context"
+fi
+
+BUNDLED_PLUGINS_JSON="$RES/profile-plugins/plugins.json"
+if [[ -f "$BUNDLED_PLUGINS_JSON" ]]; then
+  if grep -q '"schemaVersion": 1' "$BUNDLED_PLUGINS_JSON" && \
+     grep -A 3 '"dsh-context"' "$BUNDLED_PLUGINS_JSON" | grep -q '"version": "0.74.0"' && \
+     grep -A 3 '"dsh-context"' "$BUNDLED_PLUGINS_JSON" | grep -q '"defaultEnabled": false'; then
+    ok "packaged profile-plugins/plugins.json pins dsh-context@0.74.0 with defaultEnabled: false"
+  else
+    bad "packaged profile-plugins/plugins.json missing dsh-context@0.74.0 with defaultEnabled: false"
+  fi
+else
+  bad "packaged profile-plugins/plugins.json is missing"
+fi
+
+if [[ -f "$RES/profile-plugins/dsh-context/package.json" ]] && \
+   grep -q '"name": "dsh-context"' "$RES/profile-plugins/dsh-context/package.json" && \
+   grep -q '"version": "0.74.0"' "$RES/profile-plugins/dsh-context/package.json"; then
+  ok "packaged profile-plugins/dsh-context/package.json verified at 0.74.0"
+else
+  bad "packaged profile-plugins/dsh-context/package.json missing or version mismatch"
 fi
 
 if grep -q 'dsh-client-app' "$PIN"; then
@@ -945,6 +971,14 @@ if node "$REPO_ROOT/scripts/verify-composer-predictions-installed-flows.mjs" "$A
   ok "Installed prediction delay, responsive settings, cancellation and cold restart"
 else
   bad "Installed composer prediction acceptance failed"
+fi
+
+# Pinned default-disabled dsh-context operations and toggle lifecycle (G1–G8).
+head_ "Checking installed dsh-context operations (G1–G8)"
+if node "$REPO_ROOT/scripts/verify-dsh-context-installed-flows.mjs" "$APP"; then
+  ok "Installed dsh-context default-disabled G1–G8 acceptance passed"
+else
+  bad "Installed dsh-context acceptance failed"
 fi
 
 # ── Result ──────────────────────────────────────────────────────────────────

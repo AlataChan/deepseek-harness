@@ -1,0 +1,12 @@
+✔ rejects WAN peers and wildcard listeners while accepting numeric loopback endpoints (3.511542ms)
+✔ spawn failure rejects and releases the runner without waiting for a nonexistent exit (10.931833ms)
+✔ startup control errors reject with their diagnostic and terminate the child (2326.484125ms)
+✔ does not accept a denied socket inspection as an empty socket inventory (0.41425ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2478.274542

@@ -26,7 +26,7 @@ kind: "package-bundle"
 
 #### 模型看到什么
 
-当 `surfaceContext` 为 true 时，`harness:source` 段标明 Harness 实现检出，`app:desktop-surface` 段标明 dsh 桌面应用、所选工作区根，以及通过 Host 平台打开器打开被请求文件的指令。当 `surfaceContext` 为 false 时，这两段都不会注册。
+当 `surfaceContext` 为 true 时，`harness:source` 段标明 Harness 实现检出，`app:desktop-surface` 段标明 dsh 桌面应用、所选工作区根，以及通过 Host 平台打开器打开被请求文件的指令。桌面 bundle 禁用 Web 表面上下文，避免两个运行时重复注册同一来源段落。当 `surfaceContext` 为 false 时，这两个桌面段落都不会注册。
 
 #### Token 影响
 

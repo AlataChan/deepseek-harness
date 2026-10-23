@@ -5,6 +5,7 @@ export interface PluginPin {
   version: string
   source?: 'npm' | 'workspace'
   path?: string
+  defaultEnabled?: boolean
 }
 
 export interface PinFile {
@@ -17,9 +18,16 @@ export const RETIRED_DESKTOP_BUNDLES: Readonly<Record<string, string>>
 
 export const STRIP_DESKTOP_BUNDLES: readonly string[]
 
+export function isLegacyDshContextSpec(spec: string | undefined | null): boolean
+
+export function readInstalledPackageVersion(profileDir?: string, packageName?: string): string | null
+
 export function readPinFile(path?: string): PinFile
 
-export function healDesktopProfileManifest(manifest: object): {
+export function healDesktopProfileManifest(
+  manifest: object,
+  options?: { profileDir?: string; installedVersion?: string | null },
+): {
   dsh: { profile: { bundles: string[] } }
   dependencies?: Record<string, string>
   [key: string]: unknown
@@ -31,10 +39,15 @@ export function validatePluginDir(dir: string, expected?: PluginPin): {
   [key: string]: unknown
 }
 
+export function exportPluginsManifest(pin: PinFile, outDir: string): {
+  schemaVersion: number
+  plugins: Record<string, { version: string; defaultEnabled: boolean }>
+}
+
 export function mergeProfileManifest(
   manifest: object,
   plugin: PluginPin,
-  options: { firstInstall: boolean },
+  options?: { firstInstall?: boolean; defaultEnabled?: boolean },
 ): {
   dsh: { profile: { bundles: string[] } }
   dependencies: Record<string, string>
@@ -45,6 +58,7 @@ export function installPluginIntoProfile(
   src: string,
   profileDir: string,
   shippedBundles: string[],
+  options?: { defaultEnabled?: boolean },
 ): { name: string; version: string; firstInstall: boolean; dest: string }
 
 export function fetchPlugin(

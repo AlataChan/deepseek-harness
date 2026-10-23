@@ -23,7 +23,7 @@ export async function desktopTransport(workspaceRoot: string, apiFetch: (request
     onFrame: frame => gateway.accept(frame) })
   const gateway: VsCodeHostGateway = new VsCodeHostGateway({
     apiFetchHandler: { fetch: apiFetch }, openStream: async () => (async function* () {})(),
-    clientModules: { graph: () => ({ rev: '0', entries: [], batches: [] }), clientPath: () => undefined },
+    clientModules: { graph: () => ({ rev: '0', entries: [], batches: [] }), clientPath: () => undefined, onGraphChanged: () => () => {} },
     expectedWorkspaceRoot: workspaceRoot, runtimeVersion: 'acceptance-fixture',
     maxLogicalRpcBytes: DEFAULT_MAX_LOGICAL_RPC_BYTES, send: frame => channel.send(frame),
     close: () => { hostPort.disconnect() },

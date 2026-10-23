@@ -1,0 +1,42 @@
+Read-only mounted delivery: /Volumes/octopus_DSH
+Mounted app payload SHA-256: d3c18a3a14d6fb4d523ab47446b6e19af70f1004519d3b0040b60e1e1aa20997
+Strict mounted signature: PASS
+Copied installation payload: /var/folders/h2/bxwgfbt15zg3gz5hf37bhf2w0000gn/T/dsh-dmg-install-borzyd/octopus_DSH.app
+Installed Node: v24.14.0
+Installed knowledge-sidecar self-test: {"ok": true, "compound": true, "prompts": true, "schemas": true, "proposalSchema": true, "applyRules": true, "rulesSchema": true, "pageMetaFill": true, "retrieveFold": true, "convertFile": true, "markitdown": true, "pdf": true, "pypdf": true, "documentPdf": true, "sqliteRuntime": true, "xlsx": true, "hasDeepseekKey": true}
+Mounted default-OFF inventory and internal installer helper: PASS
+▶ Verifying packaged dsh-context metadata and exports
+  ✓ Packaged inventory: plugins.json and dsh-context@0.74.0 verified with defaultEnabled: false
+▶ Verifying R6 Failure Cleanup & Bounded Startup Timeout Control
+  ✓ R6: Startup timeout cleanly terminates companion child process
+▶ Verifying G1: Offline isolation
+  ✓ G1: Offline isolation enforced and observed (loopback-only sockets)
+▶ Verifying G2: Default-OFF discovery
+  ✓ G2: Default-OFF discovery verified: bundle row disabled, projections absent
+▶ Verifying G3: Hot activation (OFF → ON)
+  ✓ G3 Host: activation applied and projections attached
+▶ Verifying G4: Hot deactivation (ON → OFF)
+  ✓ G4 Host: deactivation applied and projections disposed
+▶ Verifying G5: Repeated cycle idempotency
+  ✓ G5: Repeated live cycles (OFF→ON→OFF) verified without leakage
+▶ Verifying G8: Activation error boundary & negative controls
+  ✓ G8: Activation error boundary verified: invalid bundles fail safely
+▶ Verifying G6: Restart persistence without reseeding
+  ✓ G6: Cold restart persistence verified for both ON and OFF without reseeding
+▶ Verifying G7: production Rust payload refresh
+  ✓ G7: Rust installer copied the payload, wrote new stamps and preserved ON/OFF
+▶ Verifying built desktop Client through the native carrier and Rust cache
+WebView: production Rust installer seeded the packaged profile
+WebView: browser process started
+Page console: Loading the font 'data:font/woff2;base64,d09GMgABAAAAAA4oAA4AAAAAHbQAAA3TAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAAgRQIDgmcDBEICo1oijYBNgIkA14LMgAEIAWJAAeBHAyBHBvbGiMRdnO0IkRRkiYDgr9KsJ1NUAf2kILNxgUmgqIgq1P89vcbIcmsQbRps3vCcXdYOKSWEPEKgZgQkprQQsxIXUgq0DqpGKmIvrgkeVGtEQD9DzAO29fM9jYhxZEsL2FeURH2JN4MIcTdO049NCVdxQ/w9NrSYFEBKTDKpLKfNkCGDc1RwjZLQcm3vqJ2UW9Xfa3tgAHz6ivp6vgC2yD4/6352ndnN0X0TL7seypkjZlMsjmZnf0Mm5Q+JykRWQBKCVCVPbARPXWyQtb5VgLB6Biq7/Uixcj2WGqdI8tGSgkuRG+t910GKP2D7AQH0DB9FMDW/obJZ8giFI3Wg8Cvevz0M+5m0rTh7XDBlvo9Y4vm13EXmftt...mCahLsdlyA5fdQkRSan9LgnnLEyGSkaKJCJog0wAgvepWBt80+1yKln1bMVtCljfNWDu
+WebView: built desktop page loaded
+WebView bridge: runtime_get_config
+WebView bridge: runtime_resolve
+WebView bridge: carrier_open
+Page console: Failed to load resource: the server responded with a status of 404 (Not Found)
+Page console: Loading media from  'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAmjbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAF3AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAACM10cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAF3AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAABQAAAALQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAABdwAAAEAAABAAAAAAhFbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAAAwAAABIABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZ...OkwuvhwzruD3bWWC8ALOW4SNVw4MHQAAAAOAGfaHRfABGbGm+U041urAO2BshKQAO
+READY: built desktop page followed live carrier graphs through Rust cache, mounted and removed real packaged Client views over 3 cycles; /tmp/dsh-context-native-webview.png
+
+✓ READY: context Host, Rust refresh and built desktop Client acceptance passed
+READY: copied DMG installation, matching mounted bytes, strict signature and context acceptance passed
+"disk4" ejected.

@@ -125,6 +125,52 @@ function createMockPort(options: {
 }
 
 describe('bootDesktopClient', () => {
+  it('caches and reconciles live carrier graphs without manually mounting the arriving plugin', async () => {
+    const mock = createMockPort({})
+    const mounted = vi.fn()
+    const disposed = vi.fn()
+    const ctx = new Context()
+    const load = async (url: string): Promise<void> => {
+      const target = (globalThis as { __ModuleLoader__?: ClientModuleLoaderTarget }).__ModuleLoader__
+      if (!target) throw new Error('missing module loader')
+      if (url.includes(MODULES)) target.load({ id: MODULES, factory: () => ({
+        inject: ['loader'], apply: provideModules,
+        createClientModuleSystem,
+      }) })
+      else if (url.includes('live-plugin')) target.load({ id: 'live-plugin', factory: () => ({
+        apply(pluginCtx: Context) { mounted(); pluginCtx.effect(() => () => { disposed() }) },
+      }) })
+      else target.load({ id: SIDEBAR, factory: () => ({ apply() {} }) })
+    }
+    await bootDesktopClient({
+      port: mock.port, root: document.createElement('div'), extensionVersion: 'test',
+      loadBundle: load,
+      createAppEntry: () => ({ run: async () => {
+        const target = (globalThis as { __ModuleLoader__?: ClientModuleLoaderTarget }).__ModuleLoader__
+        if (!target) throw new Error('missing module loader')
+        const boot = (globalThis as { __DSH_BOOT__?: WebBootGraph }).__DSH_BOOT__
+        const modules = target.create({ boot, staticModules: {}, loadBundle: load })
+        await ctx.plugin(Loader)
+        ctx.loader.internal = modules as never
+        await modules.entries.start(ctx.loader, modules.manifest)
+      } }),
+    })
+    try {
+      const on = readyFrame()
+      on.graph.rev = 'graph-2'
+      on.graph.entries.push({ id: 'live-plugin', rev: '1', url: 'host-plugin' })
+      on.bundles.push({ id: 'live-plugin', rev: '1', sourcePath: '/tmp/plugin.js', sha256: sha256('export {}\n') })
+      mock.emit({ event: 'record', data: { line: JSON.stringify({ type: 'wire/message', encoded: JSON.stringify(on) }) } })
+      await vi.waitFor(() => expect(mounted).toHaveBeenCalledOnce())
+      expect(mock.commands.some(row => row.cmd === 'cache_bundle' && row.args?.id === 'live-plugin')).toBe(true)
+      const off = readyFrame()
+      off.graph.rev = 'graph-3'
+      mock.emit({ event: 'record', data: { line: JSON.stringify({ type: 'wire/message', encoded: JSON.stringify(off) }) } })
+      await vi.waitFor(() => expect(disposed).toHaveBeenCalledOnce())
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
   it('retains the Host release when bundle URLs are rewritten into the local cache', async () => {
     const release = { version: '0.0.1-test', commit: 'a'.repeat(40) }
     const mock = createMockPort({ ready: readyFrame({ release }) })

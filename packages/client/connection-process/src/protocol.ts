@@ -196,7 +196,7 @@ export interface ControlHelloFrame {
   locale: string
 }
 
-/** Runtime, graph, and capacity facts returned after a successful handshake. */
+/** Initial handshake result and subsequent complete Client graph snapshots. */
 export interface ControlReadyFrame {
   type: 'control/ready'
   protocolVersion: number
