@@ -10,7 +10,7 @@
 
 **技术栈：** TypeScript、React、Cordis、pnpm、Vitest、Playwright、Rust/Tauri，以及现有内部 DMG 构建流程。
 
-**状态：** 根据 Astra 审查修订后，负责人已授权本地实施。下文纳入了必须修订的所属路径检查及两项验证建议；实施和产物验收仍待完成。
+**状态：** C1–C3 及二次审查修复已实施至 `00729d3c76`。聚焦检查、构建、全部 114 项 bundle 检查及支持的原生流程通过，可在内部 macOS ARM64 范围集成。验收证据及其余平台和基线限制见 `.plans/upstream-compatibility-2026-10-23/remediation-review.md`。
 
 ## 概述
 
@@ -134,7 +134,7 @@ logger-console 1.0.5     schemastery 3.18.5    timer 1.1.7
 
 2. 最终构建前提交已接受的源码改动，并记录测试提交。运行 `pnpm run build`；在 `apps/desktop` 中运行 `cargo tauri build`。等待应用打包成功结束后，再运行 `bash scripts/build-dmg.sh --arch arm64`。复用缓存时必须通过其现有新鲜度检查，不得强行复用过期依赖或 sidecar。
 
-3. 要求当前全部 bundle 检查通过，包括 dsh-context 已安装流程验收。在隔离主目录、合成设置及网络限制下，使用真实 Tauri WKWebView 检查双语界面、菜单缩放与尺寸变化、路由及推理等级切换、冷启动，以及助手和团队的模型选择。测试默认关闭的上下文发现及真实 Client 的实时出现与移除。
+3. 要求当前全部 bundle 检查通过，包括 dsh-context 已安装流程验收。在隔离主目录、合成设置及网络限制下，使用真实 Tauri WKWebView 检查双语界面、菜单实时尺寸变化、路由及推理等级切换、冷启动，以及助手和团队的模型选择。文档缩放由已构建浏览器场景验证；原生外壳没有页面缩放命令。测试默认关闭的上下文发现及真实 Client 的实时出现与移除。
 
 4. 在不进行付费调用的前提下，检查现有“问数据”“问知识”入口及 API Key 设置。验证可选 Search/Fetch 和斜杠菜单刷新仍可用。将新 bundle 中社区插件实际解析的 Cordis/Schemastery 与已接受基线比较，拒绝新增的不兼容或不必要框架副本。
 

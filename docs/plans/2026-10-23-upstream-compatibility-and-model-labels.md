@@ -10,7 +10,7 @@ English | [中文](2026-10-23-upstream-compatibility-and-model-labels.zh.md)
 
 **Tech Stack:** TypeScript, React, Cordis, pnpm, Vitest, Playwright, Rust/Tauri, and the existing internal DMG pipeline.
 
-**Status:** Owner-authorized local implementation after Astra review revisions. The required ownership-check revision and both verification advisories are included below; implementation and artifact acceptance remain pending.
+**Status:** C1–C3 and second-review remediation are implemented through `00729d3c76`. Focused checks, builds, all 114 bundle checks and supported native flows pass for internal macOS ARM64 integration. See `.plans/upstream-compatibility-2026-10-23/remediation-review.md` for acceptance evidence and remaining platform/baseline limits.
 
 ## Summary
 
@@ -134,7 +134,7 @@ Execution scope amendment: the local renderer lacks inline slot anchors. C2 also
 
 2. Commit accepted source changes before the final build and record the tested commit. Run `pnpm run build`; from `apps/desktop`, run `cargo tauri build`. Await successful bundling before starting `bash scripts/build-dmg.sh --arch arm64`. Reused caches must pass their existing freshness checks; do not force reuse of stale dependencies or sidecars.
 
-3. Require every current bundle check, including dsh-context installed-flow acceptance. In an isolated home with synthetic settings and network confinement, use the actual Tauri WKWebView to inspect both locales, resize/zoom menus, change routes and reasoning, cold-restart, and confirm assistant/team model choices. Test default-OFF context discovery and live ON/OFF with actual Client appearance/removal.
+3. Require every current bundle check, including dsh-context installed-flow acceptance. In an isolated home with synthetic settings and network confinement, use the actual Tauri WKWebView to inspect both locales, resize menus live, change routes and reasoning, cold-restart, and confirm assistant/team model choices. Verify document zoom in the built-browser scenario; the native shell exposes no page-zoom command. Test default-OFF context discovery and live ON/OFF with actual Client appearance/removal.
 
 4. Exercise existing Ask Data/Ask Knowledge entry paths and API-key setup without paid calls. Verify opt-in Search/Fetch and slash-menu refresh remain available. Compare the resulting bundle’s actual Cordis/Schemastery resolution for community plugins with the accepted baseline; reject new incompatible or unnecessary duplicate framework copies.
 

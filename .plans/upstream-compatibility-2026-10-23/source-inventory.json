@@ -223,12 +223,44 @@
       "Real Flash-default browser scenario",
       "Baseline manifest hash and source-state markers"
     ],
-    "disposition": "Addressed in revised plan; implementation verification pending"
+    "disposition": "Implemented; focused verification passed; internal packaged qualification in progress"
   },
   "execution": {
     "branch": "feat/upstream-compatibility-20261023",
     "desktopCheckpoint": "4e0717914c90f5065f64f19d6a06fd7a826332b0",
     "worktree": "/Users/apple/deepseek-harness/.worktrees/upstream-compatibility-20261023",
-    "historicalEvidenceCopies": "Whitespace normalized in committed text logs; original raw logs remain in canonical checkout."
+    "historicalEvidenceCopies": "Whitespace normalized in committed text logs; original raw logs remain in canonical checkout.",
+    "implementationBase": "c24083385e",
+    "c1RuntimeSourceDiffAgainstCeiling": [],
+    "c1Commit": "df5767bf47",
+    "status": "Second-review R1 and R2 remediated; approved for local master integration and internal macOS ARM64 qualification",
+    "scopeAmendment": "C2 requires inline declaration and anchor support in ui-slots/ui-renderer; no keyed-hook or unrelated renderer changes imported.",
+    "sourceHead": "00729d3c76a59d273b0691c0323b7426ae691d3b",
+    "c2Commit": "8f474c93df",
+    "c3Commit": "9aa5d5e6bd77d0f520cabf2b706654a90c3f1e7f",
+    "nativeConsumerCorrection": "107e09fd85",
+    "artifact": {
+      "schemaVersion": 1,
+      "mode": "internal",
+      "repository": "AlataChan/deepseek-harness",
+      "ref": "local",
+      "sourceState": {
+        "modifiedAtBuild": true,
+        "modifiedAtPackaging": true
+      },
+      "release": {
+        "version": "0.2.1-alpha.1",
+        "commit": "00729d3c76a59d273b0691c0323b7426ae691d3b"
+      },
+      "shellVersion": "0.1.2-rc.3",
+      "target": "macos-arm64",
+      "payloadSha256": "2c643d56897c27ea433b2ba6acf276826a10e5f744904b8b1bef1910935f2cbf",
+      "artifact": {
+        "name": "octopus_DSH.dmg",
+        "bytes": 324261809,
+        "sha256": "774cb18310f8a8fde215ec4e9304258905e770d884fc80c3ac6ea641604b7131"
+      }
+    },
+    "copiedDmgAcceptance": "Passed on unchanged retry after initial 5s Node startup timeout; native WKWebView acceptance remains unverified"
   }
 }
