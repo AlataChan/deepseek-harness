@@ -122,11 +122,12 @@ async function bench(locale: 'zh' | 'en' = 'zh') {
   const seats = new Map<string, {
     inject: ((sessionId: SessionId) => ModelSelectInjected) | undefined
     locale: string | undefined
+    children: object | undefined
   }>()
   ctx.provide('slots', {
     inject(_name: string, callback: () => () => void) { return callback() },
-    register(options: { name: string; locale?: string; inject?: (sessionId: SessionId) => ModelSelectInjected }) {
-      seats.set(options.name, { inject: options.inject, locale: options.locale })
+    register(options: { name: string; locale?: string; children?: object; inject?: (sessionId: SessionId) => ModelSelectInjected }) {
+      seats.set(options.name, { inject: options.inject, locale: options.locale, children: options.children })
       return () => { seats.delete(options.name) }
     },
   })
@@ -220,6 +221,9 @@ describe('ui-model-selection dual entry', () => {
     expect(b.seat().inject).toBeTypeOf('function')
     // Copy rides the standard locale seat.
     expect(b.seat().locale).toBe('model')
+    expect(b.seat().children).toEqual({
+      'conversation.input.model.label': { kind: 'single', scope: 'session', inline: true },
+    })
   })
 
   it.each(['zh', 'en'] as const)('shows names and providers without catalog descriptions (%s)', async (locale) => {

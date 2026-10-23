@@ -74,6 +74,8 @@ A registered component receives inputs assembled at its binding site. Components
 
 Components never receive `ctx`. Parent-owned point-in-time values enter through the owner argument to `renderSlot`; shared view state uses a declared store; services and model objects stay in the `apply` closure and are projected into callbacks or observable sources.
 
+`conversation.input.model.label` is a single, session-scoped inline slot owned by [ui-model-selection](../../packages/client/ui-model-selection/README.md). Its owner values are provider ID/name, exact catalog model, placement and selection state; credentials and provider configuration are excluded. Contributions render non-interactive labels, with the catalog name as the fallback after disposal.
+
 ## Framework-provided hooks
 
 The shipped adapters add these standard props. They are available according to the target slot's scope, independent of which package registered the component.
@@ -150,6 +152,7 @@ root
 │  │  ├─ conversation.input.attachments
 │  │  ├─ conversation.input.plan
 │  │  └─ conversation.input.model
+│  │     └─ conversation.input.model.label
 │  ├─ conversation.input.overlay
 │  ├─ conversation.input.dock
 │  ├─ conversation.composer.dock

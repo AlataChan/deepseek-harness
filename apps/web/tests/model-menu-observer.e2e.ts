@@ -23,7 +23,9 @@ const PROVIDERS = [
   ...provider,
   models: Array.from({ length: 7 }, (_, index) => providerIndex === 0 && index === 0
     ? { id: 'origin-large', name: 'Origin Large' }
-    : { id: `${provider.prefix.toLowerCase()}-model-${index + 1}`, name: `${provider.prefix} Model ${index + 1}` }),
+    : { id: `${provider.prefix.toLowerCase()}-model-${index + 1}`, name: providerIndex === 3 && index === 6
+      ? '特别长的机构模型显示名称，用于验证小窗口中的目录标签与菜单滚动'
+      : `${provider.prefix} Model ${index + 1}` }),
 }))
 const EXPECTED_GROUPS = [
   { label: 'DeepSeek', rows: ['DeepSeek-V4-Flash', 'DeepSeek-V4-Flash-Vision-Exp'] },
@@ -287,4 +289,54 @@ describe.skipIf(webSnapshotMode() === 'record').each([
     expect(scaffold.ctx.agentDefaultModel.currentSelection()).toEqual({ provider: 'origin-gateway', model: 'origin-large' })
     expect(tripwire.pageErrors).toEqual([])
   })
+
+  // WebKit's existing grouped-row crash is tracked by the preceding observer scenario.
+  it.skipIf(engine === webkit)('keeps long catalog labels within a short viewport through live resize and zoom', async () => {
+    onTestFailed(() => saveFailureShot(page, 'model-menu-viewport'))
+    const trigger = page.getByRole('button', { name: /^选择模型/ })
+    const menu = page.locator('[aria-label="模型与推理等级"]')
+    const assertBounds = async () => {
+      await expect.poll(async () => {
+        const bounds = await menu.boundingBox({ timeout: 1000 })
+        if (!bounds) return false
+        const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }))
+        return bounds.x >= 11 && bounds.y >= 11
+          && bounds.x + bounds.width <= viewport.width - 11
+          && bounds.y + bounds.height <= viewport.height - 11
+      }).toBe(true)
+    }
+    try {
+      await page.setViewportSize({ width: 440, height: 320 })
+      await trigger.click()
+      await assertBounds()
+      await page.getByRole('menuitem', { name: /^模型/ }).click()
+      await assertBounds()
+      const viewport = menu.getByRole('menu', { name: '模型', exact: true })
+      expect(await viewport.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true)
+      await page.setViewportSize({ width: 360, height: 280 })
+      await assertBounds()
+      const search = page.getByRole('searchbox', { name: '搜索模型…', exact: true })
+      await search.fill('Quartz Model 1')
+      await search.press('ArrowDown')
+      await search.press('Enter')
+      await menu.waitFor({ state: 'detached' })
+      expect(await trigger.evaluate(node => node === node.ownerDocument.activeElement)).toBe(true)
+      await page.setViewportSize({ width: 800, height: 500 })
+      await page.evaluate(() => { document.body.style.zoom = '1.25' })
+      await trigger.click()
+      await assertBounds()
+      await page.keyboard.press('Escape')
+      await menu.waitFor({ state: 'detached' })
+      expect(scaffold.ctx.agentDefaultModel.currentSelection()).toMatchObject({ provider: 'quartz-gateway', model: 'quartz-model-1' })
+      expect(tripwire.pageErrors).toEqual([])
+    } catch (error) {
+      await saveFailureShot(page, 'model-menu-viewport-before-reset')
+      console.error('Viewport failure', await menu.boundingBox({ timeout: 1000 }), await page.viewportSize())
+      throw error
+    } finally {
+      await page.evaluate(() => { document.body.style.zoom = '' })
+      await page.setViewportSize({ width: 1680, height: 1000 })
+    }
+  })
+
 })

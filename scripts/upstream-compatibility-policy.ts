@@ -6,6 +6,31 @@ export const COMPATIBILITY_BASE_PIN = 'dsh-v0.2.1-alpha.1'
 
 /** Required exact ownership, independent of the records the intake runner validates. */
 export const COMPATIBILITY_ITEMS: Readonly<Record<string, readonly string[]>> = {
+  C2: [
+    'packages/client/ui-model-selection/src/client/slots.ts',
+    'packages/client/ui-model-selection/src/client/ModelSelect.tsx',
+    'packages/client/ui-model-selection/src/client/index.ts',
+    'packages/client/ui-model-selection/tests/model-select.client.spec.tsx',
+    'packages/client/ui-model-selection/tests/browser-plugin.client.spec.ts',
+    'packages/client/ui-model-selection/README.md',
+    'packages/client/ui-model-selection/README.zh.md',
+    'packages/client/ui-model-selection/README.i18n.yaml',
+    'docs/subsystems/slots.md',
+    'docs/subsystems/slots.zh.md',
+    'docs/subsystems/slots.i18n.yaml',
+    'packages/extensions/cordis-client-runner/src/client/slot-catalog.ts',
+    'packages/client/ui-slots/src/index.ts',
+    'packages/client/ui-renderer/src/client/scoped-slots.tsx',
+    'packages/client/ui-renderer/tests/inline-slots.client.spec.tsx',
+    'packages/client/ui-slots/README.md',
+    'packages/client/ui-slots/README.zh.md',
+    'packages/client/ui-slots/README.i18n.yaml',
+    'packages/client/ui-renderer/README.md',
+    'packages/client/ui-renderer/README.zh.md',
+    'packages/client/ui-renderer/README.i18n.yaml',
+    'apps/web/tests/default-model.e2e.ts',
+    'apps/web/tests/model-menu-observer.e2e.ts',
+  ],
   C1: [
     ...['cordis', 'cosmokit', 'group', 'hmr', 'include', 'loader', 'logger-console', 'schemastery', 'timer']
       .map(name => `vendor/${name}/package.json`),

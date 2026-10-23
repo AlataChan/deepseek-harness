@@ -56,8 +56,34 @@ function runCli(omitted?: string, advancePin = false): ReturnType<typeof spawnSy
       disposition: 'adapted', paths: requiredPaths.filter(path => path !== omitted), prerequisites: [],
       verification: ['scripts/upstream-compatibility-release.spec.ts'],
     }
+    const c2 = { ...entry, id: 'C2', paths: [
+      'packages/client/ui-model-selection/src/client/slots.ts',
+      'packages/client/ui-model-selection/src/client/ModelSelect.tsx',
+      'packages/client/ui-model-selection/src/client/index.ts',
+      'packages/client/ui-model-selection/tests/model-select.client.spec.tsx',
+      'packages/client/ui-model-selection/tests/browser-plugin.client.spec.ts',
+      'packages/client/ui-model-selection/README.md',
+      'packages/client/ui-model-selection/README.zh.md',
+      'packages/client/ui-model-selection/README.i18n.yaml',
+      'docs/subsystems/slots.md',
+      'docs/subsystems/slots.zh.md',
+      'docs/subsystems/slots.i18n.yaml',
+      'packages/extensions/cordis-client-runner/src/client/slot-catalog.ts',
+      'packages/client/ui-slots/src/index.ts',
+      'packages/client/ui-renderer/src/client/scoped-slots.tsx',
+      'packages/client/ui-renderer/tests/inline-slots.client.spec.tsx',
+      'packages/client/ui-slots/README.md',
+      'packages/client/ui-slots/README.zh.md',
+      'packages/client/ui-slots/README.i18n.yaml',
+      'packages/client/ui-renderer/README.md',
+      'packages/client/ui-renderer/README.zh.md',
+      'packages/client/ui-renderer/README.i18n.yaml',
+      'apps/web/tests/default-model.e2e.ts',
+      'apps/web/tests/model-menu-observer.e2e.ts',
+    ] }
     const exports = {
-      UPSTREAM_PIN: pin, BACKPORTS: omitted === 'C1' ? [] : [entry],
+      UPSTREAM_PIN: pin, BACKPORTS: [entry, c2].filter(record => record.id !== omitted)
+        .map(record => ({ ...record, paths: record.paths.filter(path => path !== omitted) })),
       IGNORABLE_INSPECTION: { eventTypes: [], inspectedLogs: 0, envelopeKeys: [], conclusion: 'required-not-ignorable' },
       NEVER_MERGE: [], PATCHES: [], MOUNTS: [], REMOVALS: [], GATED_PACKAGE_NAMES: [], RELEASE_COMPOSITIONS: [],
       FORK_OWNED_PATHS: [], UPSTREAM_ONLY_DIRECTORIES: [], FORBIDDEN_DEPENDENCIES: [], GUARDED_MANIFESTS: [],
@@ -87,7 +113,8 @@ describe('executed compatibility intake gate', () => {
     expect(result.status, String(result.stderr)).toBe(0)
     expect(String(result.stdout)).toContain('verify-upstream-intake: intake complete')
   })
-  for (const omitted of ['vendor/cordis/package.json', 'vendor/timer/locale/zh.json', 'C1']) {
+  for (const omitted of ['vendor/cordis/package.json', 'vendor/timer/locale/zh.json', 'C1', 'C2',
+    'packages/client/ui-slots/src/index.ts']) {
     it(`rejects missing ownership: ${omitted}`, () => {
       const result = runCli(omitted)
       expect(result.error).toBeUndefined()

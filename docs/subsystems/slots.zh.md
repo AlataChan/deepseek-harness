@@ -74,6 +74,8 @@ Slot 声明固定两个相互独立的维度。
 
 组件绝不会收到 `ctx`。父组件在某次渲染时已经知道的值通过 `renderSlot` 的 owner 参数进入；共享视图状态使用声明的 store；service 与 model object 留在 `apply` closure 中，只向组件投影 callback 或 observable source。
 
+`conversation.input.model.label` 是由 [ui-model-selection](../../packages/client/ui-model-selection/README.zh.md) 拥有的单占位、会话级行内插槽。其 owner 值包括提供方 ID／名称、精确目录模型、位置和选中状态，不含凭据或提供方配置。贡献内容仅呈现不可交互的标签，卸载后回退到目录名称。
+
 ## 框架提供的 hooks
 
 当前组合中的 adapter 会添加以下标准 props。它们按目标 slot 的 scope 提供，与注册组件来自哪个包无关。
@@ -150,6 +152,7 @@ root
 │  │  ├─ conversation.input.attachments
 │  │  ├─ conversation.input.plan
 │  │  └─ conversation.input.model
+│  │     └─ conversation.input.model.label
 │  ├─ conversation.input.overlay
 │  ├─ conversation.input.dock
 │  ├─ conversation.composer.dock

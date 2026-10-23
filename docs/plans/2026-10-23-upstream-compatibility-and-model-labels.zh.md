@@ -56,6 +56,8 @@
 
 任务 1–3 均依赖任务 0，并分别提交。任务 4 依赖前三项改动均通过验收。每项实施任务都应先添加行为测试，记录预期失败或已存在行为的结果，再进行最小完整适配、运行检查，且仅提交已审阅的文件。
 
+实现提交仅是检查点，不代表验收通过。在共享主机上，先完成定向检查，再针对 C1–C3 集成源码完成一次必需的根目录构建；全量测试失败使用受限 worker 数量和仓库的共享主机测试预算诊断。所有必需检查均须通过后才能关闭，打包验收不得沿用旧产物的通过数量。
+
 ### 任务 0：保留已验证版本并固定实施基线
 
 **文件：** 更新 `.plans/upstream-compatibility-2026-10-23/source-inventory.json`；创建 `.plans/upstream-compatibility-2026-10-23/verification.md`；在隔离 worktree 中创建前置检查点之前，审查上下文报告所列的准确实施文件。
@@ -94,6 +96,8 @@ logger-console 1.0.5     schemastery 3.18.5    timer 1.1.7
 
 ### 任务 2：添加可区分提供方的模型标签，保留菜单行为
 
+执行范围补充：本地渲染器尚不支持行内插槽锚点。C2 还负责 `packages/client/ui-slots/src/index.ts`、`packages/client/ui-renderer/src/client/scoped-slots.tsx`、新增的 `inline-slots.client.spec.tsx` 及相关 README 双语文件。仅移植行内声明与 span 锚点／错误占位，保留其他渲染行为。C2 验收前运行行内生命周期、错误状态和已有 scoped-slot 回归测试。
+
 **文件：** 修改 `packages/client/ui-model-selection/src/client/{slots.ts,ModelSelect.tsx,index.ts}`、其 `README.{md,zh.md,i18n.yaml}` 及 `tests/{model-select.client.spec.tsx,browser-plugin.client.spec.ts}`；更新 `docs/subsystems/slots.{md,zh.md,i18n.yaml}`；重新生成 `packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`；扩展 `apps/web/tests/default-model.e2e.ts` 及其所属的预期输出文件。
 
 1. 添加标签贡献测试，覆盖触发器、菜单当前值及选项位置。使用两个具有相同模型 ID、不同标签的提供方；选择任意一方时，都必须发送其自身的提供方与模型组合及推理等级值。覆盖无贡献时及贡献被 dispose（资源释放）后的回退行为。基线上缺少 slot 时，新的贡献测试必须失败。
@@ -110,7 +114,7 @@ logger-console 1.0.5     schemastery 3.18.5    timer 1.1.7
 
 ### 任务 3：修正默认 Flash 显示名称
 
-**文件：** 修改 `packages/llm/llm-deepseek/src/models.ts`、`tests/{adapter.spec.ts,runtime.spec.ts}`、受影响的所属 README 双语文件，以及受影响的 `apps/web/tests/expected/` 目录与模型预期输出；创建 `apps/web/tests/flash-default-catalog.e2e.ts` 及其所属预期输出；在引入记录中添加 C3。
+**文件：** 修改 `packages/llm/llm-deepseek/src/models.ts`、`tests/{adapter.spec.ts,runtime.spec.ts}`、受影响的所属 README 双语文件，以及受影响的 `apps/web/tests/expected/` 目录与模型预期输出；创建 `apps/web/tests/flash-default-catalog.e2e.ts`（在 `tsconfig.host.json` 中注册，并在 `apps/web/tsconfig.json` 的 Client 程序中排除） 及其所属预期输出；在引入记录中添加 C3。
 
 1. 添加回归测试，期望默认名称为 `DeepSeek-V4.1-Flash`，同时保留 `id: deepseek-flash` 和选定提供方。确认当前值 `DeepSeek-V41-Flash` 会使其失败。添加自定义目录用例，确保明确设置的名称保持不变。
 

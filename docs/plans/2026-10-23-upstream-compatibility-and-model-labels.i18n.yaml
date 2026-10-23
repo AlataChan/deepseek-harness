@@ -18,8 +18,8 @@
   en: 4f042667ae9aa3ee
   zh: 1bf3686263f6cc5d
 /upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks:
-  en: 701124948054d883
-  zh: 83efb4cb744cab92
+  en: 1ec88c5bffb77130
+  zh: 846946a7d6d85693
 /upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks/task-0-preserve-the-qualified-release-and-freeze-the-implementation-base:
   en: 88bd9187e24752c3
   zh: 175868463afb0bf1
@@ -27,11 +27,11 @@
   en: 84cae7542f4fece8
   zh: 13fba8ea32a557df
 /upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks/task-2-add-provider-aware-model-labels-and-preserve-menu-behavior:
-  en: 623dde6aa03dc1d4
-  zh: 01123f162ea1712d
+  en: 301e1fb3fa5f11d1
+  zh: f03531f2b5b35f05
 /upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks/task-3-correct-the-default-flash-display-name:
-  en: 7462bd9894d0ae62
-  zh: 162334b3e45d13a8
+  en: 6f587b2b4344c45e
+  zh: 8eb50189b73bafe7
 /upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks/task-4-qualify-the-integrated-internal-desktop:
   en: a8d358363875e705
   zh: 5879cad2ca8d68bd

@@ -48,6 +48,8 @@ Declaring a slot is claiming it: the registering entry becomes the only entry al
 -----
 
 <a id="understand-the-implementation"></a>
+A slot declaration may set `inline: true` in its type and child specification. Its addressable anchors, error placeholders and chain-overlay fallback wrappers use `span`; ordinary slots retain `div`. Retained inline outlets keep inline anchors after their declaration unloads, while rendering no undeclared entries. Contributions remain responsible for non-interactive inline content.
+
 ## Understand the implementation
 
 <details>

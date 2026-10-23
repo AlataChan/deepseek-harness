@@ -56,6 +56,8 @@ The [qualified context review](../../.plans/desktop-dsh-context/code-review-defa
 
 Tasks 1–3 require Task 0 and use separate commits. Task 4 requires all three accepted changes. Each implementation task adds the behavior test, records its expected failure or an already-present result, applies the smallest complete adaptation, runs its checks, and commits only its reviewed files.
 
+Implementation commits are checkpoints, not acceptance claims. On the shared host, complete the required root build once against integrated C1–C3 source after focused checks; diagnose broad-test failures with bounded workers and the repository’s shared-host test budget. All required checks remain open until they pass, and packaging acceptance must not inherit a previous artifact’s pass count.
+
 ### Task 0: Preserve the qualified release and freeze the implementation base
 
 **Files:** update `.plans/upstream-compatibility-2026-10-23/source-inventory.json`; create `.plans/upstream-compatibility-2026-10-23/verification.md`; inspect the context review’s exact implementation files before creating its prerequisite checkpoint in an isolated worktree.
@@ -94,6 +96,8 @@ logger-console 1.0.5     schemastery 3.18.5    timer 1.1.7
 
 ### Task 2: Add provider-aware model labels and preserve menu behavior
 
+Execution scope amendment: the local renderer lacks inline slot anchors. C2 also owns `packages/client/ui-slots/src/index.ts`, `packages/client/ui-renderer/src/client/scoped-slots.tsx`, the new `inline-slots.client.spec.tsx` and affected owning README pairs. Port only the inline declaration and span anchors/error placeholders; preserve other renderer behavior. Run the inline lifecycle/error-state tests and existing scoped-slot regressions before accepting C2.
+
 **Files:** modify `packages/client/ui-model-selection/src/client/{slots.ts,ModelSelect.tsx,index.ts}`, its `README.{md,zh.md,i18n.yaml}` and `tests/{model-select.client.spec.tsx,browser-plugin.client.spec.ts}`; update `docs/subsystems/slots.{md,zh.md,i18n.yaml}`; regenerate `packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`; extend `apps/web/tests/default-model.e2e.ts` and its owner-local expected files.
 
 1. Add tests for a label contribution rendered at trigger, current-value menu, and option placements. Use two providers with the same model ID and distinct labels; selecting either must send its own provider/model pair and reasoning value. Cover fallback with no contribution and fallback after contribution disposal. The missing slot must fail the new contribution tests on the baseline.
@@ -110,7 +114,7 @@ logger-console 1.0.5     schemastery 3.18.5    timer 1.1.7
 
 ### Task 3: Correct the default Flash display name
 
-**Files:** modify `packages/llm/llm-deepseek/src/models.ts`, `tests/{adapter.spec.ts,runtime.spec.ts}`, affected owning README pairs, and affected `apps/web/tests/expected/` catalog/model goldens; create `apps/web/tests/flash-default-catalog.e2e.ts` and its owner-local golden; update the intake registry with C3.
+**Files:** modify `packages/llm/llm-deepseek/src/models.ts`, `tests/{adapter.spec.ts,runtime.spec.ts}`, affected owning README pairs, and affected `apps/web/tests/expected/` catalog/model goldens; create `apps/web/tests/flash-default-catalog.e2e.ts` (register in `tsconfig.host.json` and exclude from the Client program in `apps/web/tsconfig.json`) and its owner-local golden; update the intake registry with C3.
 
 1. Add a regression expecting the shipped default name `DeepSeek-V4.1-Flash` while retaining `id: deepseek-flash` and the selected provider. Confirm it fails against the current `DeepSeek-V41-Flash` value. Add a custom-catalog case whose explicit name remains untouched.
 
