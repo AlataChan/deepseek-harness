@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for 2026-10-23-upstream-compatibility-and-model-labels.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-10-23-upstream-compatibility-and-model-labels.md
+/upstream-compatibility-and-model-labels-implementation-plan:
+  en: 0f79f534e8f7d989
+  zh: 98688bd5a94c3078
+/upstream-compatibility-and-model-labels-implementation-plan/summary:
+  en: 5692b60487a46171
+  zh: b93b8cbb68d0c965
+/upstream-compatibility-and-model-labels-implementation-plan/table-of-contents:
+  en: b097effe970fbdce
+  zh: c51202ff4aa15cd9
+/upstream-compatibility-and-model-labels-implementation-plan/scope:
+  en: 8ad2529cdc00e217
+  zh: 3099b08df26de2ff
+/upstream-compatibility-and-model-labels-implementation-plan/baseline-and-source-control:
+  en: 4f042667ae9aa3ee
+  zh: 1bf3686263f6cc5d
+/upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks:
+  en: 701124948054d883
+  zh: 83efb4cb744cab92
+/upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks/task-0-preserve-the-qualified-release-and-freeze-the-implementation-base:
+  en: 88bd9187e24752c3
+  zh: 175868463afb0bf1
+/upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks/task-1-align-vendor-release-metadata-without-replacing-runtime-source:
+  en: 84cae7542f4fece8
+  zh: 13fba8ea32a557df
+/upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks/task-2-add-provider-aware-model-labels-and-preserve-menu-behavior:
+  en: 623dde6aa03dc1d4
+  zh: 01123f162ea1712d
+/upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks/task-3-correct-the-default-flash-display-name:
+  en: 7462bd9894d0ae62
+  zh: 162334b3e45d13a8
+/upstream-compatibility-and-model-labels-implementation-plan/implementation-tasks/task-4-qualify-the-integrated-internal-desktop:
+  en: a8d358363875e705
+  zh: 5879cad2ca8d68bd
+/upstream-compatibility-and-model-labels-implementation-plan/acceptance:
+  en: 0e1a7095d4036c4e
+  zh: 5deee17b9f7d2aa6
+/upstream-compatibility-and-model-labels-implementation-plan/recovery-and-delivery:
+  en: 938bab9a078cdda4
+  zh: 41e7a4ac6521db71
+/upstream-compatibility-and-model-labels-implementation-plan/separate-runtime-assessment:
+  en: 411085dea3872434
+  zh: b3a3c69351cccb04
+/upstream-compatibility-and-model-labels-implementation-plan/dev-note:
+  en: c3eb8ccb1b5aace5
+  zh: b777faa26b79312d

@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "status": "approved-for-local-implementation-after-review-revisions",
+  "planDate": "2026-10-23",
+  "upstream": {
+    "remote": "https://github.com/deepseek-ai/deepseek-harness.git",
+    "tag": "dsh-v0.2.1-rc.2",
+    "commit": "687f282e8625c6b8d11ff58211a90524be2e4317",
+    "wholeReleasePin": "dsh-v0.2.1-alpha.1",
+    "tagKind": "lightweight"
+  },
+  "fork": {
+    "observedHead": "47675a706f4f1cf3ce20b78d4d3e8a46e993d0ca",
+    "trackedDirtyPaths": [
+      "AGENTS.md",
+      "CONTRIBUTING.i18n.yaml",
+      "CONTRIBUTING.md",
+      "CONTRIBUTING.zh.md",
+      "README.i18n.yaml",
+      "README.md",
+      "README.zh.md",
+      "apps/desktop/README.md",
+      "apps/desktop/src-tauri/src/app.rs",
+      "apps/desktop/src-tauri/src/bin/carrier-harness.rs",
+      "apps/desktop/src/bootstrap.ts",
+      "apps/desktop/tests/assembled-handshake.spec.ts",
+      "apps/desktop/tests/bootstrap.spec.ts",
+      "docs/architecture.i18n.yaml",
+      "docs/architecture.md",
+      "docs/architecture.zh.md",
+      "docs/development.i18n.yaml",
+      "docs/development.md",
+      "docs/development.zh.md",
+      "docs/user/guide/index.i18n.yaml",
+      "docs/user/guide/index.md",
+      "docs/user/guide/index.zh.md",
+      "docs/user/index.i18n.yaml",
+      "docs/user/index.md",
+      "docs/user/index.zh.md",
+      "packages/bundle/desktop-app/README.md",
+      "packages/bundle/desktop-app/cordis.patch.yml",
+      "packages/bundle/desktop-app/tests/desktop-app.spec.ts",
+      "packages/client/connection-desktop/README.md",
+      "packages/client/connection-desktop/package.json",
+      "packages/client/connection-process/README.md",
+      "packages/client/connection-process/src/client/api-client.ts",
+      "packages/client/connection-process/src/host-gateway.ts",
+      "packages/client/connection-process/src/protocol.ts",
+      "packages/client/connection-process/tests/host-gateway.host.spec.ts",
+      "packages/client/connection-process/tests/process-transport.client.spec.ts",
+      "packages/experimental/desktop-ask-knowledge/tests/helpers/desktop-transport.ts",
+      "pnpm-lock.yaml",
+      "scripts/build-dmg.sh",
+      "scripts/desktop-macos-preparation.spec.ts",
+      "scripts/desktop-macos-preparation.ts",
+      "scripts/desktop-profile-plugins.json",
+      "scripts/project-doc-site.spec.ts",
+      "scripts/project-doc-site.ts",
+      "scripts/seed-desktop-profile-plugin.d.mts",
+      "scripts/seed-desktop-profile-plugin.mjs",
+      "scripts/seed-desktop-profile-plugin.spec.ts",
+      "scripts/sign-desktop-macos.spec.ts",
+      "scripts/sign-desktop-macos.ts",
+      "scripts/verify-desktop-bundle.sh",
+      "website/.vitepress/config.ts",
+      "website/docs.ts"
+    ],
+    "executionBase": "Must be replaced with the reviewed desktop checkpoint before implementation"
+  },
+  "baselineArtifact": {
+    "path": "dist/octopus_DSH.dmg",
+    "name": "octopus_DSH.dmg",
+    "bytes": 324293631,
+    "sha256": "198eafc40ce7835dd076095efe68dc7c543406577d841929cfdabaebcafc95be",
+    "release": {
+      "version": "0.2.1-alpha.1",
+      "commit": "47675a706f4f1cf3ce20b78d4d3e8a46e993d0ca"
+    },
+    "mode": "internal",
+    "qualification": "Prior internal ARM64 result; not rerun while preparing this plan",
+    "manifest": {
+      "path": "dist/octopus_DSH.dmg.release.json",
+      "sha256": "8142788c6e13edbbb55c71095bfa37b638e93a7c5ca79ad6a4585503d4216ad2",
+      "sourceState": {
+        "modifiedAtBuild": true,
+        "modifiedAtPackaging": true
+      },
+      "payloadSha256": "ed2a96bb0a2313fd3df99490bff87a5bdc972a634b8c07c4d357983480d46afc"
+    }
+  },
+  "sources": [
+    {
+      "commit": "d9c04d6cc6c13014bc57428c752b34b9f12a4af2",
+      "subject": "release(vendor): cordis 4.0.5, cosmokit 1.8.6, group 1.0.5, hmr 1.0.20, include 1.0.10, loader 1.0.6, logger-console 1.0.5, schemastery 3.18.5, timer 1.1.7"
+    },
+    {
+      "commit": "7c8cbea6966cabf32002d91f563706f815262a9f",
+      "subject": "release(vendor): cordis 4.0.5-alpha.2, cosmokit 1.8.6-alpha.2, group 1.0.5-alpha.2, hmr 1.0.20-alpha.2, include 1.0.10-alpha.2, loader 1.0.6-alpha.2, logger-console 1.0.5-alpha.2, schemastery 3.18.5-alpha.2, timer 1.1.7-alpha.2"
+    },
+    {
+      "commit": "919aa5f4003894944590ff7117ea5caef23025a5",
+      "subject": "feat(web): add provider-aware model label slot"
+    },
+    {
+      "commit": "c78f3fd33d186ac6bf62f59c20c67b9133817563",
+      "subject": "fix(web): keep model label menus inside the viewport"
+    },
+    {
+      "commit": "f87c08950a8d619688b5a4d820cff082797300ae",
+      "subject": "fix(web): memoize model label providers"
+    }
+  ],
+  "scope": {
+    "included": [
+      "C1 vendor release metadata and timer locales",
+      "C2 provider-aware model label and menu behavior",
+      "C3 canonical default Flash display name"
+    ],
+    "excluded": [
+      "temporary 1017 badge",
+      "subagent architecture",
+      "persistent PTC or REPL",
+      "Electron",
+      "account services",
+      "telemetry defaults",
+      "public release publication"
+    ]
+  },
+  "upstreamFiles": [
+    {
+      "path": "vendor/cordis/package.json",
+      "sha256": "b2426a9e1970d1b4a1702544e74d23a750fbebcfa132fbb8980549d2f484eee8"
+    },
+    {
+      "path": "vendor/cosmokit/package.json",
+      "sha256": "ccd99887312b5c025651dfa8ab113f627770be4f631f5f13b9cdfbdcbf511ddb"
+    },
+    {
+      "path": "vendor/group/package.json",
+      "sha256": "5fd58be1a7e3705815cbcba9fd573ff367edb8508ace1b09ea5e98a5649f8066"
+    },
+    {
+      "path": "vendor/hmr/package.json",
+      "sha256": "eefcef2ce93149c6793e4103c29fd6fc889a169628785d4a087f982b769a8b65"
+    },
+    {
+      "path": "vendor/include/package.json",
+      "sha256": "d6d6047472127599a6f7cf59a4a569530e8a1f518d151e69e7f6d5c67599ab75"
+    },
+    {
+      "path": "vendor/loader/package.json",
+      "sha256": "e5a2092daa45b264072465788c5b0a750b5d88c4801333070ba90063af65491c"
+    },
+    {
+      "path": "vendor/logger-console/package.json",
+      "sha256": "6c1337185a5912151bfd007e29eacc3bf710d5d3aee2d79c73837be82475442b"
+    },
+    {
+      "path": "vendor/schemastery/package.json",
+      "sha256": "177eab1c24ff0941c0bdc13ecdedd341fd344e027c7db2daf0a89b7011efd2f5"
+    },
+    {
+      "path": "vendor/timer/package.json",
+      "sha256": "cea2ba9529a68aea920863e188cefd1916712f55cc167a56b538df275ee79f35"
+    },
+    {
+      "path": "vendor/timer/locale/en.json",
+      "sha256": "505addd893209c5dbafd803d606e2eeb9dd314227809a2423d3989a6e2de075c"
+    },
+    {
+      "path": "vendor/timer/locale/zh.json",
+      "sha256": "47d342f019cb00e2b037f98008270e6b89b15ab575aa4987766c4c85de6ec6f2"
+    },
+    {
+      "path": "packages/client/ui-model-selection/src/client/slots.ts",
+      "sha256": "861e034b0d527c15469372fd0f27dd5201330bf45deb0b7bf6a0101c6adfef00"
+    },
+    {
+      "path": "packages/client/ui-model-selection/src/client/ModelSelect.tsx",
+      "sha256": "081a79904b09e45c3226e39baa711ed1c72138f00f3d29ba1f0c1aa5c3b768cb"
+    },
+    {
+      "path": "packages/client/ui-model-selection/src/client/index.ts",
+      "sha256": "5d069997b930a98967b320d9581d027fb132c3c85f2a7310941cc7ed8773c25a"
+    },
+    {
+      "path": "packages/llm/llm-deepseek/src/models.ts",
+      "sha256": "7f1c3a6938e965d829e4d6ef4875236274125a8d289e97ba3a9292f4de0e5111"
+    }
+  ],
+  "observations": {
+    "vendorRuntimeSourceDelta": [],
+    "intakeResult": "Prior assessment: passed with four recorded outstanding entries; execution must recheck"
+  },
+  "planningValidation": {
+    "scope": "Planning documents only; no implementation acceptance claimed",
+    "namedPair": "passed",
+    "scopedLinksAnchorsAndWrapping": "passed",
+    "newFilesWhitespace": "passed",
+    "docQuick": {
+      "passed": 18,
+      "failed": 3,
+      "note": "Included a transient plan pairing error while editing; final named-pair recheck passed."
+    },
+    "docSync": {
+      "passed": 37,
+      "failed": 5,
+      "failedChecks": [
+        "doc-typecheck",
+        "translation pairing",
+        "markdown wrap",
+        "repository references",
+        "package paths"
+      ],
+      "newPlanDiagnostics": []
+    },
+    "productSourceChanges": "none in this planning turn"
+  },
+  "review": {
+    "report": ".plans/upstream-compatibility-2026-10-23/astra-plan-review.md",
+    "requiredRevision": "Explicit executed intake ownership enforcement and CLI fixture controls",
+    "advisories": [
+      "Real Flash-default browser scenario",
+      "Baseline manifest hash and source-state markers"
+    ],
+    "disposition": "Addressed in revised plan; implementation verification pending"
+  },
+  "execution": {
+    "branch": "feat/upstream-compatibility-20261023",
+    "desktopCheckpoint": "4e0717914c90f5065f64f19d6a06fd7a826332b0",
+    "worktree": "/Users/apple/deepseek-harness/.worktrees/upstream-compatibility-20261023",
+    "historicalEvidenceCopies": "Whitespace normalized in committed text logs; original raw logs remain in canonical checkout."
+  }
+}
