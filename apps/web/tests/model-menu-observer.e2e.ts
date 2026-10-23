@@ -331,7 +331,7 @@ describe.skipIf(webSnapshotMode() === 'record').each([
       expect(tripwire.pageErrors).toEqual([])
     } catch (error) {
       await saveFailureShot(page, 'model-menu-viewport-before-reset')
-      console.error('Viewport failure', await menu.boundingBox({ timeout: 1000 }), await page.viewportSize())
+      console.error('Viewport failure', await menu.boundingBox({ timeout: 1000 }), page.viewportSize())
       throw error
     } finally {
       await page.evaluate(() => { document.body.style.zoom = '' })
