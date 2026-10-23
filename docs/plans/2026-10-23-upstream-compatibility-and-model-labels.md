@@ -74,6 +74,8 @@ Implementation commits are checkpoints, not acceptance claims. On the shared hos
 
 ### Task 1: Align vendor release metadata without replacing runtime source
 
+Dependency qualification also aligns `apps/cli/package.json`, `packages/boot/{app-boot,hmr}/package.json` and their owning README pairs to the native builtin minimum `^0.1.9`. The flat desktop closure must not retain an older first-resolved native builtin package. Ownership obligations use literal complete paths so directory labels cannot be mistaken for unscoped module specifiers.
+
 **Files:** modify `vendor/{cordis,cosmokit,group,hmr,include,loader,logger-console,schemastery,timer}/package.json`, add `vendor/timer/locale/{en,zh}.json`, update `pnpm-lock.yaml` and the owning vendor documentation where facts change; create `scripts/upstream-compatibility-release.spec.ts`; update `scripts/upstream-intake-registry.ts`, `scripts/verify-upstream-intake.ts` and `scripts/verify-upstream-intake.spec.ts`; create `scripts/upstream-compatibility-policy.ts` for independently declared approved path obligations.
 
 1. Add assertions for the exact version set below, the loader peer range `node-addon-require-builtin: ^0.1.9`, and timer’s `./locale/*.json` export and `locale` published-files entry. Confirm that stale metadata or a missing shipped locale fails the relevant assertion using disposable fixture packages, never workspace mutation.

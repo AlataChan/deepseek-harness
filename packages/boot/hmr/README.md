@@ -7,6 +7,9 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
+
+Native builtin loading follows the [shared Loader requirement](../../../vendor/README.md#local-modifications).
+
 ## Summary
 
 Reload plugin source and configuration while an application is running. Module replacements, Include refreshes and profile configuration changes share one queue. Package installation runs outside that queue. Existing Cordis HMR configuration and events remain available under `ctx.hmr`.

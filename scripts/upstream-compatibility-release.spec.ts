@@ -16,6 +16,18 @@ const requiredPaths = [
   'scripts/upstream-compatibility-policy.ts', 'scripts/verify-upstream-intake.ts',
   'scripts/upstream-compatibility-release.spec.ts', 'scripts/verify-upstream-intake.spec.ts',
   'packages/boot/plugin-manager/tests/manager.spec.ts',
+  'apps/cli/package.json',
+  'packages/boot/app-boot/package.json',
+  'packages/boot/hmr/package.json',
+  'apps/cli/README.md',
+  'apps/cli/README.zh.md',
+  'apps/cli/README.i18n.yaml',
+  'packages/boot/app-boot/README.md',
+  'packages/boot/app-boot/README.zh.md',
+  'packages/boot/app-boot/README.i18n.yaml',
+  'packages/boot/hmr/README.md',
+  'packages/boot/hmr/README.zh.md',
+  'packages/boot/hmr/README.i18n.yaml',
 ]
 
 function readManifest(path: string): Record<string, unknown> {
@@ -36,6 +48,12 @@ it('ships the approved stable vendor metadata and timer locale exports', () => {
   expect(timer.files).toContain('locale')
   for (const locale of ['en', 'zh']) {
     expect(JSON.parse(readFileSync(join(root, `vendor/timer/locale/${locale}.json`), 'utf8'))).toBeTypeOf('object')
+  }
+})
+
+it('aligns every native builtin runtime consumer with the Loader minimum', () => {
+  for (const path of ['apps/cli/package.json', 'packages/boot/app-boot/package.json', 'packages/boot/hmr/package.json']) {
+    expect(readManifest(path).dependencies, path).toMatchObject({ 'node-addon-require-builtin': '^0.1.9' })
   }
 })
 
@@ -123,7 +141,7 @@ describe('executed compatibility intake gate', () => {
     expect(result.status, String(result.stderr)).toBe(0)
     expect(String(result.stdout)).toContain('verify-upstream-intake: intake complete')
   })
-  for (const omitted of ['vendor/cordis/package.json', 'vendor/timer/locale/zh.json', 'C1', 'C2', 'C3',
+  for (const omitted of ['vendor/cordis/package.json', 'vendor/timer/locale/zh.json', 'apps/cli/package.json', 'C1', 'C2', 'C3',
     'packages/client/ui-slots/src/index.ts', 'packages/llm/llm-deepseek/src/models.ts']) {
     it(`rejects missing ownership: ${omitted}`, () => {
       const result = runCli(omitted)

@@ -7,6 +7,9 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
+
+原生内置模块加载遵循[共享的 Loader 要求](../../../vendor/README.md#local-modifications)。
+
 ## 概述
 
 在应用运行期间重载插件源码和配置。模块替换、Include 刷新与 profile 配置变更共用一个队列。包安装在该队列之外执行。`ctx.hmr` 保留现有 Cordis HMR 的配置和事件。

@@ -74,6 +74,8 @@
 
 ### 任务 1：对齐 vendor 发布元数据，保留运行时源码
 
+依赖验收同时对齐 `apps/cli/package.json`、`packages/boot/{app-boot,hmr}/package.json` 及各自 README 双语文件，使原生内置模块最低版本统一为 `^0.1.9`。扁平桌面依赖闭包不得保留优先解析到的旧版本原生内置模块包。所有权要求使用完整字面路径，避免目录标签被识别为未重定作用域的模块标识。
+
 **文件：** 修改 `vendor/{cordis,cosmokit,group,hmr,include,loader,logger-console,schemastery,timer}/package.json`，添加 `vendor/timer/locale/{en,zh}.json`，更新 `pnpm-lock.yaml` 及事实发生变化的 vendor 所属文档；创建 `scripts/upstream-compatibility-release.spec.ts`；更新 `scripts/upstream-intake-registry.ts`、`scripts/verify-upstream-intake.ts` 和 `scripts/verify-upstream-intake.spec.ts`；创建 `scripts/upstream-compatibility-policy.ts`，独立声明已批准路径的所属义务。
 
 1. 为下列准确版本集合、loader 的 peer 范围 `node-addon-require-builtin: ^0.1.9`，以及 timer 的 `./locale/*.json` 导出和 `locale` 发布文件项添加断言。使用可丢弃的 fixture 包确认过期元数据或缺少发布 locale 会触发对应断言失败，不得修改工作目录来制造失败。
