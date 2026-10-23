@@ -2846,10 +2846,6 @@ importers:
         version: link:../../typert/protocol
 
   packages/client/connection-desktop:
-    dependencies:
-      '@deepseek-ai/dsh-client-connection-process':
-        specifier: workspace:*
-        version: link:../connection-process
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -2869,6 +2865,9 @@ importers:
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:*
         version: link:../connection
+      '@deepseek-ai/dsh-client-connection-process':
+        specifier: workspace:*
+        version: link:../connection-process
       '@deepseek-ai/dsh-client-modules':
         specifier: workspace:*
         version: link:../modules

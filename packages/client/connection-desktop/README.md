@@ -9,7 +9,7 @@ kind: "package-reference"
 
 `connection-desktop` is the desktop companion's Host carrier: it re-exports the process-carrier Host apply and adds no protocol of its own. It publishes no `dsh.client` face; the WebView installs `__DSH_TRANSPORT__` and the official `client-connection` plugin consumes it.
 
-The Host re-export keeps `connection-process` as a production dependency, so parallel builds cannot inline a previous protocol or gateway artifact. It does not publish a `dsh.client` face: the WebView installs `__DSH_TRANSPORT__` and the official `client-connection` plugin consumes it.
+The Host build inlines `connection-process` from its emitted `lib/types` input, which is complete before parallel bundling starts. The relationship remains a development dependency; published runtime libraries are not build inputs.
 
 ## Table of Contents
 

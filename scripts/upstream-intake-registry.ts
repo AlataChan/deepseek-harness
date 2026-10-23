@@ -235,6 +235,8 @@ export const NEVER_MERGE: readonly NeverMergeEntry[] = [
 
 /** Upstream files the fork edits. Phase 3 works the `B` rows down to zero. */
 export const PATCHES: readonly PatchEntry[] = [
+  { path: 'packages/client/connection-desktop/', klass: 'A', reason: 'Fork desktop Host carrier links the completed emitted process gateway before parallel library bundling.' },
+  { path: 'scripts/desktop-gateway-build.spec.ts', klass: 'A', reason: 'Regression control for stale published process-gateway artifacts during desktop Host linking.' },
   { path: 'apps/cli/package.json', klass: 'A', reason: 'Fork harness assembly: the desktop companion entry and the fork workspace Host dependencies (desktop-app, agent-team, assistant-registry, commerce) must be dependencies here to bundle into the harness.' },
   { path: 'packages/acp/acp/package.json', klass: 'A', reason: 'cordis-plugin-loader peer for the fork ACP initialize fix, which answers only after the Loader tree settles.' },
   { path: 'packages/acp/acp/src/index.ts', klass: 'A', reason: 'Fork ACP initialize fix: answer only after the Loader tree settles.' },
