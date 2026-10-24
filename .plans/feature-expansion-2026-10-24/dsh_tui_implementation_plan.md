@@ -1,8 +1,8 @@
 # DSH 交互式终端 TUI 实施方案
 
-状态：修订 v3，待复核，尚未锁定。权威版本为本文件；见 [任务状态](task_plan.md) 与 [评审处置](review-round2-response.md)。T0 尚未执行，不表示 TUI 已实现或可启动。
+状态：修订 v4，主体设计已通过评审；PTC 审批及终端所有权范围的 SIGHUP 修复列为 T0/T4 前置条件。权威版本为本文件；见 [任务状态](task_plan.md) 与 [评审处置](review-round2-response.md)。T0 尚未执行，不表示 TUI 已实现或可启动。
 
-基线：2026-10-24，commit 本次方案提交的父版本（fix(ci): allow Windows installer qualification to finish）。本方案与 IM、多租户及远程 Worker 独立交付，不依赖它们。
+基线：2026-10-24，方案首次提交的父版本（提交标题：fix(ci): allow Windows installer qualification to finish）。本方案与 IM、多租户及远程 Worker 独立交付，不依赖它们。
 
 目标：为 SSH/本地终端用户提供单用户、多轮、可恢复、具备明确审批与问题交互的 dsh 前端。现有 CLI 仍负责 profile 启动与插件管理；不创建绕过 dsh 的应用 bin。
 
@@ -64,7 +64,7 @@ T0 必须验证中英混排、全角标点、组合重音、Emoji 肤色修饰�
 
 TUI 是具体回答者，不只是把问题文字打印出来。使用 `user-approval` 的 Agent-scoped waterfall 及 `user-questions` 当前公开交互接口；对于不归自己 Agent 的请求必须委托，不抢答其他会话。
 
-待确认视图显示所属会话、工具名、reason、允许选项和取消入口。approval request 没有工具 arguments，只有可选 callId；适配器用 (Agent.session.id, callId) 查询已记录 tool/call，核对工具名并生成有界、脱敏参数摘要。不能从请求上虚构 arguments，不能从其他会话或最新一次同名调用补全。缺 callId、日志尚不可读、工具不匹配时明确显示参数不可用，禁止批准并允许拒绝；取消/过期仍按原能力结算。审批默认不因 Enter 批准，首版仅单次授权。
+待确认视图显示所属会话、工具名、reason、允许选项和取消入口。approval request 没有工具 arguments，只有可选 callId；适配器用 (Agent.session.id, callId) 查询普通 tool/call.id 或 PTC 的 tool/ptc-dispatch-start.subCallId，核对 name、同一 Session 及当前未决请求，再从 arguments 生成有界脱敏摘要。T0 用真实 PTC 执行证明 dispatch-start 先记录、approval/request 后触发，不假设内嵌调用都有 tool/call。不能从请求上虚构 arguments，不能从其他会话或最新一次同名调用补全。缺 callId、日志尚不可读、工具不匹配时明确显示参数不可用，禁止批准并允许拒绝；取消/过期仍按原能力结算。审批默认不因 Enter 批准，首版仅单次授权。
 
 回答前再次核对请求 ID、Agent、有效状态与选项；重复输入、过期、切换会话、工具已取消均不能让旧请求执行。提问和审批占用单个可见交互焦点，普通输入不误发成批准；多个请求排队并显示等待状态。
 
@@ -81,11 +81,11 @@ TUI 通过 Cordis effect 持有输入/输出、SIGWINCH、定时器和交互回�
 | raw Ctrl+C 字节、/quit、Ctrl+D、EOF | TUI 输入层，经应用关闭入口 | 编辑/取消与正常退出；不新增进程信号监听 |
 | OS SIGINT | apps/cli/src/profile-boot.ts | 保持现有 interrupt(130)，调用同步复原后有界 dispose |
 | OS SIGTERM | 同一 launcher | 保持现有 interrupt(0)，不能因工具未完成改成失败码 |
-| POSIX SIGHUP | 同一 launcher，待添加 | 选择 interrupt(129) 并复原/清理；当前无此处理，不能宣称已支持 |
+| POSIX SIGHUP | 同一 launcher，仅 terminal restore owner 注册期间 | 有终端 owner 时 interrupt(129)；无 owner 不注册 HUP listener，保留默认/继承 ignore 行为 |
 | SIGWINCH | TUI effect | 仅更新尺寸与重绘 |
 | uncaughtException/unhandledRejection | 现有 installFailLoud | 第 6.1 节复原前置，随后有界非零退出 |
 
-SIGHUP 修改影响所有经 profile-boot 启动的应用，T0 必须覆盖 headless、ACP 与 Web profile 的清理/退出回归，确认 ACP stdout 无诊断污染；POSIX 专项，Windows 不伪造 SIGHUP 支持。新增同步 restore 注册接口由 launcher 持有并在 app boot 时提供，TUI 在改终端模式前通过 effect 注册；普通 profile 无回调时保持原流程。复原接口须在实现前以最小 owner 变更复核，不能靠监听器顺序竞争。
+SIGHUP 不设全局常驻监听：launcher 只在终端 owner 注册 restore hook 后附加处理，最后一个终端 owner 释放即移除。TUI 不直接监听 HUP；headless、ACP、Web 等无终端 owner 时保持原有默认或 nohup 继承的忽略，不因启动 dsh 改变 detached 生命周期。T0 必须通过真实 nohup 子进程在 HUP 后仍活、无诊断/终端转义污染并可由 TERM 正常停止的回归；另测 TUI owner 的 HUP=129、注册/释放不累积、INT=130 和 TERM=0。POSIX 专项，Windows 不伪造 HUP 支持。restore 接口由 launcher 持有、app boot 提供，TUI 在改变终端模式前以 effect 注册；最小 owner 修改须复核。
 
 渲染异常、EPIPE 和卸载进入幂等清理，输出关闭后不反复写同一输出。SIGKILL/native abort 不能保证复原，记录恢复操作与平台限制。
 
@@ -107,7 +107,7 @@ uncaughtException 后不恢复业务运行；恢复终端不能等待模型、�
 
 检查 `packages/core/agent`、`packages/interaction/user-approval`、`packages/interaction/user-questions`、`packages/session-query/session-query`、`packages/bundle/headless` 与 app-boot 当前 public source；输出确切的创建、恢复、prompt、cancel、模型选择、订阅、问题回答和 flush 调用清单。
 
-在隔离 DSH_HOME 和 keyless mock 模型下，真实 Loader/profile 驱动最小终端 PoC：启动、输入、流、一次问题、一次拒绝审批、取消、退出恢复。断言拒绝后工具副作用计数为零。若该链路无法通过，停在此阶段修订接口方案，不先搭完整 UI。T0 同时交付字符列宽观测记录与致命异常 PTY 子进程测试：真正抛出的未捕获异常、真正未处理的 Promise rejection、卡住/抛错的 release、关闭的 stdout、初始化中途失败；断言复原先于诊断、恢复 raw/echo、可见光标/退出备用屏、非零退出、恢复失败不吞掉原始故障和监听器不累积。只调用 fake handler 不构成完整验收。
+在隔离 DSH_HOME 和 keyless mock 模型下，真实 Loader/profile 驱动最小终端 PoC：启动、输入、流、一次问题、一次拒绝审批、取消、退出恢复。断言拒绝后工具副作用计数为零。若该链路无法通过，停在此阶段修订接口方案，不先搭完整 UI。T0 同时交付 PTC dispatch-start/审批顺序、终端 scoped HUP 与 nohup 回归、字符列宽观测记录及致命异常 PTY 子进程测试：真正抛出的未捕获异常、真正未处理的 Promise rejection、卡住/抛错的 release、关闭的 stdout、初始化中途失败；断言复原先于诊断、恢复 raw/echo、可见光标/退出备用屏、非零退出、恢复失败不吞掉原始故障和监听器不累积。只调用 fake handler 不构成完整验收。
 
 ### T1：实验包与显式启动入口
 
@@ -123,7 +123,7 @@ uncaughtException 后不恢复业务运行；恢复终端不能等待模型、�
 
 ### T4：人工交互
 
-创建 interaction provider；覆盖允许/拒绝、缺回答者、重复/过期、取消/切换、EOF/卸载，以及 callId 缺失、错误会话、工具不匹配、日志不可用和脱敏摘要。每个失败分支检查工具副作用为零，不能只断言显示拒绝。
+创建 interaction provider；覆盖允许/拒绝、缺回答者、重复/过期、取消/切换、EOF/卸载，以及 callId 缺失、错误会话、工具不匹配、日志不可用和脱敏摘要；必须包含 run_code 的真实 nested tool 审批及 subCallId 查找、错误 Session/父子调用 ID 拒绝。每个失败分支检查工具副作用为零，不能只断言显示拒绝。
 
 ### T5：实验组合完整验收
 
@@ -144,7 +144,7 @@ T2–T4 功能完整、T5 通过后，按 packages/experimental/AGENTS.md 复核
 | 首次启动、退出、再次进入 | 真实 profile 组合成功；终端状态恢复；无残留监听/进程 |
 | 多轮与持久恢复 | 单次准入、文本顺序正确、恢复无重复；工具结果可重建 |
 | 问题与审批 | 具体选择进入原能力；拒绝/过期/断开时敏感工具不执行 |
-| raw Ctrl+C、正常 EOF、外部 SIGINT/SIGTERM/SIGHUP | 字节编辑与 OS 信号分开；正常退出 0、SIGINT 130、SIGTERM 0、POSIX SIGHUP 129；单一 launcher 清理，未决请求解除 |
+| raw Ctrl+C、正常 EOF、外部 SIGINT/SIGTERM/SIGHUP | 字节编辑与 OS 信号分开；正常退出 0、SIGINT 130、SIGTERM 0、有终端 owner 的 POSIX SIGHUP 129；无 owner 的 nohup 子进程 HUP 后仍运行；单一 launcher 清理，未决请求解除 |
 | uncaughtException、unhandledRejection、release 卡住/失败 | 同步尽力复原先于诊断；有界非零退出、不恢复业务、不重复监听；关闭 TTY 时失败被包含 |
 | 中文/英文/组合字符/ZWJ/旗帜、80/40 列、resize | 字素编辑正确；终端模拟器中的光标列/折行符合预期；确认入口可见；记录 ambiguous-width 策略 |
 | 长文本/恶意终端序列 | 内存与缓冲有界；无 OSC52 或逃逸控制效果 |

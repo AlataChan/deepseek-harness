@@ -1,8 +1,8 @@
 # DSH 扩展能力工程实施方案：IM、租户隔离与远程 Worker
 
-状态：修订 v3，待复核，尚未锁定。本文规定拟实施行为，不表示功能或部署验收完成。本次仅修订方案；Phase 0 可执行 PoC、Linux 隔离、真实渠道和 SSH 测试均未运行。
+状态：修订 v4，已吸收第三轮评审；用户授权在当前工作树由 agy 实施、Codex 审查。消息来源必须先完成 Phase 0 决策 fixtures，再进入 Phase 1。文中未完成的 Linux、平台与两主机验收仍为待运行，不随编码授权自动通过。
 
-源码核查基线：2026-10-24，commit 本次方案提交的父版本（fix(ci): allow Windows installer qualification to finish）。权威版本为本文件；见 [任务状态](task_plan.md)、[评审处置](review-round2-response.md) 和独立的 [TUI 方案](dsh_tui_implementation_plan.md)。
+源码核查基线：2026-10-24，方案首次提交的父版本（提交标题：fix(ci): allow Windows installer qualification to finish）。权威版本为本文件；见 [任务状态](task_plan.md)、[评审处置](review-round2-response.md) 、[第三轮处置](review-round3-response.md) 和独立的 [TUI 方案](dsh_tui_implementation_plan.md)。
 
 ## 1. 范围与交付顺序
 
@@ -28,7 +28,7 @@
 
 首版新增 `packages/experimental/im-feishu/` 和 `packages/experimental/im-service-bundle/`。前者提供 ingress 与 tenant-runtime 两个独立插件入口，由两个 profile 进程分别加载；后者提供显式安装的组合层。使用 `@deepseek-ai/dsh-experimental-*` 源包名及 fork 发布重映射。不使用 gateway-*，不与现有 api-gateway 混淆；第二个真实渠道出现前不提取渠道中立公共服务。
 
-ingress 在 Node Host 平面运行，持有飞书连接、绑定、inbox/outbox 和路由，不加载执行工具。tenant-runtime 在租户 OS 身份下持有 Agent、Session、凭据和工具。两者不要求 Web Host 或浏览器，不导入 session-controller 私有实现。
+ingress 在 Node Host 平面运行，持有飞书连接、绑定、inbox/outbox 和路由，不加载执行工具。tenant-runtime 在租户 OS 身份下持有 Agent、Session、凭据和工具。两者不要求 Web Host 或浏览器，不导入 session-controller 私有实现；可以显式依赖其公共 prompt ID 类型和对应消息来源声明，不能复制私有协议或挪用浏览器的已有请求 ID。
 
 workspace 来自管理员配置的绝对路径，runtime 验证存在、归属、允许根和符号链接。外部消息、卡片和模型不能指定 cwd。已绑定聊天映射到 runtime 内的 Session，控制层不直接打开租户日志。dsh-webhook 的一次 delivery 一个新 Session、无队列或完成回执，与持久多轮聊天语义不同，因此不复用该 ingress，也不修改它来迁就 IM。
 
@@ -36,9 +36,11 @@ workspace 来自管理员配置的绝对路径，runtime 验证存在、归属�
 
 采用 Linux 文件系统 AF_UNIX stream，每租户固定 `/run/dsh-im/<opaque-tenant-id>/rpc.sock`。管理员预建 root 所有、0750、组为专用 ingress 组的父目录；socket 为 `root:<ingress-group>`、0660。组中只有 ingress 服务身份，租户 UID 和其他本机用户不在该组。root 与 ingress 是可信控制主体；不声称防御两者被攻陷。
 
-systemd system socket unit 设置 Accept=yes、MaxConnections=1、SocketUser=root、`SocketGroup=<ingress-group>`、SocketMode=0660；每租户对应固定 User/Group 的 service template。service 使用 StandardInput=socket、StandardOutput=socket、StandardError=journal，通过固定的 dsh profile 启动。连接成为 runtime 的 stdin/stdout，不假定普通 system service 自动给 ingress 一条 pipe。具体 units 与支持的 systemd 版本由 Phase 0 Linux PoC 验证。
+systemd system socket unit 设置 Accept=yes、MaxConnections=1、SocketUser=root、`SocketGroup=<ingress-group>`、SocketMode=0660；每租户对应固定 User/Group 的 service template。service 使用 StandardInput=socket、StandardOutput=socket、StandardError=journal，通过固定的 dsh profile 启动。连接成为 runtime 的 stdin/stdout，不假定普通 system service 自动给 ingress 一条 pipe。具体 units 与支持的 systemd 版本由 Phase 0 Linux PoC 验证。/run 重启后清空，交付 root 管理的 tmpfiles.d 配置，每次开机创建 /run/dsh-im 及各 tenant 父目录并设 root:<ingress-group> 0750；不能以 socket unit 的 DirectoryMode 代替属组配置。tmpfiles 配置和 unit 安装依赖顺序必须在冷启动测试中验证。
 
 内核目录/socket 权限承担本机客户端认证。ingress 只连接管理员注册表路径，先核验所有权、权限和无符号链接；runtime 握手返回协议版本、固定 tenant ID 和 workspace 标识，不匹配即拒绝。禁止 abstract socket、共享 TCP 端口或失败后退回 ingress 自身执行。runtime 拿到已接受的描述符，无须访问 socket 目录。
+
+首版明确选择连接绑定生命周期：Accept=yes 每个连接启动一个 runtime；ingress 部署、崩溃或重启会取消所有受影响租户的在途 turn，不能承诺后台任务跨 ingress 重启继续。产品返回已中断或状态未知，并在旧实例完成有界排空/退出后重连和对账；MaxConnections=1 期间重连被拒绝属预期，采用有界退避，不启动第二 writer。发布说明须展示此限制并测试长工具运行时重启 ingress、残留清理及不重放副作用。需要跨 ingress 重启继续执行时，另评审 Accept=no/listening-fd runtime 与重连协议，不在此版暗中切换。
 
 每次路由仍核对外部绑定，OS 身份认证不替代平台用户授权。正文中的 tenant ID、socket 路径、Session ID 不能覆盖服务端绑定。runtime 再核对 Session/交互 ID 属于本租户和对应会话映射。
 
@@ -46,7 +48,7 @@ systemd system socket unit 设置 Accept=yes、MaxConnections=1、SocketUser=roo
 
 选择同包内部的版本化 NDJSON 协议，schema、客户端和服务端同属 im-feishu。拟议操作为 initialize、openConversation、submitDelivery、getDelivery、cancelDelivery、setModel，以及 Phase 3 的 getInteraction/answerInteraction；回复与更新携带请求及 delivery 标识。这些是待实现私有操作，不是当前 DSH API；Agent 行为仍调用现有公共能力。
 
-评估过 ACP over Unix socket：权限可保护 ACP，但当前 acp 的 stream override 是运行时测试接口，标准 prompt 固定记录 user 来源，且没有 IM delivery 对账查询。直接使用会丢失第 5 节的持久来源；增加 ACP 私有扩展及准入改造，比当前单渠道适配面更广。因此 IM 使用最小私有适配器，远程自动化继续使用标准 ACP。Phase 0 若发现已有公共入口满足这些要求，应凭可执行证据删除重复实现。
+评估过 ACP over Unix socket：权限可保护 ACP，但当前 acp 的 stream override 是运行时测试接口，标准 prompt 固定记录 user 来源，且没有 IM delivery 对账查询。普通 ACP prompt 无 IM delivery 对账操作，也不能假定任意 source 扩展可读。因此 IM 仍使用最小私有适配器提供 durable delivery/status，消息保持 human user 语义并按第 5 节保存请求关联；不因这些需求修改标准 ACP，远程自动化继续使用它。Phase 0 若发现已有公共入口满足这些要求，应凭可执行证据删除重复实现。
 
 协议配置限制帧大小、挂起请求、更新缓存和握手/操作/取消期限；stdout 仅协议数据，诊断去 stderr。不提供任意 RPC 转发、插件安装、环境/凭据下发、文件读取、MCP 启动或任意 cwd。确切 Agent/Session/交互参数由 Phase 0 编译映射确认。
 
@@ -80,15 +82,29 @@ Linux 必测：合法 ingress 完成 prompt/result；无关 UID 及 tenant B 的
 
 各 domain 显式版本化，使用单调递增的 IM_SCHEMA_VERSION，升级前备份、验证和明确迁移；版本不匹配失败关闭，不重建空库。storage-sqlite 的物理 STORAGE_SQLITE_SCHEMA_VERSION 仅在物理结构改变时递增。限制队列、记录保留、去重窗口和重试预算；domain 启动加载记录，不能承诺无限历史。过期事件拒绝而非当新消息执行，去重保留期覆盖平台重试期。
 
-新增 MessageSourceMap.im，由 im-feishu 定义，runtime 在 user/message 中写 source.kind: 'im'。拟议字段包含 provider、应用/租户、conversation、senderBinding、稳定 deliveryId；内部跨边界 ID 使用 branded 类型。来源由认证后的绑定/事件产生，不从正文读取，不含 Token/Key。外部 event ID 的作用域含 provider、应用和租户，避免碰撞。
+撤回固定新增 MessageSourceMap.im 的决定。绑定操作者主动键入的消息具有 human authority，优先保持 source.kind: 'user'；Webhook/程序事件的非 user 语义不能机械用于人类 IM 输入。自动通知、机器人消息和未经绑定输入不获得这种权限，首版直接拒绝。
 
-webhook 的 source.kind/deliveryId 是实现先例，不是 IM 自动兼容的证据。按 [持久类型变更流程](../../docs/cookbook/reviewing-persistence-type-changes.md) 更新当前声明/校验、生成 acknowledgement、记录兼容判断，更新 TypeScript/Python SDK 相关预期输出及 keyless replay。不得覆写冻结历史格式代际；确需结构迁移时新增相邻版本及备份保护，不能仅修改旧 session-format-v0-to-v1 validator 就声称新来源可读。
+Phase 0 建立 decision-source.md 和三个真实 released/current-format fixture，先读回再比较行为；结果进入 Codex 审查，尚未通过不得向 Phase 1 持久写入新来源。对每个方案记录字段读取、v3→v4 转换、最新 writer/read、旧日志兼容及全部 human-turn 消费点，不以 TypeScript 编译代替读盘证据。
+
+| 方案 | Phase 0 fixture 与语义检查 | 选择 |
+| --- | --- | --- |
+| (a) kind=im，自带 delivery 字段 | 证明 v0 默认分支接受非空未知 kind、v3→v4 保持直接 kind；列出 human-turn 行为损失 | 拒绝用于绑定人类输入；可读不等于语义正确，也不自动需要格式升级 |
+| (b) kind=user，新增 delivery 字段 | 检查当前格式完整读取链是否因仅允许 rpcId/clientTimeZone 拒绝；断言真实拒绝或接受，不能预设 | 暂不采用；如果选择必须先完成持久类型评审与必要格式工作 |
+| (c) kind=user，现有 rpcId 关联 | 使用新生成的 branded SessionRequestId，而非把平台 event ID 塞入 rpcId；验证公开 owner 语义、碰撞隔离和所有下游消费者 | 本次选定推进方向；以 fixtures 和 owner 审查通过为放行条件 |
+
+选项 (c) 中 ingress 是已认证 prompt client，为新 delivery 生成随机 UUID 的 SessionRequestId，并在首次持久 inbox 写入时保存 delivery 复合键→requestId 映射；重试始终复用同一 ID。平台 provider/app/tenant/chat/senderBinding/eventId 保留在业务 domain，不加到 Session source。runtime 校验同一 delivery/request/session 绑定后写入 kind=user、rpcId=requestId；只有明确配置并验证的 clientTimeZone 才附带，不伪造用户时区。非人类消息不能复用此路径。
+
+rpcId 现由 session-controller 的 user-rpc 声明拥有，用于 prompt 去重、附件 retirement 和浏览器乐观提交结算。Phase 0 必须确认或明确记录其允许已认证 IM prompt client 使用的 namespace 规则、更新公共 owner 文档，并测试 IM ID 不会结算/撤销其他客户端提交或附件。不能复用浏览器已发出的 ID、仅作字符串强转掩盖 owner 不匹配，或用原始平台 ID 冒充 SessionRequestId。若 owner 约束不能满足，暂停 Phase 1，回到 (b) 的显式格式设计，不静默选择 (a)。
+
+human-turn 行为清单至少涵盖 session-title、tool-skill 显式调用、tool-goal authority、time-context、repeat-tool 重置、jobs wake 重置、session list 的 lastPromptAt，以及 session-reference、turn outline 与 Client 用户消息呈现。Phase 0 搜索全部 source.kind=user 判断并形成消费点清单，代表性行为用实际插件/投影 fixtures 验证；不能把固定“约 18 处”当作永久清单。
+
+按 [持久类型变更流程](../../docs/cookbook/reviewing-persistence-type-changes.md) 检查实际类型变更、生成所需 acknowledgement，更新 TypeScript/Python SDK 相关预期输出与 keyless replay。仅复用既有 source 字段不预设格式 bump；未知非空 kind 的可读性本身也不需要 bump。冻结的历史代际不得修改；只在选定设计确实需要不兼容结构时新增相邻版本及备份保护。
 
 ### 5.2 准入、对账与出站
 
 1. 事件完成认证、归属、大小/类型和绑定检查后持久写 inbox，再按平台规则 ACK；ACK 不等模型完成。Phase 0 核对 SDK 实际 ACK 时机，不能保证持久接收即阻塞 MVP。
-2. 每会话 FIFO 串行。runtime 准入前持久写 receipt，再由公共 Agent 接口提交带 IM source 的消息；不隐式 steer，不让 ingress 直接改租户日志。
-3. 重连时 ingress 调 getDelivery，runtime 在独占会话所有权下查询 Session 日志中的完整 IM delivery 键。已有消息就不再准入，继续对账完成/失败/中断；流只表示进度，日志提供持久执行证据。
+2. 每会话 FIFO 串行。runtime 准入前持久写 receipt，再由公共 Agent 接口提交保留 kind=user 并按已通过决策写 rpcId 的消息；不隐式 steer，不让 ingress 直接改租户日志。
+3. 重连时 ingress 调 getDelivery，runtime 在独占会话所有权下以 receipt 保存的 requestId 查询 Session 日志的 user/message.source.rpcId，并核对 Session 及 domain 内的 delivery 复合键映射。已有消息就不再准入，继续对账完成/失败/中断；流只表示进度，日志提供持久执行证据。
 4. receipt 正在准入而日志无消息，仍可能处于排队/崩溃窗口。标 unknown，先确认旧 writer/Agent 静止；不能以查不到日志直接重试。无法排除执行时需人工处理，不承诺 SQLite/Session 间 exactly-once。故障测试覆盖 receipt、followup、日志提交和结果入 outbox 的前后。
 5. outbox 持久保存 messageId、版本、重试和最终投递状态。回复合并/缓冲有界，区分 Agent 完成与用户收到；平台无幂等发送且响应丢失时标未知，不无限重发。原地更新能力由真实平台证据确认。
 6. Phase 2 不含 card.action.trigger 授权或自然语言同意。无可信回答者时 user-approval/user-questions 明确拒绝、取消或 unavailable，受保护操作副作用为零；是否继续 turn 遵循工具失败语义。
@@ -98,7 +114,7 @@ webhook 的 source.kind/deliveryId 是实现先例，不是 IM 自动兼容的�
 
 核对官方 SDK 的 card.action.trigger 支持：WS 走认证连接分发，HTTP 按该传输验签和防重放。服务端持久绑定 action ID、授权者、tenant、应用、Session、请求、选项和期限；原子单次消费，重复、过期、撤销、跨用户/租户、已取消请求均拒绝。
 
-approval request 只有工具名、reason 和可选 callId，没有 arguments。runtime 用 (Agent.session.id, callId) 查询已记录 tool/call，核对工具名并生成有界脱敏摘要；ingress 经认证 IPC 获取摘要，不从卡片 payload 或其他租户文件补参数。callId 缺失、日志不存在、工具不匹配或请求失效时标参数不可用并禁止批准，仍允许拒绝。回答前重查有效性；持久点击决定不等于工具已执行，崩溃后不可重放批准给新请求。
+approval request 只有工具名、reason 和可选 callId，没有 arguments。runtime 用 (Agent.session.id, callId) 查询普通 tool/call 的 id，或 tool/ptc-dispatch-start 的 subCallId，核对 name 和同一 Session/当前未决请求后从 arguments 生成有界脱敏摘要；ingress 经认证 IPC 获取摘要，不从卡片 payload 或其他租户文件补参数。callId 缺失、日志不存在、工具不匹配或请求失效时标参数不可用并禁止批准，仍允许拒绝。回答前重查有效性；持久点击决定不等于工具已执行，崩溃后不可重放批准给新请求。Phase 0 通过真实 PTC 执行确认 dispatch-start 已先于 approval/request 记录；若尚不可读则等待有界发布或返回 unavailable，不能虚构参数。Phase 3 必测 run_code 内嵌敏感工具的允许、拒绝、取消、subCallId 错配及摘要脱敏，断言实际副作用。
 
 ## 6. 远程 Worker：先验证组合复用
 
@@ -124,7 +140,7 @@ A 的控制连接与 stream 使用受控 SSH Unix socket forwarding，不能机�
 
 | 阶段 | 交付 | 退出条件 |
 | --- | --- | --- |
-| Phase 0：接口/部署 PoC | 公共接口映射、mock 事件、私有 IPC schema、Linux socket/异 UID 拒绝、SSH A/B 可行性记录 | 真实 profile + keyless mock 完成 Agent 流程；来源持久可读；区分静态核查与运行证据 |
+| Phase 0：接口/部署 PoC | 公共接口映射、source 三选项 fixture/decision、PTC 顺序、mock 事件、IPC schema、Linux socket/tmpfiles/异 UID、SSH A/B 可行性记录 | 真实 profile + keyless mock 完成 Agent 流程；选定 source 同时可读且保留 human 行为；Codex 复核后才进入 Phase 1；区分静态与运行证据 |
 | Phase 1：单 runtime | 实验 ingress/runtime/bundle、单 UID 服务、storage domains | 已绑定路由、异 UID 拒绝、无 TCP 控制口、停止/重连/锁/unknown 对账通过 |
 | Phase 2：飞书文本 MVP | 单操作者私聊、多轮、inbox/outbox；不含卡片批准 | mock 与获授权的真实测试应用通过；重复事件不二次准入；无回答者时敏感工具副作用为零 |
 | Phase 3：多租户/交互 | 两 UID 资源矩阵、配额/撤销、审批/问题卡片 | 跨租户 Session/文件/Key/流拒绝；重复/过期/无参数审批不执行；目标应用验证通过 |
@@ -137,11 +153,11 @@ Phase 0 先做本地/隔离 fixture 与官方资料核对；Linux、多主机和
 
 单元覆盖身份键、schema、路径、去重/过期、outbox、限额和授权；组合测试经真实 Loader/profile 与 mock 模型记录调用和工具副作用计数。各持久化窗口注入崩溃，验证 unknown/已完成状态，不只测试显示文字。
 
-新来源必须包含 acknowledgement、当前格式校验、旧日志兼容、keyless session replay 和两个 SDK 预期输出；domain 升级含备份、版本拒绝与迁移测试。遵守单调 SCHEMA_VERSION，不覆写冻结格式，不把业务 SQLite 当 Session 存储。
+选定的来源/关联设计须证明 human 行为与当前格式读盘，按实际类型变更完成 acknowledgement、旧日志兼容、keyless replay 和两个 SDK 预期输出；domain 升级含备份、版本拒绝与迁移测试。遵守单调 SCHEMA_VERSION，不覆写冻结格式，不把业务 SQLite 当 Session 存储。
 
 Linux gate 覆盖真实异 UID、socket activation、错误权限、控制端口扫描和进程清理；SSH gate 用受控主机/失联控制；平台 gate 限定测试应用、身份和预算。报告区分 local verified、target verified、not run，不能用静态配置或 macOS 单机结果替代多租户验收。
 
-实现时运行 owner tests、typecheck、lint、hygiene、文档和 fork intake gates，更新 README/JSDoc 与必要 upgrade guide；CI 承担完整平台矩阵。本次未运行这些未来功能门禁。
+实现时运行 owner tests、typecheck、lint、hygiene、文档和 fork intake gates，更新 README/JSDoc 与必要 upgrade guide；CI 承担完整平台矩阵。是否已运行以本轮 implementation-report.md 的命令和产物为准，不能从计划状态推断通过。
 
 回滚先停止 ingress 准入、撤销绑定/Worker 授权，再确认执行停止；保留 Session、业务数据和备份，不删除 DSH_HOME 或降低格式版本。服务端独立交付，未来桌面入口另需 overlay、pin、闭包和安装包验收。
 
