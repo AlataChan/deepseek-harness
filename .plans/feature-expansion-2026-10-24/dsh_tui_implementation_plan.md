@@ -64,7 +64,7 @@ T0 必须验证中英混排、全角标点、组合重音、Emoji 肤色修饰�
 
 TUI 是具体回答者，不只是把问题文字打印出来。使用 `user-approval` 的 Agent-scoped waterfall 及 `user-questions` 当前公开交互接口；对于不归自己 Agent 的请求必须委托，不抢答其他会话。
 
-待确认视图显示所属会话、工具名、reason、允许选项和取消入口。approval request 没有工具 arguments，只有可选 callId；适配器用 (Agent.session.id, callId) 查询普通 tool/call.id 或 PTC 的 tool/ptc-dispatch-start.subCallId，核对 name、同一 Session 及当前未决请求，再从 arguments 生成有界脱敏摘要。T0 用真实 PTC 执行证明 dispatch-start 先记录、approval/request 后触发，不假设内嵌调用都有 tool/call。不能从请求上虚构 arguments，不能从其他会话或最新一次同名调用补全。缺 callId、日志尚不可读、工具不匹配时明确显示参数不可用，禁止批准并允许拒绝；取消/过期仍按原能力结算。审批默认不因 Enter 批准，首版仅单次授权。
+待确认视图显示所属会话、工具名、reason、允许选项和取消入口。approval request 没有工具 arguments，只有可选 callId；适配器用 (Agent.session.id, callId) 查询普通 tool/call.callId 或 PTC 的 tool/ptc-dispatch-start.subCallId，核对 name、同一 Session 及当前未决请求，再从 arguments 生成有界脱敏摘要。T0 用真实 PTC 执行证明 dispatch-start 先记录、approval/request 后触发，不假设内嵌调用都有 tool/call。不能从请求上虚构 arguments，不能从其他会话或最新一次同名调用补全。缺 callId、日志尚不可读、工具不匹配时明确显示参数不可用，禁止批准并允许拒绝；取消/过期仍按原能力结算。审批默认不因 Enter 批准，首版仅单次授权。
 
 回答前再次核对请求 ID、Agent、有效状态与选项；重复输入、过期、切换会话、工具已取消均不能让旧请求执行。提问和审批占用单个可见交互焦点，普通输入不误发成批准；多个请求排队并显示等待状态。
 

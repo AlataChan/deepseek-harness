@@ -23,7 +23,8 @@ Status: design revision v4 incorporates round-3 corrections. The user authorizes
 ## Next execution gates — not yet run
 
 - [x] Apply round-3 fixes: human source decision, PTC argument lookup, terminal-scoped HUP/nohup, Accept=yes limitation and tmpfiles.d.
-- [ ] agy Phase 0 code and fixtures; Codex independently reviews source option (c) and namespace behavior before Phase 1.
+- [x] agy produced Phase 0 code and fixtures in this worktree; Codex independently reviewed the repaired snapshot.
+- [ ] Phase 0 acceptance: test-inclusive compilation, namespace integration and report accuracy remain Required findings in [Codex review](codex-code-review.md); Phase 1 stays closed.
 - [ ] T0: compile against current Agent/interaction APIs; real profile + keyless mock + PTY/emulator PoC; fatal/signal restoration with launcher regressions.
 - [ ] Phase 0 IM: verify official SDK ACK semantics and interface mapping without credentials or real messages; fixtures for all three source choices, controller namespace/human-turn behavior and delivery reconciliation PoC.
 - [ ] Phase 0 Linux: fixed UID systemd socket activation, unauthorized UID refusal, malformed permissions, handshake and single-instance teardown. macOS cannot supply this result.

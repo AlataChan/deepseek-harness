@@ -114,7 +114,7 @@ human-turn 行为清单至少涵盖 session-title、tool-skill 显式调用、to
 
 核对官方 SDK 的 card.action.trigger 支持：WS 走认证连接分发，HTTP 按该传输验签和防重放。服务端持久绑定 action ID、授权者、tenant、应用、Session、请求、选项和期限；原子单次消费，重复、过期、撤销、跨用户/租户、已取消请求均拒绝。
 
-approval request 只有工具名、reason 和可选 callId，没有 arguments。runtime 用 (Agent.session.id, callId) 查询普通 tool/call 的 id，或 tool/ptc-dispatch-start 的 subCallId，核对 name 和同一 Session/当前未决请求后从 arguments 生成有界脱敏摘要；ingress 经认证 IPC 获取摘要，不从卡片 payload 或其他租户文件补参数。callId 缺失、日志不存在、工具不匹配或请求失效时标参数不可用并禁止批准，仍允许拒绝。回答前重查有效性；持久点击决定不等于工具已执行，崩溃后不可重放批准给新请求。Phase 0 通过真实 PTC 执行确认 dispatch-start 已先于 approval/request 记录；若尚不可读则等待有界发布或返回 unavailable，不能虚构参数。Phase 3 必测 run_code 内嵌敏感工具的允许、拒绝、取消、subCallId 错配及摘要脱敏，断言实际副作用。
+approval request 只有工具名、reason 和可选 callId，没有 arguments。runtime 用 (Agent.session.id, callId) 查询普通 tool/call 的 callId，或 tool/ptc-dispatch-start 的 subCallId，核对 name 和同一 Session/当前未决请求后从 arguments 生成有界脱敏摘要；ingress 经认证 IPC 获取摘要，不从卡片 payload 或其他租户文件补参数。callId 缺失、日志不存在、工具不匹配或请求失效时标参数不可用并禁止批准，仍允许拒绝。回答前重查有效性；持久点击决定不等于工具已执行，崩溃后不可重放批准给新请求。Phase 0 通过真实 PTC 执行确认 dispatch-start 已先于 approval/request 记录；若尚不可读则等待有界发布或返回 unavailable，不能虚构参数。Phase 3 必测 run_code 内嵌敏感工具的允许、拒绝、取消、subCallId 错配及摘要脱敏，断言实际副作用。
 
 ## 6. 远程 Worker：先验证组合复用
 
