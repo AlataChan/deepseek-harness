@@ -193,6 +193,7 @@
     "packages/experimental/inspector/scripts/**/*.ts",
     "packages/llm/llm-pi-ai/scripts/**/*.ts",
     "scripts/**/*.ts",
+    "snapshots/im/**/*.ts",
     "website/**/*.ts",
     "website/.vitepress/**/*.ts"
   ],
@@ -216,6 +217,8 @@
   ],
   "references": [
     { "path": "./packages/telemetry/otel" },
+    { "path": "./packages/tui/tui" },
+    { "path": "./packages/bundle/tui" },
     { "path": "./packages/experimental/speech-to-text" },
     { "path": "./packages/experimental/speech-to-text-sensevoice" },
     { "path": "./packages/experimental/api-speech-to-text" },
@@ -352,6 +355,9 @@
     { "path": "./packages/interaction/user-approval" },
     { "path": "./packages/interaction/permission-presets" },
     { "path": "./packages/experimental/auto-review" },
+    { "path": "./packages/experimental/im-feishu" },
+    { "path": "./packages/experimental/im-dingtalk" },
+    { "path": "./packages/experimental/im-service-bundle" },
     { "path": "./packages/experimental/claude-code-mods" },
     { "path": "./packages/core/tools" },
     { "path": "./packages/core/agent-tool-presentation" },

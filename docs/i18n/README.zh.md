@@ -73,3 +73,5 @@
 ## 分工
 
 日常更新对侧文件时，负责处理的 agent 会先加载 [terminology.md](terminology.md)，再直接一次性更新；它不会调用翻译 skill（技能）、生成简报、执行单独的翻译评审轮次，也不会委派给 subagent。扩展版 [dsh-translate-docs](../../.agents/skills/dsh-translate-docs/SKILL.md) 工作流保留这些较重的机制，仅供用户显式调用。门禁负责检查配对是否完整、记录的 hash、中文反向链接和普通撰写源的切换行（生成源按本文规则例外），以及本文列出的结构签名；翻译质量、术语和签名未涵盖的结构要求仍由评审把关。提示词约定也有可执行实现：[scripts/translation-prompt.ts](../../scripts/translation-prompt.ts) 会把仓库内置的模板（注入术语表；模板自带经人工校准的规则）渲染为英译中或中译英两个方向的提示词，并解析三段式响应；`doc-sync` 中的 `verify-translation-prompt` 会检查两个渲染方向与仓库内示例。
+
+排除清单还逐项列出了仅面向中文读者的公益课程资源，以及三份本地媒体渲染工作区 README。这些文件是课程材料或生成的工作产物，不是 Harness 产品文档；这些精确到文件的例外不排除包 README、运行时参考或新编写的产品指南。

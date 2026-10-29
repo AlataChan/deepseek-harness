@@ -1,0 +1,11 @@
+# TUI qualification review — remaining required corrections
+
+Codex independently verified the source-and-test TypeScript check, scoped lint including the new snapshot, and snapshot plus corpus (4 tests). Installed PTC allow/reject and event-presence assertions now use real runtime evidence. The complete 87-test suite is being rerun.
+
+Two concrete qualification defects still require repair:
+
+1. **T5 artifact staging test does not execute the TUI.** The new assembled-profile test hand-mounts workspace plugins under `new Context()` with real non-TTY process streams, so the TUI emits its TTY refusal and returns; only agents/userQuestions/config are asserted. It never installs, resolves or runs an artifact, and cannot prove equivalent runtime effects. The independent run visibly prints the TTY refusal. Replace this test with an explicit test-owned custom profile in the actual independent installed closure, launched in PTY via dsh and testing a real prompt/response and an interaction. Reuse installed-qualification infrastructure; no historical experimental package resurrection is needed. Report this honestly as post-promotion staging equivalence, not evidence that T5 preceded T6.
+
+2. **Snapshot child cleanup is not quiescent.** `snapshots/tui/tui.snapshot.ts` finally calls `term.kill()` then removes the private HOME immediately without awaiting exit. On timeout/assertion failure the process can still write or hold locks. Its exit Promise.race timeout is not cancelled on success; startup readiness accepts any output containing “dsh”, before input admission is ready; response wait uses a fixed 800ms settle sleep. Use exact owned child exit join with bounded escalation, cancel owned timers, and synchronize on actual TUI input readiness/durable idle rather than incidental text or fixed delay. Add an owner-local failure/timeout negative control proving joined exit before directory removal. Do not use a broad process kill.
+
+Finish required focused publication/intake/docs checks or record exact baseline failures and update task/plan status. This is not a request to repeat already-passing checks without a related edit. No full production, Windows/Linux PTY or release acceptance is implied by local macOS verification.

@@ -119,6 +119,48 @@ describe('walkPartitionProblems', () => {
     ]))
     expect(problems).toHaveLength(4)
   })
+
+  it('rejects a declared launcher controller when missing from serviceWalkExemptions', () => {
+    const { input, maps } = baseline()
+    const withLauncher = {
+      ...input,
+      declaredKeys: new Map([
+        ...input.declaredKeys,
+        ['terminalRestore', 'packages/boot/app-boot/src/terminal-restore.ts'],
+      ]),
+    }
+    const problems = walkPartitionProblems(withLauncher, maps)
+    expect(problems).toEqual([
+      expect.stringContaining('ctx.terminalRestore (packages/boot/app-boot/src/terminal-restore.ts) is declared in a Context merge but invisible to the rendering projection; map it in SERVICE_PAGE (after making it renderable) or name it in SERVICE_WALK_EXEMPTIONS with its documentation owner.'),
+    ])
+  })
+
+  it('rejects an exemption for a service that the projection actually renders', () => {
+    const { input, maps } = baseline()
+    const withRenderedExemption = {
+      ...input,
+      renderedKeys: new Map([
+        ...input.renderedKeys,
+        ['imIngress', 'packages/experimental/im-feishu/src/ingress-plugin.ts:20'],
+      ]),
+      declaredKeys: new Map([
+        ...input.declaredKeys,
+        ['imIngress', 'packages/experimental/im-feishu/src/ingress-plugin.ts'],
+      ]),
+    }
+    const mapped = {
+      ...maps,
+      servicePage: { ...maps.servicePage, imIngress: 'im.md' },
+      serviceWalkExemptions: {
+        ...maps.serviceWalkExemptions,
+        imIngress: 'stale exemption',
+      },
+    }
+    const problems = walkPartitionProblems(withRenderedExemption, mapped)
+    expect(problems).toEqual([
+      expect.stringContaining('ctx.imIngress is rendered by the projection but still listed in SERVICE_WALK_EXEMPTIONS; remove the stale exemption.'),
+    ])
+  })
 })
 
 describe('cordis-walk scan reach', () => {

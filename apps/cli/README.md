@@ -28,11 +28,19 @@ The launcher parses only its own flags and hands everything after them to the bo
 
 ```sh
 dsh --profile web --port 8080       # --port belongs to the web app
-dsh --profile tui --resume <id>     # example, assuming the tui profile is installed; --resume belongs to the terminal app
+dsh --profile tui                 # use /resume <id> inside the TUI
 dsh --profile headless "run the tests"
 dsh --profile web --help            # the web app's flags, not the launcher's
 dsh --help                          # the launcher's own help
 ```
+
+## Detached execution and signal disposition
+
+The TUI profile has local macOS acceptance. Linux native PTY, Windows ConPTY and production release remain unverified; see the [combined status](../../.plans/feature-expansion-2026-10-24/completion-status.md).
+
+Setting `DSH_DETACHED=1` configures the launcher to ignore `SIGHUP` when running as a detached daemon or background process. However, terminal ownership strictly outranks detached mode: when an interactive terminal owner is registered (`activeCount > 0`, such as an active TUI or interactive raw terminal session), receiving `SIGHUP` invokes synchronous terminal restoration (`restoreNow()`) and exits with code 129 (`128 + SIGHUP`). Detached mode only ignores `SIGHUP` while `activeCount === 0`.
+
+This explicit precedence addresses a Node.js engine limitation (`node::ResetSignalHandlers()` in `src/node.cc`), where Node.js resets inherited signal dispositions to defaults on startup, causing processes spawned under `nohup` to terminate on hangup unless explicitly guarded.
 
 <a id="profiles"></a>
 ## Profiles

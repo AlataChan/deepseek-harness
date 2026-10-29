@@ -39,6 +39,8 @@ kind: "package-reference"
 | `command` | 必填 | 每次运行时 spawn 的可执行文件（子 ACP agent） |
 | `args` | `[]` | 命令参数 |
 | `cwd` | 父会话 cwd | 子进程及其 ACP 会话的工作目录覆盖值 |
+| `sessionCwd` | `cwd` | 子 ACP 会话（`session/new`）的工作目录可选覆盖值（与 `cwd` 分离时生效） |
+| `validateCwd` | `true` | 是否在配置/启动时校验 `cwd` 为本地可访问目录；在远程目标（如 SSH）上设为 `false` |
 | `permission` | `reject` | 自动应答权限请求：拒绝，或选择第一个 `allow_once` 或 `allow_always` 选项（`allow`） |
 | `env` | `{}` | 叠加在已清理凭据的父环境之上的显式子环境 |
 | `disposeEofGraceMs` | `6000` | stdin EOF 之后、平台终止之前的宽限 |
@@ -60,6 +62,18 @@ DeepSeek Harness 子进程使用产品启动器和一个显式的绝对路径 `D
       DSH_HOME: /absolute/path/to/isolated-child-home
       DEEPSEEK_API_KEY: !!js process.env.DEEPSEEK_API_KEY
 ```
+
+### 禁止转发的严格 SSH 部署
+
+部署要求拒绝任意 TCP 转发时使用[路径 B](examples/strict-ssh-acp.patch.yml)。专用账户采用 root 所有的[固定命令](examples/dsh-acp-forced-command.sh)、[服务端配置](examples/sshd_config.acp-forced)和[环境文件](examples/dsh-acp-worker.env.example)。服务端禁用转发，只接受固定 ACP 命令。包装脚本通过带 `RuntimeMaxSec` 和控制组清理的 systemd 用户服务启动已安装的 `dsh --profile acp`。这是有限的最长会话时间，不是可续期 lease；管理员应按工作负载选择上限。
+
+管理员须预配置 Bash 5.1+、systemd、`libpam-systemd`、用户 D-Bus 会话、专用 `/bin/sh` 账户的用户管理器与 linger、私有状态/工作区/临时目录，以及 root 所有的包装脚本和配置文件。入站 SSH 命令不能选择可执行路径、profile、环境或期限。协调器必须配置固定远程 `sessionCwd`；缺失时失败，不回退到本地目录。
+
+### 远程 SSH 组合
+
+若要在远程主机上执行 ACP 子代理，请将 `@deepseek-ai/dsh-subagent-acp` 组合在带有 `group: true` 与 `isolate: { subprocess: true, ssh: true }` 的 `cordis:group` 分组内，并在其中声明子插件 `@deepseek-ai/dsh-ssh`、`@deepseek-ai/dsh-subprocess-ssh` 与 `@deepseek-ai/dsh-subagent-acp`。切勿隔离 `subagents`：保持 `subagents` 未隔离可确保子代理 Provider 在根 Harness 上正常注册，同时将子进程执行路由至远程 SSH 子进程运行时，并保留宿主根级的本地子进程运行时以供本地 shell 操作。同时设置 `validateCwd: false`，避免 Coordinator 误将本地不存在的远程工作目录判定为无效。
+
+路径 A 在已测 OpenSSH 9.2 上需要本地转发权限，因此不满足禁止任意 TCP 转发的要求；有此要求时选择上述严格部署。远程 SSH 执行需要严格的主机密钥校验、服务端保活（`ClientAliveInterval 10`、`ClientAliveCountMax 3`、`AllowStreamLocalForwarding yes`）、客户端保活（`ServerAliveInterval 10`、`ServerAliveCountMax 3`）以及远程 Helper 租约（`leaseMs`，默认 30 秒）。子进程环境必须指定私有远程 `HOME`、`DSH_HOME` 及可执行的 `TMPDIR`。初始化与提示词超时均由调用方（通过 `AbortSignal`）掌控；Helper 租约在传输断连或心跳丢失时清理远程进程组，但不会在活跃传输链路中自动检测挂起的应用进程。[`tests/linux/qualify-installed-ssh.ts`](tests/linux/qualify-installed-ssh.ts) 中的自动化验收脚本在一次性本地 Linux 目标上验证了这一契约；物理双主机网络验收暂未执行。
 
 ### 你会得到什么
 

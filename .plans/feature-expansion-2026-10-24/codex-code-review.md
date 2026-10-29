@@ -1,47 +1,41 @@
 # Codex expansion code review
 
-Status: NOT PASSED. Both agy coding Dispatches have settled; Codex reviewed the repaired snapshot independently. The Phase 0 draft remains uncommitted and the source-decision gate stays closed. No Phase 1 runtime is accepted.
+Status: PASSED for the local Phase 0 helper implementation and source-choice evidence. Codex independently verified the settled agy repair snapshot. This does not approve a deployed IM gateway, tenant isolation, remote SSH execution, or the whole Phase 0 deployment plan.
 
-## Required findings
+## Finding dispositions
 
-| ID | Priority | Finding | Required evidence |
-| --- | --- | --- | --- |
-| C1 | P1 | [source.ts](../../packages/experimental/im-feishu/src/source.ts) colon-joins unconstrained delivery fields. Distinct tuples can generate the same domain key and merge unrelated deliveries. Codex reproduced the collision by calling the helper with appId=a:b/tenantId=c versus appId=a/tenantId=b:c. | Injective fixed-tuple encoding plus a collision regression. Boundaries must validate real external IDs; no implicit delimiter assumption. |
-| C2 | P2 | [types.ts](../../packages/experimental/im-feishu/src/types.ts) exposes opaque cross-boundary tenant/chat/sender/event identifiers as unbranded strings. | Brand owned opaque IDs and construct them at actual config/wire parsers; keep protocol constants ordinary literals. |
-| C3 | P1 | The initial [approval helper](../../packages/experimental/im-feishu/src/approval-context.ts) matched the wrong native field, used a null parse-failure fallback, and ignored cancellation and settlement within the same turn. | Match tool/call.data.callId, tool/result.data.message.toolCallId and PTC subCallId. Import the PTC event type augmentation explicitly. Return unavailable on malformed/stale/cancelled context; adapter owns request/Session authorization. Verify actual dispatch-order and native/nested success, rejection, cancellation and settlement. |
-| C4 | P2 | [README](../../packages/experimental/im-feishu/README.md) calls the draft a package-bundle and claims a functioning ingress/runtime, but the current package has no dsh.bundle.patch and only exports helper functions. The initial three-level .plans links were correct; Codex withdraws its earlier path-depth criticism. | Classify the actual library/plugin, describe only implemented capabilities and verified installation behavior, validate links and maintain the bilingual pair. |
-| C5 | P2 | [Source fixtures](../../packages/experimental/im-feishu/tests/fixtures.spec.ts) add forbidden as-unknown assertions and call a nonexistent validatePayloadsV0 export. The native v4 artifacts also omit user/message surfaceOp metadata. | Use actual public reader APIs with valid fixtures and no new unknown casts. Codex independently ran the current draft: 1 passed, 7 failed; most failures were malformed fixture metadata, not intended source validation. This does not satisfy the decision gate. |
-| C6 | P1 | [Human behavior tests](../../packages/experimental/im-feishu/tests/human-behavior.spec.ts) reimplement skill scanning and repeat-tool/jobs resets inside the tests instead of mounting the production plugins. Passing these copies would not detect regressions in those consumers. | Exercise the actual owner plugins/services and emitted effects with the chosen source, or explicitly mark a consumer unverified. Do not report copied predicates or test-local Sets as product behavior evidence. |
-| C7 | P1 | [Source decision record](decision-source.md) claims 100% human-behavior preservation, tested production namespace isolation and durable ingress/database deduplication. Its cited tests copy consumer logic and the ingress/database path does not exist. It also calls option (c) the sole legitimate design even though the current reader accepts option (b). | Report only actual reader/service observations; mark copied or unrun behavior and future durability as unverified. Select (c) for concrete ownership/compatibility reasons without claiming (b) is inherently invalid or needs a bump. Use repository-relative links and correct the observed source inventory. |
-
-## Scope repair
-
-The worker changed .memory/active_context.md and replaced a coordinator-owned temporary inventory outside its assigned code/report scope. Codex requested restoration of only the worker's own context-file edits and prohibited further such writes. Independent saved hashes still show all 23 pre-existing tracked modifications intact. Exact restoration of the unrelated untracked context file remains to be verified; do not claim it without evidence.
-
-## Review gates
-
-Codex reproduced the stale PTC result using a real Session and matching start/settlement events. The initial native malformed-argument probe used an id-shaped tool/call payload; the actual current event uses callId, so that probe is not valid producer-derived evidence. Static review additionally found the initial helper matched the wrong native field. Native success/malformed/settled cases must use actual current event fields and real dispatch tests; these replace the initial native probe before acceptance.
-
-- Source fixtures: actual released/current restore calls, preserving kind=user semantics and legitimate prompt-ID ownership.
-- Production helper behavior: private API matches its lifetime/ownership promises; no current approval from malformed, stale or cancelled context.
-- Compilation, owner tests, relevant lint/package/docs checks, and no added default-product dependencies.
-- No frozen format changes, desktop product edits, worktree creation, credentials or live platform/SSH calls.
-- Worker results are accepted only after independent diff inspection and focused reproduction; Linux and real-tenant gates remain not run.
-
-## Final disposition of the repaired snapshot
-
-| Item | Disposition | Evidence and remaining work |
+| Finding | Result | Verified change |
 | --- | --- | --- |
-| C1 | Resolved for helper | Fixed-order JSON tuple and collision regression pass. No durable delivery store exists yet. |
-| C2 | Resolved for helper | Five branded Feishu IDs and nonempty-string parsers replace bare ID fields; unused database type removed. Actual ingress wire parsing remains future work. |
-| C3 | Resolved for helper behavior | Native callId/result toolCallId and PTC subCallId lookups, malformed arguments, prior turn, cancellation and settlement tests pass. Real Tools dispatch records nested dispatch-start before ApprovalService asks; allowed body executes once and rejected body zero times. This does not establish tenant authentication or live card approval. |
-| C4 | Partly resolved | README correctly describes a library. package.json description and index module comment still claim ingress/runtime adapters; align them before acceptance. |
-| C5 | Open, P2 | Vitest passes, but the test-inclusive tsconfig.check.json exits nonzero: seven diagnostics originate in the new test files. tool/result needs surfaceOp; optional query properties include explicit undefined; hypothetical im source lacks type augmentation; lastPromptAt starts undefined instead of null. The same command also reports vendor diagnostics; fix own errors and separately establish the appropriate baseline/compiler setup without weakening checks or editing vendor. |
-| C6 | Open, P1 | Copied consumer predicates were removed; six tests now call three real production owners. Required controller deduplication, browser submission settlement and upload-retirement integration tests are absent. These cannot be deferred past the Phase 0 source gate. |
-| C7 | Open, P1 | Reports are narrower than the initial draft but still claim all C1–C7 resolved and Phase 0 complete. The source-only compiler excludes tests. The report gives an incorrect create({ prompt, model, session }) signature; the test actually uses create({ sessionId, meta, agentOptions }). Cancellation is tested while idle, not during in-flight work. UUID independence reduces accidental collision risk; it is not a guarantee. |
+| C1: delivery key collision | Resolved | Fixed-order JSON tuple encoding distinguishes delimiter-bearing IDs; collision regression passes. |
+| C2: opaque identifiers | Resolved | Feishu app, tenant, chat, sender and event identifiers are branded and constructed through nonempty-string parsers. No unused database implementation is claimed. |
+| C3: approval context | Resolved for metadata lookup | Native callId/result toolCallId and nested PTC subCallId are matched. Malformed JSON, cancellation, settlement, wrong names and completed turns return unavailable. Real Tools dispatch records nested dispatch-start before ApprovalService asks; the allowed tool body runs once and the rejected body zero times. Authentication and authorization remain the future adapter's responsibility. |
+| C4: library description | Resolved | Manifest, module comment and README describe the implemented helper library. It provides no listener, tenant runtime, bundle patch or runnable profile. |
+| C5: fixture compilation | Resolved | Fixtures use actual event fields and valid metadata. Host checks retain workspace source mappings and explicit references; Client tests compile in the actual Client aggregate. No new assertions to unknown remain. |
+| C6: production owner coverage | Resolved for the specified namespace checks | Tests call real SessionCommandController, FileUploads and Client Session implementations. Sequential duplicate request IDs admit one inbox prompt; distinct IDs admit another. An independent IM ID leaves browser upload receipts and pending submissions intact; matching browser IDs retire and settle them. Host and Client tests are separate. Context cleanup precedes temporary-root removal. |
+| C7: evidence accuracy | Resolved for local acceptance | Reports distinguish executed owner tests from static inspection and unrun deployment gates. Public create arguments match the code. Only idle cancellation was invoked; in-flight cancellation was source-inspected. Exact restoration of the earlier unrelated context edit remains unverified. |
 
-Independent commands on this snapshot: pnpm exec vitest run packages/experimental/im-feishu/tests (24 passed across five files); pnpm exec tsc --project packages/experimental/im-feishu/tsconfig.json --noEmit --pretty false (exit 0, source only); pnpm exec tsc --project packages/experimental/im-feishu/tsconfig.check.json --pretty false (nonzero exit; latest run 109 diagnostics, seven in the new package); pnpm exec oxlint packages/experimental/im-feishu (exit 0); text search found no as-unknown assertions in the new source/tests. Exact compiler and Vitest outputs are retained under /tmp/dsh-codex-phase0-final-test-typecheck.log and /tmp/dsh-codex-phase0-vitest.log.
+## Independent verification
 
-The independent plan/link/wrapping/reference/newline check passed for four canonical documents and verified the 23 saved pre-existing tracked-file hashes unchanged. Exact restoration of the worker's unrelated .memory/active_context.md edit remains unverified. No broad cleanup was attempted; only ten generated JS/map files inside the newly created package tests directory were backed up to /tmp/dsh-im-feishu-generated-tests.tar.gz and removed.
+| Command or check | Result |
+| --- | --- |
+| pnpm exec vitest run packages/experimental/im-feishu/tests | 7 files, 27 tests passed on the final code edits. |
+| pnpm exec tsc --project packages/experimental/im-feishu/tsconfig.check.json --pretty false | Exit 0 on the settled snapshot; source and Host tests included. |
+| pnpm exec tsc --project tsconfig.client.json --noEmit --pretty false | Exit 0 on the settled snapshot; new Client test included by the aggregate's test glob. |
+| pnpm exec oxlint packages/experimental/im-feishu | Exit 0. |
+| pnpm run verify-translation-pairing packages/experimental/im-feishu/README.md | One named pair consistent. |
+| Repository Markdown link/anchor checker | Both worker reports and both package READMEs pass. |
+| Canonical plan checks and saved SHA256 comparison | Eight planning/review documents pass; all 23 pre-existing tracked modifications retain their saved hashes. |
 
-The source-format candidate (c) is supported by the 15-case restore matrix and the keyless Agent persistence/resume PoC, but the namespace gate is incomplete. Linux/systemd/different-UID, live Feishu, real SSH and TUI implementation gates were not run. Do not promote this draft or start Phase 1 from the worker completion label.
+Raw final outputs are retained at /tmp/dsh-codex-phase0-repair-final-vitest.log, /tmp/dsh-codex-settled-host-types.log, /tmp/dsh-codex-settled-client-types.log and /tmp/dsh-codex-phase0-repair-final-lint.log. File timestamps confirm the final focused suite follows the last source/test edit. The final compiler runs followed worker settlement. No repository-wide test suite, full distribution build or live provider test is claimed.
+
+## Source decision and remaining gates
+
+Option (c), kind=user with an independently minted SessionRequestId in rpcId, is accepted for this local helper design. Fifteen catalog restore cases compare options (a), (b) and (c) over generations 0–4: (c) reads in every generation, while (a) and (b) also read as generation 3/4 inputs. Readability alone does not require a format bump. No frozen format generation was edited. The keyless public Agent PoC exercises persistence and resume with the existing source vocabulary.
+
+These tests establish namespace matching for the exercised owners. They do not implement durable inbox/outbox storage, concurrent delivery admission, crash reconciliation, Feishu ACK handling, authenticated IPC or tenant execution. Linux/systemd/different-UID, real Feishu and two-host SSH gates remain not run. TUI implementation is separate and was not changed. Remaining Phase 0 target gates must be satisfied before the corresponding Phase 1 runtime is accepted.
+
+## Preservation and supervision
+
+All work occurred in the existing /Users/apple/deepseek-harness worktree. No worktree was created. agy Task task_e9a61cfd4c86 and Dispatch ctx_df650385b5d5 settled with a valid succeeded report; Codex verified the code independently, called worker-release and acknowledged the completion delivery. Orca retained the reused external terminal without a process action; the reclaimable-worker list is empty.
+
+The earlier unrelated .memory/active_context.md edit has no established exact preimage; restoration remains unverified. This is disclosed separately from the passing code checks. No further restoration was guessed. Historical failed review details remain in Git history. Only generated outputs inside the newly created test directory were backed up and removed during the earlier review; unrelated untracked files were not cleaned.

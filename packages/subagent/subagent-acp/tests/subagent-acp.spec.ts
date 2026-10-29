@@ -645,6 +645,98 @@ describe('cwd resolution', () => {
       rmSync(tmp, { recursive: true, force: true })
     }
   })
+
+  it('permits an absent remote cwd at load when validateCwd is false', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(LocalSubprocessRuntime)
+    await expect(ctx.plugin(acp, {
+      providerName: 'acp-remote',
+      command: 'true',
+      args: [],
+      cwd: '/var/remote/absent/workspace',
+      validateCwd: false,
+      permission: 'reject',
+      env: {},
+    })).resolves.toBeDefined()
+    await ctx.fiber.dispose()
+  })
+
+  it('still rejects a relative config cwd when validateCwd is false', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(LocalSubprocessRuntime)
+    await expect(ctx.plugin(acp, {
+      providerName: 'acp-remote-rel',
+      command: 'true',
+      args: [],
+      cwd: 'relative/absent/path',
+      validateCwd: false,
+      permission: 'reject',
+      env: {},
+    })).rejects.toThrow('must be an absolute path: relative/absent/path')
+    await ctx.fiber.dispose()
+  })
+
+  it('rejects an empty config sessionCwd at load', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(LocalSubprocessRuntime)
+    await expect(ctx.plugin(acp, {
+      providerName: 'acp-empty-session-cwd',
+      command: 'true',
+      args: [],
+      sessionCwd: '',
+      permission: 'reject',
+      env: {},
+    })).rejects.toThrow('config sessionCwd must not be empty')
+    await ctx.fiber.dispose()
+  })
+
+  it('still rejects a relative config sessionCwd when validateCwd is false', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(LocalSubprocessRuntime)
+    await expect(ctx.plugin(acp, {
+      providerName: 'acp-rel-session-cwd',
+      command: 'true',
+      args: [],
+      sessionCwd: 'relative/session',
+      validateCwd: false,
+      permission: 'reject',
+      env: {},
+    })).rejects.toThrow('must be an absolute path: relative/session')
+    await ctx.fiber.dispose()
+  })
+
+  it('forwards sessionCwd to ACP session/new separately from spawn cwd', async () => {
+    const spawnDir = realpathSync(tmpdir())
+    const declaredSessionDir = '/declared/acp/session/workspace'
+    const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(LocalSubprocessRuntime)
+    await ctx.plugin(acp, {
+      providerName: 'acp-dual-cwd',
+      command: process.execPath,
+      args: [mockServer],
+      cwd: spawnDir,
+      sessionCwd: declaredSessionDir,
+      validateCwd: false,
+      permission: 'reject',
+      env: { MOCK_ECHO_CWD: '1' },
+    })
+    const run = await ctx.subagents.start('acp-dual-cwd', request('test cwd split'))
+    const result = await run.result
+    await run.dispose()
+    const output = text(result.output)
+    expect(output).toBe(`${spawnDir}\n${declaredSessionDir}`)
+    await ctx.fiber.dispose()
+  })
 })
 
 describe('dsh-subagent-acp', () => {

@@ -33,11 +33,15 @@ export interface AcpRunSpec {
   /** Arguments passed to {@link command}. */
   args: string[]
   /**
-   * Absolute working directory for the child process AND its ACP session
-   * `cwd`. The provider resolves it before this spec exists: config override,
-   * else the delegating parent session's workspace.
+   * Absolute working directory for the child process. The provider resolves
+   * it before this spec exists: config override, else the delegating parent session's workspace.
    */
   cwd: string
+  /**
+   * Optional working directory override for the child ACP session (`session/new`).
+   * When omitted, defaults to {@link cwd}.
+   */
+  sessionCwd?: string
   /** How to auto-answer the child's permission prompts. */
   permission: PermissionPolicy
   /**
@@ -490,7 +494,7 @@ export async function startAcpRun(request: SubagentStartRequest, spec: AcpRunSpe
           clientCapabilities: {},
         })
         startupStage = 'new-session'
-        const session = await agent.request(methods.agent.session.new, { cwd: spec.cwd, mcpServers: [] })
+        const session = await agent.request(methods.agent.session.new, { cwd: spec.sessionCwd ?? spec.cwd, mcpServers: [] })
         const returnedSessionId: unknown = Reflect.get(session, 'sessionId')
         if (typeof returnedSessionId !== 'string') {
           throw new AcpRunFailure(

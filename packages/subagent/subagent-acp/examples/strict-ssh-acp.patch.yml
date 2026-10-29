@@ -1,0 +1,31 @@
+# Strict Path B: the remote account always runs the fixed root-owned ACP wrapper.
+# Root subprocess remains local; only this provider launches SSH.
+- insert:
+    - id: strict-remote-acp
+      name: '@deepseek-ai/dsh-subagent-acp'
+      config:
+        providerName: remote-acp
+        command: ssh
+        args:
+          - -T
+          - -o
+          - BatchMode=yes
+          - -o
+          - StrictHostKeyChecking=yes
+          - -o
+          - ForwardAgent=no
+          - -o
+          - ClearAllForwardings=yes
+          - -o
+          - ConnectTimeout=10
+          - -o
+          - ServerAliveInterval=10
+          - -o
+          - ServerAliveCountMax=3
+          - !!js process.env.DSH_SSH_ACP_HOST
+          - dsh-acp
+        cwd: !!js process.cwd()
+        sessionCwd: !!js "process.env.DSH_SSH_WORKER_SESSION_CWD || ''"
+        validateCwd: false
+        permission: reject
+        env: {}

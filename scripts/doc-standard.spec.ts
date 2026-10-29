@@ -55,6 +55,8 @@ const KIND_TEMPLATES: Readonly<Record<string, string>> = {
  * library; the check re-derives the entry shape so a stale entry fails loud.
  */
 const PACKAGE_LIBRARIES: Readonly<Record<string, string>> = {
+  'packages/experimental/im-feishu': 'Human prompt and durable IM service library; isolated process plugins use explicit subpath entries.',
+  'packages/experimental/im-dingtalk': 'DingTalk transport and normalization library consumed by the isolated IM ingress.',
   'packages/experimental/browser-use-runtime': 'Provider-owned browser resource management and MCP integration helpers; no plugin entry.',
   'packages/boot/app-boot': 'Boot library the app bins import; plain helper exports.',
   'packages/boot/cmdline': 'Command-line library the app bins import; plain module exports.',

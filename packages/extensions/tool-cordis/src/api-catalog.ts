@@ -2620,6 +2620,86 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'imIngress',
+    summary: 'Durable inbound admission and an explicitly owned dispatcher.',
+    description: 'Durable inbound admission and an explicitly owned dispatcher.',
+    methods: [
+      {
+        signature: 'handleIncomingMessage(event: IncomingImMessage): Promise<IngressAcceptResult>',
+        description: 'Authorize every delivery, including retries; persist before returning the platform ACK.',
+        parameters: [{ name: 'event', description: 'Platform-authenticated, normalized human private-chat message.' }],
+        returns: 'Stable request ID and whether this delivery already existed.',
+      },
+      {
+        signature: 'dispatchPending(): Promise<void>',
+        description: 'Run one recovery/dispatch pass. The profile owns scheduling and error reporting.',
+        parameters: [],
+        returns: 'Completion of the shared pass; concurrent calls never start duplicate dispatchers.',
+      },
+      {
+        signature: 'withAuthorizedBinding<T>(deliveryKey: string, operation: (binding: OperatorBindingRecord) => Promise<T>): Promise<T>',
+        description: 'Serialize live binding administration and card decisions at one ingress authority.',
+        parameters: [{ name: 'deliveryKey', description: 'Canonical identity selected from a stored delivery.' }, { name: 'operation', description: 'Bounded work authorized for the current binding.' }],
+        returns: 'Operation result; queued revocation takes effect before subsequent decisions.',
+      },
+      {
+        signature: 'revokeBinding(bindingKey: string): Promise<void>',
+        description: 'Revoke through this method, rather than directly editing the live backing domain.',
+        parameters: [{ name: 'bindingKey', description: 'Administrator-selected binding key.' }],
+        returns: 'Durable revocation; active-delivery cancellation failures propagate without undoing revocation.',
+      },
+      {
+        signature: 'async close(): Promise<void>',
+        description: 'Stop accepting messages and await the owned admission queue and dispatcher.',
+        parameters: [],
+        returns: 'Completion after owned work stops; child deadlines belong to their providers.',
+      },
+    ],
+  },
+  {
+    key: 'imRuntime',
+    summary: 'Race-safe tenant admission using public Agent and Session methods.',
+    description: 'Race-safe tenant admission using public Agent and Session methods.',
+    methods: [
+      {
+        signature: 'async handleSubmitDelivery(request: SubmitDeliveryRequest): Promise<SubmitDeliveryResponse>',
+        description: 'Admit a fresh delivery once. Existing uncertain receipts return unknown without replay.',
+        parameters: [{ name: 'request', description: 'Validated IPC submission.' }],
+        returns: 'Admission status correlated with the caller\'s frame ID.',
+      },
+      {
+        signature: 'ownerOf(agent: Agent): TenantReceiptRecord | undefined',
+        description: 'Resolve the current owned delivery for an exact live Agent instance.',
+        parameters: [{ name: 'agent', description: 'Calling Agent; a matching Session ID alone is insufficient.' }],
+        returns: 'Active receipt, or undefined outside this runtime\'s owned interval.',
+      },
+      {
+        signature: 'async handleGetDelivery(request: GetDeliveryRequest): Promise<GetDeliveryResponse>',
+        description: 'Query the receipt-bound session; owned live deliveries remain admitted until settlement.',
+        parameters: [{ name: 'request', description: 'Delivery lookup.' }],
+        returns: 'Reconciled durable result or explicit uncertainty.',
+      },
+      {
+        signature: 'async handleCancelDelivery(request: CancelDeliveryRequest): Promise<CancelDeliveryResponse>',
+        description: 'Cancel only the Agent owned by this delivery and await its settlement.',
+        parameters: [{ name: 'request', description: 'Receipt-scoped cancellation.' }],
+        returns: 'Actual settlement; absent and uncertain work is never reported cancelled.',
+      },
+      {
+        signature: 'handleGetApprovalContext(request: GetApprovalContextRequest): Promise<GetApprovalContextResponse>',
+        description: 'Phase 2 has no trusted interactive responder; raw tool arguments never cross IPC.',
+        parameters: [{ name: 'request', description: 'Context request.' }],
+        returns: 'Explicitly unavailable context.',
+      },
+      {
+        signature: 'handleClientDisconnected(): Promise<void>',
+        description: 'Close admission and cancel owned Agents when the ingress connection ends.',
+        parameters: [],
+        returns: 'Bounded quiescence and persistence of the owned runtime work.',
+      },
+    ],
+  },
+  {
     key: 'inspector',
     summary: 'Shared Host/Client service façade over the realm\'s source publisher.',
     description: 'Shared Host/Client service façade over the realm\'s source publisher.',
@@ -6445,6 +6525,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ButtonProps {\n    readonly label: string;\n    readonly hotkey?: string | undefined;\n    readonly disabled?: boolean | undefined;\n    readonly onPress?: (() => unknown) | undefined;\n}',
   },
   {
+    name: 'CancelDeliveryRequest',
+    declaration: 'export type CancelDeliveryRequest = z.infer<typeof cancelDeliveryRequestSchema>;',
+  },
+  {
+    name: 'CancelDeliveryResponse',
+    declaration: 'export type CancelDeliveryResponse = z.infer<typeof cancelDeliveryResponseSchema>;',
+  },
+  {
     name: 'CancelSlotResult',
     declaration: 'export interface CancelSlotResult {\n    readonly cancelled: boolean;\n    readonly wasActive: boolean;\n    readonly item?: QueuedSlotInput | undefined;\n}',
   },
@@ -7231,6 +7319,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'GenericResultView',
     declaration: 'export interface GenericResultView {\n    card: \'generic\';\n    title?: string;\n    content?: ContentBlock[];\n}',
+  },
+  {
+    name: 'GetApprovalContextRequest',
+    declaration: 'export type GetApprovalContextRequest = z.infer<typeof getApprovalContextRequestSchema>;',
+  },
+  {
+    name: 'GetApprovalContextResponse',
+    declaration: 'export type GetApprovalContextResponse = z.infer<typeof getApprovalContextResponseSchema>;',
+  },
+  {
+    name: 'GetDeliveryRequest',
+    declaration: 'export type GetDeliveryRequest = z.infer<typeof getDeliveryRequestSchema>;',
+  },
+  {
+    name: 'GetDeliveryResponse',
+    declaration: 'export type GetDeliveryResponse = z.infer<typeof getDeliveryResponseSchema>;',
   },
   {
     name: 'GoalActivation',
@@ -8027,6 +8131,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'OneShotSubagentDescriptorData',
     declaration: 'export interface OneShotSubagentDescriptorData extends SubagentDescriptorBase {\n    readonly mode: \'one-shot\';\n    readonly label?: string;\n}',
+  },
+  {
+    name: 'OperatorBindingRecord',
+    declaration: 'export type OperatorBindingRecord = z.infer<typeof operatorBindingSchema>;',
   },
   {
     name: 'OptionalSessionSeq',
@@ -9137,10 +9245,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export class SessionLogReporter {\n    constructor(options: SessionLogOptions);\n    reportSessionLog(record: SessionLogRecord): void;\n    stopPending(): void;\n    shutdown(): Promise<void>;\n}',
   },
   {
-    name: 'SessionLogSnapshot',
-    declaration: 'export interface SessionLogSnapshot {\n    session: SessionHeader;\n    inheritedEventCount: SessionLogOffset;\n    events: SessionEvent[];\n}',
-  },
-  {
     name: 'SessionMediaRuntimeStatus',
     declaration: 'export interface SessionMediaRuntimeStatus {\n    readonly ready: boolean;\n    readonly guidance: string;\n}',
   },
@@ -9841,6 +9945,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SubagentStopReasonMap {\n    completed: \'completed\';\n    aborted: \'aborted\';\n    error: \'error\';\n    \'max-tokens\': \'max-tokens\';\n    refusal: \'refusal\';\n}',
   },
   {
+    name: 'SubmitDeliveryRequest',
+    declaration: 'export type SubmitDeliveryRequest = z.infer<typeof submitDeliveryRequestSchema>;',
+  },
+  {
+    name: 'SubmitDeliveryResponse',
+    declaration: 'export type SubmitDeliveryResponse = z.infer<typeof submitDeliveryResponseSchema>;',
+  },
+  {
     name: 'SubprocessCollect',
     declaration: 'export interface SubprocessCollect {\n    maxBytes: number;\n    spill?: {\n        maxBytes: number;\n    };\n}',
   },
@@ -10031,6 +10143,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'TeamWaitResult',
     declaration: 'export interface TeamWaitResult {\n    readonly timedOut: boolean;\n}',
+  },
+  {
+    name: 'TenantReceiptRecord',
+    declaration: 'export type TenantReceiptRecord = z.infer<typeof tenantReceiptSchema>;',
   },
   {
     name: 'TerminalAttachmentId',

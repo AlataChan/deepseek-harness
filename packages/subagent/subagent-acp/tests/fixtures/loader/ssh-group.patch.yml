@@ -1,0 +1,58 @@
+# Test-only SSH ACP provider patch composing Cordis group isolation over headless profile.
+# Source-plane composition: resolves subagent-acp from source (../../src/index.ts).
+- id: headless-startup
+  disabled: true
+
+- id: headless-runner
+  disabled: true
+
+- id: agent-loop
+  config:
+    agents:
+      - id: main
+        provider: mock
+        model: mock-delegate
+        cwd: !!js process.cwd()
+
+- id: session-persistence-jsonl
+  config:
+    root: !!js process.env.DSH_TEST_SESSIONS_ROOT ?? './.sessions'
+    compression: none
+
+- id: tool-subagent
+  config:
+    provider: remote-ssh-acp
+    toolName: subagent
+    maxDepth: 'provider-managed'
+
+- insert:
+    - id: mock-llm
+      name: './mock-delegating-llm.ts'
+
+    - id: remote-ssh-acp-group
+      name: cordis:group
+      group: true
+      isolate:
+        subprocess: true
+        ssh: true
+      config:
+        - id: mock-ssh
+          name: './mock-ssh-plugin.ts'
+
+        - id: remote-subprocess-ssh
+          name: '@deepseek-ai/dsh-subprocess-ssh'
+
+        - id: remote-subagent-acp
+          name: '@deepseek-ai/dsh-subagent-acp'
+          config:
+            providerName: remote-ssh-acp
+            command: !!js process.execPath
+            args:
+              - !!js process.env.DSH_TEST_MOCK_ACP_SERVER ?? ''
+            cwd: /mock/remote/workspace
+            validateCwd: false
+            sessionCwd: /mock/remote/session
+            permission: reject
+            env:
+              DSH_HOME: /mock/remote/home
+              MOCK_ECHO_CWD: '1'

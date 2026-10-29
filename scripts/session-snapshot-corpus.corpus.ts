@@ -21,7 +21,7 @@ import { assertSnapshotCorpusPolicy } from './session-snapshot-corpus-policy.ts'
 
 const repoRoot = resolve(import.meta.dirname, '..')
 const corpusRoot = join(repoRoot, 'snapshots')
-const profiles = ['acp', 'sdk', 'session', 'web'] as const
+const profiles = ['acp', 'im', 'sdk', 'session', 'tui', 'web'] as const
 const snapshotAdapters = [
   'apps/web/tests/code-language.snapshot.ts',
   'apps/web/tests/composer-predictions.snapshot.ts',
@@ -29,8 +29,10 @@ const snapshotAdapters = [
   'apps/web/tests/minimal-preset.snapshot.ts',
   'apps/web/tests/preset-migration.snapshot.ts',
   'snapshots/acp/acp.snapshot.ts',
+  'snapshots/im/im.snapshot.ts',
   'snapshots/sdk/sdk.snapshot.ts',
   'snapshots/session/headless.snapshot.ts',
+  'snapshots/tui/tui.snapshot.ts',
 ] as const
 
 interface Scenario {
@@ -56,7 +58,7 @@ async function scenarios(): Promise<Scenario[]> {
       expect(existsSync(path), `${profile}/${entry.name}/snapshot.yml`).toBe(true)
       const manifest = parseSnapshotManifest(await readFile(path, 'utf8'), path)
       expect(manifest.scenario, `${profile}/${entry.name}: scenario`).toBe(entry.name)
-      expect(manifest.profile, `${profile}/${entry.name}: profile`).toBe(profile === 'session' ? 'headless' : profile)
+      expect(manifest.profile, `${profile}/${entry.name}: profile`).toBe(profile === 'session' || profile === 'im' ? 'headless' : profile)
       expect(manifest.composition, `${profile}/${entry.name}: composition`).toBeTypeOf('string')
       expect(manifest.recording, `${profile}/${entry.name}: recording`).toMatch(/^(live|authored)$/)
       expect(manifest.header, `${profile}/${entry.name}: header`).toBeDefined()

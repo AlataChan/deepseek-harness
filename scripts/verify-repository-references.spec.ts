@@ -58,7 +58,7 @@ describe('maintained repository reference policy', () => {
     fixture.write('tracked.md', `release\n${fixture.commit}\n${fixture.commit.toUpperCase()}\n`)
     fixture.write('staged.md', fixture.commit.slice(0, 7))
     fixture.git(['add', 'staged.md'])
-    fixture.write('new.md', `\0${fixture.commit.slice(0, 12)}`)
+    fixture.write('new.md', fixture.commit.slice(0, 12))
 
     expect(scanRepositoryReferences(fixture.root)).toEqual(expect.arrayContaining([
       { file: 'tracked.md', line: 2, kind: 'commit-hash' },
@@ -163,6 +163,27 @@ describe('maintained repository reference policy', () => {
     expect(findRepositoryReferences('source.md', source, new Set())).toEqual(
       source.split('\n').map((_line, index) => ({ file: 'source.md', line: index + 1, kind: 'organization-url' })),
     )
+  })
+
+  it('does not interpret binary bytes as maintained source references', (test) => {
+    const fixture = repository(test)
+    fixture.write('asset.bin', `\0${fixture.commit}`)
+    fixture.write('new-source.ts', `// ${fixture.commit}\n`)
+    expect(scanRepositoryReferences(fixture.root)).toEqual([
+      { file: 'new-source.ts', line: 1, kind: 'commit-hash' },
+    ])
+  })
+
+  it('retains revision evidence in local records while checking maintained runtime and docs', () => {
+    const commits = new Set(['abcdef123456'])
+    for (const prefix of ['.plans/', '.alataflow/', '.memory/', '.ccb/', '.ccb_config/', '.sisyphus/', '.gemini/']) {
+      expect(findRepositoryReferences(`${prefix}record.md`, 'abcdef123456', commits)).toEqual([])
+    }
+    for (const file of ['docs/current.md', 'packages/experimental/im-feishu/src/index.ts', 'packages/tui/tui/src/index.ts']) {
+      expect(findRepositoryReferences(file, 'abcdef123456', commits)).toEqual([
+        { file, line: 1, kind: 'commit-hash' },
+      ])
+    }
   })
 
   it('accepts distinct organization names and excludes the frozen and vendored paths', () => {

@@ -39,6 +39,8 @@ Choose this backend when the child must run with its own runtime, model, and too
 | `command` | required | Executable spawned for each run (the child ACP agent) |
 | `args` | `[]` | Command arguments |
 | `cwd` | parent session cwd | Working-directory override for the child process and its ACP session |
+| `sessionCwd` | `cwd` | Optional working-directory override for the child ACP session (`session/new`), when distinct from `cwd` |
+| `validateCwd` | `true` | Assert that `cwd` exists and is accessible locally at configuration/start; set to `false` for remote targets (e.g. over SSH) |
 | `permission` | `reject` | Auto-answer permission requests by rejecting, or choosing the first `allow_once` or `allow_always` option (`allow`) |
 | `env` | `{}` | Explicit child environment layered over the credential-scrubbed parent environment |
 | `disposeEofGraceMs` | `6000` | Grace after stdin EOF before platform termination |
@@ -60,6 +62,18 @@ A DeepSeek Harness child uses the product launcher and an explicit absolute `DSH
       DSH_HOME: /absolute/path/to/isolated-child-home
       DEEPSEEK_API_KEY: !!js process.env.DEEPSEEK_API_KEY
 ```
+
+### Strict SSH deployment without forwarding
+
+Use [Path B](examples/strict-ssh-acp.patch.yml) when the deployment must refuse arbitrary TCP forwarding. The dedicated account uses the root-owned [forced command](examples/dsh-acp-forced-command.sh), [server configuration](examples/sshd_config.acp-forced) and [environment file](examples/dsh-acp-worker.env.example). The server disables forwarding and accepts only the fixed ACP command. The wrapper launches the installed `dsh --profile acp` in a systemd user service with `RuntimeMaxSec` and control-group cleanup. This is a finite maximum session duration, not a renewable lease; operators must choose a limit suitable for their workloads.
+
+Administrator provisioning requires Bash 5.1+, systemd, `libpam-systemd`, a user D-Bus session, an enabled user manager/linger for the dedicated `/bin/sh` account, private state/workspace/tmp directories and root-owned wrapper/configuration files. Incoming SSH commands cannot choose executable paths, profile, environment or deadlines. Configure the coordinator's fixed remote `sessionCwd`; a missing value fails rather than using its local directory.
+
+### Remote SSH composition
+
+To execute an ACP subagent on a remote host, compose `@deepseek-ai/dsh-subagent-acp` inside a `cordis:group` configured with `group: true` and `isolate: { subprocess: true, ssh: true }`, declaring child plugins `@deepseek-ai/dsh-ssh`, `@deepseek-ai/dsh-subprocess-ssh`, and `@deepseek-ai/dsh-subagent-acp`. Do not isolate `subagents`: keeping `subagents` un-isolated preserves subagent provider registration on the root harness while routing child process execution through the remote SSH subprocess runtime, keeping the host's root subprocess runtime untouched for local shell operations. Set `validateCwd: false` so that the coordinator does not reject remote working directories absent locally.
+
+Path A requires local forwarding permission on the tested OpenSSH 9.2 and therefore does not meet a no-arbitrary-TCP-forwarding requirement; select the strict deployment above for that requirement. Remote SSH execution requires strict host keys, server keepalive (`ClientAliveInterval 10`, `ClientAliveCountMax 3`, `AllowStreamLocalForwarding yes`), client keepalive (`ServerAliveInterval 10`, `ServerAliveCountMax 3`), and the remote helper lease (`leaseMs`, default 30s). The child environment must specify private remote `HOME`, `DSH_HOME`, and an executable `TMPDIR`. Initialization and prompt deadlines belong to the caller (via `AbortSignal`); helper leases tear down remote process groups upon transport severance or heartbeat loss, but do not detect a hung child over an otherwise live transport. Automated verification in [`tests/linux/qualify-installed-ssh.ts`](tests/linux/qualify-installed-ssh.ts) exercises this contract on disposable local Linux targets; physical two-host acceptance remains unrun.
 
 ### What you get
 

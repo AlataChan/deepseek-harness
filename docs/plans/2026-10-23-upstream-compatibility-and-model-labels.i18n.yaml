@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/plans/2026-10-23-upstream-compatibility-and-model-labels.md
 /upstream-compatibility-and-model-labels-implementation-plan:
-  en: ae682e90562bb713
-  zh: 1cf40f86605b3f6b
+  en: 07841e8117053cc3
+  zh: 4311c3c4a1f2e77f
 /upstream-compatibility-and-model-labels-implementation-plan/summary:
   en: 5692b60487a46171
   zh: b93b8cbb68d0c965

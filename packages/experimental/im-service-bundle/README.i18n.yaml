@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/im-service-bundle/README.md
+/:
+  en: ef5e1cd31e0d49de
+  zh: 0155b12bf9574a56
+/deepseek-ai-dsh-experimental-im-service-bundle:
+  en: 714c974555e650cf
+  zh: 9ce0605318cecc19
+/deepseek-ai-dsh-experimental-im-service-bundle/summary:
+  en: 98fb56c48f063826
+  zh: 2a329d9aa7f7db5f
+/deepseek-ai-dsh-experimental-im-service-bundle/table-of-contents:
+  en: e6747830a09a09aa
+  zh: 68aed13d20b6be45
+/deepseek-ai-dsh-experimental-im-service-bundle/use-this-package:
+  en: bbff250eba0f1b89
+  zh: b20a47f82d8ab6e0
+/deepseek-ai-dsh-experimental-im-service-bundle/use-this-package/runtime-profile-composition:
+  en: 718db444f346dc1c
+  zh: 4de81fcfe3df16f5
+/deepseek-ai-dsh-experimental-im-service-bundle/use-this-package/separate-ingress-profile:
+  en: 1e1c5a86cd4bbd4f
+  zh: 00e57f508f1f90af
+/deepseek-ai-dsh-experimental-im-service-bundle/understand-the-implementation:
+  en: 0c4fd4a90752dbc5
+  zh: b19c8d84384422e6
+/deepseek-ai-dsh-experimental-im-service-bundle/further-exploration:
+  en: d9c33a4523595ea7
+  zh: 4370d2ebd29acdd0
+/deepseek-ai-dsh-experimental-im-service-bundle/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-im-service-bundle/model-experience/runtime-composition:
+  en: 21e8ff06add7a916
+  zh: d829680f0c06075c
+/deepseek-ai-dsh-experimental-im-service-bundle/model-experience/runtime-composition/what-the-model-sees:
+  en: 6131c24d0bc06892
+  zh: 8205752e4f7c5a8b
+/deepseek-ai-dsh-experimental-im-service-bundle/model-experience/runtime-composition/token-effect:
+  en: a1c1d100ab7dd375
+  zh: f09707bb79ec01ff
+/deepseek-ai-dsh-experimental-im-service-bundle/model-experience/runtime-composition/kv-cache-effect:
+  en: 3403ce8e7d85d0e2
+  zh: d281d98f40abf4b5
+/deepseek-ai-dsh-experimental-im-service-bundle/known-limitations-and-deferred-work:
+  en: af4ebc0d5f5e15a1
+  zh: 8e6b56acb26bdab0
+/deepseek-ai-dsh-experimental-im-service-bundle/known-limitations-and-deferred-work/dev-note:
+  en: 0060411187fb1cb6
+  zh: 719cdb42f13b0677

@@ -1,0 +1,8 @@
+version: 1
+scenario: human-turn
+profile: headless
+composition: im-runtime
+recording: authored
+header:
+  class: im-runtime
+  pin: true

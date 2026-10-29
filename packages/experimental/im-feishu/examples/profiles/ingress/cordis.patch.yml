@@ -1,0 +1,31 @@
+# Tool-free ingress profile configuration
+- insert:
+    - id: storage
+      name: '@deepseek-ai/dsh-storage'
+
+    - id: im-ingress
+      name: '@deepseek-ai/dsh-experimental-im-feishu/ingress'
+      inject: [storage]
+      config:
+        ingressId: im-ingress-production
+        stateDirectory: /var/lib/dsh-im/ingress
+        dispatchIntervalMs: 1000
+        shutdownTimeoutMs: 15000
+        tenants:
+          tenant-a:
+            socketPath: /run/dsh-im/a/rpc.sock
+            systemdSocketRoot: /run/dsh-im
+            trustedUid: 0
+            trustedGid: 22001
+            workspaceId: workspace-a
+          tenant-b:
+            socketPath: /run/dsh-im/b/rpc.sock
+            systemdSocketRoot: /run/dsh-im
+            trustedUid: 0
+            trustedGid: 22001
+            workspaceId: workspace-b
+        operatorBindings: !!js "JSON.parse(process.env.DSH_IM_OPERATOR_BINDINGS || '')"
+        channel:
+          kind: feishu
+          appId: !!js process.env.FEISHU_APP_ID
+          appSecret: !!js process.env.FEISHU_APP_SECRET

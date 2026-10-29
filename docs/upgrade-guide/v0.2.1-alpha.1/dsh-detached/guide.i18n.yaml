@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-alpha.1/dsh-detached/guide.md
+/:
+  en: 60af4232e69761c2
+  zh: 66bb5b0e1ea17072
+/terminal-ownership-takes-precedence-over-detached-mode-on-sighup:
+  en: 951db5c25528782d
+  zh: f91e99e8f7e769f1
+/terminal-ownership-takes-precedence-over-detached-mode-on-sighup/change:
+  en: 199537e629ac070d
+  zh: ff528b57d3584bba
+/terminal-ownership-takes-precedence-over-detached-mode-on-sighup/migration:
+  en: 6dcaab86e5b946a7
+  zh: 101d3c2a7a55d88b

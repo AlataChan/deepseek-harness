@@ -1,0 +1,17 @@
+[Unit]
+Description=DeepSeek Harness IM tenant B socket
+Requires=systemd-tmpfiles-setup.service
+After=systemd-tmpfiles-setup.service
+
+[Socket]
+ListenStream=/run/dsh-im/b/rpc.sock
+Accept=yes
+MaxConnections=1
+SocketUser=root
+SocketGroup=dsh-im-ingress
+SocketMode=0660
+DirectoryMode=0750
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

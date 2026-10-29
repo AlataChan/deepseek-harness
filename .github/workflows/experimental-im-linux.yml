@@ -1,0 +1,74 @@
+name: Experimental IM Linux qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  isolated-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build supported runtime artifacts
+        run: pnpm run build
+      - name: Verify IM services and transport controls
+        run: >-
+          pnpm vitest run
+          packages/experimental/im-feishu/tests/
+          packages/experimental/im-dingtalk/tests/
+      - name: Build disposable systemd environment
+        run: >-
+          docker build
+          --file packages/experimental/im-feishu/tests/linux/Containerfile
+          --tag dsh-im-linux-qualification
+          packages/experimental/im-feishu/tests/linux
+      - name: Verify actual Linux socket ownership and process cleanup
+        run: >-
+          pnpm tsx --tsconfig tsconfig.base.json
+          packages/experimental/im-feishu/tests/linux/qualify-socket-activation.ts
+          default dsh-im-linux-qualification
+      - name: Collect an installed runtime closure
+        run: >-
+          node scripts/collect-runtime-deps.mjs
+          --preserve-dependency-versions
+          packages/experimental/im-feishu/tests/linux/artifact/package.json
+          "$RUNNER_TEMP/dsh-im-installed/node_modules"
+      - name: Build native prerequisites for the target image
+        run: >-
+          pnpm tsx --tsconfig tsconfig.base.json
+          packages/experimental/im-feishu/tests/linux/prepare-runtime-artifact.ts
+          default dsh-im-linux-qualification "$RUNNER_TEMP/dsh-im-installed"
+      - name: Verify installed tool-free ingress and tenant flow
+        run: >-
+          pnpm tsx --tsconfig tsconfig.base.json
+          packages/experimental/im-feishu/tests/linux/qualify-installed-ingress.ts
+          "$RUNNER_TEMP/dsh-im-installed"
+      - name: Verify installed tenant profiles and isolation
+        run: >-
+          pnpm tsx --tsconfig tsconfig.base.json
+          packages/experimental/im-feishu/tests/linux/qualify-tenant-runtime.ts
+          default dsh-im-linux-qualification "$RUNNER_TEMP/dsh-im-installed"
+      - name: Verify installed DingTalk ingress and tenant flow
+        run: >-
+          pnpm tsx --tsconfig tsconfig.base.json
+          packages/experimental/im-feishu/tests/linux/qualify-installed-ingress.ts
+          "$RUNNER_TEMP/dsh-im-installed" dingtalk
+      - name: Verify IM recorded-session coverage
+        run: >-
+          pnpm vitest run --config vitest.snapshot.config.ts
+          snapshots/im/im.snapshot.ts scripts/session-snapshot-corpus.corpus.ts

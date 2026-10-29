@@ -10,7 +10,7 @@
 
 **技术栈：** TypeScript、React、Cordis、pnpm、Vitest、Playwright、Rust/Tauri，以及现有内部 DMG 构建流程。
 
-**状态：** C1–C3 及二次审查修复已实施至 `00729d3c76`。聚焦检查、构建、全部 114 项 bundle 检查及支持的原生流程通过，可在内部 macOS ARM64 范围集成。验收证据及其余平台和基线限制见 `.plans/upstream-compatibility-2026-10-23/remediation-review.md`。
+**状态：** C1–C3 及二次审查修复已在评审快照中实施。聚焦检查、构建、全部 114 项 bundle 检查及支持的原生流程通过，可在内部 macOS ARM64 范围集成。验收证据及其余平台和基线限制见 `.plans/upstream-compatibility-2026-10-23/remediation-review.md`。
 
 ## 概述
 

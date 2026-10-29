@@ -8,21 +8,23 @@
  * resolver instead, so a package reachable at runtime is a package that gets
  * copied.
  *
- * The output is FLAT (`node_modules/<name>/`) rather than nested: the workspace
- * pins one version per package, so flattening cannot shadow a second copy, and
- * a flat farm removes every relative-symlink hazard of pnpm's virtual store.
+ * The default output retains the desktop pipeline's flat layout. Opt in to
+ * --preserve-dependency-versions when a closure includes incompatible versions;
+ * conflicting dependencies then use nested directories without symlinks.
  *
- * Usage: node scripts/collect-runtime-deps.mjs <anchor-package.json> <out-node_modules>
+ * Usage: node scripts/collect-runtime-deps.mjs [--preserve-dependency-versions] <anchor-package.json> <out-node_modules>
  */
 
 import { createRequire } from 'node:module'
-import { cpSync, existsSync, globSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, globSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 
 const refreshWorkspace = process.argv.includes('--refresh-workspace')
-const [anchorArg, outArg] = process.argv.slice(2).filter(arg => arg !== '--refresh-workspace')
+const preserveDependencyVersions = process.argv.includes('--preserve-dependency-versions')
+const [anchorArg, outArg] = process.argv.slice(2).filter(arg => !['--refresh-workspace', '--preserve-dependency-versions'].includes(arg))
+if (refreshWorkspace && preserveDependencyVersions) throw new Error('Version-preserving collection requires a fresh collection')
 if (anchorArg === undefined || outArg === undefined) {
-  console.error('usage: collect-runtime-deps.mjs [--refresh-workspace] <anchor-package.json> <out-node_modules>')
+  console.error('usage: collect-runtime-deps.mjs [--refresh-workspace | --preserve-dependency-versions] <anchor-package.json> <out-node_modules>')
   process.exit(1)
 }
 
@@ -201,9 +203,9 @@ while (queue.length > 0) {
  * Copy one resolved package into the flat farm.
  * @param name - package name, used as the destination folder.
  * @param source - resolved source directory.
+ * @param target - destination directory; conflicting versions use the dependent package's node_modules.
  */
-function copyPackage(name, source) {
-  const target = join(outDir, name)
+function copyPackage(name, source, target = join(outDir, name)) {
   rmSync(target, { recursive: true, force: true })
   mkdirSync(dirname(target), { recursive: true })
   const fromWorkspace = workspacePackages.get(name) === source
@@ -245,12 +247,56 @@ for (const [name, source] of resolved) {
   copied += 1
 }
 
+/**
+ * Retain incompatible transitive versions without symlinks. Node searches the
+ * dependent package's nested installation before the root farm.
+ * @returns relative paths of additional package installations.
+ */
+function preserveVersions() {
+  const installed = new Map([...resolved].map(([name, source]) => [join(outDir, name), realpathSync(source)]))
+  const work = [...resolved].map(([name, source]) => ({ source, target: join(outDir, name) }))
+  const visited = new Set()
+  const nested = []
+  const nearest = (parent, name) => {
+    let directory = parent
+    while (directory === outDir || directory.startsWith(outDir + sep)) {
+      const candidate = join(directory, 'node_modules', name)
+      if (installed.has(candidate)) return installed.get(candidate)
+      directory = dirname(directory)
+    }
+    return installed.get(join(outDir, name))
+  }
+  while (work.length) {
+    const { source, target } = work.shift()
+    if (visited.has(target)) continue
+    visited.add(target)
+    const manifestPath = join(source, 'package.json')
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    for (const name of runtimeDeps(manifest)) {
+      const dependency = packageDir(manifestPath, name)
+      if (!dependency) continue // The original traversal records unresolved optional dependencies.
+      const identity = realpathSync(dependency)
+      if (nearest(target, name) === identity) continue
+      const destination = join(target, 'node_modules', name)
+      copyPackage(name, dependency, destination)
+      installed.set(destination, identity)
+      nested.push(relative(outDir, destination))
+      work.push({ source: dependency, target: destination })
+    }
+  }
+  return nested
+}
+
+const nestedPackages = preserveDependencyVersions ? preserveVersions() : []
+
 writeFileSync(
   join(outDir, '.collect-manifest.json'),
-  `${JSON.stringify({ anchor, packages: [...resolved.keys()].sort(), unresolved }, null, 2)}\n`,
+  `${JSON.stringify({ anchor, packages: [...resolved.keys()].sort(), unresolved,
+    ...(preserveDependencyVersions ? { nestedPackages } : {}) }, null, 2)}\n`,
 )
 
 console.log(`collect-runtime-deps: copied ${String(copied)} packages to ${outDir}`)
+if (preserveDependencyVersions) console.log(`collect-runtime-deps: retained ${String(nestedPackages.length)} nested dependency versions`)
 if (unresolved.length > 0) {
   console.log(`collect-runtime-deps: ${String(unresolved.length)} unresolved (platform-optional or dev-only):`)
   for (const entry of unresolved.slice(0, 10)) console.log(`  - ${entry}`)

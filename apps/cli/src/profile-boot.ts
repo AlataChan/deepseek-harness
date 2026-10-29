@@ -19,6 +19,7 @@ import {
   boot,
   readProfilePatches,
   createRuntimeResolution,
+  createTerminalRestore,
   initProfile,
   installFailLoud,
   loadOverlayPatches,
@@ -253,7 +254,9 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
 
   const app: { current?: Context } = {}
   let disposal: Promise<void> | undefined
+  let removeSignalListeners: (() => void) | undefined
   const dispose = (): Promise<void> => disposal ??= (async () => {
+    removeSignalListeners?.()
     const failures: unknown[] = []
     for (const release of [() => app.current?.fiber.dispose(), disposeProxy]) {
       try { await release() } catch (error) { failures.push(error) }
@@ -262,6 +265,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     if (failures.length > 1) throw new AggregateError(failures, 'dsh: profile cleanup failed')
   })()
   try {
+    const terminalRestore = createTerminalRestore()
     const composed = await composeProfile(
       options.profile, options.patchFiles, options.fromDefaultProfile, options.resolvedProfile,
     )
@@ -277,10 +281,77 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     // SIGTERM is a supervisor's ordinary stop request and exits 0 on every
     // surface — the launcher does not know whether the app considered its work
     // complete; SIGINT is a user interrupt and reports 130.
-    process.on('SIGTERM', () => { interrupt(0) })
-    process.on('SIGINT', () => { interrupt(130) })
+    const onSigterm = (): void => {
+      terminalRestore.restoreNow()
+      interrupt(0)
+    }
+    const onSigint = (): void => {
+      terminalRestore.restoreNow()
+      interrupt(130)
+    }
+    process.on('SIGTERM', onSigterm)
+    process.on('SIGINT', onSigint)
+
+    let sighupAttached = false
+    let detachedSighupAttached = false
+    const onSighup = (): void => {
+      terminalRestore.restoreNow()
+      interrupt(129)
+    }
+    const onDetachedSighup = (): void => {
+      // Detached launch (e.g. DSH_DETACHED=1 daemon under nohup) ignores SIGHUP
+    }
+
+    const isDetached = options.environment.get('DSH_DETACHED')?.value === '1' || process.env.DSH_DETACHED === '1'
+    const syncSighupListener = (count: number): void => {
+      if (count > 0) {
+        if (detachedSighupAttached) {
+          process.removeListener('SIGHUP', onDetachedSighup)
+          detachedSighupAttached = false
+        }
+        if (!sighupAttached) {
+          process.on('SIGHUP', onSighup)
+          sighupAttached = true
+        }
+      } else {
+        if (sighupAttached) {
+          process.removeListener('SIGHUP', onSighup)
+          sighupAttached = false
+        }
+        if (isDetached && !detachedSighupAttached) {
+          process.on('SIGHUP', onDetachedSighup)
+          detachedSighupAttached = true
+        }
+      }
+    }
+
+    if (process.platform !== 'win32') {
+      terminalRestore.onChange = (count) => {
+        syncSighupListener(count)
+      }
+      syncSighupListener(terminalRestore.activeCount)
+    }
+
+    removeSignalListeners = (): void => {
+      process.removeListener('SIGTERM', onSigterm)
+      process.removeListener('SIGINT', onSigint)
+      if (process.platform !== 'win32') {
+        delete terminalRestore.onChange
+        if (sighupAttached) {
+          sighupAttached = false
+          process.removeListener('SIGHUP', onSighup)
+        }
+        if (detachedSighupAttached) {
+          detachedSighupAttached = false
+          process.removeListener('SIGHUP', onDetachedSighup)
+        }
+      }
+    }
+
     installFailLoud(NAME, process, async () => {
       await app.current?.fiber.dispose()
+    }, () => {
+      terminalRestore.restoreNow()
     })
 
     const rootConfig = join(composed.profile.dir, PROFILE_ROOT_FILENAME)
@@ -296,6 +367,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     const ctx = await boot(NAME, rootConfig, readProfilePatches(NAME, profileContext, composed.profile), async (hostCtx) => {
       app.current = hostCtx
       hostCtx.provide('profileContext', profileContext)
+      hostCtx.provide('terminalRestore', terminalRestore)
       // Before any config-tree entry mounts, so plugins resolve all launch-time
       // environment values from the same immutable launch snapshot.
       hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, options.environment)

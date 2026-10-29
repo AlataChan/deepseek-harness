@@ -21,8 +21,14 @@
   en: 56946ab7637bb8f9
   zh: c54c4da98092dd9c
 /deepseek-ai-dsh-subagent-acp/use-this-package/configuration:
-  en: 6f5fdf9a955841ce
-  zh: 7193a3c07fc54199
+  en: 90671363d9a8a733
+  zh: e6186d6b847b2878
+/deepseek-ai-dsh-subagent-acp/use-this-package/strict-ssh-deployment-without-forwarding:
+  en: e853c908078965c4
+  zh: 9c2c6e81276aec30
+/deepseek-ai-dsh-subagent-acp/use-this-package/remote-ssh-composition:
+  en: b7ebc3e3cc0ee15b
+  zh: bbf40dba64879d9a
 /deepseek-ai-dsh-subagent-acp/use-this-package/what-you-get:
   en: 0a809bd7b8cebddc
   zh: e2c1edf8f485e8f8

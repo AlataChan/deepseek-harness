@@ -1,0 +1,23 @@
+# Administrator-managed strict Path B account; its login shell must be /bin/sh.
+# Provision the fixed wrapper root:root 0755 and its /etc/dsh-acp-worker.env root:root 0644.
+# Enable a private systemd user manager for this account; the wrapper may start only its own UID's units.
+Match User dsh-acp-worker
+    AuthenticationMethods publickey
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+    PubkeyAuthentication yes
+    AuthorizedKeysFile /etc/ssh/authorized_keys.d/%u
+    ForceCommand /usr/local/libexec/dsh-acp-forced-command
+    DisableForwarding yes
+    AllowTcpForwarding no
+    AllowStreamLocalForwarding no
+    AllowAgentForwarding no
+    X11Forwarding no
+    PermitTTY no
+    PermitTunnel no
+    PermitUserRC no
+    ClientAliveInterval 10
+    ClientAliveCountMax 3
+
+# authorized_keys: restrict ssh-ed25519 <public-key> coordinator
+# The wrapper accepts only the literal dsh-acp request (or an empty original command), never arbitrary argv.

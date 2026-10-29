@@ -804,7 +804,7 @@ export interface SessionAskKnowledgeListDocumentsResult {
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
-    /** Browser prompt correlation and optional Host-validated time zone. */
+    /** Authenticated client or ingress prompt correlation and optional Host-validated time zone. */
     'user-rpc': { kind: 'user'; rpcId: SessionRequestId; clientTimeZone?: string }
   }
 }

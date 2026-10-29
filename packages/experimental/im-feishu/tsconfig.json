@@ -1,0 +1,69 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cosmokit"
+    },
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../llm/llm"
+    },
+    {
+      "path": "../../api/session-controller/tsconfig.host.json"
+    },
+    {
+      "path": "../../interaction/user-approval"
+    },
+    {
+      "path": "../../storage/storage"
+    },
+    {
+      "path": "../../storage/storage-domain"
+    },
+    {
+      "path": "../../util/brand"
+    },
+    {
+      "path": "../../util/values"
+    },
+    {
+      "path": "../../../native/system/packages/entry"
+    },
+    {
+      "path": "../../interaction/user-questions"
+    },
+    {
+      "path": "../../boot/cmdline"
+    },
+    {
+      "path": "../im-dingtalk"
+    },
+    {
+      "path": "../../subprocess/subprocess"
+    },
+    {
+      "path": "../../storage/storage-sqlite"
+    },
+    {
+      "path": "../../session/session-persistence"
+    }
+  ]
+}

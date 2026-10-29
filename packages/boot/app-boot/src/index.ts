@@ -36,6 +36,7 @@ export {
   readProfilePlugins, reconcileProfilePlugins, writeProfileBundles,
   type ProfilePluginLocation, type ProfilePluginDependency, type ProfilePluginInventory, type ProfilePluginReconciliation,
 } from './profile-plugins.ts'
+export { createTerminalRestore, type TerminalRestoreController } from './terminal-restore.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -675,12 +676,16 @@ export const FAIL_LOUD_RELEASE_TIMEOUT_MS = 2_000
  * @param release - optional teardown awaited before exit, used by a
  *   terminal-owning surface to restore the terminal. Its own failure is
  *   swallowed because the pending fatal exit already owns the outcome.
+ * @param preReport - optional synchronous hook executed immediately before
+ *   stderr diagnostic output, used to restore terminal attributes so error
+ *   text is legible and the caller shell is left in normal mode.
  * @returns the uninstaller that removes both handlers.
  */
 export function installFailLoud(
   binName: string,
   proc: FailLoudProcess = process,
   release?: () => Promise<void> | void,
+  preReport?: () => void,
 ): () => void {
   let exiting = false
   const report = (err: unknown, label: string): void => {
@@ -689,6 +694,11 @@ export function installFailLoud(
     // real one or letting Node kill the process before the terminal is back.
     if (exiting) return
     exiting = true
+    try {
+      preReport?.()
+    } catch {
+      // Swallowed: terminal restore failure must never mask the fatal diagnostic.
+    }
     proc.stderr.write(`${binName}: ${label}: ${inspect(err, { depth: 4, maxArrayLength: 50 })}\n`)
     if (release === undefined) {
       proc.exit(1)

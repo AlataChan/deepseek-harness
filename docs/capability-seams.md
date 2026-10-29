@@ -254,6 +254,9 @@ flowchart LR
   svc_assistants["ctx.assistants<br/>Persistent assistant and team catalog and lifecycle"]
   pkg_experimental_claude_code_mods["experimental-claude-code-mods"]
   svc_claudeCodeMods["ctx.claudeCodeMods<br/>Claude Code mods bridge"]
+  pkg_experimental_im_feishu["experimental-im-feishu"]
+  svc_imIngress["ctx.imIngress<br/>Durable IM message admission and dispatch"]
+  svc_imRuntime["ctx.imRuntime<br/>Isolated tenant IM conversation runtime"]
   pkg_inspector["inspector"]
   svc_inspector["ctx.inspector<br/>Cross-realm runtime inspection"]
   pkg_jobs["jobs"]
@@ -347,6 +350,8 @@ flowchart LR
   pkg_experimental_desktop_ask_knowledge --> svc_askKnowledge
   pkg_experimental_desktop_files --> svc_workspaceEntries
   pkg_experimental_desktop_media --> svc_desktopMedia
+  pkg_experimental_im_feishu --> svc_imIngress
+  pkg_experimental_im_feishu --> svc_imRuntime
   pkg_experimental_ptc_runtime_python --> svc_ptcRuntime
   pkg_experimental_speech_to_text --> svc_speechToText
   pkg_experimental_speech_to_text_sensevoice --> svc_speechToText
@@ -692,6 +697,8 @@ flowchart LR
 | `ctx.agentTeams` | `core` | [`experimental-agent-team`](../packages/experimental/agent-team) | - | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | - | Owns the implicit-root roster, durable peer mailbox, shared task DAG, and continuable-child lifecycle; tool-agent-team contributes model controls. |
 | `ctx.assistants` | `core` | [`experimental-assistant-registry`](../packages/experimental/assistant-registry) | - | - | - | Owns persistent assistant profiles, saved-team definitions, private conversation bindings, and model route precedence. |
 | `ctx.claudeCodeMods` | `core` | [`experimental-claude-code-mods`](../packages/experimental/claude-code-mods) | - | - | - | Loads mods that defineMod plugins add, raises their hook chains from harness extension points, and draws the band above the prompt over its Remote. |
+| `ctx.imIngress` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | Authorizes and commits incoming platform deliveries into durable storage before ACK, driving bounded dispatch across isolated tenant processes. |
+| `ctx.imRuntime` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | Manages durable conversation-to-session mappings, validates operator authorization, and runs isolated tenant Agent sessions with asynchronous reconciliation. |
 | `ctx.inspector` | `core` | `inspector` | - | - | - | Owns the Worker-hosted CDP target and the transport-independent Host and Client observation and Cordis-tree query API. |
 | `ctx.jobs` | `seam` | [`jobs`](../packages/jobs/jobs) | [`jobs-local`](../packages/jobs/jobs-local) | [`tool-bash`](../packages/shell/tool-bash), [`tool-pwsh`](../packages/shell/tool-pwsh), [`tool-terminal`](../packages/terminal/tool-terminal), [`tool-subagent`](../packages/subagent/tool-subagent), [`tool-jobs`](../packages/jobs/tool-jobs), [`api-job-controller`](../packages/api/job-controller) | - | Producers (background bash/pwsh, PTY sends, and subagent delegations) register running work; record-declaring jobs additionally stream raw output for non-consuming observers; tool-jobs is the model-facing controller that reads, lists, and kills it; jobs-local is the process-local registry. |
 | `ctx.web` | `seam` | [`web`](../packages/web/web) | [`web-search-exa`](../packages/web/web-search-exa), [`web-search-perplexity`](../packages/web/web-search-perplexity), [`web-search-deepseek`](../packages/web/web-search-deepseek), [`web-deepseek-api`](../packages/web/web-deepseek-api), [`web-fetch-http`](../packages/web/web-fetch-http) | [`tool-web`](../packages/web/tool-web) | - | Search and fetch providers register into one ctx.web seam; tool-web owns the stable model-facing names. |

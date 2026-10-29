@@ -1,0 +1,13 @@
+# The dsh TUI bundle patch: interactive terminal mode over dsh-base.
+# It mounts the TUI plugin and configures terminal-friendly execution.
+
+- id: tools
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+
+- insert:
+    - id: tui
+      name: '@deepseek-ai/dsh-tui'
+
+- id: hmr
+  disabled: true

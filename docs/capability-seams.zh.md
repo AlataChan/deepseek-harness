@@ -256,6 +256,9 @@ flowchart LR
   svc_assistants["ctx.assistants<br/>Persistent assistant and team catalog and lifecycle"]
   pkg_experimental_claude_code_mods["experimental-claude-code-mods"]
   svc_claudeCodeMods["ctx.claudeCodeMods<br/>Claude Code mods bridge"]
+  pkg_experimental_im_feishu["experimental-im-feishu"]
+  svc_imIngress["ctx.imIngress<br/>Durable IM message admission and dispatch"]
+  svc_imRuntime["ctx.imRuntime<br/>Isolated tenant IM conversation runtime"]
   pkg_inspector["inspector"]
   svc_inspector["ctx.inspector<br/>Cross-realm runtime inspection"]
   pkg_jobs["jobs"]
@@ -349,6 +352,8 @@ flowchart LR
   pkg_experimental_desktop_ask_knowledge --> svc_askKnowledge
   pkg_experimental_desktop_files --> svc_workspaceEntries
   pkg_experimental_desktop_media --> svc_desktopMedia
+  pkg_experimental_im_feishu --> svc_imIngress
+  pkg_experimental_im_feishu --> svc_imRuntime
   pkg_experimental_ptc_runtime_python --> svc_ptcRuntime
   pkg_experimental_speech_to_text --> svc_speechToText
   pkg_experimental_speech_to_text_sensevoice --> svc_speechToText
@@ -694,6 +699,8 @@ flowchart LR
 | `ctx.agentTeams` | `core` | [`experimental-agent-team`](../packages/experimental/agent-team) | - | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | - | 负责隐式 Root roster、持久 peer mailbox、共享任务 DAG 与 continuable child 生命周期；tool-agent-team 提供模型控制工具。 |
 | `ctx.assistants` | `core` | [`experimental-assistant-registry`](../packages/experimental/assistant-registry) | - | - | - | 拥有持久化智能体配置、常驻团队定义、私密会话绑定与模型路由优先级。 |
 | `ctx.claudeCodeMods` | `core` | [`experimental-claude-code-mods`](../packages/experimental/claude-code-mods) | - | - | - | 加载 defineMod 插件添加的模组，从 harness 扩展点触发其钩子链，并通过其 Remote 绘制提示框上方的横幅。 |
+| `ctx.imIngress` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | 在 ACK 前授权传入平台投递并提交至持久存储，跨隔离的租户进程驱动有界分派。 |
+| `ctx.imRuntime` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | 维护持久化的对话与会话映射，验证操作员授权，并通过异步核对运行隔离的租户 Agent 会话。 |
 | `ctx.inspector` | `core` | `inspector` | - | - | - | 负责 Worker 托管的 CDP target，以及独立于传输的 Host 和 Client observation 与 Cordis tree query API。 |
 | `ctx.jobs` | `seam` | [`jobs`](../packages/jobs/jobs) | [`jobs-local`](../packages/jobs/jobs-local) | [`tool-bash`](../packages/shell/tool-bash), [`tool-pwsh`](../packages/shell/tool-pwsh), [`tool-terminal`](../packages/terminal/tool-terminal), [`tool-subagent`](../packages/subagent/tool-subagent), [`tool-jobs`](../packages/jobs/tool-jobs), [`api-job-controller`](../packages/api/job-controller) | - | 生产方（后台 bash/pwsh、PTY 发送和 subagent 委派）登记正在运行的工作；声明 record 的 job 还为非消费观察者流式提供原始输出；tool-jobs 是面向模型的控制器，用于读取、列出和终止这些工作；jobs-local 是进程本地注册表。 |
 | `ctx.web` | `seam` | [`web`](../packages/web/web) | [`web-search-exa`](../packages/web/web-search-exa), [`web-search-perplexity`](../packages/web/web-search-perplexity), [`web-search-deepseek`](../packages/web/web-search-deepseek), [`web-deepseek-api`](../packages/web/web-deepseek-api), [`web-fetch-http`](../packages/web/web-fetch-http) | [`tool-web`](../packages/web/tool-web) | - | 搜索和抓取提供方注册到同一个 ctx.web seam；tool-web 负责稳定的面向模型名称。 |

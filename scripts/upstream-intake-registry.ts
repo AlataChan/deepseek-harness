@@ -179,6 +179,7 @@ export interface ForbiddenEndpoint {
 export const FORK_OWNED_PATHS: readonly string[] = [
   'apps/desktop/',
   'packages/experimental/',
+  'snapshots/im/',
 ]
 
 /**
@@ -235,6 +236,38 @@ export const NEVER_MERGE: readonly NeverMergeEntry[] = [
 
 /** Upstream files the fork edits. Phase 3 works the `B` rows down to zero. */
 export const PATCHES: readonly PatchEntry[] = [
+  { path: 'scripts/check-workspace-constraints.ts', klass: 'A', reason: 'Preserves explicit IM entries and the knowledge converter worker while publishing only the empty knowledge type-barrel runtime export.' },
+  { path: 'scripts/check-workspace-constraints.spec.ts', klass: 'A', reason: 'Rejects omission of required independently launched entries and unrelated publication payloads.' },
+  { path: 'scripts/verify-repository-references.ts', klass: 'A', reason: 'Separates local execution records and binary assets from maintained source and public documentation references.' },
+  { path: 'scripts/verify-repository-references.spec.ts', klass: 'A', reason: 'Checks local-record and binary exclusions while rejecting commit references in maintained IM, TUI and documentation files.' },
+  { path: 'scripts/translation-pairing.manifest.json', klass: 'A', reason: 'Declares exact Chinese-only course resources and generated video workspace documentation outside the product translation pairs.' },
+  { path: 'docs/i18n/README.md', klass: 'A', reason: 'Documents the exact course-resource and generated-media documentation translation scope.' },
+  { path: 'docs/i18n/README.zh.md', klass: 'A', reason: 'Documents the exact course-resource and generated-media documentation translation scope in Chinese.' },
+  { path: 'docs/i18n/README.i18n.yaml', klass: 'A', reason: 'Tracks the documentation translation-scope pair.' },
+  { path: 'SECURITY_AUDIT.md', klass: 'A', reason: 'Links the preserved historical audit snapshot instead of embedding a raw revision in the maintained entry.' },
+  { path: 'docs/plans/2026-08-28-agent-observability-platform.md', klass: 'A', reason: 'Replaces obsolete proposed API examples with a bilingual navigation entry to the preserved historical design.' },
+  { path: 'docs/plans/2026-08-28-agent-observability-platform.zh.md', klass: 'A', reason: 'Replaces obsolete proposed API examples with a bilingual navigation entry to the preserved historical design.' },
+  { path: 'docs/plans/2026-08-28-agent-observability-platform.i18n.yaml', klass: 'A', reason: 'Replaces obsolete proposed API examples with a bilingual navigation entry to the preserved historical design.' },
+  { path: 'docs/plans/2026-09-13-skill-evolution-wiki.md', klass: 'A', reason: 'Replaces obsolete proposed API examples with a bilingual navigation entry to the preserved historical design.' },
+  { path: 'docs/plans/2026-09-13-skill-evolution-wiki.zh.md', klass: 'A', reason: 'Replaces obsolete proposed API examples with a bilingual navigation entry to the preserved historical design.' },
+  { path: 'docs/plans/2026-09-13-skill-evolution-wiki.i18n.yaml', klass: 'A', reason: 'Replaces obsolete proposed API examples with a bilingual navigation entry to the preserved historical design.' },
+  { path: 'docs/plans/2026-09-14-commerce-merchant-mode.md', klass: 'A', reason: 'Replaces obsolete proposed API examples with a bilingual navigation entry to the preserved historical design.' },
+  { path: 'docs/plans/2026-09-14-commerce-merchant-mode.zh.md', klass: 'A', reason: 'Replaces obsolete proposed API examples with a bilingual navigation entry to the preserved historical design.' },
+  { path: 'docs/plans/2026-09-14-commerce-merchant-mode.i18n.yaml', klass: 'A', reason: 'Replaces obsolete proposed API examples with a bilingual navigation entry to the preserved historical design.' },
+  { path: 'apps/cli/src/profile-boot.ts', klass: 'A', reason: 'Synchronous terminal restoration on fatal error and dynamic SIGHUP listener switching for DSH_DETACHED terminal ownership.' },
+  { path: 'packages/boot/app-boot/src/index.ts', klass: 'A', reason: 'Exports terminal restore controller and synchronous preReport hook in installFailLoud for terminal surfaces.' },
+  { path: 'packages/test-support/session-snapshot/src/manifest.ts', klass: 'A', reason: 'Registers the shipped tui profile in SnapshotProfile for recorded session snapshot verification.' },
+  { path: '.github/workflows/experimental-im-linux.yml', klass: 'A', reason: 'Opt-in disposable Linux IM service and systemd socket qualification, separate from desktop releases.' },
+  { path: 'scripts/doc-standard.spec.ts', klass: 'A', reason: 'Registers the experimental IM library entry points in the audited README kind inventory.' },
+  { path: 'scripts/session-snapshot-corpus.corpus.ts', klass: 'A', reason: 'Registers the IM recorded-session owner driven through the shipped headless profile and private stdio protocol.' },
+  { path: 'packages/subagent/subagent-acp/README.md', klass: 'A', reason: 'Documents explicit remote ACP session cwd and local validation control.' },
+  { path: 'packages/subagent/subagent-acp/README.zh.md', klass: 'A', reason: 'Documents explicit remote ACP session cwd and local validation control in Chinese.' },
+  { path: 'packages/subagent/subagent-acp/README.i18n.yaml', klass: 'A', reason: 'Tracks the reviewed remote ACP configuration documentation pair.' },
+  { path: 'packages/subagent/subagent-acp/package.json', klass: 'A', reason: 'Declares the actual SSH provider composition test dependencies.' },
+  { path: 'packages/subagent/subagent-acp/src/index.ts', klass: 'A', reason: 'Separates optional local spawn cwd validation from remote ACP session cwd without adding another SSH transport.' },
+  { path: 'packages/subagent/subagent-acp/src/run.ts', klass: 'A', reason: 'Passes the explicitly configured remote session cwd through ACP session creation and resume.' },
+  { path: 'packages/subagent/subagent-acp/tests/subagent-acp.spec.ts', klass: 'A', reason: 'Verifies remote session cwd while preserving default local cwd validation.' },
+  { path: 'packages/extensions/cordis-client-runner/src/client/api-catalog.ts', klass: 'A', reason: 'Regenerated client Cordis inspect API catalog for the client runner inspection surface.' },
   { path: 'packages/client/connection-desktop/', klass: 'A', reason: 'Fork desktop Host carrier links the completed emitted process gateway before parallel library bundling.' },
   { path: 'scripts/desktop-gateway-build.spec.ts', klass: 'A', reason: 'Regression control for stale published process-gateway artifacts during desktop Host linking.' },
   { path: 'apps/cli/package.json', klass: 'A', reason: 'Fork harness assembly: the desktop companion entry and the fork workspace Host dependencies (desktop-app, agent-team, assistant-registry, commerce) must be dependencies here to bundle into the harness.' },

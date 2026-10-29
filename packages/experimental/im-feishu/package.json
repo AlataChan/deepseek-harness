@@ -1,0 +1,95 @@
+{
+  "name": "@deepseek-ai/dsh-experimental-im-feishu",
+  "description": "Experimental durable Feishu ingress, isolated tenant runtime, and authenticated human interactions",
+  "version": "0.2.1-alpha.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/im-feishu"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json",
+    "./runtime": {
+      "types": "./lib/types/runtime-plugin.d.ts",
+      "default": "./lib/runtime-plugin.js"
+    },
+    "./ingress": {
+      "types": "./lib/types/ingress-plugin.d.ts",
+      "default": "./lib/ingress-plugin.js"
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/runtime-plugin.js",
+    "lib/ingress-plugin.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-api-session-controller": "workspace:*",
+    "@deepseek-ai/dsh-brand": "workspace:*",
+    "@deepseek-ai/dsh-storage": "workspace:*",
+    "@deepseek-ai/dsh-storage-domain": "workspace:*",
+    "@deepseek-ai/dsh-user-approval": "workspace:*",
+    "@deepseek-ai/dsh-util-values": "workspace:*",
+    "@larksuiteoapi/node-sdk": "1.76.0",
+    "zod": "^4.4.3",
+    "@deepseek-ai/node-addon-system": "workspace:~",
+    "@deepseek-ai/dsh-user-questions": "workspace:*",
+    "@deepseek-ai/dsh-cmdline": "workspace:*",
+    "@deepseek-ai/dsh-storage-sqlite": "workspace:*",
+    "@deepseek-ai/dsh-experimental-im-dingtalk": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence": "workspace:*"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:*",
+    "@deepseek-ai/dsh-attachment": "workspace:*",
+    "@deepseek-ai/dsh-attachment-local": "workspace:*",
+    "@deepseek-ai/dsh-client-file-upload": "workspace:*",
+    "@deepseek-ai/dsh-client-test-runtime": "workspace:*",
+    "@deepseek-ai/dsh-commands": "workspace:*",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-ptc-runtime": "workspace:*",
+    "@deepseek-ai/dsh-repeat-tool-reminder": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-format": "workspace:*",
+    "@deepseek-ai/dsh-session-format-catalog": "workspace:*",
+    "@deepseek-ai/dsh-session-format-v0-to-v1": "workspace:*",
+    "@deepseek-ai/dsh-session-format-v3-to-v4": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-session-reference": "workspace:*",
+    "@deepseek-ai/dsh-session-title": "workspace:*",
+    "@deepseek-ai/dsh-session-turn-outline": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-time-context": "workspace:*",
+    "@deepseek-ai/dsh-tool-goal": "workspace:*",
+    "@deepseek-ai/dsh-tool-jobs": "workspace:*",
+    "@deepseek-ai/dsh-tool-skill": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*",
+    "@deepseek-ai/dsh-subprocess": "workspace:*",
+    "typescript": "^6.0.3",
+    "@deepseek-ai/dsh-llm-replay": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

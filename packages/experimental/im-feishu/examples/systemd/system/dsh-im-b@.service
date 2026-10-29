@@ -1,0 +1,23 @@
+[Unit]
+Description=DeepSeek Harness IM tenant B connection
+PartOf=dsh-im-b.socket
+
+[Service]
+User=dsh-im-b
+Group=dsh-im-b
+WorkingDirectory=/var/lib/dsh-im/b/workspace
+Environment=DSH_HOME=/var/lib/dsh-im/b/home HOME=/var/lib/dsh-im/b/home TMPDIR=/var/lib/dsh-im/b/tmp DSH_TELEMETRY_DISABLED=1 PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/local/bin/dsh --profile tenant-b
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+KillMode=control-group
+TimeoutStopSec=10s
+MemoryMax=768M
+TasksMax=96
+CPUQuota=200%
+CPUQuotaPeriodSec=100ms
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/dsh-im/b

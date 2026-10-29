@@ -1,0 +1,41 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "rewriteRelativeImportExtensions": false
+  },
+  "include": [
+    "src",
+    "tests"
+  ],
+  "references": [
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../../vendor/loader" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../util/brand" },
+    { "path": "../../util/values" },
+    { "path": "../../core/scope" },
+    { "path": "../../core/session" },
+    { "path": "../../core/tools" },
+    { "path": "../../llm/llm" },
+    { "path": "../../core/agent" },
+    { "path": "../../core/agent-default-model" },
+    { "path": "../../core/system-prompt" },
+    { "path": "../../session/session-persistence" },
+    { "path": "../../session/session-persistence-jsonl" },
+    { "path": "../../interaction/user-approval" },
+    { "path": "../../interaction/user-questions" },
+    { "path": "../../ptc-runtime/ptc-runtime" },
+    { "path": "../../ptc-runtime/ptc-runtime-node" },
+    { "path": "../../fs/fs-local" },
+    { "path": "../../subprocess/subprocess-local" },
+    { "path": "../../sandbox/sandbox-local" },
+    { "path": "../../sandbox/sandbox-policy" },
+    { "path": "../../boot/app-boot" },
+    { "path": "../../boot/cmdline" },
+    { "path": "../../session-query/session-query" },
+    { "path": "../../bundle/tui" }
+  ]
+}

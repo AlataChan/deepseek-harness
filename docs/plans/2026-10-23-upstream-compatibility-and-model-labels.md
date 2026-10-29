@@ -10,7 +10,7 @@ English | [中文](2026-10-23-upstream-compatibility-and-model-labels.zh.md)
 
 **Tech Stack:** TypeScript, React, Cordis, pnpm, Vitest, Playwright, Rust/Tauri, and the existing internal DMG pipeline.
 
-**Status:** C1–C3 and second-review remediation are implemented through `00729d3c76`. Focused checks, builds, all 114 bundle checks and supported native flows pass for internal macOS ARM64 integration. See `.plans/upstream-compatibility-2026-10-23/remediation-review.md` for acceptance evidence and remaining platform/baseline limits.
+**Status:** C1–C3 and second-review remediation are implemented in the reviewed snapshot. Focused checks, builds, all 114 bundle checks and supported native flows pass for internal macOS ARM64 integration. See `.plans/upstream-compatibility-2026-10-23/remediation-review.md` for acceptance evidence and remaining platform/baseline limits.
 
 ## Summary
 

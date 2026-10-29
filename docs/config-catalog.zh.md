@@ -3402,11 +3402,25 @@ export interface Config {
   /**
    * Working directory override for the child process and its ACP session.
    * Must be non-empty; a relative path resolves against the harness launch
-   * directory at load, and the result must be an existing directory. When
-   * omitted, each child inherits its delegating parent session's cwd — and
-   * starting one from a parent session that has no cwd fails.
+   * directory at load, and the result must be an existing directory unless
+   * {@link validateCwd} is false. When omitted, each child inherits its
+   * delegating parent session's cwd — and starting one from a parent session
+   * that has no cwd fails.
    */
   cwd?: string
+  /**
+   * Optional working directory override for the child ACP session (`session/new`),
+   * when distinct from the child process spawn working directory ({@link cwd}).
+   * When omitted, defaults to {@link cwd}.
+   */
+  sessionCwd?: string
+  /**
+   * Whether to assert that the candidate working directory exists and is an
+   * accessible directory on the local host filesystem (default `true`). Set to
+   * `false` when targeting a remote execution environment (such as over SSH)
+   * where the working directory is located on a remote host and absent locally.
+   */
+  validateCwd?: boolean
   /**
    * How to auto-answer the child's `session/request_permission` prompts:
    * `reject` (default — decline every prompt) or `allow` (approve via the first
@@ -4324,6 +4338,37 @@ export type ToolPresentationMode = 'native' | 'ptc' | 'both'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-tools -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tui -->
+<a id="deepseek-aidsh-tui"></a>
+
+## `@deepseek-ai/dsh-tui`
+
+- `inject`: `agents`
+- `source`: [`packages/tui/tui/src/types.ts:14`](../packages/tui/tui/src/types.ts)
+
+```ts config-catalog
+/** Configuration options for the TUI plugin. */
+export interface TuiConfig {
+  /** Maximum number of scrollback lines retained in memory. Defaults to 2000. */
+  readonly maxScrollbackLines?: number
+  /** Maximum input draft byte length. Defaults to 32768. */
+  readonly maxInputBytes?: number
+  /** Maximum stream accumulator characters before tail windowing. Defaults to 32768. */
+  readonly maxStreamAccumulatorChars?: number
+  /** Maximum characters permitted in a single scrollback line before truncation. Defaults to 4096. */
+  readonly maxScrollbackLineLength?: number
+  /** Maximum bytes accepted in bracketed paste buffer. Defaults to 65536. */
+  readonly maxPasteBytes?: number
+  /** Maximum prompts retained in command history. Defaults to 500. */
+  readonly maxHistoryEntries?: number
+  /** Minimum interval between streaming screen repaints in milliseconds. Defaults to 33. */
+  readonly redrawIntervalMs?: number
+  /** Preferred UI language ('zh' | 'en'). Defaults to 'zh'. */
+  readonly locale?: 'zh' | 'en'
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-tui -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-typert-loader -->
 <a id="deepseek-aidsh-typert-loader"></a>
 
@@ -4751,6 +4796,7 @@ export interface Config {
 | `@deepseek-ai/dsh-tool-cordis` | `tools` · `cordisInspect` | [`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts) |
 | `@deepseek-ai/dsh-tool-schedule` | `tools` | [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts) |
 | `@deepseek-ai/dsh-tool-subagent-control` | `tools` · `subagents` | [`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts) |
+| `@deepseek-ai/dsh-tui-bundle` | — | [`packages/bundle/tui/src/index.ts`](../packages/bundle/tui/src/index.ts) |
 | `@deepseek-ai/dsh-user-questions` | — | [`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts) |
 | `@deepseek-ai/dsh-webhook` | `agents` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sessionTitle` · `workspaceRegistry` | [`packages/webhook/webhook/src/index.ts`](../packages/webhook/webhook/src/index.ts) |
 | `@deepseek-ai/dsh-workspace` | `storageDomain` · `sessionPersistence` | [`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts) |
@@ -4810,6 +4856,9 @@ export interface Config {
 | `@deepseek-ai/dsh-deque` | — | [`packages/util/deque/src/index.ts`](../packages/util/deque/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-agent-team-profile` | — | [`packages/experimental/agent-team-profile/src/index.ts`](../packages/experimental/agent-team-profile/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-browser-use-runtime` | — | [`packages/experimental/browser-use-runtime/src/index.ts`](../packages/experimental/browser-use-runtime/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-im-dingtalk` | — | [`packages/experimental/im-dingtalk/src/index.ts`](../packages/experimental/im-dingtalk/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-im-feishu` | — | [`packages/experimental/im-feishu/src/index.ts`](../packages/experimental/im-feishu/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-im-service-bundle` | — | [`packages/experimental/im-service-bundle/src/index.ts`](../packages/experimental/im-service-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-inspector-profile` | — | [`packages/experimental/inspector-profile/src/index.ts`](../packages/experimental/inspector-profile/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-voice-input-bundle` | — | [`packages/experimental/voice-input-bundle/src/index.ts`](../packages/experimental/voice-input-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-webworker-packer` | — | [`packages/experimental/webworker-packer/src/index.ts`](../packages/experimental/webworker-packer/src/index.ts) |

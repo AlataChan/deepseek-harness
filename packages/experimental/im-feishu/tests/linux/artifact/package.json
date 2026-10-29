@@ -1,0 +1,14 @@
+{
+  "name": "dsh-im-linux-qualification-artifact",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@deepseek-ai/dsh": "workspace:*",
+    "@deepseek-ai/dsh-experimental-im-feishu": "workspace:*",
+    "@deepseek-ai/dsh-subagent-acp": "workspace:*",
+    "@deepseek-ai/dsh-ssh": "workspace:*",
+    "@deepseek-ai/dsh-subprocess-ssh": "workspace:*",
+    "@deepseek-ai/dsh-llm-replay": "workspace:*",
+    "@deepseek-ai/dsh-experimental-im-service-bundle": "workspace:*"
+  }
+}

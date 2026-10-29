@@ -12,7 +12,12 @@ const organizationUrl = new RegExp(`\\bgithub\\.com/${organization}(?![a-z0-9-])
 // The independent kit repository owns the engine source and documentation.
 const kitRepositoryUrl = new RegExp(`\\bgithub\\.com/${organization}/libreoffice-kit(?:\\.git)?(?=/|[^a-zA-Z0-9_.-]|$)`, 'g')
 const commitCandidate = /(?<![a-z0-9])[\da-f]{7,40}(?![a-z0-9])/gi
-const excludedPrefixes = ['vendor/', '.agents/notes/archived/']
+// Local execution records and historical plans retain revision evidence; they are
+// not maintained product references. Runtime source and public docs remain checked.
+const excludedPrefixes = [
+  'vendor/', '.agents/notes/archived/', '.plans/', '.alataflow/', '.memory/',
+  '.ccb/', '.ccb_config/', '.sisyphus/', '.gemini/',
+]
 /**
  * Fork upgrade records whose subject IS the commit trail: the staged-upgrade
  * plan, its handover, and the repair-checkpoint note pair cite the branch's
@@ -79,7 +84,10 @@ function readMaintainedFiles(repoRoot: string): Map<string, string> {
     const path = resolve(repoRoot, file)
     const stat = lstatSync(path, { throwIfNoEntry: false })
     if (stat?.isSymbolicLink() === true) sources.set(file, readlinkSync(path))
-    else if (stat?.isFile() === true) sources.set(file, readFileSync(path, 'utf8'))
+    else if (stat?.isFile() === true) {
+      const source = readFileSync(path, 'utf8')
+      if (!source.includes('\0')) sources.set(file, source)
+    }
   }
   return sources
 }

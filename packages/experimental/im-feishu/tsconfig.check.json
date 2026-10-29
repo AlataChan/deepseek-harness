@@ -1,0 +1,101 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "rewriteRelativeImportExtensions": false
+  },
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "tests/**/*.client.spec.ts"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cosmokit"
+    },
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../core/agent-loop"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../core/system-prompt"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../llm/llm"
+    },
+    {
+      "path": "../../api/session-controller/tsconfig.host.json"
+    },
+    {
+      "path": "../../interaction/user-approval"
+    },
+    {
+      "path": "../../interaction/commands"
+    },
+    {
+      "path": "../../attachment/attachment"
+    },
+    {
+      "path": "../../attachment/attachment-local"
+    },
+    {
+      "path": "../../client/file-upload/tsconfig.host.json"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../test-support/agent-loop-testkit"
+    },
+    {
+      "path": "../../storage/storage"
+    },
+    {
+      "path": "../../storage/storage-domain"
+    },
+    {
+      "path": "../../storage/storage-sqlite"
+    },
+    {
+      "path": "../../util/brand"
+    },
+    {
+      "path": "../../util/values"
+    },
+    {
+      "path": "../../../native/system/packages/entry"
+    },
+    {
+      "path": "../../interaction/user-questions"
+    },
+    {
+      "path": "../../boot/cmdline"
+    },
+    {
+      "path": "../im-dingtalk"
+    },
+    {
+      "path": "../../subprocess/subprocess"
+    },
+    {
+      "path": "../../session/session-persistence"
+    },
+    {
+      "path": "../../test-support/llm-replay"
+    }
+  ]
+}

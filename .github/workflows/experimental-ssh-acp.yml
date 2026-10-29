@@ -1,0 +1,54 @@
+name: Experimental SSH ACP qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  isolated-ssh-acp:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build supported runtime artifacts
+        run: pnpm run build
+      - name: Verify existing provider behavior and Loader isolation
+        run: |
+          pnpm exec tsc --project packages/subagent/subagent-acp/tsconfig.check.json
+          pnpm vitest run packages/subagent/subagent-acp/tests/subagent-acp.spec.ts scripts/collect-runtime-deps.spec.ts
+          pnpm vitest run --config vitest.e2e.config.ts packages/subagent/subagent-acp/tests/loader-ssh-group.e2e.ts
+      - name: Build disposable systemd and SSH environment
+        run: >-
+          docker build
+          --file packages/experimental/im-feishu/tests/linux/Containerfile
+          --tag dsh-ssh-linux-qualification
+          packages/experimental/im-feishu/tests/linux
+      - name: Collect installed runtime with dependency versions preserved
+        run: >-
+          node scripts/collect-runtime-deps.mjs --preserve-dependency-versions
+          packages/experimental/im-feishu/tests/linux/artifact/package.json
+          "$RUNNER_TEMP/dsh-ssh-installed/node_modules"
+      - name: Prepare target native prerequisites
+        run: >-
+          pnpm tsx --tsconfig tsconfig.base.json
+          packages/experimental/im-feishu/tests/linux/prepare-runtime-artifact.ts
+          default dsh-ssh-linux-qualification "$RUNNER_TEMP/dsh-ssh-installed"
+      - name: Require installed ACP and all SSH failure controls
+        run: >-
+          pnpm tsx --tsconfig tsconfig.base.json
+          packages/subagent/subagent-acp/tests/linux/qualify-installed-ssh.ts
+          default dsh-ssh-linux-qualification "$RUNNER_TEMP/dsh-ssh-installed"

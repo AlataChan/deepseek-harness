@@ -1,0 +1,22 @@
+# Include under administrator-managed sshd configuration for a dedicated worker identity.
+# Public client keys are provisioned at /etc/ssh/authorized_keys.d/dsh-worker.
+Match User dsh-worker
+    ClientAliveInterval 10
+    ClientAliveCountMax 3
+    PermitTTY no
+    X11Forwarding no
+    AllowAgentForwarding no
+    PermitTunnel no
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+    PubkeyAuthentication yes
+    AuthorizedKeysFile /etc/ssh/authorized_keys.d/%u
+
+    # OpenSSH 9.2 requires local forwarding permission for the Unix stream channels.
+    # This permits local TCP forwarding too; network confinement is a separate deployment policy.
+    AllowTcpForwarding local
+    AllowStreamLocalForwarding yes
+
+# Example key options (follow with the real public key; no private key belongs here):
+# no-agent-forwarding,no-X11-forwarding,no-pty,no-user-rc ssh-ed25519 <public-key> coordinator
+# Do not use restrict/no-port-forwarding for Path A: they also disable its Unix forwarding.

@@ -1,0 +1,13 @@
+{
+  "name": "dsh-profile-im-ingress",
+  "private": true,
+  "dependencies": {
+    "@deepseek-ai/dsh-storage": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-experimental-im-feishu": "0.2.1-alpha.1"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": []
+    }
+  }
+}

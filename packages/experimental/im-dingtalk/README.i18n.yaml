@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/im-dingtalk/README.md
+/:
+  en: 3a393e1ed485e696
+  zh: 3511f1d2574ba958
+/deepseek-ai-dsh-experimental-im-dingtalk:
+  en: acf5563d3096f431
+  zh: aea7b04f2692c551
+/deepseek-ai-dsh-experimental-im-dingtalk/summary:
+  en: 00cca959c509c3be
+  zh: 43eca640633bf6f6
+/deepseek-ai-dsh-experimental-im-dingtalk/table-of-contents:
+  en: 2fee9973f19f9401
+  zh: b1badba0881278e7
+/deepseek-ai-dsh-experimental-im-dingtalk/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/deepseek-ai-dsh-experimental-im-dingtalk/use-this-package/when-to-use-it:
+  en: dd70d1aa3a945140
+  zh: cb626c565db97abc
+/deepseek-ai-dsh-experimental-im-dingtalk/use-this-package/entry-point:
+  en: d23f84424403df00
+  zh: af5fab19716f7c4e
+/deepseek-ai-dsh-experimental-im-dingtalk/understand-the-implementation:
+  en: 414364a48493596e
+  zh: 043fe61565278111
+/deepseek-ai-dsh-experimental-im-dingtalk/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-im-dingtalk/model-experience/normalized-private-text:
+  en: 97612c0e4e2b5c5d
+  zh: 8289aabe7413a921
+/deepseek-ai-dsh-experimental-im-dingtalk/model-experience/normalized-private-text/what-the-model-sees:
+  en: 42390af3b50d7aec
+  zh: 025ef18d9ad63195
+/deepseek-ai-dsh-experimental-im-dingtalk/model-experience/normalized-private-text/token-effect:
+  en: 65dde66f97f0058d
+  zh: 46b95cd9e8cad582
+/deepseek-ai-dsh-experimental-im-dingtalk/model-experience/normalized-private-text/kv-cache-effect:
+  en: 6ff3da515ae37202
+  zh: 03ff0d7e28461ec9
+/deepseek-ai-dsh-experimental-im-dingtalk/known-limitations-and-deferred-work:
+  en: f290531a0a6043b5
+  zh: 091858bd71140167
+/deepseek-ai-dsh-experimental-im-dingtalk/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: a56b1d34e46ac231

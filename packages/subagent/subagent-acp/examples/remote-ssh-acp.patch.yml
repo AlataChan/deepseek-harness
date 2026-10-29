@@ -1,0 +1,41 @@
+# Install the required packages in the selected profile's dependency manifest first.
+# Required environment values are administrator-controlled deployment configuration.
+# Helper and CLI paths point into the complete installed runtime closure, never lone copied files.
+- insert:
+    - id: remote-worker-acp-group
+      name: cordis:group
+      group: true
+      isolate:
+        subprocess: true
+        ssh: true
+      config:
+        - id: remote-ssh-connection
+          name: '@deepseek-ai/dsh-ssh'
+          config:
+            host: !!js process.env.DSH_SSH_WORKER_HOST
+            node: !!js process.env.DSH_SSH_WORKER_NODE
+            helper: !!js process.env.DSH_SSH_WORKER_HELPER
+            helperHash: !!js process.env.DSH_SSH_WORKER_HELPER_HASH
+            workspace: !!js process.env.DSH_SSH_WORKER_WORKSPACE
+            leaseMs: !!js Number(process.env.DSH_SSH_WORKER_LEASE_MS ?? 30000)
+
+        - id: remote-subprocess-ssh
+          name: '@deepseek-ai/dsh-subprocess-ssh'
+
+        - id: remote-subagent-acp
+          name: '@deepseek-ai/dsh-subagent-acp'
+          config:
+            providerName: remote-acp
+            command: !!js process.env.DSH_SSH_WORKER_NODE
+            args:
+              - !!js process.env.DSH_SSH_WORKER_CLI
+              - --profile
+              - acp
+            cwd: !!js process.env.DSH_SSH_WORKER_WORKSPACE
+            sessionCwd: !!js process.env.DSH_SSH_WORKER_SESSION_CWD
+            validateCwd: false
+            permission: reject
+            env:
+              HOME: !!js process.env.DSH_SSH_WORKER_HOME
+              DSH_HOME: !!js process.env.DSH_SSH_WORKER_DSH_HOME
+              TMPDIR: !!js process.env.DSH_SSH_WORKER_TMPDIR

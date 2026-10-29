@@ -1,0 +1,53 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "rewriteRelativeImportExtensions": false
+  },
+  "include": [
+    "src",
+    "tests"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cosmokit"
+    },
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../../llm/llm"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../subagent"
+    },
+    {
+      "path": "../../subprocess/subprocess"
+    },
+    {
+      "path": "../../util/timeout"
+    },
+    {
+      "path": "../../test-support/loader-smoke"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../ssh/ssh"
+    },
+    {
+      "path": "../../ssh/subprocess-ssh"
+    },
+    {
+      "path": "../../subprocess/subprocess-local"
+    }
+  ]
+}

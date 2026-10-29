@@ -16,6 +16,19 @@ DeepSeek Harness 处于 _开发者预览_ 阶段，正在快速迭代。**未来
 
 <a id="run"></a>
 
+## 扩展能力与 TUI 验收
+
+两份实施方案均已在实际测试的本地范围内通过独立评审。这与桌面安装包的发布验收分别记录。
+
+| 能力 | 已验证范围 | 待完成验收 |
+|---|---|---|
+| IM、租户隔离与远程 Worker | 本地实现；可丢弃 Linux 环境中的租户隔离与 SSH 测试 | 真实飞书/钉钉投递、生产主机、物理两主机 SSH 和 CI |
+| 交互式终端 TUI | 本地 macOS PTY、独立安装产物、原生/Node PTC 审批和 keyless Session replay | Linux 原生 PTY、Windows ConPTY、跨平台 CI 和生产发布 |
+
+TUI 通过 CLI 的 `tui` profile 使用，不是 DMG/EXE 默认插件。IM 服务需要显式配置及授权操作者绑定。证据与限制见[两份方案完成情况](.plans/feature-expansion-2026-10-24/completion-status.md)、[扩展验收记录](.plans/feature-expansion-2026-10-24/expansion-completion.md)和[TUI 验收记录](.plans/feature-expansion-2026-10-24/codex-tui-acceptance.md)。本地文档与 hygiene 阻塞已修复，见[修复记录](.plans/feature-expansion-2026-10-24/local-merge-repairs.md)。Linux/Windows 原生验收仍暂缓；本地验收不代表生产就绪。
+
+<a id="run"></a>
+
 ## 运行
 
 ### 通过 `npm` 运行

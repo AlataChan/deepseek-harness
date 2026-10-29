@@ -1,6 +1,6 @@
 # DSH 扩展能力工程实施方案：IM、租户隔离与远程 Worker
 
-状态：修订 v4，已吸收第三轮评审；用户授权在当前工作树由 agy 实施、Codex 审查。消息来源必须先完成 Phase 0 决策 fixtures，再进入 Phase 1。文中未完成的 Linux、平台与两主机验收仍为待运行，不随编码授权自动通过。
+状态（2026-10-29）：Phase 0–5 本地实现及独立评审通过，包含可丢弃 Linux 环境的租户隔离、systemd 与真实 SSH 资格检查。真实 IM 平台、生产 Linux 部署、指定物理两主机和 CI/发布验收未运行。本文保留设计与阶段要求，执行结果以[扩展验收记录](expansion-completion.md)为准；两份方案见[统一完成情况](completion-status.md)。本地文档、目录与发布载荷阻塞已修复，见[本地修复记录](local-merge-repairs.md)；Linux/Windows 原生验收依用户要求暂缓。
 
 源码核查基线：2026-10-24，方案首次提交的父版本（提交标题：fix(ci): allow Windows installer qualification to finish）。权威版本为本文件；见 [任务状态](task_plan.md)、[评审处置](review-round2-response.md) 、[第三轮处置](review-round3-response.md) 和独立的 [TUI 方案](dsh_tui_implementation_plan.md)。
 
@@ -46,7 +46,7 @@ systemd system socket unit 设置 Accept=yes、MaxConnections=1、SocketUser=roo
 
 ### 3.2 私有 IM 协议与 ACP 取舍
 
-选择同包内部的版本化 NDJSON 协议，schema、客户端和服务端同属 im-feishu。拟议操作为 initialize、openConversation、submitDelivery、getDelivery、cancelDelivery、setModel，以及 Phase 3 的 getInteraction/answerInteraction；回复与更新携带请求及 delivery 标识。这些是待实现私有操作，不是当前 DSH API；Agent 行为仍调用现有公共能力。
+选择同包内部的版本化 NDJSON 协议，schema、客户端和服务端同属 im-feishu。拟议操作为 initialize、openConversation、submitDelivery、getDelivery、cancelDelivery、setModel，以及 Phase 3 的 getInteraction/answerInteraction；回复与更新携带请求及 delivery 标识。这些是待实现私有操作，不是当前 DSH API；Agent 行为仍调用现有公共能力。 当前实现采用经 schema 验证的 initialize、submit/get/cancel delivery 与交互请求，conversation 绑定由持久化服务管理；这些拟议名称不构成全部已交付 API。模型与 preset 由管理员配置，通用 IM setModel 命令尚未实现，不计入当前 MVP 验收。
 
 评估过 ACP over Unix socket：权限可保护 ACP，但当前 acp 的 stream override 是运行时测试接口，标准 prompt 固定记录 user 来源，且没有 IM delivery 对账查询。普通 ACP prompt 无 IM delivery 对账操作，也不能假定任意 source 扩展可读。因此 IM 仍使用最小私有适配器提供 durable delivery/status，消息保持 human user 语义并按第 5 节保存请求关联；不因这些需求修改标准 ACP，远程自动化继续使用它。Phase 0 若发现已有公共入口满足这些要求，应凭可执行证据删除重复实现。
 
@@ -130,7 +130,7 @@ approval request 只有工具名、reason 和可选 callId，没有 arguments。
 
 A 保留已有 ServerAliveInterval=10、ServerAliveCountMax=3、BatchMode、StrictHostKeyChecking、ForwardAgent=no，以及 helper lease 和请求/流超时，不无依据换成 15 秒。B 也以 10/3 为初始受限部署策略，明确 ConnectTimeout、初始化/执行/取消期限。新增可调期限经 schema 配置；断链立即释放本地等待，远端结果未知，禁止自动重连重放。
 
-A 的控制连接与 stream 使用受控 SSH Unix socket forwarding，不能机械套 B 的 restrict 或全局 DisableForwarding=yes。A 的账号只获 provider 所需权限，验证无任意 TCP 转发/凭据泄漏。B 的 forced command 不解释调用者字符串，拒绝交互 shell、PTY、用户 rc、agent/X11/端口转发；profile 配置/脚本不可由调用者写入。
+A 的控制连接与 stream 使用受控 SSH Unix socket forwarding，不能机械套 B 的 restrict 或全局 DisableForwarding=yes。实测 OpenSSH 9.2 的 A 路径需要 AllowTcpForwarding local，不能满足本方案的禁止任意 TCP 转发要求，因此严格部署选择 B，不以 A 的功能通过替代安全验收。A 仅保留为显式允许本地转发的实验组合。B 必须验证任意 TCP 转发与任意原始命令被拒绝；固定 ACP 命令由 root 管理的脚本和配置启动，在 systemd 用户服务中执行，并以 RuntimeMaxSec 和 KillMode=control-group 提供独立于连接的有限生命周期。B 的 forced command 不解释调用者字符串，拒绝交互 shell、PTY、用户 rc、agent/X11/端口转发；profile 配置/脚本不可由调用者写入。
 
 两种部署都要求 sshd 对 Worker 启用有限、非零 ClientAliveInterval/ClientAliveCountMax，初始部署值 10/3，并核对有效配置。客户端检测解决协调器等待，服务端检测与远端进程所有权处理残留；A 验证 helper lease 到期或控制断开杀掉所持进程，B 必须有远端监督/lease 与 cgroup 清理进程树，不能假定 sshd 断会话会杀全部后代。
 

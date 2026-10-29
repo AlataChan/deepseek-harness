@@ -34,11 +34,25 @@ export interface Config {
   /**
    * Working directory override for the child process and its ACP session.
    * Must be non-empty; a relative path resolves against the harness launch
-   * directory at load, and the result must be an existing directory. When
-   * omitted, each child inherits its delegating parent session's cwd — and
-   * starting one from a parent session that has no cwd fails.
+   * directory at load, and the result must be an existing directory unless
+   * {@link validateCwd} is false. When omitted, each child inherits its
+   * delegating parent session's cwd — and starting one from a parent session
+   * that has no cwd fails.
    */
   cwd?: string
+  /**
+   * Optional working directory override for the child ACP session (`session/new`),
+   * when distinct from the child process spawn working directory ({@link cwd}).
+   * When omitted, defaults to {@link cwd}.
+   */
+  sessionCwd?: string
+  /**
+   * Whether to assert that the candidate working directory exists and is an
+   * accessible directory on the local host filesystem (default `true`). Set to
+   * `false` when targeting a remote execution environment (such as over SSH)
+   * where the working directory is located on a remote host and absent locally.
+   */
+  validateCwd?: boolean
   /**
    * How to auto-answer the child's `session/request_permission` prompts:
    * `reject` (default — decline every prompt) or `allow` (approve via the first
@@ -68,6 +82,8 @@ export const Config: z<Config> = z.object({
   command: z.string().required(),
   args: z.array(z.string()).default([]),
   cwd: z.string(),
+  sessionCwd: z.string(),
+  validateCwd: z.boolean().default(true),
   permission: z.union(['allow', 'reject'] as const).default('reject'),
   env: z.dict(z.string()).default({}),
   disposeEofGraceMs: z.number().default(DEFAULT_DISPOSE_EOF_GRACE_MS),
@@ -81,8 +97,8 @@ function assertPositiveFinite(name: string, value: number): void {
   }
 }
 
-/** The shape after schemastery applied the defaults (cwd has none). */
-type ResolvedConfig = Required<Omit<Config, 'cwd'>> & Pick<Config, 'cwd'>
+/** The shape after schemastery applied the defaults (cwd and sessionCwd have none). */
+type ResolvedConfig = Required<Omit<Config, 'cwd' | 'sessionCwd'>> & Pick<Config, 'cwd' | 'sessionCwd'>
 
 /**
  * Whether `path` names an existing directory the harness can ENTER. The
@@ -105,17 +121,18 @@ function isDirectory(path: string): boolean {
 /**
  * Assert `cwd` can actually host the child: absolute (it doubles as the ACP
  * session workspace, and a relative path would be re-anchored to the server
- * process's launch directory) and an existing directory (fail here, before the
- * process boundary, instead of as an ambiguous spawn ENOENT).
+ * process's launch directory) and, when `validateLocal` is true, an existing
+ * accessible directory on the local filesystem.
  * @param label - which source supplied the value, for the diagnostic.
  * @param cwd - the candidate working directory.
+ * @param validateLocal - whether to assert local directory accessibility.
  * @returns `cwd`, validated.
  */
-function assertUsableCwd(label: string, cwd: string): string {
-  if (!isAbsolute(cwd)) {
+function assertUsableCwd(label: string, cwd: string, validateLocal: boolean = true): string {
+  if (!isAbsolute(cwd) && !cwd.startsWith('/')) {
     throw new Error(`subagent-acp: ${label} must be an absolute path: ${cwd}`)
   }
-  if (!isDirectory(cwd)) {
+  if (validateLocal && !isDirectory(cwd)) {
     throw new Error(`subagent-acp: ${label} is not an accessible directory: ${cwd}`)
   }
   return cwd
@@ -129,13 +146,13 @@ function assertUsableCwd(label: string, cwd: string): string {
  * child to the server's launch directory instead of the delegating session's
  * workspace (one server process serves many sessions, each with its own cwd).
  */
-function resolveCwd(configured: string | undefined, request: SubagentStartRequest): string {
+function resolveCwd(configured: string | undefined, request: SubagentStartRequest, validateLocal: boolean): string {
   if (configured !== undefined) return configured
   const parentCwd = request.parent.session.header.cwd
   if (parentCwd === undefined) {
     throw new Error('subagent-acp: no working directory for the child — configure `cwd` or delegate from a parent session that has one')
   }
-  return assertUsableCwd('parent session cwd', parentCwd)
+  return assertUsableCwd('parent session cwd', parentCwd, validateLocal)
 }
 
 /**
@@ -162,16 +179,20 @@ class AcpProvider implements SubagentProvider {
     }
     let cwd: string
     try {
-      cwd = resolveCwd(this.config.cwd, request)
+      cwd = resolveCwd(this.config.cwd, request, this.config.validateCwd)
     } catch (error: unknown) {
       const failure = acpConfigurationFailure(error)
       this.ctx.logger.warn(`subagent-acp "${this.name}": child start failed: %o`, error)
       throw failure
     }
+    const sessionCwd = this.config.sessionCwd !== undefined
+      ? this.config.sessionCwd
+      : cwd
     const spec: AcpRunSpec = {
       command: this.config.command,
       args: this.config.args,
       cwd,
+      sessionCwd,
       permission: this.config.permission,
       env: this.config.env,
       disposeEofGraceMs: this.config.disposeEofGraceMs,
@@ -197,10 +218,23 @@ export function apply(ctx: Context, config: Config): void {
   if (resolved.cwd === '') {
     throw new Error('subagent-acp: config cwd must not be empty — omit the key to inherit the parent session cwd')
   }
-  // Interpret a relative configured cwd against the harness launch directory
-  // ONCE, at load, and fail a misconfigured directory here — not per start.
-  const validated: ResolvedConfig = resolved.cwd === undefined
-    ? resolved
-    : { ...resolved, cwd: assertUsableCwd('config cwd', resolve(resolved.cwd)) }
+  if (resolved.sessionCwd === '') {
+    throw new Error('subagent-acp: config sessionCwd must not be empty')
+  }
+  const validateCandidate = (label: string, candidate: string): string => {
+    const isAlreadyAbsolute = isAbsolute(candidate) || candidate.startsWith('/')
+    if (!resolved.validateCwd && !isAlreadyAbsolute) {
+      throw new Error(`subagent-acp: ${label} must be an absolute path: ${candidate}`)
+    }
+    const target = resolved.validateCwd ? resolve(candidate) : candidate
+    return assertUsableCwd(label, target, resolved.validateCwd)
+  }
+  let validated: ResolvedConfig = resolved
+  if (resolved.cwd !== undefined) {
+    validated = { ...validated, cwd: validateCandidate('config cwd', resolved.cwd) }
+  }
+  if (resolved.sessionCwd !== undefined) {
+    validated = { ...validated, sessionCwd: validateCandidate('config sessionCwd', resolved.sessionCwd) }
+  }
   ctx.subagents.registerProvider(new AcpProvider(validated.providerName, ctx, validated))
 }

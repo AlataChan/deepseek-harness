@@ -14,6 +14,17 @@ DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL B
 
 Review the [safety notice](SAFETY.md) before running the project.
 
+## Expansion and TUI qualification
+
+Both implementation plans have passed independent review within their tested local scope. They are separate from desktop installer release qualification.
+
+| Capability | Verified scope | Remaining qualification |
+|---|---|---|
+| IM, tenant isolation and remote Workers | Local implementation; disposable Linux tenant-isolation and SSH tests | Live Feishu/DingTalk delivery, production hosts, physical two-host SSH and CI |
+| Interactive terminal TUI | Local macOS PTY, independent installed artifacts, native/Node PTC approvals and keyless Session replay | Linux native PTY, Windows ConPTY, cross-platform CI and production release |
+
+The TUI is available through the `tui` CLI profile; it is not a default DMG/EXE plugin. IM services require explicit configuration and authorized operator bindings. See the [combined completion status](.plans/feature-expansion-2026-10-24/completion-status.md), [expansion acceptance](.plans/feature-expansion-2026-10-24/expansion-completion.md) and [TUI acceptance](.plans/feature-expansion-2026-10-24/codex-tui-acceptance.md) for evidence and limits. Local documentation and hygiene blockers are resolved; see the [repair record](.plans/feature-expansion-2026-10-24/local-merge-repairs.md). Linux/Windows native qualification remains deferred; local acceptance does not imply production readiness.
+
 ## Run
 
 ### Run from `npm`

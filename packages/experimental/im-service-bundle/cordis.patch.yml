@@ -1,0 +1,20 @@
+# Experimental multi-tenant IM runtime bundle patch.
+# Layers over dsh-base to mount the tenant runtime service.
+# Explicitly omits headless startup/runner, Web host, or desktop.
+
+- id: hmr
+  disabled: true
+
+- insert:
+    - id: im-runtime
+      name: '@deepseek-ai/dsh-experimental-im-feishu/runtime'
+      inject: [agents, sessions, sessionPersistence, storage]
+      config:
+        tenantId: !!js "process.env.DSH_IM_TENANT_ID"
+        operatorIds: !!js "process.env.DSH_IM_OPERATOR_IDS ? process.env.DSH_IM_OPERATOR_IDS.split(',') : undefined"
+        stateDirectory: !!js "process.env.DSH_IM_STATE_DIR"
+        cwd: !!js "process.env.DSH_IM_CWD ?? process.cwd()"
+        useSystemdStdio: !!js "!process.env.DSH_IM_SOCKET_PATH"
+        socketPath: !!js "process.env.DSH_IM_SOCKET_PATH || undefined"
+        shutdownTimeoutMs: !!js "Number(process.env.DSH_IM_SHUTDOWN_TIMEOUT_MS ?? 10000)"
+        maxActiveDeliveries: !!js "Number(process.env.DSH_IM_MAX_ACTIVE_DELIVERIES ?? 1)"

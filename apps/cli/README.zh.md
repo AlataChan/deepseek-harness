@@ -28,11 +28,19 @@
 
 ```sh
 dsh --profile web --port 8080       # --port belongs to the web app
-dsh --profile tui --resume <id>     # example, assuming the tui profile is installed; --resume belongs to the terminal app
+dsh --profile tui                 # use /resume <id> inside the TUI
 dsh --profile headless "run the tests"
 dsh --profile web --help            # the web app's flags, not the launcher's
 dsh --help                          # the launcher's own help
 ```
+
+## 后台脱离与信号处理
+
+TUI profile 已通过本地 macOS 验收。Linux 原生 PTY、Windows ConPTY 和生产发布尚未验证；见[统一完成情况](../../.plans/feature-expansion-2026-10-24/completion-status.md)。
+
+设置 `DSH_DETACHED=1` 可指示启动器在作为脱离守护进程或后台进程运行时忽略 `SIGHUP`。然而，终端归属严格优先于脱离模式：当存在已注册的交互终端持有人时（`activeCount > 0`，例如活跃的 TUI 或交互式原始终端会话），收到 `SIGHUP` 会立即触发同步终端恢复（`restoreNow()`）并以状态码 129（`128 + SIGHUP`）退出。脱离模式仅在 `activeCount === 0` 时才会忽略 `SIGHUP`。
+
+此显式优先级解决了 Node.js 引擎本身的限制（`src/node.cc` 中的 `node::ResetSignalHandlers()`）：Node.js 在进程启动时无条件将继承的信号处理重置为默认值，导致在 `nohup` 下启动的后台进程在终端挂起时异常终止，除非在进程级别显式注册信号保护。
 
 <a id="profiles"></a>
 ## Profile

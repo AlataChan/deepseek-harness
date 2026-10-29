@@ -1,6 +1,6 @@
 # DSH 交互式终端 TUI 实施方案
 
-状态：修订 v4，主体设计已通过评审；PTC 审批及终端所有权范围的 SIGHUP 修复列为 T0/T4 前置条件。权威版本为本文件；见 [任务状态](task_plan.md) 与 [评审处置](review-round2-response.md)。T0 尚未执行，不表示 TUI 已实现或可启动。
+状态（2026-10-29）：T0–T6 本地 macOS 实现与独立评审通过；源码位于 packages/tui/tui 与 packages/bundle/tui，内置 tui profile 已实现。Linux 原生 PTY、Windows ConPTY、跨平台 CI 和生产发布尚未验证。执行结果见[TUI 独立验收](codex-tui-acceptance.md)、[实施报告](tui-implementation-report.md)及[两份方案完成情况](completion-status.md)。下文阶段步骤保留设计要求，不表示仍未开始；T5 staging 等价性在晋升后补验，历史顺序偏差不作追溯通过。
 
 基线：2026-10-24，方案首次提交的父版本（提交标题：fix(ci): allow Windows installer qualification to finish）。本方案与 IM、多租户及远程 Worker 独立交付，不依赖它们。
 
@@ -8,7 +8,7 @@
 
 ## 1. 现状与旧方案处理
 
-当前 app-boot 没有已预留可用的 tui profile。`dsh --profile tui` 是本方案完成后拟提供的入口，不是现在可用的命令。现有 `TUI_PLAN.md` 记录了 2026-08 的外部客户端试验，含当时的 events.mux、history 等接口；旧记录保持原样，不能将其视为当前 API 验证结果或已批准的实现。
+app-boot 已注册 tui profile，`dsh --profile tui` 是已通过本地 macOS 安装产物验收的入口。现有 `TUI_PLAN.md` 记录了 2026-08 的外部客户端试验，含当时的 events.mux、history 等接口；旧记录保持原样，不能将其视为当前 API 验证结果或已批准的实现。
 
 当前 ACP 面向自动化，刻意不提供完整 DSH 交互展示；TypeScript SDK 的 server-to-client request 回答流程也未实现。因此第一版不依赖 ACP/SDK 承担用户提问与审批，不恢复旧协议，不从 private lib 或历史产物导入运行时。
 
@@ -26,19 +26,21 @@
 
 采用同进程 Cordis TUI 插件及专用 bundle/profile，不启动 Web 服务，不监听端口，不挂载 Web 客户端或修改 Tauri。该选择替代旧方案 B→A 的双传输交付，减少必须维护的接口；如之后确有连接既存 Host 的用户需求，另立远程终端客户端计划。
 
-| 拟议路径 | 职责 |
+| 当前路径 | 职责 |
 | --- | --- |
-| `packages/experimental/tui/` | plugin entry、只针对自身 Agent 的交互 provider、输入、呈现和生命周期 |
-| `packages/experimental/tui/src/session.ts` | 通过现有 Agent/Session 公共能力创建、恢复、提交、取消；持有自己创建的 AgentHandle |
-| `packages/experimental/tui/src/interaction.ts` | approval/request 与 user-questions 的具体终端回答者 |
-| `packages/experimental/tui/src/input.ts` | TTY raw mode、bracketed paste、多行缓冲与按键路由 |
-| `packages/experimental/tui/src/render.ts` | 有界终端视图、ANSI 控制字符过滤、增量更新 |
-| `packages/experimental/tui/src/locales.ts` | 类型化中英文 UI 文案 |
-| `packages/experimental/tui-bundle/` | T0 显式安装的实验 bundle，base + 实验 TUI，禁用不需要的 headless/Web 回答者 |
-| `packages/tui/tui/` 与 `packages/bundle/tui/` | T2–T4 完成功能、T5 验收并复核限制后，T6 才晋升；新增职责分组按 packages 规则登记 |
-| `packages/boot/app-boot/src/profile.ts` | 稳定包晋升后注册 tui profile 模板，T0 仅使用隔离的显式 profile |
-| `apps/cli/package.json` | 只声明晋升后的稳定 tui bundle 依赖；不依赖 experimental，不增加 package bin |
-| `packages/boot/app-boot/src/index.ts`、`apps/cli/src/profile-boot.ts` | 核实并按需补充终端同步复原与既有致命错误处理的连接；不改变 Agent Loop |
+| `packages/tui/tui/` | 已晋升的 TUI 插件、配置、输入、呈现、会话和交互回答者 |
+| `packages/tui/tui/src/session.ts` | AgentHandle、会话创建/恢复、模型选择、提交和取消 |
+| `packages/tui/tui/src/interaction.ts` | 本 Agent 的问题与审批，原生/PTC 参数关联 |
+| `packages/tui/tui/src/input.ts` | TTY raw mode、增量按键解析、bracketed paste、字素编辑 |
+| `packages/tui/tui/src/render.ts` | 有界输出、控制字符过滤、列宽与光标视图 |
+| `packages/tui/tui/src/config.ts`、`src/locales.ts` | 有效配置范围与类型化中英文文案 |
+| `packages/bundle/tui/` | 稳定 TUI bundle；覆盖 base 并禁用不需要的 HMR |
+| `packages/boot/app-boot/src/profile.ts`、`apps/cli/package.json` | 已注册内置 tui profile 及 CLI 稳定依赖 |
+| `packages/boot/app-boot/src/terminal-restore.ts`、`src/index.ts` | 同步复原注册及 fatal preReport 连接 |
+| `apps/cli/src/profile-boot.ts` | launcher 信号所有权及显式 detached 优先级 |
+| `snapshots/tui/`、`packages/tui/tui/tests/` | keyless Session replay、真实安装闭包、PTY/emulator 和失败控制 |
+
+原设计的 packages/experimental/tui 与 tui-bundle 仅描述晋升前阶段，当前运行代码不再位于这些路径。T0–T6 的步骤保留为设计要求；实际验收与顺序偏差以独立验收记录为准。
 
 渲染层不直接访问 Context。工具呈现复用 core/tools 的 ToolCallView/ToolResultView（src/presentation.ts）及已有纯 presenter，参考 ACP 的事件投影；TUI 只负责终端映射，不另建工具名分支或第二套工具视图协议。恢复时从日志/已记录视图重建，不重新执行工具；原始参数不能直接倾倒到终端。若公共能力缺失，在 T0 提交最小接口选择及所有受影响消费者，不从 session-controller 私有实现导入代码。
 
@@ -81,17 +83,17 @@ TUI 通过 Cordis effect 持有输入/输出、SIGWINCH、定时器和交互回�
 | raw Ctrl+C 字节、/quit、Ctrl+D、EOF | TUI 输入层，经应用关闭入口 | 编辑/取消与正常退出；不新增进程信号监听 |
 | OS SIGINT | apps/cli/src/profile-boot.ts | 保持现有 interrupt(130)，调用同步复原后有界 dispose |
 | OS SIGTERM | 同一 launcher | 保持现有 interrupt(0)，不能因工具未完成改成失败码 |
-| POSIX SIGHUP | 同一 launcher，仅 terminal restore owner 注册期间 | 有终端 owner 时 interrupt(129)；无 owner 不注册 HUP listener，保留默认/继承 ignore 行为 |
+| POSIX SIGHUP | 同一 launcher，仅 terminal restore owner 注册期间 | 有终端 owner 时 interrupt(129)；普通无 owner 启动保留原有行为，显式 DSH_DETACHED=1 另注册后台处理 |
 | SIGWINCH | TUI effect | 仅更新尺寸与重绘 |
 | uncaughtException/unhandledRejection | 现有 installFailLoud | 第 6.1 节复原前置，随后有界非零退出 |
 
-SIGHUP 不设全局常驻监听：launcher 只在终端 owner 注册 restore hook 后附加处理，最后一个终端 owner 释放即移除。TUI 不直接监听 HUP；headless、ACP、Web 等无终端 owner 时保持原有默认或 nohup 继承的忽略，不因启动 dsh 改变 detached 生命周期。T0 必须通过真实 nohup 子进程在 HUP 后仍活、无诊断/终端转义污染并可由 TERM 正常停止的回归；另测 TUI owner 的 HUP=129、注册/释放不累积、INT=130 和 TERM=0。POSIX 专项，Windows 不伪造 HUP 支持。restore 接口由 launcher 持有、app boot 提供，TUI 在改变终端模式前以 effect 注册；最小 owner 修改须复核。
+普通启动不设全局常驻 SIGHUP 忽略监听；launcher 在终端 owner 注册后附加恢复处理，释放后移除。已测 Node 环境会重置信号 disposition，因此不承诺 plain nohup 透明存活；显式 DSH_DETACHED=1 仅在无终端 owner 时忽略 HUP，有终端 owner 时仍恢复并以 129 退出。已用真实子进程验证普通 HUP、显式 detached 存活及 TERM=0、终端 owner 优先；INT=130 和监听释放仍由 launcher 拥有。POSIX 专项，Windows 不伪造 HUP 支持。restore 接口由 launcher 持有、app boot 提供，TUI 在改变终端模式前以 effect 注册；最小 owner 修改须复核。
 
 渲染异常、EPIPE 和卸载进入幂等清理，输出关闭后不反复写同一输出。SIGKILL/native abort 不能保证复原，记录恢复操作与平台限制。
 
 ### 6.1 致命异常与正常退出分开处理
 
-现有 app-boot 的 installFailLoud 已拥有 uncaughtException 和 unhandledRejection 处理：先输出诊断，再等待 release，最多 2000ms，最后 exit(1)；profile-boot 已通过 release 释放应用 fiber。这不是“已经满足复原先于错误输出”。T0 必须验证真实 launcher 的顺序和卡住的 disposer，不能仅新增另一组 process.on 或假定插件 dispose 一定及时运行。
+实施前的 app-boot 基线拥有 uncaughtException 和 unhandledRejection 处理：先输出诊断，再等待 release，最多 2000ms，最后 exit(1)；profile-boot 已通过 release 释放应用 fiber。这不是“已经满足复原先于错误输出”。T0 必须验证真实 launcher 的顺序和卡住的 disposer，不能仅新增另一组 process.on 或假定插件 dispose 一定及时运行。
 
 TUI 提供同步、幂等且异常自包含的 restoreTerminalNow；在获得 raw mode 前注册，在正常释放后卸载。致命路径先禁止输入/呈现，再立即尝试恢复原 raw 状态、撤销自己开启的 bracketed paste、显示光标、退出自己进入的 alternate screen，然后由既有进程 owner 记录诊断并非零退出；例如显示光标与退出备用屏序列为 \x1b[?25h、\x1b[?1049l。每个恢复步骤独立尝试，TTY 丢失或一个写入失败不能阻止其他步骤；不向非 TTY 管道写终端序列。
 
@@ -144,17 +146,17 @@ T2–T4 功能完整、T5 通过后，按 packages/experimental/AGENTS.md 复核
 | 首次启动、退出、再次进入 | 真实 profile 组合成功；终端状态恢复；无残留监听/进程 |
 | 多轮与持久恢复 | 单次准入、文本顺序正确、恢复无重复；工具结果可重建 |
 | 问题与审批 | 具体选择进入原能力；拒绝/过期/断开时敏感工具不执行 |
-| raw Ctrl+C、正常 EOF、外部 SIGINT/SIGTERM/SIGHUP | 字节编辑与 OS 信号分开；正常退出 0、SIGINT 130、SIGTERM 0、有终端 owner 的 POSIX SIGHUP 129；无 owner 的 nohup 子进程 HUP 后仍运行；单一 launcher 清理，未决请求解除 |
+| raw Ctrl+C、正常 EOF、外部 SIGINT/SIGTERM/SIGHUP | 字节编辑与 OS 信号分开；正常退出 0、SIGINT 130、SIGTERM 0、有终端 owner 的 POSIX SIGHUP 129；显式 DSH_DETACHED=1 的无 owner 子进程 HUP 后仍运行；单一 launcher 清理，未决请求解除 |
 | uncaughtException、unhandledRejection、release 卡住/失败 | 同步尽力复原先于诊断；有界非零退出、不恢复业务、不重复监听；关闭 TTY 时失败被包含 |
 | 中文/英文/组合字符/ZWJ/旗帜、80/40 列、resize | 字素编辑正确；终端模拟器中的光标列/折行符合预期；确认入口可见；记录 ambiguous-width 策略 |
 | 长文本/恶意终端序列 | 内存与缓冲有界；无 OSC52 或逃逸控制效果 |
 | 非 TTY、缺 Key、错误 cwd、跨进程 writer 冲突 | 第二 writer 被实际锁拒绝且首个继续工作；释放后可恢复；无错误批准或终端损坏 |
 | 模型/力度切换 | UI 选择与下一次实际调用完全一致 |
-| macOS/Linux PTY | mock 场景与真实 terminal lifecycle 通过；无真实 API Key 依赖 |
-| Windows ConPTY | 相同任务交互与恢复测试通过后才宣称 Windows 支持；首版可明确仅发布 macOS/Linux |
+| macOS/Linux PTY | macOS 本地 mock 与真实 terminal lifecycle 已通过；Linux 原生 PTY 待 CI/目标环境验收，不能共用通过结论 |
+| Windows ConPTY | 尚未验证；相同任务交互与恢复测试在 Windows runner 通过后才宣称支持 |
 | T5 实验安装 / T6 正式安装 | 显式实验 profile 与晋升后内置 tui 分别从 artifact 验证，无 checkout 依赖；T6 前默认闭包不含 TUI |
 
-上述检查均为未来条件，本次未运行。实现时执行 focused Vitest、typecheck、lint、hygiene、verify-upstream-intake、文档及 entrypoint gates；CI 承担平台矩阵。复用 node-pty 和 @xterm/headless，缺失的 profile/ConPTY harness 纳入 T0/T5，不另造模拟终端或以字符串快照替代证据。
+上述矩阵的本地 macOS 结果已记录于独立验收，不能推及 Linux/Windows。源码与测试 typecheck、lint、安装产物、snapshot/corpus 和产品隔离门禁已通过；仓库级文档与 hygiene 阻塞也已修复，最终结果见[本地修复记录](local-merge-repairs.md)。Linux/Windows CI 矩阵未运行。复用 node-pty 和 @xterm/headless，缺失的 profile/ConPTY harness 纳入 T0/T5，不另造模拟终端或以字符串快照替代证据。
 
 ## 9. 交付与回滚
 
@@ -168,7 +170,7 @@ TUI 单独发布为可选 CLI 能力，不进入 DMG/EXE 默认插件清单。�
 
 - [Node 致命异常处理](https://nodejs.org/api/process.html#warning-using-uncaughtexception-correctly)：异常后同步清理并退出，不能恢复正常业务。
 - [string-width](https://github.com/sindresorhus/string-width)、[ansi-escapes](https://github.com/sindresorhus/ansi-escapes)：分别用于列宽估算与可信终端控制；仍需验证字素和真实终端行为。
-- 本地 packages/boot/app-boot/src/index.ts 的 installFailLoud 与 apps/cli/src/profile-boot.ts 的 release wiring：当前顺序是先诊断后异步清理；T0 的复原前置要求属于待实现/验证项。
+- 本地 packages/boot/app-boot/src/index.ts 的 installFailLoud 与 apps/cli/src/profile-boot.ts 已连接同步 preReport 终端复原；致命路径先尽力复原再诊断，本地 PTY 及失败控制已验收。
 - 本地 packages/experimental/AGENTS.md：T0–T5 保留实验包；T6 才复核晋升并进入正式产品闭包。
 - [共享工具视图](../../packages/core/tools/src/presentation.ts)、[launcher](../../apps/cli/src/profile-boot.ts)、[approval 数据](../../packages/interaction/user-approval/README.md)、[Session writer lease](../../packages/session/session-persistence-jsonl/src/lease.ts)。
 - [terminal-bash 测试依赖](../../packages/terminal/terminal-bash/package.json)、[subprocess-local 测试基础](../../packages/subprocess/subprocess-local/package.json)：复用现有 @xterm/headless 与 node-pty。

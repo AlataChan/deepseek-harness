@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for im.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/im.md
+/instant-messaging-subsystem:
+  en: c49b7158c795f318
+  zh: 5fa3527584ab7b78
+/instant-messaging-subsystem/ingress-admission:
+  en: ce8d5435305ad891
+  zh: 4cae5a14ad151f3d
+/instant-messaging-subsystem/tenant-runtime:
+  en: 89fc4dfaae8cb294
+  zh: 1cb13716079b0336

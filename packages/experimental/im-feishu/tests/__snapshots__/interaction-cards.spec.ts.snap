@@ -1,0 +1,295 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`IM card presentation > renders localized approval and question cards in en 1`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "tag": "div",
+        "text": {
+          "content": "fixture",
+          "tag": "plain_text",
+        },
+      },
+      {
+        "tag": "div",
+        "text": {
+          "content": "Change fixture",
+          "tag": "plain_text",
+        },
+      },
+      {
+        "behaviors": [
+          {
+            "type": "callback",
+            "value": {
+              "actionId": "00000000-0000-4000-8000-000000000001",
+              "decision": "allow",
+              "kind": "approval",
+            },
+          },
+        ],
+        "disabled": false,
+        "tag": "button",
+        "text": {
+          "content": "Allow once",
+          "tag": "plain_text",
+        },
+        "type": "primary",
+      },
+      {
+        "behaviors": [
+          {
+            "type": "callback",
+            "value": {
+              "actionId": "00000000-0000-4000-8000-000000000001",
+              "decision": "reject",
+              "kind": "approval",
+            },
+          },
+        ],
+        "disabled": false,
+        "tag": "button",
+        "text": {
+          "content": "Reject",
+          "tag": "plain_text",
+        },
+        "type": "danger",
+      },
+    ],
+  },
+  "config": {
+    "enable_forward": false,
+  },
+  "header": {
+    "title": {
+      "content": "Permission request",
+      "tag": "plain_text",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`IM card presentation > renders localized approval and question cards in en 2`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "elements": [
+          {
+            "tag": "div",
+            "text": {
+              "content": "选择工作区 / Choose workspace",
+              "tag": "plain_text",
+            },
+          },
+          {
+            "name": "s0",
+            "options": [
+              {
+                "text": {
+                  "content": "A",
+                  "tag": "plain_text",
+                },
+                "value": "o0",
+              },
+              {
+                "text": {
+                  "content": "B",
+                  "tag": "plain_text",
+                },
+                "value": "o1",
+              },
+            ],
+            "placeholder": {
+              "content": "Choose an option",
+              "tag": "plain_text",
+            },
+            "tag": "select_static",
+          },
+          {
+            "input_type": "multiline_text",
+            "max_length": 1000,
+            "name": "c0",
+            "placeholder": {
+              "content": "Other answer",
+              "tag": "plain_text",
+            },
+            "tag": "input",
+          },
+          {
+            "form_action_type": "submit",
+            "name": "question_00000000-0000-4000-8000-000000000002",
+            "tag": "button",
+            "text": {
+              "content": "Submit answer",
+              "tag": "plain_text",
+            },
+            "type": "primary",
+          },
+        ],
+        "name": "questions",
+        "tag": "form",
+      },
+    ],
+  },
+  "config": {
+    "enable_forward": false,
+  },
+  "header": {
+    "title": {
+      "content": "Your answer is needed",
+      "tag": "plain_text",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`IM card presentation > renders localized approval and question cards in zh 1`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "tag": "div",
+        "text": {
+          "content": "fixture",
+          "tag": "plain_text",
+        },
+      },
+      {
+        "tag": "div",
+        "text": {
+          "content": "Change fixture",
+          "tag": "plain_text",
+        },
+      },
+      {
+        "behaviors": [
+          {
+            "type": "callback",
+            "value": {
+              "actionId": "00000000-0000-4000-8000-000000000001",
+              "decision": "allow",
+              "kind": "approval",
+            },
+          },
+        ],
+        "disabled": false,
+        "tag": "button",
+        "text": {
+          "content": "仅批准本次",
+          "tag": "plain_text",
+        },
+        "type": "primary",
+      },
+      {
+        "behaviors": [
+          {
+            "type": "callback",
+            "value": {
+              "actionId": "00000000-0000-4000-8000-000000000001",
+              "decision": "reject",
+              "kind": "approval",
+            },
+          },
+        ],
+        "disabled": false,
+        "tag": "button",
+        "text": {
+          "content": "拒绝",
+          "tag": "plain_text",
+        },
+        "type": "danger",
+      },
+    ],
+  },
+  "config": {
+    "enable_forward": false,
+  },
+  "header": {
+    "title": {
+      "content": "操作审批",
+      "tag": "plain_text",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`IM card presentation > renders localized approval and question cards in zh 2`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "elements": [
+          {
+            "tag": "div",
+            "text": {
+              "content": "选择工作区 / Choose workspace",
+              "tag": "plain_text",
+            },
+          },
+          {
+            "name": "s0",
+            "options": [
+              {
+                "text": {
+                  "content": "A",
+                  "tag": "plain_text",
+                },
+                "value": "o0",
+              },
+              {
+                "text": {
+                  "content": "B",
+                  "tag": "plain_text",
+                },
+                "value": "o1",
+              },
+            ],
+            "placeholder": {
+              "content": "请选择",
+              "tag": "plain_text",
+            },
+            "tag": "select_static",
+          },
+          {
+            "input_type": "multiline_text",
+            "max_length": 1000,
+            "name": "c0",
+            "placeholder": {
+              "content": "其他回答",
+              "tag": "plain_text",
+            },
+            "tag": "input",
+          },
+          {
+            "form_action_type": "submit",
+            "name": "question_00000000-0000-4000-8000-000000000002",
+            "tag": "button",
+            "text": {
+              "content": "提交回答",
+              "tag": "plain_text",
+            },
+            "type": "primary",
+          },
+        ],
+        "name": "questions",
+        "tag": "form",
+      },
+    ],
+  },
+  "config": {
+    "enable_forward": false,
+  },
+  "header": {
+    "title": {
+      "content": "需要您的回答",
+      "tag": "plain_text",
+    },
+  },
+  "schema": "2.0",
+}
+`;

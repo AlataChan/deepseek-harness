@@ -38,6 +38,7 @@ kind: "package-reference"
 -----
 
 <a id="understand-the-implementation"></a>
+
 插槽类型声明和子插槽规格可设置 `inline: true`。其可寻址锚点、错误占位和链式覆盖回退包装使用 `span`，普通插槽仍使用 `div`。声明被卸载后，保留的行内 outlet 继续使用行内锚点，但不渲染未声明的条目。贡献内容仍须保持不可交互且符合行内语义。
 
 ## 理解实现

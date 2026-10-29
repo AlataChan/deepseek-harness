@@ -180,6 +180,10 @@ export function readWorkspaceManifests(repositoryRoot: string): WorkspaceManifes
 }
 
 const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
+  // Document conversion runs in an independently launched worker bundle.
+  '@deepseek-ai/dsh-experimental-desktop-ask-knowledge': ['lib/converter-worker.js'],
+  // Separate process profiles load these explicit IM plugin entries; the library root starts neither.
+  '@deepseek-ai/dsh-experimental-im-feishu': ['lib/runtime-plugin.js', 'lib/ingress-plugin.js'],
   // Owned Worker bundles import this public bootstrap before their business entry.
   '@deepseek-ai/dsh-app-boot': ['lib/worker/profile-resolution-bootstrap.js'],
   // Statically linked client libraries keep their stylesheets next to the emitted
@@ -262,6 +266,12 @@ function sameStringList(actual: readonly string[] | undefined, expected: readonl
   return !!actual && actual.length === expected.length && actual.every((value, index) => value === expected[index])
 }
 
+// This type-only barrel emits an empty module. Its runtime export needs no
+// unbundled Client tree, whose CSS belongs to the bundled Client artifact.
+const emittedTreeFiles: Readonly<Record<string, readonly string[]>> = {
+  '@deepseek-ai/dsh-experimental-desktop-ask-knowledge': ['lib/types/types.js'],
+}
+
 /**
  * Compute canonical publication patterns, including declared and exported icon paths and exported locale JSON resources.
  * @param manifest - workspace package manifest.
@@ -317,7 +327,9 @@ export function expectedDshPackageFiles(manifest: PackageManifest): readonly str
     // browser-safe source channels rehomed off src so plain Node can import
     // them without type stripping) publish the emitted JS alongside the
     // declarations.
-    ...usesEmittedTreeDefaults(manifest) ? ['lib/types/**/*.js'] : [],
+    ...usesEmittedTreeDefaults(manifest)
+      ? (manifest.name && emittedTreeFiles[manifest.name]) || ['lib/types/**/*.js']
+      : [],
     'lib/types/**/*.d.ts',
     ...hasExportPair(manifest, './typert', './lib/typert.host.d.ts', './lib/typert.host.js')
       ? ['lib/typert.host.js', 'lib/typert.host.d.ts']

@@ -1,0 +1,10 @@
+- id: im-runtime
+  config:
+    tenantId: tenant-a
+    workspaceId: workspace-a
+    operatorIds: [operator-feishu-a]
+    stateDirectory: /var/lib/dsh-im/a/state
+    cwd: /var/lib/dsh-im/a/workspace
+    useSystemdStdio: true
+    shutdownTimeoutMs: 10000
+    maxActiveDeliveries: 1

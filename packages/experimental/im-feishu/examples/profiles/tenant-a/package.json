@@ -1,0 +1,16 @@
+{
+  "name": "dsh-profile-tenant-a",
+  "private": true,
+  "dependencies": {
+    "@deepseek-ai/dsh-base": "0.2.1-alpha.1",
+    "@deepseek-ai/dsh-experimental-im-service-bundle": "0.2.1-alpha.1"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-experimental-im-service-bundle"
+      ]
+    }
+  }
+}

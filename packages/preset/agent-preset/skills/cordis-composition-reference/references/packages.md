@@ -52,6 +52,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-desktop-app` | yes | The dsh desktop surface bundle: stdio carrier, launch-time workspace root, and desktop runtime context |
 | `@deepseek-ai/dsh-headless` | yes | The dsh one-shot bundle: a direct core Agent/Session runner over dsh-base with no Host, HTTP, or browser layer |
 | `@deepseek-ai/dsh-sdk-app` | yes | The dsh SDK profile bundle: stdio JSON-RPC serving and process lifecycle over dsh-base |
+| `@deepseek-ai/dsh-tui-bundle` | no | Bundle composing the interactive terminal user interface over dsh-base |
 | `@deepseek-ai/dsh-web-app` | yes | The dsh browser-surface bundle: the web patch layer over dsh-base plus the runtime glue plugin (frontend dist serving, web-surface prompt, bash runtime variables, URL line) |
 
 ## client
@@ -482,6 +483,12 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | Package | Config | Description |
 |---|---|---|
 | `@deepseek-ai/dsh-tool-todo` | yes | Model-facing todo_write tool over the DeepSeek Harness event-sourced session log |
+
+## tui
+
+| Package | Config | Description |
+|---|---|---|
+| `@deepseek-ai/dsh-tui` | yes | Interactive terminal user interface for DeepSeek Harness |
 
 ## typert
 

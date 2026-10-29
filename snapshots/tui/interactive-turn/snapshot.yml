@@ -1,0 +1,8 @@
+version: 1
+scenario: interactive-turn
+profile: tui
+composition: tui
+recording: authored
+header:
+  class: tui
+  pin: true

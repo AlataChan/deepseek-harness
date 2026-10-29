@@ -802,6 +802,20 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Loads mods that defineMod plugins add, raises their hook chains from harness extension points, and draws the band above the prompt over its Remote.',
   },
   {
+    key: 'imIngress',
+    pkg: 'experimental-im-feishu',
+    title: 'Durable IM message admission and dispatch',
+    mode: 'service',
+    note: 'Authorizes and commits incoming platform deliveries into durable storage before ACK, driving bounded dispatch across isolated tenant processes.',
+  },
+  {
+    key: 'imRuntime',
+    pkg: 'experimental-im-feishu',
+    title: 'Isolated tenant IM conversation runtime',
+    mode: 'service',
+    note: 'Manages durable conversation-to-session mappings, validates operator authorization, and runs isolated tenant Agent sessions with asynchronous reconciliation.',
+  },
+  {
     key: 'inspector',
     pkg: 'inspector',
     title: 'Cross-realm runtime inspection',
