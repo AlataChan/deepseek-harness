@@ -61,4 +61,4 @@ None from settings operations; the IM delivery service and selected Agent preset
 <a id="dev-note"></a>
 ### Dev Note
 
-The existing [IM service](../im-feishu/README.md) owns delivery semantics. The [desktop settings design](../../../.plans/feature-expansion-2026-10-24/desktop-im-settings-design.md) records the local execution model.
+The existing [IM service](../im-feishu/README.md) owns delivery semantics. Installed-flow acceptance rejects absolute filesystem imports, including Windows build paths. The [desktop settings design](../../../.plans/feature-expansion-2026-10-24/desktop-im-settings-design.md) records the local execution model.

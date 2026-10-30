@@ -1,4 +1,5 @@
 import { isBuiltin } from 'node:module'
+import { isAbsolute, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { clientBundle } from '../../client/tsdown.client.ts'
 
@@ -16,6 +17,6 @@ export default clientBundle('@deepseek-ai/dsh-experimental-desktop-im', ['lib/ty
     },
     deps: {
     alwaysBundle: inline,
-    neverBundle: (id: string) => !isBuiltin(id) && !id.startsWith('.') && !id.startsWith('/') && !inline.test(id),
+    neverBundle: (id: string) => !isBuiltin(id) && !id.startsWith('.') && !isAbsolute(id) && !win32.isAbsolute(id) && !inline.test(id),
   } },
 })

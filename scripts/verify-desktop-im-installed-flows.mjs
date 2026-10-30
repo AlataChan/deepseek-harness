@@ -2,10 +2,21 @@
 /** Verify IM settings discovery and configuration against an explicit installed runtime, without platform calls. */
 import assert from 'node:assert/strict'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, resolve, win32 } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { InstalledCompanionRunner, validateInstalledTarget } from './verify-dsh-context-installed-flows.mjs'
+
+/** Reject runtime imports tied to a build machine's filesystem.
+ * @param source - Emitted standalone IM Host bundle.
+ * @returns Normally only when imports use package or relative specifiers.
+ */
+export function assertPortableImImports(source) {
+  for (const match of source.matchAll(/\b(?:from\s*|import\s*(?:\(\s*)?)["']([^"']+)["']/gu)) {
+    const id = match[1]
+    assert(!isAbsolute(id) && !win32.isAbsolute(id) && !id.startsWith('file:'), 'IM bundle contains an absolute filesystem import')
+  }
+}
 
 /**
  * Exercise installed public settings RPCs and cold-start persistence with synthetic credentials only.
@@ -18,6 +29,7 @@ export async function verifyInstalledImSettings(target) {
   const source = join(bundle.pluginRoot, name)
   const manifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
   assert.equal(manifest.name, name)
+  assertPortableImImports(readFileSync(join(source, 'lib', 'index.js'), 'utf8'))
   assert(manifest.dsh?.client && manifest.exports?.['./client'], 'IM settings must have an installed Client')
   const inventory = JSON.parse(readFileSync(join(bundle.pluginRoot, 'plugins.json'), 'utf8'))
   assert.equal(inventory.plugins[name].defaultEnabled, true, 'IM settings entry must be discoverable without enabling a channel')

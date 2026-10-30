@@ -61,4 +61,4 @@ kind: "package-bundle"
 <a id="dev-note"></a>
 ### 开发备注
 
-现有 [IM 服务](../im-feishu/README.zh.md) 负责消息语义。[桌面设置设计](../../../.plans/feature-expansion-2026-10-24/desktop-im-settings-design.md) 记录本地执行模型。
+现有 [IM 服务](../im-feishu/README.zh.md) 负责消息语义。安装验收拒绝引用绝对文件路径的模块导入，包括 Windows 构建路径。[桌面设置设计](../../../.plans/feature-expansion-2026-10-24/desktop-im-settings-design.md) 记录本地执行模型。
