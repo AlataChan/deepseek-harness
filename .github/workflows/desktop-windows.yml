@@ -211,6 +211,10 @@ jobs:
       - name: Run the Windows readiness gate
         shell: pwsh
         run: node scripts/verify-desktop-exe.mjs D:\octo-dsh
+      - name: Verify installed IM settings without platform calls
+        shell: pwsh
+        run: node scripts/verify-desktop-im-installed-flows.mjs D:\octo-dsh
+
       - name: Verify installed Ask Knowledge public flows with a legacy code page
         shell: pwsh
         env:

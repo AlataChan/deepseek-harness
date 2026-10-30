@@ -802,6 +802,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Loads mods that defineMod plugins add, raises their hook chains from harness extension points, and draws the band above the prompt over its Remote.',
   },
   {
+    key: 'desktopIm',
+    pkg: 'experimental-desktop-im',
+    title: 'Desktop IM settings and single-user connections',
+    mode: 'service',
+    note: 'Owns desktop-local connection settings and Feishu/DingTalk lifetimes; the Client settings section calls its Remote methods.',
+  },
+  {
     key: 'imIngress',
     pkg: 'experimental-im-feishu',
     title: 'Durable IM message admission and dispatch',

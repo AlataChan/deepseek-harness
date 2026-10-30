@@ -2222,6 +2222,37 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'desktopIm',
+    summary: 'Remote service with two independently owned channel controllers.',
+    description: 'Remote service with two independently owned channel controllers.',
+    methods: [
+      {
+        signature: '@Remote async list(): Promise<ImSnapshot[]>',
+        description: 'Read both channel configurations and live status.',
+        parameters: [],
+        returns: 'Non-secret configuration and connection status for both platforms.',
+      },
+      {
+        signature: '@Remote async save(channel: ImChannel, config: ConnectionConfig, secret: string): Promise<ImSnapshot>',
+        description: 'Save a connection without enabling it.',
+        parameters: [{ name: 'channel', description: 'Selected platform.' }, { name: 'config', description: 'Non-secret form settings.' }, { name: 'secret', description: 'Replacement secret or blank to retain.' }],
+        returns: 'Saved OFF status.',
+      },
+      {
+        signature: '@Remote async setEnabled(channel: ImChannel, enabled: boolean): Promise<ImSnapshot>',
+        description: 'Apply the operator\'s enabled choice and await its outcome.',
+        parameters: [{ name: 'channel', description: 'Selected platform.' }, { name: 'enabled', description: 'Explicit ON/OFF choice.' }],
+        returns: 'Settled lifecycle status.',
+      },
+      {
+        signature: '@Remote async test(channel: ImChannel): Promise<ImSnapshot>',
+        description: 'Authenticate a saved connection without executing tasks.',
+        parameters: [{ name: 'channel', description: 'Saved platform connection.' }],
+        returns: 'Probe completion; no message admission or model invocation.',
+      },
+    ],
+  },
+  {
     key: 'desktopMedia',
     summary: 'Overlay media service: catalogues, open/reveal, and paid producers.',
     description: 'Overlay media service: catalogues, open/reveal, and paid producers.',
@@ -7477,12 +7508,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ImageVariantId = Branded<\'ImageVariantId\'>;',
   },
   {
+    name: 'ImChannel',
+    declaration: 'export type ImChannel = \'feishu\' | \'dingtalk\';',
+  },
+  {
     name: 'ImportBytes',
     declaration: 'export interface ImportBytes {\n    readonly filename: string;\n    readonly bytes: Uint8Array;\n}',
   },
   {
     name: 'ImportLimits',
     declaration: 'export interface ImportLimits {\n    readonly maxFileBytes: number;\n    readonly maxClipDurationSeconds: number;\n}',
+  },
+  {
+    name: 'ImSnapshot',
+    declaration: 'export interface ImSnapshot {\n    channel: ImChannel;\n    config: ConnectionConfig | null;\n    enabled: boolean;\n    secretConfigured: boolean;\n    phase: \'off\' | \'connecting\' | \'connected\' | \'error\';\n    error: \'startup\' | \'delivery\' | \'storage\' | \'shutdown\' | null;\n}',
   },
   {
     name: 'IncompatiblePlugin',

@@ -11,6 +11,7 @@ import { dirname, extname, join, relative, resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { OFFLINE_POLICY, validateInstalledTarget } from './verify-dsh-context-installed-flows.mjs'
+import { verifyDesktopImSection } from './verify-desktop-im-webview.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const { chromium } = createRequire(join(root, 'apps/web/package.json'))('playwright')
@@ -196,6 +197,7 @@ try {
     assert.equal(off.application, 'applied')
     await page.waitForFunction(() => !window.__nativeModules.entries.loader.ctx.get('slots').entries('conversation.view').some(row => ['context', 'fleet'].includes(row.options.id)))
   }
+  await verifyDesktopImSection(page, remote)
   assert.deepEqual(errors, [])
   assert.equal(deliveryError, undefined)
   assert.deepEqual(await page.evaluate(() => window.__nativeModules.entries.state.getSnapshot().failures), [])

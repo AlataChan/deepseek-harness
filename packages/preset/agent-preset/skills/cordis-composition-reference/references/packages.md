@@ -199,6 +199,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-desktop-ask-knowledge` | yes | octopus_DSH desktop ask-knowledge Provider and knowledge-library picker |
 | `@deepseek-ai/dsh-experimental-desktop-files` | yes | octopus_DSH desktop file-tree Provider and sidebar occupant (session-cwd listing + system open) |
 | `@deepseek-ai/dsh-experimental-desktop-hero-atmosphere` | no | octopus_DSH desktop blank-session Hero atmosphere plate (baked shallow-water loop) |
+| `@deepseek-ai/dsh-experimental-desktop-im` | yes | Desktop Feishu and DingTalk settings and single-user durable connections |
 | `@deepseek-ai/dsh-experimental-desktop-media` | yes | octopus_DSH conversation media creation overlay: MiniMax tools, Works, and user-installed FFmpeg |
 | `@deepseek-ai/dsh-experimental-desktop-ngo` | no | octopus_DSH public-service project assistant preset, installed as a fork-owned profile plugin |
 | `@deepseek-ai/dsh-experimental-desktop-speech-transcribe` | yes | octopus_DSH long-recording transcription overlay: a speech_transcribe Host tool over the speech-to-text seam |

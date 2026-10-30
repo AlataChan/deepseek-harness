@@ -196,6 +196,13 @@ export class FeishuTransport {
     this.outboundClient = new FeishuOutboundClient(outboundConfig)
   }
 
+  /** Read the current SDK socket state.
+   * @returns Whether an owned socket reports connected.
+   */
+  isConnected(): boolean {
+    return !this.isClosed && !this.isFailed && [...this.ownedClients].some(client => client.getConnectionStatus().state === 'connected')
+  }
+
   private checkClosed(): boolean {
     return this.isClosed
   }

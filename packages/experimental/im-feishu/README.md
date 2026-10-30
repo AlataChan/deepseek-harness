@@ -28,6 +28,8 @@ English | [中文](README.zh.md)
 
 Import this helper library inside Feishu IM ingress handlers or approval adapters when converting incoming platform WebSocket messages into Harness user prompt sources or handling admission for pending approvals. The root entry is a library. The separate `./runtime` and `./ingress` exports provide the isolated process plugins; they require explicit deployment configuration and must never be mounted together in one tenant process.
 
+Desktop users configure the pinned [IM settings overlay](../desktop-im/README.md) in Settings → IM integrations. Its `./desktop` adapter reuses these delivery services in one desktop-user process with SQLite ownership; it does not provide cross-UID tenant isolation.
+
 ### Entry point
 
 Import helper functions or isolated process plugins from their explicit entry points:

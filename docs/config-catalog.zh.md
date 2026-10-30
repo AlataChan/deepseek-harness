@@ -1169,6 +1169,46 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-files -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-im -->
+<a id="deepseek-aidsh-experimental-desktop-im"></a>
+
+## `@deepseek-ai/dsh-experimental-desktop-im`
+
+- `inject`: `credentials` · `agents` · `sessions` · `sessionPersistence` · `storage` · `llm`
+- `source`: [`packages/experimental/desktop-im/src/index.ts:29`](../packages/experimental/desktop-im/src/index.ts)
+
+```ts config-catalog
+/** Deployment limits for the desktop-owned message queues and connection teardown. */
+export interface Config {
+  /** Absolute settings directory override; empty selects the desktop profile home. */
+  settingsDirectory: string
+  /** Interval between durable delivery dispatch passes in milliseconds. */
+  dispatchIntervalMs: number
+  /** Maximum wait for owned Agent shutdown in milliseconds. */
+  shutdownTimeoutMs: number
+  /** Maximum Session events read when reconciling a delivery. */
+  maxReconciliationEvents: number
+  /** Retained work and message admission limits. */
+  ingress: {
+    /** Maximum retained inbox records before new deliveries are refused. */
+    maxStoredDeliveries: number
+    /** Maximum simultaneous inbound admission operations. */
+    maxPendingAdmissions: number
+    /** Maximum UTF-8 prompt size accepted per delivery. */
+    maxPromptBytes: number
+    /** Maximum UTF-8 final reply size sent to a platform. */
+    maxReplyBytes: number
+    /** Oldest platform event admitted, in milliseconds. */
+    maxEventAgeMs: number
+    /** Maximum accepted future timestamp skew in milliseconds. */
+    maxFutureSkewMs: number
+    /** Maximum confirmed-safe reply attempts. */
+    maxOutboxAttempts: number
+  }
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-im -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-desktop-media -->
 <a id="deepseek-aidsh-experimental-desktop-media"></a>
 

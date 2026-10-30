@@ -1,6 +1,7 @@
 /** Reject one ambiguous origin label from maintained tracked files. */
 
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -26,6 +27,30 @@ function isExcluded(file: string): boolean {
     || /^docs\/persistence-changes\/historical-formats\/v(?:0|[1-9]\d*)\.(?:schema\.json|i18n\.yaml)$/u.test(file)
 }
 
+let frozenDesignHashes: ReadonlyMap<string, string> | undefined
+
+/** Frozen relocated originals remain exempt only while their recorded bytes match. */
+function isFrozenDesign(file: string, source: string): boolean {
+  if (!file.startsWith('.plans/archived-designs/')) return false
+  if (!frozenDesignHashes) {
+    const value: unknown = JSON.parse(readFileSync(resolve(root, '.plans/archived-designs/relocation-manifest.json'), 'utf8'))
+    if (!Array.isArray(value)) throw new Error('Invalid frozen design relocation manifest')
+    const entries: readonly unknown[] = value
+    const hashes = new Map<string, string>()
+    for (const entry of entries) {
+      if (!entry || typeof entry !== 'object' || !('archive' in entry) || typeof entry.archive !== 'string'
+        || !entry.archive.startsWith('.plans/archived-designs/') || !('sha256' in entry)
+        || typeof entry.sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(entry.sha256) || hashes.has(entry.archive)) {
+        throw new Error('Invalid frozen design relocation entry')
+      }
+      hashes.set(entry.archive, entry.sha256)
+    }
+    frozenDesignHashes = hashes
+  }
+  const expected = frozenDesignHashes.get(file)
+  return expected !== undefined && createHash('sha256').update(source).digest('hex') === expected
+}
+
 function containsBlockedTerm(value: string): boolean {
   return value.normalize('NFKC').toLowerCase().includes(blockedTerm)
 }
@@ -34,10 +59,11 @@ function containsBlockedTerm(value: string): boolean {
  * Find the blocked term in one maintained tracked file.
  * @param file - repository-relative tracked path.
  * @param source - text contents or symlink target.
- * @returns violations outside vendored sources, frozen Agent Notes, historical schemas and their checked generated regions.
+ * @returns Violations outside vendored sources, frozen Agent Notes, hash-verified design originals,
+ * historical schemas and their checked generated regions.
  */
 export function findConcreteTermViolations(file: string, source: string): ConcreteTermViolation[] {
-  if (isExcluded(file)) return []
+  if (isExcluded(file) || isFrozenDesign(file, source)) return []
   const violations: ConcreteTermViolation[] = []
   if (containsBlockedTerm(file)) violations.push({ file, line: null })
   const lines = source.split(/\r?\n/u)

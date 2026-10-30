@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsdown'
 
 /** Build each isolated process role as one complete Node entry without shared chunks. */
-export default defineConfig(['index', 'runtime-plugin', 'ingress-plugin'].map(entry => ({
+export default defineConfig(['index', 'runtime-plugin', 'ingress-plugin', 'desktop'].map(entry => ({
   entry: { [entry]: `lib/types/${entry}.js` },
   outDir: 'lib',
   format: ['esm' as const],

@@ -256,6 +256,8 @@ flowchart LR
   svc_assistants["ctx.assistants<br/>Persistent assistant and team catalog and lifecycle"]
   pkg_experimental_claude_code_mods["experimental-claude-code-mods"]
   svc_claudeCodeMods["ctx.claudeCodeMods<br/>Claude Code mods bridge"]
+  pkg_experimental_desktop_im["experimental-desktop-im"]
+  svc_desktopIm["ctx.desktopIm<br/>Desktop IM settings and single-user connections"]
   pkg_experimental_im_feishu["experimental-im-feishu"]
   svc_imIngress["ctx.imIngress<br/>Durable IM message admission and dispatch"]
   svc_imRuntime["ctx.imRuntime<br/>Isolated tenant IM conversation runtime"]
@@ -351,6 +353,7 @@ flowchart LR
   pkg_experimental_desktop_ask_data --> svc_askData
   pkg_experimental_desktop_ask_knowledge --> svc_askKnowledge
   pkg_experimental_desktop_files --> svc_workspaceEntries
+  pkg_experimental_desktop_im --> svc_desktopIm
   pkg_experimental_desktop_media --> svc_desktopMedia
   pkg_experimental_im_feishu --> svc_imIngress
   pkg_experimental_im_feishu --> svc_imRuntime
@@ -699,6 +702,7 @@ flowchart LR
 | `ctx.agentTeams` | `core` | [`experimental-agent-team`](../packages/experimental/agent-team) | - | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | - | 负责隐式 Root roster、持久 peer mailbox、共享任务 DAG 与 continuable child 生命周期；tool-agent-team 提供模型控制工具。 |
 | `ctx.assistants` | `core` | [`experimental-assistant-registry`](../packages/experimental/assistant-registry) | - | - | - | 拥有持久化智能体配置、常驻团队定义、私密会话绑定与模型路由优先级。 |
 | `ctx.claudeCodeMods` | `core` | [`experimental-claude-code-mods`](../packages/experimental/claude-code-mods) | - | - | - | 加载 defineMod 插件添加的模组，从 harness 扩展点触发其钩子链，并通过其 Remote 绘制提示框上方的横幅。 |
+| `ctx.desktopIm` | `service` | [`experimental-desktop-im`](../packages/experimental/desktop-im) | - | - | - | 管理桌面本地连接设置和飞书／钉钉生命周期；Client 设置分区调用其 Remote 方法。 |
 | `ctx.imIngress` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | 在 ACK 前授权传入平台投递并提交至持久存储，跨隔离的租户进程驱动有界分派。 |
 | `ctx.imRuntime` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | 维护持久化的对话与会话映射，验证操作员授权，并通过异步核对运行隔离的租户 Agent 会话。 |
 | `ctx.inspector` | `core` | `inspector` | - | - | - | 负责 Worker 托管的 CDP target，以及独立于传输的 Host 和 Client observation 与 Cordis tree query API。 |

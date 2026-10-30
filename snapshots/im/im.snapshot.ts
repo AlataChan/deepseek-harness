@@ -161,3 +161,58 @@ it.skipIf(process.env.DSH_SNAPSHOT === 'record')('IM human turn preserves user s
     await rm(root, { recursive: true, force: true })
   }
 }, 60000)
+
+it.skipIf(process.env.DSH_SNAPSHOT === 'record')('desktop IM adapter replays the recorded human Session through the shipped CLI', async () => {
+  const fixtureFile = join(scenario, 'session.v4.jsonl')
+  const fixture = await readFile(fixtureFile, 'utf8')
+  const prompt = parseSessionLog(fixture).find(event => event.type === 'user/message')
+  if (prompt?.type !== 'user/message') throw new Error('Missing recorded human prompt')
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-desktop-im-snapshot-')))
+  for (const part of ['home', 'os-home', 'workspace', 'state']) await mkdir(join(root, part), { mode: 0o700 })
+  const cwd = join(root, 'workspace')
+  const patch = join(root, 'desktop-im.patch.yml')
+  await writeFile(patch, JSON.stringify([
+    { id: 'headless-startup', disabled: true }, { id: 'headless-runner', disabled: true },
+    { id: 'llm-deepseek', disabled: true }, { id: 'plugin-package-inventory-deepseek', disabled: true },
+    { id: 'session-title-llm', disabled: true },
+    { id: 'session-persistence-jsonl', config: { root: join(root, 'sessions'), compression: 'none' } },
+    { insert: [
+      { id: 'im-model-replay', name: join(repo, 'packages/test-support/llm-replay/src/index.ts'),
+        config: { file: fixtureFile, providers: [{ id: 'deepseek-official', models: [{ id: 'deepseek-v4-flash' }] }] } },
+      { id: 'desktop-im-replay', name: join(repo, 'packages/experimental/desktop-im/tests/fixtures/session-replay.ts'),
+        config: { cwd, stateDirectory: join(root, 'state'), replyFile: join(root, 'reply.json'),
+          prompt: prompt.data.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('') } },
+    ] },
+  ]), { mode: 0o600 })
+  const child = spawn(process.execPath, ['--import', import.meta.resolve('tsx/esm'), join(repo, 'apps/cli/src/bin.ts'),
+    '--profile', 'headless', '--patch', patch], { cwd, env: {
+    PATH: process.env.PATH, HOME: join(root, 'os-home'), TMPDIR: process.env.TMPDIR,
+    TSX_TSCONFIG_PATH: join(repo, 'tsconfig.base.json'), DSH_HOME: join(root, 'home'), DSH_TELEMETRY_DISABLED: '1', NO_PROXY: '*',
+  }, stdio: ['ignore', 'pipe', 'pipe'] })
+  let stderr = ''
+  child.stdout.resume()
+  child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString() })
+  const exited = new Promise<number | null>((resolve, reject) => { child.once('exit', resolve); child.once('error', reject) })
+  const deadline = setTimeout(() => { child.kill('SIGTERM') }, 30000)
+  try {
+    expect(await exited, stderr).toBe(0)
+    const files = await sessionFiles(join(root, 'sessions'))
+    expect(files).toHaveLength(1)
+    const actual = await readFile(files[0]!, 'utf8')
+    expect(await readFile(join(root, 'reply.json'), 'utf8')).toContain('PONG')
+    const context = fixtureContext(actual)
+    expect(normalizeSessionSnapshots([actual], context, { nativeWriterOutput: true }))
+      .toEqual(normalizeSessionSnapshots([fixture], fixtureContext(fixture), { nativeWriterOutput: true }))
+    expect(formatSystemPromptSnapshot(normalizedSystemPrompts(actual, context)[0]!))
+      .toBe(await readFile(join(scenario, 'system-prompt.expected.md'), 'utf8'))
+    expect(formatToolSchemasSnapshot(normalizedToolSchemas(actual, context)[0]!))
+      .toBe(await readFile(join(scenario, 'tool-schemas.expected.json'), 'utf8'))
+  } finally {
+    clearTimeout(deadline)
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM')
+    const force = setTimeout(() => { child.kill('SIGKILL') }, 3000)
+    await exited
+    clearTimeout(force)
+    await rm(root, { recursive: true, force: true })
+  }
+}, 45000)

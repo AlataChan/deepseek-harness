@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, symlinkSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -62,6 +62,16 @@ describe('concrete terminology policy', () => {
       '.agents/notes/implemented/process/current.md',
       blockedTerm,
     )).toEqual([{ file: '.agents/notes/implemented/process/current.md', line: 1 }])
+  })
+
+  it('preserves exact relocated design bytes while still checking active plans and changed archive text', () => {
+    const file = '.plans/archived-designs/2026-09-13-skill-evolution-wiki.md'
+    const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')
+    expect(findConcreteTermViolations(file, source)).toEqual([])
+    expect(findConcreteTermViolations(file, source + `\n${blockedTerm}`)).not.toHaveLength(0)
+    expect(findConcreteTermViolations('.plans/active-design.md', source)).not.toHaveLength(0)
+    expect(findConcreteTermViolations('.plans/archived-designs/unregistered.md', blockedTerm))
+      .toEqual([{ file: '.plans/archived-designs/unregistered.md', line: 1 }])
   })
 
   it('preserves historical identifiers only in alpha and RC release schema snapshots', () => {

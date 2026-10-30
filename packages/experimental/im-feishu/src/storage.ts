@@ -151,9 +151,15 @@ export class IngressStorage {
     this.deliveriesTable = domain.table('deliveries')
   }
 
+  /** Snapshot the current authorization records for local administration.
+   * @returns Current bindings, including revoked records.
+   */
+  listBindings(): readonly OperatorBindingRecord[] {
+    return Array.from(this.operatorsTable.entries(), ([, record]) => record)
+  }
+
   /**
    * Look up an operator binding by its composite key.
-   *
    * @param bindingKey - Encoded operator binding key.
    * @returns The operator record, or undefined if absent.
    */

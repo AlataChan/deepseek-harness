@@ -254,6 +254,8 @@ flowchart LR
   svc_assistants["ctx.assistants<br/>Persistent assistant and team catalog and lifecycle"]
   pkg_experimental_claude_code_mods["experimental-claude-code-mods"]
   svc_claudeCodeMods["ctx.claudeCodeMods<br/>Claude Code mods bridge"]
+  pkg_experimental_desktop_im["experimental-desktop-im"]
+  svc_desktopIm["ctx.desktopIm<br/>Desktop IM settings and single-user connections"]
   pkg_experimental_im_feishu["experimental-im-feishu"]
   svc_imIngress["ctx.imIngress<br/>Durable IM message admission and dispatch"]
   svc_imRuntime["ctx.imRuntime<br/>Isolated tenant IM conversation runtime"]
@@ -349,6 +351,7 @@ flowchart LR
   pkg_experimental_desktop_ask_data --> svc_askData
   pkg_experimental_desktop_ask_knowledge --> svc_askKnowledge
   pkg_experimental_desktop_files --> svc_workspaceEntries
+  pkg_experimental_desktop_im --> svc_desktopIm
   pkg_experimental_desktop_media --> svc_desktopMedia
   pkg_experimental_im_feishu --> svc_imIngress
   pkg_experimental_im_feishu --> svc_imRuntime
@@ -697,6 +700,7 @@ flowchart LR
 | `ctx.agentTeams` | `core` | [`experimental-agent-team`](../packages/experimental/agent-team) | - | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | - | Owns the implicit-root roster, durable peer mailbox, shared task DAG, and continuable-child lifecycle; tool-agent-team contributes model controls. |
 | `ctx.assistants` | `core` | [`experimental-assistant-registry`](../packages/experimental/assistant-registry) | - | - | - | Owns persistent assistant profiles, saved-team definitions, private conversation bindings, and model route precedence. |
 | `ctx.claudeCodeMods` | `core` | [`experimental-claude-code-mods`](../packages/experimental/claude-code-mods) | - | - | - | Loads mods that defineMod plugins add, raises their hook chains from harness extension points, and draws the band above the prompt over its Remote. |
+| `ctx.desktopIm` | `service` | [`experimental-desktop-im`](../packages/experimental/desktop-im) | - | - | - | Owns desktop-local connection settings and Feishu/DingTalk lifetimes; the Client settings section calls its Remote methods. |
 | `ctx.imIngress` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | Authorizes and commits incoming platform deliveries into durable storage before ACK, driving bounded dispatch across isolated tenant processes. |
 | `ctx.imRuntime` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | Manages durable conversation-to-session mappings, validates operator authorization, and runs isolated tenant Agent sessions with asynchronous reconciliation. |
 | `ctx.inspector` | `core` | `inspector` | - | - | - | Owns the Worker-hosted CDP target and the transport-independent Host and Client observation and Cordis-tree query API. |

@@ -24,12 +24,17 @@
     "./ingress": {
       "types": "./lib/types/ingress-plugin.d.ts",
       "default": "./lib/ingress-plugin.js"
+    },
+    "./desktop": {
+      "types": "./lib/types/desktop.d.ts",
+      "default": "./lib/desktop.js"
     }
   },
   "files": [
     "lib/index.js",
     "lib/runtime-plugin.js",
     "lib/ingress-plugin.js",
+    "lib/desktop.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

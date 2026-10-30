@@ -114,6 +114,7 @@
     { "path": "./packages/experimental/desktop-ask-knowledge/tsconfig.client.json" },
     { "path": "./packages/experimental/commerce-mode/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-ngo/tsconfig.client.json" },
+    { "path": "./packages/experimental/desktop-im/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-media/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-speech-transcribe/tsconfig.client.json" },
     { "path": "./packages/experimental/client-ui-assistants" },

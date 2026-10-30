@@ -1,0 +1,9 @@
+# Desktop IM settings
+
+The desktop settings shell owns a visible IM integrations section contributed by a fork-owned dual-face overlay. Feishu and DingTalk each have an independent configuration and switch. Connections stay off until explicitly enabled. The desktop must remain open for replies; this is a single-user desktop integration, not the OS-isolated Linux tenant service.
+
+The form collects app identity and secret, organization identity, authorized private-chat identity, workspace and explicit provider/model selection. Secrets use the existing credential provider and are never returned in configuration reads. Saving stops the affected connection before changing its authorization or execution settings. Testing opens an authenticated platform connection without admitting messages or invoking a model. Enabling starts durable admission and dispatch; disabling closes admission, cancels owned Agents, awaits work and releases the database lease.
+
+A desktop adapter reuses ingress storage, receipt reconciliation, the Agent session provider and official channel transports. It calls the existing tenant runtime directly within the desktop user's authority. Each channel has its own private state database and writer lease. Only the configured complete organization/chat/sender tuple is authorized. Human prompts retain their existing source semantics. Sensitive tools remain subject to the existing approval policy; this first desktop integration does not install an IM approval answerer.
+
+The overlay is pinned into the desktop payload, with its settings UI always discoverable. No changes to official desktop shell or companion product logic are required. Validation covers configuration redaction, exact authorization, save/enable/disable lifecycle, failed startup cleanup, durable state, both channel forms and registration disposal. Real platform credential tests require an authorized test application and are reported separately.

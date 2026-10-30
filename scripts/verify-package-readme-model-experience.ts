@@ -115,6 +115,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/experimental/desktop-media': { kind: 'indirect', reason: 'The overlay registers media tools and a creation prompt section; paid calls and results stay identifier-only and never embed bytes or secrets.' },
   'packages/experimental/client-ui-assistants': { kind: 'indirect', reason: 'Browser controls select scoped model routes and insert example prompts; the Host owns admission and logged model requests.' },
   'packages/experimental/assistant-registry': { kind: 'indirect', reason: 'The registry injects role sections and routes model requests; session events and system prompt sections own model-visible input.' },
+  'packages/experimental/desktop-im': { kind: 'indirect', reason: 'Desktop controls delegate human prompt admission and model requests to the existing IM service and selected Agent preset.' },
   'packages/experimental/desktop-ngo': { kind: 'none', reason: 'The installer writes and registers an agent preset; the preset definition owns every model-visible persona, instruction, and skill.' },
   'packages/experimental/desktop-files': { kind: 'none', reason: 'The overlay serves the GUI file tree only; nothing here reaches a model request.' },
   'packages/experimental/client-ui-claude-code-mods': { kind: 'none', reason: 'The browser draws Host-held mod trees and relays clicks; the mods\' own hooks own any model-visible effect.' },

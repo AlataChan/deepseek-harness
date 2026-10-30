@@ -20,6 +20,44 @@
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
+<a id="ctxdesktopim--desktopim"></a>
+
+### `ctx.desktopIm` — `DesktopIm`
+
+Remote service with two independently owned channel controllers.
+
+```ts cordis-catalog
+/** Read both channel configurations and live status.
+ * @returns Non-secret configuration and connection status for both platforms.
+ */
+@Remote async list(): Promise<ImSnapshot[]>
+
+/**
+ * Save a connection without enabling it.
+ * @param channel - Selected platform.
+ * @param config - Non-secret form settings.
+ * @param secret - Replacement secret or blank to retain.
+ * @returns Saved OFF status.
+ */
+@Remote async save(channel: ImChannel, config: ConnectionConfig, secret: string): Promise<ImSnapshot>
+
+/** Apply the operator's enabled choice and await its outcome.
+ * @param channel - Selected platform.
+ * @param enabled - Explicit ON/OFF choice.
+ * @returns Settled lifecycle status.
+ */
+@Remote async setEnabled(channel: ImChannel, enabled: boolean): Promise<ImSnapshot>
+
+/**
+ * Authenticate a saved connection without executing tasks.
+ * @param channel - Saved platform connection.
+ * @returns Probe completion; no message admission or model invocation.
+ */
+@Remote async test(channel: ImChannel): Promise<ImSnapshot>
+```
+
+Source: [`packages/experimental/desktop-im/src/index.ts`](../../packages/experimental/desktop-im/src/index.ts)
+
 <a id="ctximingress--ingressservice"></a>
 
 ### `ctx.imIngress` — `IngressService`

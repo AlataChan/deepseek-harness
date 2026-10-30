@@ -123,6 +123,11 @@ export class DingTalkTransport {
   /** Tracks in-flight incoming message processing to await during shutdown. */
   private readonly inFlightHandshakes = new Set<Promise<unknown>>()
 
+  /** Read the current SDK stream state.
+   * @returns Whether the owned stream reports connected.
+   */
+  isConnected(): boolean { return !this.shutdownRequested() && this.dwClient?.connected === true }
+
   constructor(
     config: DingTalkTransportConfig,
     inboundAcceptor: IngressDurableAcceptor,

@@ -182,8 +182,8 @@ export function readWorkspaceManifests(repositoryRoot: string): WorkspaceManifes
 const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // Document conversion runs in an independently launched worker bundle.
   '@deepseek-ai/dsh-experimental-desktop-ask-knowledge': ['lib/converter-worker.js'],
-  // Separate process profiles load these explicit IM plugin entries; the library root starts neither.
-  '@deepseek-ai/dsh-experimental-im-feishu': ['lib/runtime-plugin.js', 'lib/ingress-plugin.js'],
+  // Isolated process roles and the desktop adapter have explicit inert entry modules.
+  '@deepseek-ai/dsh-experimental-im-feishu': ['lib/runtime-plugin.js', 'lib/ingress-plugin.js', 'lib/desktop.js'],
   // Owned Worker bundles import this public bootstrap before their business entry.
   '@deepseek-ai/dsh-app-boot': ['lib/worker/profile-resolution-bootstrap.js'],
   // Statically linked client libraries keep their stylesheets next to the emitted
@@ -270,6 +270,7 @@ function sameStringList(actual: readonly string[] | undefined, expected: readonl
 // unbundled Client tree, whose CSS belongs to the bundled Client artifact.
 const emittedTreeFiles: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-experimental-desktop-ask-knowledge': ['lib/types/types.js'],
+  '@deepseek-ai/dsh-experimental-desktop-im': ['lib/types/types.js'],
 }
 
 /**

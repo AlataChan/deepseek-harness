@@ -981,6 +981,14 @@ else
   bad "Installed dsh-context acceptance failed"
 fi
 
+# Desktop IM settings must survive installation, without contacting a platform.
+head_ "Checking installed IM settings"
+if node "$REPO_ROOT/scripts/verify-desktop-im-installed-flows.mjs" "$APP"; then
+  ok "Installed IM settings discovery, secret redaction and cold restart"
+else
+  bad "Installed IM settings acceptance failed"
+fi
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 echo ""

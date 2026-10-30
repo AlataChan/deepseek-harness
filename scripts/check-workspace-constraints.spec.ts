@@ -285,6 +285,17 @@ describe('package payload constraints', () => {
       .toEqual([expect.stringContaining('package.json files must be')])
   })
 
+  it('publishes the IM type barrel without unbundled Client JavaScript', () => {
+    const dir = 'packages/experimental/desktop-im'
+    const manifest = JSON.parse(readFileSync(new URL(`../${dir}/package.json`, import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
+    expect(checkWorkspaceManifest({ dir, manifest })).toEqual([])
+    expect(manifest.files).toContain('lib/types/types.js')
+    expect(checkWorkspaceManifest({ dir, manifest: { ...manifest, files: [...manifest.files!, 'lib/types/**/*.js'] } }))
+      .toEqual([expect.stringContaining('package.json files must be')])
+    expect(checkWorkspaceManifest({ dir, manifest: { ...manifest, files: manifest.files!.filter(file => file !== 'lib/types/types.js') } }))
+      .toEqual([expect.stringContaining('package.json files must be')])
+  })
+
   it('accepts the Agent Team icon payload and rejects its omission', () => {
     const dir = 'packages/experimental/agent-team-profile'
     const manifest = JSON.parse(readFileSync(new URL(`../${dir}/package.json`, import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
@@ -440,11 +451,11 @@ it('requires the standalone shortcut protocol and rejects unrelated runtime file
   }
 })
 
-it('requires both isolated IM profile entries and rejects unrelated payload files', () => {
+it('requires isolated IM and desktop adapter entries and rejects unrelated payload files', () => {
   const dir = 'packages/experimental/im-feishu'
   const manifest = JSON.parse(readFileSync(new URL(`../${dir}/package.json`, import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
   expect(checkWorkspaceManifest({ dir, manifest })).toEqual([])
-  for (const omitted of ['lib/runtime-plugin.js', 'lib/ingress-plugin.js']) {
+  for (const omitted of ['lib/runtime-plugin.js', 'lib/ingress-plugin.js', 'lib/desktop.js']) {
     expect(checkWorkspaceManifest({ dir, manifest: { ...manifest, files: manifest.files!.filter(file => file !== omitted) } }))
       .toEqual([expect.stringContaining('package.json files must be')])
   }
