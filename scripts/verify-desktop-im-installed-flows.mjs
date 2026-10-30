@@ -27,11 +27,7 @@ export async function verifyInstalledImSettings(target) {
   const home = join(root, 'home'); const workspace = join(root, 'workspace')
   mkdirSync(home); mkdirSync(workspace)
   let runner
-  const call = async (method, args = {}) => {
-    const result = await runner.call(`desktopIm/${method}`, args)
-    assert.equal(result.ok, true, `Installed IM RPC failed: ${JSON.stringify(result.error)}`)
-    return result.value
-  }
+  const call = (method, args = {}) => runner.call(`desktopIm/${method}`, args)
   try {
     runner = new InstalledCompanionRunner(bundle, home, workspace)
     runner.seedProfile()
@@ -50,7 +46,7 @@ export async function verifyInstalledImSettings(target) {
       ['feishu', false, 'off', false], ['dingtalk', false, 'off', false],
     ])
     const providers = await runner.call('llm/listProviders', {})
-    assert(providers.ok && providers.value.some(provider => provider.id === 'deepseek-official'), 'Installed desktop must provide its normal model route')
+    assert(providers.some(provider => provider.id === 'deepseek-official'), 'Installed desktop must provide its normal model route')
     for (const channel of ['feishu', 'dingtalk']) {
       const config = { appId: 'synthetic-app', tenantId: 'synthetic-org', chatId: 'synthetic-chat', senderId: 'synthetic-operator',
         cwd: workspace, provider: 'deepseek-official', model: 'deepseek-v4-flash' }
@@ -62,8 +58,8 @@ export async function verifyInstalledImSettings(target) {
       assert(!disk.includes(`synthetic-${channel}-secret`), 'Connection JSON leaked a secret')
       await call('setEnabled', { channel, enabled: false })
     }
-    const refused = await runner.call('desktopIm/setEnabled', { channel: 'unconfigured-platform', enabled: true })
-    assert.equal(refused.ok, false, 'Invalid-channel control must fail')
+    await assert.rejects(runner.call('desktopIm/setEnabled', { channel: 'unconfigured-platform', enabled: true }),
+      'Invalid-channel control must fail')
     assert(!existsSync(join(profile, 'im', 'feishu')), 'Saving must not create a channel runtime')
     await runner.stop()
     runner = new InstalledCompanionRunner(bundle, home, workspace)

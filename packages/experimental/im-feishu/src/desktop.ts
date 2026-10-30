@@ -67,6 +67,7 @@ export async function createDesktopImRuntime(ctx: Context, config: DesktopImRunt
   await mkdir(config.stateDirectory, { recursive: true, mode: 0o700 })
   const lease = DesktopImLease.acquire(config.stateDirectory)
   let sqlite: SqliteStorageBackend | undefined
+  let facility: DomainFacility | undefined
   let unregister: (() => void) | undefined
   let ingress: IngressService | undefined
   let runtime: TenantRuntimeService | undefined
@@ -86,6 +87,7 @@ export async function createDesktopImRuntime(ctx: Context, config: DesktopImRunt
       // Retain database ownership if delivery work could still be writing.
       if (failed?.status === 'rejected') throw new Error('Desktop IM did not become quiescent', { cause: failed.reason })
       await agentProvider?.dispose()
+      await facility?.closeAll()
       await sqlite?.close()
       unregister?.()
       lease.release()
@@ -96,7 +98,7 @@ export async function createDesktopImRuntime(ctx: Context, config: DesktopImRunt
     sqlite = new SqliteStorageBackend({ path: join(config.stateDirectory, 'delivery.sqlite'), journalMode: 'wal' })
     const backend = `sqlite:desktop-im:${config.provider}`
     unregister = ctx.storage.backend.register(backend, sqlite)
-    const facility = new DomainFacility(ctx, { backend, routes: {} })
+    facility = new DomainFacility(ctx, { backend, routes: {} })
     const inbox = new IngressStorage(await facility.open(ingressDomainSpec))
     const receipts = new TenantReceiptStorage(await facility.open(tenantReceiptDomainSpec))
     agentProvider = await createTenantAgentSessionProvider(ctx, facility, {
