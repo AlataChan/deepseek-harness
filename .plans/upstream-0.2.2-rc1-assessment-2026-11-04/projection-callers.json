@@ -1,0 +1,588 @@
+{
+  "scope": "direct source calls; comments and tests excluded; aliases require the separate occurrence audit",
+  "registerCount": 29,
+  "registerFiles": 24,
+  "calls": [
+    {
+      "file": "packages/api/session-controller/src/agent.ts",
+      "line": 286,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "6298d31628115a4533b40c3ffa0a574d4bf90c97a8b4061d4747c095dfcd5c39"
+    },
+    {
+      "file": "packages/api/session-controller/src/agent.ts",
+      "line": 361,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "6298d31628115a4533b40c3ffa0a574d4bf90c97a8b4061d4747c095dfcd5c39"
+    },
+    {
+      "file": "packages/api/session-controller/src/ask-data.ts",
+      "line": 126,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "fe4effbd379430e8c88124ee2fd54ece51317f267e16f65d1d42da4881f88aa4"
+    },
+    {
+      "file": "packages/api/session-controller/src/ask-data.ts",
+      "line": 136,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "fe4effbd379430e8c88124ee2fd54ece51317f267e16f65d1d42da4881f88aa4"
+    },
+    {
+      "file": "packages/api/session-controller/src/ask-data.ts",
+      "line": 156,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "fe4effbd379430e8c88124ee2fd54ece51317f267e16f65d1d42da4881f88aa4"
+    },
+    {
+      "file": "packages/api/session-controller/src/ask-data.ts",
+      "line": 197,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "fe4effbd379430e8c88124ee2fd54ece51317f267e16f65d1d42da4881f88aa4"
+    },
+    {
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "line": 330,
+      "method": "stateOf",
+      "argument": "found.agent.session",
+      "sha256": "def871ec2edfc9337f77aca496a7335a4a23993b9d8916af588161566198be1d"
+    },
+    {
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "line": 364,
+      "method": "stateOf",
+      "argument": "found.agent.session",
+      "sha256": "def871ec2edfc9337f77aca496a7335a4a23993b9d8916af588161566198be1d"
+    },
+    {
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "line": 414,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "def871ec2edfc9337f77aca496a7335a4a23993b9d8916af588161566198be1d"
+    },
+    {
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "line": 466,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "def871ec2edfc9337f77aca496a7335a4a23993b9d8916af588161566198be1d"
+    },
+    {
+      "file": "packages/api/session-controller/src/commands.ts",
+      "line": 460,
+      "method": "snapshot",
+      "argument": "agent.session",
+      "sha256": "e5e9b7df2ff4d3477d9005548496e5ca1c2adaa69470aa6de399e822d683c7a7"
+    },
+    {
+      "file": "packages/api/session-controller/src/commerce.ts",
+      "line": 184,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "061400ad840c70faf771704f71f70dd9d777b46d348a1844fec6b0cc30234951"
+    },
+    {
+      "file": "packages/api/session-controller/src/control.ts",
+      "line": 22,
+      "method": "onChanged",
+      "argument": "(session, key, value, seq) => {\n      this.broadcast({\n        type: 'projection',\n        sessionId: session.id,\n        key,\n        value: value as JsonValue,\n        seq,\n      })\n    }",
+      "sha256": "1c68ae048ae911ac2e169b92b0e038ae0a3adc13a02c25ceb0b46536c5821b57"
+    },
+    {
+      "file": "packages/api/session-controller/src/control.ts",
+      "line": 67,
+      "method": "snapshot",
+      "argument": "session",
+      "sha256": "1c68ae048ae911ac2e169b92b0e038ae0a3adc13a02c25ceb0b46536c5821b57"
+    },
+    {
+      "file": "packages/api/session-controller/src/list.ts",
+      "line": 84,
+      "method": "register",
+      "argument": "{\n      key: 'sessionListMetadata',\n      stateSchema: sessionListMetadataSchema,\n      init: () => ({ blank: true, lastPromptAt: null }),\n      apply: applySessionListMetadata,\n      wire: { viewSchema: sessionListMetadataSchema, view: state => state },\n      stateVersion: 1,\n    }",
+      "sha256": "ce50fb9b16abd6f1fef92d73158552df369928327a4c7876a6f5588e249ab381"
+    },
+    {
+      "file": "packages/api/session-controller/src/list.ts",
+      "line": 93,
+      "method": "register",
+      "argument": "{\n        key: 'imageLimits',\n        stateSchema: z.null(),\n        init: () => null,\n        apply: state => state,\n        wire: {\n          viewSchema: imageLimitsSchema,\n          view: () => attachmentCtx.attachments.imageLimits,\n        },\n        stateVersion: 1,\n      }",
+      "sha256": "ce50fb9b16abd6f1fef92d73158552df369928327a4c7876a6f5588e249ab381"
+    },
+    {
+      "file": "packages/api/session-controller/src/list.ts",
+      "line": 297,
+      "method": "cachedSnapshot",
+      "argument": "session",
+      "sha256": "ce50fb9b16abd6f1fef92d73158552df369928327a4c7876a6f5588e249ab381"
+    },
+    {
+      "file": "packages/api/session-controller/src/model-selection-projection.ts",
+      "line": 82,
+      "method": "register",
+      "argument": "modelSelectionProjection",
+      "sha256": "a45bdb4bf86025c62e45e83a582301ff649fea50c94f82eedd81b37ba6ef7f9f"
+    },
+    {
+      "file": "packages/api/session-controller/src/session-commit.ts",
+      "line": 82,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "162f43bf33170aec9b2b50507b881bd58cc2a008751f5ee3fca446cc13ea02df"
+    },
+    {
+      "file": "packages/api/session-controller/src/session-commit.ts",
+      "line": 84,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "162f43bf33170aec9b2b50507b881bd58cc2a008751f5ee3fca446cc13ea02df"
+    },
+    {
+      "file": "packages/context/agent-instructions/src/index.ts",
+      "line": 287,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "bca2df91166de1b4eac099c532e6762a8f30387366097cec16a73b8078860d82"
+    },
+    {
+      "file": "packages/context/time-context/src/index.ts",
+      "line": 157,
+      "method": "register",
+      "argument": "{\n    key: 'timeContext',\n    stateVersion: 2,\n    stateSchema: timeContextStateSchema,\n    init: () => ({ lastMessageTime: null, lastInjectionTime: null, lastTurnInjectionTime: null }),\n    apply: (state, event) => {\n      if (event.type === 'turn/start' || event.type === 'turn/end') {\n        return state.lastTurnInjectionTime === null ? state : { ...state, lastTurnInjectionTime: null }\n      }\n      if (event.type === 'user/message') {\n        const injected = event.data.source.kind === name\n        const withMessage = state.lastMessageTime === event.time\n          ? state\n          : { ...state, lastMessageTime: event.time }\n        if (!injected) return withMessage\n        return {\n          ...withMessage,\n          lastInjectionTime: event.time,\n          lastTurnInjectionTime: event.time,\n        }\n      }\n      if (event.type === 'assistant/message' || event.type === 'tool/result') {\n        return state.lastMessageTime === event.time ? state : { ...state, lastMessageTime: event.time }\n      }\n      return state\n    },\n  }",
+      "sha256": "0f16394ee0b010b888498216728efc86e06b3e9eec282eed036b70b5416f8d72"
+    },
+    {
+      "file": "packages/context/time-context/src/index.ts",
+      "line": 192,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "0f16394ee0b010b888498216728efc86e06b3e9eec282eed036b70b5416f8d72"
+    },
+    {
+      "file": "packages/context/tmux-context/src/index.ts",
+      "line": 230,
+      "method": "register",
+      "argument": "{\n    key: 'tmuxContext',\n    stateVersion: 1,\n    stateSchema: tmuxContextStateSchema,\n    init: () => null,\n    apply: (state, event) => {\n      if (event.type !== 'user/message'\n        || event.data.source.kind !== name) return state\n      const [block] = event.data.content\n      if (block?.type !== 'text') return state\n      const newline = block.text.indexOf('\\n')\n      const stableState = newline === -1 ? '' : block.text.slice(newline + 1)\n      return { state: stableState, time: event.time }\n    },\n  }",
+      "sha256": "714dba5aebb046168cda57d1909127d3403f6f499c24e93340388aeed5dd1ea8"
+    },
+    {
+      "file": "packages/context/tmux-context/src/index.ts",
+      "line": 254,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "714dba5aebb046168cda57d1909127d3403f6f499c24e93340388aeed5dd1ea8"
+    },
+    {
+      "file": "packages/core/agent-loop/src/agent.ts",
+      "line": 134,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "9c985dd5ce3612b0a6f1833cb592930e4e390d4249821accea53064d8e42015c"
+    },
+    {
+      "file": "packages/core/agent-loop/src/index.ts",
+      "line": 364,
+      "method": "register",
+      "argument": "turnBoundaryProjectionDefinition",
+      "sha256": "853e76aef2eecafe5526a5267c3d386780b5c59e3c79c2448532fada7285a605"
+    },
+    {
+      "file": "packages/core/agent-loop/src/index.ts",
+      "line": 365,
+      "method": "register",
+      "argument": "inboxProjectionDefinition",
+      "sha256": "853e76aef2eecafe5526a5267c3d386780b5c59e3c79c2448532fada7285a605"
+    },
+    {
+      "file": "packages/deliverables/tool-present/src/index.ts",
+      "line": 78,
+      "method": "stateOf",
+      "argument": "exec.agent.session",
+      "sha256": "098b2c3f2728fb00cfa6a0cf9fb3070209c9687ae5732ae5960fb4e47fcfb549"
+    },
+    {
+      "file": "packages/experimental/agent-team/src/index.ts",
+      "line": 176,
+      "method": "register",
+      "argument": "teamProjectionDefinition",
+      "sha256": "62713ad98324a2018bbd4dd387832c31ee8b0a725a92cb89dc3ded7b44017914"
+    },
+    {
+      "file": "packages/experimental/agent-team/src/journal.ts",
+      "line": 30,
+      "method": "stateOf",
+      "argument": "root.session",
+      "sha256": "4a70d83944e6dc40b951b77e2360adab0f564e0da32acd4462ea641cf618bf4c"
+    },
+    {
+      "file": "packages/experimental/commerce-mode/src/tools/index.ts",
+      "line": 84,
+      "method": "register",
+      "argument": "commerceSessionProjectionDefinition",
+      "sha256": "59e4d18a1cf9edf383740d9faa5ec25628f247c22219e4d98c064f608a503d3f"
+    },
+    {
+      "file": "packages/experimental/commerce-mode/src/tools/outcome.ts",
+      "line": 300,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "e5440d7eeb1b01dccf823d2de33fe83ebb60453680bb2e70086c7d45b639ddbb"
+    },
+    {
+      "file": "packages/experimental/commerce-mode/src/tools/staging.ts",
+      "line": 68,
+      "method": "stateOf",
+      "argument": "direct.agent.session",
+      "sha256": "7f1b5f22f01f023a13d50244c2404c7bfdae0792c9702e3b546d9ceea38707da"
+    },
+    {
+      "file": "packages/experimental/desktop-ask-data/src/index.ts",
+      "line": 64,
+      "method": "register",
+      "argument": "askDataBindingProjectionDefinition",
+      "sha256": "aa5fd8b56622a07d6fb91e7c40f42d99add15e1e2c0334a8f8046fcbcd95c67e"
+    },
+    {
+      "file": "packages/experimental/desktop-ask-data/src/index.ts",
+      "line": 71,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "aa5fd8b56622a07d6fb91e7c40f42d99add15e1e2c0334a8f8046fcbcd95c67e"
+    },
+    {
+      "file": "packages/experimental/desktop-ask-knowledge/src/index.ts",
+      "line": 199,
+      "method": "register",
+      "argument": "askKnowledgeBindingProjectionDefinition",
+      "sha256": "87cf2d089e73e459c6c5babea55cda960f00531f2827ac70ea812af820616ca6"
+    },
+    {
+      "file": "packages/experimental/desktop-ask-knowledge/src/index.ts",
+      "line": 208,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "87cf2d089e73e459c6c5babea55cda960f00531f2827ac70ea812af820616ca6"
+    },
+    {
+      "file": "packages/experimental/desktop-ask-knowledge/src/index.ts",
+      "line": 410,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "87cf2d089e73e459c6c5babea55cda960f00531f2827ac70ea812af820616ca6"
+    },
+    {
+      "file": "packages/experimental/desktop-ask-knowledge/src/index.ts",
+      "line": 456,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "87cf2d089e73e459c6c5babea55cda960f00531f2827ac70ea812af820616ca6"
+    },
+    {
+      "file": "packages/experimental/desktop-ask-knowledge/src/tools.ts",
+      "line": 173,
+      "method": "stateOf",
+      "argument": "live",
+      "sha256": "87a2588a5074cbf389583519786118b748aa01c7f0e918025b8ea63af45e128d"
+    },
+    {
+      "file": "packages/experimental/desktop-ask-knowledge/src/tools.ts",
+      "line": 709,
+      "method": "stateOf",
+      "argument": "live",
+      "sha256": "87a2588a5074cbf389583519786118b748aa01c7f0e918025b8ea63af45e128d"
+    },
+    {
+      "file": "packages/experimental/session-decisions/src/service.ts",
+      "line": 612,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "b95c316f9f1bde551c4943d3c284d6781ce6c6f5e4ede1f031009bca6eae841e"
+    },
+    {
+      "file": "packages/experimental/tool-agent-team/src/index.ts",
+      "line": 545,
+      "method": "register",
+      "argument": "subagentModelSelectionProjectionDefinition",
+      "sha256": "8c2bd7a5cf0b46b60962958aabf63b260bc0e88b82cfc46a56d7f52333818949"
+    },
+    {
+      "file": "packages/goal/goal/src/index.ts",
+      "line": 258,
+      "method": "register",
+      "argument": "goalProjectionDefinition",
+      "sha256": "333ebc31489619ee083235c5f5ceeb38ac3c6c844b2a0179458058401a6ebf9a"
+    },
+    {
+      "file": "packages/goal/goal/src/index.ts",
+      "line": 477,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "333ebc31489619ee083235c5f5ceeb38ac3c6c844b2a0179458058401a6ebf9a"
+    },
+    {
+      "file": "packages/goal/goal/src/index.ts",
+      "line": 500,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "333ebc31489619ee083235c5f5ceeb38ac3c6c844b2a0179458058401a6ebf9a"
+    },
+    {
+      "file": "packages/goal/tool-goal/src/authority.ts",
+      "line": 35,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "c95bc97b84751a2320d456f5e3455912d14d4731944a0afa06bb63a538d39695"
+    },
+    {
+      "file": "packages/hooks/hooks-claude-code/src/index.ts",
+      "line": 318,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "9869c5f9baa188c503ea99e0a36b0cf18449d046de4d4c8caa0962c5cbdf745c"
+    },
+    {
+      "file": "packages/hooks/hooks-codex/src/index.ts",
+      "line": 288,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "8b704a7ca4b1e8d0da8049809a0c0c94b3a992e6619b4ee93961f7eacdea5cc1"
+    },
+    {
+      "file": "packages/host/commerce/src/index.ts",
+      "line": 227,
+      "method": "register",
+      "argument": "commerceBindingProjectionDefinition",
+      "sha256": "0b4d0d29fec1ebd3b49edcc912f43ecd839fb7b97da2c80a0cb1cd88ff7ccb35"
+    },
+    {
+      "file": "packages/host/commerce/src/index.ts",
+      "line": 299,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "0b4d0d29fec1ebd3b49edcc912f43ecd839fb7b97da2c80a0cb1cd88ff7ccb35"
+    },
+    {
+      "file": "packages/interaction/permission-presets/src/index.ts",
+      "line": 237,
+      "method": "register",
+      "argument": "{\n      key: 'permissions',\n      stateVersion: 2,\n      stateSchema: permissionStateSchema,\n      init: () => ({ ...EMPTY_KNOBS, seeded: false }),\n      apply: applyPermissionEvent,\n      wire: { viewSchema: selectionSchema, view: state => ({ currentValue: this.derive(state) }) },\n    }",
+      "sha256": "74cde09ca3f6cd08283ba66c384e1c06dae164f1b92ec90dd3884ab94e177c38"
+    },
+    {
+      "file": "packages/interaction/permission-presets/src/index.ts",
+      "line": 329,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "74cde09ca3f6cd08283ba66c384e1c06dae164f1b92ec90dd3884ab94e177c38"
+    },
+    {
+      "file": "packages/interaction/user-questions/src/index.ts",
+      "line": 87,
+      "method": "register",
+      "argument": "userQuestionProjectionDefinition",
+      "sha256": "5bf54301a5560daf36a75ec12496a57dc7d2f20d741e17895df3c03584673106"
+    },
+    {
+      "file": "packages/llm/llm-retry/src/index.ts",
+      "line": 125,
+      "method": "register",
+      "argument": "{\n    key: 'llmRetry',\n    stateVersion: 1,\n    stateSchema: llmRetryStateSchema,\n    init: () => ({}),\n    apply: (state, event) => {\n      if (event.type === 'step/start' || event.type === 'turn/end') return {}\n      if (event.type !== 'llm/retry') return state\n      const key = retryStateKey(event.data.provider, event.data.policyKey)\n      const entry = state[key]\n      if (entry?.retry === event.data.retry && entry.retryId === event.data.retryId) return state\n      return { ...state, [key]: { retry: event.data.retry, retryId: event.data.retryId } }\n    },\n  }",
+      "sha256": "d33553781ed2118aab3b249c159fae550d359627565e4714c9ea599e474b8093"
+    },
+    {
+      "file": "packages/llm/llm-retry/src/index.ts",
+      "line": 220,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "d33553781ed2118aab3b249c159fae550d359627565e4714c9ea599e474b8093"
+    },
+    {
+      "file": "packages/llm/token-meter/src/index.ts",
+      "line": 114,
+      "method": "register",
+      "argument": "tokenUsageProjectionDefinition",
+      "sha256": "9d399314121785154296af650c6059bfd967a4ba6fc72299aadf8a2dce3f7ce1"
+    },
+    {
+      "file": "packages/llm/token-meter/src/index.ts",
+      "line": 115,
+      "method": "register",
+      "argument": "contextPressureProjectionDefinition",
+      "sha256": "9d399314121785154296af650c6059bfd967a4ba6fc72299aadf8a2dce3f7ce1"
+    },
+    {
+      "file": "packages/llm/token-meter/src/index.ts",
+      "line": 116,
+      "method": "register",
+      "argument": "contextBreakdownProjectionDefinition",
+      "sha256": "9d399314121785154296af650c6059bfd967a4ba6fc72299aadf8a2dce3f7ce1"
+    },
+    {
+      "file": "packages/plan/plan-mode/src/index.ts",
+      "line": 226,
+      "method": "register",
+      "argument": "planProjectionDefinition",
+      "sha256": "c8f1b027ea55a133dfaaed8026e2f7b38768a374c04d5171a6d1639288faa86b"
+    },
+    {
+      "file": "packages/plan/plan-mode/src/index.ts",
+      "line": 373,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "c8f1b027ea55a133dfaaed8026e2f7b38768a374c04d5171a6d1639288faa86b"
+    },
+    {
+      "file": "packages/plan/plan-mode/src/index.ts",
+      "line": 384,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "c8f1b027ea55a133dfaaed8026e2f7b38768a374c04d5171a6d1639288faa86b"
+    },
+    {
+      "file": "packages/preset/agent-preset-registry/src/index.ts",
+      "line": 68,
+      "method": "register",
+      "argument": "agentPresetProjectionDefinition",
+      "sha256": "3c0379acbdc2ec631f739f987d1dd06a97c0007bd9ebf45b5cf7d9fd1cbe7370"
+    },
+    {
+      "file": "packages/preset/agent-preset-registry/src/index.ts",
+      "line": 359,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "3c0379acbdc2ec631f739f987d1dd06a97c0007bd9ebf45b5cf7d9fd1cbe7370"
+    },
+    {
+      "file": "packages/sandbox/sandbox-policy/src/index.ts",
+      "line": 133,
+      "method": "register",
+      "argument": "{\n      key: 'sandboxMode',\n      stateVersion: 1,\n      stateSchema: sandboxModeStateSchema,\n      init: () => null,\n      apply: (state, event) => (event.type === 'sandbox/mode' ? event.data.mode : state),\n    }",
+      "sha256": "6fce58e5bf63475f761871389bbf01043fba859f22e44c805522c39afbff32d6"
+    },
+    {
+      "file": "packages/sandbox/sandbox-policy/src/index.ts",
+      "line": 179,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "6fce58e5bf63475f761871389bbf01043fba859f22e44c805522c39afbff32d6"
+    },
+    {
+      "file": "packages/session-query/tool-session-query/src/workspace-access.ts",
+      "line": 70,
+      "method": "stateOf",
+      "argument": "agent.session",
+      "sha256": "0392a1298c122840d7d3a3abbebf9bcd97cf047c461092f5002cbec063bbb05b"
+    },
+    {
+      "file": "packages/session/session-projection-cache/src/index.ts",
+      "line": 204,
+      "method": "viewCheckpoint",
+      "argument": "record.rows",
+      "sha256": "1cfb6536124a3fd4f2a8d878f57c2c860178920a54b8c5832bd662db75f030e7"
+    },
+    {
+      "file": "packages/session/session-projection-cache/src/index.ts",
+      "line": 231,
+      "method": "hydrate",
+      "argument": "session",
+      "sha256": "1cfb6536124a3fd4f2a8d878f57c2c860178920a54b8c5832bd662db75f030e7"
+    },
+    {
+      "file": "packages/session/session-projection-cache/src/index.ts",
+      "line": 234,
+      "method": "hydrate",
+      "argument": "session",
+      "sha256": "1cfb6536124a3fd4f2a8d878f57c2c860178920a54b8c5832bd662db75f030e7"
+    },
+    {
+      "file": "packages/session/session-projection-cache/src/index.ts",
+      "line": 243,
+      "method": "hydrate",
+      "argument": "session",
+      "sha256": "1cfb6536124a3fd4f2a8d878f57c2c860178920a54b8c5832bd662db75f030e7"
+    },
+    {
+      "file": "packages/session/session-projection-cache/src/index.ts",
+      "line": 257,
+      "method": "checkpoint",
+      "argument": "session",
+      "sha256": "1cfb6536124a3fd4f2a8d878f57c2c860178920a54b8c5832bd662db75f030e7"
+    },
+    {
+      "file": "packages/session/session-projection-cache/src/index.ts",
+      "line": 293,
+      "method": "restore",
+      "argument": "this.recordFor(meta.id, identity)?.rows ?? {}",
+      "sha256": "1cfb6536124a3fd4f2a8d878f57c2c860178920a54b8c5832bd662db75f030e7"
+    },
+    {
+      "file": "packages/session/session-stats/src/index.ts",
+      "line": 28,
+      "method": "register",
+      "argument": "sessionStatsProjectionDefinition",
+      "sha256": "52cefb89357447be0bcda7991b0b43b4e16ef52826eef9b5fba71416fedeaeed"
+    },
+    {
+      "file": "packages/session/session-title/src/index.ts",
+      "line": 338,
+      "method": "register",
+      "argument": "titleProjectionDefinition",
+      "sha256": "1e3994ae895f6b5f6e0b200e4c19cc0c43da02ddec689c0aef2fead792a7a264"
+    },
+    {
+      "file": "packages/session/session-title/src/index.ts",
+      "line": 340,
+      "method": "register",
+      "argument": "{\n      key: 'titleInput',\n      stateVersion: 3,\n      stateSchema: titleInputStateSchema,\n      init: () => EMPTY_TITLE_INPUT,\n      apply: (state, event) => {\n        const message = sessionTitleUserMessageOf(event)\n        if (message === undefined) return state\n        return {\n          first: state.first ?? message,\n          count: state.count + 1,\n          lastSeq: message.seq,\n        }\n      },\n    }",
+      "sha256": "1e3994ae895f6b5f6e0b200e4c19cc0c43da02ddec689c0aef2fead792a7a264"
+    },
+    {
+      "file": "packages/session/session-title/src/index.ts",
+      "line": 545,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "1e3994ae895f6b5f6e0b200e4c19cc0c43da02ddec689c0aef2fead792a7a264"
+    },
+    {
+      "file": "packages/session/session-title/src/index.ts",
+      "line": 722,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "1e3994ae895f6b5f6e0b200e4c19cc0c43da02ddec689c0aef2fead792a7a264"
+    },
+    {
+      "file": "packages/session/session-turn-outline/src/index.ts",
+      "line": 28,
+      "method": "register",
+      "argument": "turnOutlineProjectionDefinition",
+      "sha256": "639bf0e3538b0287a3c9a6a0351016ea8332e1bf2e547b11b23ce0b45affb20c"
+    },
+    {
+      "file": "packages/subagent/tool-subagent/src/index.ts",
+      "line": 326,
+      "method": "register",
+      "argument": "subagentModelSelectionProjectionDefinition",
+      "sha256": "e726be53864f65300520ed6d0a0f9660f06a9a644032418a7e91d94838d44598"
+    },
+    {
+      "file": "packages/terminal/terminal-bash/src/index.ts",
+      "line": 55,
+      "method": "stateOf",
+      "argument": "session",
+      "sha256": "007745a94c054119fbbb113a6985308fd6210017d49e4e586ffae1a139a38d36"
+    },
+    {
+      "file": "packages/todo/tool-todo/src/index.ts",
+      "line": 123,
+      "method": "register",
+      "argument": "{\n    key: 'todos',\n    stateSchema: todosProjectionSchema,\n    init: () => null,\n    apply: (state, event) => {\n      if (event.type === 'todo/write') return event.data.todos\n      if (event.type === 'turn/start') return null\n      return state\n    },\n    wire: { viewSchema: todosProjectionSchema, view: state => state },\n    stateVersion: 2,\n  }",
+      "sha256": "74eed074d1b056cc0a029f9b8343bc9337c14f04696c528daaedcbebe9842a17"
+    }
+  ]
+}

@@ -27,6 +27,7 @@ kind: "package-group"
 | [`agent-team-profile`](agent-team-profile/README.zh.md) | Agent Teams 协作、工具与 Web UI 组合包 | — |
 | [`agent-team`](agent-team/README.zh.md) | 具名 teammate，成员之间持久消息与共享任务板 | `ctx.agentTeams` |
 | [`client-ui-agent-team`](client-ui-agent-team/README.zh.md) | Web Team roster、任务板与 teammate 导航 | — |
+| [`session-decisions`](session-decisions/README.zh.md) | 持久化会话问题与桌面回答准入 | `ctx.sessionDecisions` |
 | [`ptc-runtime-python`](ptc-runtime-python/README.zh.md) | PTC 执行 seam 的 CPython 子进程后端 | `ctx.ptcRuntime` |
 | [`commerce-mode`](commerce-mode/README.zh.md) | 文件型电商 Provider、暂存与导出工具，以及「电商助手」Web 页面 | `ctx.commerce` |
 | [`inspector`](inspector/README.zh.md) | 用于 Host 调试、Client Runtime 检查、网络采集与 Cordis 树的跨 realm CDP hub | `ctx.inspector` |
@@ -41,6 +42,7 @@ kind: "package-group"
 
 - [实验包决策](../../.agents/notes/archived/architecture/2026-08-18-experimental-agent-teams-packages.md)——位置、发布排除与依赖隔离。
 - [Agent Teams 子系统](../../docs/subsystems/agent-team.zh.md)——持久 Team 类型与 `ctx.agentTeams` 服务 API。
+- [持久化会话问题](../../docs/subsystems/session-decisions.zh.md)——问题标识、人工权限与持久化回答索引。
 - [实验子树规则](AGENTS.md)——实验状态放宽了什么、不放宽什么。
 
 -----

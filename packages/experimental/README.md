@@ -27,6 +27,7 @@ The experimental group contains prototype capabilities that are not part of any 
 | [`agent-team-profile`](agent-team-profile/README.md) | Agent Teams collaboration, tools, and Web UI bundle | — |
 | [`agent-team`](agent-team/README.md) | Named teammates with durable messages and a shared task board | `ctx.agentTeams` |
 | [`client-ui-agent-team`](client-ui-agent-team/README.md) | Team roster, task board, and teammate navigation for Web | — |
+| [`session-decisions`](session-decisions/README.md) | Persistent Session questions and desktop answer admission | `ctx.sessionDecisions` |
 | [`ptc-runtime-python`](ptc-runtime-python/README.md) | CPython subprocess backend for the PTC execution seam | `ctx.ptcRuntime` |
 | [`commerce-mode`](commerce-mode/README.md) | File-backed commerce Provider, staging and export tools, and the 电商助手 Web page | `ctx.commerce` |
 | [`inspector`](inspector/README.md) | Cross-realm CDP hub for Host debugging, Client Runtime inspection, network capture, and Cordis trees | `ctx.inspector` |
@@ -41,6 +42,7 @@ The experimental group contains prototype capabilities that are not part of any 
 
 - [Experimental package decision](../../.agents/notes/archived/architecture/2026-08-18-experimental-agent-teams-packages.md) — placement, release exclusion, and dependency isolation.
 - [Agent Teams subsystem](../../docs/subsystems/agent-team.md) — durable Team types and the `ctx.agentTeams` service API.
+- [Persistent Session questions](../../docs/subsystems/session-decisions.md) — question identity, human authority, and durable answer indexing.
 - [Experimental subtree rules](AGENTS.md) — what experimental status does and does not relax.
 
 -----

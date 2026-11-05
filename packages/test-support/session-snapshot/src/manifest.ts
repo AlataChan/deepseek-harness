@@ -118,6 +118,8 @@ export interface SnapshotManifest {
   workspace?: SnapshotWorkspaceManifest
   /** Exceptional controller input absent for ordinary log-driven scenarios. */
   input?: SnapshotInputManifest
+  /** Explicit subprocess timeout for a long live recording; the test timeout derives from it. */
+  processTimeoutMs?: number
   /** Absent when this directory owns its selected parent fixture; present for a read-only borrower. */
   session?: SnapshotSessionReference
   /** Historical generation retained by an owner instead of tracking the current writer. */
@@ -221,6 +223,7 @@ export function parseSnapshotManifest(source: string, path = 'snapshot.yml'): Sn
       'environment',
       'workspace',
       'input',
+      'processTimeoutMs',
       'session',
       'sessionFormat',
     ], 'manifest')
@@ -409,6 +412,14 @@ export function parseSnapshotManifest(source: string, path = 'snapshot.yml'): Sn
       }
     }
 
+    let processTimeoutMs: number | undefined
+    if (root.processTimeoutMs !== undefined) {
+      if (!Number.isSafeInteger(root.processTimeoutMs) || Number(root.processTimeoutMs) < 1) {
+        throw new Error('manifest.processTimeoutMs must be a positive safe integer')
+      }
+      processTimeoutMs = Number(root.processTimeoutMs)
+    }
+
     return {
       version: 1,
       ...(scenario === undefined ? {} : { scenario }),
@@ -422,6 +433,7 @@ export function parseSnapshotManifest(source: string, path = 'snapshot.yml'): Sn
       ...(environment === undefined ? {} : { environment }),
       ...(workspace === undefined ? {} : { workspace }),
       ...(input === undefined ? {} : { input }),
+      ...(processTimeoutMs === undefined ? {} : { processTimeoutMs }),
       ...(session === undefined ? {} : { session }),
       ...(sessionFormat === undefined ? {} : { sessionFormat }),
     }

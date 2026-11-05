@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import {
   type IncomingImMessage,
   type IngressAcceptResult,
@@ -85,6 +86,7 @@ export interface CardActionDurableAcceptor {
     readonly success: boolean
     readonly toast?: string
     readonly customData?: unknown
+    readonly card?: Readonly<Record<string, JsonValue>>
   }>
 }
 
@@ -526,8 +528,10 @@ export class FeishuTransport {
     }
     const cardAcceptor = this.cardAcceptor
     const result = await cardAcceptor.handleCardAction(action)
+    const cardUpdate = result.card === undefined ? {} : { card: { type: 'raw', data: result.card } }
     if (!result.success) {
       return {
+        ...cardUpdate,
         toast: {
           type: 'warning',
           content: result.toast ?? 'Action refused',
@@ -536,6 +540,7 @@ export class FeishuTransport {
     }
 
     return {
+      ...cardUpdate,
       toast: {
         type: 'info',
         content: result.toast ?? 'Action completed',

@@ -1,0 +1,14 @@
+version: 1
+scenario: team-orchestration-single-agent
+profile: headless
+composition: team-orchestration
+recording: live
+processTimeoutMs: 120000
+replay:
+  override: true
+workspace:
+  final: true
+header:
+  class: team-orchestration
+input:
+  task: 先调用 skill 工具加载 team-orchestration 技能，再用 read 工具按该技能目录下的相对路径读取 references/task-spec.md 和 references/recovery.md 两个参考文件。然后只用一句话回答：用户没有明确要求团队协作时，这个技能允许你创建队友吗？不要创建任何队友，不要调用 spawn_teammate。不要运行 ls 或任何列出目录内容的命令。回答后以 DONE 结尾。

@@ -1,4 +1,7 @@
 /** Single-user desktop composition of the durable IM delivery services. */
+import { OwnedCardChannel, type CardChannel, type CardGeneration, type CardConsumers } from './card-channel.ts'
+export { CardConsumers, CardPublishRefusal, parseCardGeneration } from './card-channel.ts'
+export type { CardChannel, CardChannelBinding, CardConsumer, CardCallbackResult, CardGeneration } from './card-channel.ts'
 import { randomUUID } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -13,6 +16,7 @@ import { TenantRuntimeService } from './runtime-service.ts'
 import { createTenantAgentSessionProvider } from './session-provider.ts'
 import { DesktopImLease } from './desktop-lease.ts'
 export { DesktopImLease } from './desktop-lease.ts'
+export type { NormalizedFeishuCardAction } from './feishu-normalizer.ts'
 export type { FeishuEventDispatcherLike } from './feishu-transport.ts'
 import { FeishuTransport, type FeishuTransportDependencies } from './feishu-transport.ts'
 import { FeishuReplySender, DingTalkReplySender } from './reply-senders.ts'
@@ -38,6 +42,9 @@ export interface DesktopImRuntimeConfig {
 
 /** Resource owner returned before platform connection starts. */
 export interface DesktopImRuntime {
+  /** Interactive cards on this exact Feishu connection generation. */
+  readonly cards?: CardChannel
+
   /** Authenticate and connect; returns only after the channel verifies readiness. */
   start(): Promise<void>
   /** Read live transport connectivity, including SDK reconnection. */
@@ -60,10 +67,12 @@ export interface DesktopImTransportDependencies {
  * @param config - Locally selected execution settings and credential.
  * @param onFailure - Receives a redacted operational failure notification.
  * @param dependencies - Owner-local platform fixtures; omitted in production.
+ * @param cardOwner - Optional generic consumer registry and durable authorization generation.
  * @returns Owned resources, including cleanup for a failed start.
  */
 export async function createDesktopImRuntime(ctx: Context, config: DesktopImRuntimeConfig,
-  onFailure: () => void, dependencies: DesktopImTransportDependencies = {}): Promise<DesktopImRuntime> {
+  onFailure: () => void, dependencies: DesktopImTransportDependencies = {},
+  cardOwner?: { generation: CardGeneration; consumers: CardConsumers }): Promise<DesktopImRuntime> {
   await mkdir(config.stateDirectory, { recursive: true, mode: 0o700 })
   const lease = DesktopImLease.acquire(config.stateDirectory)
   let sqlite: SqliteStorageBackend | undefined
@@ -73,6 +82,7 @@ export async function createDesktopImRuntime(ctx: Context, config: DesktopImRunt
   let runtime: TenantRuntimeService | undefined
   let agentProvider: Awaited<ReturnType<typeof createTenantAgentSessionProvider>> | undefined
   let transport: FeishuTransport | DingTalkTransport | undefined
+  let cards: OwnedCardChannel | undefined
   let pump: Promise<void> | undefined
   const lifetime = new AbortController()
   let closing: Promise<void> | undefined
@@ -80,6 +90,7 @@ export async function createDesktopImRuntime(ctx: Context, config: DesktopImRunt
     if (closing) return closing
     lifetime.abort()
     closing = (async () => {
+      await cards?.close()
       const results = await Promise.allSettled([
         transport?.close(), ingress?.close(), runtime?.handleClientDisconnected(), pump,
       ])
@@ -131,7 +142,16 @@ export async function createDesktopImRuntime(ctx: Context, config: DesktopImRunt
       return ingress.handleIncomingMessage(event)
     } }
     if (config.provider === 'feishu') {
-      const channel = new FeishuTransport({ appId: config.appId, appSecret: config.appSecret }, acceptor, undefined, dependencies.feishu)
+      const cardAcceptor = cardOwner === undefined ? undefined : {
+        handleCardAction: (action: import('./feishu-normalizer.ts').NormalizedFeishuCardAction) => {
+          if (cards === undefined) return Promise.resolve({ success: false })
+          return cards.handleCardAction(action)
+        },
+      }
+      const channel = new FeishuTransport({ appId: config.appId, appSecret: config.appSecret }, acceptor, cardAcceptor, dependencies.feishu)
+      if (cardOwner !== undefined) cards = new OwnedCardChannel({ appId: config.appId, tenantId: config.tenantId,
+        chatId: config.chatId, operatorId: config.senderId, workspace: config.cwd, generation: cardOwner.generation },
+      cardOwner.consumers, card => channel.sendInteractiveCard(config.chatId, card), config.ingress.maxReplyBytes)
       transport = channel
       ingress = new IngressService(config.ingress, inbox,
         clientProvider, new FeishuReplySender(channel))
@@ -144,7 +164,7 @@ export async function createDesktopImRuntime(ctx: Context, config: DesktopImRunt
     }
     const ownedTransport = transport
     const ownedIngress = ingress
-    return { close, isConnected: () => !lifetime.signal.aborted && ownedTransport.isConnected(),
+    return { close, ...(cards === undefined ? {} : { cards }), isConnected: () => !lifetime.signal.aborted && ownedTransport.isConnected(),
       hasDeliveryFailure: () => inbox.listDeliveries().some(record =>
         record.status === 'failed' || record.status === 'unknown' || record.outboxStatus === 'failed' || record.outboxStatus === 'unknown'),
       async start() {

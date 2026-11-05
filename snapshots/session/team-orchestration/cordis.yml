@@ -1,0 +1,25 @@
+# Team composition patch (live recording): same tool set as the team-targets
+# composition; the base composition owns everything else.
+#
+# skill-filesystem watch:false (msg_ea4900a75d9e): the OS watcher's revision
+# bumps race the first catalog collect and nondeterministically suppress the
+# skill-catalog message; discovery stays real, only the watcher is off.
+
+- id: skill-filesystem
+  config:
+    watch: false
+- id: tool-subagent-control
+  disabled: true
+- id: tool-subagent-list-agents
+  disabled: true
+- id: tool-subagent-report
+  disabled: true
+- id: tool-subagent
+  disabled: true
+- id: tool-subagent-fork
+  disabled: true
+- insert:
+    - id: agent-team
+      name: '@deepseek-ai/dsh-experimental-agent-team'
+    - id: tool-agent-team
+      name: '@deepseek-ai/dsh-experimental-tool-agent-team'

@@ -11,6 +11,8 @@ kind: "package-library"
 
 `@deepseek-ai/dsh-experimental-im-feishu` 提供人类提示词来源、持久化 IM 投递存储、入口准入和租户运行时服务。已认证操作者的消息使用新生成的 UUID 请求 ID，保留 `kind: user`；外部身份仅保存在业务数据库中。仅构造服务实例不会启动平台连接或执行进程。使用前必须完成显式 profile 组合和部署验收。
 
+应用无权获取的消息发送者身份字段可以为 `null`。规范化器选择可用的 `open_id`、`user_id` 或 `union_id`；没有任何可用身份，或身份字段类型错误时，拒绝该消息。应用、租户、会话及操作者的授权检查仍然必须通过。
+
 ## 目录
 
 - [使用此 package](#use-this-package)
@@ -55,6 +57,7 @@ import * as runtimePlugin from '@deepseek-ai/dsh-experimental-im-feishu/runtime'
 
 | 文件 | 角色 |
 |---|---|
+| [`src/card-channel.ts`](src/card-channel.ts) | 通用绑定卡片注册器，复用桌面现有连接，限制发送大小并在关闭时等待回调结束 |
 | [`src/types.ts`](src/types.ts) | 飞书外部品牌化标识符与解析后的审批上下文类型 |
 | [`src/source.ts`](src/source.ts) | 方案 (c) user 提示词来源构建与单射 JSON 元组键编码 |
 | [`src/storage.ts`](src/storage.ts) | 单 writer inbox/outbox、receipt domain 与崩溃对账 |

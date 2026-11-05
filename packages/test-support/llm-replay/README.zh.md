@@ -60,6 +60,7 @@ kind: "package-reference"
 | `childFiles` | `$DSH_SNAPSHOT_CHILD_FILES` | 嵌套场景中已记录的 subagent 子会话日志 |
 | `providers` | 无 | 可选的仅回放提供方与模型目录；模型可声明 `contextWindow`、文本／图片模态、图片模型使用的正整数 `imageRequestTokens`，以及让无密钥场景演练历史内系统提示词替换的 `systemPromptUpdate: in-history`；非法值会在加载时失败（`llm-replay: provider "…" model "…" systemPromptUpdate must be "in-history" when present`），路由绝不执行提供方 I/O |
 | `paceMs` | 无（突发） | 可选的每分片延迟（毫秒），用于真正的增量投递 |
+| `causalTeamSchedule` | `false` | 仅测试用的因果 driver，服务于已录制的 team-orchestration fixture；见[因果团队调度](#causal-team-schedule) |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-llm-replay)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
@@ -70,6 +71,15 @@ fixture 是运行一次真实 agent 所产生的一份选定持久化 Session ge
 ### 嵌套 agent
 
 parent agent 委托给进程内 subagent 的场景会为每个 Session 记录一个角色：parent 为 `session[.vN].jsonl`，随后是连续 child `session.<ordinal>[.vN].jsonl`。snapshot harness 只提供每个角色的最高 generation。live Session id 每次运行都会重新随机生成，因此 replay 按首次调用顺序把每个 live Session 绑定到已记录脚本：第一个发起模型调用的 live Session 取得 parent 脚本，下一个新 Session 取得下一条 child 脚本，依此类推，每个 Session 分别推进自己的 cursor。不同 live Session 数量超过已记录脚本数时会明确报错。
+
+<a id="causal-team-schedule"></a>
+### 因果团队调度
+
+`causalTeamSchedule: true` 会启用一个仅测试用的 driver，服务于已录制的 team-orchestration fixture——其 subagent 与 parent 的工具调用相互交错。普通的首次调用顺序绑定会在 child 的首个模型调用到达时释放 child 脚本，这可能重排已记录的工具效果（例如任务认领）。该 driver 会挂起 teammate 的指定工具调用，并在与 fixture 一同记录的见证事件到达时释放：它安装在 parent 的首次模型调用上，预先校验 fixture 形态（三个脚本、每个成员固定的调用数、全部完整分片），按成员名称与出现次数停靠排队中的 teammate 工具执行（未列出的工具与非 teammate 调用立即放行；Lead 自己的调用按模型调用序号把关，而非工具挂起），并在匹配的 team、task 或 settlement 事件提交时释放每个挂起。通过场景环境设置它（`causalTeamSchedule: !!js process.env.DSH_SNAPSHOT_CAUSAL_TEAM_SCHEDULE === '1'`），让一份共享 patch 同时服务主场景与不得加载该 driver 的对照组。
+
+失败模式均为显式报错：fixture 形态非法时 driver 安装即抛出；挂起的调用始终未 settle 时在有限 watchdog（默认 30s，测试可注入）后 reject；挂起表未命中或出现多余等待都会携带诊断信息失败。`dispose()` 幂等，reject 所有未决挂起，并且仅在自己安装过包装时恢复原方法：回放安装会把 disposer 注册到其安装所在的 Cordis fiber 上，恢复时在 traceable proxy 背后的原始服务实例上重新安装捕获的方法描述符，因此后续其他 owner 替换过的方法不会被覆盖。
+
+日志追加等待必须取得对应的持久化 flush 见证。子会话结束等待使用独立队列，不能代替该见证。卸载会拒绝两个队列及所有挂起的工具调用。
 
 ### 失败模式与覆盖
 
@@ -106,6 +116,7 @@ parent agent 委托给进程内 subagent 的场景会为每个 Session 记录一
 | 文件 | 职责 |
 |---|---|
 | [`src/index.ts`](src/index.ts) | 类型、fixture 派生、override 校验、占位符解析、会话绑定、`installLlmReplay` 与插件导出 |
+| [`src/causal-team-schedule.ts`](src/causal-team-schedule.ts) | `causalTeamSchedule` driver：fixture 校验、工具挂起、settle 见证、watchdog 与 disposal |
 | [`tests/session-format-corpus.spec.ts`](tests/session-format-corpus.spec.ts) | 已提交代际还原与精确历史拒绝检查 |
 
 ### 绑定与流式流程
@@ -146,6 +157,7 @@ parent agent 委托给进程内 subagent 的场景会为每个 Session 记录一
 
 - **首次调用顺序脚本绑定假设串行委托**——并发运行同级 subagent 的实现会非确定性地将实时会话绑定到已记录脚本；在这种场景出现前暂不实现更强的键控。
 - **只有普通 loop 分片与带标记的本地压缩输出才能派生**——在产生分片前直接抛出、取消/挂起，或未标记的外部摘要器调用场景需要 `replay.override.json` 伴随文件；替换与补丁两种形式都只影响主会话，子会话脚本仍从各自日志派生。
+- **因果团队调度 driver 只服务一种已录制 fixture 形态**——其挂起与 settle 调度按 team-orchestration fixture 的调用数与工具名设定，不是通用调度语言；交错方式不同的场景需要自己的 driver。
 
 <a id="dev-note"></a>
 ### 开发备注

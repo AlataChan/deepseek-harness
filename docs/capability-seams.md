@@ -254,6 +254,8 @@ flowchart LR
   svc_assistants["ctx.assistants<br/>Persistent assistant and team catalog and lifecycle"]
   pkg_experimental_claude_code_mods["experimental-claude-code-mods"]
   svc_claudeCodeMods["ctx.claudeCodeMods<br/>Claude Code mods bridge"]
+  pkg_experimental_session_decisions["experimental-session-decisions"]
+  svc_sessionDecisions["ctx.sessionDecisions<br/>Persistent Session questions and answer admission"]
   pkg_experimental_desktop_im["experimental-desktop-im"]
   svc_desktopIm["ctx.desktopIm<br/>Desktop IM settings and single-user connections"]
   pkg_experimental_im_feishu["experimental-im-feishu"]
@@ -356,6 +358,7 @@ flowchart LR
   pkg_experimental_im_feishu --> svc_imIngress
   pkg_experimental_im_feishu --> svc_imRuntime
   pkg_experimental_ptc_runtime_python --> svc_ptcRuntime
+  pkg_experimental_session_decisions --> svc_sessionDecisions
   pkg_experimental_speech_to_text --> svc_speechToText
   pkg_experimental_speech_to_text_sensevoice --> svc_speechToText
   pkg_file_reference --> svc_fileReferences
@@ -530,6 +533,7 @@ flowchart LR
   svc_sandboxPolicy --> pkg_bash_sandbox
   svc_sandboxPolicy --> pkg_fs_sandbox
   svc_sandboxPolicy --> pkg_terminal_bash
+  svc_sessionDecisions --> pkg_experimental_session_decisions
   svc_sessionPersistence --> pkg_agent_loop
   svc_sessionPersistence --> pkg_hooks_claude_code
   svc_sessionPersistence --> pkg_hooks_codex
@@ -700,6 +704,7 @@ flowchart LR
 | `ctx.agentTeams` | `core` | [`experimental-agent-team`](../packages/experimental/agent-team) | - | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | - | Owns the implicit-root roster, durable peer mailbox, shared task DAG, and continuable-child lifecycle; tool-agent-team contributes model controls. |
 | `ctx.assistants` | `core` | [`experimental-assistant-registry`](../packages/experimental/assistant-registry) | - | - | - | Owns persistent assistant profiles, saved-team definitions, private conversation bindings, and model route precedence. |
 | `ctx.claudeCodeMods` | `core` | [`experimental-claude-code-mods`](../packages/experimental/claude-code-mods) | - | - | - | Loads mods that defineMod plugins add, raises their hook chains from harness extension points, and draws the band above the prompt over its Remote. |
+| `ctx.sessionDecisions` | `service` | [`experimental-session-decisions`](../packages/experimental/session-decisions) | - | [`experimental-session-decisions`](../packages/experimental/session-decisions) | - | Owns durable questions and expiry; scoped tools ask and read, while the Client and optional Feishu adapter share queued Session answer admission. |
 | `ctx.desktopIm` | `service` | [`experimental-desktop-im`](../packages/experimental/desktop-im) | - | - | - | Owns desktop-local connection settings and Feishu/DingTalk lifetimes; the Client settings section calls its Remote methods. |
 | `ctx.imIngress` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | Authorizes and commits incoming platform deliveries into durable storage before ACK, driving bounded dispatch across isolated tenant processes. |
 | `ctx.imRuntime` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | Manages durable conversation-to-session mappings, validates operator authorization, and runs isolated tenant Agent sessions with asynchronous reconciliation. |

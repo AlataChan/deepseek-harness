@@ -117,6 +117,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   sessionProjectionCache: 'session-projection.md',
   sessionProjections: 'session-projection.md',
   sessionController: 'session.md',
+  sessionDecisions: 'session-decisions.md',
   sessionSkillCatalog: 'skills.md',
   sessions: 'session.md',
   settings: 'settings.md',
@@ -289,6 +290,18 @@ export const EVENT_WALK_EXEMPTIONS: Record<string, string> = {
  * appear on more than one page.
  */
 export const LINK_MAP: Readonly<Record<string, string>> = {
+  CardConsumer: 'im.md',
+  CardChannel: 'im.md',
+  SessionRequestId: 'session.md',
+  DecisionId: 'session-decisions.md',
+  DecisionView: 'session-decisions.md',
+  DecisionRecord: 'session-decisions.md',
+  DecisionFacts: 'session-decisions.md',
+  DecisionLimits: 'session-decisions.md',
+  AnswerSubmitPayload: 'session-decisions.md',
+  AnswerSubmitOutcome: 'session-decisions.md',
+  RecordMutationOutcome: 'session-decisions.md',
+  ProducingStepIdentity: 'session-decisions.md',
   EventLogOptions: 'otel.md',
   EventLogReporter: 'otel.md',
   SessionLogOptions: 'otel.md',

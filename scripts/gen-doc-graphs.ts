@@ -802,6 +802,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Loads mods that defineMod plugins add, raises their hook chains from harness extension points, and draws the band above the prompt over its Remote.',
   },
   {
+    key: 'sessionDecisions',
+    pkg: 'experimental-session-decisions',
+    title: 'Persistent Session questions and answer admission',
+    mode: 'service',
+    consumers: ['experimental-session-decisions'],
+    note: 'Owns durable questions and expiry; scoped tools ask and read, while the Client and optional Feishu adapter share queued Session answer admission.',
+  },
+  {
     key: 'desktopIm',
     pkg: 'experimental-desktop-im',
     title: 'Desktop IM settings and single-user connections',

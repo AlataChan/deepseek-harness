@@ -8,7 +8,7 @@ import { LlmAdapter, type GenerateOptions, type StreamChunk } from '@deepseek-ai
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
-import { createDesktopImRuntime, type DesktopImRuntime } from '../src/desktop.ts'
+import { CardConsumers, createDesktopImRuntime, parseCardGeneration, type DesktopImRuntime } from '../src/desktop.ts'
 import type { FeishuEventDispatcherLike, FeishuWSClientLike } from '../src/feishu-transport.ts'
 import { DesktopImLease } from '../src/desktop-lease.ts'
 import { TOPIC_ROBOT, type DWClientLike, type DingTalkDownStream, type DingTalkCallbackAck } from '@deepseek-ai/dsh-experimental-im-dingtalk'
@@ -54,7 +54,7 @@ class DingSocket implements DWClientLike {
 }
 function event(id: string, sender = 'operator') {
   return { event_id: id, event_type: 'im.message.receive_v1', create_time: String(Date.now()), app_id: 'app', tenant_key: 'org',
-    sender: { sender_type: 'user', sender_id: { open_id: sender } },
+    sender: { sender_type: 'user', sender_id: { open_id: sender, user_id: null, union_id: null } },
     message: { message_id: `message-${id}`, chat_id: 'chat', chat_type: 'p2p', message_type: 'text', content: JSON.stringify({ text: 'Hello desktop' }) } }
 }
 
@@ -64,6 +64,10 @@ describe('single-user desktop IM delivery', () => {
     const ctx = new Context()
     const dispatcher = new Dispatcher(); const socket = new Socket(); const stream = new DingSocket(); const model = new FixtureModel()
     const sent: string[] = []
+    let socketsCreated = 0
+    const consumers = new CardConsumers()
+    let cardCallbacks = 0
+    consumers.register('fixture-question', async () => { cardCallbacks += 1; return { success: true, toast: 'Card accepted' } })
     let runtime: DesktopImRuntime | undefined
     try {
       await mountAgentLoopTestDependencies(ctx)
@@ -75,7 +79,7 @@ describe('single-user desktop IM delivery', () => {
         modelSelection: { provider: 'fixture', model: 'fixture' }, stateDirectory: join(root, 'state'),
         dispatchIntervalMs: 10, shutdownTimeoutMs: 5000, maxReconciliationEvents: 1000,
         ingress: { maxStoredDeliveries: 100, maxPendingAdmissions: 10, maxPromptBytes: 32768, maxReplyBytes: 32768, maxEventAgeMs: 300000, maxFutureSkewMs: 30000, maxOutboxAttempts: 3 } }, () => { throw new Error('Unexpected dispatcher failure') }, {
-        feishu: { clientFactory: { createWSClient: () => socket, createEventDispatcher: () => dispatcher },
+        feishu: { clientFactory: { createWSClient: () => { socketsCreated += 1; return socket }, createEventDispatcher: () => dispatcher },
           fetchFn: async (url, init) => {
             if (String(url).includes('tenant_access_token')) return new Response(JSON.stringify({ code: 0, msg: 'ok', tenant_access_token: 'synthetic-token', expire: 3600 }))
             if (typeof init?.body !== 'string') throw new Error('Expected JSON text body')
@@ -87,10 +91,21 @@ describe('single-user desktop IM delivery', () => {
           sent.push(init.body)
           return new Response(JSON.stringify({ errcode: 0, errmsg: 'ok' }))
         } },
-      })
+      }, { consumers, generation: parseCardGeneration('4d1379f5-98b9-46f1-aedb-bfd4fd953964') })
       expect(() => DesktopImLease.acquire(join(root, 'state'))).toThrow()
       await runtime.start()
       expect(runtime.isConnected()).toBe(true)
+      if (provider === 'feishu') {
+        expect(socketsCreated).toBe(1)
+        expect(runtime.cards?.binding.workspace).toBe(root)
+        const callback = dispatcher.handlers['card.action.trigger']
+        if (!callback) throw new Error('The existing connection did not register the card handler')
+        expect(await callback({ event_type: 'card.action.trigger', app_id: 'app', tenant_key: 'org',
+          open_id: 'operator', open_chat_id: 'chat', open_message_id: 'published-card',
+          action: { tag: 'button', value: { kind: 'fixture-question' } } }))
+          .toEqual({ toast: { type: 'info', content: 'Card accepted' } })
+        expect(cardCallbacks).toBe(1)
+      } else expect(runtime.cards).toBeUndefined()
       if (provider === 'feishu') await expect(dispatcher.invoke(event('foreign', 'stranger'))).rejects.toThrow('No active operator')
       else await stream.invoke('foreign', 'stranger')
       expect(model.calls).toBe(0)
@@ -100,6 +115,7 @@ describe('single-user desktop IM delivery', () => {
       await expect.poll(() => sent.length, { timeout: 1000 }).toBe(1)
       expect(sent[0]).toContain('Desktop IM reply')
       expect(model.calls).toBe(1)
+      expect(socketsCreated).toBe(provider === 'feishu' ? 1 : 0)
       await receive()
       await runtime.close()
       expect(model.calls).toBe(1)

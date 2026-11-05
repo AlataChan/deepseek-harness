@@ -36,6 +36,7 @@ import type {
 } from '@deepseek-ai/dsh-llm'
 import { LlmAdapter, LlmError, ReasoningEffortId, expandAssistantStream, offloadedImageText, requestImageHandleText, resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
+import { CausalTeamScheduleDriver } from './causal-team-schedule.ts'
 
 const PACKED_CHUNK_ROW_TYPES = new Set(['text-chunks', 'reasoning-chunks', 'tool-call-chunks'])
 
@@ -160,6 +161,17 @@ export interface ReplayConfig {
    * aborting mid-wait cancels the stream like any other abort.
    */
   paceMs?: number
+  /**
+   * Install the test-only causal schedule driver for the recorded
+   * three-session team-orchestration fixture (Lead + notes-writer +
+   * summary-writer). Strict replay alone reproduces adapter order but not the
+   * concurrent-team causal order; the driver holds recorded teammate tool
+   * executions and releases recorded waits so the replayed journal matches the
+   * recording exactly. Scenario-specific: fails loud at the first Lead call
+   * when the loaded scripts are not the recorded [16, 8, 13] team fixture.
+   * Default `false`.
+   */
+  causalTeamSchedule?: boolean
 }
 
 /**
@@ -1037,8 +1049,26 @@ export function installLlmReplay(ctx: Context, config: ReplayConfig): ReplayHand
   // Live-session → its bound script + cursor. A new live session id claims the
   // next not-yet-bound script (scripts are in bind order); `nextScript` is the
   // index of the next unclaimed one.
-  const bound = new Map<string, { entries: ReplayEntry[]; cursor: number }>()
+  const bound = new Map<string, { entries: ReplayEntry[]; cursor: number; scriptIndex: number }>()
   const liveSessionIds: (string | undefined)[] = Array.from({ length: scripts.length })
+  const driver = config.causalTeamSchedule === true
+    ? new CausalTeamScheduleDriver({
+      host: {
+        teamService: () => ctx.get('agentTeams', false),
+        sessionStore: () => {
+          const store = ctx.get('sessions')
+          if (store === undefined) {
+            throw new Error('llm-replay causal-team-schedule: the scenario has no sessions service')
+          }
+          return store
+        },
+        onSessionEvent: listener => ctx.on('session/event', listener),
+        onPreExecute: listener => ctx.on('tools/pre-execute', listener),
+      },
+      scripts,
+      liveSessionIds,
+    })
+    : undefined
   let nextScript = 0
   const ANON = '\0anon\0' // the key for a call that carries no sessionId
   const replay = (options: GenerateOptions): AsyncIterable<StreamChunk> => {
@@ -1052,11 +1082,11 @@ export function installLlmReplay(ctx: Context, config: ReplayConfig): ReplayHand
         // an unrecorded subagent appeared. Defer the throw into the returned
         // generator (the listener must return an AsyncIterable, not throw).
         unrecorded = true
-        state = { entries: [], cursor: 0 }
+        state = { entries: [], cursor: 0, scriptIndex: -1 }
       } else {
         const scriptIndex = nextScript
         nextScript++
-        state = { entries: script.entries, cursor: 0 }
+        state = { entries: script.entries, cursor: 0, scriptIndex }
         bound.set(key, state)
         if (key !== ANON) liveSessionIds[scriptIndex] = key
       }
@@ -1079,6 +1109,7 @@ export function installLlmReplay(ctx: Context, config: ReplayConfig): ReplayHand
           + `but its script has only ${boundState.entries.length}; re-record the scenario`,
         )
       }
+      if (driver !== undefined) await driver.beforeModelCall(boundState.scriptIndex, index, options)
       inferStartedSubagents(options.messages, liveSessionIds)
       const resolved = resolveScriptedEntry(materializeSessionTokens(entry, liveSessionIds), options.messages)
       if (options.provider === 'deepseek-official' && providerAccepted(resolved)) {
@@ -1099,11 +1130,17 @@ export function installLlmReplay(ctx: Context, config: ReplayConfig): ReplayHand
     })()
   }
   const providers = config.providers ?? []
-  const dispose = providers.length > 0
+  const disposeReplay = providers.length > 0
     ? ctx.llm.registerAdapter(providers.map(provider => provider.id), new ReplayAdapter(providers, replay))
     : ctx.on('llm/stream', (options: GenerateOptions, _next) => replay(options))
-  return {
-    dispose,
+  let disposed = false
+  const handle: ReplayHandle = {
+    dispose(): void {
+      if (disposed) return
+      disposed = true
+      driver?.dispose()
+      disposeReplay()
+    },
     assertConsumed(): void {
       const problems: string[] = []
       if (nextScript < scripts.length) {
@@ -1120,6 +1157,11 @@ export function installLlmReplay(ctx: Context, config: ReplayConfig): ReplayHand
       }
     },
   }
+  // Fiber teardown must run the driver's dispose: unloading removes the ctx.on
+  // listeners above but not the own-property method wraps the driver wrote
+  // onto the Team service and session store instances.
+  ctx.effect(() => handle.dispose)
+  return handle
 }
 
 export const name = 'llm-replay'
@@ -1141,6 +1183,8 @@ export interface Config {
   providers?: ReplayProviderConfig[]
   /** Optional per-chunk pacing delay in ms (see {@link ReplayConfig.paceMs}); absent keeps burst yield. */
   paceMs?: number
+  /** Install the test-only causal team schedule (see {@link ReplayConfig.causalTeamSchedule}); default false. */
+  causalTeamSchedule?: boolean
 }
 
 function validateConfiguredModels(providers: ReplayProviderConfig[] | undefined): void {
@@ -1205,5 +1249,6 @@ export function apply(ctx: Context, config: Config = {}): void {
     ...childFiles.length > 0 ? { childFiles } : {},
     ...config.providers !== undefined ? { providers: config.providers } : {},
     ...config.paceMs !== undefined ? { paceMs: config.paceMs } : {},
+    ...config.causalTeamSchedule === true ? { causalTeamSchedule: true } : {},
   })
 }

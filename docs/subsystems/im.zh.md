@@ -54,6 +54,18 @@ Remote service with two independently owned channel controllers.
  * @returns Probe completion; no message admission or model invocation.
  */
 @Remote async test(channel: ImChannel): Promise<ImSnapshot>
+
+/** Register a generic card kind on the existing Feishu connection.
+ * @param kind - Explicit card action kind.
+ * @param consumer - Callback receiving normalized SDK identity and the configured binding.
+ * @returns Registration disposer; the caller owns its effect lifetime.
+ */
+registerCardConsumer(kind: string, consumer: CardConsumer): () => void
+
+/** Read the already-owned online Feishu card channel.
+ * @returns Current channel, or undefined while disabled, offline or closing.
+ */
+cardChannel(): CardChannel | undefined
 ```
 
 Source: [`packages/experimental/desktop-im/src/index.ts`](../../packages/experimental/desktop-im/src/index.ts)

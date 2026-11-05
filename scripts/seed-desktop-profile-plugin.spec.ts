@@ -25,7 +25,7 @@ const SHIPPED = [
   '@deepseek-ai/dsh-desktop-app',
 ]
 
-function writePlugin(root: string, name = 'dsh-fixture-plugin', version = '0.36.0'): string {
+function writePlugin(root: string, name = 'dsh-fixture-plugin', version = '0.36.0', patch: unknown = './cordis.patch.yml'): string {
   const dir = join(root, name)
   mkdirSync(join(dir, 'lib'), { recursive: true })
   writeFileSync(join(dir, 'lib', 'index.js'), 'export {}\n')
@@ -37,7 +37,7 @@ function writePlugin(root: string, name = 'dsh-fixture-plugin', version = '0.36.
     main: 'lib/index.js',
     exports: { './client': './lib/client.js' },
     dsh: {
-      bundle: { patch: './cordis.patch.yml' },
+      bundle: { patch },
       client: { platform: 'web', inject: [] },
     },
   }, undefined, 2)}\n`)
@@ -52,6 +52,25 @@ describe('seed-desktop-profile-plugin', () => {
     writeFileSync(join(root, 'empty', 'package.json'), '{"name":"nope","version":"1.0.0"}\n')
     expect(() => validatePluginDir(join(root, 'empty'))).toThrow('dsh.bundle.patch')
   })
+
+  it('installs every declared patch in a multi-patch bundle and refuses a missing patch', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-seed-multi-patch-'))
+    fixtures.push(root)
+    const plugin = writePlugin(root, 'dsh-fixture-plugin', '0.36.0', ['./cordis.patch.yml', './preset.cordis.yml'])
+    expect(() => validatePluginDir(plugin)).toThrow('preset.cordis.yml is missing')
+    writeFileSync(join(plugin, 'preset.cordis.yml'), '- insert: []\n')
+    const installed = installPluginIntoProfile(plugin, join(root, 'desktop'), SHIPPED)
+    expect(readFileSync(join(installed.dest, 'package.json'), 'utf8')).toBe(readFileSync(join(plugin, 'package.json'), 'utf8'))
+    expect(existsSync(join(installed.dest, 'preset.cordis.yml'))).toBe(true)
+  })
+
+  it.each([{ patch: [] }, { patch: ['', './cordis.patch.yml'] }, { patch: [7] }])(
+    'rejects invalid patch declarations $patch', ({ patch }) => {
+      const root = mkdtempSync(join(tmpdir(), 'dsh-seed-invalid-patches-'))
+      fixtures.push(root)
+      const plugin = writePlugin(root, 'dsh-fixture-plugin', '0.36.0', patch)
+      expect(() => validatePluginDir(plugin)).toThrow('dsh.bundle.patch')
+    })
 
   it('creates a desktop profile and appends the plugin on first install', () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-seed-first-'))

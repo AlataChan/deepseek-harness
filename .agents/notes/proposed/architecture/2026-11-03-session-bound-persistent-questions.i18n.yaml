@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-11-03-session-bound-persistent-questions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/proposed/architecture/2026-11-03-session-bound-persistent-questions.md
+/agent-note-session-bound-persistent-questions:
+  en: d76f4df1e43656f9
+  zh: 1ae260c07492e6d8
+/agent-note-session-bound-persistent-questions/problem:
+  en: f07d56bbefeae6ae
+  zh: 660d8603d107cd0d
+/agent-note-session-bound-persistent-questions/proposal:
+  en: 57760143846a7e4b
+  zh: 041df8fbbc9b8bc4
+/agent-note-session-bound-persistent-questions/alternatives-considered:
+  en: 8f588abf080ca0eb
+  zh: 40dc1127b0b30f1e
+/agent-note-session-bound-persistent-questions/acceptance-criteria:
+  en: 20871d26598435d8
+  zh: f64d15100aa32c58
+/agent-note-session-bound-persistent-questions/risks:
+  en: f3125d25b0b9a02d
+  zh: c0f8543c2d303330

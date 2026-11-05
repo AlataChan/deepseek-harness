@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/session-decisions/README.md
+/:
+  en: b2679e2e5eddf473
+  zh: e4fa2168afed761a
+/deepseek-ai-dsh-experimental-session-decisions:
+  en: 14de88213549caf4
+  zh: 01a82ebfd5fd2f5b
+/deepseek-ai-dsh-experimental-session-decisions/summary:
+  en: 8a0e230c7ea881cf
+  zh: 9942db0fe2be0e92
+/deepseek-ai-dsh-experimental-session-decisions/table-of-contents:
+  en: 76368b6b1da79c80
+  zh: 52384aee991ac542
+/deepseek-ai-dsh-experimental-session-decisions/use-this-package:
+  en: 835499843e31fe91
+  zh: 2e2362ae1e96d4a0
+/deepseek-ai-dsh-experimental-session-decisions/use-this-package/install-into-a-profile:
+  en: 603e56c8b6e853e6
+  zh: e7ff375d96091aa8
+/deepseek-ai-dsh-experimental-session-decisions/use-this-package/optional-feishu-answers:
+  en: 9e90dc8a051886c0
+  zh: 64b5b9d3177ac3eb
+/deepseek-ai-dsh-experimental-session-decisions/use-this-package/what-you-get:
+  en: c000b9b03efdd5d2
+  zh: cd47554b255d6453
+/deepseek-ai-dsh-experimental-session-decisions/understand-the-implementation:
+  en: 2a49f6294895317b
+  zh: ca4e1cd7ca3ca8b8
+/deepseek-ai-dsh-experimental-session-decisions/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-session-decisions/model-experience/persistent-questions:
+  en: e065024cc47b44d2
+  zh: d6f0ee671c90e0ce
+/deepseek-ai-dsh-experimental-session-decisions/model-experience/persistent-questions/what-the-model-sees:
+  en: b537b2c88c888f1e
+  zh: 0f6fed2aeab02ede
+/deepseek-ai-dsh-experimental-session-decisions/model-experience/persistent-questions/token-effect:
+  en: 05ae5bb9329dd14a
+  zh: 6a3e1b056729c977
+/deepseek-ai-dsh-experimental-session-decisions/model-experience/persistent-questions/kv-cache-effect:
+  en: c52886270275e484
+  zh: 219e8b93b0029782
+/deepseek-ai-dsh-experimental-session-decisions/known-limitations-and-deferred-work:
+  en: 867814bbceec4eb2
+  zh: 7463e51f6a3b4a15
+/deepseek-ai-dsh-experimental-session-decisions/known-limitations-and-deferred-work/dev-note:
+  en: 4da250d78f6ac2b5
+  zh: 0a96446561cddf97

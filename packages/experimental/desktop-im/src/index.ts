@@ -9,7 +9,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session-persistence'
-import { createDesktopImRuntime, createDesktopImProbe, DesktopImLease } from '@deepseek-ai/dsh-experimental-im-feishu/desktop'
+import { createDesktopImRuntime, createDesktopImProbe, DesktopImLease, CardConsumers, type CardChannel, type CardConsumer } from '@deepseek-ai/dsh-experimental-im-feishu/desktop'
 import { ImConnectionController } from './controller.ts'
 import { channelSchema, type ImChannel, type ConnectionConfig, type ImSnapshot } from './schema.ts'
 
@@ -72,6 +72,7 @@ export default class DesktopIm extends TypertRemoteService {
       maxOutboxAttempts: Schema.natural().min(1).default(3),
     }),
   })
+  private readonly cardConsumers = new CardConsumers()
   private readonly controllers = new Map<ImChannel, ImConnectionController>()
   private readonly ready: Promise<void>
   private closed = false
@@ -95,7 +96,7 @@ export default class DesktopIm extends TypertRemoteService {
           if (!ctx.llm.listProviders().some(provider => provider.id === config.provider)) throw new Error('Configure the selected model provider first')
           return { ...config, cwd }
         },
-        create: async (selected, config, failure, test) => {
+        create: async (selected, config, failure, test, generation) => {
           if (this.closed) throw new Error('Desktop IM is closing')
           const secret = await ctx.credentials.resolve(imSecretRef(selected))
           if (!secret) throw new Error('IM app secret is missing')
@@ -106,7 +107,8 @@ export default class DesktopIm extends TypertRemoteService {
               .update(JSON.stringify([config.appId, config.tenantId, config.chatId, config.senderId, config.cwd])).digest('hex')),
             dispatchIntervalMs: deployment.dispatchIntervalMs,
             shutdownTimeoutMs: deployment.shutdownTimeoutMs,
-            ingress: deployment.ingress, maxReconciliationEvents: deployment.maxReconciliationEvents }, failure)
+            ingress: deployment.ingress, maxReconciliationEvents: deployment.maxReconciliationEvents,
+          }, failure, {}, { generation, consumers: this.cardConsumers })
         },
       })
       this.controllers.set(channel, controller)
@@ -173,6 +175,23 @@ export default class DesktopIm extends TypertRemoteService {
   async test(channel: ImChannel): Promise<ImSnapshot> {
     await this.ready
     return this.controller(channel).test()
+  }
+
+  /** Register a generic card kind on the existing Feishu connection.
+   * @param kind - Explicit card action kind.
+   * @param consumer - Callback receiving normalized SDK identity and the configured binding.
+   * @returns Registration disposer; the caller owns its effect lifetime.
+   */
+  registerCardConsumer(kind: string, consumer: CardConsumer): () => void {
+    if (this.closed) throw new Error('Desktop IM is closed')
+    return this.cardConsumers.register(kind, consumer)
+  }
+
+  /** Read the already-owned online Feishu card channel.
+   * @returns Current channel, or undefined while disabled, offline or closing.
+   */
+  cardChannel(): CardChannel | undefined {
+    return this.closed ? undefined : this.controllers.get('feishu')?.cards()
   }
 
   private controller(channel: ImChannel): ImConnectionController {

@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for session-decisions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/session-decisions.md
+/persistent-session-questions:
+  en: 2246a02106a11523
+  zh: 5cd6b4db32867edf
+/persistent-session-questions/identity-and-authority:
+  en: fe9bec8f95a0b857
+  zh: 734e19c6f2a72405
+/persistent-session-questions/durable-state:
+  en: 03f8559b32548fac
+  zh: c150555020244a4d
+/persistent-session-questions/presentation:
+  en: 8c5a6dff46557ed6
+  zh: af82240f72052963

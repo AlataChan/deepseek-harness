@@ -770,6 +770,40 @@ async function verifyProviderCwdResume(
   }
 }
 
+/**
+ * Build one baseline request-header sequence per actual log, selected from the
+ * pin's same-index fixture. Log 0 and any log without a pinned child fixture
+ * reuse the primary baseline; other logs compare against their own pinned child
+ * fixture, so a class whose child sessions log a distinct request header
+ * (config or adapterDefaults) is compared against the recorded child form and
+ * still rejects any deviation from it.
+ *
+ * @param pin - The scenario owning the class's pinned header sequence.
+ * @param primary - The primary fixture's headers with sidecar schemas restored.
+ * @param schemaSets - The primary sidecar's initial and changed schema sets.
+ * @param childSchemas - Per-child-log schema sets from `tool-schemas.<index>` sidecars.
+ * @param logCount - Number of actual session logs to build baselines for.
+ * @returns One reconstructed baseline header array per log index.
+ */
+async function pinnedHeaderBaselines(
+  pin: HeadlessScenario,
+  primary: readonly unknown[],
+  schemaSets: readonly unknown[][],
+  childSchemas: ReadonlyMap<number, unknown[][]>,
+  logCount: number,
+): Promise<unknown[][]> {
+  const files = sessionFixtureNames(await readdir(pin.dir))
+  return Promise.all(Array.from({ length: logCount }, async (_, logIndex) => {
+    if (logIndex === 0 || files[logIndex] === undefined) return [...primary]
+    const childFixture = await readFile(join(pin.dir, files[logIndex] as string), 'utf8')
+    const childHeaders = normalizedHeaders(childFixture, fixtureContext(childFixture))
+    return childHeaders.map((header, index) => restorePinnedToolSchemas(
+      header,
+      (childSchemas.get(logIndex)?.[index] ?? schemaSets[index] ?? schemaSets[0]) as unknown[],
+    ))
+  }))
+}
+
 async function verifyHeaders(scenario: HeadlessScenario, actualLogs: readonly SessionLog[], ctx: NormalizeContext): Promise<void> {
   const pin = pinOf(scenario)
   const fixture = await readFile(join(pin.dir, await primaryFixtureFile(pin.dir)), 'utf8')
@@ -801,6 +835,8 @@ async function verifyHeaders(scenario: HeadlessScenario, actualLogs: readonly Se
     childSchemas.set(index, [child.initial, ...child.changes])
   }
 
+  const baselines = await pinnedHeaderBaselines(pin, reconstructed, schemaSets, childSchemas, actualLogs.length)
+
   for (const [logIndex, log] of actualLogs.entries()) {
     const headers = normalizedHeaders(log.content, ctx)
     const prompts = normalizedSystemPrompts(log.content, ctx)
@@ -809,11 +845,12 @@ async function verifyHeaders(scenario: HeadlessScenario, actualLogs: readonly Se
       expect(prompts.length, `${scenario.name}: system/message count`)
         .toBe(1 + (logIndex === 0 ? pin.manifest.header.promptChanges ?? 0 : 0))
     }
+    const baseline = baselines[logIndex] ?? reconstructed
     for (const [index, header] of headers.entries()) {
       const selectedSchemas = childSchemas.get(logIndex)?.[index]
-      const base = reconstructed[index] ?? reconstructed[0]
+      const base = baseline[index] ?? baseline[0]
       const expected = selectedSchemas === undefined ? base : { ...base as JsonObject, tools: selectedSchemas }
-      expect(header, `${scenario.name}: request header ${index + 1}`).toEqual(expected)
+      expect(header, `${scenario.name}: log ${logIndex + 1} request header ${index + 1}`).toEqual(expected)
     }
     if (prompts.length > 0) {
       expect(
@@ -1143,6 +1180,9 @@ describe('headless recorded-session snapshots', () => {
           label: `${scenario.name} headless snapshot`,
           tempDirPrefix: 'dsh-log-snap-',
           ...(scenario.manifest.workspace?.parent === 'outside-temp' ? { tempDirParent: outsideTempWorkspaceParent() } : {}),
+          ...(scenario.manifest.processTimeoutMs !== undefined
+            ? { processTimeoutMs: scenario.manifest.processTimeoutMs }
+            : {}),
           binScript: dshBin,
           sourceImport: 'tsx/esm',
           configPath: join(baseComposition.dir, 'cordis.yml'),
@@ -1308,6 +1348,95 @@ describe('headless recorded-session snapshots', () => {
       } else {
         expect(finalWorkspace, `${scenario.name}: a changed workspace requires workspace.final`).toEqual(initialWorkspace)
       }
-    }, scenario.name === 'provider-cwd' ? 3 * LOADER_SMOKE_TEST_TIMEOUT_MS : LOADER_SMOKE_TEST_TIMEOUT_MS)
+    }, Math.max(
+      scenario.manifest.processTimeoutMs !== undefined ? scenario.manifest.processTimeoutMs + 15_000 : 0,
+      scenario.name === 'provider-cwd' ? 3 * LOADER_SMOKE_TEST_TIMEOUT_MS : LOADER_SMOKE_TEST_TIMEOUT_MS,
+    ))
   }
+})
+
+describe('pinned request-header baselines', () => {
+  /** Write one minimal pinned fixture carrying one request header. */
+  async function writePinnedFixture(dir: string, name: string, header: Record<string, unknown>): Promise<void> {
+    const sessionLine = JSON.stringify({ type: 'session', version: 4, id: `id-${name}`, cwd: '/repro-cwd' })
+    const headerLine = JSON.stringify({ type: 'request/header', data: { header, reason: 'initial' } })
+    await writeFile(join(dir, name), `${sessionLine}\n${headerLine}\n`)
+  }
+
+  /** The recorded parent form: the adapter defaulted both effort and max tokens. */
+  const parentHeader = {
+    config: { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 256000, reasoningEffort: 'max' },
+    adapterDefaults: { reasoningEffort: true, maxTokens: true },
+    tools: '{{tools}}',
+  }
+  /** The recorded child form: the spawn forwarded the resolved effort explicitly. */
+  const childHeader = {
+    config: { provider: 'deepseek-official', model: 'deepseek-v4-flash', reasoningEffort: 'max', maxTokens: 256000 },
+    adapterDefaults: { maxTokens: true },
+    tools: '{{tools}}',
+  }
+  const schemaSets = [[{ name: 'bash', description: 'Run a bash command.' }]]
+
+  it('compares each log against its own pinned child fixture', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pinned-baselines-'))
+    try {
+      await writePinnedFixture(dir, 'session.v4.jsonl', parentHeader)
+      await writePinnedFixture(dir, 'session.1.v4.jsonl', childHeader)
+      const primary = [restorePinnedToolSchemas(structuredClone(parentHeader), schemaSets[0] as unknown[])]
+      const baselines = await pinnedHeaderBaselines(
+        { dir, name: 'pinned-baselines' } as HeadlessScenario,
+        primary, schemaSets as unknown[][], new Map(), 2,
+      )
+      expect(baselines).toHaveLength(2)
+      // The legitimate parent/child pair passes: each live header equals its own baseline.
+      const liveParent = { ...structuredClone(parentHeader), tools: schemaSets[0] }
+      const liveChild = { ...structuredClone(childHeader), tools: schemaSets[0] }
+      expect(liveParent).toEqual(baselines[0]![0])
+      expect(liveChild).toEqual(baselines[1]![0])
+      expect((baselines[1]![0] as { adapterDefaults: Record<string, unknown> }).adapterDefaults).toEqual({ maxTokens: true })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects a changed child effort, marker, or config against the child baseline', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pinned-baselines-'))
+    try {
+      await writePinnedFixture(dir, 'session.v4.jsonl', parentHeader)
+      await writePinnedFixture(dir, 'session.1.v4.jsonl', childHeader)
+      const primary = [restorePinnedToolSchemas(structuredClone(parentHeader), schemaSets[0] as unknown[])]
+      const baselines = await pinnedHeaderBaselines(
+        { dir, name: 'pinned-baselines' } as HeadlessScenario,
+        primary, schemaSets as unknown[][], new Map(), 2,
+      )
+      const changedEffort = { ...structuredClone(childHeader), tools: schemaSets[0] }
+      ;(changedEffort.config as Record<string, unknown>).reasoningEffort = 'low'
+      expect(() => expect(changedEffort).toEqual(baselines[1]![0])).toThrow()
+      const changedMarker = { ...structuredClone(childHeader), tools: schemaSets[0] }
+      ;(changedMarker.adapterDefaults as Record<string, unknown>).reasoningEffort = true
+      expect(() => expect(changedMarker).toEqual(baselines[1]![0])).toThrow()
+      const changedConfig = { ...structuredClone(childHeader), tools: schemaSets[0] }
+      ;(changedConfig.config as Record<string, unknown>).maxTokens = 128000
+      expect(() => expect(changedConfig).toEqual(baselines[1]![0])).toThrow()
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('falls back to the primary baseline without a pinned child fixture', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pinned-baselines-'))
+    try {
+      await writePinnedFixture(dir, 'session.v4.jsonl', parentHeader)
+      const primary = [restorePinnedToolSchemas(structuredClone(parentHeader), schemaSets[0] as unknown[])]
+      const baselines = await pinnedHeaderBaselines(
+        { dir, name: 'pinned-baselines' } as HeadlessScenario,
+        primary, schemaSets as unknown[][], new Map(), 3,
+      )
+      expect(baselines).toHaveLength(3)
+      expect(baselines[1]).toEqual(primary)
+      expect(baselines[2]).toEqual(primary)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
 })

@@ -45,7 +45,12 @@ export function validateInstalledTarget(target) {
       const manifestPath = requireInside(resources, join(path, 'package.json'))
       const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
       if (!manifest.dsh?.bundle?.patch) continue
-      requireInside(resources, join(path, manifest.dsh.bundle.patch))
+      const patches = Array.isArray(manifest.dsh.bundle.patch) ? manifest.dsh.bundle.patch : [manifest.dsh.bundle.patch]
+      assert(patches.length > 0, `Installed bundle declares no patches: ${manifest.name}`)
+      for (const patch of patches) {
+        assert(typeof patch === 'string' && patch.length > 0, `Invalid installed patch in ${manifest.name}`)
+        requireInside(resources, join(path, patch))
+      }
       requireInside(resources, join(path, manifest.main ?? 'lib/index.js'))
       plugins.push({ path, manifest })
     }

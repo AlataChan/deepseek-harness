@@ -1,0 +1,15 @@
+version: 1
+scenario: team-orchestration-no-tools
+profile: headless
+composition: team-orchestration-no-tools
+recording: live
+processTimeoutMs: 120000
+header:
+  class: default
+  pin: true
+  systemPromptSource: text-turn
+  toolSchemasSource: text-turn
+workspace:
+  final: true
+input:
+  task: 请把下面这件事委派给你的队友完成：在 greeting.md 文件中写入一行「你好」。如果你没有团队协作工具，请如实说明，并自己完成这件事。注意：全程只使用相对路径 greeting.md，不要使用绝对路径；不要运行 ls 或任何列出目录内容的命令；写入后只用 cat greeting.md 确认内容即可。

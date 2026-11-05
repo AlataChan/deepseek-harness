@@ -24,7 +24,7 @@ const EXPERIMENTAL_PREFIX = '@deepseek-ai/dsh-experimental-'
 // The independently published entry package owns platform-engine dependencies.
 const EXTERNAL_KIT_PACKAGES = new Set(['@deepseek-ai/libreoffice-kit'])
 /**
- * Fork bundling exception: the DMG's seeded assistant and team profile plugins must
+ * Fork bundling exception: the DMG's seeded profile plugins must
  * resolve from the harness closure, so the launcher names these packages as
  * dependencies. They are never composed by default; they ship only because a
  * profile plugin cites them.
@@ -33,6 +33,7 @@ const FORK_BUNDLED_EXPERIMENTAL = new Set([
   '@deepseek-ai/dsh-experimental-agent-team',
   '@deepseek-ai/dsh-experimental-tool-agent-team',
   '@deepseek-ai/dsh-experimental-assistant-registry',
+  '@deepseek-ai/dsh-experimental-session-decisions',
 ])
 const PROFILE_SOURCE = 'packages/boot/app-boot/src/profile.ts'
 const PRESET_PATTERN = 'packages/bundle/web-app/presets/*.patch.yml'

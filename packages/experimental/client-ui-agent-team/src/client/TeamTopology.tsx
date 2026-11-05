@@ -1,6 +1,6 @@
-/** Fixed-layout Team topology: members as nodes, thin interaction edges. */
+/** Hierarchical execution view over real Team members, handoffs and task progress. */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type {
   TeamInteractionEdge,
   TeamMemberView as TeamRosterMember,
@@ -79,6 +79,10 @@ export interface TeamTopologyCopy {
   motionReduce: string
   motionFull: string
   memberStatus: (key: TeamKey) => string
+  leadRole: string
+  workerRole: string
+  activityTitle: string
+  progress: (done: number, total: number) => string
 }
 
 export interface TeamTopologyProps {
@@ -96,9 +100,9 @@ export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
   const [enabled, setEnabled] = useState(readTopologyPref)
   const [reduceMotion, setReduceMotion] = useState(readReduceMotion)
   const [flashIds, setFlashIds] = useState<ReadonlySet<string>>(() => new Set())
-  const [pulseNames, setPulseNames] = useState<ReadonlySet<string>>(() => new Set())
-  const prevEdges = useRef<ReadonlySet<string>>(new Set())
-  const prevStatus = useRef<ReadonlyMap<string, TeamRosterMember['status']>>(new Map())
+  const prevEdges = useRef<ReadonlySet<string>>(new Set(view.interactions.map(edge => edge.id)))
+  const flashTimer = useRef<number | undefined>(undefined)
+  const markerId = useId().replaceAll(':', '')
 
   useEffect(() => {
     if (revealKey === 0) return
@@ -106,34 +110,22 @@ export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
     writeTopologyPref(true)
   }, [revealKey])
 
+  useEffect(() => () => { window.clearTimeout(flashTimer.current) }, [])
+
   useEffect(() => {
     const nextEdgeIds = new Set(view.interactions.map(edge => edge.id))
     const appeared = [...nextEdgeIds].filter(id => !prevEdges.current.has(id))
-    const nextPulse = new Set<string>()
-    for (const member of view.members) {
-      const prior = prevStatus.current.get(member.name)
-      if (prior !== undefined && prior !== member.status && member.status === 'running') {
-        nextPulse.add(member.name)
-      }
-    }
     prevEdges.current = nextEdgeIds
-    prevStatus.current = new Map(view.members.map(member => [member.name, member.status]))
-    if (reduceMotion || (appeared.length === 0 && nextPulse.size === 0)) {
-      if (reduceMotion) {
-        setFlashIds(new Set())
-        setPulseNames(new Set())
-      }
-      if (appeared.length === 0 && nextPulse.size === 0) return
-      if (reduceMotion) return
-    }
-    setFlashIds(new Set(appeared))
-    setPulseNames(nextPulse)
-    const timer = window.setTimeout(() => {
+    if (reduceMotion) {
+      window.clearTimeout(flashTimer.current)
       setFlashIds(new Set())
-      setPulseNames(new Set())
-    }, 900)
-    return () => { window.clearTimeout(timer) }
-  }, [view, reduceMotion])
+      return
+    }
+    if (appeared.length === 0) return
+    window.clearTimeout(flashTimer.current)
+    setFlashIds(new Set(appeared))
+    flashTimer.current = window.setTimeout(() => { setFlashIds(new Set()) }, 2600)
+  }, [view.interactions, reduceMotion])
 
   const toggle = (): void => {
     setEnabled((current) => {
@@ -157,13 +149,21 @@ export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
     ...lead === undefined ? [] : [lead.name],
     ...teammates.map(member => member.name),
   ]
-  const indexByName = new Map(layoutNames.map((name, index) => [name, index] as const))
+  const columns = Math.max(1, Math.min(teammates.length, 3))
+  const width = columns * 164
+  const height = 192 + Math.max(1, Math.ceil(teammates.length / columns)) * 142 + 30
+  const positions = new Map<string, { x: number; y: number }>()
+  if (lead !== undefined) positions.set(lead.name, { x: width / 2, y: 8 })
+  teammates.forEach((member, index) => {
+    positions.set(member.name, { x: (index % columns + 0.5) * 164, y: 192 + Math.floor(index / columns) * 142 })
+  })
+  const completed = view.tasks.filter(task => task.status === 'completed').length
 
   return (
-    <section className={css.topology} aria-label={copy.title}>
+    <section className={css.topology} aria-label={copy.title} data-reduce-motion={reduceMotion}>
       <div className={css.topologyHeader}>
         <h3>{copy.title}</h3>
-        <button type="button" className={css.smallButton} onClick={toggleMotion}>
+        <button type="button" className={css.smallButton} onClick={toggleMotion} aria-pressed={reduceMotion}>
           {reduceMotion ? copy.motionFull : copy.motionReduce}
         </button>
         <button type="button" className={css.smallButton} onClick={toggle}>
@@ -177,27 +177,60 @@ export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
             <p className={css.topologyEmpty}>{copy.empty}</p>
           ) : (
             <div className={css.topologyCanvas}>
-              <svg className={css.topologySvg} viewBox={`0 0 ${Math.max(layoutNames.length, 1) * 120} 120`} aria-hidden>
-                {view.interactions.map(edge => renderEdge(edge, indexByName, flashIds.has(edge.id), copy))}
-              </svg>
-              <div className={css.topologyNodes}>
+              <div className={css.topologyScene} style={{ minWidth: width, height }}>
+                <svg className={css.topologySvg} viewBox={`0 0 ${width} ${height}`} style={{ height }} preserveAspectRatio="none" aria-hidden>
+                  <defs>
+                    <marker id={`${markerId}-message`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+                      <path d="M 0 0 L 8 4 L 0 8 Z" className={css.topologyMessageArrow} />
+                    </marker>
+                    <marker id={`${markerId}-task`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+                      <path d="M 0 0 L 8 4 L 0 8 Z" className={css.topologyTaskArrow} />
+                    </marker>
+                  </defs>
+                  {view.interactions.map((edge, lane) => renderEdge(edge, positions, flashIds.has(edge.id), copy, lane, markerId))}
+                </svg>
                 {layoutNames.map((name) => {
                   const member = view.members.find(row => row.name === name)
-                  if (member === undefined) return null
+                  const position = positions.get(name)
+                  if (member === undefined || position === undefined) return null
+                  const task = view.tasks.find(row => row.ownerName === name && row.status === 'in_progress')
                   return (
                     <div
                       key={name}
-                      className={`${css.topologyNode}${pulseNames.has(name) ? ` ${css.topologyNodePulse}` : ''}`}
+                      className={`${css.topologyNode}${member.status === 'running' ? ` ${css.topologyNodeActive}` : ''}`}
+                      data-status={member.status}
+                      data-role={member.role}
+                      style={{ left: `${position.x / width * 100}%`, top: position.y }}
                     >
-                      <StateDot state={statusDot(member.status)} />
-                      <div className={css.topologyNodeText}>
-                        <strong>{name}</strong>
-                        <span>{copy.memberStatus(memberStatusKey(member.status))}</span>
-                      </div>
+                      <span className={css.topologyRole}>{member.role === 'lead' ? copy.leadRole : copy.workerRole}</span>
+                      <strong>{name}</strong>
+                      {member.model !== undefined && <span className={css.topologyModel} title={member.model}>{member.model}</span>}
+                      <span className={css.topologyMemberState}>
+                        <StateDot state={statusDot(member.status)} />
+                        {copy.memberStatus(memberStatusKey(member.status))}
+                      </span>
+                      {task !== undefined && <span className={css.topologyTask} title={task.subject}>{task.subject}</span>}
                     </div>
                   )
                 })}
               </div>
+              {view.tasks.length > 0 && (
+                <div className={css.topologyProgress}>
+                  <span>{copy.progress(completed, view.tasks.length)}</span>
+                  <progress max={view.tasks.length} value={completed} aria-label={copy.progress(completed, view.tasks.length)} />
+                </div>
+              )}
+              {view.interactions.length > 0 && (
+                <div className={css.topologyFeed} aria-label={copy.activityTitle}>
+                  <span className={css.topologyFeedTitle}>{copy.activityTitle}</span>
+                  {view.interactions.slice(-3).map(edge => (
+                    <div key={edge.id} className={flashIds.has(edge.id) ? css.topologyFeedActive : undefined}>
+                      <span>{edge.from} → {edge.to}</span>
+                      <span>{edge.kind === 'message' ? copy.edgeMessage : copy.edgeTask}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>
@@ -208,33 +241,34 @@ export function TeamTopology({ view, copy, revealKey = 0 }: TeamTopologyProps) {
 
 function renderEdge(
   edge: TeamInteractionEdge,
-  indexByName: ReadonlyMap<string, number>,
+  positions: ReadonlyMap<string, { x: number; y: number }>,
   flash: boolean,
   copy: TeamTopologyCopy,
+  lane: number,
+  markerId: string,
 ): ReactNode {
-  const from = indexByName.get(edge.from)
-  const to = indexByName.get(edge.to)
+  const from = positions.get(edge.from)
+  const to = positions.get(edge.to)
   if (from === undefined || to === undefined) return null
-  const x1 = from * 120 + 60
-  const x2 = to * 120 + 60
-  const y = edge.kind === 'message' ? 28 : 48
+  const sameRow = from.y === to.y
+  const sourceY = sameRow ? from.y + 112 : from.y < to.y ? from.y + 112 : from.y
+  const targetY = sameRow ? to.y + 112 : from.y < to.y ? to.y : to.y + 112
+  const bend = sameRow ? sourceY + 42 + (lane % 2) * 8 : (sourceY + targetY) / 2
+  const offset = sameRow ? 0 : (lane % 3 - 1) * 22
+  const path = `M ${from.x} ${sourceY} C ${from.x + offset} ${bend} ${to.x + offset} ${bend} ${to.x} ${targetY}`
   const label = edge.kind === 'message' ? copy.edgeMessage : copy.edgeTask
   return (
-    <g key={edge.id} className={flash ? css.topologyEdgeFlash : undefined}>
-      <line
-        x1={x1}
-        y1={y}
-        x2={x2}
-        y2={y}
+    <g key={edge.id} className={flash ? css.topologyEdgeFlash : undefined} data-edge-kind={edge.kind}>
+      <path
+        d={path}
+        markerEnd={`url(#${markerId}-${edge.kind === 'message' ? 'message' : 'task'})`}
         className={edge.kind === 'message' ? css.topologyEdgeMessage : css.topologyEdgeTask}
       />
-      <text x={(x1 + x2) / 2} y={y - 6} className={css.topologyEdgeLabel}>{label}</text>
-      {flash && (
-        <circle
-          r={3.5}
-          className={css.topologyDot}
-          style={{ offsetPath: `path("M ${x1} ${y} L ${x2} ${y}")` }}
-        />
+      <text x={(from.x + to.x) / 2 + offset} y={sameRow ? sourceY + 24 : bend - 7} className={css.topologyEdgeLabel}>{label}</text>
+      {flash && edge.kind === 'message' && (
+        <circle r={5.5} className={css.topologyDot}>
+          <animateMotion dur="1.25s" repeatCount="2" path={path} />
+        </circle>
       )}
     </g>
   )

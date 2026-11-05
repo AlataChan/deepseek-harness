@@ -1,0 +1,223 @@
+/* Session-header question card: trigger seat plus the anchored answer panel. */
+.root {
+  position: relative;
+  margin-left: 4px;
+}
+
+/* Icon-only 28px round target matching the header's other utility buttons. */
+.trigger {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 28px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.trigger svg {
+  flex: none;
+}
+
+.panel {
+  position: fixed;
+  z-index: 100;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 320px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 12px;
+  overflow: auto;
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-base);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 18%);
+  outline: none;
+  font-size: 13px;
+}
+
+.panel:focus-visible {
+  outline: none;
+}
+
+.question {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.meta {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.failure {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 12px;
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.choice {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.choice:hover:not(:disabled),
+.choice:focus-visible {
+  background: var(--dsw-alias-state-business-primary);
+  color: var(--dsw-alias-bg-base);
+}
+
+.choice:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.text {
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  resize: vertical;
+}
+
+.text:disabled {
+  opacity: 0.6;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.send,
+.secondary {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.send {
+  background: var(--dsw-alias-state-business-primary);
+  color: var(--dsw-alias-bg-base);
+}
+
+.send:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.secondary {
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.secondary:hover:not(:disabled),
+.secondary:focus-visible {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.confirm {
+  flex: 1 1 100%;
+  color: var(--dsw-alias-state-warn-primary);
+  font-size: 12px;
+}
+
+/* Conversation tool card: compact question state under the tool result row. */
+.tool {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+/* Sidebar Session-row leading mark: compact glyph in the row's 16px cell. */.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--dsw-alias-state-warn-primary);
+  cursor: default;
+}
+
+.mark svg {
+  flex: none;
+}
+
+/* Visually hidden accessible label; mirrors the shared visually-hidden rule. */
+.markLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
+.inlineRoot {
+  width: calc(100% - 2 * var(--dsh-composer-side-clearance));
+  margin-inline: auto;
+  max-width: var(--dsh-composer-card-max-width);
+  min-width: 0;
+}
+
+.inlinePanel {
+  max-height: min(45vh, 420px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1);
+  font-size: 13px;
+}

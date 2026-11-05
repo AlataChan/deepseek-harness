@@ -1,0 +1,19 @@
+/** Status-line styles; the shared card stylesheet owns the rest. */
+.status {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.status[data-status='expired'],
+.status[data-status='cancelled'],
+.status[data-status='superseded'],
+.status[data-status='dismissed'],
+.status[data-status='withdrawn'] {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.status[data-status='needs_reconciliation'] {
+  color: var(--dsw-alias-state-warn-primary);
+}

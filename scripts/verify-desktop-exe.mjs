@@ -346,29 +346,17 @@ for (const name of pinnedNames) {
 }
 
 head('Checking bundled skills')
-const skillPin = JSON.parse(readFileSync(join(REPO_ROOT, 'scripts', 'desktop-bundled-skills.json'), 'utf8'))
-for (const skill of skillPin.skills) {
-  const skillDir = join(RES, 'bundled-skills', skill.name)
-  if (!existsSync(join(skillDir, 'SKILL.md'))) {
-    bad(`bundled-skills/${skill.name} incomplete — desktop users will not get it`)
-  } else {
-    ok(`bundled-skills/${skill.name} present`)
-  }
-}
-if (existsSync(join(RES, 'bundled-skills', 'wechat-article-extractor'))) {
-  const wechat = join(RES, 'bundled-skills', 'wechat-article-extractor')
-  if (existsSync(join(wechat, 'scripts', 'rate-limit.js')) && existsSync(join(wechat, 'node_modules'))) {
-    ok('wechat-article-extractor present with deps')
-  } else {
-    bad('wechat-article-extractor incomplete — desktop users will not get WeChat extract')
-  }
-}
-if (existsSync(join(RES, 'bundled-skills', 'archify'))) {
-  if (existsSync(join(RES, 'bundled-skills', 'archify', 'bin', 'archify.mjs'))) {
-    ok('bundled-skills/archify present (post-hoc Team diagram skill)')
-  } else {
-    bad('bundled-skills/archify incomplete — desktop users will not get Archify')
-  }
+// One manifest-driven validator owns every per-skill payload rule, mirroring
+// scripts/verify-desktop-bundle.sh; no per-skill blocks are kept here.
+const skillsValidation = capture(nodeExe, [
+  join(REPO_ROOT, 'scripts', 'verify-desktop-bundled-skills.mjs'),
+  '--root', join(RES, 'bundled-skills'),
+])
+if (skillsValidation.status === 0) {
+  ok(skillsValidation.stdout.trim().split('\n').at(-1))
+} else {
+  bad('bundled-skills payload failed manifest validation')
+  quote(`${skillsValidation.stdout}\n${skillsValidation.stderr}`.trim())
 }
 
 // ── 7b. Payload invariants mirrored from verify-desktop-bundle.sh ───────────

@@ -50,6 +50,24 @@ describe('installed prediction verifier negative controls', () => {
   it('requires an explicit target instead of falling back to checkout gates', () => {
     expect(() => validateInstalledTarget()).toThrow(/Explicit installed/)
   })
+  it('validates all multi-patch bundle files before continuing the installed inventory', () => {
+    withFixture((root) => {
+      writeFileSync(join(root, process.platform === 'win32' ? 'node.exe' : 'node'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
+      mkdirSync(join(root, 'harness', 'lib'), { recursive: true })
+      writeFileSync(join(root, 'harness', 'lib', 'desktop-companion.js'), 'export {}\n')
+      writeFileSync(join(root, 'harness', 'package.json'), '{"name":"fixture-harness","version":"1"}\n')
+      const plugin = join(root, 'profile-plugins', '@fixture', 'questions')
+      mkdirSync(join(plugin, 'lib'), { recursive: true })
+      writeFileSync(join(plugin, 'lib', 'index.js'), 'export {}\n')
+      writeFileSync(join(plugin, 'package.json'), JSON.stringify({ main: 'lib/index.js',
+        dsh: { bundle: { patch: ['./cordis.patch.yml', './preset.cordis.yml'] } } }))
+      writeFileSync(join(plugin, 'cordis.patch.yml'), '- insert: []\n')
+      expect(() => validateInstalledTarget(root)).toThrow(/preset\.cordis\.yml/)
+      writeFileSync(join(plugin, 'preset.cordis.yml'), '- insert: []\n')
+      mkdirSync(join(root, 'harness', 'node_modules', '@deepseek-ai'), { recursive: true })
+      expect(() => validateInstalledTarget(root)).toThrow(/dsh-experimental-assistant-registry/)
+    })
+  })
   it('rejects a nonexistent target', () => {
     withFixture((root) => { expect(() => validateInstalledTarget(join(root, 'absent'))).toThrow() })
   })

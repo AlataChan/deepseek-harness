@@ -1,0 +1,6 @@
+{
+  "name": "team-orchestration",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Explicit DSH Agent Teams delegation and supervision guidance for octopus_DSH (no runtime dependencies)"
+}

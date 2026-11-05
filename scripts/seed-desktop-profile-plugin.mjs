@@ -132,12 +132,15 @@ export function validatePluginDir(dir, expected) {
       throw new Error(`seed: expected ${expected.name}@${expected.version}, found ${manifest.version}`)
     }
   }
-  const patch = manifest.dsh?.bundle?.patch
-  if (typeof patch !== 'string' || patch === '') {
-    throw new Error(`seed: ${manifest.name} declares no dsh.bundle.patch`)
+  const declared = manifest.dsh?.bundle?.patch
+  const patches = Array.isArray(declared) ? declared : [declared]
+  if (patches.length === 0 || patches.some(patch => typeof patch !== 'string' || patch === '')) {
+    throw new Error(`seed: ${manifest.name} declares no valid dsh.bundle.patch`)
   }
-  if (!existsSync(join(dir, patch))) {
-    throw new Error(`seed: ${manifest.name} dsh.bundle.patch ${patch} is missing`)
+  for (const patch of patches) {
+    if (!existsSync(join(dir, patch))) {
+      throw new Error(`seed: ${manifest.name} dsh.bundle.patch ${patch} is missing`)
+    }
   }
   if (manifest.dsh?.client?.platform !== 'web') {
     throw new Error(`seed: ${manifest.name} is not a web dsh.client package`)
