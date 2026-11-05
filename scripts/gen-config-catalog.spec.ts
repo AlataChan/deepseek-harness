@@ -30,14 +30,18 @@ export const Shared = Schema.union([
 ])
 `
 
-function fixture(schema = sharedSchema) {
-  const root = mkdtempSync(join(tmpdir(), 'dsh-config-catalog-'))
-  roots.push(root)
-  const write = (path: string, value: string): void => {
+function fixtureWriter(root: string): (path: string, value: string) => void {
+  return (path, value) => {
     const file = join(root, path)
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, value)
   }
+}
+
+function fixture(schema = sharedSchema) {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-config-catalog-'))
+  roots.push(root)
+  const write = fixtureWriter(root)
   write('tsconfig.json', JSON.stringify({ compilerOptions: {
     baseUrl: '.', module: 'ESNext', moduleResolution: 'Bundler',
     paths: { '@test/runtime/config': ['./packages/test/runtime/src/config.ts'] },
@@ -137,6 +141,140 @@ export const Shared = makeSchema()
 export const Shared = Schema.union([MissingSchema])
 `)
     expect(() => collectConfigCatalog(root)).toThrow("schema alias 'MissingSchema' must name a const or named value import")
+  })
+})
+
+describe('package-local config declarations', () => {
+  const localConfig = `
+import Schema from '@deepseek-ai/schemastery'
+export interface Config {
+  /** Worker limit. */
+  workers: number
+}
+export const NodeConfig = Schema.object({ workers: Schema.number() })
+`
+  function localRoot() {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-config-catalog-local-'))
+    roots.push(root)
+    const write = fixtureWriter(root)
+    write('packages/test/local/package.json', JSON.stringify({ name: '@test/local' }))
+    write('packages/test/local/src/config.ts', localConfig)
+    return { root, write }
+  }
+
+  it('reads as-const and satisfies inject lists and a NodeConfig import from ./config.ts', () => {
+    const { root, write } = localRoot()
+    write('packages/test/local/src/index.ts', `
+import { NodeConfig } from './config.ts'
+import type { Config } from './config.ts'
+export default class LocalRuntime {
+  static inject = (['tools' as const, 'systemPrompt'] as const)
+  static Config = NodeConfig
+  constructor(ctx: unknown, config: Config) {}
+}
+`)
+    write('packages/test/satisfied/package.json', JSON.stringify({ name: '@test/satisfied' }))
+    write('packages/test/satisfied/src/config.ts', localConfig)
+    write('packages/test/satisfied/src/index.ts', `
+import { NodeConfig } from './nested/../config.ts'
+import type { Config } from './config.ts'
+export const inject = ['ptcRuntime'] satisfies readonly string[]
+export const Config = NodeConfig
+export function apply(ctx: unknown, config: Config): void {}
+`)
+    const entries = collectConfigCatalog(root)
+    const local = entries.find(entry => entry.pkg === '@test/local')
+    const satisfied = entries.find(entry => entry.pkg === '@test/satisfied')
+    expect(local?.inject).toEqual(['tools', 'systemPrompt'])
+    expect(local?.schemaKeys).toEqual(['workers'])
+    expect(satisfied?.inject).toEqual(['ptcRuntime'])
+    expect(satisfied?.schemaKeys).toEqual(['workers'])
+  })
+
+  it('rejects an inject alias wrapped in as const', () => {
+    const { root, write } = localRoot()
+    write('packages/test/local/src/index.ts', `
+import { NodeConfig } from './config.ts'
+import type { Config } from './config.ts'
+const services = ['tools']
+export const inject = services as const
+export const Config = NodeConfig
+export function apply(ctx: unknown, config: Config): void {}
+`)
+    expect(() => collectConfigCatalog(root)).toThrow('inject is not a plain string-array literal')
+  })
+
+  it('rejects a schema key absent from the package-local config type', () => {
+    const { root, write } = localRoot()
+    write('packages/test/local/src/config.ts', localConfig.replace(
+      'workers: Schema.number()',
+      'workers: Schema.number(), hidden: Schema.string()',
+    ))
+    write('packages/test/local/src/index.ts', `
+import { NodeConfig } from './config.ts'
+import type { Config } from './config.ts'
+export const inject = ['tools']
+export const Config = NodeConfig
+export function apply(ctx: unknown, config: Config): void {}
+`)
+    expect(() => collectConfigCatalog(root)).toThrow("schema validates key 'hidden' but config type 'Config' declares no such member")
+  })
+
+  it('rejects a type-only package-local schema import', () => {
+    const { root, write } = localRoot()
+    write('packages/test/local/src/index.ts', `
+import type { NodeConfig } from './config.ts'
+import type { Config } from './config.ts'
+export const Config = NodeConfig
+export function apply(ctx: unknown, config: Config): void {}
+`)
+    expect(() => collectConfigCatalog(root)).toThrow("schema alias 'NodeConfig' must name a const or named value import")
+  })
+
+  it('rejects an extensionless, declaration, missing, escaping, or unknown schema reference', () => {
+    const cases = [
+      ['import { NodeConfig } from \'./config\'', "schema import './config' is not a package-local TypeScript source file"],
+      ['import { NodeConfig } from \'./config.d.ts\'', "schema import './config.d.ts' is not a package-local TypeScript source file"],
+      ['import { NodeConfig } from \'./missing.ts\'', "schema import './missing.ts' has no package-local source file"],
+      ['import { NodeConfig } from \'../escaped.ts\'', 'must resolve inside packages/test/local/src'],
+      ['import { NodeConfig } from \'@missing/pkg\'', "schema import '@missing/pkg' is not a workspace package"],
+    ] as const
+    for (const [importLine, message] of cases) {
+      const { root, write } = localRoot()
+      write('packages/test/local/src/index.ts', `
+${importLine}
+import type { Config } from './config.ts'
+export const Config = NodeConfig
+export function apply(ctx: unknown, config: Config): void {}
+`)
+      expect(() => collectConfigCatalog(root), importLine).toThrow(message)
+    }
+  })
+
+  it('rejects a package-local schema that is not an exported const or a static call', () => {
+    const { root, write } = localRoot()
+    write('packages/test/local/src/config.ts', localConfig.replace('export const NodeConfig', 'const NodeConfig'))
+    write('packages/test/local/src/index.ts', `
+import { NodeConfig } from './config.ts'
+import type { Config } from './config.ts'
+export const Config = NodeConfig
+export function apply(ctx: unknown, config: Config): void {}
+`)
+    expect(() => collectConfigCatalog(root)).toThrow("has no exported const 'NodeConfig'")
+
+    const dynamic = localRoot()
+    dynamic.write('packages/test/local/src/config.ts', `
+import Schema from '@deepseek-ai/schemastery'
+export interface Config { /** Worker limit. */ workers: number }
+export const NodeConfig = makeSchema()
+`)
+    dynamic.write('packages/test/local/src/index.ts', `
+import { NodeConfig } from './config.ts'
+import type { Config } from './config.ts'
+export const Config = NodeConfig
+export function apply(ctx: unknown, config: Config): void {}
+`)
+    expect(() => collectConfigCatalog(dynamic.root)).toThrow('not a statically walkable schemastery call')
   })
 })
 

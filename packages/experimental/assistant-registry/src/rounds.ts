@@ -1170,6 +1170,7 @@ export class GroupRoundScheduler {
         ownerId: `round:${round.id}:slot:${activeSlot.slotId}:parent-notice`,
       })
       : undefined
+    // oxlint-disable-next-line typescript/no-deprecated -- Parent token baseline; migration deferred.
     const parentPreSeq = parentAgent?.session.snapshotEvents().at(-1)?.seq ?? 0
     const childSettlement = parentAgent ? Promise.withResolvers<void>() : undefined
     const disposeSettlement = childSettlement
@@ -1185,6 +1186,7 @@ export class GroupRoundScheduler {
       : () => {}
     let acceptedChild = false
     const ownedToken = this.ownership.getOwnership(activeSlot.sessionId)
+    // oxlint-disable-next-line typescript/no-deprecated -- Child reply and token baseline; migration deferred.
     const preEvents = liveAgent?.session.snapshotEvents() ?? persisted?.events ?? []
     const preSeq = preEvents.at(-1)?.seq ?? 0
 
@@ -1234,7 +1236,9 @@ export class GroupRoundScheduler {
       if (agent.id !== activeSlot.sessionId && agent.id !== parentAgent?.id) return resolved
       const consumed =
         this.observedTokens(
+          // oxlint-disable-next-line typescript/no-deprecated -- Child token request gate; migration deferred.
           ((liveAgent ?? registry?.get(activeSlot.sessionId))?.session.snapshotEvents() ?? []).filter(e => e.seq > preSeq),
+        // oxlint-disable-next-line typescript/no-deprecated -- Parent token request gate; migration deferred.
         ) + this.observedTokens((parentAgent?.session.snapshotEvents() ?? []).filter(e => e.seq > parentPreSeq))
       const remaining = round.bounds.maxTokensPerRound - round.totalTokensUsed - consumed
       if (remaining <= 0) throw new RoundBoundsExceededError('Round token budget exhausted')
@@ -1279,6 +1283,7 @@ export class GroupRoundScheduler {
       disposeLimit()
     }
 
+    // oxlint-disable-next-line typescript/no-deprecated -- Committed child reply at settlement; migration deferred.
     const postEvents = liveAgent.session.snapshotEvents()
     const newEvents = postEvents.filter(e => e.seq > preSeq)
     const msgEvent = newEvents.findLast(e => e.type === 'assistant/message')
@@ -1286,6 +1291,7 @@ export class GroupRoundScheduler {
     let replyText = ''
     const replyTokens =
       this.observedTokens(newEvents) +
+      // oxlint-disable-next-line typescript/no-deprecated -- Parent tokens at settlement; migration deferred.
       this.observedTokens((parentAgent?.session.snapshotEvents() ?? []).filter(e => e.seq > parentPreSeq))
 
     if (msgEvent) {

@@ -10,7 +10,7 @@
  * @module @deepseek-ai/dsh-experimental-claude-code-mods
  */
 
-import type { Context } from '@deepseek-ai/cordis'
+import { FiberState, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -231,6 +231,10 @@ export class ClaudeCodeMods extends TypertRemoteService {
     const report = (line: string): void => { ctx.logger.warn(`claude-code-mods: ${line}`) }
     const agentOf = (sessionId: string): Agent | undefined => ctx.get('agents')?.get(SessionId(sessionId))
     const detached = new DetachedRuns(report)
+    ctx.on('internal/status', (fiber) => {
+      // Cordis drains dependent mod fibers before this provider's effects.
+      if (fiber.uid === ctx.fiber.uid && fiber.state === FiberState.UNLOADING) detached.cancel()
+    })
     const surfaces = new SurfaceTable({
       columns: bandColumns,
       rows: bandRows,

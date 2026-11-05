@@ -3,15 +3,16 @@
  * @module @deepseek-ai/dsh-experimental-desktop-media
  */
 
-import type { Context } from '@deepseek-ai/cordis'
+import { FiberState, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
+import type { MediaProjectionState } from './types.ts'
 import { MEDIA_CREATION_PROMPT } from './prompt.ts'
 import { mediaProjectionDefinition } from './projection.ts'
 import { DesktopMedia, optionalHostSeam, type DesktopMediaConfig } from './service.ts'
 import { registerMediaTools } from './tools.ts'
 import { resolveMediaRuntimeHome } from './media-home.ts'
-import type {} from './types.ts'
 
 export { MediaError, type MediaErrorCode } from './error.ts'
 export {
@@ -113,22 +114,25 @@ export const Config: z<DesktopMediaConfig> = z.object({
 
 /**
  * Load the media service, projection, tools, prompt, and recovery listener.
+ * Projection-ready continuations install nothing once the owning fiber is disposed or unloading.
  * @param ctx - Host context.
  * @param config - validated plugin configuration.
+ * @returns after the media projection handle is installed, when that seam is present.
  */
-export function apply(ctx: Context, config: DesktopMediaConfig): void {
+export async function apply(ctx: Context, config: DesktopMediaConfig): Promise<void> {
   if ((config.mediaRuntimePath ?? '').trim() !== '') resolveMediaRuntimeHome(config)
   const media = new DesktopMedia(ctx, config)
-  const projections = optionalHostSeam<{ register: (definition: typeof mediaProjectionDefinition) => () => void }>(
-    ctx,
-    'sessionProjections',
-  )
+  const projections = optionalHostSeam(ctx, 'sessionProjections') as {
+    register: (definition: typeof mediaProjectionDefinition) => Promise<ProjectionHandle<MediaProjectionState>>
+  } | undefined
   if (projections !== undefined) {
-    ctx.effect(() => projections.register(mediaProjectionDefinition), 'desktop-media.projection')
+    const handle = await projections.register(mediaProjectionDefinition)
+    if (ctx.fiber.uid === null || ctx.fiber.state === FiberState.UNLOADING) return
+    media.bindMediaProjection(handle)
   }
-  const systemPrompt = optionalHostSeam<{
+  const systemPrompt = optionalHostSeam(ctx, 'systemPrompt') as {
     section: (entry: { name: string; order: number; text: () => string }) => () => void
-  }>(ctx, 'systemPrompt')
+  } | undefined
   if (systemPrompt !== undefined) {
     ctx.effect(() => systemPrompt.section({
       name: 'desktop-media:creation',

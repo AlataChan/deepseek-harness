@@ -371,12 +371,17 @@ describe('contextBreakdown session projection', () => {
     for (let index = 0; index < 24; index += 1) appendUser(session, `message number ${index} with some text`)
     const last = appendUser(session, 'the last message before compaction')
     const state = () => {
+      // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
       const current = ctx.sessionProjections.stateOf(session, 'contextBreakdown')
-      if (current === undefined) throw new Error('registered context breakdown has no state')
-      return current
+      if (typeof current !== 'object' || current === null || !('nodes' in current) || !Array.isArray(current.nodes)) {
+        throw new Error('registered context breakdown has no state')
+      }
+      return { nodes: current.nodes }
     }
     expect(state().nodes).toHaveLength(26)
-    expect(Object.keys(state().nodes[0]!).sort()).toEqual(['heuristicTokens', 'seq', 'system'])
+    const firstNode: unknown = state().nodes[0]
+    if (typeof firstNode !== 'object' || firstNode === null) throw new Error('context breakdown node is missing')
+    expect(Object.keys(firstNode).sort()).toEqual(['heuristicTokens', 'seq', 'system'])
     const shadowed = [...session.surface.nodes]
     session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'summary' }], source: { kind: 'test' },

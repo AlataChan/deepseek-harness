@@ -68,6 +68,8 @@ kind: "package-reference"
 <a id="understand-the-implementation"></a>
 ## 理解实现
 
+投影注册完成后，仅当服务 fiber 未销毁且未进入卸载状态，才为既有 Session 写入初始权限事实。
+
 <details>
 <summary>实现细节——点击展开</summary>
 

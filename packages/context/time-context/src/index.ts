@@ -5,7 +5,7 @@
  * @module @deepseek-ai/dsh-time-context
  */
 
-import type { Context } from '@deepseek-ai/cordis'
+import { FiberState, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
@@ -125,11 +125,12 @@ function validateRefreshInterval(refreshIntervalMs: number): void {
 
 /**
  * Register a prepended pre-step listener for the lifetime of `ctx`.
+ * Projection-ready continuations install nothing once the owning fiber is disposed or unloading.
  * @param ctx - plugin context; the listener is disposed with it.
  * @param config - time zone and durable refresh scheduling configuration.
  * @throws when the refresh interval is invalid or the configured or process time zone cannot be resolved.
  */
-export function apply(ctx: Context, config: Config): void {
+export async function apply(ctx: Context, config: Config): Promise<void> {
   const timeZone = config.timeZone
   const refreshIntervalMs = config.refreshIntervalMs ?? 600_000
   validateRefreshInterval(refreshIntervalMs)
@@ -154,7 +155,7 @@ export function apply(ctx: Context, config: Config): void {
     return created
   }
 
-  ctx.sessionProjections.register({
+  const timeContext = await ctx.sessionProjections.register({
     key: 'timeContext',
     stateVersion: 2,
     stateSchema: timeContextStateSchema,
@@ -181,6 +182,7 @@ export function apply(ctx: Context, config: Config): void {
       return state
     },
   })
+  if (ctx.fiber.uid === null || ctx.fiber.state === FiberState.UNLOADING) return
 
   ctx.on('agent/pre-step', async (
     { agent, turn, step, signal },
@@ -189,7 +191,7 @@ export function apply(ctx: Context, config: Config): void {
     const decision = await next()
     if (decision.kind === 'reject' || signal.aborted) return decision
     const now = Date.now()
-    const state = ctx.sessionProjections.stateOf(agent.session, 'timeContext') as TimeContextProjection
+    const state = timeContext.stateOf(agent.session)
     if (refreshIntervalMs > 0) {
       const lastInjection = state.lastInjectionTime
       if (lastInjection != null

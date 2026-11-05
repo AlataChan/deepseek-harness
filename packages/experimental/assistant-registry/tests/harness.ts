@@ -192,7 +192,13 @@ export async function setupAssistantHarness(
   ctx.llm.registerAdapter(['mock'], adapter)
 
   const leadId = options.leadSessionId ?? SessionId('lead')
-  const lead = await ctx.agentLoop.create(leadId, { provider: 'mock', model: 'mock' })
+  const leadModel = { provider: 'mock', model: 'mock' }
+  // A cold restart reuses the same storage root. create refuses an id whose
+  // log already exists; resume reopens that log and republishes the agent.
+  const storedLead = await ctx.sessionPersistence.stat(leadId)
+  const lead = storedLead === undefined
+    ? await ctx.agentLoop.create(leadId, leadModel)
+    : (await ctx.agentLoop.resume(ctx, { resumeSessionId: leadId, agentOptions: leadModel })).agent
 
   return {
     ctx,

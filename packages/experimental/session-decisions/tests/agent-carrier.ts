@@ -16,6 +16,7 @@ export function stubAgentWith(session: Session, ctx: Context): StubAgent {
   const inbox = createInboxStub()
   let status: AgentStatus = 'running'
   const agent: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id: session.id,
     options: {},
     session,

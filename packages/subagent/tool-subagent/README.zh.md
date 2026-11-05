@@ -73,6 +73,8 @@ kind: "package-reference"
 <a id="understand-the-implementation"></a>
 ## 理解实现
 
+投影就绪时，若插件 fiber 已销毁或正在卸载，则停止安装。后代 Agent 的覆盖定义仍保留既有的祖先归属管理。
+
 <details>
 <summary>实现细节——点击展开</summary>
 

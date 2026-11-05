@@ -53,6 +53,10 @@ import {
 import { LOADER_SMOKE_TEST_TIMEOUT_MS, runLoaderSmoke } from '@deepseek-ai/dsh-loader-smoke'
 import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
 import { parseSessionLog, prepareSessionSnapshotFixtureForComparison } from '@deepseek-ai/dsh-llm-replay'
+import { assertApplyPatchGuarded } from './apply-patch-guarded/inspect.ts'
+import { assertApplyPatchGuardedPtc } from './apply-patch-guarded-ptc/inspect.ts'
+import { assertInstructionChainBudgets } from './instruction-chain-budgets/inspect.ts'
+import { assertSkillRootIsolation } from './skill-root-isolation/inspect.ts'
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 const snapshotsRoot = fileURLToPath(new URL('./', import.meta.url))
@@ -1243,6 +1247,9 @@ describe('headless recorded-session snapshots', () => {
               await copyFile(join(scenario.dir, 'profile.patch.yml'), join(profileDir, 'cordis.patch.yml'))
             }
             await seedWorkspace(scenario, cwd)
+            if (scenario.name === 'skill-root-isolation') {
+              await symlink('loop', join(cwd, '.dsh/skills/loop'))
+            }
             initialWorkspace = await captureWorkspaceSnapshot(cwd, {
               ignoredRootEntries: RUNTIME_WORKSPACE_ENTRIES,
             })
@@ -1277,6 +1284,18 @@ describe('headless recorded-session snapshots', () => {
             }
             if (scenario.name === 'background-confinement-failure') {
               await verifyBackgroundConfinementFailure(actualLogs[0]!.content, cwd)
+            }
+            if (scenario.name === 'apply-patch-guarded') {
+              assertApplyPatchGuarded(actualLogs[0]!.content)
+            }
+            if (scenario.name === 'apply-patch-guarded-ptc') {
+              assertApplyPatchGuardedPtc(actualLogs[0]!.content)
+            }
+            if (scenario.name === 'instruction-chain-budgets') {
+              assertInstructionChainBudgets(actualLogs[0]!.content)
+            }
+            if (scenario.name === 'skill-root-isolation') {
+              assertSkillRootIsolation(actualLogs[0]!.content)
             }
             finalWorkspace = await captureWorkspaceSnapshot(cwd, {
               ignoredRootEntries: RUNTIME_WORKSPACE_ENTRIES,

@@ -7,7 +7,7 @@ import { FsVersion } from '@deepseek-ai/dsh-fs'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SESSION_FORMAT_VERSION, Session, SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { Agent, Model } from '@deepseek-ai/dsh-agent'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
 import SandboxedFileSystem from '@deepseek-ai/dsh-fs-sandbox'
@@ -46,6 +46,7 @@ async function agent(ctx: Context, cwd: string): Promise<Agent> {
     inject: () => {},
     cancel() {},
     runMaintenance: task => task(new AbortController().signal),
+    model: { current: () => undefined, select: () => {}, origin: () => null } satisfies Model,
     whenIdle: () => Promise.resolve(),
   }
   await ctx.agents.register(value)
@@ -76,13 +77,11 @@ async function setup(
   contexts.push(ctx)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   if (options.sandboxMode === undefined) {
     await ctx.plugin(LocalFileSystem, { cwd: root })
   } else {
-    // SandboxPolicy declares the registry as a required injection; mount it
-    // before the policy activates.
-    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(SandboxPolicy, { mode: options.sandboxMode, workspaceRoot: root })
     await ctx.plugin(SandboxedFileSystem, { cwd: root })
   }

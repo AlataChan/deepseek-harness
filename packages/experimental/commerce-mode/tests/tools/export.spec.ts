@@ -41,8 +41,14 @@ async function stagedBench(overrides: Parameters<typeof bench>[0] = {}) {
 
 type StagedBench = Awaited<ReturnType<typeof stagedBench>>
 
-function ledgerStatuses(env: StagedBench) {
-  return env.ctx.sessionProjections.stateOf(env.owner.session, 'commerceSession')?.ledger.map(change => change.status)
+function ledgerStatuses(env: StagedBench): string[] | undefined {
+  // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+  const state = env.ctx.sessionProjections.stateOf(env.owner.session, 'commerceSession')
+  if (typeof state !== 'object' || state === null || !('ledger' in state) || !Array.isArray(state.ledger)) return undefined
+  return state.ledger.flatMap((change: unknown) => {
+    if (typeof change !== 'object' || change === null || !('status' in change) || typeof change.status !== 'string') return []
+    return [change.status]
+  })
 }
 
 function approvalAsked(env: StagedBench): boolean {

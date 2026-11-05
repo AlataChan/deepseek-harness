@@ -60,6 +60,32 @@ function toolCall(callId: string, name: string, args: object): StreamChunk[] {
   ]
 }
 
+function bindingSourceId(value: unknown): string | undefined {
+  if (typeof value !== 'object' || value === null || !('binding' in value)) return undefined
+  const binding = value.binding
+  if (typeof binding !== 'object' || binding === null || !('sourceId' in binding) || typeof binding.sourceId !== 'string') return undefined
+  return binding.sourceId
+}
+
+function readListingCount(value: unknown): number {
+  if (typeof value !== 'object' || value === null || !('readListingIds' in value) || !Array.isArray(value.readListingIds)) return 0
+  return value.readListingIds.length
+}
+
+function ledgerOf(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || !('ledger' in value)) return undefined
+  return value.ledger
+}
+
+function ledgerStatuses(value: unknown): string[] | undefined {
+  const ledger = ledgerOf(value)
+  if (!Array.isArray(ledger)) return undefined
+  return ledger.flatMap((change: unknown) => {
+    if (typeof change !== 'object' || change === null || !('status' in change) || typeof change.status !== 'string') return []
+    return [change.status]
+  })
+}
+
 function textReply(text: string): StreamChunk[] {
   return [
     { type: 'block-start', index: 0, blockType: 'text' },
@@ -227,10 +253,12 @@ describe('real commerce Loader composition', () => {
     const events = commerce.agent.session.snapshotEvents()
     expect(events.some(event => event.type === 'commerce/bound')).toBe(true)
     expect(events.filter(event => event.type === 'tool/result')).toHaveLength(3)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     const live = ctx.sessionProjections.stateOf(commerce.agent.session, 'commerceSession')
-    expect(live?.binding?.sourceId).toBeTruthy()
-    expect(live?.readListingIds.length).toBeGreaterThan(0)
+    expect(bindingSourceId(live)).toBeTruthy()
+    expect(readListingCount(live)).toBeGreaterThan(0)
     const replay = Session.create(SessionId('commerce-replay'), events)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(replay, 'commerceSession')).toEqual(live)
 
     const row = [...ctx.loader.entries()].find(entry => entry.options.name === '@deepseek-ai/dsh-experimental-commerce-mode/preset')
@@ -260,11 +288,13 @@ describe('real commerce Loader composition', () => {
     await bare.agent.whenIdle()
     const events = bare.agent.session.snapshotEvents()
     expect(events.some(event => event.type === 'commerce/bound')).toBe(true)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     const live = ctx.sessionProjections.stateOf(bare.agent.session, 'commerceSession')
-    expect(live?.ledger).toEqual([{
+    expect(ledgerOf(live)).toEqual([{
       id: 'chg-0001', kind: 'price-change', summary: 'Raise the jasmine tea price', status: 'staged',
       items: [{ listingId: 'P-100', field: 'price', before: 19.9, after: 21.9 }],
     }])
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(Session.create(SessionId('bare-replay'), events), 'commerceSession')).toEqual(live)
 
     const row = [...ctx.loader.entries()].find(entry => entry.options.name === '@deepseek-ai/dsh-experimental-commerce-mode/tools')
@@ -282,7 +312,7 @@ describe('real commerce Loader composition', () => {
     expect(commerceTools).toHaveLength(14)
     const failedRows = [...ctx.loader.entries()]
       .filter(entry => entry.fiber?.state === FiberState.FAILED)
-    expect(failedRows.map(entry => String(entry.options.name ?? entry.options.id))).toEqual([
+    expect(failedRows.map(entry => entry.options.name ?? entry.options.id)).toEqual([
       expect.stringMatching(/commerce-mode\/(?:preset|tools)$/),
     ])
   })
@@ -324,8 +354,8 @@ describe('real commerce Loader composition', () => {
       )
       created.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Stage and export a price change.' }], source: { kind: 'user' } }))
       await created.agent.whenIdle()
-      const ledger = ctx.sessionProjections.stateOf(created.agent.session, 'commerceSession')?.ledger
-      expect(ledger?.map(change => change.status)).toEqual([written ? 'exported' : 'staged'])
+      // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+      expect(ledgerStatuses(ctx.sessionProjections.stateOf(created.agent.session, 'commerceSession'))).toEqual([written ? 'exported' : 'staged'])
       const exportsDir = join(workspace, 'commerce-exports')
       const files = await readdir(exportsDir).catch(() => [])
       expect(files).toHaveLength(written ? 1 : 0)
@@ -352,7 +382,9 @@ describe('real commerce Loader composition', () => {
     const agent = ctx.agents.get(committed.value.sessionId)
     if (agent === undefined) throw new Error('commit did not create a live agent')
     expect(agent.session.snapshotEvents().some(event => event.type === 'commerce/bound')).toBe(true)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(agent.session, 'agentPreset')).toBe('commerce')
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(agent.session, 'commerceBinding')).toMatchObject({
       sourceId: imported.value.source.id,
       kinds: ['orders', 'products', 'inventory'],

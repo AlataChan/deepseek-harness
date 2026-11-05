@@ -167,6 +167,29 @@ export interface FsEditOutcome {
   after: string
 }
 
+/** Outcome of a guarded delete. `before` follows the bounded basis used by writes. */
+export interface FsDeleteOutcome {
+  /** LF-normalized removed content, or null when the basis is unavailable, binary, or over the limit. */
+  before: string | null
+}
+
+/** Failure after a move has published its destination and kept its source. */
+export interface FsMoveSourceFailure {
+  /** Filesystem failure code for the source removal. */
+  code: FsErrorCode
+  /** Diagnostic naming the source and the failed removal. */
+  message: string
+}
+
+/**
+ * Published destination plus source-removal status.
+ * `sourceBefore` is the bounded LF source basis captured under the move lock.
+ * A retained source is a finished outcome, not a rolled-back write.
+ */
+export type FsMoveOutcome =
+  | { sourceBefore: string | null; destination: FsWriteOutcome; sourceDeleted: true }
+  | { sourceBefore: string | null; destination: FsWriteOutcome; sourceDeleted: false; sourceFailure: FsMoveSourceFailure }
+
 /**
  * Stable, machine-routable codes for filesystem failures. Carried on
  * {@link FsError}; the tool registry exposes `{ name, code }` on `isError`
@@ -186,6 +209,7 @@ export type FsErrorCode =
   | 'FS_AMBIGUOUS_EDIT'
   | 'FS_EDIT_NOT_FOUND'
   | 'FS_ABORTED'
+  | 'FS_SAME_TARGET'
 
 /**
  * Typed filesystem error. Extends {@link HarnessError} so it carries a stable

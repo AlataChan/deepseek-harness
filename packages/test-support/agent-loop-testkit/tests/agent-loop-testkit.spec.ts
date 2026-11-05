@@ -89,6 +89,7 @@ describe('dsh-agent-loop-testkit', () => {
       time: 1,
       data: { target: 'next-turn', start: 99, inserted: [] },
     }])
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(() => ctx.sessionProjections.stateOf(invalid, 'inbox'))
       .toThrow(/invalid persisted inbox splice/)
     expect(harness.claim(agent, 'next-turn', 3)).toEqual([step, turn])

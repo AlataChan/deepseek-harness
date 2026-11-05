@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
 import SessionStore, { SessionLogOffset, SessionSeq, SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { SessionEvent, SessionHeader, SessionId as SessionIdType } from '@deepseek-ai/dsh-session'
 import SessionPersistence, {
   SessionPersistenceCorruptionError,
@@ -547,6 +548,7 @@ describe('session-query exact reads', () => {
       },
     ])
     const ctx = await liveContext()
+    await ctx.plugin(AgentRegistry)
     await ctx.plugin(SessionTitleService, TITLE_SERVICE_CONFIG)
     const shared = ctx.sessions.create(sharedHeader.id, { meta: { createdAt: 3 } })
     shared.append('session/title', {
@@ -586,6 +588,7 @@ describe('session-query exact reads', () => {
       { meta: second, events: [titleEvent('Second title', 20)] },
     ])
     const ctx = await liveContext()
+    await ctx.plugin(AgentRegistry)
     await ctx.plugin(SessionTitleService, TITLE_SERVICE_CONFIG)
     await ctx.plugin(TestPersistence)
     const signal = new AbortController().signal
@@ -810,6 +813,7 @@ describe('session-query exact reads', () => {
       { meta: malformed, events: [malformedTitle] },
     ])
     const ctx = await liveContext()
+    await ctx.plugin(AgentRegistry)
     await ctx.plugin(SessionTitleService, TITLE_SERVICE_CONFIG)
     await ctx.plugin(TestPersistence)
     TestPersistence.readOverride = (id) => {

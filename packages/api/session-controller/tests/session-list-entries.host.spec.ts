@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SessionStore, { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
 import { WorkspaceEntries, WorkspaceEntriesError } from '@deepseek-ai/dsh-host-workspace-entries'
 import type { WorkspaceEntriesListing, WorkspaceEntriesListRequest } from '@deepseek-ai/dsh-host-workspace-entries'
@@ -49,6 +50,7 @@ async function harness(options: {
 } = {}) {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   ctx.provide('sessionPersistence', testSessionPersistence(ctx, {
     list: options.persistence?.list ?? (() => Promise.resolve([])),

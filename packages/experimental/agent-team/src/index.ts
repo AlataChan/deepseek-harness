@@ -7,6 +7,7 @@ import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-fs'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { TeamActivity } from './activity.ts'
@@ -15,7 +16,7 @@ import { errorMessage, TeamError } from './error.ts'
 import { TeamJournal } from './journal.ts'
 import { TeamRuntimeLifecycle } from './lifecycle.ts'
 import { TeamMailbox } from './mailbox.ts'
-import { teamProjectionDefinition } from './projection.ts'
+import { teamProjectionDefinition, type TeamProjectionState } from './projection.ts'
 import { TeamRoster } from './roster.ts'
 import type { TeamMembership } from './roster.ts'
 import { TeamTaskBoard } from './task-board.ts'
@@ -120,6 +121,7 @@ export class TeamService extends TypertRemoteService {
   private readonly roster: TeamRoster
   private readonly mailbox: TeamMailbox
   private readonly tasks: TeamTaskBoard
+  private teamProjection: ProjectionHandle<TeamProjectionState> | undefined
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'agentTeams')
@@ -142,7 +144,7 @@ export class TeamService extends TypertRemoteService {
     this.lifecycle = new TeamRuntimeLifecycle(this.config.disposalTimeoutMs)
     this.journal = new TeamJournal(ctx, (root) => {
       this.activity.notify(TeamId(root.id))
-    })
+    }, root => this.teamProjection?.stateOf(root.session))
     this.roster = new TeamRoster(ctx, this.journal, this.lifecycle, this.config.maxMembers)
     this.attribution = new TeamAttribution(this.roster)
     this.mailbox = new TeamMailbox(
@@ -172,13 +174,14 @@ export class TeamService extends TypertRemoteService {
       const membership = this.roster.tryMembership(agent)
       if (membership !== undefined) this.activity.notify(membership.id)
     })
-    ctx.effect(() => {
-      const disposeProjection = ctx.root.sessionProjections.register(teamProjectionDefinition)
+    ctx.effect(async () => {
+      const handle = await ctx.root.sessionProjections.register(teamProjectionDefinition)
+      this.teamProjection = handle
       return async () => {
         try {
           await this.disposeRuntime()
         } finally {
-          disposeProjection()
+          await handle.dispose()
         }
       }
     }, 'agentTeams.runtimeLifecycle()')

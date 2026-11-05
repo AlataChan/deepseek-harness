@@ -33,9 +33,11 @@ describe('ask-knowledge attach', () => {
     const session = liveSession(ctx, 'live-1')
     const lease = await ctx.askKnowledge.attach({ libraryId: library.id, sessionId: session.id })
     expect(lease.binding.displayName).toBe('制度 A')
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')).toEqual(lease.binding)
     expect(session.snapshotEvents().some(event => event.type === 'ask-knowledge/bound')).toBe(true)
     await ctx.askKnowledge.detach({ sessionId: session.id })
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')).toBeNull()
   })
 
@@ -46,6 +48,7 @@ describe('ask-knowledge attach', () => {
     const session = liveSession(ctx, 'switch')
     await ctx.askKnowledge.attach({ libraryId: first.id, sessionId: session.id })
     await ctx.askKnowledge.attach({ libraryId: second.id, sessionId: session.id })
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')).toMatchObject({
       libraryId: second.id,
       displayName: 'B',
@@ -59,6 +62,7 @@ describe('ask-knowledge attach', () => {
     const session = liveSession(ctx, 'remove-live')
     await ctx.askKnowledge.attach({ libraryId: gone.id, sessionId: session.id })
     await ctx.askKnowledge.removeLibrary({ libraryId: gone.id })
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')).toBeNull()
     expect(session.snapshotEvents().some(event => event.type === 'ask-knowledge/unbound')).toBe(true)
     const listed = await ctx.askKnowledge.listLibraries()

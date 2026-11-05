@@ -4,6 +4,7 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId, SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionSeq as SessionSeqType } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import AgentRegistry from '@deepseek-ai/dsh-agent'
 import SessionTitleService from '@deepseek-ai/dsh-session-title'
 
 const CONFIG = { fallbackMaxWords: 8, fallbackMaxBytes: 64, maxTitleBytes: 256 }
@@ -12,6 +13,7 @@ async function harness(withTitleService: boolean): Promise<{ ctx: Context; sessi
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
+  await ctx.plugin(AgentRegistry)
   if (withTitleService) await ctx.plugin(SessionTitleService, CONFIG)
   return { ctx, session: ctx.sessions.create(SessionId('titled')) }
 }
@@ -90,10 +92,14 @@ describe('title projection unit', () => {
     }
     await ctx.plugin(SessionTitleService, CONFIG)
 
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     const state = ctx.sessionProjections.stateOf(session, 'titleInput')
-    expect(state?.count).toBe(5_000)
-    expect(state?.first?.text).toBe('message 0')
-    expect(state?.lastSeq).toBe(session.seq - 1)
+    const count = typeof state === 'object' && state !== null && 'count' in state ? state.count : undefined
+    const first = typeof state === 'object' && state !== null && 'first' in state ? state.first : undefined
+    const lastSeq = typeof state === 'object' && state !== null && 'lastSeq' in state ? state.lastSeq : undefined
+    expect(count).toBe(5_000)
+    expect(typeof first === 'object' && first !== null && 'text' in first ? first.text : undefined).toBe('message 0')
+    expect(lastSeq).toBe(session.seq - 1)
     expect(ctx.sessionProjections.checkpoint(session).titleInput).toBeDefined()
   })
 

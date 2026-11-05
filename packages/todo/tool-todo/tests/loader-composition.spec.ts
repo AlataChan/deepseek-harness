@@ -34,6 +34,7 @@ async function agent(ctx: Context): Promise<Agent> {
   const id = SessionId('todo-loader-agent')
   const session = Session.create(id)
   const value: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id, options: {}, session, inbox: unsupportedInbox(),
     status: 'idle', ctx: scope.ctx,
     followup: () => {}, steer: () => {}, inject: () => {}, send: () => {}, cancel() {},

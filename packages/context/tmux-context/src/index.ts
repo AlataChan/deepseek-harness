@@ -18,7 +18,7 @@
  * @module @deepseek-ai/dsh-tmux-context
  */
 
-import type { Context, LoggerService } from '@deepseek-ai/cordis'
+import { FiberState, type Context, type LoggerService } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
 import type { PreStepDecision } from '@deepseek-ai/dsh-agent'
@@ -210,12 +210,6 @@ const tmuxContextStateSchema = zod.object({
 
 type TmuxContextState = zod.infer<typeof tmuxContextStateSchema>
 
-/**
- * Register a prepended pre-step listener for the lifetime of `ctx`.
- * @param ctx - plugin context; the listener is disposed with it.
- * @param config - durable refresh scheduling configuration.
- * @throws when the refresh interval is invalid.
- */
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
     /** The stable state block of this plugin's latest durable injection, or null. */
@@ -223,11 +217,18 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
   }
 }
 
-export function apply(ctx: Context, config: Config): void {
+/**
+ * Register a prepended pre-step listener for the lifetime of `ctx`.
+ * Projection-ready continuations install nothing once the owning fiber is disposed or unloading.
+ * @param ctx - plugin context; the listener is disposed with it.
+ * @param config - durable refresh scheduling configuration.
+ * @throws when the refresh interval is invalid.
+ */
+export async function apply(ctx: Context, config: Config): Promise<void> {
   const refreshIntervalMs = config.refreshIntervalMs
   validateRefreshInterval(refreshIntervalMs)
 
-  ctx.sessionProjections.register({
+  const tmuxContext = await ctx.sessionProjections.register({
     key: 'tmuxContext',
     stateVersion: 1,
     stateSchema: tmuxContextStateSchema,
@@ -242,6 +243,7 @@ export function apply(ctx: Context, config: Config): void {
       return { state: stableState, time: event.time }
     },
   })
+  if (ctx.fiber.uid === null || ctx.fiber.state === FiberState.UNLOADING) return
 
   ctx.on('agent/pre-step', async (
     { agent, turn, step, signal },
@@ -251,7 +253,7 @@ export function apply(ctx: Context, config: Config): void {
     if (decision.kind === 'reject' || signal.aborted || step !== 1) return decision
     const bash = ctx.get('shell')
     if (bash === undefined) return decision
-    const previous = ctx.sessionProjections.stateOf(agent.session, 'tmuxContext') as TmuxContextState
+    const previous = tmuxContext.stateOf(agent.session)
     if (refreshIntervalMs !== undefined && refreshIntervalMs > 0 && previous !== null) {
       const now = Date.now()
       if (now >= previous.time && now - previous.time < refreshIntervalMs) return decision

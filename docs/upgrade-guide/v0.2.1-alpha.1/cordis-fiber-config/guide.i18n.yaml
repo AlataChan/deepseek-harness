@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-alpha.1/cordis-fiber-config/guide.md
+/:
+  en: b2af12254f7840b4
+  zh: 8c12b69bcdd9f766
+/read-parsed-fiber-configuration-explicitly:
+  en: 24db796e8733c217
+  zh: e46208d019d72182
+/read-parsed-fiber-configuration-explicitly/change:
+  en: 4eb04d895174e7d5
+  zh: 8a1652a1dff0b008
+/read-parsed-fiber-configuration-explicitly/migration:
+  en: 1afcff2cdc050287
+  zh: d686921989da62ac

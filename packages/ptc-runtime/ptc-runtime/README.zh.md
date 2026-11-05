@@ -29,7 +29,7 @@ kind: "package-reference"
 
 ### 运行一个程序
 
-向运行时提供程序与绑定命名空间，然后依次调用 `resolve(request)` 和 `run(spec)`。解析根据提供方能力验证可选 cwd、timeout 与沙箱策略，并填入部署默认值。程序作为异步函数体运行，支持顶层 `await` 与 `return`；无损 JSON 完成值成为 `result.value`，捕获文本成为 `result.logs`，程序失败成为 `result.error`。每个输出通道保持自身顺序，跨通道交错由后端决定。
+向运行时提供程序与绑定命名空间，然后依次调用 `resolve(request)` 和 `run(spec)`。解析根据提供方能力验证可选 cwd、timeout 与沙箱策略，并填入部署默认值。默认 `programFormat` 是 `function-body`，支持顶层 `await` 与 `return`；无损 JSON 完成值成为 `result.value`，捕获文本成为 `result.logs`，程序失败成为 `result.error`。基类报告 `retainsState` 为 false，且 `release(owner)` 立即完成，因此可选的 `stateOwner` 不会被保存。保留状态的提供方会一直保存该所有者的程序内存，直到 `release`。`stateOwner` 不是会话事件。每个输出通道保持自身顺序，跨通道交错由后端决定。
 
 ```text
 const spec = ctx.ptcRuntime.resolve({
@@ -70,7 +70,7 @@ binding-global 与 error-class 名称是语言可移植的：必须匹配 `[A-Za
 
 只读 `timeout` 描述符公开数值型 `{ defaultMs, maxMs }`，供消费方呈现；描述符缺省表示不支持数值覆盖。省略 `timeoutMs` 使用提供方默认值；数值请求经过验证和封顶的经过时间预算；显式 `null` 请求不设经过时间截止。提供方拒绝不支持的选择。Node 工作流适配器请求 `null`，而面向模型的 `run_code` 工具只接受正数覆盖值。
 
-`executionInstructions` 提供由运行时拥有的使用说明；不需要说明时返回空字符串。消费方可将其纳入程序呈现，无需根据语言或隔离描述符识别提供方；PTC 将它纳入已记录的 `run_code` schema。
+`programFormat` 报告 `function-body`、`repl` 或 `script`。`retainsState` 报告同一个 `stateOwner` 是否在多次运行之间保留程序内存。`release(owner)` 会等到该所有者的执行资源释放。基类是无状态的：格式为 `function-body`，`retainsState` 为 false，`release` 不销毁进程即完成。Node 提供方根据执行模式覆盖格式、保留状态和 `release`，包括持久内存与 VM Script 运行。`executionInstructions` 提供由运行时拥有的使用说明；不需要说明时返回空字符串。消费方可将其纳入程序呈现，无需根据语言或隔离描述符识别提供方；PTC 将它纳入已记录的 `run_code` schema。
 
 `resolve(request)` 负责支持选项的验证与部署默认值。`run(spec)` 执行完整输入，并在清理后返回程序结果。语言和执行基底描述符指导呈现；`sandboxMode` 表示消费方能否传入已解析文件策略。描述符与程序成功结果都不能代替后端报告的强制能力事实。
 

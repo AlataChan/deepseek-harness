@@ -89,14 +89,20 @@ async function defaultNodeProbe(nodePath: string): Promise<string> {
   return stdout.trim()
 }
 
-function assertSupportedNode(version: string): void {
+/**
+ * Reject a Node.js version below the Harness runtime floor.
+ * @param version - `node --version` text, or `process.version`.
+ * @returns nothing when the version is Node.js >=24.9.0.
+ */
+export function assertSupportedNode(version: string): void {
   const match = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version.trim())
   if (match === null) throw new Error(`Node executable returned an invalid version: ${JSON.stringify(version)}`)
   const major = Number(match[1])
   const minor = Number(match[2])
-  if (!((major === 22 && minor >= 19) || major >= 24)) {
-    throw new Error(`Node ${version.trim()} is not compatible with Harness (^22.19.0 or >=24.0.0)`)
-  }
+  if (major > 24 || (major === 24 && minor >= 9)) return
+  throw new Error(
+    `Node ${version.trim()} is not a supported Harness runtime (>=24.9.0). Install Node.js 24.9.0 or newer (current 24 or 26). Node.js 22, 23, and 24.0.0 through 24.8.x are rejected. The packaged desktop app provisions Node.js 24.14.0. Verify with node --version.`,
+  )
 }
 
 function resolveNodeCandidate(options: RuntimeResolverOptions, platform: NodeJS.Platform): string {

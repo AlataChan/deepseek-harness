@@ -7,7 +7,9 @@
 
 import { describe, expect, it, vi, onTestFinished } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { agentEvents } from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { AgentModel, agentEvents, modelSelectionProjectionDefinition } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import { createTestAgent } from '../../../tui/tui/tests/fixtures.ts'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import AttachmentStore from '@deepseek-ai/dsh-attachment'
 import LlmRuntime, { LlmAdapter, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
@@ -96,6 +98,7 @@ async function harness(logged?: {
   await ctx.plugin(SessionStore)
   await ctx.plugin(SystemPrompt, { personaPrefix: '' })
   await ctx.plugin(LlmRuntime)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   ctx.llm.registerAdapter(['deepseek-official'], new CatalogAdapter('DeepSeek', [
     { provider: 'deepseek-official', id: 'deepseek-chat', name: 'DeepSeek Chat' },
@@ -124,13 +127,12 @@ async function harness(logged?: {
       reason: 'initial',
     })
   }
-  const agent = {
-    id: session.id,
-    session,
-    status: 'running',
-    ctx,
-    inbox: { nextTurn: [], nextStep: [] },
-  } as unknown as Agent
+  const selection = await ctx.sessionProjections.register(modelSelectionProjectionDefinition)
+  const options = {}
+  const agent: Agent = {
+    ...createTestAgent({ id: session.id, session, options, ctx, status: 'running' }),
+    model: new AgentModel(selection.readerFor(session), session, options),
+  }
   await ctx.agents.register(agent)
   return { ctx, agent, sessionId: session.id }
 }
@@ -486,7 +488,7 @@ describe('Web session model selection', () => {
     await ctx.fiber.dispose()
   })
 
-  it('rejects unlisted models and switches available models only after the next assembly', async () => {
+  it('records accepted model choices without overriding already assembled requests', async () => {
     const { ctx, agent, sessionId } = await harness()
     const remote = createSessionTestRemote(ctx, { defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }), cwd: '/tmp' })
     const seed: LlmCallConfig = { provider: 'seed', model: 'seed', temperature: 0.2 }
@@ -510,15 +512,13 @@ describe('Web session model selection', () => {
       'agent/request', { turn: 1, step: 0, signal }, () => Promise.resolve(seed),
     )).resolves.toEqual(seed)
 
-    expect((await ctx.systemPrompt.assemble()).variables)
-      .toMatchObject({ provider: 'deepseek-official', model: 'deepseek-reasoner' })
+    expect(agent.model.current()).toEqual({
+      provider: 'deepseek-official', model: 'deepseek-reasoner', reasoningEffort: 'max',
+    })
+    expect(agent.model.origin()).toBe('explicit')
     await expect(agentEvents(ctx, agent).waterfall(
       'agent/request', { turn: 1, step: 1, signal }, () => Promise.resolve(seed),
-    )).resolves.toMatchObject({
-      provider: 'deepseek-official',
-      model: 'deepseek-reasoner',
-      reasoningEffort: 'max',
-    })
+    )).resolves.toEqual(seed)
 
     const unsupported = await remote.selectModel(request({
       sessionId,

@@ -24,6 +24,7 @@ export const inject = ['sessionProjections']
  * plugin's fiber, so unloading removes the key.
  * @param ctx - registrant context carrying the projection registry.
  */
-export function apply(ctx: Context): void {
-  ctx.sessionProjections.register(turnOutlineProjectionDefinition)
+export async function apply(ctx: Context): Promise<() => Promise<void>> {
+  const handle = await ctx.sessionProjections.register(turnOutlineProjectionDefinition)
+  return () => handle.dispose()
 }

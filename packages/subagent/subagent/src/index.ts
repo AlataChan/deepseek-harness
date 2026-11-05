@@ -223,11 +223,14 @@ export class SubagentRuntime extends TypertRemoteService {
         if (this.continuations === manager) this.continuations = undefined
       }, 'subagents.continuationBinding()')
     })
-    ctx.inject(['sessionProjections'], (projectionCtx) => {
+    ctx.inject(['sessionProjections'], async (projectionCtx) => {
       const projections = projectionCtx.sessionProjections
-      projections.register(subagentCatalogProjectionDefinition)
-      projections.register(subagentTimingProjectionDefinition)
-      projections.register(subagentIdentityProjectionDefinition)
+      const catalog = projections.register(subagentCatalogProjectionDefinition)
+      const timing = projections.register(subagentTimingProjectionDefinition)
+      const identity = projections.register(subagentIdentityProjectionDefinition)
+      for (const handle of [await catalog, await timing, await identity]) {
+        projectionCtx.effect(() => () => handle.dispose())
+      }
     })
     // Archive admission: this runtime is the owner that knows which live
     // children descend from a Session and how a parent stops them.

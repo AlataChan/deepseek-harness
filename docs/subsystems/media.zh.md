@@ -34,6 +34,12 @@ Overlay media service: catalogues, open/reveal, and paid producers.
 
 ```ts cordis-catalog
 /**
+ * Retain the awaited media projection.
+ * @param handle - registration handle; its disposer releases the unit.
+ */
+bindMediaProjection(handle: ProjectionHandle<MediaProjectionState>): void
+
+/**
  * Whether user FFmpeg is recorded and has the V1 encoders.
  * @param signal - caller lifetime.
  * @returns ready flag and install guidance.
@@ -148,7 +154,17 @@ recover(owner: Agent): readonly JobId[]
 estimateYuan(kind: 'video' | 'speech' | 'clone'): number
 ```
 
-Types: [Agent](core.zh.md) · [JobId](jobs.zh.md)
+Types: [Agent](core.zh.md) · [JobId](jobs.zh.md) · [ProjectionHandle](session-projection.zh.md)
 
 Source: [`packages/experimental/desktop-media/src/service.ts`](../../packages/experimental/desktop-media/src/service.ts)
 <!-- END GENERATED cordis-surface -->
+
+## 运行时读取与执行记录
+
+```ts type-equiv
+/** Session projection state. */
+interface MediaProjectionState {
+  readonly requests: Readonly<Record<string, MediaRequestRecord>>
+  readonly artifacts: Readonly<Record<string, MediaArtifactRecord>>
+}
+```

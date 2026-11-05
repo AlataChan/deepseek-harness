@@ -188,6 +188,50 @@ describe('chat row diff body', () => {
     expect(view.container.querySelector('[data-diff]')).not.toBeNull()
   })
 
+  it('shows persisted apply_patch diffs and a stopped partial summary', () => {
+    const argsRaw = JSON.stringify({ input: '*** Begin Patch\n*** Add File: created.txt\n+created\n*** End Patch' })
+    const diffs = [
+      { path: 'created.txt', oldText: null, newText: 'created\n' },
+      { path: 'notes.txt', oldText: 'hello\n', newText: '' },
+    ]
+    const block = settled({
+      call: { name: 'apply_patch', argsRaw },
+      content: [{ type: 'text', text: 'Success. Updated the following files:\nA created.txt\nD notes.txt' }],
+      meta: { diffs, stopped: false },
+    })
+    expect(diffCardModel(block)).toEqual({ card: { diffs } })
+    const view = render(<GenericToolCard {...{ ...ownerProps(block), toolName: 'apply_patch' }} />)
+    fireEvent.click(view.container.querySelector('[data-expandable]')!)
+    expect(view.container.querySelector('[data-tool="apply_patch"] [data-diff]')).not.toBeNull()
+    expect(view.getByText('created')).toBeTruthy()
+    cleanup()
+    const stopped = settled({
+      call: { name: 'apply_patch', argsRaw },
+      content: [{ type: 'text', text: 'Patch stopped after 1 of 2 operations.\n  destination other.txt was written; source real.txt remains' }],
+      meta: { diffs: [{ path: 'other.txt', oldText: null, newText: 'hi\n' }], stopped: true },
+    })
+    const stoppedView = render(<GenericToolCard {...{ ...ownerProps(stopped), toolName: 'apply_patch' }} />)
+    expect(stoppedView.container.textContent).toContain('destination other.txt was written')
+    expect(diffCardModel(settled({
+      call: { name: 'apply_patch', argsRaw },
+      isError: true,
+      content: [{ type: 'text', text: 'Error: tool call aborted\nNot executed:\n- operation 2 (add second.txt)' }],
+      meta: undefined,
+    }))).toBeNull()
+    cleanup()
+    const aborted = settled({
+      call: { name: 'apply_patch', argsRaw },
+      isError: true,
+      content: [{ type: 'text', text: 'Error: tool call aborted\nPatch stopped after 1 of 2 operations.\nA created.txt' }],
+      meta: { diffs: [{ path: 'created.txt', oldText: null, newText: 'created\n' }], stopped: true },
+    })
+    expect(diffCardModel(aborted)).toEqual({ card: { diffs: [{ path: 'created.txt', oldText: null, newText: 'created\n' }] } })
+    const abortedView = render(<GenericToolCard {...{ ...ownerProps(aborted), toolName: 'apply_patch' }} />)
+    fireEvent.click(abortedView.container.querySelector('[data-expandable]')!)
+    expect(abortedView.getByText('created')).toBeTruthy()
+    expect(abortedView.container.textContent).not.toContain('Success.')
+  })
+
   it('a non-diff call keeps the args-JSON text body', () => {
     // A non-file tool name so the row is not single-file (no path link), and its
     // args body is the fallback the diff card must not have replaced.

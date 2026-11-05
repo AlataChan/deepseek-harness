@@ -67,7 +67,7 @@ function callerOf(exec: ToolRunContext, ctx: Context): Caller {
   return {
     id: agent.session.id,
     header: agent.session.header,
-    boundary: ctx.sessionProjections.stateOf(agent.session, 'turnBoundary'),
+    boundary: ctx.agents.turnBoundaryOf(agent.session),
     authorizeSessionSource: isBound ? (target: SessionIdValue) => authorizeSessionSource(agent.session.id, target) : undefined,
   }
 }

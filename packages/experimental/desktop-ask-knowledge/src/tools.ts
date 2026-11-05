@@ -118,7 +118,7 @@ function sourceEvidence(item: PassageSearchItem): { sourceRevision: string; sour
   if (!item.path.startsWith('raw/') || !item.sourceRevision || !/^sha256:[a-f0-9]{64}$/.test(item.sourceRevision) ||
       item.sourceStart === undefined || item.sourceEnd === undefined || !Number.isSafeInteger(item.sourceStart) ||
       !Number.isSafeInteger(item.sourceEnd) || item.sourceStart < 0 ||
-        item.sourceEnd - item.sourceStart !== [...item.text].length) return undefined
+        item.sourceEnd - item.sourceStart !== Array.from(item.text).length) return undefined
   return { sourceRevision: item.sourceRevision, sourceStart: item.sourceStart, sourceEnd: item.sourceEnd }
 }
 
@@ -129,9 +129,11 @@ const loggedAttemptSchema = z.object({ wikiAttempt: z.object({
 
 function requireLoggedWikiAttempt(session: Session | undefined, libraryId: string, turn: number, attemptId?: string): void {
   if (session) {
+    // oxlint-disable-next-line typescript/no-deprecated -- Receipt validation reads logged results; migration deferred.
     for (const event of session.snapshotEvents()) {
       if (event.type !== 'tool/result' || event.data.turn !== turn || event.data.message.isError ||
           !event.sourceEventSeqs?.some((seq) => {
+            // oxlint-disable-next-line typescript/no-deprecated -- Receipt authorization verifies cited calls; migration deferred.
             const call = session.eventAt(seq)
             return call?.type === 'tool/call' && call.data.turn === turn && call.data.name === 'ask_knowledge_retrieve' &&
               call.data.callId === event.data.message.toolCallId
@@ -170,10 +172,9 @@ export function currentTurnOf(ctx: Context, session: { id: string } | undefined)
   if (session === undefined) return 0
   const live = ctx.get('sessions')?.get(session.id as never)
   if (live === undefined) return 0
-  const boundary = ctx.sessionProjections?.stateOf?.(live, 'turnBoundary') as { lastTurn?: number } | undefined
-  if (typeof boundary?.lastTurn === 'number') {
-    return boundary.lastTurn
-  }
+  const agents = ctx.get('agents')
+  if (agents !== undefined) return agents.turnBoundaryOf(live).lastTurn
+  // oxlint-disable-next-line typescript/no-deprecated -- Agentless fallback reads the last turn; migration deferred.
   for (const event of [...live.snapshotEvents()].reverse()) {
     if (event.type === 'turn/start') return event.data.turn
   }
@@ -295,9 +296,9 @@ export function registerAskKnowledgeTools(
       const terms = parseTermsOrThrow(args)
       const capability = requireCapability(ctx)
       const libraryId = boundLibraryId(ctx, exec.agent?.session)
-      const sessionId = exec.agent?.session?.id ?? ''
+      const sessionId = exec.agent?.session.id ?? ''
       const currentTurn = currentTurnOf(ctx, exec.agent?.session)
-      const rawArgs = (args && typeof args === 'object') ? (args as Record<string, unknown>) : {}
+      const rawArgs = (typeof args === 'object') ? (args as Record<string, unknown>) : {}
       const mode = rawArgs.mode === 'source' ? 'source' : 'wiki'
 
       if (passages !== undefined) {
@@ -437,7 +438,7 @@ export function registerAskKnowledgeTools(
     presentResult: () => ({ card: 'generic' }),
     async execute(args, exec) {
       const term = parseLookupOrThrow(args)
-      const rawArgs = (args && typeof args === 'object') ? (args as Record<string, unknown>) : {}
+      const rawArgs = (typeof args === 'object') ? (args as Record<string, unknown>) : {}
       const libraryId = boundLibraryId(ctx, exec.agent?.session)
 
       if (passages?.lookup !== undefined) {
@@ -465,7 +466,7 @@ export function registerAskKnowledgeTools(
         libraryId,
         term,
         ...typeof rawArgs.cursor === 'string' ? { cursor: rawArgs.cursor } : {},
-      } as { libraryId: AskKnowledgeLibraryId; term: string }, exec.signal) as AskKnowledgeLookup & {
+      }, exec.signal) as AskKnowledgeLookup & {
         cursor?: string | null
         citations?: readonly string[]
         relatedLinks?: readonly string[]
@@ -510,8 +511,8 @@ export function registerAskKnowledgeTools(
     presentCall: () => ({ card: 'generic', title: 'ask_knowledge_read' }),
     presentResult: () => ({ card: 'generic' }),
     async execute(args, exec) {
-      const rawArgs = (args && typeof args === 'object') ? (args as Record<string, unknown>) : {}
-      const passageId = String(rawArgs.passageId ?? '')
+      const rawArgs = (typeof args === 'object') ? (args as Record<string, unknown>) : {}
+      const passageId = z.string().parse(rawArgs.passageId ?? '')
       const libraryId = boundLibraryId(ctx, exec.agent?.session)
       const currentTurn = currentTurnOf(ctx, exec.agent?.session)
 
@@ -617,9 +618,9 @@ export function registerAskKnowledgeTools(
     presentCall: () => ({ card: 'generic', title: 'ask_knowledge_session_document' }),
     presentResult: () => ({ card: 'generic' }),
     async execute(args, exec) {
-      const sessionId = exec.agent?.session?.id ?? ''
+      const sessionId = exec.agent?.session.id ?? ''
       const authorized = await findAuthorizedSessionAttachments(ctx, sessionId, exec.agent?.session as never)
-      const rawArgs = (args && typeof args === 'object') ? (args as Record<string, unknown>) : {}
+      const rawArgs = (typeof args === 'object') ? (args as Record<string, unknown>) : {}
       const digest = typeof rawArgs.digest === 'string' ? rawArgs.digest : undefined
       const filename = typeof rawArgs.filename === 'string' ? rawArgs.filename : undefined
       const ref = resolveAuthorizedAttachment(authorized, {
@@ -704,11 +705,15 @@ function boundLibraryId(ctx: Context, session: { id: string } | undefined): Retu
     throw Object.assign(new Error(UNBOUND_ERROR), { code: 'ask-knowledge/unbound' })
   }
   const live = ctx.get('sessions')?.get(session.id as never)
-  const binding = live === undefined
+  const recorded = live === undefined
     ? undefined
-    : ctx.sessionProjections.stateOf(live, 'askKnowledgeBinding')
-  if (binding == null || binding.libraryId === '') {
+    : ctx.sessionProjections.snapshot(live, ['askKnowledgeBinding']).values.askKnowledgeBinding
+  const libraryId = typeof recorded === 'object' && recorded !== null && 'libraryId' in recorded
+    && typeof recorded.libraryId === 'string'
+    ? recorded.libraryId
+    : undefined
+  if (libraryId === undefined || libraryId === '') {
     throw Object.assign(new Error(UNBOUND_ERROR), { code: 'ask-knowledge/unbound' })
   }
-  return AskKnowledgeLibraryId(binding.libraryId)
+  return AskKnowledgeLibraryId(libraryId)
 }

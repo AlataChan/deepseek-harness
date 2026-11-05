@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type AgentFactory, type AgentHandle } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
 import ApprovalService, { type ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
@@ -14,6 +15,7 @@ import { createTestAgent, createTestSession } from './fixtures.ts'
 describe('T0 Interfaces PoC: End-to-end Loop & Approval Security Invariant', () => {
   it('proves session creation, streaming, question answer, rejected approvals, and zero tool side effects', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(ApprovalService)
     await ctx.plugin(UserQuestionService)

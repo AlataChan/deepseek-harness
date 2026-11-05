@@ -2,20 +2,16 @@
 
 import { mkdir } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
-import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type {
-  Agent, AgentHandle, AgentOptions, AgentSetup, ModelSelection as AgentModelSelection, ModelSelectionRef,
+  Agent, AgentHandle, AgentOptions, AgentSetup, ModelSelection as AgentModelSelection,
 } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
-import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
 import { SessionQueryError, type SessionObservation } from '@deepseek-ai/dsh-session-query'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type {} from '@deepseek-ai/dsh-typert-registry'
-import type { ModelSelection } from './types.ts'
-
 /** Cold Session identity absent from persistence. */
 export class ApiSessionNotFound extends Error {}
 
@@ -65,9 +61,12 @@ export type ApiSessionAgentResult =
   | { readonly agent: Agent }
   | { readonly error: ApiSessionAgentError }
 
-type InstalledSelection = ModelSelectionRef & {
+type InstalledSelection = {
   current: AgentModelSelection
+  assembled: AgentModelSelection | undefined
   consume(provider: string, model: string, reasoningEffort: string | undefined): boolean
+  /** Remember a route the Agent model already recorded, without appending another selection. */
+  adopt(next: AgentModelSelection): void
 }
 
 /**
@@ -283,32 +282,17 @@ export class ApiSessionAgentController {
   selectionFor(agent: Agent): InstalledSelection {
     const installed = this.selections.get(agent)
     if (installed !== undefined) return installed
-    const projectionState = this.ctx.sessionProjections.stateOf(agent.session, 'modelSelection')
-    if (projectionState === undefined) {
-      throw new Error('api-session: required modelSelection projection is not registered')
-    }
-    let picked = projectionState.pending === null
-      ? undefined
-      : agentModelSelection(projectionState.pending)
+    let picked: AgentModelSelection | undefined
     const defaultModel = this.ctx.agentDefaultModel
     const selection: InstalledSelection = {
       get current(): AgentModelSelection {
-        if (picked !== undefined) return picked
-        const loggedHeader = agent.session.requestHeader()
-        if (loggedHeader === undefined) return defaultModel.currentSelection()
-        const logged = loggedHeader.config
-        return {
-          provider: logged.provider,
-          model: logged.model,
-          // An effort the adapter defaulted is not a conversation choice: restoring
-          // it as one would make an unchanged default read as a request change.
-          ...(logged.reasoningEffort === undefined
-            || loggedHeader.adapterDefaults?.reasoningEffort === true
-            ? {}
-            : { reasoningEffort: logged.reasoningEffort }),
-        }
+        return picked ?? agent.model.current() ?? defaultModel.currentSelection()
       },
       set current(next: AgentModelSelection) {
+        picked = next
+        agent.model.select(next)
+      },
+      adopt(next: AgentModelSelection): void {
         picked = next
       },
       consume(provider: string, model: string, reasoningEffort: string | undefined): boolean {
@@ -320,7 +304,6 @@ export class ApiSessionAgentController {
       },
       assembled: undefined,
     }
-    installModelSelection(agent.ctx, selection)
     this.selections.set(agent, selection)
     return selection
   }
@@ -331,7 +314,6 @@ export class ApiSessionAgentController {
    * @param selection - validated selection to record and apply.
    */
   selectForNextRequest(agent: Agent, selection: AgentModelSelection): void {
-    agent.session.append('model/selection', selection)
     this.selectionFor(agent).current = selection
   }
 
@@ -358,7 +340,7 @@ export class ApiSessionAgentController {
    * @returns the current preset, or undefined when the capability is absent.
    */
   presetForSession(session: Session): string | undefined {
-    return this.ctx.sessionProjections.stateOf(session, 'agentPreset') ?? undefined
+    return this.ctx.get('agentPresets')?.presetOf(session) ?? undefined
   }
 
   /**
@@ -553,15 +535,5 @@ export class ApiSessionAgentController {
   ): void {
     if (requested === undefined || requested === existing) return
     throw new ApiSessionPresetConflict(sessionId, requested, existing)
-  }
-}
-
-function agentModelSelection(selection: ModelSelection): AgentModelSelection {
-  return {
-    provider: selection.provider,
-    model: selection.model,
-    ...(selection.reasoningEffort === undefined
-      ? {}
-      : { reasoningEffort: ReasoningEffortId(selection.reasoningEffort) }),
   }
 }

@@ -58,7 +58,7 @@ kind: "package-bundle"
 
 #### 模型看见什么
 
-已有 `askKnowledgeBinding` 时，Provider 注册 `ask-knowledge:retrieve` system-prompt 段。文件字节和 API Key 不进会话日志。
+预设注册表可用时，提示路由通过其保留的 `presetOf(session)` 读取选择；data-agent 预设不注入知识指令。该可选服务不存在时，知识路由使用自身的资料库绑定。 已有 `askKnowledgeBinding` 时，Provider 注册 `ask-knowledge:retrieve` system-prompt 段。文件字节和 API Key 不进会话日志。
 
 ##### 检索段
 

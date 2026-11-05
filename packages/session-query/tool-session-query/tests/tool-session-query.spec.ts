@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import { createUserMessage, ToolCallId, HarnessError , createMessage } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import { MAX_TIMER_DELAY_MS, TimeoutReason } from '@deepseek-ai/dsh-timeout'
@@ -15,7 +15,6 @@ import SessionStore, {
   type SessionId as SessionIdValue,
 } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import { turnBoundaryProjectionDefinition } from '@deepseek-ai/dsh-agent-loop'
 import SessionQueryEngine, {
   SessionQueryError,
   SessionSearchCursor,
@@ -207,8 +206,8 @@ interface Mounted {
   call(name: string, args: unknown, options?: { agent?: Agent; signal?: AbortSignal }): Promise<ToolExecutionResult>
 }
 
-function registerTurnBoundary(ctx: Context): void {
-  ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
+async function registerTurnBoundary(ctx: Context): Promise<void> {
+  await ctx.plugin(AgentRegistry)
 }
 
 async function mount(
@@ -220,7 +219,7 @@ async function mount(
   activeContexts.push(ctx)
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
-  registerTurnBoundary(ctx)
+  await registerTurnBoundary(ctx)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   if (enforceTimeout) await ctx.plugin(TimeoutPolicy)
@@ -1673,7 +1672,7 @@ describe('search paging, prior-history bounds, titles, and cancellation', () => 
     expect(text(result)).toContain('Result cap reached')
   })
 
-  it('rejects current-session search without the turnBoundary fold', async () => {
+  it('withholds the tools without the Agent registry that owns turn boundaries', async () => {
     const ctx = new Context()
     activeContexts.push(ctx)
     await ctx.plugin(SessionStore)
@@ -1682,15 +1681,7 @@ describe('search paging, prior-history bounds, titles, and cancellation', () => 
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FakeQuery)
     await ctx.plugin(ToolSessionQuery)
-    const session = createSession(ctx, 'no-boundary-caller', '/work')
-    const result = await ctx.tools.execute({
-      name: 'session_event_search',
-      arguments: { query: 'q' },
-      callId: ToolCallId('call-no-boundary'),
-      signal: new AbortController().signal,
-      agent: fakeAgent(session),
-    })
-    expect(errorCode(result)).toBe('SESSION_QUERY_TOOL_NO_CURRENT_STEP')
+    expect(ctx.tools.get('session_event_search')).toBeUndefined()
   })
 
   it('preserves base results when a title read fails, annotates the code, and logs the full error', async () => {

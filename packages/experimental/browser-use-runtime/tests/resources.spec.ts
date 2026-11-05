@@ -1,5 +1,6 @@
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
@@ -11,11 +12,13 @@ const contexts: Context[] = []
 async function fixture() {
   const ctx = new Context()
   contexts.push(ctx)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   async function owner(id: string) {
     const fiber = ctx.plugin(() => {})
     const session = Session.create(SessionId(id))
     const agent: Agent = {
+      model: { current: () => undefined, select: () => {}, origin: () => null },
       id: session.id, session, ctx: fiber.ctx, options: {}, status: 'idle',
       inbox: unsupportedInbox(), send() {}, followup() {}, inject() {}, cancel() {},
       steer: () => ({ outcome: Promise.resolve({ status: 'rejected' as const }) }),

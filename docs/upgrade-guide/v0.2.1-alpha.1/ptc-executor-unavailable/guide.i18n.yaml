@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-alpha.1/ptc-executor-unavailable/guide.md
+/:
+  en: 37ccfab3bc424f7a
+  zh: 3a444558bbb7fb00
+/ptc-executor-unload:
+  en: c0a5709d91224875
+  zh: 1365a49a72db131e
+/ptc-executor-unload/change:
+  en: a6ebb047f3750cb9
+  zh: 48c38d7d04a41af7
+/ptc-executor-unload/migration:
+  en: 08b70d3dacb49a91
+  zh: 97db3721465cc2bb

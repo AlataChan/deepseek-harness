@@ -1,5 +1,5 @@
 import { Context } from '@deepseek-ai/cordis'
-import { agentEvents, type Agent } from '@deepseek-ai/dsh-agent'
+import { agentEvents, type Agent, type Model } from '@deepseek-ai/dsh-agent'
 import { createUserMessage, freezeMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
@@ -21,10 +21,11 @@ function stubAgent(rawId: string, overrides: Partial<Agent> = {}): Agent {
   const id = SessionId(rawId)
   const session = overrides.session ?? Session.create(id)
   const ctx = overrides.ctx ?? new Context()
-  return {
+  const agent: Agent = {
     id,
     options: {},
     session,
+    model: stubModel(),
     inbox: unsupportedInbox(),
     status: 'idle',
     ctx,
@@ -35,8 +36,12 @@ function stubAgent(rawId: string, overrides: Partial<Agent> = {}): Agent {
     cancel() {},
     runMaintenance: task => task(new AbortController().signal),
     whenIdle: () => Promise.resolve(),
-    ...overrides,
   }
+  return Object.assign(agent, overrides)
+}
+
+function stubModel(): Model {
+  return { current: () => undefined, select: () => {}, origin: () => null }
 }
 
 async function inboxAgent(rawId: string): Promise<{
@@ -49,10 +54,10 @@ async function inboxAgent(rawId: string): Promise<{
   onTestFinished(() => ctx.fiber.dispose())
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
-  ctx.sessionProjections.register(inboxProjectionDefinition)
+  const inboxProjection = await ctx.sessionProjections.register(inboxProjectionDefinition)
   const session = ctx.sessions.create(SessionId(rawId))
   const agent = stubAgent(rawId, { ctx, session })
-  const inbox = new ReactLoopInbox(ctx.sessionProjections, session, agentEvents(ctx, agent))
+  const inbox = new ReactLoopInbox(inboxProjection.readerFor(session), session, agentEvents(ctx, agent))
   Object.assign(agent, { inbox })
   return { ctx, session, agent, inbox }
 }
@@ -67,9 +72,9 @@ async function reconstructPersistedInbox(
   const session = ctx.sessions.create(SessionId(rawId))
   populate(session)
   await ctx.plugin(SessionProjectionRegistry)
-  ctx.sessionProjections.register(inboxProjectionDefinition)
+  const inboxProjection = await ctx.sessionProjections.register(inboxProjectionDefinition)
   const agent = stubAgent(rawId, { ctx, session })
-  const inbox = new ReactLoopInbox(ctx.sessionProjections, session, agentEvents(ctx, agent))
+  const inbox = new ReactLoopInbox(inboxProjection.readerFor(session), session, agentEvents(ctx, agent))
   try {
     void inbox.nextTurn
   } catch (error: unknown) {
@@ -85,7 +90,7 @@ describe('ReactLoopInbox', () => {
     onTestFinished(() => ctx.fiber.dispose())
     await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
-    const unregister = ctx.sessionProjections.register(inboxProjectionDefinition)
+    const inboxProjection = await ctx.sessionProjections.register(inboxProjectionDefinition)
     const session = ctx.sessions.create(SessionId('inbox-projection'))
     const pending = createUserMessage({
       content: [{ type: 'text', text: 'pending' }],
@@ -96,8 +101,9 @@ describe('ReactLoopInbox', () => {
     })
     const agent = stubAgent('inbox-projection', { ctx, session })
     const dispatch = agentEvents(ctx, agent)
-    const first = new ReactLoopInbox(ctx.sessionProjections, session, dispatch)
-    const second = new ReactLoopInbox(ctx.sessionProjections, session, dispatch)
+    const readInbox = inboxProjection.readerFor(session)
+    const first = new ReactLoopInbox(readInbox, session, dispatch)
+    const second = new ReactLoopInbox(readInbox, session, dispatch)
 
     expect(first.nextTurn).toEqual([pending])
     expect(second.nextTurn).toEqual([pending])
@@ -106,9 +112,10 @@ describe('ReactLoopInbox', () => {
       'next-step': [],
     })
 
-    unregister()
+    await inboxProjection.dispose()
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'inbox')).toBeUndefined()
-    expect(() => first.nextTurn).toThrow('its projection registration is not active')
+    expect(first.nextTurn).toEqual([pending])
   })
 
   it('rejects invalid durable coordinates and duplicate identities during reconstruction', async () => {
@@ -141,10 +148,10 @@ describe('ReactLoopInbox', () => {
     onTestFinished(() => ctx.fiber.dispose())
     await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
-    ctx.sessionProjections.register(inboxProjectionDefinition)
+    const inboxProjection = await ctx.sessionProjections.register(inboxProjectionDefinition)
     const parent = ctx.sessions.create(SessionId('inbox-fork-parent'))
     const parentAgent = stubAgent('inbox-fork-parent', { ctx, session: parent })
-    const parentInbox = new ReactLoopInbox(ctx.sessionProjections, parent, agentEvents(ctx, parentAgent))
+    const parentInbox = new ReactLoopInbox(inboxProjection.readerFor(parent), parent, agentEvents(ctx, parentAgent))
     const inherited = createUserMessage({
       content: [{ type: 'text', text: 'parent pending' }],
       source: { kind: 'user' },
@@ -152,7 +159,7 @@ describe('ReactLoopInbox', () => {
     parentInbox.append('next-turn', inherited)
     const child = ctx.sessions.fork(parent, undefined, SessionId('inbox-fork-child'))
     const childAgent = stubAgent('inbox-fork-child', { ctx, session: child })
-    const childInbox = new ReactLoopInbox(ctx.sessionProjections, child, agentEvents(ctx, childAgent))
+    const childInbox = new ReactLoopInbox(inboxProjection.readerFor(child), child, agentEvents(ctx, childAgent))
 
     expect(child.inheritedEventCount).toBe(parent.snapshotEvents().length)
     expect(childInbox.nextTurn).toEqual([inherited])
@@ -175,7 +182,7 @@ describe('ReactLoopInbox', () => {
     let observed: readonly UserMessage[] | undefined
     ctx.on('session/event', (subject, event) => {
       if (subject === session && event.type === 'agent/inbox/spliced') {
-        observed = ctx.sessionProjections.stateOf(session, 'inbox')?.['next-turn']
+        observed = inbox.nextTurn
       }
     })
 

@@ -61,82 +61,77 @@ Source: [`packages/core/agent/src/types.ts`](../../packages/core/agent/src/types
 interface Agent {
   /** Session-backed Agent identity. */
   readonly id: SessionId
-  /** The provider route and model this agent's requests use. */
+  /** Route fallback and output controls; live accessors apply until the Session records a selection or request. */
   readonly options: AgentOptions
   /** The live session this agent drives; its log is the durable source of truth. */
   readonly session: Session
+  /** Agent-owned access to durable model selection for future steps. */
+  readonly model: Model
   /** Agent-owned access to durable pending work. */
   readonly inbox: Inbox
   /** The current lifecycle state, mirrored on every `agent/status` transition. */
   readonly status: AgentStatus
   /** Agent-scoped context; its contributions are agent-local, unwind on disposal, and reject registration afterward. */
   readonly ctx: Context
-
   /**
-   * Clear queued and steering work — unless `keepInbox` — and abort the active
-   * turn or between-turn task. The first cause wins for that activity. With no
-   * active activity, cancellation is a no-op and does not arm later work.
-   * @param cause - the stable caller intent carried by the active operation signal.
-   * @param options - cancellation options; `keepInbox` preserves pending work.
-   */
+  * Clear queued and steering work — unless `keepInbox` — and abort the active
+  * turn or between-turn task. The first cause wins for that activity. With no
+  * active activity, cancellation is a no-op and does not arm later work.
+  * @param cause - the stable caller intent carried by the active operation signal.
+  * @param options - cancellation options; `keepInbox` preserves pending work.
+  */
   cancel(cause: AgentCancelCause, options?: CancelOptions): void
-
   /**
-   * Resolve after the current whole-agent activity reaches quiescence. This
-   * follows replacement work started before the observed driver retires,
-   * but does not identify the settlement of any particular message.
-   * @returns fulfillment after no active driver or maintenance task remains.
-   */
+  * Resolve after the current whole-agent activity reaches quiescence. This
+  * follows replacement work started before the observed driver retires,
+  * but does not identify the settlement of any particular message.
+  * @returns fulfillment after no active driver or maintenance task remains.
+  */
   whenIdle(): Promise<void>
-
   /**
-   * Run one non-turn maintenance task from the true idle phase. The task starts
-   * synchronously after claiming that phase; later waking input remains in the
-   * inbox until the task settles, while public status stays `idle`.
-   * `whenIdle()` follows both the task and any waking work released behind it.
-   * @param task - operation whose fulfillment or rejection is preserved, with a signal aborted by {@link cancel}.
-   * @throws synchronously when turn-driving or another maintenance task already owns the agent.
-   * @returns the task promise.
-   */
+  * Run one non-turn maintenance task from the true idle phase. The task starts
+  * synchronously after claiming that phase; later waking input remains in the
+  * inbox until the task settles, while public status stays `idle`.
+  * `whenIdle()` follows both the task and any waking work released behind it.
+  * @param task - operation whose fulfillment or rejection is preserved, with a signal aborted by {@link cancel}.
+  * @throws synchronously when turn-driving or another maintenance task already owns the agent.
+  * @returns the task promise.
+  */
   runMaintenance<T>(task: (signal: AbortSignal) => Promise<T>): Promise<T>
-
   /**
-   * Route identified input to an inbox boundary and optionally wake the driver.
-   * Waking input submitted after active cancellation is queued for the next
-   * turn and runs when the aborted activity converges to idle; a `disposed`
-   * cancel leaves it parked. A wake submitted while already idle always opens
-   * its turn boundary, even when its message is cleared before the driver
-   * claims ([driver wake convergence](../../agent-loop/src/agent.ts)).
-   * @param message - identified content and the source that supplied it.
-   * @param target - the preferred next-turn or next-step inbox boundary.
-   * @param wakeup - whether delivery may wake the driver.
-   */
+  * Route identified input to an inbox boundary and optionally wake the driver.
+  * Waking input submitted after active cancellation is queued for the next
+  * turn and runs when the aborted activity converges to idle; a `disposed`
+  * cancel leaves it parked. A wake submitted while already idle always opens
+  * its turn boundary, even when its message is cleared before the driver
+  * claims ([driver wake convergence](../../agent-loop/src/agent.ts)).
+  * @param message - identified content and the source that supplied it.
+  * @param target - the preferred next-turn or next-step inbox boundary.
+  * @param wakeup - whether delivery may wake the driver.
+  */
   send(message: UserMessage, target: InboxTarget, wakeup: boolean): void
-
   /**
-   * Queue an ordinary follow-up turn and wake the driver. The item becomes the
-   * sole ordinary message of its own turn.
-   * @param message - identified prompt content and the source that supplied it.
-   */
+  * Queue an ordinary follow-up turn and wake the driver. The item becomes the
+  * sole ordinary message of its own turn.
+  * @param message - identified prompt content and the source that supplied it.
+  */
   followup(message: UserMessage): void
-
   /**
-   * Submit steering for the nearest step. An idle driver starts a turn;
-   * a running driver consumes it at its next step boundary.
-   * A rejected step leaves steering parked in the inbox until the next
-   * wake; cancellation or disposal may discard pending steering.
-   * @param message - identified steering content and the source that supplied it.
-   */
+  * Submit steering for the nearest step. An idle driver starts a turn;
+  * a running driver consumes it at its next step boundary.
+  * A rejected step leaves steering parked in the inbox until the next
+  * wake; cancellation or disposal may discard pending steering.
+  * @param message - identified steering content and the source that supplied it.
+  */
   steer(message: UserMessage): void
-
   /**
-   * Queue model-facing context for the next pre-step without waking the
-   * driver. A running driver claims it at the nearest later step boundary;
-   * idle drivers leave it pending until follow-up or steering
-   * wakes them. It may miss a request whose pre-step already claimed its
-   * batch. Cancellation or disposal may discard pending context.
-   * @param message - identified injected context and the source that supplied it.
-   */
+  * Queue model-facing context for the next pre-step without waking the
+  * driver. A running driver claims it at the nearest later step boundary;
+  * idle drivers leave it pending until follow-up or steering
+  * wakes them. It may miss a request whose pre-step already claimed its
+  * batch. Cancellation or disposal may discard pending context.
+  * @param message - identified injected context and the source that supplied it.
+  */
   inject(message: UserMessage): void
 }
 ```
@@ -193,7 +188,11 @@ type AssistantStreamFrame =
 `running` describes the driver-wide drain interval and may span consecutive queued turns; it does not prove a turn is still open. Disposal removes the agent from the registry and emits `agent/disposed`; it is not a terminal status value. `followup()` returns no handle: its `MessageId` identifies durable inbox insertion, claim, and discard facts, not a later assistant output or turn ending. `whenIdle()` observes the whole agent, so callers may call a receipt-to-idle interval a run only when they explicitly own that interval ([decision](../../.agents/notes/implemented/architecture/2026-07-30-followup-enqueue-and-owned-runs.md)).
 
 ```ts type-equiv
-/** Merge-extensible agent creation options. Persona belongs to system-prompt sections. */
+/**
+ * Merge-extensible agent options. Route fields may be live accessors until the
+ * Session records a selection or request; step preparation captures their value.
+ * Persona belongs to system-prompt sections.
+ */
 interface AgentOptions {
   /** Provider route (must have a registered adapter at call time). */
   provider?: string
@@ -489,6 +488,12 @@ Source: [`packages/core/agent-loop/src/index.ts`](../../packages/core/agent-loop
 Registry of YAML-declared presets and the revisions live Agents retain.
 
 ```ts cordis-catalog
+/** Read the Session's logged preset choice, including blank-session switches.
+ * @param session Session whose committed selection is read.
+ * @returns The current preset id, or null when the Session has no recorded choice.
+ */
+presetOf(session: Session): string | null
+
 /** Register and eagerly load a definition; activation failure remains visible in the roster.
  * @param definition Parsed configuration supplied by the declaring plugin.
  * @returns Definition disposer after activation or its diagnostic settles; the declaring plugin owns it.
@@ -582,7 +587,7 @@ async acquireScope(id?: string): Promise<{ key: ScopeKey } & AsyncDisposable>
 compositionInventory(): Promise<AgentPresetComposition[]>
 ```
 
-Types: [ScopeKey](scope.md)
+Types: [ScopeKey](scope.md) · [Session](session.md)
 
 Source: [`packages/preset/agent-preset-registry/src/index.ts`](../../packages/preset/agent-preset-registry/src/index.ts)
 
@@ -595,6 +600,13 @@ Agent service (`ctx.agents`): tracks live agents and carries the initiating Agen
 Initiator methods provide same-process causal attribution only. Ambient presence is neither liveness proof nor authorization; subjects and owners remain explicit, as does identity at worker, process, persistence, and wire boundaries. Returned Promise boundaries drain during teardown, except a nested lineage that starts an owning-fiber unload is excluded from its own drain.
 
 ```ts cordis-catalog
+/**
+ * Read the turn and step positions recorded in a Session.
+ * @param session - Session whose committed events are read.
+ * @returns the current turn and step positions; do not mutate the returned value.
+ */
+turnBoundaryOf(session: Session): TurnBoundaryProjection
+
 /**
  * Read the Agent that initiated the inherited asynchronous driver chain.
  * Use this optional form for logging, tracing, metrics, or host attribution
@@ -760,6 +772,8 @@ list(): Agent[]
  */
 roots(): Agent[]
 ```
+
+Types: [Session](session.md)
 
 Source: [`packages/core/agent/src/index.ts`](../../packages/core/agent/src/index.ts)
 
@@ -944,10 +958,11 @@ Reject a proposed step or replace the messages that enter it. Calling `next()` p
  * @param payload.turn - the turn that will own the step.
  * @param payload.step - the step proposed by the loop.
  * @param payload.signal - the current turn's cancellation signal.
+ * @param payload.modelSelection - provider, model, and effort captured before assembly. Listeners must not replace them.
  * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.
  * @mode waterfall
  */
-'agent/pre-step'(this: Scoped<Agent>, payload: { agent: Agent; messages: UserMessage[]; turn: number; step: number; signal: AbortSignal }, next: () => Promise<PreStepDecision>): Promise<PreStepDecision>
+'agent/pre-step'(this: Scoped<Agent>, payload: { agent: Agent; messages: UserMessage[]; turn: number; step: number; signal: AbortSignal; modelSelection: Readonly<ModelSelection> }, next: () => Promise<PreStepDecision>): Promise<PreStepDecision>
 ```
 
 Types: [Scoped](scope.md) · [UserMessage](session.md)
@@ -1115,3 +1130,83 @@ One session committed a different agent preset to its durable log. Consumers inv
 
 Source: [`packages/preset/agent-preset-registry/src/types.ts`](../../packages/preset/agent-preset-registry/src/types.ts)
 <!-- END GENERATED cordis-surface -->
+
+## Durable model selection
+
+The Agent captures its selection before step preparation. `origin()` distinguishes explicit choice, inherited configuration, and header-only routing; origin stays out of model request configuration.
+
+```ts type-equiv
+/** Agent-owned access to the model choice for future steps. */
+interface Model {
+  /**
+   * Resolve the choice for the next step to begin preparation. Recorded choices
+   * take precedence over the last request and then the Agent's live options.
+   * This read neither starts a step nor changes an already-prepared step.
+   * @returns a detached choice, or undefined when no source names both provider and model.
+   */
+  current(): Readonly<ModelSelection> | undefined
+
+  /**
+   * Origin of the choice `current` reads.
+   * Null means that route came from a request header or the Agent's live options, not from a `model/selection` event.
+   * A header-only session is therefore not an explicit pin.
+   * @returns `explicit`, `inherited`, or null.
+   */
+  origin(): 'explicit' | 'inherited' | null
+
+  /**
+   * Replace the next step's complete selection. Omitted effort follows adapter
+   * defaults without inheriting a previous effort or resolving defaults here.
+   * The omitted origin argument means an explicit choice. An equal route is a
+   * no-op only when the recorded origin is the same. Explicit over inherited
+   * and inherited over explicit both record the new origin. An options-only
+   * fallback is always recorded. Callers own
+   * model availability and capability validation. The append uses the Session's
+   * existing persistence and failure guarantees. Origin stays on the selection
+   * event and the projection; it is not part of the request route.
+   * @param selection - complete provider, model, and optional explicit effort.
+   * @param origin - `inherited` for a profile sync; omitted or `explicit` for a choice.
+   */
+  select(selection: Readonly<ModelSelection>, origin?: 'explicit' | 'inherited'): void
+}
+```
+
+```ts type-equiv
+/** Complete provider, model, and optional reasoning effort chosen for one Session's model steps. */
+interface ModelSelection {
+  /** Registered provider route. */
+  provider: string
+  /** Provider-owned model id. */
+  model: string
+  /** Adapter-owned reasoning effort, or provider/default behavior when absent. */
+  reasoningEffort?: ReasoningEffortId
+}
+```
+
+```ts type-equiv
+/** Whether a recorded model selection was an explicit choice or an inherited profile sync. Absent historical events are explicit. */
+type ModelSelectionOrigin = 'explicit' | 'inherited'
+```
+
+## Runtime reader and execution records
+
+```ts type-equiv
+/**
+ * Turn and step boundaries folded from one agent session log.
+ *
+ * Reader contract: `AgentRegistry` registers this key and exposes it as
+ * `agents.turnBoundaryOf(session)`. Without that registration the key is
+ * absent, which means no open turn, not a corrupt log. A reader with no safe
+ * fallback for that absence may fail loud.
+ */
+interface TurnBoundaryProjection {
+  /** Seq of the open turn's `turn/start`, or null between turns. */
+  readonly openTurnStartSeq: OptionalSessionSeq
+  /** Seq of the latest `step/start` event, or null before the first step. */
+  readonly lastStepStartSeq: OptionalSessionSeq
+  /** The latest step boundary (`step/start` or `step/end`) and its seq, or null before the first step boundary. */
+  readonly lastStepBoundary: { readonly kind: 'start' | 'end'; readonly seq: SessionSeq } | null
+  /** Turn number of the latest `turn/start`; 0 before the first turn. */
+  readonly lastTurn: number
+}
+```

@@ -145,7 +145,7 @@ domain.table('workspaces').update(id, (r) => ({ ...r, path: newPath }))
 
 - **变更只在单进程内可见**——`domain/changed` 是进程内事件；在跨进程修订模式落地前，第二个主机进程或重新连接的 GUI 无法观察变更（[Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.zh.md)）。
 - **没有跨表事务、二级索引或多段键**——每次写入只触碰一条记录；这些扩展列在 Agent Note 的范围外清单中。
-- **没有数据迁移**——领域的已存版本与 spec 不同时，打开操作会被拒绝（`version-mismatch`）；修改 schema 需要手工迁移已存数据。
+- **没有数据迁移**——JSON `single` 在已存版本不是 spec 版本时拒绝打开（`version-mismatch`）。SQLite 单元戳若列在 `compatibleVersions` 中，则打开并保持该戳及其记录行。`per-record` 读取列出的文档版本，并丢弃未列出的文档。修改 schema 仍需手工迁移；没有任何路径把戳或记录行改写成当前版本。
 
 <a id="dev-note"></a>
 ### 开发备注

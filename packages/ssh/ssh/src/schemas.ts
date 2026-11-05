@@ -31,6 +31,25 @@ export const editSchema = z.object({ oldString: z.string(), newString: z.string(
 export const writeResultSchema = z.object({ operation: z.enum(['create', 'update']), version: z.string(), before: z.string().nullable(), after: z.string() }).strict()
 /** Atomic edit observation. */
 export const editResultSchema = z.object({ version: z.string(), before: z.string(), after: z.string() }).strict()
+/** Bounded basis of a removed regular file. */
+export const deleteResultSchema = z.object({ before: z.string().nullable() }).strict()
+const fsErrorCodeSchema = z.enum([
+  'FS_NOT_FOUND', 'FS_NOT_DIRECTORY', 'FS_NOT_TEXT', 'FS_NOT_REGULAR_FILE', 'FS_TOO_LARGE',
+  'FS_PERMISSION_DENIED', 'FS_SANDBOX_DENIED', 'FS_IO_ERROR', 'FS_STALE_VERSION', 'FS_NOT_OBSERVED',
+  'FS_AMBIGUOUS_EDIT', 'FS_EDIT_NOT_FOUND', 'FS_ABORTED', 'FS_SAME_TARGET',
+])
+/** Destination publication plus source-removal status. */
+export const moveResultSchema = z.discriminatedUnion('sourceDeleted', [
+  z.object({
+    sourceBefore: z.string().nullable(), destination: writeResultSchema, sourceDeleted: z.literal(true),
+  }).strict(),
+  z.object({
+    sourceBefore: z.string().nullable(),
+    destination: writeResultSchema,
+    sourceDeleted: z.literal(false),
+    sourceFailure: z.object({ code: fsErrorCodeSchema, message: z.string() }).strict(),
+  }).strict(),
+])
 /** Explicit child environment; null encodes an environment tombstone. */
 export const environmentSchema = z.record(z.string(), z.string().nullable())
 const collection = z.object({

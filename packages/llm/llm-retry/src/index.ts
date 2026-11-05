@@ -6,7 +6,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import type { Context, Events } from '@deepseek-ai/cordis'
+import { FiberState, type Context, type Events } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
 import type { Agent, RequestErrorAction } from '@deepseek-ai/dsh-agent'
@@ -120,9 +120,16 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
   }
 }
 
-export function apply(ctx: Context, config: Config = {}, internals: RetryInternals = {}): void {
+/**
+ * Install retry recovery while the projection-ready owner still accepts effects.
+ * @param ctx - owning plugin context.
+ * @param config - retry executor configuration.
+ * @param internals - optional random source for backoff jitter.
+ * @returns after recovery is installed, or without installation if the fiber is disposed or unloading.
+ */
+export async function apply(ctx: Context, config: Config = {}, internals: RetryInternals = {}): Promise<void> {
   validateConfig(config)
-  ctx.sessionProjections.register({
+  const llmRetry = await ctx.sessionProjections.register({
     key: 'llmRetry',
     stateVersion: 1,
     stateSchema: llmRetryStateSchema,
@@ -136,6 +143,7 @@ export function apply(ctx: Context, config: Config = {}, internals: RetryInterna
       return { ...state, [key]: { retry: event.data.retry, retryId: event.data.retryId } }
     },
   })
+  if (ctx.fiber.uid === null || ctx.fiber.state === FiberState.UNLOADING) return
   const random = internals.random ?? Math.random
   const lifetime = new AbortController()
   const active = new Set<Promise<RequestErrorAction>>()
@@ -217,7 +225,7 @@ export function apply(ctx: Context, config: Config = {}, internals: RetryInterna
     }
 
     const policyKey = retryPolicyKey(policy)
-    const retryState = ctx.sessionProjections.stateOf(agent.session, 'llmRetry') as LlmRetryState
+    const retryState = llmRetry.stateOf(agent.session)
     const previous = retryState[retryStateKey(provider, policyKey)]
     const previousRetry = previous?.retry ?? 0
     if (policy.mode === 'normal' && previousRetry >= policy.maxRetries) return next()

@@ -2,7 +2,13 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionConfigOption, SessionConfigValueId } from '@agentclientprotocol/sdk'
-import { installModelSelection, type ModelSelection, type ModelSelectionRef } from '@deepseek-ai/dsh-agent'
+import { installModelSelection, type ModelSelection } from '@deepseek-ai/dsh-agent'
+
+/** Mutable selection read by ACP prompt admission. */
+interface AcpSelectionRef {
+  current: ModelSelection | undefined
+  assembled: undefined
+}
 import { ReasoningEffortId, type LlmCallConfig, type LlmRuntime } from '@deepseek-ai/dsh-llm'
 
 const MODEL_CONFIG_ID = 'model'
@@ -31,7 +37,7 @@ export class AcpModelConfigError extends Error {
 /** Project and mutate one Agent's provider/model/reasoning selection through ACP config options. */
 export class AcpModelControl {
   /** Scoped selection reference consumed by Agent request assembly. */
-  readonly selection: ModelSelectionRef
+  readonly selection: AcpSelectionRef
   private tail = Promise.resolve()
   private selected: ModelSelection | undefined
   private turnSelection: { turn: number; selection: ModelSelection } | undefined
@@ -56,7 +62,7 @@ export class AcpModelControl {
    * @param agentCtx - Agent scope that consumes this selection.
    */
   install(agentCtx: Context): void {
-    installModelSelection(agentCtx, this.selection)
+    installModelSelection(agentCtx)
   }
 
   /**

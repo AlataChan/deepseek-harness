@@ -52,8 +52,7 @@ function ensureSandboxModeFence(ctx: Context, owner: Agent): void {
     if (eventName !== 'session/event') return
     const [session, event] = args as [Session, SessionEvent]
     if (session !== owner.session || event.type !== 'sandbox/mode') return
-    const folded = state.sessionProjections.stateOf(session, 'sandboxMode') ?? null
-    const currentMode = folded ?? state.sandboxPolicy.defaultMode
+    const currentMode = state.sandboxPolicy.resolve({ session }).mode
     if (event.data.mode === currentMode || !state.pty.hasOwnerActivity(owner)) return
     throw new Error(
       `cannot change sandbox mode from "${currentMode}" to "${event.data.mode}" while persistent terminal sessions are open or being created; wait for creation to settle and close them first`,

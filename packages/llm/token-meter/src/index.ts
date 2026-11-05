@@ -106,20 +106,33 @@ export class TokenMeter extends Service {
   static inject = ['sessionProjections']
 
   private readonly states = new WeakMap<Session, ReplayState>()
+  private readonly projectionReady: Promise<void>
 
   constructor(ctx: Context, config: TokenMeterConfig = {}) {
     super(ctx, 'tokenMeter')
     validateConfigKeys(config)
-
-    ctx.sessionProjections.register(tokenUsageProjectionDefinition)
-    ctx.sessionProjections.register(contextPressureProjectionDefinition)
-    ctx.sessionProjections.register(contextBreakdownProjectionDefinition)
+    this.projectionReady = this.openProjections()
 
     // Readers catch up independently, while eager observation bounds ordinary
     // read latency without creating state for sessions no consumer has read.
     ctx.on('session/event', (session) => {
       if (this.states.has(session)) this._sync(session)
     })
+  }
+
+  /** Await the meter projections with automatic release on service disposal. */
+  protected async [Service.init](): Promise<void> {
+    await this.projectionReady
+  }
+
+  /** Register meter projections with automatic release on service disposal. */
+  private async openProjections(): Promise<void> {
+    const pending = [
+      this.ctx.sessionProjections.register(tokenUsageProjectionDefinition),
+      this.ctx.sessionProjections.register(contextPressureProjectionDefinition),
+      this.ctx.sessionProjections.register(contextBreakdownProjectionDefinition),
+    ]
+    await Promise.all(pending)
   }
 
   /**

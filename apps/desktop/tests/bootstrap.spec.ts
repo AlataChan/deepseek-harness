@@ -161,12 +161,12 @@ describe('bootDesktopClient', () => {
       on.graph.entries.push({ id: 'live-plugin', rev: '1', url: 'host-plugin' })
       on.bundles.push({ id: 'live-plugin', rev: '1', sourcePath: '/tmp/plugin.js', sha256: sha256('export {}\n') })
       mock.emit({ event: 'record', data: { line: JSON.stringify({ type: 'wire/message', encoded: JSON.stringify(on) }) } })
-      await vi.waitFor(() => expect(mounted).toHaveBeenCalledOnce())
+      await vi.waitFor(() => { expect(mounted).toHaveBeenCalledOnce() })
       expect(mock.commands.some(row => row.cmd === 'cache_bundle' && row.args?.id === 'live-plugin')).toBe(true)
       const off = readyFrame()
       off.graph.rev = 'graph-3'
       mock.emit({ event: 'record', data: { line: JSON.stringify({ type: 'wire/message', encoded: JSON.stringify(off) }) } })
-      await vi.waitFor(() => expect(disposed).toHaveBeenCalledOnce())
+      await vi.waitFor(() => { expect(disposed).toHaveBeenCalledOnce() })
     } finally {
       await ctx.fiber.dispose()
     }
@@ -189,7 +189,8 @@ describe('bootDesktopClient', () => {
     const outcome = await bootDesktopClient({
       port: mock.port, root: document.createElement('div'), extensionVersion: 'independent-shell', loadBundle, createAppEntry,
     })
-    expect(outcome).toMatchObject({ status: 'home', reason: expect.stringContaining('Host graph release version mismatch') })
+    if (outcome.status !== 'home') throw new Error('expected the mismatched graph to stay on home')
+    expect(outcome.reason).toContain('Host graph release version mismatch')
     expect(mock.commands.filter(row => row.cmd === 'cache_bundle')).toEqual([])
     expect(loadBundle).not.toHaveBeenCalled()
     expect(createAppEntry).not.toHaveBeenCalled()
@@ -204,7 +205,8 @@ describe('bootDesktopClient', () => {
         port: mock.port, root: document.createElement('div'), extensionVersion: 'independent-shell',
         pageRelease: { version: '0.0.1-test', commit: 'a'.repeat(40) }, loadBundle, createAppEntry,
       })
-      expect(outcome).toMatchObject({ status: 'home', reason: expect.stringContaining('WebView release differs') })
+      if (outcome.status !== 'home') throw new Error('expected a release mismatch to stay on home')
+      expect(outcome.reason).toContain('WebView release differs')
       expect(mock.commands.filter(row => row.cmd === 'cache_bundle')).toEqual([])
       expect(loadBundle).not.toHaveBeenCalled()
       expect(createAppEntry).not.toHaveBeenCalled()
@@ -325,10 +327,10 @@ describe('bootDesktopClient', () => {
       loadBundle: async () => {},
       createAppEntry: () => ({ run: async () => {} }),
     })
-    expect(failed).toEqual({
-      status: 'home',
-      reason: expect.stringMatching(/hash mismatch/),
-    })
+    expect(failed.status).toBe('home')
+    if (failed.status !== 'home') throw new Error('expected a hash mismatch to stay on home')
+    expect(failed.reason).toMatch(/hash mismatch/)
+    expect(Object.keys(failed)).toEqual(['status', 'reason'])
     expect(failingRoot.querySelector('[data-testid="desktop-home"]')).not.toBeNull()
   })
 
@@ -403,6 +405,7 @@ describe('bootDesktopClient', () => {
     expect(root.querySelector('[data-testid="desktop-settings"]')).toBeNull()
     expect(root.querySelector('[data-testid="desktop-home-status"]')?.textContent)
       .toBe('没有找到 Node.js。')
+    expect(root.textContent).toContain('请安装 Node.js 24.9.0 或更新版本，并保证系统能运行 node。')
   })
 
   it('keeps the home page when workspaceRoot is still empty', async () => {
@@ -431,6 +434,8 @@ describe('bootDesktopClient', () => {
     expect(root.querySelector('[data-testid="desktop-settings"]')).not.toBeNull()
     expect(root.querySelector('[data-testid="desktop-settings-reason"]')?.textContent)
       .toBe('没有找到 Node.js。')
+    expect(root.querySelector('.dsh-settings-reason')?.textContent)
+      .toBe('请安装 Node.js 24.9.0 或更新版本，并保证系统能运行 node。')
     expect(root.querySelector('[data-testid="desktop-settings-advanced"]')).not.toBeNull()
     expect(root.querySelector('input[name="workspaceRoot"]')).not.toBeNull()
   })
@@ -477,10 +482,10 @@ describe('bootDesktopClient', () => {
       extensionVersion: 'test',
       handshakeTimeoutMs: 20,
     })
-    expect(result).toEqual({
-      status: 'home',
-      reason: expect.stringMatching(/timed out/),
-    })
+    expect(result.status).toBe('home')
+    if (result.status !== 'home') throw new Error('expected a handshake timeout to stay on home')
+    expect(result.reason).toMatch(/timed out/)
+    expect(Object.keys(result)).toEqual(['status', 'reason'])
   })
 
   it('cancels the handshake timeout after control/ready', async () => {
@@ -538,10 +543,11 @@ describe('bootDesktopClient', () => {
       await vi.advanceTimersByTimeAsync(DEFAULT_HANDSHAKE_TIMEOUT_MS - 1)
       expect(settled).toBe(false)
       await vi.advanceTimersByTimeAsync(2 * DEFAULT_HANDSHAKE_TIMEOUT_MS)
-      await expect(booting).resolves.toEqual({
-        status: 'home',
-        reason: expect.stringMatching(/timed out/),
-      })
+      const timedOut = await booting
+      expect(timedOut.status).toBe('home')
+      if (timedOut.status !== 'home') throw new Error('expected a handshake timeout to stay on home')
+      expect(timedOut.reason).toMatch(/timed out/)
+      expect(Object.keys(timedOut)).toEqual(['status', 'reason'])
     } finally {
       vi.useRealTimers()
     }

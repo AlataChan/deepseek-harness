@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -527,6 +527,34 @@ describe('dsh-tool-team', () => {
     expect(JSON.stringify(legacySchema)).toContain('agent_id')
   })
 
+  it.each([1, 10])('rolls back foreign mounts when registration %i unloads the tool owner', async (cancelAt) => {
+    const { ctx, lead, fiber } = await setup([])
+    onTestFinished(async () => { await ctx.fiber.dispose() })
+    await fiber.dispose()
+    const owner = await ctx.plugin(Object.assign(function toolOwner() {}, { inject: toolTeam.inject }))
+    let unloading: Promise<void> | undefined
+    let mounted = 0
+    const stop = ctx.on('tools/change', () => {
+      const count = ctx.tools.schemas(lead).filter(schema => TOOL_NAMES.includes(schema.name)).length
+      if (unloading !== undefined || count < cancelAt) return
+      mounted = count
+      unloading = owner.dispose()
+    })
+    try {
+      await expect(toolTeam.apply(owner.ctx)).resolves.toBeUndefined()
+      expect(mounted).toBe(cancelAt)
+      expect(unloading).toBeDefined()
+      await unloading
+      const assembled = await assembly(ctx, lead)
+      expect(assembled.tools.filter(schema => TOOL_NAMES.includes(schema.name))).toEqual([])
+      expect(renderPrompt(assembled)).not.toContain('Your Team role is lead')
+      expect(ctx.agents.get(lead.id)).toBe(lead)
+    } finally {
+      stop()
+      await owner.dispose()
+    }
+  })
+
   it('rolls back partial scoped installation after a same-scope collision', async () => {
     const { ctx, lead, fiber } = await setup([])
     await fiber.dispose()
@@ -547,7 +575,7 @@ describe('dsh-tool-team', () => {
   it('resolves direct-apply defaults without Loader schema normalization', async () => {
     const { ctx, lead, fiber } = await setup([textResponse('ordinary child')])
     await fiber.dispose()
-    toolTeam.apply(ctx, {})
+    await toolTeam.apply(ctx, {})
     expect((await assembly(ctx, lead)).tools.map(schema => schema.name).filter(name => TOOL_NAMES.includes(name)).sort())
       .toEqual(TOOL_NAMES)
     const ordinary = await ctx.subagents.startContinuable({

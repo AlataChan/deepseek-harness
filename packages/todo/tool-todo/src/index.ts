@@ -5,7 +5,7 @@
  * @module @deepseek-ai/dsh-tool-todo
  */
 
-import type { Context } from '@deepseek-ai/cordis'
+import { FiberState, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
 import type { ZodType } from 'zod'
@@ -111,16 +111,17 @@ const todosProjectionSchema: ZodType<TodoItem[] | null> = zod.union([
 /**
  * Register the `todo_write` tool on `ctx.tools` and the `todos` unit on
  * `ctx.sessionProjections`.
+ * Projection-ready continuations install nothing once the owning fiber is disposed or unloading.
  * @param ctx - registrant context carrying the tool and session-projection registries.
  * @param config - deployment's explicit todo policy.
  */
-export function apply(ctx: Context, config: Config): void {
+export async function apply(ctx: Context, config: Config): Promise<void> {
   const allowParallel = config.allowParallelInProgress
   // Standing-plan fold: latest whole todo/write list, cleared by the next
   // turn/start (turn/end keeps the finished checklist visible); null before the
   // first write or after a later turn begins; every other event returns the
   // same state reference.
-  ctx.sessionProjections.register<'todos', TodoItem[] | null>({
+  await ctx.sessionProjections.register<'todos', TodoItem[] | null>({
     key: 'todos',
     stateSchema: todosProjectionSchema,
     init: () => null,
@@ -132,6 +133,7 @@ export function apply(ctx: Context, config: Config): void {
     wire: { viewSchema: todosProjectionSchema, view: state => state },
     stateVersion: 2,
   })
+  if (ctx.fiber.uid === null || ctx.fiber.state === FiberState.UNLOADING) return
   ctx.tools.register(defineTool({
     name: 'todo_write',
     description: describe(allowParallel),

@@ -74,7 +74,7 @@ ctx.tools.register(defineTool({
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `mode` | `native` | 可见工具向模型呈现的方式：`native`、`ptc` 或 `both` |
-| `maxParallelSubCalls` | `10` | `run_code` 程序重叠子调用的并发上限；`1` 恢复严格串行分发 |
+| `maxParallelSubCalls` | `10` | `run_code` 程序重叠子调用的并发上限；`1` 恢复严格串行分发。已选择的 PTC 执行器在卸载前只替换自己作用域的该上限；其他作用域保留各自的上限 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-tools)是每个受支持字段的穷尽式真源。非原生模式要求已组合的 `ctx.ptcRuntime` 且其语言有已注册的 SDK 渲染器；agent preset 通过 [`dsh-agent-tool-presentation`](../agent-tool-presentation/README.zh.md) 自行选择呈现方式，单个 agent 可用 `presentAs(mode)` 遮蔽默认值。
 
@@ -125,7 +125,7 @@ ctx.tools.register(defineTool({
 
 ### PTC mode
 
-在 `ptc` 或 `both` 下，注册表公开保留的 `run_code` 传输以及按所加载运行时语言生成的确定性 SDK。每个 SDK 绑定捕获冻结的 ToolSchema，经由调度器传入该次执行上下文。已开始的调用在策略之前只记录配对 id、名称和规范化参数；其结算事件保留渲染结果与可选结构化错误。描述与参数 schema 仅临时存活，不进入 Session 事件或 SDK 输出。调用通过复用原生并发约定的每次运行独有池调度。在纯 `ptc` 下，模型直呼其他任何可见工具都会在策略之前解析为 `UNKNOWN_TOOL`——通告面与可调用面保持一致。中间绑定值只存在于执行局部；只有外层 `run_code` 结果有硬大小上限。
+在 `ptc` 或 `both` 下，注册表公开保留的 `run_code` 传输以及按所加载运行时语言生成的确定性 SDK。`resolve()` 捕获该步骤的定义。携带这份捕获集合的执行只有在定义仍是步骤所接纳的同一对象时才会运行，因此之后注册、替换或隐藏的工具不会执行。`setExecutor()` 为挂载作用域选择一个批次执行器。该选择卸载后，作用域抛出 `TOOL_EXECUTOR_UNAVAILABLE`，不会落到另一个执行器。从未选择执行器的配置继续使用 `ToolRuntime.execute()`。每个 SDK 绑定捕获冻结的 ToolSchema，经由调度器传入该次执行上下文。已开始的调用在策略之前只记录配对 id、名称和规范化参数；其结算事件保留渲染结果与可选结构化错误。描述与参数 schema 仅临时存活，不进入 Session 事件或 SDK 输出。调用通过复用原生并发约定的每次运行独有池调度。在纯 `ptc` 下，模型直呼其他任何可见工具都会在策略之前解析为 `UNKNOWN_TOOL`——通告面与可调用面保持一致。中间绑定值只存在于执行局部；只有外层 `run_code` 结果有硬大小上限。
 
 新子调用使用 `<parent>:ptc:<n>` 标识。消费方将这些标识视为不透明值，并通过精确相等关联事件；恢复的历史标识保留原始字节。[PTC mode 决策](../../../.agents/notes/implemented/feature/2026-06-15-ptc.zh.md) 负责持久化命名与恢复规则。
 

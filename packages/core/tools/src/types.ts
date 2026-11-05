@@ -6,6 +6,7 @@
 
 import type { ToolCallId } from '@deepseek-ai/dsh-llm/brand'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 
 /** Payload recorded when one nested PTC mode Tool dispatch starts. */
 export interface PtcDispatchStartEventData {
@@ -22,6 +23,8 @@ export interface PtcDispatchEventData extends PtcDispatchStartEventData {
   content: ContentBlock[]
   /** Optional failure identity and raw user-facing detail, outside model-facing content. */
   error?: { name: string; code: string; reason?: string }
+  /** Tool-owned presentation payload. Present when the tool projected one, including after cancellation. */
+  meta?: JsonValue
 }
 
 declare module '@deepseek-ai/dsh-session/types' {

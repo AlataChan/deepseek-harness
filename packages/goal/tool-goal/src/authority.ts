@@ -32,8 +32,8 @@ function openTurnEvents(
 ): Pick<GoalToolExecution, 'events' | 'openTurnStartSeq'> {
   // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
   const events = agent.session.snapshotEvents()
-  const boundary = ctx.sessionProjections.stateOf(agent.session, 'turnBoundary')
-  if (boundary === undefined || boundary.openTurnStartSeq === null) {
+  const boundary = ctx.agents.turnBoundaryOf(agent.session)
+  if (boundary.openTurnStartSeq === null) {
     reject('goal tools require an open model turn', 'GOAL_TOOL_DRIVER_REQUIRED')
   }
   return { events, openTurnStartSeq: boundary.openTurnStartSeq }

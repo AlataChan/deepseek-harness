@@ -150,7 +150,7 @@ describe('tool-call scheduler: grouping and barriers', () => {
     expect(order).toEqual(['r-start-A1', 'r-end-A1', 'w-A2', 'r-start-A3', 'r-end-A3'])
   })
 
-  it('reclassifies pending calls after an exclusive barrier replaces their tool', async () => {
+  it('refuses a same-name tool registered after the step admission', async () => {
     const adapter = new MockAdapter([
       multiCall([
         { id: 'c1', name: 'replace', args: { id: '0' } },
@@ -181,17 +181,19 @@ describe('tool-call scheduler: grouping and barriers', () => {
     const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
-    await until(() => replacement.started.length === 1)
-    await new Promise(r => setTimeout(r, 5))
-    expect(replacement.started).toEqual(['1'])
-    replacement.release('1')
-    await until(() => replacement.started.length === 2)
-    expect(replacement.started).toEqual(['1', '2'])
-    replacement.release('2')
     await waitForIdle(ctx, agent)
+    expect(replacement.started).toEqual([])
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(results.map(event => event.data.message.source.callId)).toEqual([
+      ToolCallId('c1'), ToolCallId('c2'), ToolCallId('c3'),
+    ])
+    expect(results[0]?.data.message.isError).toBe(false)
+    expect(results.slice(1).every(event => event.data.message.isError
+      && JSON.stringify(event.data.message.content).includes('unknown tool'))).toBe(true)
+    expect(events(agent).some(event => event.type === 'turn/end')).toBe(true)
   })
 
-  it('stops replenishing when a result observer makes the next call exclusive', async () => {
+  it('does not run a later call on a tool replaced while earlier calls drain', async () => {
     const adapter = new MockAdapter([
       multiCall([
         { id: 'c1', name: 'x', args: { id: '1' } },
@@ -214,15 +216,19 @@ describe('tool-call scheduler: grouping and barriers', () => {
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await until(() => initial.started.length === 2)
     initial.release('1')
-    await until(() => events(agent).some(event =>
-      event.type === 'tool/result' && event.data.message.source.callId === ToolCallId('c1')))
-    await new Promise(r => setTimeout(r, 5))
-    expect(replacement.started).toEqual([])
     initial.release('2')
-    await until(() => replacement.started.length === 1)
-    expect(replacement.started).toEqual(['3'])
-    replacement.release('3')
     await waitForIdle(ctx, agent)
+    expect(initial.started).toEqual(['1', '2'])
+    expect(replacement.started).toEqual([])
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(results.map(event => event.data.message.source.callId)).toEqual([
+      ToolCallId('c1'), ToolCallId('c2'), ToolCallId('c3'),
+    ])
+    expect(results[0]?.data.message.isError).toBe(false)
+    expect(results[1]?.data.message.isError).toBe(false)
+    expect(results[2]?.data.message.isError).toBe(true)
+    expect(JSON.stringify(results[2]?.data.message.content)).toContain('unknown tool')
+    expect(events(agent).some(event => event.type === 'turn/end')).toBe(true)
   })
 })
 

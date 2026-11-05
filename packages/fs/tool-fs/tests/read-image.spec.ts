@@ -11,6 +11,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
+import type { Model } from '@deepseek-ai/dsh-agent'
 import { PtcRuntime } from '@deepseek-ai/dsh-ptc-runtime'
 import type { PtcRunRequest, PtcRunResult } from '@deepseek-ai/dsh-ptc-runtime'
 import { ToolCallId, LlmAdapter, LlmRuntime } from '@deepseek-ai/dsh-llm'
@@ -127,9 +128,37 @@ async function setup(options: SetupOptions = {}) {
   return ctx
 }
 
-/** A fake calling agent pinned to one routed provider/model. */
-function agentOn(model: string | undefined, provider = 'visual', messages: readonly Message[] = []): object {
+/** Model facet for a fixture agent that has not recorded a selection. */
+function modelFacet(): Model {
   return {
+    current: () => undefined,
+    origin: () => null,
+    select: () => {},
+  }
+}
+
+/**
+ * Calling agent used by native and PTC image reads.
+ * `ctx` is a real unscoped context: PTC reads `scopeOf(agent.ctx)` and an
+ * absent context throws. An unscoped context returns no scope key.
+ */
+interface CallingAgent {
+  readonly ctx: Context
+  readonly model: Model
+  readonly options: { provider?: string; model?: string }
+  readonly session: {
+    readonly header: { readonly cwd: string }
+    requestHeader: () => { config: { provider: string; model: string } } | undefined
+    deriveMessages: () => Message[]
+    append: () => undefined
+  }
+}
+
+/** A fake calling agent pinned to one routed provider/model. */
+function agentOn(model: string | undefined, provider = 'visual', messages: readonly Message[] = []): CallingAgent {
+  return {
+    ctx: new Context(),
+    model: modelFacet(),
     options: {},
     session: {
       header: { cwd: dir },
@@ -141,7 +170,7 @@ function agentOn(model: string | undefined, provider = 'visual', messages: reado
 }
 
 let callCounter = 0
-function call(ctx: Context, name: string, args: unknown, agent?: object) {
+function call(ctx: Context, name: string, args: unknown, agent?: CallingAgent) {
   return ctx.tools.execute({
     signal: testToolSignal,
     callId: ToolCallId(`img-call-${++callCounter}`),
@@ -151,7 +180,7 @@ function call(ctx: Context, name: string, args: unknown, agent?: object) {
   })
 }
 
-function readImage(ctx: Context, args: unknown, agent?: object) {
+function readImage(ctx: Context, args: unknown, agent?: CallingAgent) {
   return call(ctx, 'read_image', args, agent)
 }
 
@@ -279,9 +308,16 @@ describe('read_image happy path', () => {
   it('falls back to agent options when no request header exists yet', async () => {
     await writeFile(join(dir, 'red.png'), PNG_1X1)
     const ctx = await setup()
-    const agent = {
+    const agent: CallingAgent = {
+      ctx: new Context(),
+      model: modelFacet(),
       options: { provider: 'visual', model: 'vision-model' },
-      session: { header: { cwd: dir }, requestHeader: () => undefined },
+      session: {
+        header: { cwd: dir },
+        requestHeader: () => undefined,
+        deriveMessages: () => [],
+        append: () => undefined,
+      },
     }
     const result = await readImage(ctx, { file_path: 'red.png' }, agent)
     expect(result.isError).toBe(false)

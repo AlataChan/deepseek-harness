@@ -86,6 +86,9 @@
     },
     {
       "path": "../../guard/fence-policy"
+    },
+    {
+      "path": "../../preset/agent-preset-registry"
     }
   ]
 }

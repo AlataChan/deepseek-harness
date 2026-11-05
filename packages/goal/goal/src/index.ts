@@ -5,7 +5,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
 import type { ZodType } from 'zod'
@@ -15,7 +15,7 @@ import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { TypertRemoteService, Remote } from '@deepseek-ai/dsh-typert-protocol'
 import type {} from '@deepseek-ai/dsh-session-projection'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionDefinition, ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import {
   applyGoalEvent,
   goalChangeRef,
@@ -246,16 +246,23 @@ export class GoalService extends TypertRemoteService {
 
   private readonly resolved: ResolvedConfig
   private readonly runtimeStates = new WeakMap<Session, GoalRuntimeState>()
+  private goalProjection: ProjectionHandle<GoalProjectionState> | undefined
+  private readonly projectionReady: Promise<void>
+  /** Cleared by the provider fiber's disposer, which traceable callers cannot see. */
+  private providerLive = true
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'goals')
+    ctx.effect(() => () => {
+      this.providerLive = false
+    })
     this.resolved = {
       defaultMaxGoalRounds: resolveMaxGoalRounds(config.defaultMaxGoalRounds ?? 256),
     }
     ctx.on('agent/created', ({ agent }) => {
       this.setActivation(agent.session, 'disarmed')
     })
-    ctx.sessionProjections.register(goalProjectionDefinition)
+    this.projectionReady = this.openProjection()
     ctx.on('session/event', (session, event) => {
       if (event.type !== 'goal/change') return
       const runtime = this.runtimeState(session)
@@ -267,11 +274,23 @@ export class GoalService extends TypertRemoteService {
     })
   }
 
+  /** Await the goal projection with automatic release on service disposal. */
+  protected async [Service.init](): Promise<void> {
+    await this.projectionReady
+  }
+
+  /** Register the goal projection with automatic release on service disposal. */
+  private async openProjection(): Promise<void> {
+    const handle = await this.ctx.sessionProjections.register(goalProjectionDefinition)
+    this.goalProjection = handle
+  }
+
   /**
    * Read the current goal for one exact live agent.
    * @param agent - owning live agent.
    * @returns a fresh view or `undefined` when no goal is current.
    * @throws {@link GoalError} when the agent is not the registry's live instance.
+   * @throws {Error} `inactive context` when the providing fiber has been disposed.
    */
   @Remote('get')
   get(agent: Agent): GoalView | undefined {
@@ -465,8 +484,11 @@ export class GoalService extends TypertRemoteService {
     return state
   }
 
-  /** Enforce exact live-agent identity rather than trusting a matching id. */
+  /** Enforce an active provider and exact live-agent identity rather than trusting a matching id. */
   private assertLive(agent: Agent): void {
+    if (!this.providerLive) {
+      throw new Error('cannot use goals in inactive context')
+    }
     if (this.ctx.agents.get(agent.id) !== agent) {
       throw new GoalError(`agent "${agent.id}" is not live in this registry`, 'GOAL_AGENT_NOT_LIVE')
     }
@@ -474,8 +496,9 @@ export class GoalService extends TypertRemoteService {
 
   /** Read the current durable projection maintained by the registry. */
   private state(session: Session): GoalProjection | null {
-    const state = this.ctx.sessionProjections.stateOf(session, 'goal')
-    if (state === undefined) throw new Error('goal projection is not registered')
+    const projection = this.goalProjection
+    if (projection === undefined) throw new Error('goal projection is not registered')
+    const state = projection.stateOf(session)
     if (state.failure !== null) throw new Error(state.failure)
     return state.current
   }
@@ -497,7 +520,7 @@ export class GoalService extends TypertRemoteService {
     const runtime = this.runtimeState(session)
     if (runtime.activation === activation) return
     runtime.activation = activation
-    const state = this.ctx.sessionProjections.stateOf(session, 'goal')
+    const state = this.goalProjection?.stateOf(session)
     /* v8 ignore next -- static inject requires the projection registry before this service activates. */
     if (state === undefined) return
     if (state.failure !== null) return

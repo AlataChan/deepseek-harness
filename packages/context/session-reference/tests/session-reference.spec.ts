@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { agentEvents, installModelSelection, type Agent, type ModelSelectionRef } from '@deepseek-ai/dsh-agent'
+import { agentEvents, type Agent } from '@deepseek-ai/dsh-agent'
 import { CompactionId, compactCheckpointSource } from '@deepseek-ai/dsh-compaction'
 import LlmRuntime, { createDeveloperMessage, createMessage, createSystemMessage, createToolResultMessage, createUserMessage, LlmError, ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import SessionStore, { Session, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import AgentRegistry from '@deepseek-ai/dsh-agent'
 import SessionQueryEngine from '@deepseek-ai/dsh-session-query'
 import SessionTitleService from '@deepseek-ai/dsh-session-title'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
@@ -51,6 +52,7 @@ async function harness(config: Config = {}): Promise<Context> {
   // attached session from its projection cut, never from its log.
   await ctx.plugin(SessionProjectionRegistry)
   // Shipped base values: this suite only needs the unit the service registers.
+  await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionTitleService, { fallbackMaxWords: 5, fallbackMaxBytes: 40, maxTitleBytes: 80 })
   await ctx.plugin(TestSessionQueryEngine)
   await ctx.plugin(SessionReferenceResolver, config)
@@ -466,7 +468,7 @@ describe('session reference spill outcomes', () => {
       })
       const direct = createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: formatSessionReferenceMention({ sessionId: source.id }) }] })
       const pending = agentEvents(ctx, fakeAgent(target)).waterfall('agent/pre-step',
-        { messages: [direct], turn: 1, step: 1, signal: controller.signal },
+        { modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [direct], turn: 1, step: 1, signal: controller.signal },
         () => Promise.resolve({ kind: 'enter' as const, messages: [direct] }))
       const rejected = expect(pending).rejects.toThrow(expectCode('SESSION_REFERENCE_CANCELLED'))
       await started.promise
@@ -535,13 +537,14 @@ describe('model-relative reference budgets', () => {
 
   it('uses the assembled selection, not the header, seed, or next selected model', async () => {
     const { ctx, agent, source, resolve } = await setup()
-    const selection: ModelSelectionRef = { current: { provider: 'selected', model: 'large' }, assembled: undefined }
-    installModelSelection(ctx, selection)
-    await ctx.systemPrompt.assemble({ agent, scope: agent })
-    selection.current = { provider: 'selected', model: 'small' }
+    await ctx.systemPrompt.assemble({
+      agent,
+      scope: agent,
+      modelSelection: { provider: 'selected', model: 'large' },
+    })
     const message = createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: formatSessionReferenceMention({ sessionId: source.id }) }] })
     const signal = new AbortController().signal
-    const enter = () => agentEvents(ctx, agent).waterfall('agent/pre-step', { messages: [message], turn: 1, step: 1, signal },
+    const enter = () => agentEvents(ctx, agent).waterfall('agent/pre-step', { modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [message], turn: 1, step: 1, signal },
       () => Promise.resolve({ kind: 'enter' as const, messages: [message] }))
     const first = await enter()
     expect(first.kind).toBe('enter')
@@ -550,7 +553,11 @@ describe('model-relative reference budgets', () => {
     if (firstContext === undefined) throw new Error('expected reference context')
     expect(bytes({ content: [], additionalContext: firstContext })).toBe(160_000)
     expect(resolve).toHaveBeenLastCalledWith('selected', 'large', signal)
-    await ctx.systemPrompt.assemble({ agent, scope: agent })
+    await ctx.systemPrompt.assemble({
+      agent,
+      scope: agent,
+      modelSelection: { provider: 'selected', model: 'small' },
+    })
     resolve.mockResolvedValue({ provider: 'selected', id: 'small', name: 'small', context: { contextWindow: 8_000 } })
     const second = await enter()
     if (second.kind !== 'enter' || second.messages[1] === undefined) throw new Error('expected reference context')
@@ -621,16 +628,14 @@ describe('model-relative reference budgets', () => {
 
   it('removes both listeners when the resolver fiber is disposed', async () => {
     const { ctx, agent, source, resolve, resolverFiber } = await setup()
-    const resolver = ctx.sessionReferenceResolver
     await resolverFiber.dispose()
     ctx.systemPrompt.variable('provider', () => 'disposed')
     ctx.systemPrompt.variable('model', () => 'disposed')
     await ctx.systemPrompt.assemble({ agent, scope: agent })
-    await resolver.prepare(agent, [], [{ sessionId: source.id }])
-    expect(resolve).toHaveBeenLastCalledWith('seed', 'seed', undefined)
+    expect(resolve).not.toHaveBeenCalled()
     const message = createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: formatSessionReferenceMention({ sessionId: source.id }) }] })
     const seed = { kind: 'enter' as const, messages: [message] }
-    await expect(agentEvents(ctx, agent).waterfall('agent/pre-step', { messages: [message], turn: 1, step: 1, signal: new AbortController().signal },
+    await expect(agentEvents(ctx, agent).waterfall('agent/pre-step', { modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [message], turn: 1, step: 1, signal: new AbortController().signal },
       () => Promise.resolve(seed))).resolves.toBe(seed)
   })
 
@@ -886,7 +891,7 @@ describe('session reference discovery and preparation', () => {
 
     const decision = await agentEvents(ctx, agent).waterfall(
       'agent/pre-step',
-      { messages: [direct, ordinary, plugin], turn: 1, step: 1, signal },
+      { modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [direct, ordinary, plugin], turn: 1, step: 1, signal },
       () => Promise.resolve({ kind: 'enter' as const, messages: [direct, ordinary, plugin] }),
     )
 
@@ -922,14 +927,14 @@ describe('session reference discovery and preparation', () => {
 
     await expect(agentEvents(ctx, agent).waterfall(
       'agent/pre-step',
-      { messages: [malformed], turn: 1, step: 1, signal },
+      { modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [malformed], turn: 1, step: 1, signal },
       () => Promise.resolve({ kind: 'reject' as const }),
     )).resolves.toEqual({ kind: 'reject' })
     expect(readSurface).not.toHaveBeenCalled()
 
     await expect(agentEvents(ctx, agent).waterfall(
       'agent/pre-step',
-      { messages: [malformed], turn: 1, step: 1, signal },
+      { modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [malformed], turn: 1, step: 1, signal },
       () => Promise.resolve({ kind: 'enter' as const, messages: [malformed] }),
     )).rejects.toThrow(/invalid session reference URI/)
   })

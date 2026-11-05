@@ -1,0 +1,26 @@
+{
+  "shippingAccepted": false,
+  "M2Open": false,
+  "sourceRows": [
+    "RC1-M1-foundation",
+    "RC1-M1-node",
+    "RC1-M1-projection-storage",
+    "RC1-M1-model",
+    "RC1-M1-tools-ptc",
+    "RC1-M1-filesystem",
+    "RC1-04",
+    "RC1-03",
+    "RC1-M1-consumers"
+  ],
+  "preservedExistingRows": true,
+  "pinAdvanced": false,
+  "baselineProofDisposition": "The two immutable baseline text files remain exact required gate inputs in the proposal proof manifest and audit; their revision-bearing paths are omitted from maintained registry source to preserve repository reference policy. No directory exemption was added.",
+  "deletedPaths": "Two Team panel expected Markdown files are intentionally deleted legacy goldens; real browser assertions replace them, and their exact paths remain recorded.",
+  "originalRowsPreservedByPhysicalLineSha256": 16,
+  "verificationLogs": [
+    "m2-adopted-intake-gate-final.log",
+    "m2-adopted-reference-gate-final.log",
+    "m2-real-node-and-registry-root-gate.log",
+    "m2-real-node-registry-lint-final.json"
+  ]
+}

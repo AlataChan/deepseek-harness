@@ -594,6 +594,46 @@ else
   bad "bundled desktop-speech-transcribe bundles a model or audio asset: $TRANSCRIBE_ASSETS"
 fi
 
+# desktop-operation ships the pinned agent-desktop assets inside the seeded
+# plugin. Presence, the archive pin, LICENSE, and the skill are checked here.
+# The two Mach-O files are not hashed: codesign may change those bytes, and
+# the unsigned comparison already ran once before the first codesign.
+DESKTOP_OPERATION="$RES/profile-plugins/@deepseek-ai/dsh-experimental-desktop-operation"
+DESKTOP_OPERATION_NATIVE="$DESKTOP_OPERATION/native"
+DESKTOP_OPERATION_PIN="$DESKTOP_OPERATION_NATIVE/PIN.json"
+DESKTOP_OPERATION_LICENSE="$DESKTOP_OPERATION_NATIVE/LICENSE"
+DESKTOP_OPERATION_SKILL="$DESKTOP_OPERATION_NATIVE/skills/agent-desktop/SKILL.md"
+if [[ -f "$DESKTOP_OPERATION_NATIVE/agent-desktop" \
+  && -f "$DESKTOP_OPERATION_NATIVE/agent-desktop-macos-helper" \
+  && -f "$DESKTOP_OPERATION_LICENSE" \
+  && -f "$DESKTOP_OPERATION_PIN" \
+  && -f "$DESKTOP_OPERATION_SKILL" ]]; then
+  ok "profile-plugins desktop-operation native assets are present"
+else
+  bad "profile-plugins desktop-operation is missing a pinned native asset"
+fi
+if [[ -f "$DESKTOP_OPERATION_PIN" ]] && grep -q '219813428bb1ad8decae172faed05c5964a2415170df402e2786ccfa6452ba82' "$DESKTOP_OPERATION_PIN"; then
+  ok "desktop-operation PIN.json records the v1.2.0 archive sha256"
+else
+  bad "desktop-operation PIN.json is missing the v1.2.0 archive sha256"
+fi
+if [[ -f "$DESKTOP_OPERATION_LICENSE" ]] && [[ "$(shasum -a 256 "$DESKTOP_OPERATION_LICENSE" | awk '{print $1}')" == "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30" ]]; then
+  ok "desktop-operation LICENSE matches the pinned Apache-2.0 text"
+else
+  bad "desktop-operation LICENSE does not match the pinned digest"
+fi
+if [[ -f "$DESKTOP_OPERATION_SKILL" ]] && [[ "$(shasum -a 256 "$DESKTOP_OPERATION_SKILL" | awk '{print $1}')" == "941873a93fca670fc16362de192521f2b5ca27675fb55f18c2112cde86ca9089" ]]; then
+  ok "desktop-operation skill matches the pinned v1.2.0 text"
+else
+  bad "desktop-operation skill does not match the pinned digest"
+fi
+if [[ -f "$DESKTOP_OPERATION/node_modules/@deepseek-ai/node-addon-system/lib/flock.js" \
+  && -f "$DESKTOP_OPERATION/node_modules/@deepseek-ai/node-addon-system-darwin-arm64/bin/system.node" ]]; then
+  ok "desktop-operation carries the flock addon beside the plugin"
+else
+  bad "desktop-operation is missing the flock addon copied by stage-agent-desktop-assets"
+fi
+
 # Host beginIngest reads ACCEPTED_INGEST_EXTENSIONS from the profile plugin
 # bundle. tsdown Host face is compiled from lib/types; a client-only rebuild
 # leaves .pdf rejected with "extension .pdf is not accepted".

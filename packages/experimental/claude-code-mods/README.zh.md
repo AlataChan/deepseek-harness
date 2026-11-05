@@ -85,10 +85,10 @@ export default defineMod({ name: 'token-weather', version: '0.1.0', root: import
 | `$.command` | `register`、`run`、`list` | `ctx.commands`，限定在事件所属的智能体 |
 | `$.tool` | `register`、`call`、`list` | `ctx.tools`；注册的工具名为 `mcp__<plugin>__<tool>`；工具推迟到下一请求的上下文会注入会话 |
 | `$.prompt` | `submit` | `agent.followup()`，作为 `user` 来源的消息，除非 `asUser` 否则套上"来自模组"的框架；它触发的 `prompt.submit` 带 `origin: { kind: 'plugin', name }` |
-| `$.session` | `id`、`cwd`、`root`、`model`、`turns`、`messages`、`usage`、`version` | 智能体的 Session 及 `turnBoundary`、`contextPressure` 投影；`cwd` 与 `root` 都报告会话工作区，即 harness 每会话一个目录 |
+| `$.session` | `id`、`cwd`、`root`、`model`、`turns`、`messages`、`usage`、`version` | 智能体的 Session、智能体服务（`turns`）及 `contextPressure` 投影；`cwd` 与 `root` 都报告会话工作区，即 harness 每会话一个目录 |
 | `$.state` | `get`、`set` | 为会话持有的内存，以模组命名的 `{ plugin, key }` 寻址；`ui.render` 期间的读取会让横幅订阅 |
 | `$.store` | `get`、`set`、`delete`、`keys` | `claude_code_mods` 存储域，每插件一个 JSON 对象，4 MiB |
-| `$.clock` | `now`、`sleep`、`after`、`every` | 由安排它们的事件所属会话拥有的定时器；事件取消时 `sleep` 拒绝 |
+| `$.clock` | `now`、`sleep`、`after`、`every` | 由安排它们的事件所属会话拥有的定时器；事件取消或桥接开始卸载时 `sleep` 拒绝；卸载会等待运行中的回调结束 |
 | `$.fs` | `read`、`write`、`list`、`exists`、`stat` | `ctx.fs`，相对于会话工作区，每文件 4 MiB |
 | `$.process` | `run` | `ctx.subprocess`，不经 shell 的 argv |
 | `$.http` | `fetch` | 进程的 `fetch`，正文最多 4 MiB |

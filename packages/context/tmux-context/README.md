@@ -56,6 +56,8 @@ The process counts as in tmux only when its controlling terminal matches the pan
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+The pre-step listener is installed only if its fiber is neither disposed nor unloading when projection registration completes.
+
 <details>
 <summary>Implementation internals — click to expand</summary>
 

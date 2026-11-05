@@ -218,6 +218,12 @@ interface ToolExecutionInput {
   readonly parent?: ToolExecutionToken
   /** Required caller-owned cancellation for this invocation. */
   readonly signal: AbortSignal
+  /**
+   * Step admission shared by native and PTC dispatch.
+   * When present, a definition registered, replaced, or hidden after the
+   * admission is not executable. Omitted calls use the live registry.
+   */
+  readonly toolSet?: ResolvedToolSet
 }
 ```
 
@@ -509,6 +515,56 @@ Tool registry and execution pipeline. Scoped registrations shadow globals; one v
 
 ```ts cordis-catalog
 /**
+ * Overlap cap for one executing scope.
+ * The nearest live executor record wins, then the root record, then the tools-service default.
+ * An unloaded record keeps the executor unavailable and does not keep its cap.
+ * @param scope - agent or preset scope. Omitted reads the root cap.
+ * @returns the positive overlap cap.
+ */
+nestedSubcallLimit(scope?: ScopeKey): number
+
+/**
+ * Select the executor for the calling scope. Unloading leaves that selection
+ * unavailable so a later call cannot fall through to another executor.
+ * A scope that already has a live executor rejects the new one before its cap is stored.
+ * @param executor - provider owned by the contributing plugin.
+ * @returns the effect disposer.
+ */
+setExecutor(executor: ToolExecutor): () => Promise<void>
+
+/**
+ * Resolve the nearest selected executor.
+ * No registration returns undefined so existing native profiles keep
+ * {@link execute}. A registration whose provider unloaded throws.
+ * @param scope - Agent or preset scope. Omitted selects only the root contribution.
+ * @returns the selected executor, or undefined when this scope never selected one.
+ */
+selectedExecutor(scope?: ScopeKey): ToolExecutor | undefined
+
+/**
+ * Materialize an executor refusal before pre-execute and the tool body.
+ * An already aborted call keeps the canonical pre-dispatch cancellation.
+ * @param input - the caller-supplied call.
+ * @param error - the refusal the selected executor returned.
+ * @returns a final scheduler result. The tool body is not invoked.
+ */
+refuseBeforePolicy(input: ToolExecutionInput, error: ToolNotFoundError): ScheduledToolPreparation
+
+/**
+ * The reserved `run_code` transport, built on first need.
+ * It stays outside the filterable registration layers.
+ * @returns the shared transport definition.
+ */
+runCodeTransport(): ToolDefinition
+
+/**
+ * Project one definition onto the model-facing schema fields.
+ * @param definition - a visible tool definition.
+ * @returns the detached schema.
+ */
+projectSchema(definition: ToolDefinition): ToolSchema
+
+/**
  * Present the calling scope's tools in `mode` instead of the deployment
  * default. Nearest scope on the chain wins, so a preset's standing
  * declaration covers every agent joined under it.
@@ -520,6 +576,15 @@ Tool registry and execution pipeline. Scoped registrations shadow globals; one v
  * @returns the exact disposer that restores the deployment default.
  */
 presentAs(mode: ToolPresentationMode): () => void
+
+/**
+ * Select PTC presentation for the caller.
+ * A root context must already set tools `mode: ptc` and does not record
+ * `presentAs`. `native` or `both` fails at load. A preset scope records
+ * `presentAs('ptc')`.
+ * @returns the disposer for a scoped declaration, or a no-op when the root row is already `ptc`.
+ */
+requirePtcPresentation(): () => void
 
 /**
  * Register globally or in the calling agent scope. Scoped tools shadow
@@ -562,12 +627,22 @@ guard(guard: ToolGuard): () => void
 get(name: string, scope?: ScopeKey): ToolDefinition | undefined
 
 /**
+ * Resolve the visible tools for one step. The current registry has no
+ * per-registration condition, so every visible definition is admitted.
+ * A later view drops a definition that was unregistered or replaced.
+ * @param context - preparing agent, captured model selection, and cancellation.
+ * @returns the step selection. The caller disposes it after the step's tool batch settles.
+ */
+resolve(context: ToolActivationContext): Promise<ResolvedToolSet>
+
+/**
  * Project visible definitions onto the allowlisted model-facing schema fields,
  * excluding execution and presentation callbacks.
  * @param scope - the viewing scope (the agent); omitted = the global view.
+ * @param toolSet - optional resolved admission set captured for this step.
  * @returns one deep-cloned schema per visible tool.
  */
-schemas(scope?: ScopeKey): ToolSchema[]
+schemas(scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolSchema[]
 
 /**
  * Classify a pending call through the caller's visible tool definition. Only
@@ -745,3 +820,125 @@ Types: [Scoped](scope.zh.md)
 
 Source: [`packages/core/tools/src/index.ts`](../../packages/core/tools/src/index.ts)
 <!-- END GENERATED cordis-surface -->
+
+## 运行时读取与执行记录
+
+```ts type-equiv
+/** A plugin owns argument parsing, dispatch, scheduling, cancellation, and logging. */
+interface ToolExecutor {
+  /** Guidance registered and disposed with this executor; absent means no executor-owned sections. */
+  readonly sections?: readonly ToolPromptSection[]
+  /**
+   * Overlap cap published for the scope that accepts this executor.
+   * Absent keeps the tools-service default. Registration reads it only after the scope has no live executor.
+   */
+  readonly subcallLimit?: number
+  /**
+   * Describe the model's callable tools.
+   * @param tools - currently visible capability definitions, after scoped restrictions.
+   * @returns schemas and names used to validate tool ordering.
+   */
+  describe(tools: readonly ToolDefinition[]): ToolModelInput
+  /**
+   * Execute a complete batch. With log, commit root call/result events to the
+   * Agent's Session; without log, omit those events. Tool-owned events may still
+   * use the owning Agent's Session. Return
+   * one outcome per input call in input order, including skipped calls on abort.
+   * Never settle while started work is still running. Internal failures reject
+   * with ToolBatchExecutionError after draining, preserving committed outcomes
+   * and context; callers must stop dependent work and repair missing log results.
+   * An explicit maxParallelToolCalls takes precedence over executor configuration.
+   * @param input - original calls, cancellation, optional concurrency override, Agent and logging step.
+   * @returns settled results, deferred context, and whether a success concludes the turn.
+   */
+  execute(input: ToolBatchInput): Promise<ToolBatchResult>
+}
+```
+
+```ts type-equiv
+/** Raw model calls, with optional Agent ownership and model-step logging. */
+interface ToolBatchInput {
+  readonly calls: readonly ToolCallBlock[]
+  readonly signal: AbortSignal
+  /**
+   * Positive integer overriding the executor's concurrency limit for this batch.
+   * Applies to concurrency-safe root calls; program subcall limits remain separate.
+   * Undefined uses the executor's configured limit.
+   */
+  readonly maxParallelToolCalls?: number
+  /**
+   * Owning Agent supplies scoped tools and execution context, including outside a turn.
+   * Undefined for standalone calls outside an Agent, such as a service invocation.
+   */
+  readonly agent?: Agent
+  /**
+   * Step admission for every call in the batch, including program subcalls.
+   * Undefined admits only unconditional registrations.
+   */
+  readonly toolSet?: ResolvedToolSet
+  /**
+   * Committed model step receiving root call/result events; requires `agent`.
+   * Undefined when `agent` is absent or for calls outside a model response, such
+   * as session initialization hooks. Without `log`, root call/result events are
+   * omitted while `agent`, when provided, still supplies scope and execution context.
+   */
+  readonly log?: {
+    readonly turn: number
+    readonly step: number
+  }
+}
+```
+
+```ts type-equiv
+/** Model-ordered outcomes and context accepted for the next step. */
+interface ToolBatchResult {
+  readonly results: readonly ToolCallResult[]
+  readonly additionalContexts: readonly UserMessage[]
+  readonly concluded: boolean
+}
+```
+
+```ts type-equiv
+/** Model-call schemas produced by an executor. */
+type ToolModelInput = Pick<ToolProviderResult, 'schemas' | 'knownNames'>
+```
+
+```ts type-equiv
+/**
+ * Scheduler-only result after ordered pre-execute and guards. A `post-result`
+ * still receives post-execute; a `final-result` bypasses it.
+ * @internal
+ */
+type ScheduledToolPreparation =
+  | { kind: 'dispatch'; exec: ToolRunContext }
+  | { kind: 'post-result'; exec: ToolRunContext; result: ToolExecutionResult }
+  | { kind: 'final-result'; exec: ToolRunContext; result: ToolExecutionResult }
+```
+
+```ts type-equiv
+/** Tools admitted for one step. `dispose` closes the admission. */
+interface ResolvedToolSet {
+  /** Drop the admission. A later {@link ResolvedToolSet.view} is empty. */
+  dispose(): void
+  /**
+   * Definitions still admitted for the preparing agent.
+   * @param scope - viewing scope. Any other scope, including after dispose, is empty.
+   * @returns the admitted definitions that are still the same registrations.
+   */
+  view(scope: ScopeKey | undefined): ReadonlyMap<string, ToolDefinition>
+}
+```
+
+```ts type-equiv
+/** One step's captured route and cancellation, fixed before tool admission. */
+interface ToolActivationContext {
+  /** Agent whose scope is admitted. */
+  readonly agent: Agent
+  /** Provider, model, and effort captured for this step. */
+  readonly modelSelection: Readonly<ModelSelection>
+  /** Turn cancellation. Admission stops when this aborts. */
+  readonly signal: AbortSignal
+}
+```
+
+`ToolNotFoundError` 在策略执行前拒绝未知或不允许的工具调用，其错误代码为 `UNKNOWN_TOOL`。

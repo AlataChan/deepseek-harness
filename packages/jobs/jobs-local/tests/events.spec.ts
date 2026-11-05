@@ -22,7 +22,7 @@ function agentIn(ctx: Context, rawId: string, presetScope?: ScopeKey): Agent {
     id,
     options: {},
     session,
-    inbox: unsupportedInbox(),
+    inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
     status: 'idle',
     ctx: agentCtx,
     send: () => {},

@@ -1,6 +1,6 @@
 /** Scoped model-facing tools for the opt-in Agent Teams runtime. */
 
-import type { Context } from '@deepseek-ai/cordis'
+import { FiberState, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { AgentOptions } from '@deepseek-ai/dsh-agent'
@@ -234,9 +234,18 @@ function formatActionForReview(action: ProposedAction): string {
 }
 
 /** Register the complete Team tool set in one exact Agent scope. */
-function install(agent: Agent, scoped: Context, teamCtx: Context, config: Required<Config>): () => void {
+function install(
+  agent: Agent, scoped: Context, teamCtx: Context, config: Required<Config>,
+  policyReader: Parameters<typeof subagentModelSelectionPolicy>[0],
+): () => void {
   const disposers: Array<() => unknown> = []
-  const register = (disposer: () => unknown): void => { disposers.push(disposer) }
+  const interrupted = new Error('Team tool owner unloaded during scoped installation')
+  const register = (disposer: () => unknown): void => {
+    disposers.push(disposer)
+    // Foreign registrations may synchronously unload this plugin before their
+    // disposer is returned; retain that disposer before rolling the mount back.
+    if (teamCtx.fiber.uid === null || teamCtx.fiber.state === FiberState.UNLOADING) throw interrupted
+  }
   try {
     register(scoped.systemPrompt.section({
       name: `team:policy:${agent.id}`,
@@ -289,7 +298,7 @@ function install(agent: Agent, scoped: Context, teamCtx: Context, config: Requir
             'TEAM_FORK_NO_ROUTE_OVERRIDE',
           )
         }
-        const policy = subagentModelSelectionPolicy(teamCtx.sessionProjections, agent.session)
+        const policy = subagentModelSelectionPolicy(policyReader, agent.session)
         const enabled = policy !== undefined
         const agentOptions: AgentOptions | undefined = requestedAgentOptions(agent.options, undefined, modelRequest, enabled)
         assertAllowedModelSelection(
@@ -528,34 +537,55 @@ To message another teammate, use send_message({ target: "<teammate name>", messa
       },
     })))
   } catch (error: unknown) {
-    for (const dispose of disposers.reverse()) void dispose()
-    throw error
+    for (const dispose of disposers.splice(0).reverse()) void dispose()
+    if (error !== interrupted) throw error
   }
   return () => {
-    for (const dispose of disposers.reverse()) void dispose()
+    for (const dispose of disposers.splice(0).reverse()) void dispose()
   }
 }
 
-/** Install Team tools in every live or subsequently published Team member scope. */
-export function apply(ctx: Context, config: Config = {}): void {
+/**
+ * Install Team tools in live and subsequently published Team member scopes.
+ * Disposed or unloading owners publish no tools; reentrant unload rolls back foreign mounts.
+ * @param ctx - plugin context that owns aggregate cleanup across Agent scopes.
+ * @param config - fresh and fork delegation providers.
+ * @returns after current Team scopes have been installed or activation was cancelled.
+ */
+export async function apply(ctx: Context, config: Config = {}): Promise<void> {
   const resolved: Required<Config> = {
     freshProvider: config.freshProvider ?? 'spawn',
     forkProvider: config.forkProvider ?? 'fork',
   }
-  ctx.sessionProjections.register(subagentModelSelectionProjectionDefinition)
+  const policyReader = await ctx.sessionProjections.register(subagentModelSelectionProjectionDefinition)
+  if (ctx.fiber.uid === null || ctx.fiber.state === FiberState.UNLOADING) return
   const installed = new Map<Agent['id'], () => void>()
+  const installing = new Set<Agent['id']>()
+  const canInstall = (): boolean => ctx.fiber.uid !== null && ctx.fiber.state !== FiberState.UNLOADING
+  // Agent-owned registrations outlive this plugin unless its cleanup owns them
+  // before the first foreign registration can emit a reentrant notification.
+  ctx.effect(() => () => {
+    const disposers = [...installed.values()]
+    installed.clear()
+    for (const dispose of disposers) dispose()
+  }, 'tool-team.scopedTools()')
   const maybeInstall = (agent: Agent): void => {
-    if (installed.has(agent.id) || ctx.agentTeams.tryMembership(agent) === undefined) return
-    installed.set(agent.id, install(agent, agent.ctx, ctx, resolved))
+    if (!canInstall() || installed.has(agent.id) || installing.has(agent.id)
+      || ctx.agentTeams.tryMembership(agent) === undefined) return
+    installing.add(agent.id)
+    try {
+      const dispose = install(agent, agent.ctx, ctx, resolved, policyReader)
+      if (canInstall()) installed.set(agent.id, dispose)
+      else dispose()
+    } finally {
+      installing.delete(agent.id)
+    }
   }
-  for (const agent of ctx.agents.list()) maybeInstall(agent)
   ctx.on('agent/created', ({ agent }) => { maybeInstall(agent) })
   ctx.on('agent/disposed', ({ agent }) => {
-    installed.get(agent.id)?.()
+    const dispose = installed.get(agent.id)
     installed.delete(agent.id)
+    dispose?.()
   })
-  ctx.effect(() => () => {
-    for (const dispose of installed.values()) dispose()
-    installed.clear()
-  }, 'tool-team.scopedTools()')
+  for (const agent of ctx.agents.list()) maybeInstall(agent)
 }

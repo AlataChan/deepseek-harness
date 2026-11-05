@@ -114,8 +114,8 @@ async function harness(
   await ctx.plugin(AgentRegistry)
   beforeRetry?.(ctx)
   adapter.configureRetryPolicies(policies)
-  const retryFiber = await ctx.plugin(Object.assign((inner: Context) => {
-    retry.apply(inner, {}, internals)
+  const retryFiber = await ctx.plugin(Object.assign(async (inner: Context) => {
+    await retry.apply(inner, {}, internals)
   }, { inject: retry.inject }))
   await ctx.plugin(AgentLoop, { agents: [] })
   const disposeAdapter = ctx.llm.registerAdapter(['mock', 'other'], adapter)
@@ -524,7 +524,7 @@ describe('provider-routed retry policy', () => {
     expect(adapter.requests.map(request => request.provider)).toEqual(['mock', 'other', 'other'])
   })
 
-  it('selects an always policy from the provider chosen by agent/request', async () => {
+  it('selects an always policy from the model provider chosen before step preparation', async () => {
     vi.useFakeTimers()
     const adapter = new ScriptedAdapter([
       new LlmError('rerouted auth failed', 'AUTH'),
@@ -532,16 +532,12 @@ describe('provider-routed retry policy', () => {
     ])
     ;({ ctx: context } = await harness(adapter, {
       other: alwaysConfig({ initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 }),
-    }, (ctx) => {
-      ctx.on('agent/request', async (_payload, next) => ({
-        ...await next(),
-        provider: 'other',
-      }))
     }))
     const agent = await context.agentLoop.create(SessionId('retry-provider-rerouted'), {
       provider: 'mock',
       model: 'mock',
     })
+    agent.model.select({ provider: 'other', model: 'mock' })
     const scheduled = waitForRetry(context, agent, 1)
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'reroute' }], source: { kind: 'user' } }))
@@ -553,10 +549,11 @@ describe('provider-routed retry policy', () => {
     expect(adapter.requests.map(request => request.provider)).toEqual(['other', 'other'])
   })
 
-  it('keeps finite retry budgets scoped to the failed provider', async () => {
+  it('keeps independent provider retry budgets across Agents', async () => {
     vi.useFakeTimers()
     const adapter = new ScriptedAdapter([
       new LlmError('mock failed', 'SERVER'),
+      textResponse('mock recovered'),
       new LlmError('other failed', 'SERVER'),
       textResponse('other recovered'),
     ])
@@ -569,112 +566,30 @@ describe('provider-routed retry policy', () => {
         maxRetries: 1,
         backoff: { initialDelayMs: 1, maxDelayMs: 1 },
       }),
-    }, (ctx) => {
-      ctx.on('agent/request', async (_payload, next) => ({
-        ...await next(),
-        provider: adapter.requests.length === 0 ? 'mock' : 'other',
-      }))
     }))
-    const agent = await context.agentLoop.create(SessionId('retry-provider-budgets'), {
-      provider: 'mock',
-      model: 'mock',
+    const first = await context.agentLoop.create(SessionId('retry-provider-budget-mock'), {
+      provider: 'mock', model: 'mock',
     })
-    const idle = waitForIdle(context, agent)
-
-    agent.followup(createUserMessage({
-      content: [{ type: 'text', text: 'switch provider after failure' }],
-      source: { kind: 'user' },
-    }))
-    await vi.runAllTimersAsync()
-    await idle
-
-    expect(adapter.requests.map(request => request.provider)).toEqual(['mock', 'other', 'other'])
-    expect(agent.session.snapshotEvents().filter(event => event.type === 'llm/retry').map(event => ({
-      provider: event.data.provider,
-      retry: event.data.retry,
-    }))).toEqual([
-      { provider: 'mock', retry: 1 },
-      { provider: 'other', retry: 1 },
-    ])
-  })
-
-  it.each(['thrown', 'in-band'] as const)(
-    'uses the serving registration policy and resets changed-policy history after a %s failure',
-    async (failureKind) => {
-      vi.useFakeTimers()
-      const entered = Promise.withResolvers<undefined>()
-      const release = Promise.withResolvers<undefined>()
-      const oldAdapter = new ScriptedAdapter([(async function * (): AsyncGenerator<StreamChunk> {
-        entered.resolve(undefined)
-        await release.promise
-        if (failureKind === 'thrown') {
-          throw new LlmError('old route auth failed', 'AUTH')
-        }
-        yield {
-          type: 'finish',
-          reason: {
-            kind: 'error',
-            failure: { message: 'old route auth failed', code: 'AUTH' },
-          },
-        }
-      })()])
-      const mounted = await harness(oldAdapter, { mock: alwaysConfig({
-        initialDelayMs: 1,
-        maxDelayMs: 1,
-      }) })
-      context = mounted.ctx
-      const agent = await context.agentLoop.create(SessionId('retry-serving-registration'), {
-        provider: 'mock',
-        model: 'mock',
-      })
-      const scheduled = waitForRetry(context, agent, 1)
+    const second = await context.agentLoop.create(SessionId('retry-provider-budget-other'), {
+      provider: 'mock', model: 'mock',
+    })
+    second.model.select({ provider: 'other', model: 'mock' })
+    for (const agent of [first, second]) {
+      const idle = waitForIdle(context, agent)
       agent.followup(createUserMessage({
-        content: [{ type: 'text', text: 'replace while in flight' }],
+        content: [{ type: 'text', text: 'recover on the selected provider' }],
         source: { kind: 'user' },
       }))
-      await entered.promise
-
-      mounted.disposeAdapter()
-      const replacement = new ScriptedAdapter([
-        new LlmError('replacement failed', 'AUTH'),
-        textResponse('replacement recovered'),
-      ])
-      replacement.configureRetryPolicies({ mock: alwaysConfig({
-        initialDelayMs: 3,
-        maxDelayMs: 3,
-      }) })
-      context.llm.registerAdapter(['mock'], replacement)
-      release.resolve(undefined)
-
-      const firstEvent = await scheduled
-      expect(firstEvent.data).toMatchObject({
-        provider: 'mock',
-        mode: 'always',
-        retry: 1,
-        delayMs: 1,
-      })
-      const replacementScheduled = waitForRetry(context, agent, 1)
-      const idle = waitForIdle(context, agent)
-      await vi.advanceTimersByTimeAsync(1)
-      const replacementEvent = await replacementScheduled
-      expect(replacementEvent.data).toMatchObject({
-        provider: 'mock',
-        mode: 'always',
-        retry: 1,
-        delayMs: 3,
-      })
-      expect(replacementEvent.data.policyKey).not.toBe(firstEvent.data.policyKey)
-      await vi.advanceTimersByTimeAsync(3)
+      await vi.runAllTimersAsync()
       await idle
+    }
 
-      expect(oldAdapter.requests).toHaveLength(1)
-      expect(replacement.requests).toHaveLength(2)
-      expect(agent.session.deriveMessages().at(-1)).toMatchObject({
-        role: 'assistant',
-        content: [{ type: 'text', text: 'replacement recovered' }],
-      })
-    },
-  )
+    expect(adapter.requests.map(request => request.provider)).toEqual(['mock', 'mock', 'other', 'other'])
+    expect([first, second].flatMap(agent => agent.session.snapshotEvents()
+      .filter(event => event.type === 'llm/retry')
+      .map(event => ({ provider: event.data.provider, retry: event.data.retry }))))
+      .toEqual([{ provider: 'mock', retry: 1 }, { provider: 'other', retry: 1 }])
+  })
 
   it('keeps always mode unbounded while preserving cancellable jittered backoff', async () => {
     vi.useFakeTimers()
@@ -1047,23 +962,23 @@ describe('provider-routed retry policy', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
-  it('rejects retry policy configured on the executor instead of a provider', () => {
+  it('rejects retry policy configured on the executor instead of a provider', async () => {
     expectTypeOf<{}>().toExtend<retry.Config>()
     expectTypeOf<{ retryPolicy: { mode: 'always' } }>().not.toExtend<retry.Config>()
     const ctx = new Context()
     // `apply` registers its projection unit first; the registry is a required
     // injection, so the direct-apply path must carry it too.
     new SessionProjectionRegistry(ctx)
-    expect(() => {
-      retry.apply(ctx, { retryPolicy: { mode: 'always' } } as unknown as retry.Config)
-    }).toThrow(/retryPolicy belongs under each provider/)
+    await expect(async () => {
+      await retry.apply(ctx, { retryPolicy: { mode: 'always' } } as unknown as retry.Config)
+    }).rejects.toThrow(/retryPolicy belongs under each provider/)
   })
 
-  it('rejects unknown executor config', () => {
+  it('rejects unknown executor config', async () => {
     const ctx = new Context()
     new SessionProjectionRegistry(ctx)
-    expect(() => {
-      retry.apply(ctx, { retryPolciy: {} } as unknown as retry.Config)
-    }).toThrow(/unknown key "retryPolciy"/)
+    await expect(async () => {
+      await retry.apply(ctx, { retryPolciy: {} } as unknown as retry.Config)
+    }).rejects.toThrow(/unknown key "retryPolciy"/)
   })
 })

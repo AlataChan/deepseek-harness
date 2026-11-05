@@ -32,8 +32,10 @@ export interface KvFacet {
    * Open one unit, creating it when the medium holds no trace of it yet
    * (materialization may defer to the first write, but {@link KvUnit.loadAll}
    * must immediately serve the empty shape). A version already stamped on the
-   * medium that differs from `descriptor.version` rejects with
-   * `version-mismatch`; a medium that cannot be parsed as this unit rejects
+   * medium rejects with `version-mismatch` unless it equals
+   * `descriptor.version` or, where that backend admits it, a listed
+   * `compatibleVersions` entry. A listed older stamp stays as stored. A
+   * medium that cannot be parsed as this unit rejects
    * with `malformed-medium`. Opening the same unit name twice without closing
    * is a caller bug and rejects.
    * @param descriptor - Static identity and shape of the unit to open.
@@ -66,9 +68,10 @@ export interface KvUnitDescriptor {
    * declaring owner's current record schemas (the owner vouches for that —
    * typically by declaring the fields old records lack as optional). Reads of
    * a `per-record` unit accept documents stamped with any listed version, and
-   * the legacy whole-unit bootstrap accepts a legacy file stamped with one;
-   * writes always stamp {@link version}. `single`-layout reads stay
-   * exact-version.
+   * the legacy whole-unit bootstrap accepts a legacy file stamped with one.
+   * A SQLite row store admits a listed unit stamp on open and does not
+   * rewrite that stamp or the stored rows. JSON `single`-layout reads stay
+   * exact-version. Writes that stamp a version use {@link version}.
    */
   readonly compatibleVersions?: readonly number[]
 }

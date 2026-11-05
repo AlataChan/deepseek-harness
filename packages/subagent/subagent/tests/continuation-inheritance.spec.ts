@@ -78,6 +78,7 @@ function policyEvents(events: readonly SessionEvent[]) {
 }
 
 function foldedSandboxMode(ctx: Context, id: SessionId, events: readonly SessionEvent[]): unknown {
+  // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
   return ctx.sessionProjections.stateOf(Session.create(id, events), 'sandboxMode')
 }
 

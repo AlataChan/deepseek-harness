@@ -16,10 +16,18 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { compatibilityOwnershipViolations } from './upstream-compatibility-policy.ts'
+import {
+  auditRepository,
+  auditRuntimeConsumers,
+  formatRuntimeConsumerViolations,
+  writeRuntimeConsumerEvidence,
+  type RuntimeConsumerAuditInput,
+  type RuntimeConsumerReport,
+} from './verify-upstream-runtime-consumers.ts'
 import { loadCordisYaml, isJsExpr } from './cordis-yaml.ts'
 import {
   BACKPORTS,
@@ -71,6 +79,11 @@ export interface IntakeInputs {
   readonly files?: readonly string[]
   /** File reader, injectable for fixtures. */
   readonly readFile?: (absolutePath: string) => string | undefined
+  /**
+   * Current-source projection audit.
+   * Omitted for historical fixture and checkout calls, which do not scan a tree.
+   */
+  readonly runtimeConsumerAudit?: RuntimeConsumerAuditInput
 }
 
 /** True when `path` is the fork's own file rather than an upstream edit. */
@@ -518,17 +531,50 @@ export function upstreamIntakeViolations(inputs: IntakeInputs): string[] {
     ...telemetryEndpointViolations(registry, readFile),
     ...(mergeTime ? patchRegistryViolations(inputs.changedUpstreamFiles ?? [], registry) : []),
     ...(mergeTime ? removalDispositionViolations(registry) : []),
+    ...(inputs.runtimeConsumerAudit ? formatRuntimeConsumerViolations(auditRuntimeConsumers(inputs.runtimeConsumerAudit)) : []),
   ]
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+/**
+ * Working-tree intake rules plus the current-source consumer audit.
+ * Historical fixture callers use {@link upstreamIntakeViolations} and omit the audit.
+ * @param root - repository root.
+ * @returns intake violations and the closed runtime report.
+ * @throws {Error} when the frozen disposition ledgers are missing or malformed.
+ */
+export function intakeCommandViolations(root: string): { violations: string[]; runtime: RuntimeConsumerReport } {
+  let violations: string[]
+  try {
+    const changedUpstreamFiles = changedUpstreamFilesAgainstPin(root, REGISTRY)
+    violations = upstreamIntakeViolations({ root, registry: REGISTRY, changedUpstreamFiles })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    violations = [`cannot diff the working tree against the upstream pin ${REGISTRY.upstreamPin}: ${message}`]
+  }
+  const runtime = auditRepository(root)
+  return { violations: [...violations, ...formatRuntimeConsumerViolations(runtime)], runtime }
+}
+
+function isIntakeCli(): boolean {
+  const entry = process.argv[1]
+  if (entry === undefined) return false
+  try {
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(resolve(entry))
+  } catch (error: unknown) {
+    // A missing argv path means this module was imported, not executed.
+    return error === undefined
+  }
+}
+
+if (isIntakeCli()) {
   const root = resolve(import.meta.dirname, '..')
   let failures: string[]
   try {
-    const changedUpstreamFiles = changedUpstreamFilesAgainstPin(root, REGISTRY)
-    failures = upstreamIntakeViolations({ root, registry: REGISTRY, changedUpstreamFiles })
-  } catch (error) {
-    failures = [`cannot diff the working tree against the upstream pin ${REGISTRY.upstreamPin}: ${error instanceof Error ? error.message : String(error)}`]
+    const result = intakeCommandViolations(root)
+    writeRuntimeConsumerEvidence(result.runtime, root)
+    failures = result.violations
+  } catch (error: unknown) {
+    failures = [`runtime-consumer: ${error instanceof Error ? error.message : String(error)}`]
   }
   if (failures.length > 0) {
     console.error('verify-upstream-intake: unrecorded upstream surface:')

@@ -9,6 +9,7 @@ import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session/types'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
@@ -36,6 +37,7 @@ async function setup() {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(LocalJobRegistry, { pumpPollMs: 25 })
   await ctx.plugin(ToolTasks)
@@ -356,7 +358,7 @@ describe('foreground commands as jobs', () => {
       session: Session.create(ownerId, undefined, {
         version: SESSION_FORMAT_VERSION, id: ownerId, createdAt: 0, cwd: process.cwd(), isSeeded: false,
       }),
-      inbox: unsupportedInbox(),
+      inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
       status: 'idle',
       ctx,
       send: () => {},
@@ -420,6 +422,7 @@ describe('foreground commands as jobs', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(LocalJobRegistry, { pumpPollMs: 25 })
     await ctx.plugin(ToolTasks)
@@ -471,7 +474,7 @@ describe('owned background output', () => {
       session: Session.create(ownerId, undefined, {
         version: SESSION_FORMAT_VERSION, id: ownerId, createdAt: 0, cwd: process.cwd(), isSeeded: false,
       }),
-      inbox: unsupportedInbox(),
+      inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
       status: 'idle',
       ctx,
       send: () => {},

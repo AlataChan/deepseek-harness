@@ -36,7 +36,7 @@ async function createHostFixture() {
   await ctx.plugin(LocalAttachments, { dshHome: tmpDir })
   await ctx.plugin(CommandRuntime)
   installSessionReadTestServices(ctx)
-  installModelSelectionProjection(ctx)
+  await installModelSelectionProjection(ctx)
 
   const dispose = (): void => {}
   ctx.provide('typert', {

@@ -1,0 +1,26 @@
+✓ Bundled companion boots from isolated installed profile
+✓ Public remote creates a session on the persistent-questions preset
+✓ Question production used exactly one real provider dispatch
+✓ Installed catalog exposes the open question with card metadata
+✓ Installed get returns the correlated requestId and revision
+✓ Installed submit accepts the composed choice answer
+✓ Exact-request retry classifies as admitted without a new prompt
+✓ Conflicting retry is rejected on the installed path
+✓ Answered record settles durably on the installed Host
+✓ Cold restart restores the answered question record
+✓ Exact-request dedup survives restart without a second prompt
+✓ Installed nativeTeam lists the institution squads
+✓ Ensure binds the Lead and spawns missing seats (5 members)
+✓ Ensure binds the caller Session as the standing Lead
+✓ Second ensure spawns no new seats
+✓ Requested seat route is stored exactly (provider + model) in the institution catalog
+✓ Installed TeamView exposes members, tasks, and interactions
+Runtime model-route evidence: {"seatName":"notetaker","routeModel":"deepseek-v4-pro","members":[{"id":"session-87f122b8-73b8-4c2f-a28b-84359232b393","name":"lead","role":"lead","status":"inactive","model":"deepseek-flash","diagnostics":[]},{"id":"1f4880fc-37a2-4f6e-965f-7d1f6fe70988","name":"notetaker","role":"teammate","status":"inactive","description":"记录整理员：忠实整理现场/访谈笔记，不润色事实","provider":"spawn","context":"fresh","model":"deepseek-v4-pro","diagnostics":[]},{"id":"2b7663b4-4bc8-42ec-8877-7bdbddc4aa66","name":"redactor","role":"teammate","status":"inactive","description":"脱敏员：去姓名手机身份证，地址不超过区县","provider":"spawn","context":"fresh","model":"deepseek-flash","diagnostics":[]},{"id":"982f2809-8d43-48a1-884f-d5f9b92fee02","name":"case-writer","role":"teammate","status":"inactive","description":"案例萃取员：做成标准案例卡（背景-行动-结果-手法）","provider":"spawn","context":"fresh","model":"deepseek-flash","diagnostics":[]},{"id":"d02112c8-5ff1-49dd-b791-190cdeb94258","name":"librarian","role":"teammate","status":"inactive","description":"入库审核员：五分类归档并更新索引，缺字段标待补","provider":"spawn","context":"fresh","model":"deepseek-flash","diagnostics":[]}]}
+✓ Runtime Team roster reports the requested model (provider identifies the continuation implementation)
+✓ The loopback provider actually received a teammate request on the selected model
+✓ Public Team task creation commits a real task
+✓ Public Team task claim records ownership
+✓ Public Team task completion commits
+✓ Cold restart restores the persisted squad Lead binding
+✓ Cold restart retains the actual completed Team task
+Installed questions and native Team acceptance: 24 checks passed.

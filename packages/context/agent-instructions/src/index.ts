@@ -30,8 +30,8 @@ import {
 import type { AgentInstructionChange } from './render.ts'
 
 export { Config, name }
-/** Services required by workspace instruction projection. */
-export const inject = ['sessionProjections']
+/** Open-step checks read `agents.turnBoundaryOf`, so the Agent registry is required. */
+export const inject = ['sessionProjections', 'agents']
 export {
   discoverBaselineInstructionFiles,
   loadBaselineInstructions,
@@ -284,10 +284,7 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   const stepIsOpen = (session: Session): boolean => {
-    const boundary = ctx.sessionProjections.stateOf(session, 'turnBoundary')
-    if (boundary === undefined) {
-      throw new Error('agent-instructions requires the turnBoundary session projection')
-    }
+    const boundary = ctx.agents.turnBoundaryOf(session)
     return boundary.openTurnStartSeq !== null
       && boundary.lastStepBoundary?.kind === 'start'
       && boundary.lastStepBoundary.seq > boundary.openTurnStartSeq

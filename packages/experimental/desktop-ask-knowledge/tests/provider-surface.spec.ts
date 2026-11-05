@@ -1,3 +1,4 @@
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 /** Provider methods that the happy-path suites do not call. */
 
 import { mkdtemp } from 'node:fs/promises'
@@ -74,20 +75,23 @@ describe('ask-knowledge provider surface', () => {
     const session = liveSession(ctx, 'lease')
     const firstLease = await ctx.askKnowledge.attach({ libraryId: first.id, sessionId: session.id })
     await firstLease.rollback()
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')).toBeNull()
     await ctx.askKnowledge.attach({ libraryId: first.id, sessionId: session.id })
     const switched = await ctx.askKnowledge.attach({ libraryId: second.id, sessionId: session.id })
     await switched.rollback()
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')).toMatchObject({
       libraryId: first.id,
     })
     await ctx.askKnowledge.detach({ sessionId: session.id })
     await ctx.askKnowledge.detach({ sessionId: session.id })
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')).toBeNull()
     await ctx.askKnowledge.attach({ libraryId: first.id, sessionId: session.id })
     await ctx.askKnowledge.attach({ libraryId: first.id, sessionId: session.id })
     const gone = await ctx.askKnowledge.attach({ libraryId: first.id, sessionId: session.id })
-    cleanups.pop()?.()
+    void cleanups.pop()?.()
     await gone.rollback()
     await ctx.askKnowledge.removeLibrary({ libraryId: AskKnowledgeLibraryId('missing-id') })
   })
@@ -130,10 +134,11 @@ describe('ask-knowledge provider surface', () => {
     }, aborted)).rejects.toThrow()
     await expect(ctx.askKnowledge.revealLibrary({ libraryId: created.id }, aborted)).rejects.toThrow()
     await expect(ctx.askKnowledge.listLibraries(aborted)).rejects.toThrow()
-    await expect(ctx.askKnowledge.retrieveBundle({
+    const bundle = await ctx.askKnowledge.retrieveBundle({
       libraryId: created.id,
       terms: ['报销'],
-    })).resolves.toMatchObject({ items: expect.any(Array) })
+    })
+    expect(bundle.items).toBeInstanceOf(Array)
     await expect(ctx.askKnowledge.lookup({ libraryId: created.id, term: '报销' }))
       .resolves.toMatchObject({ term: '报销' })
     const placed = await ctx.askKnowledge.placeShortcut({
@@ -161,7 +166,7 @@ describe('ask-knowledge provider surface', () => {
     })
     const ctx = new Context()
     ctx.provide('systemPrompt', { section: () => () => {} })
-    ctx.provide('sessionProjections', { register: () => () => {}, stateOf: () => null })
+    await ctx.plugin(SessionProjectionRegistry)
     const fiber = ctx.plugin(DesktopAskKnowledge, {
       knowledgeHome: root,
       sidecarRuntimePath: sidecarHome,
@@ -172,7 +177,7 @@ describe('ask-knowledge provider surface', () => {
     expect(await ctx.askKnowledge.listLibraries()).toEqual([])
     const quiet = new Context()
     quiet.provide('systemPrompt', { section: () => () => {} })
-    quiet.provide('sessionProjections', { register: () => () => {}, stateOf: () => null })
+    await quiet.plugin(SessionProjectionRegistry)
     const previous = process.env.OCTOPUS_APP_DATA
     delete process.env.OCTOPUS_APP_DATA
     const missing = quiet.plugin(DesktopAskKnowledge, { knowledgeHome: '', sidecarRuntimePath: sidecarHome })
@@ -253,10 +258,8 @@ describe('ask-knowledge provider surface', () => {
       },
       assemble: async () => ({}),
     })
-    second.provide('sessionProjections', {
-      register: () => () => {},
-      stateOf: () => null,
-    })
+    second.plugin(SessionProjectionRegistry)
+    await second.fiber.await()
     const fiber = second.plugin(DesktopAskKnowledge, {
       knowledgeHome: started.root,
       sidecarRuntimePath: started.sidecarHome,
@@ -272,11 +275,7 @@ describe('ask-knowledge provider surface', () => {
     await started.ctx.askKnowledge.attach({ libraryId: created.id, sessionId: session.id })
     const bound = await started.ctx.systemPrompt.assemble({ agent: { session } as never })
     expect(JSON.stringify(bound)).toContain('ask_knowledge_retrieve')
-    started.ctx.sessionProjections.register({
-      key: 'agentPreset',
-      init: () => 'data-agent',
-      apply: (state: string | null) => state,
-    } as never)
+    started.ctx.provide('agentPresets', { presetOf: () => 'data-agent' })
     const dataMode = await started.ctx.systemPrompt.assemble({ agent: { session } as never })
     expect(JSON.stringify(dataMode)).not.toContain('ask_knowledge_retrieve')
   })

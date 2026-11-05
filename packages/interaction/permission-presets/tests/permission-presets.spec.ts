@@ -65,7 +65,12 @@ describe('permission preset fold', () => {
   it('folds the latest preset selection and steps over unrelated events', async () => {
     const ctx = await mounted()
     const session = freshSession('sess-fold')
-    const presetOf = () => ctx.sessionProjections.stateOf(session, 'permissions')?.preset ?? null
+    const presetOf = () => {
+      // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+      const state = ctx.sessionProjections.stateOf(session, 'permissions')
+      if (typeof state !== 'object' || state === null || !('preset' in state)) return null
+      return state.preset ?? null
+    }
     expect(presetOf()).toBeNull()
     session.append('permission/preset', { preset: 'danger-full-access' })
     session.append('permission/preset', { preset: 'workspace-write' })
@@ -75,7 +80,9 @@ describe('permission preset fold', () => {
     expect(presetOf()).toBe('workspace-write')
 
     const seeded = Session.create(SessionId('sess-fold-seeded'), [])
-    expect(ctx.sessionProjections.stateOf(seeded, 'permissions')?.seeded).toBe(true)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+    const seededState = ctx.sessionProjections.stateOf(seeded, 'permissions')
+    expect(typeof seededState === 'object' && seededState !== null && 'seeded' in seededState ? seededState.seeded : undefined).toBe(true)
   })
 })
 
@@ -85,11 +92,11 @@ describe('PermissionPresetService', () => {
     expect(ctx.get('permissionPresets')).toBeUndefined()
   })
 
-  it('fails when the permissions projection key is absent', async () => {
+  it('reads the permissions handle without the deprecated keyed lookup', async () => {
     const ctx = await mounted()
-    vi.spyOn(ctx.sessionProjections, 'stateOf').mockReturnValue(undefined)
-    expect(() => ctx.permissionPresets.current(freshSession('missing-permission-projection-key')))
-      .toThrow('permission: permissions session projection is not registered')
+    const keyed = vi.spyOn(ctx.sessionProjections, 'stateOf')
+    expect(ctx.permissionPresets.current(freshSession('live-permission-handle'))).toBe('workspace-write')
+    expect(keyed).not.toHaveBeenCalled()
   })
 
   it('advertises the preset table in declaration order and resolves bundles', async () => {

@@ -4,6 +4,7 @@ import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { SessionMarkdownCopyToast } from '../src/client/CopyToast.tsx'
 import { SessionLogDownloadHeaderAction } from '../src/client/HeaderAction.tsx'
 import { apply, inject } from '../src/client/index.ts'
 import type { SessionLogDownloadHeaderInjected } from '../src/client/HeaderAction.tsx'
@@ -18,6 +19,7 @@ function declare(slots: SlotRegistry): () => void {
     children: {
       'conversation.session.header.actions': { kind: 'list', scope: 'session' },
       'conversation.session.header.utilities': { kind: 'list', scope: 'session' },
+      'shell.overlay': { kind: 'list', scope: 'root' },
     },
   } as never, () => null)
 }
@@ -63,6 +65,9 @@ describe('session-log-download browser plugin', () => {
     const entry = b.slots.entries('conversation.session.header.utilities')[0]
     expect(entry?.component).toBe(SessionLogDownloadHeaderAction)
     expect(entry?.options).toMatchObject({ id: 'session-log-download' })
+    const toast = b.slots.entries('shell.overlay')[0]
+    expect(toast?.component).toBe(SessionMarkdownCopyToast)
+    expect(toast?.options).toMatchObject({ id: 'session-log-download.copy-toast' })
     const injected = (entry?.inject as unknown as () => import('../src/client/Dialog.tsx').SessionLogDownloadDialogInjected)()
     await injected.request(SID)
     expect(b.ctx.sessionLogDownload.store.getSnapshot().bySession[SID]?.status).toBe('error')

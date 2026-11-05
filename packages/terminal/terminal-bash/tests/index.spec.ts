@@ -55,7 +55,7 @@ function agent(ctx: Context, cwd?: string): Agent {
     version: SESSION_FORMAT_VERSION, id, createdAt: 0, isSeeded: false, ...cwd === undefined ? {} : { cwd },
   })
   return {
-    id, options: {}, session, inbox: unsupportedInbox(),
+    id, options: {}, session, inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
     status: 'idle',
     ctx,
     send: () => {},
@@ -657,7 +657,11 @@ describe('terminal-bash plugin shape', () => {
     const session = ctx.sessions.create(SessionId('mode-owner'))
     const ownerFiber = await ctx.plugin(() => {})
     const owner: Agent = {
-      id: session.id, options: {}, session, inbox: unsupportedInbox(),
+      id: session.id,
+      options: {},
+      session,
+      inbox: unsupportedInbox(),
+      model: { current: () => undefined, select: () => {}, origin: () => null },
       status: 'idle',
       ctx: ownerFiber.ctx,
       send: () => {},
@@ -707,7 +711,11 @@ describe('terminal-bash plugin shape', () => {
     const session = ctx.sessions.create(SessionId('pending-mode-owner'))
     const ownerFiber = await ctx.plugin(() => {})
     const owner: Agent = {
-      id: session.id, options: {}, session, inbox: unsupportedInbox(),
+      id: session.id,
+      options: {},
+      session,
+      inbox: unsupportedInbox(),
+      model: { current: () => undefined, select: () => {}, origin: () => null },
       status: 'idle',
       ctx: ownerFiber.ctx,
       send: () => {},

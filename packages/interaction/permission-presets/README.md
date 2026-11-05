@@ -68,6 +68,8 @@ The `permission` settings namespace holds `defaultPreset` for future sessions an
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+Existing Sessions receive initial permission facts only if the service fiber is neither disposed nor unloading after projection registration.
+
 <details>
 <summary>Implementation internals — click to expand</summary>
 

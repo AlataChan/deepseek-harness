@@ -1,3 +1,4 @@
+import type { MediaProjectionState } from '../src/types.ts'
 import { chmod, mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -113,7 +114,7 @@ function transportFor(kind: 'video' | 'speech' | 'clone' | 'video-no-url') {
     now: () => 0,
     sleep: async () => undefined,
     fetch: (async (input) => {
-      const url = String(input)
+      const url = input instanceof Request ? input.url : input.toString()
       if (url.includes('/v2/video_generation') && !url.includes('/query/')) {
         return jsonResponse({ task_id: 'task-1' })
       }
@@ -143,14 +144,14 @@ function transportFor(kind: 'video' | 'speech' | 'clone' | 'video-no-url') {
         return jsonResponse({ base_resp: { status_code: 0 } })
       }
       return jsonResponse({})
-    }) as typeof fetch,
+    }),
   })
 }
 
 async function bench(options: {
   jobs?: { start: (input: { run: () => JobHooks }) => JobId }
   internals?: ConstructorParameters<typeof DesktopMedia>[2]
-  projections?: { stateOf: () => unknown }
+  projections?: { stateOf: () => MediaProjectionState }
   credentials?: { resolve: () => Promise<{ value: string; source: string } | undefined> }
   config?: Partial<DesktopMediaConfig>
 } = {}) {
@@ -159,9 +160,12 @@ async function bench(options: {
   delete process.env.OCTOPUS_MEDIA_HOME
   const ctx = new Context()
   if (options.jobs !== undefined) ctx.provide('jobs', options.jobs)
-  if (options.projections !== undefined) ctx.provide('sessionProjections', options.projections)
   if (options.credentials !== undefined) ctx.provide('credentials', options.credentials)
   const media = new DesktopMedia(ctx, { ...config, ...options.config }, options.internals ?? {})
+  if (options.projections !== undefined) {
+    const read = options.projections.stateOf
+    media.bindMediaProjection({ stateOf: read, readerFor: () => read, dispose: async () => {} })
+  }
   return { ctx, media, root, env: { DSH_HOME: root } }
 }
 
@@ -214,7 +218,7 @@ describe('DesktopMedia', () => {
     await expect(media.revealWork(artifact.artifactId, new AbortController().signal))
       .resolves.toMatchObject({ requested: true })
     await expect(media.copyWorkPath(artifact.artifactId))
-      .resolves.toMatchObject({ path: expect.stringContaining(artifact.artifactId) })
+      .resolves.toHaveProperty('path', expect.stringContaining(artifact.artifactId))
     const dest = join(root, 'out')
     await mkdir(dest)
     await expect(media.saveWorkAs(artifact.artifactId, dest, 'saved.mp3'))
@@ -320,7 +324,7 @@ describe('DesktopMedia', () => {
           now: () => 0,
           sleep: async () => undefined,
           fetch: (async (input) => {
-            if (String(input).includes('t2a')) {
+            if ((input instanceof Request ? input.url : input.toString()).includes('t2a')) {
               await writeFile(join(gone.root, 'media/catalog/voices.json'), `${JSON.stringify({
                 version: 1,
                 voices: [{ voiceId: 'male-qn-qingse', label: '青涩男声', system: true }],
@@ -332,7 +336,7 @@ describe('DesktopMedia', () => {
               })
             }
             return jsonResponse({})
-          }) as typeof fetch,
+          }),
         }),
         flush: async () => undefined,
       },
@@ -449,10 +453,8 @@ describe('DesktopMedia', () => {
       model: 'MiniMax-H3-Max',
       imageIds: [still.artifactId],
     }, { promptHash: 'p-changed', estimatedYuan: 2.5 })
-    await expect(videoJobs.hooks()!.done).resolves.toMatchObject({
-      status: 'failed',
-      detail: expect.stringContaining('image bytes changed'),
-    })
+    await expect(videoJobs.hooks()!.done).resolves.toMatchObject({ status: 'failed' })
+    await expect(videoJobs.hooks()!.done).resolves.toHaveProperty('detail', expect.stringContaining('image bytes changed'))
   })
 
   it('flushes through sessions when internals.flush is omitted', async () => {
@@ -508,7 +510,7 @@ describe('DesktopMedia', () => {
         })
       },
       fetch: (async (input, init) => {
-        const url = String(input)
+        const url = input instanceof Request ? input.url : input.toString()
         if (url.includes('/v2/video_generation') && !url.includes('/query/')) {
           return jsonResponse({ task_id: 'task-1' })
         }
@@ -518,7 +520,7 @@ describe('DesktopMedia', () => {
           signal?.addEventListener('abort', () => { reject(new Error('aborted')) })
         })
         return jsonResponse({})
-      }) as typeof fetch,
+      }),
     })
     const events: string[] = []
     const stopOwner = {
@@ -573,7 +575,7 @@ describe('DesktopMedia', () => {
     await expect(media.cloneVoiceFromArtifact(owner(), imported.artifactId, 'mine', {
       speakerIsUser: true,
       authorized: true,
-    })).resolves.toMatchObject({ voiceId: expect.stringMatching(/^dshVoice/) })
+    })).resolves.toHaveProperty('voiceId', expect.stringMatching(/^dshVoice/))
     expect((await media.listVoices()).some(row => row.label === 'mine')).toBe(true)
     expect(env.DSH_HOME).toBeDefined()
   })
@@ -741,7 +743,7 @@ describe('DesktopMedia', () => {
               signal?.addEventListener('abort', () => { reject(new Error('aborted')) })
             })
             return jsonResponse({})
-          }) as typeof fetch,
+          }),
         }),
         flush: async () => undefined,
       },
@@ -801,10 +803,8 @@ describe('DesktopMedia', () => {
       resolution: '768P',
       model: 'MiniMax-H3-Max',
     }, { promptHash: 'p1', estimatedYuan: 2.5 })
-    await expect(jobs.hooks()!.done).resolves.toMatchObject({
-      status: 'failed',
-      detail: expect.stringContaining('MINIMAX_API_KEY'),
-    })
+    await expect(jobs.hooks()!.done).resolves.toMatchObject({ status: 'failed' })
+    await expect(jobs.hooks()!.done).resolves.toHaveProperty('detail', expect.stringContaining('MINIMAX_API_KEY'))
 
     const ctxJobs = jobsCapture()
     const viaCtx = await bench({
@@ -838,10 +838,8 @@ describe('DesktopMedia', () => {
       resolution: '768P',
       model: 'MiniMax-H3-Max',
     }, { promptHash: 'p1', estimatedYuan: 2.5 })
-    await expect(noUrlJobs.hooks()!.done).resolves.toMatchObject({
-      status: 'failed',
-      detail: expect.stringContaining('download URL'),
-    })
+    await expect(noUrlJobs.hooks()!.done).resolves.toMatchObject({ status: 'failed' })
+    await expect(noUrlJobs.hooks()!.done).resolves.toHaveProperty('detail', expect.stringContaining('download URL'))
   })
 
   it('uses session projection budget and returns spend estimates', async () => {
@@ -877,7 +875,7 @@ describe('DesktopMedia', () => {
       projections: {
         stateOf() {
           readMissing = true
-          return undefined
+          return { requests: {}, artifacts: {} }
         },
       },
     })

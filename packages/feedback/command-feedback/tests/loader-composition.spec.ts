@@ -8,6 +8,7 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import * as CommandFeedback from '@deepseek-ai/dsh-command-feedback'
@@ -32,6 +33,7 @@ async function agent(ctx: Context): Promise<Agent> {
   const session = ctx.sessions.create(id)
   let status: AgentStatus = 'idle'
   const value: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id,
     options: {},
     session,
@@ -56,6 +58,7 @@ describe('/feedback real Loader composition through cordis.yml', () => {
     vi.stubEnv('DSH_HOME', root)
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
+      "- name: '@deepseek-ai/dsh-session-projection'",
       "- name: '@deepseek-ai/dsh-agent'",
       "- name: '@deepseek-ai/dsh-session'",
       "- name: '@deepseek-ai/dsh-commands'",
@@ -68,6 +71,7 @@ describe('/feedback real Loader composition through cordis.yml', () => {
     await context.plugin(Loader)
     context.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
+      ['@deepseek-ai/dsh-session-projection', SessionProjectionRegistry],
       ['@deepseek-ai/dsh-agent', AgentRegistry],
       ['@deepseek-ai/dsh-session', SessionStore],
       ['@deepseek-ai/dsh-commands', CommandRuntime],

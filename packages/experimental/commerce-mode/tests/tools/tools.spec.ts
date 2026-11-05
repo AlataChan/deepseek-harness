@@ -53,7 +53,12 @@ describe('commerce import containment and binding', () => {
     await writeFile(join(root, 'products.csv'), 'listing,title\nP-1,Tea\n')
     await call(ctx, 'commerce_import_file', { path: 'products.csv', kind: 'products', platform: 'sample' }, owner)
     expect(commerce.bindCalls).toBe(1)
-    expect(ctx.sessionProjections.stateOf(owner.session, 'commerceBinding')?.sourceId).toBe(SOURCE_ID)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+    const binding = ctx.sessionProjections.stateOf(owner.session, 'commerceBinding')
+    const sourceId = typeof binding === 'object' && binding !== null && 'sourceId' in binding && typeof binding.sourceId === 'string'
+      ? binding.sourceId
+      : undefined
+    expect(sourceId).toBe(SOURCE_ID)
     await call(ctx, 'commerce_import_file', { path: 'products.csv', kind: 'inventory', platform: 'sample' }, owner)
     expect(commerce.bindCalls).toBe(1)
     expect(commerce.imports.at(-1)?.sourceId).toBe(SOURCE_ID)

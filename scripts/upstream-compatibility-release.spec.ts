@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest'
 
 const root = resolve(import.meta.dirname, '..')
 const versions = {
-  cordis: '4.0.5', cosmokit: '1.8.6', group: '1.0.5', hmr: '1.0.20', include: '1.0.10',
-  loader: '1.0.6', 'logger-console': '1.0.5', schemastery: '3.18.5', timer: '1.1.7',
+  cordis: '4.1.0', cosmokit: '1.9.0', group: '1.1.0', hmr: '1.1.0', include: '1.1.0',
+  loader: '1.1.0', 'logger-console': '1.1.0', schemastery: '3.19.0', timer: '1.2.0',
 }
 const requiredPaths = [
   ...Object.keys(versions).map(name => `vendor/${name}/package.json`),
@@ -63,10 +63,18 @@ function runCli(omitted?: string, advancePin = false): ReturnType<typeof spawnSy
   try {
     mkdirSync(join(fixture, 'scripts'))
     writeFileSync(join(fixture, 'package.json'), '{"type":"module"}\n')
-    for (const name of ['verify-upstream-intake.ts', 'upstream-compatibility-policy.ts']) {
-      if (existsSync(join(root, 'scripts', name))) cpSync(join(root, 'scripts', name), join(fixture, 'scripts', name))
+    for (const name of ['verify-upstream-intake.ts', 'upstream-compatibility-policy.ts', 'verify-upstream-runtime-consumers.ts']) {
+      cpSync(join(root, 'scripts', name), join(fixture, 'scripts', name))
     }
     cpSync(join(root, 'scripts/cordis-yaml.ts'), join(fixture, 'scripts/cordis-yaml.ts'))
+    mkdirSync(join(fixture, 'packages/fixture/src'), { recursive: true })
+    writeFileSync(join(fixture, 'packages/fixture/src/index.ts'), 'export async function apply(ctx) { await ctx.sessionProjections.register({ key: "alpha", stateVersion: 1 }) }\n')
+    mkdirSync(join(fixture, '.plans/upstream-0.2.2-rc1-assessment-2026-11-04'), { recursive: true })
+    writeFileSync(join(fixture, '.plans/upstream-0.2.2-rc1-assessment-2026-11-04/projection-dispositions.json'), `${JSON.stringify({
+      registrations: [{ id: 'R01', file: 'packages/fixture/src/index.ts', key: 'alpha', stateVersion: 1, awaited: false, newOwner: 'the current registrant package, after it awaits the handle' }],
+      readers: [],
+    })}\n`)
+    writeFileSync(join(fixture, '.plans/upstream-0.2.2-rc1-assessment-2026-11-04/request-dispositions.json'), `${JSON.stringify({ listeners: [] })}\n`)
     symlinkSync(join(root, 'node_modules'), join(fixture, 'node_modules'), 'junction')
     const pin = advancePin ? 'dsh-v0.2.1-rc.2' : 'dsh-v0.2.1-alpha.1'
     const entry = {

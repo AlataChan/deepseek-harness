@@ -20,6 +20,8 @@ import {
 } from '../src/model-selection-state.ts'
 import { callSubagent, text } from './harness.ts'
 
+const policyReaders = new WeakMap<Context, Parameters<typeof subagentModelSelectionPolicy>[0]>()
+
 const ALLOWED_MODELS = [{ provider: 'alpha', model: 'fast-model' }]
 
 const selectionConfigs = new WeakMap<Context, Awaited<ReturnType<typeof liveConfig>>>()
@@ -43,6 +45,7 @@ async function boot(withPreset = true): Promise<Context> {
 
   selectionConfigs.set(ctx, await liveConfig(ctx, SubagentModelSelectionConfig))
   await mountAgentLoopTestDependencies(ctx)
+  policyReaders.set(ctx, await ctx.sessionProjections.register(subagentModelSelectionProjectionDefinition))
   await ctx.plugin(AgentLoop, { agents: [] })
   subagentConfigs.set(ctx, await liveConfig(ctx, SubagentRuntime))
   await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
@@ -103,7 +106,7 @@ describe('SubagentModelSelectionConfig', () => {
 
     selectionConfigs.set(ctx, await liveConfig(ctx, SubagentModelSelectionConfig))
     await ctx.plugin(SessionProjectionRegistry)
-    ctx.sessionProjections.register(subagentModelSelectionProjectionDefinition)
+    policyReaders.set(ctx, await ctx.sessionProjections.register(subagentModelSelectionProjectionDefinition))
 
     // A stored policy the service cannot apply fails when it is read, not when the profile row is written.
     await selectionConfigs.get(ctx)!.update({ allowedModels: [...ALLOWED_MODELS, ...ALLOWED_MODELS] })
@@ -121,13 +124,13 @@ describe('SubagentModelSelectionConfig', () => {
 
     const invalid = Session.create(SessionId('empty-policy'))
     invalid.append('subagent/model-selection-policy', { allowedModels: [] })
-    expect(() => subagentModelSelectionPolicy(ctx.sessionProjections, invalid)).toThrow('requires at least one route')
+    expect(() => subagentModelSelectionPolicy(policyReaders.get(ctx)!, invalid)).toThrow('requires at least one route')
 
     const malformed = Session.create(SessionId('malformed-policy'))
     malformed.append('subagent/model-selection-policy', {
       allowedModels: [{ provider: 1, model: 'fast-model' }],
     } as never)
-    expect(() => subagentModelSelectionPolicy(ctx.sessionProjections, malformed))
+    expect(() => subagentModelSelectionPolicy(policyReaders.get(ctx)!, malformed))
       .toThrow('requires non-empty provider and model ids')
     await ctx.fiber.dispose()
   })
@@ -136,14 +139,14 @@ describe('SubagentModelSelectionConfig', () => {
     const ctx = await boot()
     const disabled = await createAgent(ctx, 'disabled')
     expect(selectable(ctx, disabled)).toBe(false)
-    expect(subagentModelSelectionPolicy(ctx.sessionProjections, disabled.session)).toBeUndefined()
+    expect(subagentModelSelectionPolicy(policyReaders.get(ctx)!, disabled.session)).toBeUndefined()
 
     await selectionConfigs.get(ctx)!.update({
       enabled: true,
       allowedModels: ALLOWED_MODELS,
     })
     const enabled = await createAgent(ctx, 'enabled')
-    expect(subagentModelSelectionPolicy(ctx.sessionProjections, enabled.session)).toEqual(ALLOWED_MODELS)
+    expect(subagentModelSelectionPolicy(policyReaders.get(ctx)!, enabled.session)).toEqual(ALLOWED_MODELS)
     expect(selectable(ctx, enabled)).toBe(true)
     expect(selectable(ctx, disabled)).toBe(false)
 
@@ -170,8 +173,8 @@ describe('SubagentModelSelectionConfig', () => {
       sessionId: SessionId('direct-agent-setup'),
       setup: async (agentCtx, agent) => {
         prepared = agent
-        const fiber = agentCtx.inject(tool.inject, (runtimeCtx) => {
-          tool.apply(runtimeCtx, {
+        const fiber = agentCtx.inject(tool.inject, async (runtimeCtx) => {
+          await tool.apply(runtimeCtx, {
             provider: 'spawn',
             modelSelectionSettings: true,
             backgroundMode: 'continuable',
@@ -338,7 +341,7 @@ describe('SubagentModelSelectionConfig', () => {
       meta: { parentSession: parent.id, origin: 'subagent' },
     })
     expect(selectable(ctx, child)).toBe(true)
-    expect(subagentModelSelectionPolicy(ctx.sessionProjections, child.session)).toEqual(ALLOWED_MODELS)
+    expect(subagentModelSelectionPolicy(policyReaders.get(ctx)!, child.session)).toEqual(ALLOWED_MODELS)
 
     const orphan = await createAgent(ctx, 'orphan', {
       meta: { parentSession: SessionId('missing-parent'), origin: 'subagent' },
@@ -357,11 +360,11 @@ describe('SubagentModelSelectionConfig', () => {
     })
     const resumedEmpty = await createAgent(ctx, 'resumed-empty', { seed: [] })
     expect(selectable(ctx, resumedEmpty)).toBe(false)
-    expect(subagentModelSelectionPolicy(ctx.sessionProjections, resumedEmpty.session)).toBeUndefined()
+    expect(subagentModelSelectionPolicy(policyReaders.get(ctx)!, resumedEmpty.session)).toBeUndefined()
 
     const resumedDisabled = await createAgent(ctx, 'resumed-disabled', { seed: oldSeed.snapshotEvents() })
     expect(selectable(ctx, resumedDisabled)).toBe(false)
-    expect(subagentModelSelectionPolicy(ctx.sessionProjections, resumedDisabled.session)).toBeUndefined()
+    expect(subagentModelSelectionPolicy(policyReaders.get(ctx)!, resumedDisabled.session)).toBeUndefined()
     await ctx.fiber.dispose()
   })
 
@@ -369,23 +372,19 @@ describe('SubagentModelSelectionConfig', () => {
     const withoutSettings = new Context()
     await mountAgentLoopTestDependencies(withoutSettings)
     await withoutSettings.plugin(SubagentRuntime)
-    expect(() => {
-      tool.apply(withoutSettings, {
-        provider: 'missing',
-        modelSelectionSettings: true,
-        maxDepth: 'provider-managed',
-      })
-    }).toThrow('requires @deepseek-ai/dsh-tool-subagent/model-selection-settings')
+    await expect(tool.apply(withoutSettings, {
+      provider: 'missing',
+      modelSelectionSettings: true,
+      maxDepth: 'provider-managed',
+    })).rejects.toThrow('requires @deepseek-ai/dsh-tool-subagent/model-selection-settings')
     await withoutSettings.fiber.dispose()
 
     const withoutAgent = await boot(false)
-    expect(() => {
-      tool.apply(withoutAgent, {
-        provider: 'spawn',
-        modelSelectionSettings: true,
-        backgroundMode: 'continuable',
-      })
-    }).toThrow('requires a scoped preset Context')
+    await expect(tool.apply(withoutAgent, {
+      provider: 'spawn',
+      modelSelectionSettings: true,
+      backgroundMode: 'continuable',
+    })).rejects.toThrow('requires a scoped preset Context')
 
     await withoutAgent.fiber.dispose()
   })
@@ -406,13 +405,11 @@ describe('SubagentModelSelectionConfig', () => {
         parentSession: SessionId('missing-parent'),
       })
 
-      expect(() => {
-        tool.apply(ctx, {
-          provider: 'missing',
-          modelSelectionSettings: true,
-          maxDepth: 'provider-managed',
-        }, child)
-      }).toThrow('child model-selection inheritance requires the Session registry')
+      await expect(tool.apply(ctx, {
+        provider: 'missing',
+        modelSelectionSettings: true,
+        maxDepth: 'provider-managed',
+      }, child)).rejects.toThrow('child model-selection inheritance requires the Session registry')
     } finally {
       await ctx.fiber.dispose()
     }

@@ -39,6 +39,7 @@ interface Bench {
 async function liveAgent(ctx: Context, session: Session): Promise<Agent> {
   const status: AgentStatus = 'idle'
   const agent: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id: session.id,
     options: {},
     session,
@@ -235,6 +236,7 @@ describe('goal projection unit', () => {
     const bench = await harness(true)
     bench.ctx.goals.create(bench.agent, { objective: 'poisoned replay' })
     const failure = 'goal replay failed at session event 0: invalid restored goal stream'
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     const state = bench.ctx.sessionProjections.stateOf(bench.session, 'goal')
     expect(state).toBeDefined()
     Object.assign(state!, { failure })

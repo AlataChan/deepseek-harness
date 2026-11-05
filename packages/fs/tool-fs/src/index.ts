@@ -1,5 +1,5 @@
 /**
- * Model-facing read, read_image, write, and edit tools over `ctx.fs`. This package owns schemas, validation,
+ * Model-facing read, read_image, write, edit, and optional apply_patch tools over `ctx.fs`. This package owns schemas, validation,
  * read windows, formatting, and observation events, never a concrete provider. An optional
  * event policy supplies mutation guards; without one the tools use unconditional provider calls.
  * @module @deepseek-ai/dsh-tool-fs
@@ -11,6 +11,7 @@ import type {} from '@deepseek-ai/dsh-user-approval'
 import { applyReadTool, READ_LIMIT, STREAM_MIN_SIZE } from './read.ts'
 import { applyWriteTool } from './write.ts'
 import { applyEditTool } from './edit.ts'
+import { applyApplyPatchTool } from './apply-patch.ts'
 import { applyReadImageTool } from './read-image.ts'
 import { READ_MAX_BYTES, READ_MAX_LINE_LENGTH } from './read-render.ts'
 import { FsSandboxController } from './sandbox.ts'
@@ -31,6 +32,11 @@ export interface Config {
   readMaxBytes?: number
   /** Files at or above this size stream instead of loading whole into memory. */
   readStreamMinSize?: number
+  /**
+   * Register `apply_patch`. Defaults to false. Shipped compositions leave it
+   * off; a deployment opts in on its `tool-fs` row.
+   */
+  applyPatch?: boolean
 }
 
 export const Config: z<Config> = z.object({
@@ -38,6 +44,7 @@ export const Config: z<Config> = z.object({
   readMaxLineLength: z.number().default(READ_MAX_LINE_LENGTH),
   readMaxBytes: z.number().default(READ_MAX_BYTES),
   readStreamMinSize: z.number().default(STREAM_MIN_SIZE),
+  applyPatch: z.boolean().default(false),
 })
 
 /** The shape after schemastery applied the defaults. */
@@ -50,7 +57,10 @@ function assertPositiveInteger(name: string, value: number): void {
   }
 }
 
-/** Register the full `read`/`write`/`edit` filesystem tool suite, plus `read_image` while `attachments` is mounted. */
+/**
+ * Register the full `read`/`write`/`edit` filesystem tool suite, plus `read_image`
+ * while `attachments` is mounted. `apply_patch` registers only when `applyPatch` is true.
+ */
 export function apply(ctx: Context, config: Config): void {
   // schemastery (Config) has already filled every defaulted field.
   const resolved = config as ResolvedConfig
@@ -76,4 +86,5 @@ export function apply(ctx: Context, config: Config): void {
   const sandbox = new FsSandboxController(ctx)
   applyWriteTool(ctx, sandbox)
   applyEditTool(ctx, sandbox)
+  if (resolved.applyPatch) applyApplyPatchTool(ctx, sandbox)
 }

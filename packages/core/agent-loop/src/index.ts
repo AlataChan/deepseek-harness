@@ -9,7 +9,6 @@ import type { Volatile } from '@deepseek-ai/cosmokit'
 import { Context, FiberState, Service } from '@deepseek-ai/cordis'
 import { randomUUID } from 'node:crypto'
 import z from '@deepseek-ai/schemastery'
-import { z as zod } from 'zod'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type {
   Agent,
@@ -18,17 +17,19 @@ import type {
   AgentOptions,
   AgentSetup,
   CreateAgentOptions,
+  InboxState,
+  ModelSelectionProjectionState,
   ResumeAgentOptions,
   SessionStartSource,
-  TurnBoundaryProjection,
 } from '@deepseek-ai/dsh-agent'
+import { modelSelectionProjectionDefinition } from '@deepseek-ai/dsh-agent'
 import { errorChain, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import { interruptedTurnClosers, SessionLogOffset, SessionPreparation, SessionSeq } from '@deepseek-ai/dsh-session'
+import { interruptedTurnClosers, SessionLogOffset, SessionPreparation } from '@deepseek-ai/dsh-session'
 import type { Session, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-session-projection'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import { SessionPersistenceNotFoundError } from '@deepseek-ai/dsh-session-persistence'
 import type { SessionHandle, SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
 import { ReactLoopAgent } from './agent.ts'
@@ -36,63 +37,14 @@ import { inboxProjectionDefinition } from './inbox.ts'
 import { DEFAULT_MAX_PARALLEL_TOOL_CALLS } from './constants.ts'
 import type {} from './runtime-context.ts'
 
+export { turnBoundaryProjectionDefinition } from '@deepseek-ai/dsh-agent'
+
 /** Fiber states that cannot own or serve a new lifecycle. */
 const INACTIVE_STATES: ReadonlySet<FiberState> = new Set([
   FiberState.UNLOADING,
   FiberState.DISPOSED,
   FiberState.FAILED,
 ])
-
-const turnBoundaryProjectionSchema: zod.ZodType<TurnBoundaryProjection> = zod.object({
-  openTurnStartSeq: zod.number().int().nonnegative().transform(SessionSeq).nullable(),
-  lastStepStartSeq: zod.number().int().nonnegative().transform(SessionSeq).nullable(),
-  lastStepBoundary: zod.object({
-    kind: zod.union([zod.literal('start'), zod.literal('end')]),
-    seq: zod.number().int().nonnegative().transform(SessionSeq),
-  }).nullable(),
-  lastTurn: zod.number().int().nonnegative(),
-})
-
-/** Host projection of agent turn and step boundaries. */
-export const turnBoundaryProjectionDefinition = {
-  key: 'turnBoundary',
-  stateVersion: 2,
-  stateSchema: turnBoundaryProjectionSchema,
-  init: () => ({
-    openTurnStartSeq: null,
-    lastStepStartSeq: null,
-    lastStepBoundary: null,
-    lastTurn: 0,
-  }),
-  apply: (state, event) => {
-    switch (event.type) {
-      case 'turn/start':
-        return {
-          ...state,
-          openTurnStartSeq: event.seq,
-          lastTurn: event.data.turn,
-        }
-      case 'turn/end':
-        return {
-          ...state,
-          openTurnStartSeq: null,
-        }
-      case 'step/start':
-        return {
-          ...state,
-          lastStepStartSeq: event.seq,
-          lastStepBoundary: { kind: 'start', seq: event.seq },
-        }
-      case 'step/end':
-        return {
-          ...state,
-          lastStepBoundary: { kind: 'end', seq: event.seq },
-        }
-      default:
-        return state
-    }
-  },
-} satisfies ProjectionDefinition<'turnBoundary', TurnBoundaryProjection>
 
 /** Factory-level ownership: live agent teardowns plus config startup work. */
 class FactoryOwnership {
@@ -350,6 +302,8 @@ export class AgentLoop extends Service implements AgentFactory {
   private readonly ownership: FactoryOwnership
   /** Plain holder prevents Cordis from re-tracing the factory's dependency context through a caller shadow. */
   private readonly runtime: { ctx: Context }
+  private modelProjectionHandle!: ProjectionHandle<ModelSelectionProjectionState>
+  private inboxProjectionHandle!: ProjectionHandle<InboxState>
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'agentLoop')
@@ -359,18 +313,26 @@ export class AgentLoop extends Service implements AgentFactory {
       maxParallelToolCalls: config.maxParallelToolCalls,
     }
     validateConfiguredAgents(this.config.agents)
-    // Register only after every config validation above has passed, so a
-    // rejected constructor leaves no projection unit behind.
-    ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
-    ctx.sessionProjections.register(inboxProjectionDefinition)
     this.ownership = new FactoryOwnership(ctx.fiber)
     this.runtime = { ctx }
-    ctx.effect(() => () => this.ownership.dispose(), 'agentLoop.transactions()')
-    ctx.effect(() => ctx.agents.setFactory(this), 'agentLoop.setFactory()')
-    ctx.systemPrompt.variable('provider', context => context.agent?.options.provider)
-    ctx.systemPrompt.variable('model', context => context.agent?.options.model)
+    ctx.systemPrompt.variable('provider', context => context.modelSelection?.provider ?? context.agent?.options.provider)
+    ctx.systemPrompt.variable('model', context => context.modelSelection?.model ?? context.agent?.options.model)
     ctx.systemPrompt.variable('cwd', context => context.agent?.session.header.cwd)
+  }
 
+  /** Activate the factory after core projections are ready, unless its fiber is disposed or unloading. */
+  protected async [Service.init](): Promise<void> {
+    const ctx = this.runtime.ctx
+    const [modelSelection, inbox] = await Promise.all([
+      ctx.sessionProjections.register(modelSelectionProjectionDefinition),
+      ctx.sessionProjections.register(inboxProjectionDefinition),
+    ])
+    if (ctx.fiber.uid === null || ctx.fiber.state === FiberState.UNLOADING) return
+    this.modelProjectionHandle = modelSelection
+    this.inboxProjectionHandle = inbox
+    ctx.effect(() => ctx.agents.setFactory(this), 'agentLoop.setFactory()')
+    // Registered after the projection units so teardown drains agents while those units are still active.
+    ctx.effect(() => () => this.ownership.dispose(), 'agentLoop.transactions()')
     for (const { id, sessionId, cwd, resumeSessionId, ...options } of this.config.agents) {
       const meta = cwd === undefined ? {} : { cwd }
       if (resumeSessionId === undefined || resumeSessionId === '') {
@@ -570,10 +532,16 @@ export class AgentLoop extends Service implements AgentFactory {
       }
     })())
     const untrack = this.ownership.track(dispose)
+    const readModelSelection = this.modelProjectionHandle.readerFor(session)
+    const readInbox = this.inboxProjectionHandle.readerFor(session)
+    const lastTurn = loopCtx.agents.turnBoundaryOf(session).lastTurn
     let unfollowOwner: () => Promise<void> | void
     try {
       unfollowOwner = ownerCtx.effect(function* () {
-        machine = new ReactLoopAgent(loopCtx, id, options, session)
+        machine = new ReactLoopAgent(loopCtx, id, options, session, {
+          modelSelection: readModelSelection,
+          inbox: readInbox,
+        }, lastTurn)
         machineReady.resolve()
         yield machine.scope.rawDispose
         yield () => {

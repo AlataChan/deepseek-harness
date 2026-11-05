@@ -194,6 +194,21 @@ node "$REPO_ROOT/scripts/seed-desktop-profile-plugin.mjs" fetch --out "$PLUGIN_R
   || fail "Failed to fetch desktop profile plugins"
 ok "Desktop profile plugins embedded"
 
+DESKTOP_OPERATION_PLUGIN="$PLUGIN_RESOURCES/@deepseek-ai/dsh-experimental-desktop-operation"
+if [[ -z "${AGENT_DESKTOP_ARCHIVE:-}" ]]; then
+  fail "AGENT_DESKTOP_ARCHIVE is required to stage pinned agent-desktop assets"
+fi
+info "Staging pinned agent-desktop assets..."
+node --import tsx/esm "$REPO_ROOT/scripts/stage-agent-desktop-assets.ts" \
+  --archive "$AGENT_DESKTOP_ARCHIVE" \
+  --dest "$DESKTOP_OPERATION_PLUGIN" \
+  || fail "Failed to stage agent-desktop assets"
+node --import tsx/esm "$REPO_ROOT/scripts/verify-agent-desktop-digest.ts" \
+  --unsigned \
+  --root "$DESKTOP_OPERATION_PLUGIN" \
+  || fail "Unsigned agent-desktop digest check failed"
+ok "Pinned agent-desktop assets staged and verified unsigned"
+
 info "Preparing bundled skills..."
 SKILL_RESOURCES="$RESOURCES/bundled-skills"
 rm -rf "$SKILL_RESOURCES"

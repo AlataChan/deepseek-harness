@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent, AgentFactory } from '@deepseek-ai/dsh-agent'
 import { agentPresetProjectionDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
@@ -25,13 +26,14 @@ function stubAgent(session: Session): Agent {
   return { id: session.id, session, status: 'idle' } as unknown as Agent
 }
 
-function roster(ids: readonly string[]): unknown {
+function roster(ids: readonly string[], readPreset: (session: Session) => string | null): unknown {
   const presetOf = (id: string): object => ({
     id,
     trust: 'system',
   })
   return {
     defaultId: ids[0],
+    presetOf: readPreset,
     resolve: (id?: string) => {
       const wanted = id ?? ids[0] ?? ''
       if (!ids.includes(wanted)) {
@@ -53,9 +55,11 @@ async function harness(presets?: readonly string[]) {
   const ctx = new Context()
   contexts.push(ctx)
   await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   if (presets !== undefined) {
-    ctx.provide('agentPresets', roster(presets) as never)
+    const projection = await ctx.sessionProjections.register(agentPresetProjectionDefinition)
+    ctx.provide('agentPresets', roster(presets, session => projection.stateOf(session)) as never)
   }
 
   const factory: AgentFactory = {
@@ -79,7 +83,6 @@ async function harness(presets?: readonly string[]) {
     defaultModelSelection: () => ({ provider: 'test', model: 'test-model' }),
     cwd,
   })
-  if (presets !== undefined) ctx.sessionProjections.register(agentPresetProjectionDefinition)
   return { ctx, remote }
 }
 

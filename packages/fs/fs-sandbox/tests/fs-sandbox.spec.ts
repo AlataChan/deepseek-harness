@@ -81,6 +81,16 @@ describe('read-only', () => {
     expect(await readFile(path, 'utf8')).toBe('original')
   })
 
+  it('denies delete and move and leaves the source file', async () => {
+    const path = join(workspace, 'file.txt')
+    const destination = join(workspace, 'moved.txt')
+    await writeFile(path, 'original')
+    await expect(fs.deleteFile(await target(path))).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    await expect(fs.moveFile(await target(path), await target(destination), {})).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    expect(await readFile(path, 'utf8')).toBe('original')
+    expect(existsSync(destination)).toBe(false)
+  })
+
   it('allows reads (every mode permits reading)', async () => {
     const path = join(workspace, 'readable.txt')
     await writeFile(path, 'hello')
@@ -90,6 +100,27 @@ describe('read-only', () => {
 
 describe('workspace-write containment', () => {
   beforeEach(() => boot('workspace-write'))
+
+  it('deletes and moves a file under the workspace', async () => {
+    const source = join(workspace, 'from.txt')
+    const destination = join(workspace, 'nested', 'to.txt')
+    await writeFile(source, 'payload')
+    const moved = await fs.moveFile(await target(source), await target(destination), {})
+    expect(moved.sourceDeleted).toBe(true)
+    expect(await readFile(destination, 'utf8')).toBe('payload')
+    expect(existsSync(source)).toBe(false)
+    await fs.deleteFile(await target(destination))
+    expect(existsSync(destination)).toBe(false)
+  })
+
+  it('denies a move whose destination leaves the workspace', async () => {
+    const source = join(workspace, 'from.txt')
+    const destination = join(outside, 'escaped.txt')
+    await writeFile(source, 'payload')
+    await expect(fs.moveFile(await target(source), await target(destination), {})).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    expect(await readFile(source, 'utf8')).toBe('payload')
+    expect(existsSync(destination)).toBe(false)
+  })
 
   it('a write under the workspace lands', async () => {
     const path = join(workspace, 'nested', 'ok.txt')

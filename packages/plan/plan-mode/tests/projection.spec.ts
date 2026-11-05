@@ -13,6 +13,11 @@ import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import { CommandId } from '@deepseek-ai/dsh-commands/brand'
 import PlanModeController from '@deepseek-ai/dsh-plan-mode'
 
+function activeAtLastHeader(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || !('activeAtLastHeader' in value)) return undefined
+  return value.activeAtLastHeader
+}
+
 interface Bench {
   ctx: Context
   session: Session
@@ -118,22 +123,26 @@ describe('plan projection unit', () => {
     const bench = await harness(true)
     commitPlanMode(bench.session, true, 0)
     expect(bench.values().plan).toEqual({ active: true, pending: false })
-    expect(bench.ctx.sessionProjections.stateOf(bench.session, 'plan')?.activeAtLastHeader).toBeNull()
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+    expect(activeAtLastHeader(bench.ctx.sessionProjections.stateOf(bench.session, 'plan'))).toBeNull()
     bench.session.append('request/header', {
       header: { config: { provider: 'test', model: 'test-model' } },
       reason: 'initial',
     })
     expect(bench.values().plan).toEqual({ active: true, pending: false })
-    expect(bench.ctx.sessionProjections.stateOf(bench.session, 'plan')?.activeAtLastHeader).toBe(true)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+    expect(activeAtLastHeader(bench.ctx.sessionProjections.stateOf(bench.session, 'plan'))).toBe(true)
     commitPlanMode(bench.session, false, 1)
     expect(bench.values().plan).toEqual({ active: false, pending: false })
-    expect(bench.ctx.sessionProjections.stateOf(bench.session, 'plan')?.activeAtLastHeader).toBe(true)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+    expect(activeAtLastHeader(bench.ctx.sessionProjections.stateOf(bench.session, 'plan'))).toBe(true)
     bench.session.append('request/header', {
       header: { config: { provider: 'test', model: 'test-model' } },
       reason: 'change',
     })
     expect(bench.values().plan).toEqual({ active: false, pending: false })
-    expect(bench.ctx.sessionProjections.stateOf(bench.session, 'plan')?.activeAtLastHeader).toBe(false)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+    expect(activeAtLastHeader(bench.ctx.sessionProjections.stateOf(bench.session, 'plan'))).toBe(false)
   })
 
   it('has no plan key when plan-mode is not composed', async () => {

@@ -186,6 +186,48 @@ describe('maintained repository reference policy', () => {
     }
   })
 
+  it('allows only the exported 40-hex qualified baseline literal', (test) => {
+    const fixture = repository(test)
+    const other = fixture.git(['commit-tree', fixture.tree, '-m', 'other fixture'])
+    const pin = `export const QUALIFIED_BASELINE_REVISION = '${fixture.commit}'`
+    fixture.write('scripts/verify-upstream-runtime-consumers.ts', [
+      pin,
+      `export const QUALIFIED_BASELINE_REVISION = '${fixture.commit.toUpperCase()}'`,
+      `const loose = '${fixture.commit}'`,
+      `// ${fixture.commit}`,
+      `export const QUALIFIED_BASELINE_REVISION = '${fixture.commit.slice(0, 12)}'`,
+      `export const QUALIFIED_BASELINE_REVISION = '${fixture.commit}' as const`,
+      `export const QUALIFIED_BASELINE_REVISION = '${other}' satisfies string`,
+      `${pin} // ${other}`,
+      `export let QUALIFIED_BASELINE_REVISION = '${other}'`,
+      `const QUALIFIED_BASELINE_REVISION = '${other}'`,
+    ].join('\n'))
+    fixture.write('scripts/upstream-intake-registry.ts', [
+      `{"id": "RC1-01", "sourceChanges": ["${fixture.commit.slice(0, 10)}: separate budgets"]}`,
+      `{"id": "RC1-02", "sourceChanges": ["${other}: isolate roots"]}`,
+    ].join('\n'))
+    fixture.write('scripts/other.ts', `${pin}\n`)
+    fixture.write('docs/current.md', `${fixture.commit}\n`)
+
+    const found = scanRepositoryReferences(fixture.root)
+    const expected = [
+      { file: 'docs/current.md', line: 1, kind: 'commit-hash' },
+      { file: 'scripts/other.ts', line: 1, kind: 'commit-hash' },
+      { file: 'scripts/upstream-intake-registry.ts', line: 1, kind: 'commit-hash' },
+      { file: 'scripts/upstream-intake-registry.ts', line: 2, kind: 'commit-hash' },
+      { file: 'scripts/verify-upstream-runtime-consumers.ts', line: 3, kind: 'commit-hash' },
+      { file: 'scripts/verify-upstream-runtime-consumers.ts', line: 4, kind: 'commit-hash' },
+      { file: 'scripts/verify-upstream-runtime-consumers.ts', line: 5, kind: 'commit-hash' },
+      { file: 'scripts/verify-upstream-runtime-consumers.ts', line: 6, kind: 'commit-hash' },
+      { file: 'scripts/verify-upstream-runtime-consumers.ts', line: 7, kind: 'commit-hash' },
+      { file: 'scripts/verify-upstream-runtime-consumers.ts', line: 8, kind: 'commit-hash' },
+      { file: 'scripts/verify-upstream-runtime-consumers.ts', line: 9, kind: 'commit-hash' },
+      { file: 'scripts/verify-upstream-runtime-consumers.ts', line: 10, kind: 'commit-hash' },
+    ]
+    const site = (item: { file: string; line: number }): string => `${item.file}:${String(item.line).padStart(4, '0')}`
+    expect([...found].sort((a, b) => site(a).localeCompare(site(b)))).toEqual(expected)
+  })
+
   it('accepts distinct organization names and excludes the frozen and vendored paths', () => {
     expect(findRepositoryReferences('source.md', `${organizationUrl}-tools/project`, new Set())).toEqual([])
     expect(findRepositoryReferences('vendor/project/source.md', organizationUrl, new Set())).toEqual([])

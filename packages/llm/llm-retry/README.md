@@ -62,6 +62,8 @@ A failure before any final adapter is selected has no provider policy and delega
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+Recovery listeners are installed only if the plugin fiber is neither disposed nor unloading after projection registration. Active recovery still aborts and drains during teardown.
+
 <details>
 <summary>Implementation internals — click to expand</summary>
 

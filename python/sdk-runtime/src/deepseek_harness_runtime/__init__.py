@@ -11,7 +11,7 @@ Two runtime carriers coexist under ``runtime/``, both injected by the repo's
 - **node (dev-only)**: the full deploy closure under ``runtime/node/``
   (``package.json`` + ``node_modules/``), executed as ``node
   runtime/node/node_modules/@deepseek-ai/dsh/lib/bin.js`` on a
-  system Node >= 22.19. It is the current checkout's source build, never
+  system Node >= 24.9.0. It is the current checkout's source build, never
   selected automatically, and excluded from wheel/sdist distributions.
 
 Both carriers execute the same dsh command grammar. The Python SDK selects the
@@ -170,7 +170,7 @@ def _node_launch_args() -> tuple[str, str]:
     node = shutil.which("node")
     if node is None:
         raise FileNotFoundError(
-            "the node runtime mode needs a system `node` (>=22.19) on PATH; "
+            "the node runtime mode needs a system `node` (>=24.9.0) on PATH; "
             "install Node.js or use the exe mode"
         )
     return (node, str(bin_js))

@@ -116,7 +116,7 @@ SNAPSHOT_WORKFLOW_SCRIPT = (
     "return { reply }"
 )
 ADVANCED_SNAPSHOT_DIRECTORY = (
-    Path(__file__).resolve().parent / "snapshots" / "python-sdk-single-exe" / "advanced"
+    Path(__file__).resolve().parent / "snapshots" / "python-sdk-single-exe" / "advanced-current"
 )
 ADVANCED_SNAPSHOT_FILENAMES = (
     "result.json", "session.v3.jsonl", "session.1.v3.jsonl", "session.2.v3.jsonl",

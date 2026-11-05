@@ -9,6 +9,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { TerminalRenderer } from '../src/render.ts'
 import { SessionAdapter } from '../src/session.ts'
 import { getLocale } from '../src/locales.ts'
@@ -45,6 +46,7 @@ describe('TUI Writer Conflict & Session Lock Contention', () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(JsonlSessionPersistence, { root, compression: 'none' })
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     const renderer = new TerminalRenderer(100)

@@ -14,7 +14,6 @@ import {
   type AssistantStreamFrame,
   installModelSelection,
   type ModelSelection,
-  type ModelSelectionRef,
 } from '@deepseek-ai/dsh-agent'
 import { createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
@@ -76,7 +75,7 @@ export interface SessionAdapterHandlers {
 /** Manages the active agent handle, prompt submissions, commands, and stream notifications. */
 export class SessionAdapter {
   private activeHandle: AgentHandle | undefined
-  private activeModelSelection: ModelSelectionRef = { current: undefined, assembled: undefined }
+  private activeModelSelection: ModelSelection | undefined
   private currentStatus: TuiStatus = 'idle'
   private streamAttemptId: string | undefined
   private streamAccumulator = ''
@@ -111,7 +110,7 @@ export class SessionAdapter {
 
   /** Current active Model label string. */
   get modelLabel(): string {
-    const sel = this.activeModelSelection.current
+    const sel = this.activeModelSelection
     if (sel) {
       const base = sel.provider ? `${sel.provider}/${sel.model}` : sel.model
       return sel.reasoningEffort ? `${base} [${sel.reasoningEffort}]` : base
@@ -148,9 +147,9 @@ export class SessionAdapter {
           meta: { cwd: process.cwd() },
           ...agentOptions ? { agentOptions } : {},
           setup: (agentCtx, agent) => {
-            this.activeModelSelection = { current: selection, assembled: undefined }
-            installModelSelection(agentCtx, this.activeModelSelection)
-            void agent
+            this.activeModelSelection = selection
+            installModelSelection(agentCtx)
+            if (selection !== undefined) agent.model.select(selection)
           },
         })
         if (this.disposed) {
@@ -205,9 +204,10 @@ export class SessionAdapter {
           resumeSessionId: id,
           ...agentOptions ? { agentOptions } : {},
           setup: (agentCtx, agent) => {
-            this.activeModelSelection = { current: selection, assembled: undefined }
-            installModelSelection(agentCtx, this.activeModelSelection)
-            void agent
+            this.activeModelSelection = selection
+            installModelSelection(agentCtx)
+            const recorded = agent.model.current()
+            if (selection !== undefined && recorded === undefined) agent.model.select(selection)
           },
         })
         if (this.disposed) {
@@ -300,7 +300,8 @@ export class SessionAdapter {
    * @param selection - Provider, model, and optional reasoning effort.
    */
   setModel(selection: ModelSelection): void {
-    this.activeModelSelection.current = selection
+    this.activeModelSelection = selection
+    this.activeHandle?.agent.model.select(selection)
     this.handlers.onModelChange(this.modelLabel)
     this.renderer.appendLine(`${this.dict.modelSwitchNotice}: ${this.modelLabel}`, 'notice')
   }

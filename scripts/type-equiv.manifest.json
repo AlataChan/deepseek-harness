@@ -2351,6 +2351,111 @@
       "doc": "docs/subsystems/product-telemetry.md",
       "symbol": "ProductTelemetryRecord",
       "source": "packages/host/product-telemetry-otel/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/filesystem.md",
+      "symbol": "PatchHunk",
+      "source": "packages/fs/fs-patch/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/filesystem.md",
+      "symbol": "PatchOperation",
+      "source": "packages/fs/fs-patch/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/filesystem.md",
+      "symbol": "HunkApplyFailure",
+      "source": "packages/fs/fs-patch/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/filesystem.md",
+      "symbol": "ApplyHunksResult",
+      "source": "packages/fs/fs-patch/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/core.md",
+      "symbol": "Model",
+      "source": "packages/core/agent/src/runtime-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/core.md",
+      "symbol": "ModelSelection",
+      "source": "packages/core/agent/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/core.md",
+      "symbol": "ModelSelectionOrigin",
+      "source": "packages/core/agent/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/core.md",
+      "symbol": "TurnBoundaryProjection",
+      "source": "packages/core/agent/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/media.md",
+      "symbol": "MediaProjectionState",
+      "source": "packages/experimental/desktop-media/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/filesystem.md",
+      "symbol": "FsDeleteOutcome",
+      "source": "packages/fs/fs/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/filesystem.md",
+      "symbol": "FsMoveOutcome",
+      "source": "packages/fs/fs/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/session-projection.md",
+      "symbol": "ProjectionHandle",
+      "source": "packages/session/session-projection/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/session-projection.md",
+      "symbol": "ProjectionEventChangeListener",
+      "source": "packages/session/session-projection/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/session-projection.md",
+      "symbol": "ProjectionKeySelection",
+      "source": "packages/session/session-projection/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
+      "symbol": "ToolExecutor",
+      "source": "packages/core/tools/src/executor.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
+      "symbol": "ToolBatchInput",
+      "source": "packages/core/tools/src/executor.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
+      "symbol": "ToolBatchResult",
+      "source": "packages/core/tools/src/executor.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
+      "symbol": "ToolModelInput",
+      "source": "packages/core/tools/src/executor.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
+      "symbol": "ScheduledToolPreparation",
+      "source": "packages/core/tools/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
+      "symbol": "ResolvedToolSet",
+      "source": "packages/core/tools/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
+      "symbol": "ToolActivationContext",
+      "source": "packages/core/tools/src/index.ts"
     }
   ]
 }

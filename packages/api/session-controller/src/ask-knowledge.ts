@@ -90,7 +90,7 @@ export class SessionAskKnowledgeController {
     try {
       return await this.requireAskKnowledge().listLibraries(signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -108,7 +108,7 @@ export class SessionAskKnowledgeController {
     try {
       return await this.requireAskKnowledge().createLibrary(request, signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -129,7 +129,7 @@ export class SessionAskKnowledgeController {
         displayName: request.displayName,
       }, signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -148,7 +148,7 @@ export class SessionAskKnowledgeController {
         libraryId: brandString<AskKnowledgeLibraryId>(request.libraryId),
       }, signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -185,7 +185,7 @@ export class SessionAskKnowledgeController {
       try {
         await this.requireAskKnowledge().detach({ sessionId: request.sessionId }, signal)
       } catch (error: unknown) {
-        throw mapAskKnowledgeError(error, signal)
+        mapAskKnowledgeError(error, signal)
       }
     })
   }
@@ -207,7 +207,7 @@ export class SessionAskKnowledgeController {
         filename: request.filename,
       }, signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -228,7 +228,7 @@ export class SessionAskKnowledgeController {
         bytes: request.bytes,
       }, signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -249,7 +249,7 @@ export class SessionAskKnowledgeController {
         ...request.reuseRawPath === undefined ? {} : { reuseRawPath: request.reuseRawPath },
       }, signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -267,7 +267,7 @@ export class SessionAskKnowledgeController {
     try {
       return await this.requireAskKnowledge().beginExtract({ filename: request.filename }, signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -288,7 +288,7 @@ export class SessionAskKnowledgeController {
         bytes: request.bytes,
       }, signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -308,7 +308,7 @@ export class SessionAskKnowledgeController {
         handle: AskKnowledgeIngestHandle(request.handle),
       }, signal)
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -327,7 +327,7 @@ export class SessionAskKnowledgeController {
       this.withOverlaySession(request.sessionId, async () => {
         const found = await this.agents.resolveAgent(request.sessionId)
         if ('error' in found) throw found.error
-        const binding = this.ctx.sessionProjections.stateOf(found.agent.session, 'askKnowledgeBinding')
+        const binding = readAskKnowledgeBinding(this.ctx.sessionProjections.snapshot(found.agent.session, ['askKnowledgeBinding']).values.askKnowledgeBinding)
         if (binding == null) {
           throw new RemoteError(
             'session/ask-knowledge-unbound',
@@ -341,7 +341,7 @@ export class SessionAskKnowledgeController {
             terms: request.terms,
           }, signal)
         } catch (error: unknown) {
-          throw mapAskKnowledgeError(error, signal)
+          mapAskKnowledgeError(error, signal)
         }
       }))
   }
@@ -361,7 +361,7 @@ export class SessionAskKnowledgeController {
       this.withOverlaySession(request.sessionId, async () => {
         const found = await this.agents.resolveAgent(request.sessionId)
         if ('error' in found) throw found.error
-        const binding = this.ctx.sessionProjections.stateOf(found.agent.session, 'askKnowledgeBinding')
+        const binding = readAskKnowledgeBinding(this.ctx.sessionProjections.snapshot(found.agent.session, ['askKnowledgeBinding']).values.askKnowledgeBinding)
         if (binding == null) {
           throw new RemoteError(
             'session/ask-knowledge-unbound',
@@ -375,7 +375,7 @@ export class SessionAskKnowledgeController {
             term: request.term,
           }, signal)
         } catch (error: unknown) {
-          throw mapAskKnowledgeError(error, signal)
+          mapAskKnowledgeError(error, signal)
         }
       }))
   }
@@ -397,7 +397,7 @@ export class SessionAskKnowledgeController {
       }, signal)
       return { documentPaths: paths }
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -411,7 +411,7 @@ export class SessionAskKnowledgeController {
     if (session === undefined) {
       throw new RemoteError('session/not-found', `session "${sessionId}" not found`, { sessionId })
     }
-    return this.ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding') ?? null
+    return readAskKnowledgeBinding(this.ctx.sessionProjections.snapshot(session, ['askKnowledgeBinding']).values.askKnowledgeBinding)
   }
 
   /**
@@ -453,7 +453,7 @@ export class SessionAskKnowledgeController {
       }, signal)
       return { sessionId }
     } catch (error: unknown) {
-      throw mapAskKnowledgeError(error, signal)
+      mapAskKnowledgeError(error, signal)
     }
   }
 
@@ -463,7 +463,7 @@ export class SessionAskKnowledgeController {
    * @returns true when `askDataBinding` is a bound row.
    */
   private hasAskDataBind(session: Session): boolean {
-    return this.ctx.sessionProjections.stateOf(session, 'askDataBinding') != null
+    return readAskDataPresence(this.ctx.sessionProjections.snapshot(session, ['askDataBinding']).values.askDataBinding)
   }
 
   /**
@@ -481,7 +481,7 @@ export class SessionAskKnowledgeController {
    * @returns the workspace id, or undefined when none lists it.
    */
   private workspaceIdOf(sessionId: SessionId): WorkspaceId | undefined {
-    const listed = this.ctx.get('workspaceRegistry')?.list?.()
+    const listed = this.ctx.get('workspaceRegistry')?.list()
     if (!Array.isArray(listed)) return undefined
     return listed.find(workspace => workspace.sessionIds.includes(sessionId))?.id
   }
@@ -605,4 +605,15 @@ export function mapAskKnowledgeError(error: unknown, signal: AbortSignal): never
     error instanceof Error ? error.message : String(error),
     {},
   )
+}
+
+function readAskKnowledgeBinding(value: unknown): SessionAskKnowledgeBinding | null {
+  if (typeof value !== 'object' || value === null) return null
+  if (!('libraryId' in value) || typeof value.libraryId !== 'string') return null
+  if (!('displayName' in value) || typeof value.displayName !== 'string') return null
+  return { libraryId: value.libraryId, displayName: value.displayName }
+}
+
+function readAskDataPresence(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && 'sourceId' in value && typeof value.sourceId === 'string'
 }

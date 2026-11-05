@@ -31,6 +31,7 @@ async function agent(ctx: Context, cwd: string | undefined): Promise<Agent> {
     version: SESSION_FORMAT_VERSION, id, createdAt: 0, ...cwd === undefined ? {} : { cwd }, isSeeded: false,
   })
   const value: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id,
     options: {},
     session,
@@ -61,7 +62,7 @@ async function setup() {
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(LocalFileSystem, { cwd: root })
   await ctx.plugin(SessionProjectionRegistry)
-  ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
+  await ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
   const fiber = ctx.plugin(Present, { maxFiles: 2 })
   await fiber
   const owner = await agent(ctx, root)

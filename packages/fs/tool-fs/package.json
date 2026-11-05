@@ -29,6 +29,7 @@
   "dependencies": {
     "diff": "^9.0.0",
     "@deepseek-ai/schemastery": "workspace:~",
+    "@deepseek-ai/dsh-fs-patch": "workspace:*",
     "@deepseek-ai/dsh-util-code-language": "workspace:*"
   },
   "peerDependencies": {

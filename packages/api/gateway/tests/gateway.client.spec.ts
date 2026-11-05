@@ -121,6 +121,30 @@ type FixtureContext = Omit<Context, 'remote'> & {
   readonly remote: ClientRemote & TypertRemoteScopeApi<'fixture'>
 }
 
+/**
+ * Agent id carried by an extended caller.
+ *
+ * Cordis 4.1 throws on a property read that was neither injected nor provided.
+ * The scoped alias reads this on the Agent caller and on the bare root caller;
+ * the root has no tag and must stay undefined so the original business error
+ * still surfaces. An own data field wins over an optional service of the same name.
+ * @param candidate - caller Context the Client adapter is identifying.
+ * @returns the Agent id, or undefined when this caller is unscoped.
+ */
+function fixtureCallerId(candidate: Context): string | undefined {
+  let current: object | null = candidate
+  const seen = new Set<object>()
+  while (current !== null && !seen.has(current)) {
+    seen.add(current)
+    const own = Object.getOwnPropertyDescriptor(current, 'fixtureId')
+    if (own !== undefined && 'value' in own && typeof own.value === 'string') return own.value
+    const prototype: unknown = Object.getPrototypeOf(current)
+    current = typeof prototype === 'object' && prototype !== null ? prototype : null
+  }
+  const provided: unknown = candidate.get('fixtureId')
+  return typeof provided === 'string' ? provided : undefined
+}
+
 // Compile-time contract of `$on`: the key face is the forwarding selection and
 // the listener signature is the owning package's own Cordis declaration.
 function remoteEventContracts(remote: ClientRemote): void {
@@ -848,7 +872,7 @@ describe('Client Typert API', () => {
     const ctx = await bench(call)
     const agentCtx = ctx.extend({ fixtureId: 'agent-2' }) as FixtureContext
     ctx.typert.contexts.registerClient('fixture', {
-      identity: candidate => (candidate as Context & { fixtureId?: string }).fixtureId,
+      identity: candidate => fixtureCallerId(candidate),
       resolve: id => id === 'agent-2' ? agentCtx : undefined,
     })
     const assembly = ctx.plugin(Object.assign(
@@ -879,7 +903,7 @@ describe('Client Typert API', () => {
     const ctx = await bench(call)
     const agentCtx = ctx.extend({ fixtureId: 'agent-2' }) as FixtureContext
     ctx.typert.contexts.registerClient('fixture', {
-      identity: candidate => (candidate as Context & { fixtureId?: string }).fixtureId,
+      identity: candidate => fixtureCallerId(candidate),
       resolve: id => id === 'agent-2' ? agentCtx : undefined,
     })
     const assembly = ctx.plugin(Object.assign(
@@ -925,7 +949,7 @@ describe('Client Typert API', () => {
     const ctx = await bench(call)
     const agentCtx = ctx.extend({ fixtureId: 'agent-remounted' }) as FixtureContext
     ctx.typert.contexts.registerClient('fixture', {
-      identity: candidate => (candidate as Context & { fixtureId?: string }).fixtureId,
+      identity: candidate => fixtureCallerId(candidate),
       resolve: id => id === 'agent-remounted' ? agentCtx : undefined,
     })
     const direct = directDescriptor()

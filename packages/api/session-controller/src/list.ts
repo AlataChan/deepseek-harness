@@ -6,7 +6,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type { ImageAttachmentLimits } from '@deepseek-ai/dsh-attachment'
 import type { Session, SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
-import type { ProjectionSnapshot } from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionHandle, ProjectionSnapshot } from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-projection-cache'
 import { SessionQueryError, type SessionSearchCursor } from '@deepseek-ai/dsh-session-query'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
@@ -74,34 +74,65 @@ export function truncateUnicodeCodePoints(value: string, maximum: number): strin
   return value
 }
 
+const sessionListMetadata = new WeakMap<Context, ProjectionHandle<SessionListMetadata>>()
+
+/**
+ * Read the list metadata fold when this package has registered it.
+ * @param ctx - Host context that constructed {@link ApiSessionList}.
+ * @param session - live Session.
+ * @returns the fold, or undefined before registration.
+ */
+export function sessionListMetadataOf(ctx: Context, session: Session): SessionListMetadata | undefined {
+  return sessionListMetadata.get(ctx)?.stateOf(session)
+}
+
 /** Owns list projection registration, bounded cold summaries, and authorized search. */
 export class ApiSessionList {
+  /** Resolves after both list projections are registered. */
+  readonly ready: Promise<void>
+
   /**
    * @param ctx - Host context carrying Session, query, persistence, and projection services.
    * @param workSliceMs - Resolved positive integral list-work budget in milliseconds.
    */
   constructor(private readonly ctx: Context, private readonly workSliceMs: number) {
-    ctx.sessionProjections.register<'sessionListMetadata', SessionListMetadata>({
-      key: 'sessionListMetadata',
-      stateSchema: sessionListMetadataSchema,
-      init: () => ({ blank: true, lastPromptAt: null }),
-      apply: applySessionListMetadata,
-      wire: { viewSchema: sessionListMetadataSchema, view: state => state },
-      stateVersion: 1,
-    })
-    ctx.inject(['attachments'], (attachmentCtx) => {
-      ctx.sessionProjections.register<'imageLimits', null>({
-        key: 'imageLimits',
-        stateSchema: z.null(),
-        init: () => null,
-        apply: state => state,
-        wire: {
-          viewSchema: imageLimitsSchema,
-          view: () => attachmentCtx.attachments.imageLimits,
-        },
+    this.ready = this.open(ctx)
+  }
+
+  /** Register list projections and release them with the constructing fiber. */
+  private async open(ctx: Context): Promise<void> {
+    const registration = ctx.effect(async () => {
+      const metadata = await ctx.sessionProjections.register<'sessionListMetadata', SessionListMetadata>({
+        key: 'sessionListMetadata',
+        stateSchema: sessionListMetadataSchema,
+        init: () => ({ blank: true, lastPromptAt: null }),
+        apply: applySessionListMetadata,
+        wire: { viewSchema: sessionListMetadataSchema, view: state => state },
         stateVersion: 1,
       })
+      sessionListMetadata.set(ctx, metadata)
+      return async () => {
+        if (sessionListMetadata.get(ctx) === metadata) sessionListMetadata.delete(ctx)
+        await metadata.dispose()
+      }
+    }, 'session-list metadata projection')
+    ctx.inject(['attachments'], async (attachmentCtx) => {
+      await attachmentCtx.effect(async () => {
+        const images = await ctx.sessionProjections.register<'imageLimits', null>({
+          key: 'imageLimits',
+          stateSchema: z.null(),
+          init: () => null,
+          apply: state => state,
+          wire: {
+            viewSchema: imageLimitsSchema,
+            view: () => attachmentCtx.attachments.imageLimits,
+          },
+          stateVersion: 1,
+        })
+        return () => images.dispose()
+      }, 'session-list image limits projection')
     })
+    await registration
   }
 
   /**
@@ -294,6 +325,8 @@ export class ApiSessionList {
       if (session !== undefined) {
         // The live registry computed the block for this Session: its watermark
         // shares the sequence space of the Session's baselines and frames.
+        // Listing hints stay partial. snapshot() would materialize omitted cells and change the sequenced column.
+        // oxlint-disable-next-line typescript/no-deprecated -- partial list cache, not a behavior decision
         return hintsOf('sequenced', this.ctx.sessionProjections.cachedSnapshot(session))
       }
       // A cold row reads the persisted cache by header alone; the cache serves

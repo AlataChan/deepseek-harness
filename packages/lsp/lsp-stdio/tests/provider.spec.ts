@@ -268,9 +268,11 @@ describe('lsp-stdio provider resolution', () => {
     expect(signal.aborted).toBe(false)
     const disposing = loading.dispose()
 
-    await expect(loading).rejects.toThrow('lsp-stdio setup disposed')
+    await loading
+    expect(loading.uid).toBeNull()
     await expect(disposing).resolves.toBeUndefined()
     expect(signal.aborted).toBe(true)
+    expect(signal.reason).toMatchObject({ message: 'lsp-stdio setup disposed' })
     await ctx.fiber.dispose()
   })
 

@@ -1,0 +1,8 @@
+# Authored composition owner. Refresh and replay use cordis.snapshot.yml.
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 480
+    dshHome: !!js process.cwd() + '/.dsh'
+    projectRootMarkers:
+      - .dsh-project

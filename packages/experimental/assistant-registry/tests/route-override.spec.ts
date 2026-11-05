@@ -229,6 +229,47 @@ describe('Model Route Seam (S3)', { timeout: 30_000 }, () => {
     await resumedHandle.dispose()
   })
 
+  it('pins an explicit selection that matches the profile and keeps it across sync and resume', async () => {
+    harness = await setupAssistantHarness([textResponse('before'), textResponse('after')])
+    const { ctx, assistants } = harness
+    const handle = await ctx.agents.create({
+      sessionId: SessionId('explicit-profile-match'),
+      agentOptions: { provider: 'mock', model: 'mock' },
+    })
+    const agent = handle.agent
+    const profile = await assistants.createProfile({
+      name: 'Profile A',
+      responsibility: 'Default A',
+      defaultModel: { provider: 'mock', model: 'profile-a' },
+    })
+    const conv = await assistants.createConversation(profile.id, agent.id, {
+      modelOverride: { provider: 'mock', model: 'override-b' },
+    })
+
+    agent.model.select({ provider: 'mock', model: 'profile-a' })
+    await expect.poll(() => assistants.getConversationBySessionSync(agent.id)?.modelOverride?.model).toBe('profile-a')
+
+    await assistants.updateProfile(profile.id, {
+      defaultModel: { provider: 'mock', model: 'profile-a' },
+    })
+    expect(assistants.resolveEffectiveRoute(agent.id)?.route.model).toBe('profile-a')
+    expect(assistants.getConversationBySessionSync(agent.id)?.modelOverride?.model).toBe('profile-a')
+
+    sendUserText(agent, 'before resume')
+    await agent.whenIdle()
+    expect(harness.adapter.requests.at(-1)?.model).toBe('profile-a')
+
+    const sessionId = agent.id
+    await handle.dispose()
+    const resumedHandle = await ctx.agents.resume({ resumeSessionId: sessionId })
+    sendUserText(resumedHandle.agent, 'after resume')
+    await resumedHandle.agent.whenIdle()
+    expect(harness.adapter.requests.at(-1)?.model).toBe('profile-a')
+    expect(assistants.getConversationBySessionSync(sessionId)?.id).toBe(conv.id)
+    expect(assistants.resolveEffectiveRoute(sessionId)?.source).toBe('conversation')
+    await resumedHandle.dispose()
+  })
+
   it('proves (f) profile and seat changes reach conversations without override and never ones with one', async () => {
     const script = [
       textResponse('c1 r1'),
@@ -474,6 +515,62 @@ describe('Model Route Seam (S3)', { timeout: 30_000 }, () => {
     expect(harness.adapter.requests[1]?.model).toBe('captured-route-B')
   })
 
+  it('keeps the captured selection when the route changes before assembly finishes', async () => {
+    const multiAdapter = new MultiModalMockAdapter(
+      [textResponse('vision held'), textResponse('text refused')],
+      {
+        'frozen-vision': ['text', 'image'],
+        'later-text': ['text'],
+      },
+    )
+    harness = await setupAssistantHarness(multiAdapter)
+    const { ctx, assistants, lead } = harness
+    const profile = await assistants.createProfile({
+      name: 'Frozen Selection',
+      responsibility: 'Holds the captured route',
+      defaultModel: { provider: 'mock', model: 'frozen-vision' },
+    })
+    const conv = await assistants.createConversation(profile.id, lead.id)
+    let sawFrozenVariables = false
+    ctx.on('system-prompt/assemble', async (_assembly, context, next) => {
+      if (context.agent === lead && context.modelSelection?.model === 'frozen-vision' && !sawFrozenVariables) {
+        await assistants.setConversationModelOverride(conv.id, {
+          provider: 'mock',
+          model: 'later-text',
+        })
+      }
+      const assembled = await next()
+      if (context.agent === lead && !sawFrozenVariables) {
+        sawFrozenVariables = assembled.variables.model === 'frozen-vision'
+      }
+      return assembled
+    }, { prepend: true })
+
+    const imageMessage = createUserMessage({
+      content: [
+        { type: 'text', text: 'describe this' },
+        { type: 'image', attachment: { id: 'img-frozen' } as never },
+      ],
+      source: { kind: 'user' },
+    })
+    lead.followup(imageMessage)
+    await lead.whenIdle()
+
+    expect(sawFrozenVariables).toBe(true)
+    expect(multiAdapter.requests).toHaveLength(1)
+    expect(multiAdapter.requests[0]?.model).toBe('frozen-vision')
+    expect(lead.session.requestHeader()?.config.model).toBe('frozen-vision')
+
+    lead.followup(imageMessage)
+    await lead.whenIdle()
+    const turnEnd = lead.session.snapshotEvents().findLast(event => event.type === 'turn/end')
+    expect(turnEnd?.data.reason).toMatchObject({
+      kind: 'error',
+      error: { code: 'UNSUPPORTED_CONTENT' },
+    })
+    expect(multiAdapter.requests).toHaveLength(1)
+  })
+
   it('proves route notice behavior: at most one accurate notice per change and no repeated false ones', async () => {
     const script = [
       textResponse('resp 1'),
@@ -510,17 +607,16 @@ describe('Model Route Seam (S3)', { timeout: 30_000 }, () => {
       provider: 'mock',
       model: 'model-Y',
     })
-
     // Turn 3: Switched to model-Y -> EXACTLY ONE accurate notice
     sendUserText(lead, 't3')
     await lead.whenIdle()
 
     notices = lead.session.deriveMessages().filter(m => m.source?.kind === 'model-selection')
     expect(notices).toHaveLength(1)
-    expect(notices[0]?.content[0]).toMatchObject({
-      type: 'text',
-      text: expect.stringContaining('model-X; the session continues with model-Y'),
-    })
+    const notice = notices[0]?.content[0]
+    expect(notice?.type).toBe('text')
+    if (notice === undefined || notice.type !== 'text') throw new Error('expected a text model-selection notice')
+    expect(notice.text).toContain('model-X; the session continues with model-Y')
 
     // Turn 4: Continued with model-Y -> STILL exactly 1 notice in total (no repeated false ones!)
     sendUserText(lead, 't4')

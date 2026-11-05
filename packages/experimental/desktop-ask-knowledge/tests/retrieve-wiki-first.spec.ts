@@ -135,6 +135,16 @@ coverage_status: wiki-ready
     expect(readVal.verification).toBe('source-verified')
     expect(readVal.text).toContain('三日内通知所有债权人')
 
+    for (const passageId of [{ id: sourceVal.items[0]!.passageId }, 42]) {
+      const malformedRead = await executeTool(ctx, 'ask_knowledge_read', {
+        passageId,
+        wikiAttemptId: validAttemptId,
+      }, agent)
+      expect(malformedRead.isError).toBe(true)
+      expect(malformedRead.content.map(block => block.type === 'text' ? block.text : '').join(''))
+        .toContain('must be a string')
+    }
+
     // Step 4: Negative Control - Forged attempt ID refused
     const forgedRes = await executeTool(ctx, 'ask_knowledge_retrieve', {
       terms: ['资产清算'],

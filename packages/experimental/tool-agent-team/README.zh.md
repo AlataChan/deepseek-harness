@@ -72,6 +72,8 @@ kind: "package-reference"
 <a id="understand-the-implementation"></a>
 ## 理解实现
 
+在向 Agent fiber 安装工具前，插件先持有统一清理职责。若同步注册期间触发卸载，会回滚被中断的安装；若投影交接后所属插件已开始卸载，则不发布工具。
+
 <details>
 <summary>实现细节——点击展开</summary>
 

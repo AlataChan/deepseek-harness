@@ -1,11 +1,13 @@
 /** Declarative Agent capability sets, activation and session binding. */
-import { Context } from '@deepseek-ai/cordis'
+import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { bindScopeParent, createScope, scopeOf, scopeParentOf, type Scope, type ScopeKey, type ScopeParentBinding } from '@deepseek-ai/dsh-scope'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import { dump } from 'js-yaml'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { Session } from '@deepseek-ai/dsh-session'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 // Type-only: the optional `settings` service this registry keeps off the generated pages.
 import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-tools'
@@ -50,12 +52,14 @@ interface Binding {
 
 /** Registry of YAML-declared presets and the revisions live Agents retain. */
 export class AgentPresetRegistry extends TypertRemoteService {
-  static inject = ['loader', 'sessionProjections']
+  /** Blank-session selection reads `agents.turnBoundaryOf`. */
+  static inject = ['loader', 'sessionProjections', 'agents']
   static Config = z.object({
     default: z.string().required(),
     selectedDefault: z.string().volatile(),
   })
   private readonly owner: Context
+  private presetProjection!: ProjectionHandle<string | null>
   private readonly definitions = new Map<string, Definition>()
   private readonly generations = new Map<ScopeKey, Generation>()
   private readonly bindings = new WeakMap<ScopeKey, Binding>()
@@ -65,12 +69,26 @@ export class AgentPresetRegistry extends TypertRemoteService {
   constructor(ctx: Context, public config: Config) {
     super(ctx, 'agentPresets')
     this.owner = ctx
-    ctx.sessionProjections.register(agentPresetProjectionDefinition)
     ctx.inject(['settings'], (child) => { child.effect(() => child.settings.configure({ auto: false }, ctx.fiber)) })
     ctx.on('session/event', (session, event) => {
       if (event.type === 'agent-preset/selected') ctx.emit('agent-preset/selected', session.id, event.data.agentPreset)
     })
   }
+
+  /** Await the preset projection and release it with this service. */
+  protected async [Service.init](): Promise<void> {
+    await this.ctx.effect(async () => {
+      const handle = await this.ctx.sessionProjections.register(agentPresetProjectionDefinition)
+      this.presetProjection = handle
+      return () => handle.dispose()
+    }, 'agent-preset selection projection')
+  }
+
+  /** Read the Session's logged preset choice, including blank-session switches.
+   * @param session Session whose committed selection is read.
+   * @returns The current preset id, or null when the Session has no recorded choice.
+   */
+  presetOf(session: Session): string | null { return this.presetProjection.stateOf(session) }
 
   /** Default preset for a subsequently created session. */
   get defaultId(): string { return this.config.selectedDefault.get() ?? this.config.default }
@@ -356,8 +374,8 @@ export class AgentPresetRegistry extends TypertRemoteService {
   @Remote('select')
   async select(agent: Agent, agentPreset: string): Promise<string> {
     const turn = (this.switches.get(agent.id) ?? Promise.resolve()).then(async () => {
-      const boundary = this.owner.sessionProjections.stateOf(agent.session, 'turnBoundary')
-      if (boundary !== undefined && (boundary.openTurnStartSeq !== null || boundary.lastTurn > 0)) {
+      const boundary = this.owner.agents.turnBoundaryOf(agent.session)
+      if (boundary.openTurnStartSeq !== null || boundary.lastTurn > 0) {
         throw new RemoteError('agent-preset/locked', 'This session has already started', { sessionId: agent.id, agentPreset })
       }
       for (const hook of this.admitSelectHooks) await hook(agent, agentPreset)

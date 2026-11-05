@@ -1,0 +1,14 @@
+version: 1
+scenario: instruction-chain-budgets
+profile: headless
+composition: instruction-chain-budgets
+recording: authored
+header:
+  class: instruction-chain-budgets
+  pin: true
+  systemPromptSource: text-turn
+  toolSchemasSource: text-turn
+replay:
+  override: true
+workspace:
+  final: true

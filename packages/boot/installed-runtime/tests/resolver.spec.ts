@@ -41,7 +41,7 @@ function stageNode(root: string): string {
   return path
 }
 
-const nodeProbe = async (): Promise<string> => 'v24.1.0'
+const nodeProbe = async (): Promise<string> => 'v24.14.0'
 const accepted = ['@deepseek-ai/dsh', '@alatastudio/dsh'] as const
 
 describe('installed runtime resolver', () => {
@@ -104,5 +104,56 @@ describe('installed runtime resolver', () => {
       { runtimePath: shim, nodePath, nodeProbe, platform: 'win32' },
       { acceptedPackageNames: accepted, companion: 'vscode' },
     )).rejects.toThrow(/unrecognized.*shim/i)
+  })
+})
+
+describe('node runtime floor probes', () => {
+  function resolveAt(version: string): ReturnType<typeof resolveInstalledRuntime> {
+    const runtime = stageRuntime('@deepseek-ai/dsh', 'desktop')
+    const nodePath = stageNode(runtime.root)
+    return resolveInstalledRuntime(
+      { runtimePath: runtime.packageRoot, nodePath, nodeProbe: async () => version },
+      { acceptedPackageNames: accepted, companion: 'desktop' },
+    )
+  }
+
+  it.each([
+    'v22.0.0',
+    'v22.19.0',
+    'v22.23.2',
+    'v23.0.0',
+    'v23.11.0',
+    'v24.0.0',
+    'v24.1.0',
+    'v24.8.0',
+    'v24.8.99',
+  ])('rejects probed %s and names the floor', async (version) => {
+    await expect(resolveAt(version)).rejects.toThrow(
+      `Node ${version} is not a supported Harness runtime (>=24.9.0). Install Node.js 24.9.0 or newer`,
+    )
+  })
+
+  it.each([
+    'v24.9.0',
+    'v24.14.0',
+    'v24.14.1',
+    'v26.0.0',
+    'v26.8.0',
+  ])('accepts probed %s', async (version) => {
+    await expect(resolveAt(version)).resolves.toMatchObject({ runtimeVersion: '0.1.0-rc.5' })
+  })
+
+  it('rejects an unparsable probe', async () => {
+    await expect(resolveAt('not-a-version')).rejects.toThrow(/invalid version/)
+    await expect(resolveAt('v24.9')).rejects.toThrow(/invalid version/)
+  })
+
+  it('executes node --version on this process and accepts that executable', async () => {
+    const runtime = stageRuntime('@deepseek-ai/dsh', 'desktop')
+    const nodePath = realpathSync(process.execPath)
+    await expect(resolveInstalledRuntime(
+      { runtimePath: runtime.packageRoot, nodePath: process.execPath },
+      { acceptedPackageNames: accepted, companion: 'desktop' },
+    )).resolves.toMatchObject({ nodePath, runtimeVersion: '0.1.0-rc.5' })
   })
 })

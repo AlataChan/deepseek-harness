@@ -15,7 +15,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
-import type { Agent, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
+import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-fs'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -237,7 +237,7 @@ function assertAdoptable(header: AdoptableHeader, events: Iterable<SessionEvent>
  * @param ctx - plugin context carrying the Session query service.
  * @param agents - the core Agent registry.
  * @param sessionId - exact Session identity to adopt.
- * @param agentOptions - provider/model pair for this run.
+ * @param agentOptions - provider, model, and optional explicit effort for this run.
  * @param setup - per-Agent scope setup installing the model selection.
  * @param cwd - working directory resolved in the mounted filesystem.
  * @returns the resumed Agent.
@@ -246,8 +246,8 @@ async function resolveAgent(
   ctx: Context,
   agents: Context['agents'],
   sessionId: SessionId,
-  agentOptions: { provider: string; model: string },
-  setup: (agentCtx: Context) => void,
+  agentOptions: AgentOptions,
+  setup: (agentCtx: Context, agent: Agent) => void,
   cwd: string,
 ): Promise<Agent> {
   // Resuming promises the caller a log a later process can continue. Without a
@@ -330,14 +330,25 @@ async function run(ctx: Context, config: Config, io: HeadlessIo): Promise<void> 
   }
 
   const selection = defaultModel.currentSelection()
-  const agentOptions = { provider: selection.provider, model: selection.model }
+  const agentOptions: AgentOptions = { ...selection }
   // This bundle composes no preset roster, so the model-facing rows sit in the
   // host plane and the agent reads them from the global layer. A deployment
   // that DOES configure one has to join it here first
   // (@deepseek-ai/dsh-agent-preset-registry README, "Composing a child agent").
-  const setup = (agentCtx: Context): void => {
-    const selected: ModelSelectionRef = { current: selection, assembled: undefined }
-    installModelSelection(agentCtx, selected)
+  const setup = (agentCtx: Context, agent: Agent): void => {
+    // A resumed Session continues with this run's configured model. A fresh
+    // Session keeps the options selection and does not append model/selection.
+    if (config.sessionId !== undefined) {
+      const previous = agent.model.current()
+      const configured = { ...selection }
+      if (configured.reasoningEffort === undefined && previous !== undefined
+        && previous.provider === configured.provider && previous.model === configured.model
+        && previous.reasoningEffort !== undefined) {
+        configured.reasoningEffort = previous.reasoningEffort
+      }
+      agent.model.select(configured)
+    }
+    installModelSelection(agentCtx)
   }
   const sessionId = brandString<SessionId>(config.sessionId ?? `session-${randomUUID()}`)
   const fs = ctx.get('fs')

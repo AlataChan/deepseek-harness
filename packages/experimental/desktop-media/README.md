@@ -24,6 +24,8 @@ English | [中文](README.zh.md)
 <a id="config"></a>
 ## Config
 
+Projection-ready startup installs no prompt, tools, or recovery listener if the plugin fiber is disposed or unloading.
+
 ```yaml
 - id: desktop-media
   name: '@deepseek-ai/dsh-experimental-desktop-media'

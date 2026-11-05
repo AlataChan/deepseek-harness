@@ -86,6 +86,12 @@
       "version": "0.2.1-alpha.1",
       "source": "workspace",
       "path": "packages/experimental/session-decisions"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-desktop-operation",
+      "version": "0.2.1-alpha.1",
+      "source": "workspace",
+      "path": "packages/experimental/desktop-operation"
     }
   ]
 }

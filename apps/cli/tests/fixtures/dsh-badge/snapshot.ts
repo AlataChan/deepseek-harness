@@ -22,6 +22,7 @@ try {
   const agent: Agent = {
     ctx,
     id: agentId,
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     options: {},
     session,
     inbox: unsupportedInbox(),
@@ -36,7 +37,7 @@ try {
   }
   const decision = await agentEvents(ctx, agent).waterfall(
     'agent/pre-step',
-    { messages: [], turn: 1, step: 1, signal: new AbortController().signal },
+    { modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [], turn: 1, step: 1, signal: new AbortController().signal },
     () => Promise.resolve({ kind: 'enter' as const, messages: [] }),
   )
   const catalog = decision.kind === 'enter'

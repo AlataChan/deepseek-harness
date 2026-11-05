@@ -1,5 +1,5 @@
 ---
-description: "Web Session-log ZIP export: Host streaming, the authenticated download route, the Session Header action, and the /export command."
+description: "Web Session-log ZIP export and complete-history Markdown copy: Host routes, the Session Header menu, and the /export command."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-session-log-export` lets the Web interface download a session's full history: a `Download session log` menu item under the Session Header's more-actions button and an `/export` slash command both hand the session tree — the session, its sub-sessions, and attachments — to the browser as a ZIP download. The package owns the Host archive stream, its authenticated Fetch route, and the browser controls and feedback. The browser chooses the download destination. Setup and usage come first; implementation details follow.
+`dsh-session-log-export` downloads full Session history as a ZIP and copies committed history as Markdown, including turns outside the Chat window. `Download session log` in the Header menu and `/export` include sub-sessions and attachments; the browser chooses the download destination. `Copy Session as Markdown` reads the authenticated Host route and uses the shared clipboard primitive. The package owns both routes, the archive stream, browser controls, and failure feedback.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
-Use this package when the Web bundle should let users export a session log. It requires Connection, the command registry, Session query and persistence, and attachments. Mount the plugin, then choose `Download session log` from the Session Header's more-actions menu or type `/export`; the browser downloads `dsh-session-<id>.zip`.
+Use this package when the Web bundle should let users export a session log or copy it as Markdown. It requires Connection, the command registry, and Session query. The ZIP download also requires Session persistence and attachments. Mount the plugin, then choose `Download session log` from the Session Header's more-actions menu or type `/export`; the browser downloads `dsh-session-<id>.zip`. Choose `Copy Session as Markdown` to place the complete transcript on the clipboard.
 
 When `ui-message-feedback` is mounted, the same menu also offers `Feedback`, which opens its existing Session feedback dialog. Opening or dismissing that form does not export the Session or submit feedback. The feedback row follows the feedback plugin's availability; export remains available independently.
 
@@ -77,7 +77,7 @@ This section explains how the package wires the export control and points at the
 
 ### Design split
 
-The package has two halves. The Host half ([`src/index.ts`](src/index.ts)) registers the `/export` command and contributes the exact `GET`/`HEAD /api/session.export` Fetch route to Connection; [`src/archive.ts`](src/archive.ts) builds the bounded ZIP stream. The browser half ([`src/client/index.ts`](src/client/index.ts)) provides the shared download controller and UI, and observes `command/executed` so only the submitting browser starts a download.
+The package has two halves. The Host half ([`src/index.ts`](src/index.ts)) registers the `/export` command and contributes the exact `GET`/`HEAD /api/session.export` and `GET`/`HEAD /api/session.markdown` Fetch routes to Connection; [`src/archive.ts`](src/archive.ts) builds the bounded ZIP stream, and [`src/markdown.ts`](src/markdown.ts) renders one complete event snapshot. The browser half ([`src/client/index.ts`](src/client/index.ts)) provides the shared download and copy controllers and UI, and observes `command/executed` so only the submitting browser starts a download.
 
 The Header’s More action uses the shared compact Button, with a 28px square target and the same radius and hover fill as the right-sidebar expand control.
 
@@ -86,6 +86,10 @@ The Header’s More action uses the shared compact Button, with a 28px square ta
 Both entry paths issue a `HEAD` preflight to the document-relative `api/session.export?...`, then hand the GET route to the browser download manager without buffering the ZIP in JavaScript. One controller owns one in-flight download per session, collapses concurrent gestures into that operation, and cancels the preflight on plugin disposal. Modal state lives in a snapshot store keyed by session, so the button and the command share one dialog per session.
 
 The Host route is a feature-owned exact Fetch contribution. Connection applies its Host/Origin and browser-session checks and bridges the streaming `Response`; this package owns query validation, live-session flushes, handle-based log reads and attachment reads, ZIP generation, and HTTP status semantics.
+
+### Markdown copy
+
+`Copy Session as Markdown` flushes the current Session, then calls `sessionQuery.readSession` and formats that snapshot's events. The route does not emit a Session-file path. Compaction replacements and fork-inherited events stay in the transcript once; reasoning, system, developer, and injected non-human records are omitted, and the formatter does not invent a question status from storage-only records. One controller owns one pending copy. Disposal aborts the read and suppresses a late clipboard write or notice. The result toast is a `shell.overlay` entry, so it outlives the Header menu.
 
 </details>
 
@@ -110,7 +114,7 @@ Read these pages when the package-level contract is not enough. They move from t
 
 #### What the model sees
 
-Nothing. `/export` stays on the human-command plane, and the ZIP download does not enter model history.
+Nothing. `/export` stays on the human-command plane, and neither the ZIP download nor the Markdown copy enters model history.
 
 #### Token effect
 
@@ -129,6 +133,7 @@ These limits define when this package is a poor fit or needs special operational
 
 - **Browser download, not a Host-path writer** — the browser chooses the local destination; no Host path or native folder action is returned.
 - **Preflight reports only pre-stream failures** — a descendant or attachment failure after the browser accepts the GET is reported by the browser download manager, not by the dialog.
+- **Clipboard permission is host-owned** — a denied write shows the clipboard-failure toast and leaves the Session unchanged. Closing the Session during a copy cancels the read and does not publish a late success notice.
 
 <a id="dev-note"></a>
 ### Dev Note

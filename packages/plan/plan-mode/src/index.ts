@@ -33,7 +33,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { UserQuestionError } from '@deepseek-ai/dsh-user-questions'
 import type { CommandDefinitionId, CommandId } from '@deepseek-ai/dsh-commands'
 import type {} from '@deepseek-ai/dsh-session-projection'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionDefinition, ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type { PlanProjection, PlanUnitState } from './types.ts'
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
@@ -173,7 +173,7 @@ export const planProjectionDefinition = {
  * Client carriers expose the projection's cropped `{ active, pending }` view.
  */
 export class PlanModeController extends Service {
-  static inject = ['tools', 'systemPrompt', 'sessionProjections']
+  static inject = ['tools', 'systemPrompt', 'sessionProjections', 'agents']
 
   /** Validated deployment-owned guidance. */
   private readonly section: string
@@ -184,6 +184,7 @@ export class PlanModeController extends Service {
    * result already narrates the transition.
    */
   private readonly pendingIntents = new WeakMap<Session, { active: boolean; narrate: boolean }>()
+  private planProjection!: ProjectionHandle<PlanUnitState>
 
   constructor(ctx: Context, config: PlanModeConfig = { section: '' }) {
     super(ctx, 'planMode')
@@ -222,8 +223,6 @@ export class PlanModeController extends Service {
         return (pending?.active ?? this.loggedActive(context.agent.session)) ? this.section : ''
       },
     })
-
-    ctx.sessionProjections.register(planProjectionDefinition)
 
     // The command child activates only when a command registry is composed.
     ctx.inject(['commands'], (commandCtx) => {
@@ -365,14 +364,21 @@ export class PlanModeController extends Service {
     }))
   }
 
+  /** Await the plan projection and release it with this service. */
+  protected async [Service.init](): Promise<void> {
+    await this.ctx.effect(async () => {
+      const handle = await this.ctx.sessionProjections.register(planProjectionDefinition)
+      this.planProjection = handle
+      return () => handle.dispose()
+    }, 'plan-mode projection')
+  }
+
   private loggedActive(session: Session): boolean {
     return this.planState(session).active
   }
 
   private hasOpenTurn(session: Session): boolean {
-    const state = this.ctx.sessionProjections.stateOf(session, 'turnBoundary')
-    if (state === undefined) throw new Error('plan-mode requires the turnBoundary session projection')
-    return state.openTurnStartSeq !== null
+    return this.ctx.agents.turnBoundaryOf(session).openTurnStartSeq !== null
   }
 
   private loggedActiveAtLastHeader(session: Session): boolean | undefined {
@@ -381,9 +387,7 @@ export class PlanModeController extends Service {
 
   /** Read the required plan projection state or fail at the first service access. */
   private planState(session: Session): PlanUnitState {
-    const state = this.ctx.sessionProjections.stateOf(session, 'plan')
-    if (state === undefined) throw new Error('plan-mode requires the plan session projection')
-    return state
+    return this.planProjection.stateOf(session)
   }
 
   /**

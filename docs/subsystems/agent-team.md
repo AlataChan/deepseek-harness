@@ -636,8 +636,8 @@ async clearConversationModelOverride(id: AssistantConversationId, checkpoint?: n
 async archiveConversation(id: AssistantConversationId): Promise<AssistantConversation>
 
 /**
- * Seed conversation model override from durable model/selection events on the session.
- * Respects replay checkpoint: only events strictly newer than modelCheckpoint are eligible.
+ * Seed conversation model override from durable explicit model/selection events.
+ * Inherited sync events are not pins. An omitted origin is explicit. Only events strictly newer than modelCheckpoint are eligible.
  * @param id - conversation identifier.
  * @param persistence - optional session persistence instance (defaults to ctx.sessionPersistence).
  * @param signal - optional cancellation signal.
@@ -1309,7 +1309,7 @@ listDiscussions(teamId: TeamDefinitionId): readonly GroupDiscussion[]
  * @param teamId - team definition identifier.
  * @returns array of discussions.
  */
-@Remote('listDiscussions') async remoteListDiscussions(teamId: TeamDefinitionId): Promise<readonly GroupDiscussion[]>
+@Remote('listDiscussions') remoteListDiscussions(teamId: TeamDefinitionId): Promise<readonly GroupDiscussion[]>
 
 /**
  * Schedule a new group round according to coordinator-first and explicit-recipient rules.
@@ -1341,14 +1341,14 @@ async executeRound(roundId: GroupRoundId, options?: ExecuteRoundOptions): Promis
  * @param roundId - durably admitted round identity.
  * @returns retained admission record; execution may still be pending or active.
  */
-@Remote('startRound') async startRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry>
+@Remote('startRound') startRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry>
 
 /**
  * Read an admitted round and its durable slot checkpoints.
  * @param roundId - admitted round identity.
  * @returns retained round record when present.
  */
-@Remote('getRound') async getRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry | undefined>
+@Remote('getRound') getRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry | undefined>
 
 /**
  * Query the public transcript with scope authorization, pagination, and source attribution.
@@ -1394,7 +1394,7 @@ getReadCursor(conversationId: string): ReadCursorRecord | undefined
  * @param conversationId - conversation or discussion identifier.
  * @returns read cursor record or undefined.
  */
-@Remote('getReadCursor') async remoteGetReadCursor(conversationId: string): Promise<ReadCursorRecord | undefined>
+@Remote('getReadCursor') remoteGetReadCursor(conversationId: string): Promise<ReadCursorRecord | undefined>
 
 /**
  * Calculate unread event count for a conversation.

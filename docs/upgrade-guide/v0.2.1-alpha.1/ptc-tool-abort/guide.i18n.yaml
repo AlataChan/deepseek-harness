@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-alpha.1/ptc-tool-abort/guide.md
+/:
+  en: 4ccc9ae372693c47
+  zh: a21a8533ce104098
+/ptc-tool-abort-and-executor-config:
+  en: c0b909655352b53c
+  zh: 96eb204b7454ffcb
+/ptc-tool-abort-and-executor-config/change:
+  en: 0ed4fe913ce60541
+  zh: 0b669ea16edd83e1
+/ptc-tool-abort-and-executor-config/migration:
+  en: 4df7b18c5dbecd0a
+  zh: f16289847666429e

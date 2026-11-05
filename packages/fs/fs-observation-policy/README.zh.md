@@ -39,11 +39,11 @@ kind: "package-reference"
 
 ### 对模型而言的变化
 
-挂载策略后，`write` 可以创建新文件，但拒绝覆盖会话未读取过的现有文件；`edit` 要求先读取目标；自读取以来发生变化（包括缺失）的文件以 `FS_STALE_VERSION` 失败。缺失也会被记录：读取缺失文件会把它标记为确认缺失，因此随后的 `write` 可以通过防护创建流程重新创建它。会话恢复后不携带任何已观察状态，因此必须重新读取文件，防护变更才能再次成功。
+挂载策略后，`write` 可以创建新文件，但拒绝覆盖会话未读取过的现有文件；`edit` 和 `delete` 要求先读取目标；自读取以来发生变化（包括缺失）的文件以 `FS_STALE_VERSION` 失败。缺失也会被记录：读取缺失文件会把它标记为确认缺失，因此随后的 `write` 可以通过防护创建流程重新创建它。会话恢复后不携带任何已观察状态，因此必须重新读取文件，防护变更才能再次成功。
 
 ### 失败与恢复
 
-没有先前观测的编辑以代码 `FS_NOT_OBSERVED` 和策略原因 `edit requires reading "<path>" first` 失败；编辑被观测为缺失的目标以 `FS_NOT_FOUND` 失败。工具把策略和提供方的未读失败统一为 `cannot modify "<path>": file has not been read — read the file, then retry`，同时保留错误码和原始原因。在外部删除的文件上遵循该恢复指令会记录缺失，因此下一次防护写入可以重新创建它，而不会覆盖并发创建者。
+没有先前观测的编辑或删除以代码 `FS_NOT_OBSERVED` 和策略原因 `edit requires reading "<path>" first` 或 `delete requires reading "<path>" first` 失败；编辑或删除被观测为缺失的目标以 `FS_NOT_FOUND` 失败。工具把策略和提供方的未读失败统一为 `cannot modify "<path>": file has not been read — read the file, then retry`，同时保留错误码和原始原因。在外部删除的文件上遵循该恢复指令会记录缺失，因此下一次防护写入可以重新创建它，而不会覆盖并发创建者。
 
 -----
 
@@ -66,12 +66,12 @@ kind: "package-reference"
 
 | 文件 | 职责 |
 |---|---|
-| [`src/index.ts`](src/index.ts) | 三个 `fs/*` 监听器与已观察状态门禁 |
+| [`src/index.ts`](src/index.ts) | `fs/write-intent`、`fs/edit-intent`、`fs/delete-intent` 与 `fs/observed` 监听器，以及已观察状态门禁 |
 | [`src/types.ts`](src/types.ts) | 不透明事件参与者形态，从中派生所有者会话 |
 
 ### 决策流程
 
-`fs/write-intent` 把未见或确认缺失解析为 `{ kind: 'createIfAbsent' }`，把已观测存在解析为 `{ kind: 'replaceIfVersion', version: vObserved }`。`fs/edit-intent` 以 `FS_NOT_OBSERVED` 拒绝未见目标，以 `FS_NOT_FOUND` 拒绝确认缺失的目标，否则提供观察到的版本作为比较并交换的基础。`fs/observed` 为该所有者与目标记录 `{ kind: 'present', version }` 或 `{ kind: 'absent' }`——同步、只有副作用的 `WeakMap.set`，因为成功的变更已经提交。
+`fs/write-intent` 把未见或确认缺失解析为 `{ kind: 'createIfAbsent' }`，把已观测存在解析为 `{ kind: 'replaceIfVersion', version: vObserved }`。`fs/edit-intent` 与 `fs/delete-intent` 以 `FS_NOT_OBSERVED` 拒绝未见目标，以 `FS_NOT_FOUND` 拒绝确认缺失的目标，否则提供观察到的版本作为比较并交换的基础。移动对源路径使用编辑意图，对目标路径使用写入意图。`fs/observed` 为该所有者与目标记录 `{ kind: 'present', version }` 或 `{ kind: 'absent' }`——同步、只有副作用的 `WeakMap.set`，因为成功的变更已经提交。
 
 ### 单 slot、先到者胜
 

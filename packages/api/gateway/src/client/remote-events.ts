@@ -38,16 +38,22 @@ export type RemoteEventStreamOpener = (
 /** One subscribed listener after its event-specific signature is erased. */
 type RemoteEventListener = (this: Context, ...args: unknown[]) => unknown
 
-/** Untyped access used only for instance-private Cordis event keys. */
-interface PrivateEventContext {
-  on(name: string, listener: RemoteEventListener): () => boolean
-  parallel(name: string, ...args: unknown[]): Promise<void>
-  waterfall(
-    thisArg: Context,
-    name: string,
-    request: Readonly<Record<string, unknown>>,
-    next: () => Promise<symbol>,
-  ): unknown
+/** Cordis key owned by one {@link ClientRemoteEvents} instance. */
+type RemoteEventKey = `internal/api-gateway/remote-event/${string}`
+
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Forwarded Remote Event for one Client Gateway owner.
+     * The `internal/api-gateway/remote-event/<instance>/` prefix keeps the
+     * registration on that owner. Notifications run concurrently. An
+     * Agent-scoped delivery is a waterfall: the listener calls `next()` to
+     * delegate, and a JSON return value is the result.
+     * @param args - Host payload. A waterfall passes `next` last.
+     * @mode parallel
+     */
+    [key: `internal/api-gateway/remote-event/${string}`]: RemoteEventListener
+  }
 }
 
 /** Transport outcome after one Client listener chain either claims or delegates. */
@@ -61,7 +67,7 @@ const REMOTE_EVENT_NEXT = Symbol('api-gateway.remote-event.next')
 
 /** Own Cordis registrations, generation pumping, waterfall dispatch, and HTTP replies. */
 export class ClientRemoteEvents {
-  private readonly eventPrefix = `internal/api-gateway/remote-event/${randomUUID()}/`
+  private readonly eventPrefix: `internal/api-gateway/remote-event/${string}/` = `internal/api-gateway/remote-event/${randomUUID()}/`
   private readonly unregisterGeneration: () => void
   private activeGeneration: Promise<void> | undefined
 
@@ -90,7 +96,7 @@ export class ClientRemoteEvents {
     event: Event,
     listener: TypertClientEventListener<Event>,
   ): () => void {
-    const dispose = privateEvents(callerCtx).on(
+    const dispose = callerCtx.on(
       this.eventKey(event),
       listener as RemoteEventListener,
     )
@@ -114,7 +120,7 @@ export class ClientRemoteEvents {
 
   /** Deliver one notification through Cordis while containing listener failures. */
   private deliver(frame: RemoteEventEmitFrame): void {
-    void privateEvents(this.ownerCtx)
+    void this.ownerCtx
       .parallel(this.eventKey(frame.event), ...frame.args)
       .catch((error: unknown) => { this.reportError(frame.event, error) })
   }
@@ -238,7 +244,7 @@ export class ClientRemoteEvents {
       signal,
     }
     // Cancellation reaches the handler, whose Context remains owned until it settles.
-    const value = await privateEvents(target).waterfall(
+    const value = await target.waterfall(
       target,
       this.eventKey(frame.event),
       request,
@@ -252,7 +258,7 @@ export class ClientRemoteEvents {
       : { kind: 'result', value }
   }
 
-  private eventKey(event: string): string {
+  private eventKey(event: string): RemoteEventKey {
     return `${this.eventPrefix}${event}`
   }
 
@@ -330,10 +336,6 @@ function validRemoteEventName(value: unknown): value is string {
 
 function invalidRemoteEventFrame(): never {
   throw new TypeError('client api: invalid forwarded Remote event frame')
-}
-
-function privateEvents(ctx: Context): PrivateEventContext {
-  return ctx
 }
 
 function toError(reason: unknown, message: string): Error {

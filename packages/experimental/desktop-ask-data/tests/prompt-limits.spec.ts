@@ -32,10 +32,11 @@ describe('ask-data limit surfaces', () => {
     const first = new Context()
     await first.plugin(SessionStore)
     await first.plugin(SessionProjectionRegistry)
-    first.sessionProjections.register(askDataBindingProjectionDefinition)
+    await first.sessionProjections.register(askDataBindingProjectionDefinition)
     const session = first.sessions.create(SessionId('s-cold'))
     session.append('ask-data/bound', bound)
     const firstText = renderAskDataLimitsPrompt()
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(first.sessionProjections.stateOf(session, 'askDataBinding')).toEqual(bound)
     expect(Object.keys(bound)).toEqual(['sourceId', 'connectionRef', 'displayName', 'readonly'])
     const events = [...session.snapshotEvents()]
@@ -44,8 +45,9 @@ describe('ask-data limit surfaces', () => {
     const second = new Context()
     await second.plugin(SessionStore)
     await second.plugin(SessionProjectionRegistry)
-    second.sessionProjections.register(askDataBindingProjectionDefinition)
+    await second.sessionProjections.register(askDataBindingProjectionDefinition)
     const restored = second.sessions.create(SessionId('s-cold'), { seed: events })
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(second.sessionProjections.stateOf(restored, 'askDataBinding')).toEqual(bound)
     expect(renderAskDataLimitsPrompt()).toBe(firstText)
     for (const id of ASK_DATA_RULE_IDS) {

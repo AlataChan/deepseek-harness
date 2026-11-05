@@ -22,6 +22,10 @@ function writeIntent(ctx: Context, t: FsTarget, actor: object | undefined): Prom
 function editIntent(ctx: Context, t: FsTarget, actor: object | undefined): Promise<{ version: FsVersion } | undefined> {
   return ctx.waterfall('fs/edit-intent', t, actor, () => undefined)
 }
+/** Dispatch the delete-intent waterfall with the bare default thunk. */
+function deleteIntent(ctx: Context, t: FsTarget, actor: object | undefined): Promise<{ version: FsVersion } | undefined> {
+  return ctx.waterfall('fs/delete-intent', t, actor, () => undefined)
+}
 
 async function setup() {
   const ctx = new Context()
@@ -109,6 +113,21 @@ describe('edit-intent decision', () => {
     const exec = ownerExec({})
     ctx.emit('fs/observed', target('a.txt'), absent, exec)
     await expect(editIntent(ctx, target('a.txt'), exec)).rejects.toMatchObject({ code: 'FS_NOT_FOUND' })
+  })
+})
+
+describe('delete-intent decision', () => {
+  it('rejects an unread delete and a confirmed absence, and returns a present version', async () => {
+    const { ctx } = await setup()
+    const exec = ownerExec({})
+    await expect(deleteIntent(ctx, target('a.txt'), exec)).rejects.toMatchObject({
+      code: 'FS_NOT_OBSERVED',
+      message: 'delete requires reading "a.txt" first',
+    })
+    ctx.emit('fs/observed', target('a.txt'), absent, exec)
+    await expect(deleteIntent(ctx, target('a.txt'), exec)).rejects.toMatchObject({ code: 'FS_NOT_FOUND' })
+    ctx.emit('fs/observed', target('a.txt'), present('v3'), exec)
+    expect(await deleteIntent(ctx, target('a.txt'), exec)).toEqual({ version: 'v3' })
   })
 })
 

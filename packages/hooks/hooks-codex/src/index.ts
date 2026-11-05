@@ -44,7 +44,7 @@ import { parseCodexConfig, type CodexHookConfig } from './config.ts'
 /* jscpd:ignore-end */
 
 export const name = 'hooks-codex'
-export const inject = ['shell', 'sessionProjections']
+export const inject = ['shell', 'sessionProjections', 'agents']
 
 /** Plugin config: where the Codex hooks.json lives + the model name for payloads. */
 export interface Config {
@@ -284,8 +284,7 @@ export function apply(ctx: Context, config: Config): void {
 /* jscpd:ignore-start */
 function lastTurn(ctx: Context, agent: Agent | undefined): number {
   if (!agent) return 0
-  /* v8 ignore next -- agent-present hook points run inside AgentLoop, which owns this projection. */
-  return ctx.sessionProjections.stateOf(agent.session, 'turnBoundary')?.lastTurn ?? 0
+  return ctx.agents.turnBoundaryOf(agent.session).lastTurn
 }
 
 function blocksToText(content: ContentBlock[]): string {

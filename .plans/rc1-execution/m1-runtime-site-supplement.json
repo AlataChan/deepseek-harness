@@ -1,0 +1,71 @@
+{
+  "kind": "m1-runtime-site-supplement",
+  "accepted": false,
+  "m2Closed": true,
+  "note": "Census registration, reader, and listener files stay permitted. This file lists additional current sites and does not rewrite the M0 ledgers. m2Closed means the gate stays closed.",
+  "registrations": [
+    {
+      "id": "R03",
+      "key": "modelSelection",
+      "file": "packages/core/agent-loop/src/index.ts",
+      "role": "shared-canonical"
+    },
+    {
+      "id": "R06",
+      "key": "turnBoundary",
+      "file": "packages/core/agent/src/index.ts",
+      "role": "replacement"
+    },
+    {
+      "id": "media",
+      "key": "media",
+      "file": "packages/experimental/desktop-media/src/index.ts",
+      "role": "reviewed-current"
+    }
+  ],
+  "readers": [
+    {
+      "id": "binding-view-ask-data-askDataBinding",
+      "file": "packages/api/session-controller/src/ask-data.ts",
+      "method": "snapshot",
+      "key": "askDataBinding"
+    },
+    {
+      "id": "binding-view-ask-knowledge-askKnowledgeBinding",
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "method": "snapshot",
+      "key": "askKnowledgeBinding"
+    },
+    {
+      "id": "binding-view-ask-knowledge-askDataBinding",
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "method": "snapshot",
+      "key": "askDataBinding"
+    },
+    {
+      "id": "binding-view-commerce-commerceBinding",
+      "file": "packages/api/session-controller/src/commerce.ts",
+      "method": "snapshot",
+      "key": "commerceBinding"
+    },
+    {
+      "id": "C27-view",
+      "file": "packages/experimental/claude-code-mods/src/host-ops.ts",
+      "method": "snapshot",
+      "key": "contextPressure"
+    },
+    {
+      "id": "C36-view",
+      "file": "packages/experimental/desktop-ask-knowledge/src/tools.ts",
+      "method": "snapshot",
+      "key": "askKnowledgeBinding"
+    },
+    {
+      "id": "C37-view",
+      "file": "packages/experimental/desktop-ask-knowledge/src/unbind.ts",
+      "method": "snapshot",
+      "key": "askKnowledgeBinding"
+    }
+  ],
+  "listeners": []
+}

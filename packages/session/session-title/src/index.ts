@@ -17,7 +17,7 @@ import type {
 } from '@deepseek-ai/dsh-session'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionDefinition, ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-agent'
 export type {
   SessionTitleEventData,
@@ -293,7 +293,7 @@ export function foldSessionTitle(events: readonly SessionEvent[]): SessionTitleS
 
 /** Log-backed title fold plus asynchronous fallback generation. */
 export class SessionTitleService extends Service {
-  static inject = ['sessions', 'sessionProjections']
+  static inject = ['sessions', 'sessionProjections', 'agents']
   static Config: z<Config> = z.object({
     fallbackMaxWords: z.number().step(1).min(1).required(),
     fallbackMaxBytes: z.number().step(1).min(1).required(),
@@ -306,6 +306,7 @@ export class SessionTitleService extends Service {
   private readonly work = new Map<Session, SessionTitleWorkState>()
   private readonly lifetime = new AbortController()
   private readonly inFlight = new Set<Promise<unknown>>()
+  private titleInput: ProjectionHandle<TitleInputState> | undefined
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'sessionTitle')
@@ -335,24 +336,6 @@ export class SessionTitleService extends Service {
       this.work.clear()
     }, 'sessionTitle lifecycle')
 
-    ctx.sessionProjections.register(titleProjectionDefinition)
-
-    ctx.sessionProjections.register<'titleInput', TitleInputState>({
-      key: 'titleInput',
-      stateVersion: 3,
-      stateSchema: titleInputStateSchema,
-      init: () => EMPTY_TITLE_INPUT,
-      apply: (state, event) => {
-        const message = sessionTitleUserMessageOf(event)
-        if (message === undefined) return state
-        return {
-          first: state.first ?? message,
-          count: state.count + 1,
-          lastSeq: message.seq,
-        }
-      },
-    })
-
     ctx.on('session/event', (session, event) => {
       switch (event.type) {
         case 'user/message':
@@ -375,6 +358,27 @@ export class SessionTitleService extends Service {
       state.active?.controller.abort(new Error('session disposed during title generation'))
       this.work.delete(session)
     })
+  }
+
+  /** Await the title projections with automatic release on service disposal. */
+  protected async [Service.init](): Promise<void> {
+    await this.ctx.sessionProjections.register(titleProjectionDefinition)
+    const input = await this.ctx.sessionProjections.register<'titleInput', TitleInputState>({
+      key: 'titleInput',
+      stateVersion: 3,
+      stateSchema: titleInputStateSchema,
+      init: () => EMPTY_TITLE_INPUT,
+      apply: (state, event) => {
+        const message = sessionTitleUserMessageOf(event)
+        if (message === undefined) return state
+        return {
+          first: state.first ?? message,
+          count: state.count + 1,
+          lastSeq: message.seq,
+        }
+      },
+    })
+    this.titleInput = input
   }
 
   /**
@@ -542,7 +546,7 @@ export class SessionTitleService extends Service {
     const state = session === undefined ? undefined : this.work.get(session)
     const pending = state?.pending
     if (session === undefined || state === undefined || pending === undefined) return
-    const boundary = this.ctx.sessionProjections.stateOf(session, 'turnBoundary')?.lastStepBoundary
+    const boundary = this.ctx.agents.turnBoundaryOf(session).lastStepBoundary ?? undefined
     const route = session.requestHeader()?.config
     if (boundary?.kind !== 'start'
       || boundary.seq <= pending.throughSeq
@@ -719,7 +723,9 @@ export class SessionTitleService extends Service {
   }
 
   private titleInputOf(session: Session): TitleInputState {
-    return this.ctx.sessionProjections.stateOf(session, 'titleInput') as TitleInputState
+    const input = this.titleInput
+    if (input === undefined) throw new Error('session-title: title input projection is not registered')
+    return input.stateOf(session)
   }
 
   /** Queue detached service work and retain it through service disposal. */

@@ -32,3 +32,12 @@
 /filesystem/the-service-and-the-plugin:
   en: 6dcd1f39906d785e
   zh: e2b4b104bad31144
+/filesystem/cordis-api/fs-events/fs-write-intent-waterfall:
+  en: 1f6f2ac4c2b0917a
+  zh: 1f6f2ac4c2b0917a
+/filesystem/patch-syntax-records:
+  en: 15f9a6d5f91b866b
+  zh: 51e13f8a297bd8ef
+/filesystem/runtime-reader-and-execution-records:
+  en: 45eeb23c1e6498db
+  zh: fa3f56bc391b8371

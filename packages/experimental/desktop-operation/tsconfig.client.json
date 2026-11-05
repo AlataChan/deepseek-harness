@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig.base.client.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.client.tsbuildinfo"
+  },
+  "files": [
+    "src/copy.ts",
+    "src/client/index.ts",
+    "src/client/locales.ts",
+    "src/client/status.ts"
+  ],
+  "references": [
+    { "path": "../../../vendor/cordis" }
+  ]
+}

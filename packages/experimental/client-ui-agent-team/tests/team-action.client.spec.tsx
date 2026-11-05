@@ -2,16 +2,20 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type {} from '@deepseek-ai/dsh-client-ui-trajectory/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   TeamTaskId, TeamTaskView as TeamTask, TeamView,
 } from '@deepseek-ai/dsh-experimental-agent-team/client'
-import { makeTranslate, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
+import { chatSnapshot, conversationSnapshot, makeTranslate, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import {
   TeamAction, type TeamActionInjected, type TeamActionProps, type TeamActionResult,
   type TeamTaskActionResult,
 } from '../src/client/TeamAction.tsx'
+import type { ChatConversationViewNode, ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
+import type { ConversationViewSnapshotMap } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '../src/client/mount.ts'
 import { en, zh } from '../src/client/locales.ts'
 
 afterEach(() => {
@@ -20,8 +24,11 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+const scrollIntoView = vi.fn()
+
 beforeEach(() => {
-  Element.prototype.scrollIntoView = vi.fn()
+  scrollIntoView.mockClear()
+  Element.prototype.scrollIntoView = scrollIntoView
 })
 
 const SESSION = 'lead' as SessionId
@@ -77,62 +84,69 @@ function remoteFailure(message: string): TeamActionResult<never> {
   return { ok: false, error: new RemoteError('gateway/internal', message, {}) }
 }
 
-function emptyConversation() {
-  return {
-    views: { get: (_target: string) => undefined },
-    activeTargets: new Set<string>(),
+function chatWithArchifyPath(path: string): ChatSnapshot {
+  const empty = chatSnapshot()
+  const node: ChatConversationViewNode = {
+    target: 'chat',
+    anchorSeq: 0,
+    location: { kind: 'session' },
+    visibility: 'visible',
+    key: 'assistant-1',
+    id: 'assistant-1',
+    kind: 'assistant',
+    data: {
+      blocks: [{ kind: 'text', text: `done\nARCHIFY_HTML_PATH: ${path}` }],
+    },
   }
-}
-
-function chatWithArchifyPath(path: string) {
-  return {
+  return chatSnapshot({
     order: ['assistant-1'],
     nodes: {
-      get(key: string) {
-        if (key !== 'assistant-1') return undefined
-        return {
-          kind: 'assistant',
-          data: {
-            blocks: [{ kind: 'text', text: `done\nARCHIFY_HTML_PATH: ${path}` }],
-          },
-        }
-      },
-      values() {
-        return [this.get('assistant-1')]
-      },
+      ...empty.nodes,
+      get: key => key === 'assistant-1' ? node : undefined,
+      values: () => [node],
     },
-    legacy: { partial: null },
-  }
+  })
 }
 
 function props(
   actions: TeamActionInjected,
   sessionId: SessionId = SESSION,
-  options: { chat?: unknown } = {},
+  options: { chat?: ChatSnapshot } = {},
 ): TeamActionProps {
-  const conversation = {
+  const views: Partial<ConversationViewSnapshotMap> = options.chat === undefined ? {} : { chat: options.chat }
+  const conversation = conversationSnapshot({
     views: {
-      get(target: string) {
-        return target === 'chat' ? options.chat : undefined
-      },
+      get: target => views[target],
+      grouped: () => undefined,
     },
-    activeTargets: new Set<string>(),
-  }
+  })
   return {
     sessionId,
+    useSessions: () => { throw new Error('Session list is not used by this fixture') },
+    useSessionStatus: () => { throw new Error('Session status is not used by this fixture') },
+    useSessionRetainInfo: () => { throw new Error('Retain info is not used by this fixture') },
+    usePanelInfo: () => { throw new Error('Panel info is not used by this fixture') },
+    useWorkspaces: () => { throw new Error('Workspaces are not used by this fixture') },
+    useTrajectory: () => { throw new Error('Trajectory is not used by this fixture') },
+    useResource: () => { throw new Error('Resources are not used by this fixture') },
+    useSession: () => { throw new Error('Session state is not used by TeamAction') },
+    useProjection: () => { throw new Error('Projections are not used by TeamAction') },
+    useInput: select => select({ draft: '', attachmentIds: [], draftRev: 0, phase: 'plain', occurrences: [], queue: [] }),
+    useChat: () => { throw new Error('Chat hook is not used by TeamAction') },
     ...actions,
     inputActions: {
+      captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
+      insertText: () => false,
+      persistDraft: () => {},
       setDraft: vi.fn(),
       addAttachments: () => false,
       removeAttachment: () => {},
       pruneAttachments: () => {},
       submit: () => {},
     },
-    useConversation: (select: (value: typeof conversation) => unknown) => select(
-      options.chat === undefined ? emptyConversation() : conversation,
-    ),
+    useConversation: select => select(conversation),
     t: makeTranslate(zh, commonZh),
-  } as unknown as TeamActionProps
+  }
 }
 
 function actions(overrides: Partial<TeamActionInjected> = {}): TeamActionInjected {
@@ -412,7 +426,7 @@ describe('TeamAction', () => {
     const topology = await screen.findByText(zh.topology)
     const roster = screen.getByText(zh.roster)
     expect(topology.compareDocumentPosition(roster) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+    expect(scrollIntoView).toHaveBeenCalled()
   })
 
   it('explains durable teammates when the roster has only the lead', async () => {

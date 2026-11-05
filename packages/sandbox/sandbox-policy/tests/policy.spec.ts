@@ -235,9 +235,11 @@ describe('the sandbox/mode session kit', () => {
   it('the sandboxMode projection folds to the last switch, or null without one', async () => {
     const ctx = await mounted()
     const session = Session.create(SessionId('sess-fold'))
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'sandboxMode')).toBeNull()
     setSandboxMode(session, 'workspace-write')
     setSandboxMode(session, 'read-only')
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(session, 'sandboxMode')).toBe('read-only')
   })
 

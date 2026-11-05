@@ -15,7 +15,7 @@ import type {} from '@deepseek-ai/dsh-settings'
 
 import type { Volatile } from '@deepseek-ai/cordis'
 
-import { Context } from '@deepseek-ai/cordis'
+import { Context, FiberState, Service } from '@deepseek-ai/cordis'
 import { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
@@ -29,7 +29,7 @@ import type {} from '@deepseek-ai/dsh-shell'
 import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 import { APPROVAL_POLICIES, setApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 // Type-only: resolves the required projection service and optional settings/command children.
-import type {} from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-commands'
 import type { PermissionCatalog, PermissionSelection, PresetOption } from './types.ts'
 
@@ -201,6 +201,7 @@ export class PermissionPresetService extends TypertRemoteService {
   static inject = ['shell', 'approval', 'sessions', 'sessionProjections']
 
   private readonly presets: Record<string, PresetSpec>
+  private permissionProjection: ProjectionHandle<PermissionProjectionState> | undefined
   private autoAdmit: (() => void) | undefined
   private defaultSettings: () => PermissionSettings
 
@@ -231,23 +232,10 @@ export class PermissionPresetService extends TypertRemoteService {
       return { defaultPreset }
     }
 
-    const selectionSchema = zod.object({
-      currentValue: zod.string().min(1),
-    }) as zod.ZodType<PermissionSelection>
-    ctx.sessionProjections.register({
-      key: 'permissions',
-      stateVersion: 2,
-      stateSchema: permissionStateSchema,
-      init: () => ({ ...EMPTY_KNOBS, seeded: false }),
-      apply: applyPermissionEvent,
-      wire: { viewSchema: selectionSchema, view: state => ({ currentValue: this.derive(state) }) },
-    })
     ctx.on('session/created', (session) => {
+      if (this.permissionProjection === undefined) return
       this.pinInitialPermission(session)
     })
-    for (const session of ctx.sessions.list()) {
-      this.pinInitialPermission(session)
-    }
 
     // The /permission command: the one write path a web client uses (the
     // popup contribution submits the picked preset as this line). The child
@@ -274,6 +262,24 @@ export class PermissionPresetService extends TypertRemoteService {
         },
       })
     })
+  }
+
+  /** Await the owned projection; seed existing Sessions only while the service fiber accepts effects. */
+  protected async [Service.init](): Promise<void> {
+    const selectionSchema = zod.object({
+      currentValue: zod.string().min(1),
+    }) as zod.ZodType<PermissionSelection>
+    const handle = await this.ctx.sessionProjections.register({
+      key: 'permissions',
+      stateVersion: 2,
+      stateSchema: permissionStateSchema,
+      init: () => ({ ...EMPTY_KNOBS, seeded: false }),
+      apply: applyPermissionEvent,
+      wire: { viewSchema: selectionSchema, view: state => ({ currentValue: this.derive(state) }) },
+    })
+    if (this.ctx.fiber.uid === null || this.ctx.fiber.state === FiberState.UNLOADING) return
+    this.permissionProjection = handle
+    for (const session of this.ctx.sessions.list()) this.pinInitialPermission(session)
   }
 
   /**
@@ -326,9 +332,9 @@ export class PermissionPresetService extends TypertRemoteService {
   }
 
   private permissionState(session: Session): PermissionProjectionState {
-    const state = this.ctx.sessionProjections.stateOf(session, 'permissions')
-    if (state === undefined) throw new Error('permission: permissions session projection is not registered')
-    return state
+    const handle = this.permissionProjection
+    if (handle === undefined) throw new Error('permission: permissions session projection is not registered')
+    return handle.stateOf(session)
   }
 
   /**

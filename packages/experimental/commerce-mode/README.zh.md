@@ -86,6 +86,8 @@ kind: "package-bundle"
 <a id="understand-the-implementation"></a>
 ## 了解实现
 
+commerce-session 投影就绪后，仅当所属 fiber 未销毁且未进入卸载状态，才安装 commerce 工具。
+
 | 路径 | 职责 |
 |---|---|
 | `src/provider/index.ts` | `Commerce` Provider、固定读取、导入和串行化的数据源变更 |

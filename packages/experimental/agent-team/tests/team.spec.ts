@@ -114,6 +114,9 @@ interface TeamServiceInternals {
   readonly journal: {
     state(root: Agent): unknown
   }
+  teamProjection: {
+    stateOf(session: Session): ReturnType<typeof teamProjectionDefinition.init> | undefined
+  } | undefined
   disposeRuntime(): Promise<void>
   recoverFor(agent: Agent): Promise<void>
   scheduleRecovery(agent: Agent): void
@@ -164,15 +167,17 @@ async function waitRunning(ctx: Context, id: SessionId): Promise<Agent> {
 describe('Team identity and provisioning', () => {
   it('rejects missing and failed authoritative Team projections', async () => {
     const first = await setup([])
-    const journal = teamInternals(first.ctx).journal
-    const stateOf = first.ctx.sessionProjections.stateOf.bind(first.ctx.sessionProjections)
-    const stateOfSpy = vi.spyOn(first.ctx.sessionProjections, 'stateOf').mockImplementation((session, key) => (
-      key === 'agentTeam' ? undefined : stateOf(session, key)
-    ))
+    const internals = teamInternals(first.ctx)
+    const journal = internals.journal
+    const retained = internals.teamProjection
+    if (retained === undefined) throw new Error('expected the retained Team projection')
+    internals.teamProjection = undefined
     expect(() => journal.state(first.lead)).toThrow('Agent Teams projection is not registered')
-    stateOfSpy.mockImplementation((session, key) => key === 'agentTeam'
-      ? { ...teamProjectionDefinition.init(session.header), failure: 'failed Team projection' }
-      : stateOf(session, key))
+    internals.teamProjection = retained
+    const stateOfSpy = vi.spyOn(retained, 'stateOf').mockReturnValue({
+      ...teamProjectionDefinition.init(first.lead.session.header),
+      failure: 'failed Team projection',
+    })
     expect(() => journal.state(first.lead)).toThrow('failed Team projection')
     stateOfSpy.mockRestore()
   })
@@ -202,6 +207,7 @@ describe('Team identity and provisioning', () => {
     await ctx.plugin(SubagentService)
     const lead = await ctx.agentLoop.create(SessionId('preexisting-lead'), {})
     const service = new TeamService(ctx)
+    await new Promise(resolve => setImmediate(resolve))
 
     expect(service.listMembers(lead)).toEqual([expect.objectContaining({
       name: 'lead',

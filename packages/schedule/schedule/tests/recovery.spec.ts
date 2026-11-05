@@ -267,7 +267,8 @@ it('does not start dispatch when storage opens after its owner begins unloading'
     await settled
     expect(ctx.get('storageDomain') === facility).toBe(true)
     expect(launches()).toBe(0)
-    expect(startupFailure).toContain('cannot create effect on inactive context')
+    expect(startupFailure).toBe('')
+    expect(ctx.get('schedule')).toBeUndefined()
     expect(facility.get('schedule')).toBeUndefined()
     expect(vi.getTimerCount()).toBe(0)
     const reopened = await facility.open(scheduleDomain)

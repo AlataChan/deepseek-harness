@@ -34,6 +34,29 @@ import {
 import { commerceSessionProjectionDefinition } from './projection.ts'
 import type { CommerceSessionState, StagedChange, StagedChangeItem } from './types.ts'
 
+const commerceSessions = new WeakMap<Context, {
+  stateOf(session: Agent['session']): ReturnType<typeof commerceSessionProjectionDefinition.init>
+}>()
+
+/**
+ * Remember the commerce-session projection registered by the tool mount.
+ * @param ctx - mount context.
+ * @param handle - awaited registration handle.
+ */
+export function bindCommerceSessionProjection(
+  ctx: Context,
+  handle: { stateOf(session: Agent['session']): ReturnType<typeof commerceSessionProjectionDefinition.init> },
+): void {
+  commerceSessions.set(ctx, handle)
+}
+
+function commerceSessionOf(
+  ctx: Context,
+  session: Agent['session'],
+): ReturnType<typeof commerceSessionProjectionDefinition.init> {
+  return commerceSessions.get(ctx)?.stateOf(session) ?? commerceSessionProjectionDefinition.init()
+}
+
 /** Ledger bound and guardrails the staging tools enforce beside the shared result bounds. */
 export interface StagingConfig extends OutcomeBounds {
   /** Maximum changes one session ledger holds, counting discarded and exported changes. */
@@ -65,8 +88,7 @@ export function boundSession(ctx: Context, exec: ToolRunContext): { outcome: Too
   if ('outcome' in direct) return direct
   const current = binding(ctx, direct.agent)
   if (current === null) return { outcome: unbound() }
-  const state = ctx.sessionProjections.stateOf(direct.agent.session, 'commerceSession')
-    ?? commerceSessionProjectionDefinition.init()
+  const state = commerceSessionOf(ctx, direct.agent.session)
   return { agent: direct.agent, sourceId: current.sourceId, state }
 }
 

@@ -297,5 +297,5 @@ export function outputFor(bounds: OutcomeBounds): {
  * @returns the binding, or null before binding.
  */
 export function binding(ctx: Context, agent: Agent): CommerceBinding | null {
-  return ctx.sessionProjections.stateOf(agent.session, 'commerceBinding') ?? null
+  return ctx.get('commerce')?.bindingOf(agent.session) ?? null
 }

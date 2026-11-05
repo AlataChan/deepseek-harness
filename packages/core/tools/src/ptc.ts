@@ -7,6 +7,8 @@
  */
 
 import { brandString } from '@deepseek-ai/dsh-brand'
+import { scopeOf } from '@deepseek-ai/dsh-scope'
+import type { ScopeKey } from '@deepseek-ai/dsh-scope'
 import { createUserMessage, HarnessError } from '@deepseek-ai/dsh-llm'
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
@@ -314,8 +316,8 @@ export interface RunCodeBridgeOptions {
    * loud).
    */
   peekRuntime: () => PtcRuntime | undefined
-  /** The run's overlap cap for parallel-classified sub-calls (the registry passes its validated `maxParallelSubCalls`). */
-  maxParallel: number
+  /** Live overlap cap for parallel-classified sub-calls. The registry reads the executing scope's executor limit, then its own. */
+  maxParallel: (scope?: ScopeKey) => number
   /** Runs the contained `tools/ptc-dispatch-log` waterfall over one settled sub-dispatch (the registry's private invoker). */
   shapeDispatchLog: (dispatch: PtcDispatchLog) => Promise<ContentBlock[]>
 }
@@ -410,6 +412,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
       // run settles for ANY reason, so an in-flight sub-dispatch is aborted
       // (its executor kills on this signal) instead of orphaned, and
       // queued-unstarted dispatches are abandoned.
+      const subcallScope = exec.agent === undefined ? undefined : scopeOf(exec.agent.ctx)
       const runController = new AbortController()
       const onOuterAbort = (): void => { runController.abort(exec.signal.reason) }
       exec.signal.addEventListener('abort', onOuterAbort, { once: true })
@@ -493,7 +496,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
                 // Reclassify at start time (fail-closed on registry changes).
                 const mode = head.classify()
                 const capacity = !exclusiveActive
-                  && (mode === 'exclusive' ? inFlight.size === 0 : inFlight.size < maxParallel)
+                  && (mode === 'exclusive' ? inFlight.size === 0 : inFlight.size < maxParallel(subcallScope))
                 if (capacity) {
                   if (mode === 'exclusive') exclusiveActive = true
                   head.mode = mode
@@ -551,6 +554,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
           schema,
           arguments: normalized.dispatched,
           ...exec.agent ? { agent: exec.agent } : {},
+          ...exec.toolSet !== undefined ? { toolSet: exec.toolSet } : {},
           parent: exec.token,
           signal: runController.signal,
         }
@@ -595,6 +599,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
                 arguments: normalized.logged,
                 isError: result.isError,
                 ...result.error?.info === undefined ? {} : { error: result.error.info },
+                ...result.meta === undefined ? {} : { meta: result.meta },
                 content: logged,
               })
             })().finally(() => { logWork.delete(task) })
@@ -658,7 +663,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
               // bounds their count. Beyond the cap, the
               // ordered lane waits, so later sub-calls cannot start and
               // pending I/O/memory cannot grow without bound.
-              while (logWork.size > maxParallel) await Promise.race(logWork)
+              while (logWork.size > maxParallel(subcallScope)) await Promise.race(logWork)
             },
           })
           wakeup()
@@ -687,7 +692,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
       // restricted globals vanish) — the same view the SDK section declared,
       // so a program can bind exactly what its prompt promised; sub-dispatch
       // re-resolves per call through the same view (exec.agent threads down).
-      for (const schema of registry.schemas(exec.agent)) {
+      for (const schema of registry.schemas(exec.agent, exec.toolSet)) {
         if (schema.name === RUN_CODE_NAME) continue
         Object.defineProperty(functions, schema.name, { enumerable: true, value: binding(deepFreeze(schema)) })
       }

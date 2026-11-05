@@ -12,17 +12,23 @@ import type {
 } from '@deepseek-ai/dsh-llm'
 import type { AgentCancelCause, Session, SessionSeq, UserMessage } from '@deepseek-ai/dsh-session'
 export type { AgentCancelCause } from '@deepseek-ai/dsh-session'
-import type { Agent, InboxTarget } from './types.ts'
+import type { Agent, InboxTarget, ModelSelection } from './types.ts'
 export type { Agent } from './types.ts'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 declare module '@deepseek-ai/dsh-system-prompt' {
   interface AssembleContext {
     /** Agent for this assembly; absent on diagnostics. When present, `scope` must identify the same agent. */
     agent?: Agent
+    /** Captured step selection, retained across retries; omitted effort uses adapter defaults. Absent outside agent steps. */
+    modelSelection?: Readonly<ModelSelection>
   }
 }
 
-/** Merge-extensible agent creation options. Persona belongs to system-prompt sections. */
+/**
+ * Merge-extensible agent options. Route fields may be live accessors until the
+ * Session records a selection or request; step preparation captures their value.
+ * Persona belongs to system-prompt sections.
+ */
 export interface AgentOptions {
   /** Provider route (must have a registered adapter at call time). */
   provider?: string
@@ -32,6 +38,40 @@ export interface AgentOptions {
   reasoningEffort?: ReasoningEffortId
   /** Maximum output tokens for each conversation-model request. */
   maxTokens?: number
+}
+
+/** Agent-owned access to the model choice for future steps. */
+export interface Model {
+  /**
+   * Resolve the choice for the next step to begin preparation. Recorded choices
+   * take precedence over the last request and then the Agent's live options.
+   * This read neither starts a step nor changes an already-prepared step.
+   * @returns a detached choice, or undefined when no source names both provider and model.
+   */
+  current(): Readonly<ModelSelection> | undefined
+
+  /**
+   * Origin of the choice `current` reads.
+   * Null means that route came from a request header or the Agent's live options, not from a `model/selection` event.
+   * A header-only session is therefore not an explicit pin.
+   * @returns `explicit`, `inherited`, or null.
+   */
+  origin(): 'explicit' | 'inherited' | null
+
+  /**
+   * Replace the next step's complete selection. Omitted effort follows adapter
+   * defaults without inheriting a previous effort or resolving defaults here.
+   * The omitted origin argument means an explicit choice. An equal route is a
+   * no-op only when the recorded origin is the same. Explicit over inherited
+   * and inherited over explicit both record the new origin. An options-only
+   * fallback is always recorded. Callers own
+   * model availability and capability validation. The append uses the Session's
+   * existing persistence and failure guarantees. Origin stays on the selection
+   * event and the projection; it is not part of the request route.
+   * @param selection - complete provider, model, and optional explicit effort.
+   * @param origin - `inherited` for a profile sync; omitted or `explicit` for a choice.
+   */
+  select(selection: Readonly<ModelSelection>, origin?: 'explicit' | 'inherited'): void
 }
 
 /** Options for {@link Agent.cancel}. */
@@ -162,10 +202,12 @@ export type AssistantStreamFrame =
 
 declare module './types.ts' {
   interface Agent {
-    /** The provider route and model this agent's requests use. */
+    /** Route fallback and output controls; live accessors apply until the Session records a selection or request. */
     readonly options: AgentOptions
     /** The live session this agent drives; its log is the durable source of truth. */
     readonly session: Session
+    /** Agent-owned access to durable model selection for future steps. */
+    readonly model: Model
     /** Agent-owned access to durable pending work. */
     readonly inbox: Inbox
     /** The current lifecycle state, mirrored on every `agent/status` transition. */
@@ -314,10 +356,11 @@ declare module '@deepseek-ai/cordis' {
      * @param payload.turn - the turn that will own the step.
      * @param payload.step - the step proposed by the loop.
      * @param payload.signal - the current turn's cancellation signal.
+     * @param payload.modelSelection - provider, model, and effort captured before assembly. Listeners must not replace them.
      * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.
      * @mode waterfall
      */
-    'agent/pre-step'(this: Scoped<Agent>, payload: { agent: Agent; messages: UserMessage[]; turn: number; step: number; signal: AbortSignal }, next: () => Promise<PreStepDecision>): Promise<PreStepDecision>
+    'agent/pre-step'(this: Scoped<Agent>, payload: { agent: Agent; messages: UserMessage[]; turn: number; step: number; signal: AbortSignal; modelSelection: Readonly<ModelSelection> }, next: () => Promise<PreStepDecision>): Promise<PreStepDecision>
     /**
      * Replace the frozen call configuration. `await next()` yields the config
      * the machine would use (agent options on the first request, the logged

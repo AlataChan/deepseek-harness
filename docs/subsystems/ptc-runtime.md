@@ -18,11 +18,20 @@ Source: [`packages/ptc-runtime/ptc-runtime/src/types.ts`](../../packages/ptc-run
 interface PtcRunRequest {
   /**
    * The program source, in the runtime's {@link ../index.ts | language}. It
-   * runs as the body of an async function: top-level `await` and `return`
-   * are available, and the completion value becomes
-   * {@link PtcRunResult.value}.
+   * follows the provider's programFormat: an async function body supports
+   * top-level `await` and `return`; REPL and Script programs support top-level
+   * declarations, `await`, and a final expression, but not top-level `return`.
+   * The Script provider lowers top-level await; its executionInstructions and
+   * documentation define retained-binding semantics. The completion value
+   * becomes {@link PtcRunResult.value}.
    */
   program: string
+  /**
+   * Object-identity owner for optional in-memory state. Omission requests a fresh
+   * environment. Consumers must await runtime.release(owner) when the owner ends.
+   * Stateless providers ignore this field; retained state is never durable.
+   */
+  stateOwner?: object
   /** Host functions exposed to the program, one global object per namespace. */
   bindings: PtcBindingNamespace[]
   /** Working directory in the mounted filesystem and subprocess execution world. */
@@ -77,7 +86,7 @@ interface PtcRunResult {
   /** Applied file policy and observed denial, when the provider enforces file policy. */
   sandbox?: PtcRunSandbox
   /**
-   * The program's completion value (its top-level `return`), when it ran to
+   * The program's completion value (a return or final REPL/Script expression), when it ran to
    * completion and the value crossed the runtime's lossless-JSON boundary.
    * Invalid or over-limit completions fail the run instead of substituting a
    * rendered string; a failed or value-less run leaves this absent.
@@ -209,9 +218,18 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.ptcRuntime` — `PtcRuntime` (abstract seam)
 
-Registers one `ctx.ptcRuntime` implementation. Program, budget, abort, and substrate failures resolve in PtcRunResult; only Service Definition contract misuse rejects. Implementations bridge structured-cloneable bindings, materialize each declared namespace rejection class, treat programs as hostile peers, isolate runs from one another, and terminate and await in-flight runs during disposal.
+Registers one `ctx.ptcRuntime` implementation. Program, budget, abort, and substrate failures resolve in PtcRunResult; only Service Definition contract misuse rejects. Implementations bridge structured-cloneable bindings, materialize each declared namespace rejection class, treat programs as hostile peers, isolate distinct state owners, and terminate and await in-flight runs during disposal.
 
 ```ts cordis-catalog
+/**
+ * Release an owner's retained environment and await its execution resources.
+ * Stateless providers have no retained resources to release.
+ * @param owner - The exact object supplied as the request's state owner.
+ * @returns Completion after all owned execution resources have been released.
+ * @throws When managed resource cleanup fails.
+ */
+release(owner: object): Promise<void>
+
 /**
  * Resolve supported options and provider defaults before execution.
  * @param request - Program, bindings, cancellation and optional execution choices.

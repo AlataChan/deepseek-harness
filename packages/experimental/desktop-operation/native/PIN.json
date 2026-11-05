@@ -1,0 +1,25 @@
+{
+  "archive": {
+    "name": "agent-desktop-v1.2.0-aarch64-apple-darwin.tar.gz",
+    "bytes": 2230641,
+    "sha256": "219813428bb1ad8decae172faed05c5964a2415170df402e2786ccfa6452ba82"
+  },
+  "binaries": {
+    "agent-desktop": {
+      "bytes": 3824448,
+      "sha256": "dec75e0bba0d1f9b589bdb88188770ad1a199cde9e02cf0a5b94175491f738e9"
+    },
+    "agent-desktop-macos-helper": {
+      "bytes": 529616,
+      "sha256": "4a795a40ba7fc93b726b0834342f0225779c30d83e28f1f219db479860c38a78"
+    }
+  },
+  "license": {
+    "bytes": 11358,
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "skill": {
+    "bytes": 6979,
+    "sha256": "941873a93fca670fc16362de192521f2b5ca27675fb55f18c2112cde86ca9089"
+  }
+}

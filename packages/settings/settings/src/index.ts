@@ -225,7 +225,8 @@ export class SettingsForms extends Service {
   private revisions = new Map<string, { raw: string | undefined; revision: number; ns: SettingsNamespace; autoGenerate: boolean }>()
   private closed = false
   private scheduled = false
-  private readonly presentations = new Map<Fiber, { auto?: boolean }>()
+  // Traced Fiber views share an instance uid but can have different object identities.
+  private readonly presentations = new Map<Fiber['uid'], { auto?: boolean }>()
 
   constructor(private readonly ownerContext: Context) {
     super(ownerContext, 'settings')
@@ -264,7 +265,8 @@ export class SettingsForms extends Service {
    * @throws If this instance already has a registered policy.
    */
   configure(presentation: { auto?: boolean }, owner: Fiber = this.ctx.fiber): () => void {
-    const fiber = owner
+    const fiber = owner.uid
+    if (fiber === null) throw new Error('Settings presentation requires an active plugin instance')
     if (this.presentations.has(fiber)) throw new Error('Settings presentation is already configured for this plugin instance')
     const policy = { ...presentation }
     this.presentations.set(fiber, policy)
@@ -309,14 +311,14 @@ export class SettingsForms extends Service {
       if (form === undefined) return []
       active.add(entry.id)
       const raw = JSON.stringify([entry.fiber.uid, schema.toJSON(), entry.options.config ?? {}])
-      const autoGenerate = this.presentations.get(entry.fiber)?.auto ?? true
+      const autoGenerate = this.presentations.get(entry.fiber.uid)?.auto ?? true
       const previous = this.revisions.get(entry.id)
       const revision = previous === undefined ? 0 : previous.revision + Number(previous.raw !== raw)
       this.revisions.set(entry.id, { raw, revision, ns: entry.options.id as SettingsNamespace, autoGenerate })
       if (previous?.raw !== raw || previous.autoGenerate !== autoGenerate) {
         this.ownerContext.emit('settings/document-updated', entry.options.id as SettingsNamespace, revision)
       }
-      const value = projectForm(form, plainConfig(entry.fiber.config))
+      const value = projectForm(form, plainConfig(entry.fiber.effectiveConfig))
       const resolved: unknown = interpolate(entry.fiber.ctx, inherited)
       const base = projectForm(form, plainConfig(inheritedConfig(entry.fiber.runtime, resolved)))
       const user = projectForm(form, override)

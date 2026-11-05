@@ -37,10 +37,10 @@ function owner(): Agent {
 
 function mediaWith(state: { requests: Record<string, typeof approved> }): DesktopMedia {
   const ctx = new Context()
-  ctx.provide('sessionProjections', {
-    stateOf: () => ({ requests: state.requests, artifacts: {} }),
-  })
-  return new DesktopMedia(ctx, config)
+  const media = new DesktopMedia(ctx, config)
+  const read = () => ({ requests: state.requests, artifacts: {} })
+  media.bindMediaProjection({ stateOf: read, readerFor: () => read, dispose: async () => {} })
+  return media
 }
 
 describe('pilot approval', () => {
@@ -75,13 +75,12 @@ describe('pilot approval', () => {
 
   it('reuses an unchanged stored approval', async () => {
     const ctx = new Context()
-    ctx.provide('sessionProjections', {
-      stateOf: () => ({ requests: { r_1: approved }, artifacts: {} }),
-    })
     ctx.provide('jobs', {
       start() { throw new Error('no job controller attached') },
     })
     const media = new DesktopMedia(ctx, config)
+    const read = () => ({ requests: { r_1: approved }, artifacts: {} })
+    media.bindMediaProjection({ stateOf: read, readerFor: () => read, dispose: async () => {} })
     await expect(media.createVideo(owner(), {
       prompt: 'A green cup on a table.',
       duration: 5,
@@ -99,7 +98,7 @@ describe('pilot approval', () => {
   it('reads optional seams from the current context', () => {
     const root = new Context()
     root.provide('jobs', { start() { return 'job-1' } })
-    expect(optionalHostSeam<{ start: () => string }>(root, 'jobs')?.start()).toBe('job-1')
+    expect((optionalHostSeam(root, 'jobs') as { start: () => string } | undefined)?.start()).toBe('job-1')
     expect(optionalHostSeam(root, 'missing-seam')).toBeUndefined()
     expect(MediaError).toBeDefined()
   })

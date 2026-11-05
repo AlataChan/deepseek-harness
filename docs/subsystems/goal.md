@@ -183,6 +183,7 @@ Goal service (`ctx.goals`) backed exclusively by the owning session log.
  * @param agent - owning live agent.
  * @returns a fresh view or `undefined` when no goal is current.
  * @throws {@link GoalError} when the agent is not the registry's live instance.
+ * @throws {Error} `inactive context` when the providing fiber has been disposed.
  */
 @Remote('get') get(agent: Agent): GoalView | undefined
 

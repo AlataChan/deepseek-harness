@@ -6,7 +6,6 @@
 
 import type { MessageId } from '@deepseek-ai/dsh-llm'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import type SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Session, SessionEventMap, UserMessage } from '@deepseek-ai/dsh-session'
 import type {
   AgentEventDispatch,
@@ -67,13 +66,13 @@ export const inboxProjectionDefinition = {
 /**
  * Driver-owned durable Inbox implementation used by ReactLoopAgent and focused
  * provider tests.
- * @param projections - registry with the standard Inbox projection registered by AgentLoop.
+ * @param readState - reader for the live Inbox projection state.
  * @param session - session whose durable events store pending input.
  * @param dispatch - agent-scoped notifications for Inbox lifecycle events.
  */
 export class ReactLoopInbox implements InboxContract {
   constructor(
-    private readonly projections: SessionProjectionRegistry,
+    private readonly readState: () => InboxState,
     private readonly session: Session,
     private readonly dispatch: AgentEventDispatch,
   ) {}
@@ -185,13 +184,7 @@ export class ReactLoopInbox implements InboxContract {
 
   /** Read the current durable projection state. */
   private current(): InboxState {
-    const state = this.projections.stateOf(this.session, 'inbox')
-    if (state === undefined) {
-      throw new Error(
-        `agent "${this.session.id}" cannot read inbox state: its projection registration is not active`,
-      )
-    }
-    return state
+    return this.readState()
   }
 
   /** Commit one normalized mutation and publish its live events. */

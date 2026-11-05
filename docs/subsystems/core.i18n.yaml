@@ -35,3 +35,9 @@
 /core/repo-wide-type-patterns/branded-ids:
   en: 10f8ac0f97e7c54a
   zh: 75cd2311aabfe464
+/core/durable-model-selection:
+  en: fb2bf8abb5fba601
+  zh: e2ecfbe4d323849f
+/core/runtime-reader-and-execution-records:
+  en: 45eeb23c1e6498db
+  zh: fa3f56bc391b8371

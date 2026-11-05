@@ -107,10 +107,10 @@ async function harness(options: {
   const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'dsh-commerce-session-')))
   const ctx = new Context()
   await ctx.plugin(SessionStore)
-  await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionProjectionRegistry)
-  ctx.sessionProjections.register(commerceBindingProjectionDefinition)
-  ctx.sessionProjections.register(agentPresetProjectionDefinition)
+  await ctx.plugin(AgentRegistry)
+  await ctx.sessionProjections.register(commerceBindingProjectionDefinition)
+  const presetProjection = await ctx.sessionProjections.register(agentPresetProjectionDefinition)
 
   const selects: string[] = []
   const rosterMode = options.presets ?? 'roster'
@@ -122,6 +122,7 @@ async function harness(options: {
   if (rosterMode !== 'none') {
     ctx.provide('agentPresets', {
       defaultId: 'standard',
+      presetOf: (session: Session) => presetProjection.stateOf(session),
       resolve: (id?: string) => rosterMode === 'missing-preset' && id === 'commerce'
         ? Promise.reject(notFound('commerce'))
         : Promise.resolve({ id: id ?? 'standard', trust: 'system', path: `/presets/${id ?? 'standard'}/agent.cordis.yml` }),
@@ -151,10 +152,9 @@ async function harness(options: {
       const unregister = ctx.agents.register(agent)
       return {
         agent,
-        dispose: () => {
-          unregister()
+        dispose: async () => {
+          await unregister()
           detach()
-          return Promise.resolve()
         },
       }
     },
@@ -244,6 +244,7 @@ describe('session commerce remotes', () => {
     if (!committed.ok) return
     const agent = ctx.agents.get(committed.value.sessionId)
     expect(agent?.session.snapshotEvents().some(event => event.type === 'commerce/bound')).toBe(true)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(agent!.session, 'commerceBinding')).toMatchObject({ sourceId: SOURCE })
     // The created Session composes the preset; only an existing Session is switched.
     expect(selects).toEqual([])

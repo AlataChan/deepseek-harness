@@ -10,6 +10,7 @@ import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+import { sessionListMetadataOf } from './list.ts'
 import type { Workspace, WorkspaceId } from '@deepseek-ai/dsh-workspace'
 
 /** Workspace face a commit attaches to and detaches from. */
@@ -79,10 +80,9 @@ export function resolveCommitTarget(
  * @returns true while the Session has no started turn.
  */
 export function isBlankSession(ctx: Context, agent: Agent): boolean {
-  const meta = ctx.sessionProjections.stateOf(agent.session, 'sessionListMetadata')
+  const meta = sessionListMetadataOf(ctx, agent.session)
   if (meta !== undefined) return meta.blank
-  const boundary = ctx.sessionProjections.stateOf(agent.session, 'turnBoundary')
-  if (boundary === undefined) return true
+  const boundary = ctx.agents.turnBoundaryOf(agent.session)
   return boundary.openTurnStartSeq === null && boundary.lastTurn === 0
 }
 

@@ -136,6 +136,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Registry of YAML-declared presets and the revisions live Agents retain.',
     methods: [
       {
+        signature: 'presetOf(session: Session): string | null',
+        description: 'Read the Session\'s logged preset choice, including blank-session switches.',
+        parameters: [{ name: 'session', description: 'Session whose committed selection is read.' }],
+        returns: 'The current preset id, or null when the Session has no recorded choice.',
+      },
+      {
         signature: 'async register(definition: PresetDefinition): Promise<() => Promise<void>>',
         description: 'Register and eagerly load a definition; activation failure remains visible in the roster.',
         parameters: [{ name: 'definition', description: 'Parsed configuration supplied by the declaring plugin.' }],
@@ -232,6 +238,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     summary: 'Agent service (`ctx.agents`): tracks live agents and carries the initiating Agent through one process-local asynchronous driver chain.',
     description: 'Agent service (`ctx.agents`): tracks live agents and carries the initiating Agent through one process-local asynchronous driver chain. Agent *creation* is provided by whichever plugin implements the AgentFactory (`@deepseek-ai/dsh-agent-loop`), registered via setFactory.\n\nInitiator methods provide same-process causal attribution only. Ambient presence is neither liveness proof nor authorization; subjects and owners remain explicit, as does identity at worker, process, persistence, and wire boundaries. Returned Promise boundaries drain during teardown, except a nested lineage that starts an owning-fiber unload is excluded from its own drain.',
     methods: [
+      {
+        signature: 'turnBoundaryOf(session: Session): TurnBoundaryProjection',
+        description: 'Read the turn and step positions recorded in a Session.',
+        parameters: [{ name: 'session', description: 'Session whose committed events are read.' }],
+        returns: 'the current turn and step positions; do not mutate the returned value.',
+      },
       {
         signature: 'currentInitiator(): Agent | undefined',
         description: 'Read the Agent that initiated the inherited asynchronous driver chain. Use this optional form for logging, tracing, metrics, or host attribution that also supports agentless calls. When a parent creates a child, setup reports the causal parent while the setup callback\'s Agent parameter identifies the child.',
@@ -938,7 +950,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'async seedConversationFromPersistence( id: AssistantConversationId, persistence?: SessionPersistence, signal?: AbortSignal, ): Promise<AssistantConversation>',
-        description: 'Seed conversation model override from durable model/selection events on the session. Respects replay checkpoint: only events strictly newer than modelCheckpoint are eligible.',
+        description: 'Seed conversation model override from durable explicit model/selection events. Inherited sync events are not pins. An omitted origin is explicit. Only events strictly newer than modelCheckpoint are eligible.',
         parameters: [{ name: 'id', description: 'conversation identifier.' }, { name: 'persistence', description: 'optional session persistence instance (defaults to ctx.sessionPersistence).' }, { name: 'signal', description: 'optional cancellation signal.' }],
         returns: 'conversation binding with updated override if eligible events were found.',
       },
@@ -1441,7 +1453,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'array of discussions.',
       },
       {
-        signature: '@Remote(\'listDiscussions\') async remoteListDiscussions(teamId: TeamDefinitionId): Promise<readonly GroupDiscussion[]>',
+        signature: '@Remote(\'listDiscussions\') remoteListDiscussions(teamId: TeamDefinitionId): Promise<readonly GroupDiscussion[]>',
         description: 'List all discussions belonging to a team via Typert Remote.',
         parameters: [{ name: 'teamId', description: 'team definition identifier.' }],
         returns: 'array of discussions.',
@@ -1465,13 +1477,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'terminal or explicitly uncertain round record.',
       },
       {
-        signature: '@Remote(\'startRound\') async startRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry>',
+        signature: '@Remote(\'startRound\') startRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry>',
         description: 'Start owned execution without occupying a serialized desktop RPC channel. Poll getRound for completion; cancelRound stops owned work. Execution errors remain visible through getRound until an explicit start retries recovery.',
         parameters: [{ name: 'roundId', description: 'durably admitted round identity.' }],
         returns: 'retained admission record; execution may still be pending or active.',
       },
       {
-        signature: '@Remote(\'getRound\') async getRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry | undefined>',
+        signature: '@Remote(\'getRound\') getRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry | undefined>',
         description: 'Read an admitted round and its durable slot checkpoints.',
         parameters: [{ name: 'roundId', description: 'admitted round identity.' }],
         returns: 'retained round record when present.',
@@ -1507,7 +1519,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'read cursor record or undefined.',
       },
       {
-        signature: '@Remote(\'getReadCursor\') async remoteGetReadCursor(conversationId: string): Promise<ReadCursorRecord | undefined>',
+        signature: '@Remote(\'getReadCursor\') remoteGetReadCursor(conversationId: string): Promise<ReadCursorRecord | undefined>',
         description: 'Get durable read cursor via Typert Remote.',
         parameters: [{ name: 'conversationId', description: 'conversation or discussion identifier.' }],
         returns: 'read cursor record or undefined.',
@@ -1871,6 +1883,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Bind one unbound Session after the provider verifies the source. The method rechecks at the commit point so concurrent calls append only one event.',
         parameters: [{ name: 'agent', description: 'live agent whose Session receives the binding event.' }, { name: 'sourceId', description: 'source to verify and bind.' }, { name: 'signal', description: 'caller lifetime; abort before commit appends nothing.' }],
         returns: 'the binding snapshot appended to the Session.',
+      },
+      {
+        signature: 'bindingOf(session: Agent[\'session\']): CommerceBinding | null',
+        description: 'Read the Session\'s committed commerce binding.',
+        parameters: [{ name: 'session', description: 'live Session.' }],
+        returns: 'the binding, or null before one is committed.',
       },
       {
         signature: 'abstract searchListings( sourceId: CommerceSourceId, request: CommerceSearchListingsRequest, signal?: AbortSignal, ): Promise<CommerceListingSummary[]>',
@@ -2270,6 +2288,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Overlay media service: catalogues, open/reveal, and paid producers.',
     methods: [
       {
+        signature: 'bindMediaProjection(handle: ProjectionHandle<MediaProjectionState>): void',
+        description: 'Retain the awaited media projection.',
+        parameters: [{ name: 'handle', description: 'registration handle; its disposer releases the unit.' }],
+      },
+      {
         signature: 'async runtimeStatus(signal: AbortSignal): Promise<MediaRuntimeStatus>',
         description: 'Whether user FFmpeg is recorded and has the V1 encoders.',
         parameters: [{ name: 'signal', description: 'caller lifetime.' }],
@@ -2556,6 +2579,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'target', description: 'the resolved target to edit.' }, { name: 'edit', description: 'the literal search/replace request.' }, { name: 'expected', description: 'the version guard; omit for an unconditional edit.' }, { name: 'signal', description: 'aborts before atomic publication takes effect.' }, { name: 'sandboxPolicy', description: 'the per-call mode and workspace root this edit runs under; a sandboxing backend fences the edit by it, the bare backend ignores it. Omit to leave the backend its own default.' }],
         returns: 'the outcome, including the version the edit produced.',
       },
+      {
+        signature: 'abstract deleteFile( target: FsTarget, expected?: { version: FsVersion }, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsDeleteOutcome>',
+        description: 'Remove a regular file. A missing or stale guarded target reports `FS_STALE_VERSION`. A directory or other non-file reports `FS_NOT_REGULAR_FILE`. Resolution has already followed symlinks, so this removes the real file.',
+        parameters: [{ name: 'target', description: 'the resolved file to remove.' }, { name: 'expected', description: 'the version guard; omit for an unconditional removal.' }, { name: 'signal', description: 'aborts before removal.' }, { name: 'sandboxPolicy', description: 'the per-call mode and workspace root this removal runs under; a sandboxing backend fences it, and the bare backend ignores it.' }],
+        returns: 'the bounded LF-normalized removed text, or null when no basis is available.',
+      },
+      {
+        signature: 'abstract moveFile( source: FsTarget, destination: FsTarget, options: { content?: string expectedSource?: { version: FsVersion } expectedDestination?: FsWriteIntent }, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsMoveOutcome>',
+        description: 'Publish the source text, or `options.content` when a caller already applied a patch, at the destination, then remove the source. Both targets stay locked in canonical order. Identical targets report `FS_SAME_TARGET`. The source guard follows `editText` and the destination guard follows `writeText`. The two effects are separate: a published destination with a retained source is reported through `sourceDeleted: false` and is not rolled back.',
+        parameters: [{ name: 'source', description: 'the resolved regular source.' }, { name: 'destination', description: 'the resolved destination within the same provider.' }, { name: 'options', description: 'optional replacement text and the source and destination guards.' }, { name: 'signal', description: 'checked before destination publication. After publication, both effects are reported.' }, { name: 'sandboxPolicy', description: 'the per-call mode and workspace root both paths run under; a sandboxing backend fences them, and the bare backend ignores it.' }],
+        returns: 'the bounded source basis, the destination outcome, and the source-removal status.',
+      },
     ],
   },
   {
@@ -2568,7 +2603,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read the current goal for one exact live agent.',
         parameters: [{ name: 'agent', description: 'owning live agent.' }],
         returns: 'a fresh view or `undefined` when no goal is current.',
-        throws: ['{@link GoalError} when the agent is not the registry\'s live instance.'],
+        throws: ['{@link GoalError} when the agent is not the registry\'s live instance.', '{Error} `inactive context` when the providing fiber has been disposed.'],
       },
       {
         signature: 'disarm(agent: Agent): GoalView | undefined',
@@ -3252,17 +3287,24 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'ptcRuntime',
     summary: 'Registers one `ctx.ptcRuntime` implementation.',
-    description: 'Registers one `ctx.ptcRuntime` implementation. Program, budget, abort, and substrate failures resolve in PtcRunResult; only Service Definition contract misuse rejects. Implementations bridge structured-cloneable bindings, materialize each declared namespace rejection class, treat programs as hostile peers, isolate runs from one another, and terminate and await in-flight runs during disposal.',
+    description: 'Registers one `ctx.ptcRuntime` implementation. Program, budget, abort, and substrate failures resolve in PtcRunResult; only Service Definition contract misuse rejects. Implementations bridge structured-cloneable bindings, materialize each declared namespace rejection class, treat programs as hostile peers, isolate distinct state owners, and terminate and await in-flight runs during disposal.',
     methods: [
       {
         signature: 'abstract readonly language: string',
-        description: 'The source language run expects `program` to be written in, as a lowercase identifier. Informational, not gating — a consumer that generates language-specific presentation (typed SDK stubs, usage instructions) switches on it and fails loud on a language it cannot present. Well-known values: `\'typescript\'` and `\'python\'`, those `dsh-tools` presents; the TypeScript backend is released, the Python backend is experimental and private (not published).',
+        description: 'The source language run expects `program` to be written in, as a lowercase identifier. Informational, not gating — a consumer that generates language-specific presentation (typed SDK stubs, usage instructions) switches on it and fails loud on a language it cannot present. Well-known values: `\'typescript\'` and `\'python\'`, those `dsh-tool-executor-ptc` presents; the TypeScript backend is released, the Python backend is experimental and private (not published).',
         parameters: [],
       },
       {
         signature: 'abstract readonly isolation: string',
         description: 'The execution substrate, as a lowercase identifier. Informational, not gating — a descriptor so deployments and diagnostics can tell backends apart, not a security claim. Well-known values: `\'worker-thread\'`, `\'process\'`, `\'container\'`.',
         parameters: [],
+      },
+      {
+        signature: 'release(owner: object): Promise<void>',
+        description: 'Release an owner\'s retained environment and await its execution resources. Stateless providers have no retained resources to release.',
+        parameters: [{ name: 'owner', description: 'The exact object supplied as the request\'s state owner.' }],
+        returns: 'Completion after all owned execution resources have been released.',
+        throws: ['When managed resource cleanup fails.'],
       },
       {
         signature: 'abstract resolve(request: PtcRunRequest): PtcRunSpec',
@@ -3908,7 +3950,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'The persisted projection cache service. Opens the `session_projcache` domain at init, checkpoints live sessions on a throttled write-behind (count/interval triggers from Config) plus three mandatory points — session creation, `turn/end`, and session disposal (the live-to-cold moment) — and serves the cached rows for a session header. Every durable write is fail-soft: failures log a warning and the cache self-heals on the next write.',
     methods: [
       {
-        signature: 'cachedSnapshot( meta: SessionHeader, keys?: readonly Extract<keyof SessionProjectionMap, string>[], ): ProjectionSnapshot | undefined',
+        signature: 'cachedSnapshot( meta: SessionHeader, keys?: ProjectionKeySelection, ): ProjectionSnapshot | undefined',
         description: 'The zero-I/O listing read: whole values viewed straight from the stored rows (version-matching keys only) of the record bound to the caller\'s lifecycle. The header is the only identity witness a listing holds, so this face matches the lifecycle identity (`formatVersion`, `createdAt`, `cwd`, `isSeeded`) and not the inherited cut: within one format generation the cut is fixed at fork time, so it distinguishes no lifecycle the other fields do not, and a viewed value never seeds a fold. The view is as stale as the last durable checkpoint but never wrong and never from an unrelated log. Its `asOfSeq` is the lowest watermark among the served rows: the stored record\'s own position, which the header cannot relate to the log the caller later opens. The Session list therefore labels the block as cached, and the client lets every value the connected Session produces supersede it whatever this number says.',
         parameters: [{ name: 'meta', description: 'the listed session\'s header (identity witness; no log read).' }, { name: 'keys', description: 'optional projection keys required by the caller\'s audience.' }],
         returns: 'the viewed block, or `undefined` when no usable row exists for this lifecycle at the current Session format.',
@@ -3942,19 +3984,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'sessionProjections',
     summary: '`ctx.sessionProjections`: the projection unit table and its drive.',
-    description: '`ctx.sessionProjections`: the projection unit table and its drive. The service subscribes to `session/event` once; every committed event passes every registered unit\'s `apply` (eager drive). A changed state reference computes the next client view; the change feed is notified only when its raw result changes by `Object.is`. Cells build lazily — a unit registered after events flowed, or a session older than the registry, folds `init` over the in-memory log on first touch (event or read). Registration is an effect (disposer rides the calling fiber): an unloaded domain plugin\'s key disappears from snapshots and clients read it as capability absence. A host reader either declares `sessionProjections` in its plugin `inject` or fails explicitly when the registry or required key is absent. Contributors may preserve optional registration through `ctx.inject([\'sessionProjections\'], ...)`. Registrants sharing a key share one unit and are counted: the same tool package mounted in N agent presets registers N times, and the key survives until the last one unloads.',
+    description: '`ctx.sessionProjections`: the projection unit table and its drive. The service subscribes to `session/event` once; every committed event passes every registered unit\'s `apply` (eager drive). A changed state reference computes the next client view; the change feed is notified only when its raw result changes by `Object.is`. Cells build lazily — a unit registered after events flowed, or a session older than the registry, folds `init` over the in-memory log on first touch (event or read). Consumers declare `sessionProjections` as a required injection, await registration during activation, and retain its ready handle. Registrants sharing a key share one unit and are counted. The last release removes the unit from live drives, restores, and client snapshots, while checkpoints keep each Session\'s last cell of it until the key registers again and the new unit refolds the log; retained handles still fold new events on demand using the original unit.',
     methods: [
       {
-        signature: 'register< K extends keyof SessionProjectionMap, S extends SessionProjectionStateMap[K], >( definition: Omit<ProjectionDefinition<K, S>, \'wire\'> & { wire: NonNullable<ProjectionDefinition<K, S>[\'wire\']> }, ): () => void',
-        description: 'Register one domain\'s unit. The registration is an effect on the calling context\'s fiber: disposing the fiber (or calling the returned disposer) removes the key — and the unit\'s cached cells — from subsequent drives and snapshots.',
+        signature: 'register<K extends keyof SessionProjectionMap, S>( definition: Omit<ProjectionDefinition<K, S>, \'wire\'> & { wire: NonNullable<ProjectionDefinition<K, S>[\'wire\']> }, ): Promise<ProjectionHandle<S>>',
+        description: 'Register one domain\'s unit on the calling context\'s fiber. Fiber or handle disposal releases one reference; the final release removes live participation. Retained handles remain readable after release. Callers must await registration before publishing consumers; registration may perform asynchronous work.',
         parameters: [{ name: 'definition', description: 'key, state schema, pure unit functions, and stateVersion.' }],
-        returns: 'the exact disposer that unregisters this unit.',
+        returns: 'an awaitable yielding a ready handle; the callable runtime value is deprecated.',
       },
       {
-        signature: 'register< K extends Exclude<keyof SessionProjectionStateMap, keyof SessionProjectionMap>, S extends SessionProjectionStateMap[K], >( definition: Omit<ProjectionDefinition<K, S>, \'wire\'>, ): () => void',
-        description: 'Register one host-only unit. Its state is omitted from client snapshots and always checkpointed like every other unit.',
+        signature: 'register<K extends string, S>( definition: ProjectionDefinition<K, S> & { key: Exclude<K, keyof SessionProjectionMap> }, ): Promise<ProjectionHandle<S>>',
+        description: 'Register one host-only unit. Its state is omitted from client snapshots and always checkpointed like every other unit. Callers must await registration before publishing consumers; registration may perform asynchronous work.',
         parameters: [{ name: 'definition', description: 'key, state schema, pure unit functions, and stateVersion.' }],
-        returns: 'the exact disposer that unregisters this unit.',
+        returns: 'an awaitable yielding a ready handle; the callable runtime value is deprecated.',
       },
       {
         signature: 'onChanged(listener: ProjectionChangeListener): () => void',
@@ -3963,37 +4005,37 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the exact disposer that unsubscribes.',
       },
       {
-        signature: 'stateOf<K extends keyof SessionProjectionStateMap>( session: Session, key: K, ): SessionProjectionStateMap[K] | undefined',
-        description: 'Read one unit\'s current host state after materializing every registered unit at the Session cursor. Unrelated wire views are not produced. The returned value is live; callers must not mutate it.',
-        parameters: [{ name: 'session', description: 'the session whose state is read.' }, { name: 'key', description: 'the registered unit key.' }],
-        returns: 'current state, or `undefined` when the key is not registered.',
+        signature: 'onEventChanged(listener: ProjectionEventChangeListener): () => void',
+        description: 'Subscribe to the event-level change feed. The registration is an effect on the calling context\'s fiber. The listener runs synchronously inside the committed event\'s `session/event` handling, once after every unit has been driven and after every onChanged call for that event. If a unit or an onChanged listener throws during that drive, the listener still receives the changes made before the throw.',
+        parameters: [{ name: 'listener', description: 'called once per committed event that changed at least one client-visible unit\'s raw view by `Object.is`.' }],
+        returns: 'the exact disposer that unsubscribes.',
       },
       {
-        signature: 'snapshot( session: Session, keys?: readonly Extract<keyof SessionProjectionMap, string>[], ): ProjectionSnapshot',
-        description: 'One consistent cut over every registered client-visible unit for one session, read from the watermark cache (missing cells fold lazily over the in-memory log). Fully synchronous — every value and `asOfSeq` reflect the same log position. Each value passes its unit\'s `viewSchema` before leaving.',
-        parameters: [{ name: 'session', description: 'the session whose projection values are read.' }, { name: 'keys', description: 'optional client-visible outputs; state materialization remains complete.' }],
+        signature: 'snapshot( session: Session, keys?: ProjectionKeySelection, ): ProjectionSnapshot',
+        description: 'One consistent cut over every registered client-visible unit for one session, read from the watermark cache (missing cells fold lazily over the in-memory log). Only the returned units are computed: other units, including Host-only units without `wire`, are neither folded nor advanced by this read. Fully synchronous — every value and `asOfSeq` reflect the same log position. Each value passes its unit\'s `viewSchema` before leaving.',
+        parameters: [{ name: 'session', description: 'the session whose projection values are read.' }, { name: 'keys', description: 'optional client-visible outputs; only these units are computed.' }],
         returns: 'the snapshot; `values` is empty when no selected client-visible unit is registered.',
       },
       {
-        signature: 'cachedSnapshot( session: Session, keys?: readonly Extract<keyof SessionProjectionMap, string>[], ): ProjectionSnapshot | undefined',
-        description: 'Read only already-materialized client-visible cells without folding history. Values may trail the live Session and are therefore hints, not a complete baseline. Missing cells are omitted.',
-        parameters: [{ name: 'session', description: 'attached Session whose cached cells are inspected.' }, { name: 'keys', description: 'optional wire keys to view.' }],
-        returns: 'the lowest common cached cut, or `undefined` when no wire cell exists.',
+        signature: 'summaryKeys(): ReadonlySet<Extract<keyof SessionProjectionMap, string>>',
+        description: 'The keys a Session summary carries: every registered client-visible key whose unit does not declare `summary: false`. The returned set is stable — the same instance on every call — until a registration or its disposal changes the key table, so a consumer may hold it across rows. Callers pass it to a key-taking read face such as `snapshot(session, summaryKeys())` or `viewCheckpoint(rows, summaryKeys())`; those faces use the set as-is.',
+        parameters: [],
+        returns: 'the current summary key set; do not mutate it.',
       },
       {
         signature: 'checkpoint(session: Session): ProjectionCheckpoint',
-        description: 'State-level checkpoint of every persisted unit for one session, read from the watermark cache (missing cells fold lazily over the in-memory log). This is the write side of the persisted projection cache: the returned rows are the `(key → {ver, seq, val})` part of the durable `(sessionId, key, ver, seq, val)` rows. Every `val` is a DETACHED structured clone — never the live cell reference: the watermark cache is this registry\'s authoritative mutable state, and a caller reaching the live reference could corrupt every subsequent snapshot and frame through it (plain JSON by the unit contract, so the clone is total).',
+        description: 'State-level checkpoint of every persisted unit for one session, read from the watermark cache (missing cells fold lazily over the in-memory log). This is the write side of the persisted projection cache: the returned rows are the `(key → {ver, seq, val})` part of the durable `(sessionId, key, ver, seq, val)` rows. Every `val` is a DETACHED structured clone — never the live cell reference: the watermark cache is this registry\'s authoritative mutable state, and a caller reaching the live reference could corrupt every subsequent snapshot and frame through it (plain JSON by the unit contract, so the clone is total). A released unit contributes the Session\'s last cell. The registry no longer advances that cell, while a retained handle read still advances it forward, so a writer running after a plugin unloads keeps that unit\'s latest state; a Session that has no cell of it gets no row. restore folds only live units, so its refreshed rows omit released units.',
         parameters: [{ name: 'session', description: 'the session whose unit states are checkpointed.' }],
-        returns: 'one row per registered key.',
+        returns: 'one row per registered key, plus one per released key with a cell for this Session.',
       },
       {
         signature: 'restoreFloor(checkpoint: ProjectionCheckpoint): SessionLogOffset | undefined',
         description: 'The stored seq a restore tail read over `checkpoint` must start at: one event BELOW the lowest usable watermark (a row is usable when its `ver` matches the live unit\'s `stateVersion`; an absent or mismatched row pulls the floor to `0` — that key must refold the full log). The one-below anchor is load-bearing: the tail then proves how far the stored log still extends, so restore can detect a log that shrank below a row\'s watermark (crash-repair truncation) instead of serving the stale row as current — an empty tail read from the anchor yields an end below every watermark and the restore rejects for a full re-read.',
         parameters: [{ name: 'checkpoint', description: 'persisted rows for one session (possibly stale or empty).' }],
-        returns: 'the offset for the stored-log suffix read (`SessionHandle.read`), or `undefined` when no unit is registered (no read needed — {@link restore} would serve empty values regardless).',
+        returns: 'the offset for the stored-log suffix read (`SessionHandle.read`), or `undefined` when no live unit is registered (released predecessors do not count; no read needed — {@link restore} would serve empty values regardless).',
       },
       {
-        signature: 'viewCheckpoint( checkpoint: ProjectionCheckpoint, keys?: readonly Extract<keyof SessionProjectionMap, string>[], ): Partial<SessionProjectionMap>',
+        signature: 'viewCheckpoint( checkpoint: ProjectionCheckpoint, keys?: ProjectionKeySelection, ): Partial<SessionProjectionMap>',
         description: 'View a checkpoint\'s rows without any log read: for every registered client-visible unit whose row\'s `ver` matches, serve the schema-validated `view` of the schema-validated stored state; mismatched, malformed, or absent rows leave their key absent (a cold or listing consumer treats it as not-yet-available and a fuller read path refolds it). The zero-I/O rung of the read ladder — values are as stale as their rows, never wrong.',
         parameters: [{ name: 'checkpoint', description: 'persisted rows for one session (possibly stale or empty).' }, { name: 'keys', description: 'optional wire keys to view.' }],
         returns: 'whole values per key with a usable row; empty when none.',
@@ -4002,7 +4044,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         signature: 'restore( checkpoint: ProjectionCheckpoint, events: readonly SessionEvent[], baseSeq: SessionLogOffset, header: SessionHeader, inheritedEventCount: SessionLogOffset, ): { snapshot: ProjectionSnapshot; checkpoint: ProjectionCheckpoint }',
         description: 'Cold read: fold every persisted unit over a stored log suffix, seeding each from its checkpoint row when usable — the one read recipe (cached state + forward tail replay + `view`) applied without a live `Session`. Call with the stored events at or past `restoreFloor(checkpoint)` (a `SessionHandle.read` slice) and that same floor as `baseSeq`; the floor\'s one-below anchor makes the supplied end honest, so a shrunk log is detected here. A row is usable iff its `ver` matches the live unit\'s `stateVersion`, it does not predate `baseSeq` (`seq >= baseSeq - 1`), and it does not claim events past the supplied end (`seq <= endSeq`); an unusable row is discarded and its key refolds from `init` — which is only sound over the full log, so a discarded row with `baseSeq > 0` throws (the caller re-reads from seq 0, e.g. after a crash-repair truncation shrank the log below a row\'s watermark).',
         parameters: [{ name: 'checkpoint', description: 'persisted rows for one session (possibly stale or empty).' }, { name: 'events', description: 'the stored events with `seq >= baseSeq`, in seq order.' }, { name: 'baseSeq', description: 'the seq `events` starts at (its first event\'s seq when non-empty).' }, { name: 'header', description: 'immutable metadata for the Session being restored.' }, { name: 'inheritedEventCount', description: 'exact fork-inherited prefix length supplied to unit initialization.' }],
-        returns: 'the snapshot cut at the supplied log end (`asOfSeq` is the last supplied event\'s seq, `baseSeq - 1` for an empty tail) plus the refreshed checkpoint rows at that cut, ready for a durable write-back.',
+        returns: 'the snapshot cut at the supplied log end (`asOfSeq` is the last supplied event\'s seq, `baseSeq - 1` for an empty tail) plus the refreshed checkpoint rows at that cut, ready for a durable write-back. The rows cover live units only: a released unit has no cell for a log folded without a live `Session`, so a write-back of them omits it.',
       },
       {
         signature: 'hydrate( session: Session, checkpoint: ProjectionCheckpoint, events: readonly SessionEvent[], baseSeq: SessionLogOffset, ): ProjectionSnapshot',
@@ -5055,10 +5097,52 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Tool registry and execution pipeline. Scoped registrations shadow globals; one visibility resolver feeds presentation, lookup, and dispatch.',
     methods: [
       {
+        signature: 'nestedSubcallLimit(scope?: ScopeKey): number',
+        description: 'Overlap cap for one executing scope. The nearest live executor record wins, then the root record, then the tools-service default. An unloaded record keeps the executor unavailable and does not keep its cap.',
+        parameters: [{ name: 'scope', description: 'agent or preset scope. Omitted reads the root cap.' }],
+        returns: 'the positive overlap cap.',
+      },
+      {
+        signature: 'setExecutor(executor: ToolExecutor): () => Promise<void>',
+        description: 'Select the executor for the calling scope. Unloading leaves that selection unavailable so a later call cannot fall through to another executor. A scope that already has a live executor rejects the new one before its cap is stored.',
+        parameters: [{ name: 'executor', description: 'provider owned by the contributing plugin.' }],
+        returns: 'the effect disposer.',
+      },
+      {
+        signature: 'selectedExecutor(scope?: ScopeKey): ToolExecutor | undefined',
+        description: 'Resolve the nearest selected executor. No registration returns undefined so existing native profiles keep execute. A registration whose provider unloaded throws.',
+        parameters: [{ name: 'scope', description: 'Agent or preset scope. Omitted selects only the root contribution.' }],
+        returns: 'the selected executor, or undefined when this scope never selected one.',
+      },
+      {
+        signature: 'refuseBeforePolicy(input: ToolExecutionInput, error: ToolNotFoundError): ScheduledToolPreparation',
+        description: 'Materialize an executor refusal before pre-execute and the tool body. An already aborted call keeps the canonical pre-dispatch cancellation.',
+        parameters: [{ name: 'input', description: 'the caller-supplied call.' }, { name: 'error', description: 'the refusal the selected executor returned.' }],
+        returns: 'a final scheduler result. The tool body is not invoked.',
+      },
+      {
+        signature: 'runCodeTransport(): ToolDefinition',
+        description: 'The reserved `run_code` transport, built on first need. It stays outside the filterable registration layers.',
+        parameters: [],
+        returns: 'the shared transport definition.',
+      },
+      {
+        signature: 'projectSchema(definition: ToolDefinition): ToolSchema',
+        description: 'Project one definition onto the model-facing schema fields.',
+        parameters: [{ name: 'definition', description: 'a visible tool definition.' }],
+        returns: 'the detached schema.',
+      },
+      {
         signature: 'presentAs(mode: ToolPresentationMode): () => void',
         description: 'Present the calling scope\'s tools in `mode` instead of the deployment default. Nearest scope on the chain wins, so a preset\'s standing declaration covers every agent joined under it.\n\nScoped only, and one declaration per scope: this is how an agent preset composes PTC mode agents beside native ones in the same process, and a process-global override would be the `mode` config field instead.',
         parameters: [{ name: 'mode', description: 'the presentation the covered agents\' models see.' }],
         returns: 'the exact disposer that restores the deployment default.',
+      },
+      {
+        signature: 'requirePtcPresentation(): () => void',
+        description: 'Select PTC presentation for the caller. A root context must already set tools `mode: ptc` and does not record `presentAs`. `native` or `both` fails at load. A preset scope records `presentAs(\'ptc\')`.',
+        parameters: [],
+        returns: 'the disposer for a scoped declaration, or a no-op when the root row is already `ptc`.',
       },
       {
         signature: 'register(definition: ToolDefinition): () => void',
@@ -5085,9 +5169,15 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the definition the scope resolves, or undefined when none is visible.',
       },
       {
-        signature: 'schemas(scope?: ScopeKey): ToolSchema[]',
+        signature: 'resolve(context: ToolActivationContext): Promise<ResolvedToolSet>',
+        description: 'Resolve the visible tools for one step. The current registry has no per-registration condition, so every visible definition is admitted. A later view drops a definition that was unregistered or replaced.',
+        parameters: [{ name: 'context', description: 'preparing agent, captured model selection, and cancellation.' }],
+        returns: 'the step selection. The caller disposes it after the step\'s tool batch settles.',
+      },
+      {
+        signature: 'schemas(scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolSchema[]',
         description: 'Project visible definitions onto the allowlisted model-facing schema fields, excluding execution and presentation callbacks.',
-        parameters: [{ name: 'scope', description: 'the viewing scope (the agent); omitted = the global view.' }],
+        parameters: [{ name: 'scope', description: 'the viewing scope (the agent); omitted = the global view.' }, { name: 'toolSet', description: 'optional resolved admission set captured for this step.' }],
         returns: 'one deep-cloned schema per visible tool.',
       },
       {
@@ -5634,10 +5724,10 @@ export const EVENT_API: readonly EventApiEntry[] = [
   {
     name: 'agent/pre-step',
     mode: 'waterfall',
-    signature: '\'agent/pre-step\'(this: Scoped<Agent>, payload: { agent: Agent; messages: UserMessage[]; turn: number; step: number; signal: AbortSignal }, next: () => Promise<PreStepDecision>): Promise<PreStepDecision>',
+    signature: '\'agent/pre-step\'(this: Scoped<Agent>, payload: { agent: Agent; messages: UserMessage[]; turn: number; step: number; signal: AbortSignal; modelSelection: Readonly<ModelSelection> }, next: () => Promise<PreStepDecision>): Promise<PreStepDecision>',
     summary: 'Reject a proposed step or replace the messages that enter it.',
     description: 'Reject a proposed step or replace the messages that enter it. Calling `next()` preserves the current messages.',
-    parameters: [{ name: 'payload', description: '.signal - the current turn\'s cancellation signal. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.' }],
+    parameters: [{ name: 'payload', description: '.modelSelection - provider, model, and effort captured before assembly. Listeners must not replace them. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.' }],
   },
   {
     name: 'agent/request',
@@ -5862,6 +5952,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     summary: 'Observe a durable cold feedback mutation without publishing a live Session.',
     description: 'Observe a durable cold feedback mutation without publishing a live Session. Observers run before write ownership is released and must not await another message-feedback operation for this Session. The payload is borrowed read-only; deep-clone it before transferring ownership (for example, to Session.fromRestore).',
     parameters: [{ name: 'inspection', description: 'committed canonical prefix, including the feedback as its last event.' }],
+  },
+  {
+    name: 'fs/delete-intent',
+    mode: 'waterfall',
+    signature: '\'fs/delete-intent\'(target: FsTarget, actor: object | undefined, next: () => { version: FsVersion } | undefined | Promise<{ version: FsVersion } | undefined>): Promise<{ version: FsVersion } | undefined>',
+    summary: 'Single-slot decision for FileSystem.deleteFile.',
+    description: 'Single-slot decision for FileSystem.deleteFile. Calling `next()` yields an unconditional removal; the first returned guard wins.',
+    parameters: [{ name: 'target', description: 'the resolved source about to be removed.' }, { name: 'actor', description: 'the opaque tool-execution context the decider keys off.' }],
   },
   {
     name: 'fs/edit-intent',
@@ -7452,6 +7550,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface FrequencyTooHighError {\n    readonly code: \'frequency_too_high\';\n    readonly message: string;\n}',
   },
   {
+    name: 'FsDeleteOutcome',
+    declaration: 'export interface FsDeleteOutcome {\n    before: string | null;\n}',
+  },
+  {
     name: 'FsDirEntry',
     declaration: 'export interface FsDirEntry {\n    name: string;\n    type: \'file\' | \'directory\' | \'other\';\n    target: FsTarget;\n    version?: FsVersion;\n    size?: number;\n}',
   },
@@ -7469,7 +7571,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'FsErrorCode',
-    declaration: 'export type FsErrorCode = \'FS_NOT_FOUND\' | \'FS_NOT_DIRECTORY\' | \'FS_NOT_TEXT\' | \'FS_NOT_REGULAR_FILE\' | \'FS_TOO_LARGE\' | \'FS_PERMISSION_DENIED\' | \'FS_SANDBOX_DENIED\' | \'FS_IO_ERROR\' | \'FS_STALE_VERSION\' | \'FS_NOT_OBSERVED\' | \'FS_AMBIGUOUS_EDIT\' | \'FS_EDIT_NOT_FOUND\' | \'FS_ABORTED\';',
+    declaration: 'export type FsErrorCode = \'FS_NOT_FOUND\' | \'FS_NOT_DIRECTORY\' | \'FS_NOT_TEXT\' | \'FS_NOT_REGULAR_FILE\' | \'FS_TOO_LARGE\' | \'FS_PERMISSION_DENIED\' | \'FS_SANDBOX_DENIED\' | \'FS_IO_ERROR\' | \'FS_STALE_VERSION\' | \'FS_NOT_OBSERVED\' | \'FS_AMBIGUOUS_EDIT\' | \'FS_EDIT_NOT_FOUND\' | \'FS_ABORTED\' | \'FS_SAME_TARGET\';',
   },
   {
     name: 'FsErrorRemedy',
@@ -7482,6 +7584,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FsInfo',
     declaration: 'export interface FsInfo {\n    version: FsVersion;\n    type: \'file\' | \'directory\' | \'other\';\n    size?: number;\n}',
+  },
+  {
+    name: 'FsMoveOutcome',
+    declaration: 'export type FsMoveOutcome = {\n    sourceBefore: string | null;\n    destination: FsWriteOutcome;\n    sourceDeleted: true;\n} | {\n    sourceBefore: string | null;\n    destination: FsWriteOutcome;\n    sourceDeleted: false;\n    sourceFailure: FsMoveSourceFailure;\n};',
+  },
+  {
+    name: 'FsMoveSourceFailure',
+    declaration: 'export interface FsMoveSourceFailure {\n    code: FsErrorCode;\n    message: string;\n}',
   },
   {
     name: 'FsMutationOperation',
@@ -8108,8 +8218,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface MediaBudgetConfig {\n    readonly maxPaidCallsPerSession: number;\n    readonly maxEstimatedSpendYuan: number;\n}',
   },
   {
+    name: 'MediaProjectionState',
+    declaration: 'export interface MediaProjectionState {\n    readonly requests: Readonly<Record<string, MediaRequestRecord>>;\n    readonly artifacts: Readonly<Record<string, MediaArtifactRecord>>;\n}',
+  },
+  {
     name: 'MediaRequestId',
     declaration: 'export type MediaRequestId = Branded<\'MediaRequestId\'>;',
+  },
+  {
+    name: 'MediaRequestRecord',
+    declaration: 'export interface MediaRequestRecord {\n    readonly requestId: MediaRequestId;\n    readonly kind: MediaWorkKind;\n    readonly stage: MediaStage;\n    readonly label: string;\n    readonly model?: string;\n    readonly promptHash?: string;\n    readonly inputHashes: readonly string[];\n    readonly estimatedYuan: number;\n    readonly providerTaskId?: string;\n    readonly jobId?: string;\n    readonly artifactId?: MediaArtifactId;\n    readonly stopIntent?: boolean;\n    readonly failure?: string;\n}',
   },
   {
     name: 'MediaRuntimeHomeConfig',
@@ -8118,6 +8236,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'MediaRuntimeStatus',
     declaration: 'export interface MediaRuntimeStatus {\n    readonly ready: boolean;\n    readonly homeDisplay: string;\n    readonly guidance: string;\n}',
+  },
+  {
+    name: 'MediaStage',
+    declaration: 'export type MediaStage = \'proposed\' | \'approved\' | \'submitted\' | \'running\' | \'downloaded\' | \'composed\' | \'failed\' | \'stopped\' | \'pending-recovery\';',
   },
   {
     name: 'MediaVoiceId',
@@ -8541,7 +8663,19 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ProjectionDefinition',
-    declaration: 'export interface ProjectionDefinition<K extends keyof SessionProjectionStateMap, S extends SessionProjectionStateMap[K] = SessionProjectionStateMap[K]> {\n    key: K;\n    stateSchema: ZodType<S>;\n    init(header: SessionHeader, inheritedEventCount: SessionLogOffset): NoInfer<S>;\n    apply(state: NoInfer<S>, event: SessionEvent): NoInfer<S>;\n    wire?: K extends keyof SessionProjectionMap ? {\n        viewSchema: ZodType<SessionProjectionMap[K]>;\n        view(state: NoInfer<S>): SessionProjectionMap[K];\n    } : never;\n    stateVersion: number;\n}',
+    declaration: 'export interface ProjectionDefinition<K extends string, S> {\n    key: K;\n    stateSchema: ZodType<S>;\n    init(header: SessionHeader, inheritedEventCount: SessionLogOffset): NoInfer<S>;\n    apply(state: NoInfer<S>, event: SessionEvent): NoInfer<S>;\n    wire?: K extends keyof SessionProjectionMap ? {\n        viewSchema: ZodType<SessionProjectionViewValue<SessionProjectionMap[K]>>;\n        view(state: NoInfer<S>): SessionProjectionViewValue<SessionProjectionMap[K]>;\n        summary?: boolean;\n    } : never;\n    stateVersion: number;\n}',
+  },
+  {
+    name: 'ProjectionEventChangeListener',
+    declaration: 'export type ProjectionEventChangeListener = (session: Session, changes: readonly {\n    readonly key: Extract<keyof SessionProjectionMap, string>;\n    readonly val: unknown;\n}[], seq: SessionSeq) => void;',
+  },
+  {
+    name: 'ProjectionHandle',
+    declaration: 'export interface ProjectionHandle<S> {\n    stateOf(session: Session): S;\n    readerFor(session: Session): () => S;\n    dispose(): Promise<void>;\n}',
+  },
+  {
+    name: 'ProjectionKeySelection',
+    declaration: 'export type ProjectionKeySelection = readonly Extract<keyof SessionProjectionMap, string>[] | ReadonlySet<Extract<keyof SessionProjectionMap, string>>;',
   },
   {
     name: 'ProjectionSnapshot',
@@ -8645,7 +8779,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PtcRunRequest',
-    declaration: 'export interface PtcRunRequest {\n    program: string;\n    bindings: PtcBindingNamespace[];\n    cwd?: string;\n    timeoutMs?: number | null;\n    sandboxPolicy?: SandboxExecutionPolicy;\n    signal?: AbortSignal;\n}',
+    declaration: 'export interface PtcRunRequest {\n    program: string;\n    stateOwner?: object;\n    bindings: PtcBindingNamespace[];\n    cwd?: string;\n    timeoutMs?: number | null;\n    sandboxPolicy?: SandboxExecutionPolicy;\n    signal?: AbortSignal;\n}',
   },
   {
     name: 'PtcRunResult',
@@ -8810,6 +8944,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ResolvedSubagentStartRequest',
     declaration: 'export interface ResolvedSubagentStartRequest extends SubagentStartRequest {\n    readonly descriptor: SubagentDescriptorData;\n}',
+  },
+  {
+    name: 'ResolvedToolSet',
+    declaration: 'export interface ResolvedToolSet {\n    dispose(): void;\n    view(scope: ScopeKey | undefined): ReadonlyMap<string, ToolDefinition>;\n}',
   },
   {
     name: 'RestoredSessionOptions',
@@ -9568,8 +9706,8 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SessionProjectionsRequest {\n    readonly sessionId: SessionId;\n}',
   },
   {
-    name: 'SessionProjectionStateMap',
-    declaration: 'export interface SessionProjectionStateMap {\n}',
+    name: 'SessionProjectionSummaryExcluded',
+    declaration: 'export type SessionProjectionSummaryExcluded<T> = T & {\n    readonly [sessionProjectionSummaryExcluded]: true;\n};',
   },
   {
     name: 'SessionProjectionsValue',
@@ -9586,6 +9724,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionProjectionValues',
     declaration: 'export type SessionProjectionValues = Partial<SessionProjectionMap> & Readonly<Record<string, SessionProjectionValue>>;',
+  },
+  {
+    name: 'SessionProjectionViewValue',
+    declaration: 'export type SessionProjectionViewValue<T> = T extends SessionProjectionSummaryExcluded<infer Value> ? Value : T;',
   },
   {
     name: 'SessionPromptRequest',
@@ -10516,8 +10658,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface TokenUsageMetrics {\n    readonly inputTokens: number;\n    readonly outputTokens: number;\n    readonly totalTokens: number;\n}',
   },
   {
+    name: 'ToolActivationContext',
+    declaration: 'export interface ToolActivationContext {\n    readonly agent: Agent;\n    readonly modelSelection: Readonly<ModelSelection>;\n    readonly signal: AbortSignal;\n}',
+  },
+  {
     name: 'ToolAdditionBlock',
     declaration: 'export interface ToolAdditionBlock {\n    type: \'tool-addition\';\n    toolName: string;\n    tool?: never;\n}',
+  },
+  {
+    name: 'ToolBatchInput',
+    declaration: 'export interface ToolBatchInput {\n    readonly calls: readonly ToolCallBlock[];\n    readonly signal: AbortSignal;\n    readonly maxParallelToolCalls?: number;\n    readonly agent?: Agent;\n    readonly toolSet?: ResolvedToolSet;\n    readonly log?: {\n        readonly turn: number;\n        readonly step: number;\n    };\n}',
+  },
+  {
+    name: 'ToolBatchResult',
+    declaration: 'export interface ToolBatchResult {\n    readonly results: readonly ToolCallResult[];\n    readonly additionalContexts: readonly UserMessage[];\n    readonly concluded: boolean;\n}',
   },
   {
     name: 'ToolCallBlock',
@@ -10534,10 +10688,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ToolCallKind',
     declaration: 'export type ToolCallKind = \'read\' | \'edit\' | \'delete\' | \'move\' | \'search\' | \'execute\' | \'fetch\' | \'other\';',
-  },
-  {
-    name: 'ToolCallResult',
-    declaration: 'export type ToolCallResult = {\n    deny: string;\n    result?: undefined;\n    isError?: undefined;\n} | {\n    result: unknown;\n    isError?: true;\n    deny?: undefined;\n};',
   },
   {
     name: 'ToolCallView',
@@ -10565,7 +10715,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolExecutionInput',
-    declaration: 'export interface ToolExecutionInput {\n    readonly callId: ToolCallId;\n    readonly rootCallId?: ToolCallId;\n    readonly name: string;\n    readonly schema?: ToolSchema;\n    readonly arguments: unknown;\n    readonly agent?: Agent;\n    readonly parent?: ToolExecutionToken;\n    readonly signal: AbortSignal;\n}',
+    declaration: 'export interface ToolExecutionInput {\n    readonly callId: ToolCallId;\n    readonly rootCallId?: ToolCallId;\n    readonly name: string;\n    readonly schema?: ToolSchema;\n    readonly arguments: unknown;\n    readonly agent?: Agent;\n    readonly parent?: ToolExecutionToken;\n    readonly signal: AbortSignal;\n    readonly toolSet?: ResolvedToolSet;\n}',
   },
   {
     name: 'ToolExecutionMode',
@@ -10582,6 +10732,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ToolExecutionToken',
     declaration: 'export type ToolExecutionToken = symbol & {\n    readonly [toolExecutionTokenBrand]: true;\n};',
+  },
+  {
+    name: 'ToolExecutor',
+    declaration: 'export interface ToolExecutor {\n    readonly sections?: readonly ToolPromptSection[];\n    readonly subcallLimit?: number;\n    describe(tools: readonly ToolDefinition[]): ToolModelInput;\n    execute(input: ToolBatchInput): Promise<ToolBatchResult>;\n}',
   },
   {
     name: 'ToolFailure',
@@ -10604,12 +10758,24 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ToolMessageSource {\n    kind: \'tool\';\n    callId: ToolCallId;\n}',
   },
   {
+    name: 'ToolModelInput',
+    declaration: 'export type ToolModelInput = Pick<ToolProviderResult, \'schemas\' | \'knownNames\'>;',
+  },
+  {
+    name: 'ToolNotFoundError',
+    declaration: 'export class ToolNotFoundError extends HarnessError {\n    constructor(toolName: string, reachableFrom?: string);\n}',
+  },
+  {
     name: 'ToolOutputDefinition',
     declaration: 'export interface ToolOutputDefinition {\n    readonly schema: JsonSchemaNode;\n    render(args: unknown, value: JsonValue): ContentBlock[];\n    presentationMeta?(args: unknown, value: JsonValue): JsonValue;\n}',
   },
   {
     name: 'ToolPresentationMode',
     declaration: 'export type ToolPresentationMode = \'native\' | \'ptc\' | \'both\';',
+  },
+  {
+    name: 'ToolPromptSection',
+    declaration: 'export interface ToolPromptSection extends Pick<PromptSection, \'name\' | \'order\' | \'interpolate\'> {\n    readonly text: string | ((tools: readonly ToolDefinition[]) => string);\n}',
   },
   {
     name: 'ToolProviderResult',
@@ -10641,7 +10807,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolRuntime',
-    declaration: 'export class ToolRuntime extends Service {\n    static inject;\n    static Config: z<Config>;\n    readonly [TOOL_RUNTIME_SCHEDULER]: ToolRuntimeScheduler;\n    constructor(ctx: Context, config: Config = {});\n    presentAs(mode: ToolPresentationMode): () => void;\n    register(definition: ToolDefinition): () => void;\n    restrict(filter: ToolRestriction): () => void;\n    guard(guard: ToolGuard): () => void;\n    get(name: string, scope?: ScopeKey): ToolDefinition | undefined;\n    schemas(scope?: ScopeKey): ToolSchema[];\n    executionMode(exec: ToolExecutionInput): ToolExecutionMode;\n    async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>;\n}',
+    declaration: 'export class ToolRuntime extends Service {\n    static inject;\n    static Config: z<Config>;\n    readonly [TOOL_RUNTIME_SCHEDULER]: ToolRuntimeScheduler;\n    constructor(ctx: Context, config: Config = {});\n    nestedSubcallLimit(scope?: ScopeKey): number;\n    setExecutor(executor: ToolExecutor): () => Promise<void>;\n    selectedExecutor(scope?: ScopeKey): ToolExecutor | undefined;\n    refuseBeforePolicy(input: ToolExecutionInput, error: ToolNotFoundError): ScheduledToolPreparation;\n    runCodeTransport(): ToolDefinition;\n    projectSchema(definition: ToolDefinition): ToolSchema;\n    presentAs(mode: ToolPresentationMode): () => void;\n    requirePtcPresentation(): () => void;\n    register(definition: ToolDefinition): () => void;\n    restrict(filter: ToolRestriction): () => void;\n    guard(guard: ToolGuard): () => void;\n    get(name: string, scope?: ScopeKey): ToolDefinition | undefined;\n    resolve(context: ToolActivationContext): Promise<ResolvedToolSet>;\n    schemas(scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolSchema[];\n    executionMode(exec: ToolExecutionInput): ToolExecutionMode;\n    async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>;\n}',
   },
   {
     name: 'ToolRuntimeScheduler',
@@ -10670,6 +10836,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'TranscriptionRequest',
     declaration: 'export interface TranscriptionRequest {\n    readonly audioBase64: string;\n    readonly providerId?: SpeechProviderId;\n    readonly language?: string;\n}',
+  },
+  {
+    name: 'TurnBoundaryProjection',
+    declaration: 'export interface TurnBoundaryProjection {\n    readonly openTurnStartSeq: OptionalSessionSeq;\n    readonly lastStepStartSeq: OptionalSessionSeq;\n    readonly lastStepBoundary: {\n        readonly kind: \'start\' | \'end\';\n        readonly seq: SessionSeq;\n    } | null;\n    readonly lastTurn: number;\n}',
   },
   {
     name: 'TurnCompleteInput',

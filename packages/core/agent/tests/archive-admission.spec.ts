@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
-import type { Agent, AgentCancelCause, AgentStatus, CancelOptions } from '@deepseek-ai/dsh-agent'
+import type { Agent, AgentCancelCause, AgentStatus, CancelOptions, Model } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 
 type CancelCall = [AgentCancelCause, CancelOptions | undefined]
@@ -21,6 +22,7 @@ async function liveAgent(ctx: Context, rawId: string, initial: AgentStatus): Pro
     inbox: { nextTurn: [], nextStep: [] } as never,
     get status() { return status },
     ctx,
+    model: { current: () => undefined, select: () => {}, origin: () => null } satisfies Model,
     send: () => {},
     followup: () => {},
     steer: () => ({ outcome: Promise.resolve({ status: 'rejected' as const }) }),
@@ -35,6 +37,10 @@ async function liveAgent(ctx: Context, rawId: string, initial: AgentStatus): Pro
   return agent
 }
 
+function mountAgents(ctx: Context) {
+  return ctx.plugin(SessionProjectionRegistry).then(() => ctx.plugin(AgentRegistry))
+}
+
 function ask(ctx: Context, sessionId: SessionId): Promise<readonly SessionActivity[]> {
   return ctx.waterfall('workspace/session-activity', { sessionId }, () => Promise.resolve([]))
 }
@@ -46,7 +52,7 @@ function stop(ctx: Context, sessionId: SessionId): Promise<void> {
 describe('Turn archive admission', () => {
   it('reports the turn family only while the session\'s Agent is running, ahead of later providers', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const agent = await liveAgent(ctx, 'busy', 'running')
     await liveAgent(ctx, 'quiet', 'idle')
     ctx.on('workspace/session-activity', async (_request, next) => [...(await next()), { kind: 'probe' }])
@@ -61,7 +67,7 @@ describe('Turn archive admission', () => {
 
   it('cancels a running turn with the user cause and without keeping the inbox, and leaves the rest alone', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const running = await liveAgent(ctx, 'stop-me', 'running')
     const idle = await liveAgent(ctx, 'already-idle', 'idle')
 
@@ -74,7 +80,7 @@ describe('Turn archive admission', () => {
 
   it('stops answering once the registry fiber is disposed', async () => {
     const ctx = new Context()
-    const fiber = await ctx.plugin(AgentRegistry)
+    const fiber = await mountAgents(ctx)
     const agent = await liveAgent(ctx, 'watched', 'running')
     expect(await ask(ctx, agent.id)).toEqual([{ kind: 'turn' }])
     await fiber.dispose()

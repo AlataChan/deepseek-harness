@@ -667,6 +667,7 @@ export class ReviewPredictionManager {
     }
     // Durable request evidence prevents replay of uncertain or previously issued work.
     // A known eligible successful cache is served above without another model call.
+    // oxlint-disable-next-line typescript/no-deprecated -- Prediction replay guard reads durable evidence; migration deferred.
     if (session.snapshotEvents().some(event => event.type === 'assistant/auxiliary' &&
       event.data.purpose === 'prediction' && event.data.asOfSeq === request.asOfSeq)) return null
 

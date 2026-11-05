@@ -70,10 +70,10 @@ describe('plugin load', () => {
     await ctx.plugin(plugin, { ...plugin.Config({} as never), mediaRuntimePath: '/opt/media-runtime' })
   })
 
-  it('fails load on a relative runtime path', () => {
+  it('fails load on a relative runtime path', async () => {
     const ctx = new Context()
     try {
-      plugin.apply(ctx, {
+      await plugin.apply(ctx, {
         mediaRuntimePath: 'relative',
         maxPaidCallsPerSession: 8,
         maxEstimatedSpendYuan: 40,

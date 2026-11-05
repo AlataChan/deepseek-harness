@@ -181,9 +181,9 @@ export class SessionCommerceController {
     const found = await this.agents.resolveAgent(sessionId)
     if ('error' in found) throw found.error
     const agent = found.agent
-    const existing = this.ctx.sessionProjections.stateOf(agent.session, 'commerceBinding') ?? null
-    if (existing !== null) {
-      if (existing.sourceId !== sourceId) {
+    const existingSource = readCommerceSourceId(this.ctx.sessionProjections.snapshot(agent.session, ['commerceBinding']).values.commerceBinding)
+    if (existingSource !== null) {
+      if (existingSource !== sourceId) {
         throw new RemoteError(
           'gateway/bad-request',
           `session "${sessionId}" is already bound to a different commerce source`,
@@ -300,6 +300,12 @@ function toSessionPreview(preview: CommerceImportPreview): SessionCommerceImport
 
 function presetMissing(error: unknown): boolean {
   return error instanceof RemoteError && error.code === 'agent-preset/not-found'
+}
+
+function readCommerceSourceId(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null) return null
+  if (!('sourceId' in value) || typeof value.sourceId !== 'string') return null
+  return value.sourceId
 }
 
 function commercePresetUnavailable(): RemoteError<'session/commerce-preset-unavailable'> {

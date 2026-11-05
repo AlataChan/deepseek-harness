@@ -1,0 +1,4 @@
+Office runtime versions and document round trips passed.
+smoke-python-runtime: relocated Office native DOCX produced 21335 PDF bytes
+smoke-python-runtime: bundled Python, default skills, replacement and disabled skills passed
+smoke-python-runtime: all passed

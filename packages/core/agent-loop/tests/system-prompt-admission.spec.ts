@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { installModelSelection, type Agent, type ModelSelectionRef } from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { installModelSelection, type Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LlmRuntime, { createUserMessage, LlmError, type GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { toPiContext } from '@deepseek-ai/dsh-llm-pi-ai/src/context.ts'
@@ -39,9 +39,8 @@ async function harness(capable = new MockAdapter(Array.from({ length: 8 }, () =>
   ctx.on('system-prompt/assemble', async (_assembly, _context, next) => ({
     ...await next(), sections: [{ name: 'test', text: prompt, order: 0 }],
   }))
-  const selection: ModelSelectionRef = { current: { provider: 'capable', model: 'model' }, assembled: undefined }
   const agent = await ctx.agentLoop.create(SessionId('admission'), { provider: 'capable', model: 'model' })
-  installModelSelection(agent.ctx, selection)
+  installModelSelection(agent.ctx)
   ctx.on('llm/stream', (request, next) => {
     // Rebuild from copied source events, not the live projection's cached state.
     const subject = ctx.agents.get(request.sessionId!)!
@@ -50,7 +49,7 @@ async function harness(capable = new MockAdapter(Array.from({ length: 8 }, () =>
     expect(request.system).toBeUndefined()
     return next()
   })
-  return { ctx, agent, capable, plain, selection, setPrompt: (text: string) => { prompt = text } }
+  return { ctx, agent, capable, plain, setPrompt: (text: string) => { prompt = text } }
 }
 
 async function send(agent: Agent, text: string) {
@@ -183,7 +182,7 @@ describe('prepared-route prompt admission', () => {
     h.setPrompt('prompt three')
     await send(h.agent, 'third')
     expect(systemTexts(h.capable.requests[2]!)).toHaveLength(3)
-    h.selection.current = { provider, model: 'model' }
+    h.agent.model.select({ provider, model: 'model' })
     h.setPrompt('')
     await send(h.agent, 'clear')
     const adapter = provider === 'capable' ? h.capable : h.plain
@@ -287,7 +286,7 @@ describe('prepared-route prompt admission', () => {
     h.setPrompt('prompt two')
     await send(h.agent, 'second')
     expect(systemTexts(h.capable.requests[1]!)).toHaveLength(2)
-    h.selection.current = { provider: 'plain', model: 'model' }
+    h.agent.model.select({ provider: 'plain', model: 'model' })
     if (changed) h.setPrompt('prompt three')
     await send(h.agent, 'third')
     expectPlain(h.plain.requests[0]!, changed ? 'prompt three' : 'prompt two')
@@ -305,9 +304,9 @@ describe('prepared-route prompt admission', () => {
 
   it('appends on the first capable request after a plain route', async () => {
     const h = await harness()
-    h.selection.current = { provider: 'plain', model: 'model' }
+    h.agent.model.select({ provider: 'plain', model: 'model' })
     await send(h.agent, 'first')
-    h.selection.current = { provider: 'capable', model: 'model' }
+    h.agent.model.select({ provider: 'capable', model: 'model' })
     h.setPrompt('prompt two')
     await send(h.agent, 'second')
     expect(systemTexts(h.capable.requests[0]!)).toEqual([
@@ -364,6 +363,7 @@ describe('prepared-route prompt admission', () => {
     await send(h.agent, 'second')
     const seed = h.agent.session.snapshotEvents()
     const { agent: resumed } = await h.ctx.agents.create({ sessionId: SessionId('resumed'), agentOptions: { provider: 'plain', model: 'model' }, seed: [...seed] })
+    resumed.model.select({ provider: 'plain', model: 'model' })
     await send(resumed, 'resume')
     expectPlain(h.plain.requests[0]!, 'prompt two')
     expect(resumed.session.snapshotEvents().filter(event => event.type === 'request/header').at(-1)?.data.reason).toBe('resume')
@@ -404,7 +404,7 @@ describe('prepared-route prompt admission', () => {
     h.setPrompt('prompt two')
     h.ctx.on('agent/request', async (_payload, next) => {
       const config = await next()
-      h.selection.current = { provider: 'plain', model: 'model' }
+      h.agent.model.select({ provider: 'plain', model: 'model' })
       return { ...config, temperature: 0.5, maxTokens: 100 }
     })
     await send(h.agent, 'second')

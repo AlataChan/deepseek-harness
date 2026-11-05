@@ -38,8 +38,9 @@ export async function listBoundSessionIds(
   const sessions = ctx.get('sessions')
   if (sessions !== undefined) {
     for (const session of sessions.list()) {
-      const binding = ctx.get('sessionProjections')?.stateOf(session, 'askKnowledgeBinding')
-        ?? foldAskKnowledgeBinding(session.snapshotEvents())
+      const recorded = ctx.get('sessionProjections')?.snapshot(session, ['askKnowledgeBinding']).values.askKnowledgeBinding
+      // oxlint-disable-next-line typescript/no-deprecated -- Live binding fallback without projection; migration deferred.
+      const binding = isBinding(recorded) ? recorded : foldAskKnowledgeBinding(session.snapshotEvents())
       if (binding?.libraryId === libraryId) ids.add(session.id)
     }
   }

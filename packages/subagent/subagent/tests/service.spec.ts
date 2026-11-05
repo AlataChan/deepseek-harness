@@ -88,6 +88,7 @@ describe('SubagentRuntime', () => {
 
     await fiber.dispose()
 
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(parent, 'subagentCatalog')).toBeUndefined()
   })
 

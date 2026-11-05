@@ -233,6 +233,8 @@ class FixtureFileSystem extends FileSystem {
   override async editText(_target: FsTarget, _edit: FsEditRequest): Promise<FsEditOutcome> {
     throw new Error('not needed in this fixture')
   }
+  override async deleteFile(): Promise<never> { throw new Error('fixture does not delete files') }
+  override async moveFile(): Promise<never> { throw new Error('fixture does not move files') }
 }
 
 /** Copy the real skill into a temp project and seed a decoy copy in the home root. */

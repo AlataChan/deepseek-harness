@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { agentPresetProjectionDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 import SessionStore, { SESSION_FORMAT_VERSION, SessionLogOffset, SessionId } from '@deepseek-ai/dsh-session'
@@ -36,10 +37,11 @@ async function harness(): Promise<{ ctx: Context; agents: ApiSessionAgentControl
   roots.push(ctx)
   await ctx.plugin(TypertRegistry)
   await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   installSessionReadTestServices(ctx)
-  ctx.sessionProjections.register(agentPresetProjectionDefinition)
-  installModelSelectionProjection(ctx)
+  await ctx.sessionProjections.register(agentPresetProjectionDefinition)
+  await installModelSelectionProjection(ctx)
   ctx.provide('agentDefaultModel', {
     currentSelection: () => ({ provider: 'fixture', model: 'fixture-model' }),
     saveSelection: () => Promise.resolve(),
@@ -63,7 +65,19 @@ function providePersistence(ctx: Context, persistence: Record<string, unknown>):
 
 function agent(ctx: Context, meta: SessionHeader): Agent {
   const session = ctx.sessions.create(meta.id, { meta })
-  return { id: meta.id, session, status: 'idle', ctx } as Agent
+  return {
+    id: meta.id,
+    session,
+    status: 'idle',
+    ctx,
+    model: {
+      current: () => undefined,
+      origin: () => null,
+      select: (selection, origin) => {
+        session.append('model/selection', origin === undefined || origin === 'explicit' ? selection : { ...selection, origin })
+      },
+    },
+  } as Agent
 }
 
 function unpublishedAgent(ctx: Context, meta: SessionHeader): Agent {
@@ -288,24 +302,21 @@ describe('ApiSession Agent lookup and recovery', () => {
 })
 
 describe('ApiSession model selection', () => {
-  it('requires the model-selection projection', async () => {
+  it('reads the agent model without a keyed projection lookup', async () => {
     const { ctx, agents } = await harness()
     const live = agent(ctx, header('missing-model-projection'))
-    vi.spyOn(ctx.sessionProjections, 'stateOf').mockReturnValue(undefined)
+    const stateOf = vi.spyOn(ctx.sessionProjections, 'stateOf')
 
-    expect(() => agents.selectionFor(live)).toThrow('required modelSelection projection')
+    expect(agents.selectionFor(live).current).toEqual({ provider: 'fixture', model: 'fixture-model' })
+    expect(stateOf).not.toHaveBeenCalled()
   })
 
-  it('reads a reasoning-free request and consumes only the exact pending selection', async () => {
+  it('reads the agent model and consumes only the exact pending selection', async () => {
     const { ctx, agents } = await harness()
     const logged = agent(ctx, header('logged-model'))
-    logged.session.append('request/header', {
-      header: { config: { provider: 'logged-provider', model: 'logged-model' } },
-      reason: 'initial',
-    })
     expect(agents.selectionFor(logged).current).toEqual({
-      provider: 'logged-provider',
-      model: 'logged-model',
+      provider: 'fixture',
+      model: 'fixture-model',
     })
 
     const pending = agent(ctx, header('pending-model'))

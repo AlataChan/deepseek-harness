@@ -4,7 +4,7 @@ import { hostname } from 'node:os'
 import { resolve } from 'node:path'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-fs'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { errorChain, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-client-file-upload'
@@ -239,6 +239,7 @@ export class SessionController extends TypertRemoteService {
   private readonly controlState: SessionControlController
   private readonly history: SessionHistoryController
   private readonly listState: ApiSessionList
+  private readonly modelSelectionReady: Promise<void>
   private readonly openPath: (path: string, signal: AbortSignal) => Promise<void>
   private readonly fileApplications: typeof nativeFileApplications
   private readonly openFileApplication: typeof openNativeFileApplication
@@ -258,7 +259,7 @@ export class SessionController extends TypertRemoteService {
   constructor(ctx: Context, config: Config, internals: SessionControllerInternals = {}) {
     super(ctx, 'sessionController', { namespace: 'session' })
     const resolved = SessionController.Config(config)
-    installModelSelectionProjection(ctx)
+    this.modelSelectionReady = installModelSelectionProjection(ctx)
     this.agents = new ApiSessionAgentController(ctx)
     this.askData = new SessionAskDataController(ctx, this.agents, process.cwd())
     this.askKnowledge = new SessionAskKnowledgeController(
@@ -336,6 +337,12 @@ export class SessionController extends TypertRemoteService {
       if (event.type !== 'user/message' || event.data.source.kind !== 'user') return
       ctx.emit('api-session/activity', session.id, event.time)
     })
+  }
+
+  /** Await model-selection and list projection registration before serving. */
+  protected async [Service.init](): Promise<void> {
+    await this.modelSelectionReady
+    await this.listState.ready
   }
 
   private promote(observation: SessionObservation): void {

@@ -1,9 +1,16 @@
-/** Reject maintained references to repository commits and the disallowed organization URL. */
+/**
+ * Reject maintained references to repository commits and the disallowed organization URL.
+ * The runtime-consumer audit pins one immutable commit in an exported string literal.
+ * That literal is the only maintained exception: other identifiers in the same file,
+ * abbreviated or wrapped forms of the pin, and raw commits in intake `sourceChanges`
+ * stay rejected. Absent objects in a shallow clone still cannot match.
+ */
 
 import { execFileSync } from 'node:child_process'
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import ts from 'typescript'
 import { canonicalReferenceText } from './verify-public-repository-links.ts'
 
 const root = resolve(import.meta.dirname, '..')
@@ -33,6 +40,28 @@ const excludedRecords = [
   '.agents/notes/implemented/process/2026-10-07-upstream-upgrade-repair-checkpoint.zh.md',
 ]
 const gitOutputLimit = 64 * 1024 * 1024
+/** Audit module whose qualified baseline is a machine field, not a prose citation. */
+const baselinePinFile = 'scripts/verify-upstream-runtime-consumers.ts'
+/** Exported const that must name the immutable qualified commit, never `HEAD`. */
+const baselinePinField = 'QUALIFIED_BASELINE_REVISION'
+
+/** Source span of the audit pin's 40-hex string literal, excluding every other occurrence. */
+function baselinePinSpans(file: string, source: string): Array<{ start: number; end: number }> {
+  if (file !== baselinePinFile) return []
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const spans: Array<{ start: number; end: number }> = []
+  for (const statement of parsed.statements) {
+    if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0) continue
+    if (!statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) continue
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== baselinePinField) continue
+      const initializer = declaration.initializer
+      if (initializer === undefined || !ts.isStringLiteral(initializer) || !/^[\da-f]{40}$/i.test(initializer.text)) continue
+      spans.push({ start: initializer.getStart(parsed), end: initializer.end })
+    }
+  }
+  return spans
+}
 
 /** One prohibited reference in a maintained source file. */
 export interface RepositoryReference {
@@ -53,7 +82,7 @@ function isMaintained(file: string): boolean {
  * @param file - Repository-relative path used in diagnostics and exclusions.
  * @param source - File text or a symlink's stored target.
  * @param commits - Lowercase, unambiguous full or abbreviated commit identifiers.
- * @returns One finding per line and reference kind; digests and other Git object types are accepted.
+ * @returns One finding per line and reference kind; digests, other Git object types, and the audit pin literal are accepted.
  */
 export function findRepositoryReferences(
   file: string,
@@ -61,14 +90,21 @@ export function findRepositoryReferences(
   commits: ReadonlySet<string>,
 ): RepositoryReference[] {
   if (!isMaintained(file)) return []
+  const pins = baselinePinSpans(file, source)
   const references: RepositoryReference[] = []
+  let offset = 0
   for (const [index, line] of source.split('\n').entries()) {
     if (organizationUrl.test(canonicalReferenceText(line).replace(kitRepositoryUrl, ''))) {
       references.push({ file, line: index + 1, kind: 'organization-url' })
     }
-    if ([...line.matchAll(commitCandidate)].some(match => commits.has(match[0].toLowerCase()))) {
-      references.push({ file, line: index + 1, kind: 'commit-hash' })
-    }
+    const citesCommit = [...line.matchAll(commitCandidate)].some((match) => {
+      if (!commits.has(match[0].toLowerCase())) return false
+      const start = offset + match.index
+      const end = start + match[0].length
+      return !pins.some(pin => start >= pin.start && end <= pin.end)
+    })
+    if (citesCommit) references.push({ file, line: index + 1, kind: 'commit-hash' })
+    offset += line.length + 1
   }
   return references
 }

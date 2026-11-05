@@ -127,7 +127,9 @@ export class SessionReferenceResolver extends TypertRemoteService {
     ctx.on('system-prompt/assemble', async (_assembly, context, next) => {
       const assembly = await next()
       if (context.agent !== undefined) {
-        const { provider, model } = assembly.variables
+        const selected = context.modelSelection
+        const provider = selected?.provider ?? assembly.variables.provider
+        const model = selected?.model ?? assembly.variables.model
         this.assembledRoutes.set(context.agent, { provider, model })
       }
       return assembly

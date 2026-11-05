@@ -103,6 +103,25 @@ describe('tool-call-model', () => {
     expect(toolRowModel('bash', result({ isError: true, error: { name: 'E', code: 'interrupted' } })).state).toBe('stopped')
   })
 
+  it('uses a stopped apply_patch summary only for an own true flag', () => {
+    const call = { name: 'apply_patch', argsRaw: '{}' }
+    const written = 'Patch stopped after 1 of 2 operations.\n  destination other.txt was written'
+    const reread = 'Please re-read the affected files'
+    const patch = (meta: unknown, text: string, isError = false) => result({
+      call, content: [{ type: 'text', text }], meta, isError,
+    })
+    expect(toolRowModel('apply_patch', patch({ stopped: true }, written)).summary)
+      .toBe('destination other.txt was written')
+    expect(toolRowModel('apply_patch', patch({ stopped: true }, reread)).summary).toBe(reread)
+    expect(toolRowModel('apply_patch', patch(Object.assign(Object.create(null), { stopped: true }), written)).summary)
+      .toBe('destination other.txt was written')
+    for (const meta of [undefined, null, [], { stopped: false }, { stopped: 'true' }, { diffs: [] }, Object.create({ stopped: true })]) {
+      expect(toolRowModel('apply_patch', patch(meta, written)).summary).toBe('apply_patch · {}')
+    }
+    expect(toolRowModel('apply_patch', patch({ stopped: true }, ' \n', false)).summary).toBe('apply_patch · {}')
+    expect(toolRowModel('apply_patch', patch({ stopped: true }, written, true)).summary).toBe('apply_patch · {}')
+  })
+
   it('derives the bash summary from description over command', () => {
     const m = toolRowModel('bash', running())
     expect(t(m.titleKey)).toBe('运行命令')

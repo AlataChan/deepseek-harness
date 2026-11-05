@@ -24,6 +24,23 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
     expect(rootPackage.scripts?.dsh).toBe('node --import tsx/esm apps/cli/src/bin.ts')
   })
 
+  it('prints the version when this process is a supported Node', async () => {
+    const result = await execa(process.execPath, ['--import', 'tsx/esm', dshSourceBin, '--version'], {
+      cwd: repoRoot,
+      timeout: 25_000,
+      killSignal: 'SIGKILL',
+      reject: false,
+    })
+    if (result.timedOut) {
+      throw new Error(`dsh --version did not exit within 25s. stdout:\n${result.stdout}\nstderr:\n${result.stderr}`)
+    }
+    const rootPackage = JSON.parse(await readFile(new URL('../../../package.json', import.meta.url), 'utf8')) as {
+      readonly version: string
+    }
+    expect(result.exitCode, result.stderr).toBe(0)
+    expect(result.stdout.trim()).toBe(rootPackage.version)
+  }, 30_000)
+
   it('boots the source entry and requires a profile', async () => {
     const result = await execa(process.execPath, ['--import', 'tsx/esm', dshSourceBin], {
       cwd: repoRoot,

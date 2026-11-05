@@ -1,7 +1,8 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { Context, Service, symbols } from '@deepseek-ai/cordis'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import AgentRegistry, { agentEvents } from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { agentEvents, emitAgentEvent } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 
 import type {
@@ -10,8 +11,13 @@ import type {
   AgentFactory,
   AgentStatus,
   CreateAgentOptions,
+  Model,
   ResumeAgentOptions,
 } from '@deepseek-ai/dsh-agent'
+
+function mountAgents(ctx: Context) {
+  return ctx.plugin(SessionProjectionRegistry).then(() => ctx.plugin(AgentRegistry))
+}
 
 function stubAgent(rawId: string, overrides: Partial<Agent> = {}): Agent {
   const id = SessionId(rawId)
@@ -32,17 +38,16 @@ function stubAgent(rawId: string, overrides: Partial<Agent> = {}): Agent {
     inject: () => {},
     cancel() {},
     runMaintenance: task => task(new AbortController().signal),
+    model: { current: () => undefined, select: () => {}, origin: () => null } satisfies Model,
     whenIdle: () => Promise.resolve(),
-    ...overrides,
   }
-  return agent
+  return Object.assign(agent, overrides)
 }
 
 describe('AgentRegistry', () => {
   it('contributes Agent lookup and scoped Context providers while Typert is live', async () => {
     const ctx = new Context()
-    const agentFiber = ctx.plugin(AgentRegistry)
-    await agentFiber
+    const agentFiber = await mountAgents(ctx)
     await ctx.plugin(TypertRegistry)
     const agent = stubAgent('remote-agent')
     const disposeAgent = await ctx.agents.register(agent)
@@ -67,7 +72,7 @@ describe('AgentRegistry', () => {
 
   it('registers exact entries, emits lifecycle events, and unregisters on owner disposal', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const lifecycle: string[] = []
     ctx.on('agent/created', ({ agent }) => void lifecycle.push(`created:${agent.id}`))
     ctx.on('agent/disposed', ({ agent }) => void lifecycle.push(`disposed:${agent.id}`))
@@ -86,7 +91,7 @@ describe('AgentRegistry', () => {
 
   it('rejects an agent whose registry and session identities differ', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const agent = stubAgent('agent-id', { session: Session.create(SessionId('session-id')) })
 
     expect(() => ctx.agents.enter(agent, undefined))
@@ -96,7 +101,7 @@ describe('AgentRegistry', () => {
 
   it('tracks runtime creator ownership separately from registry order', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const root = stubAgent('root')
     const child = stubAgent('child')
     const detachRoot = ctx.agents.enter(root, undefined)
@@ -117,7 +122,7 @@ describe('AgentRegistry', () => {
 
   it('rolls an entry back and pairs a partially delivered creation when a listener throws', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const lifecycle: string[] = []
     ctx.on('agent/created', ({ agent }) => void lifecycle.push(`created:${agent.id}`))
     ctx.on('agent/created', () => { throw new Error('creation veto') })
@@ -130,7 +135,7 @@ describe('AgentRegistry', () => {
 
   it('rolls back asynchronous creation rejection and contains every disposal-listener failure', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const warnings: string[] = []
     const heard: string[] = []
     ctx.logger.warn = ((message: unknown) => { warnings.push(String(message)) }) as typeof ctx.logger.warn
@@ -153,7 +158,7 @@ describe('AgentRegistry', () => {
 
   it('awaits each creation listener before the next listener and registration completion', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const entered = Promise.withResolvers<undefined>()
     const release = Promise.withResolvers<undefined>()
     const order: string[] = []
@@ -183,7 +188,7 @@ describe('AgentRegistry', () => {
 
   it('separates entry from announcement and stale/idempotent detach cannot remove a replacement', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const lifecycle: string[] = []
     ctx.on('agent/created', ({ agent }) => void lifecycle.push(`created:${agent.id}`))
     ctx.on('agent/disposed', ({ agent }) => void lifecycle.push(`disposed:${agent.id}`))
@@ -207,7 +212,7 @@ describe('AgentRegistry', () => {
 
   it('defers detach requested by a creation listener until that dispatch unwinds', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const order: string[] = []
     const agent = stubAgent('reentrant')
     ctx.on('agent/created', () => {
@@ -225,6 +230,17 @@ describe('AgentRegistry', () => {
 })
 
 describe('agentEvents()', () => {
+  it('delivers a status notification through the public emit helper', () => {
+    const ctx = new Context()
+    const agent = stubAgent('emit')
+    const heard: string[] = []
+    ctx.on('agent/status', ({ agent: subject, status }) => {
+      if (subject === agent) heard.push(status)
+    })
+    emitAgentEvent(ctx, agent, 'agent/status', { status: 'running' })
+    expect(heard).toEqual(['running'])
+  })
+
   it('contains each synchronous throw and returned-promise rejection', async () => {
     const ctx = new Context()
     const warnings: string[] = []
@@ -302,7 +318,7 @@ describe('AgentRegistry factory seam', () => {
 
   it('requires a factory and delegates through the calling context', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     await expect(ctx.agents.create({ sessionId: SessionId('s') })).rejects.toThrow(/no agent factory/)
     const { factory, calls } = stubFactory()
     ctx.agents.setFactory(factory)
@@ -321,7 +337,7 @@ describe('AgentRegistry factory seam', () => {
 
   it('keeps the runtime parent in options separately from the caller context', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const { factory, calls } = stubFactory()
     ctx.agents.setFactory(factory)
     const parent = stubAgent('parent')
@@ -335,7 +351,7 @@ describe('AgentRegistry factory seam', () => {
 
   it('rejects a second factory and clears the slot with its owner (HMR)', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const owner = await ctx.plugin(Object.assign((inner: Context) => {
       inner.agents.setFactory(stubFactory().factory)
       expect(() => inner.agents.setFactory(stubFactory().factory)).toThrow(/already registered/)
@@ -347,7 +363,7 @@ describe('AgentRegistry factory seam', () => {
 
   it('canonicalizes an already traced Service before tracing it for the caller', async () => {
     const ctx = new Context()
-    await ctx.plugin(AgentRegistry)
+    await mountAgents(ctx)
     const states = new WeakMap<object, string[]>()
     class TracedFactory extends Service implements AgentFactory {
       constructor(inner: Context) {

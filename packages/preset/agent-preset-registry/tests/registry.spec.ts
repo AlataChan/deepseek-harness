@@ -7,6 +7,7 @@ import { omitsGeneratedPage } from '../../../settings/settings/tests/live-config
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import AgentPresets from '../src/index.ts'
+import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Context } from '@deepseek-ai/cordis'
 
 const contexts: Context[] = []
@@ -117,8 +118,10 @@ describe('declarative preset revisions', () => {
     await declare(ctx, contribution('standard'))
     await declare(ctx, contribution('minimal'))
     const agent = await agentOn(ctx, 'selection')
+    expect(ctx.agentPresets.presetOf(agent.session)).toBeNull()
     expect(await ctx.agentPresets.select(agent, 'minimal')).toBe('minimal')
-    expect(ctx.sessionProjections.stateOf(agent.session, 'agentPreset')).toBe('minimal')
+    expect(agent.session.header.agentPreset).toBeUndefined()
+    expect(ctx.agentPresets.presetOf(agent.session)).toBe('minimal')
     agent.session.append('turn/start', { turn: 1 })
     await expect(ctx.agentPresets.select(agent, 'standard')).rejects.toThrow('already started')
   })
@@ -149,7 +152,7 @@ describe('declarative preset revisions', () => {
       if (preset === 'minimal') throw new Error('ask-data gate: source required')
     })
     await expect(ctx.agentPresets.select(agent, 'minimal')).rejects.toThrow('ask-data gate: source required')
-    expect(ctx.sessionProjections.stateOf(agent.session, 'agentPreset')).toBeNull()
+    expect(ctx.agentPresets.presetOf(agent.session)).toBeNull()
   })
 
   it('inventories active and disabled child entries and declared display metadata', async () => {
@@ -285,6 +288,7 @@ it('ignores a retired modeSelectionEnabled field in the user patch', async () =>
 it('keeps its own instance off the generated Settings pages', () => omitsGeneratedPage(async (ctx) => {
   await ctx.plugin(Loader)
   await ctx.plugin(SessionProjectionRegistry)
+  await ctx.plugin(AgentRegistry)
   return ctx.plugin(AgentPresets, { default: 'standard' })
 }))
 
@@ -315,7 +319,7 @@ it('serializes competing blank-session selections and recovers after a failed se
     ctx.agentPresets.select(agent, 'absent'), ctx.agentPresets.select(agent, 'minimal'), ctx.agentPresets.select(agent, 'standard'),
   ])
   expect(results.map(row => row.status)).toEqual(['rejected', 'fulfilled', 'fulfilled'])
-  expect(ctx.sessionProjections.stateOf(agent.session, 'agentPreset')).toBe('standard')
+  expect(ctx.agentPresets.presetOf(agent.session)).toBe('standard')
 })
 
 it('retains a newly acquired generation when a previous activation is replaced', async () => {
@@ -344,7 +348,7 @@ it('does not lose the durable selection when a tools observer rejects notificati
   const agent = await agentOn(ctx, 'observer')
   ctx.on('tools/change', () => { throw new Error('observer refused') })
   expect(await ctx.agentPresets.select(agent, 'minimal')).toBe('minimal')
-  expect(ctx.sessionProjections.stateOf(agent.session, 'agentPreset')).toBe('minimal')
+  expect(ctx.agentPresets.presetOf(agent.session)).toBe('minimal')
 })
 
 it('inventories failed conditional entries without executing their expressions again', async () => {

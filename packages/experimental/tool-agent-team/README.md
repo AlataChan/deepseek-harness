@@ -72,6 +72,8 @@ Sending a message succeeds as soon as it is safely stored: the result is `accept
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+The plugin owns aggregate cleanup before mounting tools on Agent fibers. An unload during synchronous registration rolls back the interrupted mount, while unloading after projection handoff publishes no tools.
+
 <details>
 <summary>Implementation internals — click to expand</summary>
 

@@ -1,29 +1,45 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import {
   agentEvents,
   installModelSelection,
   type Agent,
+  type AgentOptions,
   type ModelSelection,
-  type ModelSelectionRef,
-} from '../src/index.ts'
-import {
-  createUserMessage,
-  ReasoningEffortId,
-  type LlmCallConfig,
-  type UserMessage,
-} from '@deepseek-ai/dsh-llm'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
+} from '@deepseek-ai/dsh-agent'
+import { createUserMessage, ReasoningEffortId, type UserMessage } from '@deepseek-ai/dsh-llm'
+import SessionStore, { Session, SessionId, SessionLogOffset, type EpochHeader } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import { AgentModel, modelSelectionProjectionDefinition } from '../src/model-selection.ts'
 
+const INITIAL = { provider: 'alpha', model: 'a0' }
 const SIGNAL = new AbortController().signal
 const INPUT = createUserMessage({
   content: [{ type: 'text', text: 'continue' }],
   source: { kind: 'user' },
 })
 
-function createAgent(): Agent {
-  return { session: Session.create(SessionId('model-selection')) } as Agent
+async function harness(options: AgentOptions = INITIAL) {
+  const ctx = new Context()
+  onTestFinished(() => ctx.fiber.dispose())
+  await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjectionRegistry)
+  const projection = await ctx.sessionProjections.register(modelSelectionProjectionDefinition)
+  const session = ctx.sessions.create(SessionId('model-selection'))
+  const model = new AgentModel(() => projection.stateOf(session), session, options)
+  const unused = (): never => { throw new Error('model-selection fixture does not drive the Agent') }
+  const agent: Agent = {
+    id: session.id, session, ctx, options, model, status: 'idle',
+    get inbox() { return unused() },
+    cancel: unused, whenIdle: unused, runMaintenance: unused,
+    send: unused, followup: unused, steer: unused, inject: unused,
+  }
+  const current = () => agent.model.current()
+  const record = (selection: ModelSelection) => { agent.model.select(selection) }
+  const header = (config: ModelSelection, adapterDefaults?: EpochHeader['adapterDefaults']) => session.append('request/header', {
+    header: { config, ...adapterDefaults === undefined ? {} : { adapterDefaults } }, reason: 'initial',
+  })
+  return { ctx, agent, session, projection, current, record, header, state: () => projection.stateOf(session) }
 }
 
 function expectedNotice(from: string, to: string) {
@@ -36,156 +52,261 @@ function expectedNotice(from: string, to: string) {
   }
 }
 
-async function switchHarness(current: ModelSelection, previous?: ModelSelection) {
-  const ctx = new Context()
-  await ctx.plugin(SystemPrompt)
-  const selection: ModelSelectionRef = { current, assembled: undefined }
-  const dispose = installModelSelection(ctx, selection)
-  const agent = createAgent()
-  if (previous !== undefined) {
-    agent.session.append('request/header', { header: { config: previous }, reason: 'initial' })
-  }
-  await ctx.systemPrompt.assemble()
-  return { agent, ctx, dispose, selection }
-}
-
 async function preStep(
-  ctx: Context,
   agent: Agent,
+  modelSelection: ModelSelection,
   {
-    messages = [INPUT],
-    offered = [INPUT],
-    step = 1,
-    signal = SIGNAL,
-  }: {
-    messages?: UserMessage[]
-    offered?: UserMessage[]
-    step?: number
-    signal?: AbortSignal
-  } = {},
+    messages = [INPUT], offered = [INPUT], step = 1, signal = SIGNAL,
+  }: { messages?: UserMessage[]; offered?: UserMessage[]; step?: number; signal?: AbortSignal } = {},
 ) {
-  return agentEvents(ctx, agent).waterfall(
+  return agentEvents(agent.ctx, agent).waterfall(
     'agent/pre-step',
-    { turn: 1, step, messages: offered, signal },
-    () => Promise.resolve({ kind: 'enter' as const, messages }),
+    { turn: 1, step, messages: offered, signal, modelSelection },
+    () => Promise.resolve({ kind: 'enter' as const, messages, startsRequestSeries: true as const }),
   )
 }
 
-describe('installModelSelection()', () => {
-  it('snapshots prompt variables and request routing together, then disposes its listeners', async () => {
-    const ctx = new Context()
-    await ctx.plugin(SystemPrompt)
-    const selection: ModelSelectionRef = { current: undefined, assembled: undefined }
-    const dispose = installModelSelection(ctx, selection)
-    const agent = createAgent()
-    const seed: LlmCallConfig = { provider: 'seed', model: 'seed', temperature: 0.2 }
-    const signal = new AbortController().signal
+describe('Session model selection', () => {
+  it('reports no selection origin while a missing record still falls back to a complete live route', async () => {
+    const live = await harness()
+    expect(live.state()).toEqual({ lastUsed: null, pending: null, lastUsedOrigin: null, pendingOrigin: null })
+    expect(live.agent.model.origin()).toBeNull()
+    expect(live.current()).toEqual(INITIAL)
 
-    expect((await ctx.systemPrompt.assemble()).variables).toEqual({})
-    await expect(agentEvents(ctx, agent).waterfall(
-      'agent/request', { turn: 1, step: 0, signal }, () => Promise.resolve(seed),
-    )).resolves.toBe(seed)
-
-    selection.current = {
-      provider: 'alpha',
-      model: 'a1',
-      reasoningEffort: ReasoningEffortId('high'),
-    }
-    expect((await ctx.systemPrompt.assemble()).variables).toMatchObject({ provider: 'alpha', model: 'a1' })
-    selection.current = { provider: 'beta', model: 'b1' }
-    await expect(agentEvents(ctx, agent).waterfall(
-      'agent/request', { turn: 1, step: 0, signal }, () => Promise.resolve(seed),
-    )).resolves.toEqual({
-      provider: 'alpha',
-      model: 'a1',
-      reasoningEffort: ReasoningEffortId('high'),
-      temperature: 0.2,
-    })
-
-    expect((await ctx.systemPrompt.assemble()).variables).toMatchObject({ provider: 'beta', model: 'b1' })
-    const inherited: LlmCallConfig = {
-      provider: 'alpha',
-      model: 'a1',
-      reasoningEffort: ReasoningEffortId('max'),
-      temperature: 0.2,
-    }
-    await expect(agentEvents(ctx, agent).waterfall(
-      'agent/request', { turn: 1, step: 1, signal }, () => Promise.resolve(inherited),
-    )).resolves.toEqual({ provider: 'beta', model: 'b1', temperature: 0.2 })
-
-    dispose()
-    expect((await ctx.systemPrompt.assemble()).variables).toEqual({})
-    await expect(agentEvents(ctx, agent).waterfall(
-      'agent/request', { turn: 2, step: 0, signal }, () => Promise.resolve(seed),
-    )).resolves.toBe(seed)
-    await ctx.fiber.dispose()
+    const missing = await harness({})
+    expect(missing.agent.model.origin()).toBeNull()
+    expect(missing.current()).toBeUndefined()
   })
 
-  it('announces same-provider and cross-provider route changes from the assembled selection', async () => {
-    const { agent, ctx, dispose, selection } = await switchHarness(
-      { provider: 'alpha', model: 'a1' },
-      { provider: 'alpha', model: 'a0' },
-    )
-    await expect(preStep(ctx, agent)).resolves.toMatchObject({
-      messages: [INPUT, expectedNotice('a0', 'a1')],
+  it('uses initial options only until a selection or request is recorded and returns detached values', async () => {
+    const h = await harness({})
+    expect(h.current()).toBeUndefined()
+    h.agent.options.provider = 'alpha'
+    expect(h.current()).toBeUndefined()
+    h.agent.options.model = 'a0'
+    expect(h.current()).toEqual(INITIAL)
+    expect(h.ctx.sessionProjections.snapshot(h.session).values.modelSelection).toEqual({ lastUsed: null, next: null })
+
+    h.record(INITIAL)
+    expect(h.session.snapshotEvents()).toMatchObject([{ type: 'model/selection', data: INITIAL }])
+    const selected = { provider: 'beta', model: 'b1', reasoningEffort: ReasoningEffortId('high') }
+    h.record(selected)
+    selected.model = 'mutated'
+    const read: ModelSelection = h.current()!
+    read.model = 'also mutated'
+    expect(h.current()).toEqual({ provider: 'beta', model: 'b1', reasoningEffort: 'high' })
+    h.record(h.current()!)
+    expect(h.session.snapshotEvents()).toHaveLength(2)
+    h.agent.options.model = 'other initial model'
+    expect(h.current()?.model).toBe('b1')
+  })
+
+  it('retires only a matching pending selection and reconstructs it from the log', async () => {
+    const h = await harness()
+    h.header(INITIAL)
+    const selected = { provider: 'beta', model: 'b1', reasoningEffort: ReasoningEffortId('high') }
+    h.record(selected)
+    for (const config of [
+      { ...selected, provider: 'other' },
+      { ...selected, model: 'other' },
+      { ...selected, reasoningEffort: ReasoningEffortId('low') },
+    ]) {
+      h.header(config)
+      expect(h.state()?.pending).toEqual(selected)
+    }
+    const restored = Session.create(SessionId('restored'), h.session.snapshotEvents())
+    const projection = await h.ctx.sessionProjections.register(modelSelectionProjectionDefinition)
+    const restoredModel = new AgentModel(() => projection.stateOf(restored), restored, {})
+    expect(restoredModel.current()).toEqual(selected)
+    h.header(selected)
+    expect(h.state()).toEqual({ lastUsed: selected, pending: null, lastUsedOrigin: 'explicit', pendingOrigin: null })
+    expect(h.current()).toEqual(selected)
+    const state = h.state()
+    h.header(selected)
+    expect(h.state()).toBe(state)
+  })
+
+  it('retains the original model reader after release and same-key replacement', async () => {
+    const h = await harness()
+    const selected = { provider: 'beta', model: 'b1' }
+    h.agent.model.select(selected, 'inherited')
+    await h.projection.dispose()
+    const replacementRoute = { provider: 'replacement', model: 'other' }
+    const replacement = await h.ctx.sessionProjections.register({
+      ...modelSelectionProjectionDefinition,
+      stateVersion: modelSelectionProjectionDefinition.stateVersion + 1,
+      init: () => ({ lastUsed: replacementRoute, pending: null, lastUsedOrigin: null, pendingOrigin: null }),
+      apply: state => state,
+    })
+    expect(replacement.stateOf(h.session).lastUsed).toEqual(replacementRoute)
+    expect(h.current()).toEqual(selected)
+    expect(h.agent.model.origin()).toBe('inherited')
+    h.header(selected)
+    expect(h.current()).toEqual(selected)
+    expect(h.agent.model.origin()).toBe('inherited')
+    expect(replacement.stateOf(h.session).lastUsed).toEqual(replacementRoute)
+  })
+
+  it('leaves adapter-defaulted reasoning unselected while retaining explicit effort', async () => {
+    const h = await harness()
+    const selected = { provider: 'beta', model: 'b1' }
+    h.record(selected)
+    h.header({ ...selected, reasoningEffort: ReasoningEffortId('high') }, { reasoningEffort: true })
+    expect(h.state()).toEqual({ lastUsed: selected, pending: null, lastUsedOrigin: 'explicit', pendingOrigin: null })
+    expect(h.current()).toEqual(selected)
+    expect(h.ctx.sessionProjections.snapshot(h.session).values.modelSelection).toEqual({ lastUsed: selected, next: selected })
+    h.header({ ...selected, reasoningEffort: ReasoningEffortId('low') })
+    expect(h.current()).toEqual({ ...selected, reasoningEffort: 'low' })
+  })
+
+  it('reuses fold state for duplicate recorded selections and unrelated events', async () => {
+    const h = await harness()
+    const selected = { provider: 'beta', model: 'b1' }
+    h.record(selected)
+    const state = h.state()
+    h.session.append('model/selection', selected)
+    h.session.append('user/message', INPUT, { surfaceOp: 'append' })
+    expect(h.state()).toBe(state)
+  })
+
+  it('records an explicit pick over an equal inherited selection and keeps a repeated explicit pick', async () => {
+    const h = await harness()
+    h.agent.model.select(INITIAL, 'inherited')
+    expect(h.current()).toEqual(INITIAL)
+    expect(h.session.snapshotEvents()).toMatchObject([{ type: 'model/selection', data: { ...INITIAL, origin: 'inherited' } }])
+    h.agent.model.select(INITIAL, 'inherited')
+    expect(h.session.snapshotEvents()).toHaveLength(1)
+    h.record(INITIAL)
+    expect(h.session.snapshotEvents()).toMatchObject([
+      { data: { ...INITIAL, origin: 'inherited' } },
+      { data: INITIAL },
+    ])
+    expect(h.session.snapshotEvents()[1]?.data).not.toHaveProperty('origin')
+    h.record(INITIAL)
+    expect(h.session.snapshotEvents()).toHaveLength(2)
+    h.agent.model.select(INITIAL, 'inherited')
+    expect(h.session.snapshotEvents()).toHaveLength(3)
+    expect(h.session.snapshotEvents().at(-1)?.data).toEqual({ ...INITIAL, origin: 'inherited' })
+    h.header(INITIAL)
+    expect(h.state()).toEqual({ lastUsed: INITIAL, pending: null, lastUsedOrigin: 'inherited', pendingOrigin: null })
+    expect(h.agent.model.origin()).toBe('inherited')
+    expect(h.current()).toEqual(INITIAL)
+  })
+
+  it('keeps an inherited origin after the request header consumes it', async () => {
+    const h = await harness()
+    h.session.append('model/selection', INITIAL)
+    h.record(INITIAL)
+    expect(h.session.snapshotEvents()).toHaveLength(1)
+    h.agent.model.select(INITIAL, 'inherited')
+    expect(h.session.snapshotEvents()).toHaveLength(2)
+    h.header(INITIAL)
+    expect(h.state()).toEqual({ lastUsed: INITIAL, pending: null, lastUsedOrigin: 'inherited', pendingOrigin: null })
+    h.record(INITIAL)
+    expect(h.session.snapshotEvents().at(-1)?.data).toEqual(INITIAL)
+    expect(h.state()?.pendingOrigin).toBe('explicit')
+    expect(h.agent.model.origin()).toBe('explicit')
+  })
+
+  it('refolds a v3 checkpoint so a consumed explicit selection stays distinct from a header-only route', async () => {
+    const explicit = await harness()
+    explicit.record(INITIAL)
+    explicit.header(INITIAL)
+    const explicitEvents = explicit.session.snapshotEvents()
+    const explicitEnd = explicitEvents.at(-1)
+    if (explicitEnd === undefined) throw new Error('expected the consumed selection log')
+    const explicitRestore = explicit.ctx.sessionProjections.restore({
+      modelSelection: { ver: 3, seq: explicitEnd.seq, val: { lastUsed: INITIAL, pending: null } },
+    }, explicitEvents, SessionLogOffset(0), explicit.session.header, SessionLogOffset(0))
+    expect(explicitRestore.checkpoint.modelSelection).toMatchObject({
+      ver: 4,
+      val: { lastUsed: INITIAL, pending: null, lastUsedOrigin: 'explicit', pendingOrigin: null },
     })
 
-    selection.current = { provider: 'beta', model: 'b1' }
-    await ctx.systemPrompt.assemble()
-    selection.current = { provider: 'alpha', model: 'a2' }
-    await expect(preStep(ctx, agent)).resolves.toMatchObject({
-      messages: [INPUT, expectedNotice('alpha/a0', 'beta/b1')],
+    const headerOnly = await harness()
+    headerOnly.header(INITIAL)
+    const headerEvents = headerOnly.session.snapshotEvents()
+    const headerEnd = headerEvents.at(-1)
+    if (headerEnd === undefined) throw new Error('expected the header-only log')
+    const headerRestore = headerOnly.ctx.sessionProjections.restore({
+      modelSelection: { ver: 3, seq: headerEnd.seq, val: { lastUsed: INITIAL, pending: null } },
+    }, headerEvents, SessionLogOffset(0), headerOnly.session.header, SessionLogOffset(0))
+    expect(headerRestore.checkpoint.modelSelection).toMatchObject({
+      ver: 4,
+      val: { lastUsed: INITIAL, pending: null, lastUsedOrigin: null, pendingOrigin: null },
     })
-    await ctx.systemPrompt.assemble()
-    await expect(preStep(ctx, agent)).resolves.toMatchObject({
-      messages: [INPUT, expectedNotice('a0', 'a2')],
-    })
+  })
 
-    dispose()
-    await ctx.fiber.dispose()
+  it('does not treat a header-only route as an explicit pin', async () => {
+    const h = await harness()
+    h.header(INITIAL)
+    expect(h.state()?.lastUsed).toEqual(INITIAL)
+    expect(h.state()?.lastUsedOrigin).toBeNull()
+    expect(h.agent.model.origin()).toBeNull()
+    expect(h.current()).toEqual(INITIAL)
+    h.agent.model.select(INITIAL, 'inherited')
+    expect(h.session.snapshotEvents().filter(event => event.type === 'model/selection')).toHaveLength(1)
+    expect(h.agent.model.origin()).toBe('inherited')
+  })
+
+  it('replaces the complete selection and clears an omitted explicit effort', async () => {
+    const h = await harness()
+    h.record({ ...INITIAL, reasoningEffort: ReasoningEffortId('high') })
+    h.record(INITIAL)
+    expect(h.current()).toEqual(INITIAL)
+    expect(h.session.snapshotEvents()).toHaveLength(2)
+    h.record(INITIAL)
+    expect(h.session.snapshotEvents()).toHaveLength(2)
+  })
+})
+
+describe('installModelSelection()', () => {
+  it('announces the fixed step route, preserves request-series declarations, and repeats before a header commits', async () => {
+    const h = await harness()
+    h.header(INITIAL)
+    installModelSelection(h.ctx)
+    h.record({ provider: 'alpha', model: 'future' })
+    const selected = { provider: 'beta', model: 'b1' }
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await expect(preStep(h.agent, selected)).resolves.toMatchObject({
+        startsRequestSeries: true,
+        messages: [INPUT, expectedNotice('alpha/a0', 'beta/b1')],
+      })
+    }
+    h.header(selected)
+    await expect(preStep(h.agent, selected)).resolves.toMatchObject({ messages: [INPUT] })
+    await expect(preStep(h.agent, { provider: 'beta', model: 'b2' })).resolves.toMatchObject({
+      messages: [INPUT, expectedNotice('b1', 'b2')],
+    })
   })
 
   it('does not announce initial, same-route, effort-only, rejected, aborted, or disposed steps', async () => {
-    const { agent, ctx, dispose, selection } = await switchHarness({ provider: 'alpha', model: 'a0' })
-    await expect(preStep(ctx, agent)).resolves.toMatchObject({ kind: 'enter', messages: [INPUT] })
-    agent.session.append('request/header', {
-      header: { config: { provider: 'alpha', model: 'a0' } }, reason: 'initial',
-    })
-    selection.current = {
-      provider: 'alpha',
-      model: 'a0',
-      reasoningEffort: ReasoningEffortId('high'),
-    }
-    await ctx.systemPrompt.assemble()
-    await expect(preStep(ctx, agent)).resolves.toMatchObject({ kind: 'enter', messages: [INPUT] })
-
-    selection.current = { provider: 'alpha', model: 'a1' }
-    await ctx.systemPrompt.assemble()
-    const rejected = await agentEvents(ctx, agent).waterfall(
-      'agent/pre-step',
-      { turn: 1, step: 1, messages: [], signal: SIGNAL },
+    const h = await harness()
+    const dispose = installModelSelection(h.ctx)
+    await expect(preStep(h.agent, INITIAL)).resolves.toMatchObject({ messages: [INPUT] })
+    h.header(INITIAL)
+    await expect(preStep(h.agent, INITIAL)).resolves.toMatchObject({ messages: [INPUT] })
+    await expect(preStep(h.agent, { ...INITIAL, reasoningEffort: ReasoningEffortId('high') }))
+      .resolves.toMatchObject({ messages: [INPUT] })
+    const selected = { provider: 'alpha', model: 'a1' }
+    await expect(agentEvents(h.ctx, h.agent).waterfall(
+      'agent/pre-step', { turn: 1, step: 1, messages: [], signal: SIGNAL, modelSelection: selected },
       () => Promise.resolve({ kind: 'reject' as const }),
-    )
-    expect(rejected).toEqual({ kind: 'reject' })
-    const aborted = new AbortController()
-    aborted.abort()
-    await expect(preStep(ctx, agent, { signal: aborted.signal })).resolves.toMatchObject({ messages: [INPUT] })
-
+    )).resolves.toEqual({ kind: 'reject' })
+    await expect(preStep(h.agent, selected, { signal: AbortSignal.abort() })).resolves.toMatchObject({ messages: [INPUT] })
     dispose()
-    await expect(preStep(ctx, agent)).resolves.toMatchObject({ kind: 'enter', messages: [INPUT] })
-    await ctx.fiber.dispose()
+    await expect(preStep(h.agent, selected)).resolves.toMatchObject({ messages: [INPUT] })
   })
 
   it('preserves empty no-call decisions and announces an empty tool continuation', async () => {
-    const { agent, ctx } = await switchHarness(
-      { provider: 'alpha', model: 'a1' },
-      { provider: 'alpha', model: 'a0' },
-    )
-    await expect(preStep(ctx, agent, { messages: [] })).resolves.toEqual({ kind: 'enter', messages: [] })
-    await expect(preStep(ctx, agent, { messages: [], step: 2 })).resolves.toEqual({ kind: 'enter', messages: [] })
-    await expect(preStep(ctx, agent, { messages: [], offered: [], step: 2 })).resolves.toMatchObject({
-      messages: [{ source: { summary: 'a0 → a1' } }],
+    const h = await harness()
+    h.header(INITIAL)
+    installModelSelection(h.ctx)
+    const selected = { provider: 'alpha', model: 'a1' }
+    await expect(preStep(h.agent, selected, { messages: [] })).resolves.toMatchObject({ messages: [] })
+    await expect(preStep(h.agent, selected, { messages: [], step: 2 })).resolves.toMatchObject({ messages: [] })
+    await expect(preStep(h.agent, selected, { messages: [], offered: [], step: 2 })).resolves.toMatchObject({
+      messages: [expectedNotice('a0', 'a1')],
     })
-    await ctx.fiber.dispose()
   })
 })

@@ -29,8 +29,9 @@ interface FixtureAgent {
   readonly id: string
 }
 
-interface MarkedContext extends Context {
-  readonly fixtureScope?: string
+function fixtureScope(ctx: Context): string {
+  const value: unknown = 'fixtureScope' in ctx ? Reflect.get(ctx, 'fixtureScope') : undefined
+  return typeof value === 'string' ? value : 'root'
 }
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
@@ -74,14 +75,14 @@ class GoalService extends Service {
     return {
       agentId: agent.id,
       title: request.title,
-      scope: (this.ctx as MarkedContext).fixtureScope ?? 'root',
+      scope: fixtureScope(this.ctx),
     }
   }
 
   @RemoteScope('gatewayFixture')
   rename(request: { readonly title: string }): unknown {
     this.calls.push('rename')
-    return { title: request.title, scope: (this.ctx as MarkedContext).fixtureScope ?? 'root' }
+    return { title: request.title, scope: fixtureScope(this.ctx) }
   }
 
   @Remote

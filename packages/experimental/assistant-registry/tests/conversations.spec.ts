@@ -308,4 +308,156 @@ describe('Assistant Private Conversations and Model Selection Checkpointing (S7)
       await harness.dispose()
     }
   })
+
+  it('cold service restart leaves a header-only session inheriting the next profile route', async () => {
+    const harness1 = await setupAssistantHarness([], {}, { withCatalog: true })
+    const storageRoot = harness1.storageRoot
+    let profileId: AssistantProfileId
+    let rootSessionId: SessionId
+    try {
+      const profile = await harness1.assistants.createProfile({
+        name: 'Header only',
+        responsibility: 'Historical auto route',
+        defaultModel: { provider: 'mock', model: 'profile-a' },
+      })
+      profileId = profile.id
+      const session = harness1.ctx.sessions.create(SessionId('header-only-route'))
+      session.append('request/header', {
+        header: { config: { provider: 'mock', model: 'profile-a' } },
+        reason: 'initial',
+      })
+      const conv = await harness1.assistants.createConversation(profile.id, session.id)
+      rootSessionId = conv.rootSessionId
+      expect(session.snapshotEvents().some(event => event.type === 'model/selection')).toBe(false)
+      expect(conv.modelOverride).toBeUndefined()
+      await harness1.catalog?.updateConversation(conv.id, { modelCheckpoint: -1 })
+      await harness1.ctx.sessionPersistence.flush()
+    } finally {
+      await harness1.dispose(true)
+    }
+
+    const harness2 = await setupAssistantHarness([], {}, {
+      storageRoot,
+      withCatalog: true,
+      leadSessionId: SessionId('reopened-lead'),
+    })
+    try {
+      const reloaded = await harness2.assistants.getConversationBySession(rootSessionId)
+      expect(reloaded?.modelOverride).toBeUndefined()
+      await harness2.assistants.updateProfile(profileId, {
+        defaultModel: { provider: 'mock', model: 'profile-b' },
+      })
+      const effective = harness2.assistants.resolveEffectiveRoute(rootSessionId)
+      expect(effective?.route.model).toBe('profile-b')
+      expect(effective?.source).toBe('profile')
+    } finally {
+      await harness2.dispose()
+    }
+  })
+
+  it('clearing an explicit same-route choice lets the next profile route survive a catalog restart', async () => {
+    const harness1 = await setupAssistantHarness([], {}, { withCatalog: true })
+    const storageRoot = harness1.storageRoot
+    let profileId: AssistantProfileId
+    let rootSessionId: SessionId
+    try {
+      const handle = await harness1.ctx.agents.create({
+        sessionId: SessionId('clear-same-route'),
+        agentOptions: { provider: 'mock', model: 'profile-a' },
+      })
+      const profile = await harness1.assistants.createProfile({
+        name: 'Same route',
+        responsibility: 'Clear back to profile',
+        defaultModel: { provider: 'mock', model: 'profile-a' },
+      })
+      profileId = profile.id
+      const conv = await harness1.assistants.createConversation(profile.id, handle.agent.id)
+      rootSessionId = conv.rootSessionId
+      handle.agent.model.select({ provider: 'mock', model: 'profile-a' })
+      const explicitPick = () => handle.agent.session.snapshotEvents().some(event =>
+        event.type === 'model/selection' && event.data.model === 'profile-a' && event.data.origin !== 'inherited')
+      expect(explicitPick()).toBe(true)
+      await expect.poll(() => harness1.assistants.getConversationBySessionSync(rootSessionId)?.modelOverride?.model).toBe('profile-a')
+      expect(explicitPick()).toBe(true)
+
+      await harness1.assistants.clearConversationModelOverride(conv.id)
+      expect(harness1.assistants.getConversationBySessionSync(rootSessionId)?.modelOverride).toBeUndefined()
+      expect(handle.agent.model.origin()).toBe('inherited')
+      await harness1.ctx.sessionPersistence.flush()
+    } finally {
+      await harness1.dispose(true)
+    }
+
+    const harness2 = await setupAssistantHarness([], {}, {
+      storageRoot,
+      withCatalog: true,
+      leadSessionId: SessionId('reopened-lead'),
+    })
+    try {
+      const reloaded = await harness2.assistants.getConversationBySession(rootSessionId)
+      expect(reloaded?.modelOverride).toBeUndefined()
+      await harness2.assistants.updateProfile(profileId, {
+        defaultModel: { provider: 'mock', model: 'profile-b' },
+      })
+      const effective = harness2.assistants.resolveEffectiveRoute(rootSessionId)
+      expect(effective?.route.model).toBe('profile-b')
+      expect(effective?.source).toBe('profile')
+    } finally {
+      await harness2.dispose()
+    }
+  })
+
+  it('cold restart keeps a stored explicit override and recovers a newer explicit log over an older catalog override', async () => {
+    const harness1 = await setupAssistantHarness([], {}, { withCatalog: true })
+    const storageRoot = harness1.storageRoot
+    let profileId: AssistantProfileId
+    let keptSessionId: SessionId
+    let recoveredSessionId: SessionId
+    try {
+      const profile = await harness1.assistants.createProfile({
+        name: 'Durable pin',
+        responsibility: 'Keep explicit catalog pins',
+        defaultModel: { provider: 'mock', model: 'profile-a' },
+      })
+      profileId = profile.id
+      const keptConv = await harness1.assistants.createConversation(profile.id)
+      keptSessionId = keptConv.rootSessionId
+      await harness1.assistants.setConversationModelOverride(keptConv.id, { provider: 'mock', model: 'pinned-model' })
+
+      const recoveredConv = await harness1.assistants.createConversation(profile.id)
+      const recovered = harness1.ctx.sessions.get(recoveredConv.rootSessionId)!
+      recoveredSessionId = recoveredConv.rootSessionId
+      await harness1.assistants.setConversationModelOverride(recoveredConv.id, { provider: 'mock', model: 'catalog-old' }, -1)
+      recovered.append('model/selection', { provider: 'mock', model: 'log-new' })
+      await expect.poll(() => harness1.assistants.getConversationBySessionSync(recoveredSessionId)?.modelOverride?.model).toBe('log-new')
+      await harness1.catalog?.updateConversation(recoveredConv.id, {
+        modelOverride: { provider: 'mock', model: 'catalog-old' },
+        modelCheckpoint: -1,
+      })
+      await harness1.ctx.sessionPersistence.flush()
+    } finally {
+      await harness1.dispose(true)
+    }
+
+    const harness2 = await setupAssistantHarness([], {}, {
+      storageRoot,
+      withCatalog: true,
+      leadSessionId: SessionId('reopened-lead'),
+    })
+    try {
+      const kept = await harness2.assistants.getConversationBySession(keptSessionId)
+      expect(kept?.modelOverride?.model).toBe('pinned-model')
+      await harness2.assistants.updateProfile(profileId, {
+        defaultModel: { provider: 'mock', model: 'profile-b' },
+      })
+      expect(harness2.assistants.resolveEffectiveRoute(keptSessionId)?.route.model).toBe('pinned-model')
+      expect(harness2.assistants.resolveEffectiveRoute(keptSessionId)?.source).toBe('conversation')
+
+      const recovered = await harness2.assistants.getConversationBySession(recoveredSessionId)
+      expect(recovered?.modelOverride?.model).toBe('log-new')
+      expect(harness2.assistants.resolveEffectiveRoute(recoveredSessionId)?.source).toBe('conversation')
+    } finally {
+      await harness2.dispose()
+    }
+  })
 })

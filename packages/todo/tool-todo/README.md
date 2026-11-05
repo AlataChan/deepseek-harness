@@ -60,6 +60,8 @@ The task list belongs to the one agent session that created it — subagents and
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+The tool is installed only if its fiber can still accept effects after projection registration completes; a disposed or unloading activation publishes no tool.
+
 <details>
 <summary>Implementation internals — click to expand</summary>
 

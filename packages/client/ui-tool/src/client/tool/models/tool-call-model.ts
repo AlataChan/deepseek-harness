@@ -291,6 +291,36 @@ export function formatToolBody(variant: ToolRowVariant, argsRaw: string): string
   return JSON.stringify(parsed, null, 2)
 }
 
+/** Plain JSON object, or a null-prototype record from the wire reader. */
+function isPlainMetaRecord(value: unknown): value is object {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const prototype: unknown = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+/** Own `stopped` field. Its value stays unknown until compared with `true`. */
+function hasOwnStopped(meta: object): meta is { stopped: unknown } {
+  return Object.hasOwn(meta, 'stopped')
+}
+
+function applyPatchMetaStopped(meta: unknown): boolean {
+  return isPlainMetaRecord(meta) && hasOwnStopped(meta) && meta.stopped === true
+}
+
+/**
+ * First truthful line of a stopped apply_patch result.
+ * Only an own `stopped: true` on plain persisted metadata selects it.
+ * Success rows keep the argument summary.
+ */
+function applyPatchStoppedSummary(block: ToolCallBlock): string | undefined {
+  if (!('kind' in block) || block.isError) return undefined
+  if (!applyPatchMetaStopped(block.meta)) return undefined
+  const text = resultText(block)
+  const partial = text.split('\n').find(line => line.includes('was written') || line.includes('re-read the affected files'))
+  const summary = (partial ?? text.split('\n')[0] ?? '').trim()
+  return summary === '' ? undefined : summary
+}
+
 /**
  * Derive the full row model from a frozen call slice.
  * @param toolName - wire tool name (dispatch-supplied; survives windowless results).
@@ -312,7 +342,8 @@ export function toolRowModel(toolName: string, block: ToolCallBlock, cwd?: strin
   const base = primary.summary !== '' || argsRaw === null ? primary.summary
     : argsRaw === '' ? block.callId
       : abbreviateHomePath(relativizeToCwd(deriveSummary(variant, argsRaw), cwd), home)
-  const summary = [titleKey === 'tool.title.generic' ? toolName : '', base].filter(Boolean).join(' · ')
+  const review = toolName === 'apply_patch' && done ? applyPatchStoppedSummary(block) : undefined
+  const summary = review ?? [titleKey === 'tool.title.generic' ? toolName : '', base].filter(Boolean).join(' · ')
   // The empty string is "no text" for both derived result fields: a settled
   // call with blank content has nothing to expand, and a blank first line
   // would erase the collapsed error row's summary slot.

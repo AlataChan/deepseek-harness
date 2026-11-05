@@ -448,6 +448,7 @@ describe('dsh-tool-workflow', () => {
       onTestFinished(async () => { await ctx.fiber.dispose() })
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
+      await ctx.plugin(SessionProjectionRegistry)
       await ctx.plugin(AgentRegistry)
       await ctx.plugin(LocalJobRegistry)
       await ctx.plugin(ToolTasks)
@@ -456,6 +457,7 @@ describe('dsh-tool-workflow', () => {
       const engine = ctx.workflowEngine as StubEngine
       const session = Session.create(SessionId('caller'))
       const parent: Agent = {
+        model: { current: () => undefined, select: () => {}, origin: () => null },
         id: session.id, options: {}, session, inbox: unsupportedInbox(), status: 'idle', ctx,
         send: () => {}, followup: () => {}, steer: () => {}, inject: () => {}, cancel: () => {},
         runMaintenance: task => task(new AbortController().signal), whenIdle: () => Promise.resolve(),
@@ -651,10 +653,10 @@ describe('dsh-tool-workflow', () => {
       onTestFinished(async () => { await ctx.fiber.dispose() })
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
+      await ctx.plugin(SessionProjectionRegistry)
       await ctx.plugin(AgentRegistry)
       await ctx.plugin(LocalJobRegistry)
       await ctx.plugin(ToolTasks)
-      await ctx.plugin(SessionProjectionRegistry)
       await ctx.plugin(SubagentRuntime)
       ctx.subagents.registerProvider({
         name: 'spawn',
@@ -667,6 +669,7 @@ describe('dsh-tool-workflow', () => {
       await ctx.plugin(toolWorkflow, {})
       const session = Session.create(SessionId('caller'))
       const parent: Agent = {
+        model: { current: () => undefined, select: () => {}, origin: () => null },
         id: session.id, options: {}, session, inbox: unsupportedInbox(), status: 'idle', ctx,
         send: () => {}, followup: () => {}, steer: () => {}, inject: () => {}, cancel: () => {},
         runMaintenance: task => task(new AbortController().signal), whenIdle: () => Promise.resolve(),

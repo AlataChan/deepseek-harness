@@ -355,7 +355,7 @@ export class AssistantService extends TypertRemoteService {
   isComposerPredictionsEnabled(): boolean {
     const val = this.config.enableComposerPredictions
     if (val && typeof val === 'object' && 'get' in val && typeof (val as { get: () => unknown }).get === 'function') {
-      return (val as Volatile<boolean>).get() === true
+      return val.get()
     }
     return val === true
   }
@@ -399,6 +399,8 @@ export class AssistantService extends TypertRemoteService {
   private readonly sessionToSeat = new Map<string, TeamSeatId>()
 
   private readonly lifecycleChanges = new Set<string>()
+  /** Sessions whose current model/selection append comes from inherited-route sync, not an explicit pick. */
+  private readonly publishingInheritedSelection = new Set<string>()
 
   private readonly memories = new Map<MemoryEntryId, MemoryEntry>()
 
@@ -536,7 +538,12 @@ export class AssistantService extends TypertRemoteService {
         const conv = this.conversations.get(convId)
         if (!conv || conv.archivedAt !== undefined) return
         if (event.seq > (conv.modelCheckpoint ?? -1)) {
-          const selection = event.data as ModelSelection
+          if (event.data.origin === 'inherited' || this.publishingInheritedSelection.has(String(session.id))) return
+          const selection = {
+            provider: event.data.provider,
+            model: event.data.model,
+            ...(event.data.reasoningEffort !== undefined ? { reasoningEffort: event.data.reasoningEffort } : {}),
+          }
           void this.setConversationModelOverride(convId, selection, event.seq).catch((error: unknown) => {
             if (this.getConversationBySessionSync(session.id)?.id === convId) {
               console.error('Failed to persist assistant model selection:', error)
@@ -620,15 +627,6 @@ export class AssistantService extends TypertRemoteService {
       })
     })
 
-    const isolateMap = this.ctx[Context.isolate] as Record<string, symbol> | undefined
-    const key = isolateMap?.['assistants']
-    if (key) {
-      const impl = this.ctx.reflect.store[key]
-      if (impl) {
-        impl.fiber = this.ctx.root.fiber
-      }
-    }
-
     ctx.effect(() => {
       return async () => {
         if (this.catalog) {
@@ -640,12 +638,23 @@ export class AssistantService extends TypertRemoteService {
   }
 
   /**
-   * Cordis lifecycle initialization hook. Opens the catalog during plugin loading.
+   * Start catalog opening without holding the fiber in LOADING.
+   *
+   * A strict `ctx.get` hides this service until the fiber is ACTIVE, and the
+   * fiber stays LOADING until this method returns. The method is synchronous
+   * so activation settles on the next loader turn, while the open itself
+   * stays in flight. Waiting for the open here would drop a mutation that
+   * arrives while the catalog is still opening. The open promise stays on
+   * {@link initCatalog} for later operations.
    */
-  protected async [Service.init](): Promise<void> {
-    if (this.config.autoOpen !== false && !this.catalog) {
-      await this.initCatalog()
-    }
+  protected [Service.init](): void {
+    if (this.config.autoOpen === false || this.catalog !== undefined) return
+    const opening = this.initCatalog()
+    void opening.catch((error: unknown) => {
+      // The public operation that awaits this promise surfaces `error`.
+      // This handler only observes a rejection that settles with no waiter.
+      void error
+    })
   }
 
   /**
@@ -698,8 +707,13 @@ export class AssistantService extends TypertRemoteService {
         if (!(await this.waitForStorageService())) return undefined
         const catalog = await this.openCatalogWhenDependenciesSettled(effectiveOptions)
         if (catalog === undefined) return undefined
+        if (this.disposed) {
+          await catalog.close()
+          return undefined
+        }
         this.attachCatalog(catalog)
         this.loadFromCatalog()
+        await this.restoreExplicitModelOverrides()
         if (effectiveLockPath) {
           const storageDir = dirname(effectiveLockPath)
           this.readCursors.setStoragePath(join(storageDir, 'assistant-read-cursors.json'))
@@ -1150,6 +1164,7 @@ export class AssistantService extends TypertRemoteService {
         }
       }
     }
+    this.syncAgentSelection(sessionId)
   }
 
   /**
@@ -1205,6 +1220,7 @@ export class AssistantService extends TypertRemoteService {
    */
   bindSessionToSeat(sessionId: SessionId | string, seatId: TeamSeatId): void {
     this.sessionToSeat.set(String(sessionId), seatId)
+    this.syncAgentSelection(sessionId)
   }
 
   /**
@@ -1666,11 +1682,10 @@ export class AssistantService extends TypertRemoteService {
         this.memoryInstaller.maybeInstall(liveAgent)
       }
     }
-    this.syncAgentSelection(rootSessionId)
-
     if (opts.modelOverride === undefined && this.sessionPersistence) {
       conversation = await this.seedConversationFromPersistence(id)
     }
+    this.syncAgentSelection(rootSessionId)
 
     return conversation
   }
@@ -1708,6 +1723,29 @@ export class AssistantService extends TypertRemoteService {
     }
     if (model !== undefined) {
       await this.validateRoute(model)
+    }
+    return await this.writeConversationModelOverride(id, model, checkpoint)
+  }
+
+  /**
+   * Persist a conversation model override without checking the live provider catalog.
+   * Cold replay uses this so a logged choice can land before adapters are registered.
+   * @param id - conversation identifier.
+   * @param model - model selection override, or undefined to clear it.
+   * @param checkpoint - optional replay sequence checkpoint.
+   * @returns updated conversation binding.
+   */
+  private async writeConversationModelOverride(
+    id: AssistantConversationId,
+    model: AssistantModelSelection | undefined,
+    checkpoint?: number,
+  ): Promise<AssistantConversation> {
+    const existing = this.conversations.get(id)
+    if (!existing) {
+      throw new Error(`Assistant conversation ${id} not found`)
+    }
+    if (existing.archivedAt !== undefined) {
+      throw new Error(`Cannot update archived assistant conversation ${id}`)
     }
     let effectiveCheckpoint = checkpoint
     if (effectiveCheckpoint === undefined) {
@@ -1797,8 +1835,19 @@ export class AssistantService extends TypertRemoteService {
   }
 
   /**
-   * Seed conversation model override from durable model/selection events on the session.
-   * Respects replay checkpoint: only events strictly newer than modelCheckpoint are eligible.
+   * Reapply explicit selections the catalog missed. Header-only logs and inherited sync events stay unpinned.
+   */
+  private async restoreExplicitModelOverrides(): Promise<void> {
+    if (!this.sessionPersistence) return
+    for (const conv of [...this.conversations.values()]) {
+      if (conv.archivedAt !== undefined) continue
+      await this.seedConversationFromPersistence(conv.id)
+    }
+  }
+
+  /**
+   * Seed conversation model override from durable explicit model/selection events.
+   * Inherited sync events are not pins. An omitted origin is explicit. Only events strictly newer than modelCheckpoint are eligible.
    * @param id - conversation identifier.
    * @param persistence - optional session persistence instance (defaults to ctx.sessionPersistence).
    * @param signal - optional cancellation signal.
@@ -1822,11 +1871,21 @@ export class AssistantService extends TypertRemoteService {
     try {
       const { events } = await readPersistedSession(store, conv.rootSessionId, signal)
       const checkpoint = conv.modelCheckpoint ?? -1
-      const eligible = events.filter(e => e.type === 'model/selection' && e.seq > checkpoint)
-      const latest = eligible.at(-1)
-      if (latest !== undefined) {
-        const selection = latest.data as ModelSelection
-        return await this.setConversationModelOverride(id, selection, latest.seq)
+      let explicit: (typeof events)[number] | undefined
+      for (let index = events.length - 1; index >= 0; index -= 1) {
+        const event = events[index]
+        if (event === undefined || event.seq <= checkpoint || event.type !== 'model/selection') continue
+        if (event.data.origin === 'inherited') continue
+        explicit = event
+        break
+      }
+      if (explicit !== undefined && explicit.type === 'model/selection') {
+        const selection = {
+          provider: explicit.data.provider,
+          model: explicit.data.model,
+          ...(explicit.data.reasoningEffort !== undefined ? { reasoningEffort: explicit.data.reasoningEffort } : {}),
+        }
+        return await this.writeConversationModelOverride(id, selection, explicit.seq)
       }
     } catch {
       // If session is not yet persisted or unreadable, retain current state
@@ -1861,29 +1920,40 @@ export class AssistantService extends TypertRemoteService {
     if (!agent) return
     const effective = this.resolveEffectiveRoute(sessionId)
     if (!effective) return
+    const selection = {
+      provider: effective.route.provider,
+      model: effective.route.model,
+      ...(effective.route.reasoningEffort !== undefined
+        ? { reasoningEffort: ReasoningEffortId(effective.route.reasoningEffort) }
+        : {}),
+    }
+    const publishKey = String(sessionId)
+    this.publishingInheritedSelection.add(publishKey)
+    try {
+      agent.model.select(selection, 'inherited')
+    } finally {
+      this.publishingInheritedSelection.delete(publishKey)
+    }
 
     const sc = this.sessionController
     if (!sc) return
     const agents = Reflect.get(sc, 'agents') as
       | {
-        selectionFor?: (a: Agent) => { current?: ModelSelection | undefined; assembled?: ModelSelection | undefined }
+        selectionFor?: (a: Agent) => {
+          current?: ModelSelection | undefined
+          assembled?: ModelSelection | undefined
+          adopt?: (next: ModelSelection) => void
+        }
       }
       | undefined
     if (agents?.selectionFor) {
       try {
         const selectionRef = agents.selectionFor(agent)
-        {
-          selectionRef.current = {
-            provider: effective.route.provider,
-            model: effective.route.model,
-            ...(effective.route.reasoningEffort !== undefined
-              ? { reasoningEffort: ReasoningEffortId(effective.route.reasoningEffort) }
-              : {}),
-          }
-          selectionRef.assembled = undefined
-        }
-      } catch {
-        // Ignore if projection not initialized
+        selectionRef.adopt?.(selection)
+        selectionRef.assembled = undefined
+      } catch (error: unknown) {
+        // The Session Controller cache is absent until its projection is installed.
+        this.ctx.logger.warn(error)
       }
     }
   }
@@ -2411,6 +2481,7 @@ export class AssistantService extends TypertRemoteService {
     this.seats.set(seatId, updated)
     this.sessionToSeat.set(String(runtimeSessionId), seatId)
     this.sessionToTeam.set(String(runtimeSessionId), existing.teamId)
+    this.syncAgentSelection(runtimeSessionId)
     return updated
   }
 
@@ -2557,7 +2628,10 @@ export class AssistantService extends TypertRemoteService {
 
   private async repairEmptyTeamRoster(teamId: TeamDefinitionId): Promise<void> {
     const pending = this.emptyRosterRepairs.get(teamId)
-    if (pending) return await pending
+    if (pending) {
+      await pending
+      return
+    }
     const repair = (async () => {
       const seats = this.listSeatsSync(teamId)
       const team = this.getTeamSync(teamId)
@@ -4011,8 +4085,8 @@ export class AssistantService extends TypertRemoteService {
    * @returns array of discussions.
    */
   @Remote('listDiscussions')
-  async remoteListDiscussions(teamId: TeamDefinitionId): Promise<readonly GroupDiscussion[]> {
-    return this.roundScheduler.listDiscussions(teamId)
+  remoteListDiscussions(teamId: TeamDefinitionId): Promise<readonly GroupDiscussion[]> {
+    return Promise.resolve().then(() => this.roundScheduler.listDiscussions(teamId))
   }
 
   /**
@@ -4054,26 +4128,28 @@ export class AssistantService extends TypertRemoteService {
    * @returns retained admission record; execution may still be pending or active.
    */
   @Remote('startRound')
-  async startRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry> {
-    if (this.disposed) throw new Error('Assistant service is disposed')
-    const round = this.roundScheduler.journal.getRound(roundId)
-    if (!round) throw new Error(`Group round '${roundId}' not found`)
-    if (!this.backgroundRoundTasks.has(roundId)) {
-      this.backgroundRoundErrors.delete(roundId)
-      const task = this.executeRound(roundId).then(
-        () => {},
-        (error) => {
-          const failure = error instanceof Error ? error : new Error(String(error))
-          this.backgroundRoundErrors.set(roundId, failure)
-          this.ctx.logger.warn('Background round execution failed', failure)
-        },
-      )
-      this.backgroundRoundTasks.set(roundId, task)
-      void task.then(() => {
-        if (this.backgroundRoundTasks.get(roundId) === task) this.backgroundRoundTasks.delete(roundId)
-      })
-    }
-    return this.roundScheduler.journal.getRound(roundId) ?? round
+  startRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry> {
+    return Promise.resolve().then(() => {
+      if (this.disposed) throw new Error('Assistant service is disposed')
+      const round = this.roundScheduler.journal.getRound(roundId)
+      if (!round) throw new Error(`Group round '${roundId}' not found`)
+      if (!this.backgroundRoundTasks.has(roundId)) {
+        this.backgroundRoundErrors.delete(roundId)
+        const task = this.executeRound(roundId).then(
+          () => {},
+          (error: unknown) => {
+            const failure = error instanceof Error ? error : new Error(String(error))
+            this.backgroundRoundErrors.set(roundId, failure)
+            this.ctx.logger.warn('Background round execution failed', failure)
+          },
+        )
+        this.backgroundRoundTasks.set(roundId, task)
+        void task.then(() => {
+          if (this.backgroundRoundTasks.get(roundId) === task) this.backgroundRoundTasks.delete(roundId)
+        })
+      }
+      return this.roundScheduler.journal.getRound(roundId) ?? round
+    })
   }
 
   /**
@@ -4082,10 +4158,12 @@ export class AssistantService extends TypertRemoteService {
    * @returns retained round record when present.
    */
   @Remote('getRound')
-  async getRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry | undefined> {
-    const error = this.backgroundRoundErrors.get(roundId)
-    if (error) throw error
-    return this.roundScheduler.journal.getRound(roundId)
+  getRound(roundId: GroupRoundId): Promise<GroupRoundJournalEntry | undefined> {
+    return Promise.resolve().then(() => {
+      const error = this.backgroundRoundErrors.get(roundId)
+      if (error) throw error
+      return this.roundScheduler.journal.getRound(roundId)
+    })
   }
 
   /**
@@ -4146,8 +4224,8 @@ export class AssistantService extends TypertRemoteService {
    * @returns read cursor record or undefined.
    */
   @Remote('getReadCursor')
-  async remoteGetReadCursor(conversationId: string): Promise<ReadCursorRecord | undefined> {
-    return this.readCursors.getReadCursor(conversationId)
+  remoteGetReadCursor(conversationId: string): Promise<ReadCursorRecord | undefined> {
+    return Promise.resolve().then(() => this.readCursors.getReadCursor(conversationId))
   }
 
   /**
@@ -4443,6 +4521,7 @@ export class AssistantService extends TypertRemoteService {
       (this.getConversationBySessionSync(request.sessionId)?.profileId ?? seat?.profileId)) return false
     if (request.scope?.teamId && request.scope.teamId !== this.getTeamIdBySessionSync(request.sessionId)) return false
     if (this.agents?.get(request.sessionId)?.status === 'running') return false
+    // oxlint-disable-next-line typescript/no-deprecated -- Existing synchronous turn-end read; eligibility stays synchronous.
     const events = session.snapshotEvents()
     const lastEnd = events.findLast(event => event.type === 'turn/end')
     return lastEnd?.seq === endSeq && lastEnd.data.reason.kind === 'completed'
@@ -4450,7 +4529,7 @@ export class AssistantService extends TypertRemoteService {
 
   private resolveRouteForPrediction(sessionId: SessionId): { provider: string; model: string; reasoningEffort?: string } | undefined {
     const captured = this.resolveEffectiveRoute(sessionId)
-    if (captured?.route.provider && captured?.route.model) {
+    if (captured?.route.provider && captured.route.model) {
       return {
         provider: captured.route.provider,
         model: captured.route.model,
@@ -4474,7 +4553,7 @@ export class AssistantService extends TypertRemoteService {
         try {
           const snapshot = projections.snapshot(session)
           const sel = snapshot.values?.modelSelection?.next ?? snapshot.values?.modelSelection?.lastUsed
-          if (sel?.provider && sel?.model) {
+          if (sel?.provider && sel.model) {
             return {
               provider: sel.provider,
               model: sel.model,
@@ -4487,7 +4566,7 @@ export class AssistantService extends TypertRemoteService {
       }
 
       const header = session.requestHeader()
-      if (header?.config.provider && header?.config.model) {
+      if (header?.config.provider && header.config.model) {
         return {
           provider: header.config.provider,
           model: header.config.model,
@@ -4499,7 +4578,7 @@ export class AssistantService extends TypertRemoteService {
     const defaultModel = this.ctx.get('agentDefaultModel') as { currentSelection: () => { provider: string; model: string } } | undefined
     if (defaultModel) {
       const sel = defaultModel.currentSelection()
-      if (sel?.provider && sel?.model) {
+      if (sel.provider && sel.model) {
         return { provider: sel.provider, model: sel.model }
       }
     }
@@ -4509,7 +4588,7 @@ export class AssistantService extends TypertRemoteService {
 
   private async readCompletedTurnContext(sessionId: SessionId, endSeq?: number,
     prediction = true): Promise<ComposerPredictionContext | null> {
-    const query = this.ctx.get('sessionQuery') as import('@deepseek-ai/dsh-session-query').SessionQueryEngine | undefined
+    const query = this.ctx.get('sessionQuery')
     if (!query) throw new Error('Assistant completed-turn context requires sessionQuery')
     let observation
     try {
@@ -4582,6 +4661,15 @@ export class AssistantService extends TypertRemoteService {
    */
   async dispose(): Promise<void> {
     this.disposed = true
+    const opening = this.catalogInitPromise
+    if (opening !== undefined) {
+      try {
+        await opening
+      } catch (error: unknown) {
+        // Open failed or rolled back after disposal. A catalog that attached is closed below.
+        void error
+      }
+    }
     const earlyTasks = [...this.earlyPredictions.values()].map(entry => entry.promise)
     this.cancelEarlyPredictions()
     this.predictionTurnStarts.clear()

@@ -14,22 +14,22 @@ describe('ui-chat Host settings', () => {
     const configuration = await liveConfig(ctx, { Config, apply })
     const { fiber } = configuration
 
-    expect(plainConfig(configuration.fiber.config)).toEqual({ performanceUsage: 'detailed', linkOpening: 'sidebar' })
+    expect(plainConfig(configuration.fiber.effectiveConfig)).toEqual({ performanceUsage: 'detailed', linkOpening: 'sidebar' })
     await configuration.update({ transcriptView: 'normal' })
-    expect(plainConfig(configuration.fiber.config)).toEqual({ transcriptView: 'normal', performanceUsage: 'detailed', linkOpening: 'sidebar' })
+    expect(plainConfig(configuration.fiber.effectiveConfig)).toEqual({ transcriptView: 'normal', performanceUsage: 'detailed', linkOpening: 'sidebar' })
     for (const mode of ['expanded', 'compact', 'standard', 'detailed', 'verbose']) {
       await configuration.update({ transcriptView: mode })
-      expect(plainConfig(configuration.fiber.config)).toMatchObject({ transcriptView: mode })
+      expect(plainConfig(configuration.fiber.effectiveConfig)).toMatchObject({ transcriptView: mode })
     }
     for (const mode of ['dense', '', 42, false, {}, null, undefined]) {
       await configuration.update({ transcriptView: mode })
-      expect(plainConfig(configuration.fiber.config)).toMatchObject({ transcriptView: mode === null ? null : undefined })
+      expect(plainConfig(configuration.fiber.effectiveConfig)).toMatchObject({ transcriptView: mode === null ? null : undefined })
     }
     await configuration.update({ performanceUsage: 'compact' })
-    expect(plainConfig(configuration.fiber.config)).toMatchObject({ performanceUsage: 'compact' })
+    expect(plainConfig(configuration.fiber.effectiveConfig)).toMatchObject({ performanceUsage: 'compact' })
     await expect(configuration.update({ performanceUsage: 'hidden' })).rejects.toThrow()
     await configuration.update({ linkOpening: 'new-tab' })
-    expect(plainConfig(configuration.fiber.config)).toMatchObject({ linkOpening: 'new-tab' })
+    expect(plainConfig(configuration.fiber.effectiveConfig)).toMatchObject({ linkOpening: 'new-tab' })
     await expect(configuration.update({ linkOpening: 'popup' })).rejects.toThrow()
 
     await fiber.dispose()

@@ -1,5 +1,5 @@
 /**
- * Result-time contextual diff presentation for write and edit. Storage returns before/after
+ * Result-time contextual diff presentation for write, edit, and apply_patch. Storage returns before/after
  * text; this model-facing layer derives one three-line-context card per applied hunk.
  * @module @deepseek-ai/dsh-tool-fs/src/diff
  */
@@ -78,4 +78,14 @@ export function diffsFromMeta(meta: unknown): FileDiff[] | undefined {
   const diffs = (meta as Record<string, unknown>).diffs
   if (!Array.isArray(diffs) || diffs.length === 0 || !diffs.every(isFileDiff)) return undefined
   return diffs
+}
+
+/**
+ * Narrow the patch tool's optional stopped flag from persisted metadata.
+ * @param meta - opaque live or replayed result metadata.
+ * @returns true only for an explicit stopped flag.
+ */
+export function stoppedFromMeta(meta: unknown): boolean {
+  return typeof meta === 'object' && meta !== null && !Array.isArray(meta)
+    && (meta as Record<string, unknown>).stopped === true
 }

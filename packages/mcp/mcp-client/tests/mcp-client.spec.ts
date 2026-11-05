@@ -629,7 +629,11 @@ describe('tool execution', () => {
       agent: agentOn() as never,
     })
     expect(canceled.isError).toBe(true)
-    expect(canceled.content[0]).toEqual({ type: 'text', text: 'Error: tool call aborted' })
+    expect(canceled.error?.info?.code).toBe('ABORTED')
+    expect(canceled.content).toEqual([
+      { type: 'text', text: '[image unavailable: image/png; this result was not admitted to durable model context; raw image data remains available to programmatic callers]' },
+      { type: 'text', text: 'Error: tool call aborted' },
+    ])
     expect(rich.attachments.saved).toEqual([])
   })
 

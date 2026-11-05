@@ -285,6 +285,27 @@ function schemaConst(ctx: FileCtx, name: string, exported: boolean): ts.Expressi
   return null
 }
 
+/**
+ * Resolve a package-local schema file. The specifier must be a relative `.ts`
+ * source path, and the resolved file must stay inside the importing package's
+ * `src` tree. Declaration files and paths outside that tree fail closed.
+ */
+function loadPackageLocalSchema(world: World, from: FileCtx, specifier: string): FileCtx {
+  if (!specifier.startsWith('.') || !specifier.endsWith('.ts') || specifier.endsWith('.d.ts')) {
+    throw new Error(`schema import '${specifier}' is not a package-local TypeScript source file`)
+  }
+  const srcAt = from.rel.indexOf('/src/')
+  if (srcAt < 0) throw new Error(`schema import '${specifier}' is not inside a package src tree`)
+  const srcRoot = from.rel.slice(0, srcAt + '/src'.length)
+  const abs = resolve(dirname(from.abs), specifier)
+  const rel = relative(world.scanRoot, abs).split(sep).join('/')
+  if (rel !== srcRoot && !rel.startsWith(`${srcRoot}/`)) {
+    throw new Error(`schema import '${specifier}' must resolve inside ${srcRoot} to a TypeScript source file`)
+  }
+  if (!existsSync(abs)) throw new Error(`schema import '${specifier}' has no package-local source file`)
+  return loadFile(abs, rel, world.cache)
+}
+
 /** Follow only const identities and named value imports; never execute schema factories. */
 function schemaAlias(world: World, ctx: FileCtx, name: string): { ctx: FileCtx; expr: ts.Expression } {
   const local = schemaConst(ctx, name, false)
@@ -293,7 +314,9 @@ function schemaAlias(world: World, ctx: FileCtx, name: string): { ctx: FileCtx; 
   if (imported === undefined || imported.typeOnly || imported.imported === '*' || imported.imported === 'default') {
     throw new Error(`schema alias '${name}' must name a const or named value import`)
   }
-  const target = loadWorkspaceSource(world, ctx, imported.specifier)
+  const target = imported.specifier.startsWith('.')
+    ? loadPackageLocalSchema(world, ctx, imported.specifier)
+    : loadWorkspaceSource(world, ctx, imported.specifier)
   const expr = schemaConst(target, imported.imported, true)
   if (expr === null) throw new Error(`schema import '${imported.specifier}' has no exported const '${imported.imported}'`)
   return { ctx: target, expr }
@@ -502,7 +525,8 @@ function unwrapExpr(expr: ts.Expression): ts.Expression {
  * packages whose schemas an intersect composes. A key path is the top-level
  * key or a nested path through object/array compositions (`agents[].id`).
  * Handles object/union calls, chained refinements, named const schema imports
- * through public workspace source paths, and `z.intersect([X.Config, …])`; errors on
+ * through public workspace source paths or package-local `.ts` files, and
+ * `z.intersect([X.Config, …])`; errors on
  * anything else, so a schema the walk cannot see fails the gate instead of
  * silently thinning it. Nested values that are neither `object` nor `array`
  * compositions (primitives, unions, dynamic-key dicts) contribute no paths.
@@ -625,14 +649,20 @@ function findSchemaExpr(ctx: FileCtx, pluginClass: ts.ClassDeclaration | null): 
 }
 
 /** Read an `inject` service-key list: `export const inject = […]` in the entry
- * file, else `static inject = […]` on the plugin class. */
+ * file, else `static inject = […]` on the plugin class. `as` and `satisfies`
+ * wrappers, including `as const`, narrow to the array literal; a non-array
+ * initializer is still a violation. */
 function findInject(ctx: FileCtx, pluginClass: ts.ClassDeclaration | null, violations: string[]): string[] {
   const fromArray = (expr: ts.Expression, where: string): string[] => {
-    if (!ts.isArrayLiteralExpression(expr)) {
+    const value = unwrapExpr(expr)
+    if (!ts.isArrayLiteralExpression(value)) {
       violations.push(`${where}: inject is not a plain string-array literal; teach the generator the new declaration form.`)
       return []
     }
-    return expr.elements.map(el => ts.isStringLiteral(el) ? el.text : el.getText(ctx.sf))
+    return value.elements.map((el) => {
+      const element = unwrapExpr(el)
+      return ts.isStringLiteral(element) ? element.text : el.getText(ctx.sf)
+    })
   }
   for (const stmt of ctx.sf.statements) {
     if (!ts.isVariableStatement(stmt)) continue

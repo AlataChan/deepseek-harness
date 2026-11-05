@@ -7,7 +7,7 @@ import { brandString } from '@deepseek-ai/dsh-brand'
 import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
-import { boundContextSummary, createUserMessage, errorChain, type LlmCallConfig } from '@deepseek-ai/dsh-llm'
+import { boundContextSummary, createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-permission-presets'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-title'
@@ -88,21 +88,6 @@ function reportRollbackFailure(ctx: Context, subject: string, error: unknown): v
   ctx.logger.warn(`webhook: ${subject} rollback failed: ${errorChain(error)}`)
 }
 
-/** Apply the creation-time selection until its first durable request header exists. */
-function installInitialModelSelection(agentCtx: Context, selection: ModelSelection): void {
-  agentCtx.on('agent/request', async ({ agent }, next): Promise<LlmCallConfig> => {
-    const resolved = await next()
-    if (agent.session.requestHeader() !== undefined
-      || resolved.provider !== selection.provider
-      || resolved.model !== selection.model) return resolved
-    const { reasoningEffort: _inheritedEffort, ...withoutInheritedEffort } = resolved
-    return {
-      ...withoutInheritedEffort,
-      ...selection.reasoningEffort === undefined ? {} : { reasoningEffort: selection.reasoningEffort },
-    }
-  })
-}
-
 /**
  * Create, attach, title, configure, and prompt one ordinary root Session.
  * Successful prompt admission ends webhook ownership of the operation; the
@@ -136,9 +121,9 @@ export async function createWebhookSession(
     signal,
     meta: { cwd: workspace.path, agentPreset: preset.id },
     agentOptions: resolved.agentOptions,
-    setup: async (agentCtx) => {
+    setup: async (agentCtx, agent) => {
       await ctx.agentPresets.mount(agentCtx, preset.id)
-      installInitialModelSelection(agentCtx, resolved.modelSelection)
+      agent.model.select(resolved.modelSelection)
     },
   })
 

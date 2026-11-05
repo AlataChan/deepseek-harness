@@ -472,6 +472,7 @@ export class TeamRoster {
     if (member.model !== undefined) return member.model
     const session = live?.session ?? this.ctx.sessions.get(member.id)
     if (session !== undefined) {
+      // oxlint-disable-next-line typescript/no-deprecated -- Roster model fallback folds child descriptors; migration deferred.
       const descriptor = foldSubagentDescriptor(session.snapshotEvents(session.inheritedEventCount))
       if (descriptor?.mode === 'continuable' && descriptor.agentModel !== undefined) {
         return descriptor.agentModel
@@ -504,6 +505,7 @@ export class TeamRoster {
 
   /** Return the last non-empty assistant text, bounded for roster display. */
   private lastAssistantSummary(session: Session): string | undefined {
+    // oxlint-disable-next-line typescript/no-deprecated -- Roster summary reads committed assistant text; migration deferred.
     const events = session.snapshotEvents()
     for (let i = events.length - 1; i >= 0; i--) {
       const event = events[i]

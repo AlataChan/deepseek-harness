@@ -7,7 +7,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { createReadStream, realpath as realpathCallback } from 'node:fs'
-import { chmod, link, lstat, mkdir, open, readFile, readdir, rename, rm, stat } from 'node:fs/promises'
+import { chmod, link, lstat, mkdir, open, readFile, readdir, rename, rm, stat, unlink } from 'node:fs/promises'
 import type { BigIntStats, Dirent, Stats } from 'node:fs'
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { TextDecoder, promisify } from 'node:util'
@@ -101,6 +101,10 @@ export interface FsIoInternals {
   inspectTemp?: (paths: { stagingDir: string; tempPath: string }) => void | Promise<void>
   /** Test hook after raw-read stat preflight and before bounded content I/O. */
   inspectReadBytesAfterStat?: (target: LocalTarget) => void | Promise<void>
+  /** Override regular-file removal. The default unlinks the real path and does not recurse. */
+  removeFile?: (absolutePath: string) => Promise<void>
+  /** Test hook after a delete or move diff basis is read and before publication or removal. */
+  inspectAfterDiffBasis?: () => void | Promise<void>
 }
 
 /** A resolved local path: the absolute path shown to callers and its realpath identity. */
@@ -666,6 +670,25 @@ export async function writeFileAtomic(
     }
     if (!stagingCreated) throw failure
     return removeStagingDirOrThrow(stagingDir, failure, removeStagingDir)
+  }
+}
+
+/**
+ * Remove one regular file. Does not recurse and does not replace a directory.
+ * @param absolutePath - real path of the file.
+ * @param displayPath - caller-facing path used in the diagnostic.
+ * @param internals - optional removal override for tests.
+ */
+export async function removeFile(absolutePath: string, displayPath: string, internals: FsIoInternals = {}): Promise<void> {
+  try {
+    await (internals.removeFile ?? unlink)(absolutePath)
+  } catch (error: unknown) {
+    if (error instanceof FsError) throw error
+    throw new FsError(
+      `cannot delete "${displayPath}": ${errorMessage(error)}`,
+      isPermissionError(error) ? 'FS_PERMISSION_DENIED' : 'FS_IO_ERROR',
+      { cause: error },
+    )
   }
 }
 

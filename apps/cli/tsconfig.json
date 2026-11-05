@@ -21,6 +21,9 @@
       "path": "../../packages/boot/app-boot"
     },
     {
+      "path": "../../packages/boot/installed-runtime"
+    },
+    {
       "path": "../../packages/boot/cmdline"
     },
     {
@@ -82,6 +85,9 @@
     },
     {
       "path": "../../packages/util/atomic-write"
+    },
+    {
+      "path": "../../packages/core/tool-executor-ptc"
     }
   ]
 }

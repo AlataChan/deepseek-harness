@@ -236,7 +236,7 @@ export class ClientEntries {
         } else if (entry.fiber === undefined) {
           await this.replace(entry, row.id, row.rev, generation)
         } else if (entry.fiber.state === FAILED) {
-          entry.fiber.update(entry.options.config)
+          await entry.fiber.update(entry.options.config)
         }
       } catch (error) {
         failures.push({ id: row.id, message: String(error) })

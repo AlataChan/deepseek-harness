@@ -12,7 +12,7 @@ import type {
   CommerceSourceId as CommerceSourceIdBrand,
   ListingId as ListingIdBrand,
 } from './types.ts'
-import type {} from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import { commerceBindingProjectionDefinition } from './session.ts'
 import type { CommerceBinding, CommerceChangeKind, CommerceDataKind, CommerceValue } from './types.ts'
 
@@ -218,13 +218,19 @@ declare module '@deepseek-ai/cordis' {
  */
 export abstract class Commerce extends Service {
   static inject = ['sessionProjections']
+  private commerceBinding: ProjectionHandle<CommerceBinding | null> | undefined
 
   /**
    * @param ctx - Host context that registers this service and binding projection.
    */
   constructor(ctx: Context) {
     super(ctx, 'commerce')
-    ctx.sessionProjections.register(commerceBindingProjectionDefinition)
+  }
+
+  /** Await the binding projection with automatic release on service disposal. */
+  protected async [Service.init](): Promise<void> {
+    const handle = await this.ctx.sessionProjections.register(commerceBindingProjectionDefinition)
+    this.commerceBinding = handle
   }
 
   /**
@@ -295,12 +301,21 @@ export abstract class Commerce extends Service {
     return agent.session.append('commerce/bound', binding).data
   }
 
+  /**
+   * Read the Session's committed commerce binding.
+   * @param session - live Session.
+   * @returns the binding, or null before one is committed.
+   */
+  bindingOf(session: Agent['session']): CommerceBinding | null {
+    return this.commerceBinding?.stateOf(session) ?? null
+  }
+
   private assertUnbound(agent: Agent): void {
-    const binding = this.ctx.sessionProjections.stateOf(agent.session, 'commerceBinding')
+    const binding = this.bindingOf(agent.session)
     if (binding !== null) {
       throw new CommerceError(
         'already-bound',
-        `session ${agent.session.id} is already bound to commerce source ${binding?.sourceId ?? 'unknown'}`,
+        `session ${agent.session.id} is already bound to commerce source ${binding.sourceId}`,
       )
     }
   }

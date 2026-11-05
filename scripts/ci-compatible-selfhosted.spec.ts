@@ -67,11 +67,10 @@ describe('Node compatibility self-hosted routing', () => {
     expect(route({ repository: '' })).toBe('ubuntu-latest')
   })
 
-  it('preserves all three required version jobs and their concurrency', () => {
+  it('preserves the supported version jobs and their concurrency', () => {
     expect(job.if).toBe("github.event_name == 'pull_request'")
     expect(job.strategy['fail-fast']).toBe(false)
     expect(job.strategy.matrix.include).toEqual([
-      { node: '22.19', name: 'node 22.19', runner: 'ubuntu-latest', gate_concurrency: '1' },
       { node: '24.9', name: 'node 24.9', runner: 'ubuntu-latest', gate_concurrency: '1' },
       { node: 26, name: 'node 26', runner: 'ubuntu-latest', gate_concurrency: '1' },
     ])

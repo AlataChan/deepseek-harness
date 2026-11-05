@@ -3,20 +3,20 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/session-query/session-log-export/README.md
 /:
-  en: 3b67077a6dfacd19
-  zh: e5b78d039d310dc2
+  en: d018c90bb107e873
+  zh: 59f1210f4142a2d9
 /deepseek-ai-dsh-session-log-export:
   en: eea87f5da57ff494
   zh: db388203522b840f
 /deepseek-ai-dsh-session-log-export/summary:
-  en: 26be400b3e9f7bb7
-  zh: b6e78f1f417a0e4e
+  en: c3996db6e20c7052
+  zh: d1c6ba6489eca138
 /deepseek-ai-dsh-session-log-export/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /deepseek-ai-dsh-session-log-export/use-this-package:
-  en: 1135b03eb3423c74
-  zh: 2fd2a18d503df70c
+  en: 0c80c65081642508
+  zh: 9fd39b3f09fd916d
 /deepseek-ai-dsh-session-log-export/use-this-package/when-to-choose-it:
   en: 2b9dbec4877d332e
   zh: dcf6638938eedb01
@@ -39,11 +39,14 @@
   en: 7cb82a6851405f95
   zh: b8c525170d19dc6c
 /deepseek-ai-dsh-session-log-export/understand-the-implementation/design-split:
-  en: d135d90a02c6d829
-  zh: 587d7ff2d17b056b
+  en: c357b78818338324
+  zh: d6739dd5225eaf1c
 /deepseek-ai-dsh-session-log-export/understand-the-implementation/download-flow:
-  en: 028ea3bff05250ba
-  zh: 63250c4d3369ebbd
+  en: bd46d2fa1273a6a4
+  zh: 4d3eb2cf0a9bf12b
+/deepseek-ai-dsh-session-log-export/understand-the-implementation/markdown-copy:
+  en: e88b01aa38d41330
+  zh: eea111198b67ffab
 /deepseek-ai-dsh-session-log-export/further-exploration:
   en: 8eef7e6c58c9f962
   zh: 6c720c91c7f26299
@@ -54,8 +57,8 @@
   en: 55c1a61a041a2aeb
   zh: 48e05043cc42304f
 /deepseek-ai-dsh-session-log-export/model-experience/human-export-control/what-the-model-sees:
-  en: 6b3c3cfc5d68d5f9
-  zh: b1689c57ee3b4ccb
+  en: 862850a2d24157ea
+  zh: d106555caf1ecc61
 /deepseek-ai-dsh-session-log-export/model-experience/human-export-control/token-effect:
   en: 380535e564a4ea2c
   zh: 2672eac76afd90f5
@@ -63,8 +66,8 @@
   en: 78163c30fdf0b43d
   zh: 165043e307b38cb3
 /deepseek-ai-dsh-session-log-export/known-limitations-and-deferred-work:
-  en: 9978d234cbfe7e73
-  zh: 9ba0b12300ff4d38
+  en: 311ebca95df9b4ec
+  zh: b10b434a9917a976
 /deepseek-ai-dsh-session-log-export/known-limitations-and-deferred-work/dev-note:
   en: 4ee4d24c26c127bf
   zh: 1facdfbfa3ccefbc

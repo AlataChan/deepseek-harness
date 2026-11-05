@@ -288,6 +288,7 @@ describe('agent scope lifecycle', () => {
     const { ctx, loopFiber } = await harnessWithLoop()
     onTestFinished(() => ctx.fiber.dispose())
     const cold = ctx.sessions.create(SessionId('projection-before-any-agent'))
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(cold, 'inbox')).toEqual({ 'next-turn': [], 'next-step': [] })
     let first!: Awaited<ReturnType<typeof ctx.agents.create>>
     let second!: Awaited<ReturnType<typeof ctx.agents.create>>
@@ -304,14 +305,18 @@ describe('agent scope lifecycle', () => {
       })
     }, { inject: ['agents'] }))
 
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(first.agent.session, 'inbox')).toBeDefined()
     await firstOwner.dispose()
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(second.agent.session, 'inbox')).toBeDefined()
     await secondOwner.dispose()
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(second.agent.session, 'inbox')).toBeDefined()
 
     await Promise.all([first.dispose(), second.dispose()])
     await loopFiber.dispose()
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(second.agent.session, 'inbox')).toBeUndefined()
   })
 
@@ -707,6 +712,30 @@ describe('agent scope lifecycle', () => {
     await expect(loop.createAgent(ctx, {
       sessionId: SessionId('factory-inactive-s'),
     })).rejects.toThrow(/agent loop is not active|inactive context/)
+    await ctx.fiber.dispose()
+  })
+
+  it('drains pending inbox work while the inbox projection is still registered', async () => {
+    const { ctx, loopFiber } = await harnessWithLoop()
+    const handle = await ctx.agents.create({
+      sessionId: SessionId('drain-pending-s'),
+      agentOptions: { provider: 'mock', model: 'mock' },
+    })
+    handle.agent.inject(createUserMessage({
+      content: [{ type: 'text', text: 'still queued' }],
+      source: { kind: 'user' },
+    }))
+    expect(handle.agent.inbox.nextTurn.length + handle.agent.inbox.nextStep.length).toBeGreaterThan(0)
+    let registeredDuringDrain = false
+    ctx.on('session/event', (session, event) => {
+      if (session !== handle.agent.session || event.type !== 'agent/inbox/spliced') return
+      if (event.data.inserted.length !== 0) return
+      // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+      registeredDuringDrain = ctx.sessionProjections.stateOf(session, 'inbox') !== undefined
+    })
+    await loopFiber.dispose()
+    expect(registeredDuringDrain).toBe(true)
+    expect(handle.agent.inbox.nextTurn.length + handle.agent.inbox.nextStep.length).toBe(0)
     await ctx.fiber.dispose()
   })
 

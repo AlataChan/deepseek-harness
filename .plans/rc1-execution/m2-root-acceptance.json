@@ -1,0 +1,46 @@
+{
+  "utc": "2026-11-05T19:26:47.224853+00:00",
+  "M2Accepted": true,
+  "selectedUpgradeComplete": false,
+  "shippingAccepted": false,
+  "sourceFreeze": "m2-exit-source-freeze.json",
+  "artifact": "m2-artifact.json",
+  "rootDecision": "Open only bounded dependent-feature implementation. Preserve all prior generations and fork defaults. No whole-pin or product-version advance.",
+  "evidence": {
+    "fullBuild": "m2-integrated-candidate-build-10.log",
+    "nativeBuild": "m2-tauri-build-10.log",
+    "browser35": "m2-browser-build-10-verify.log",
+    "sdk26": "m2-sdk-rebuilt-10-replay.log",
+    "portable4": "m2-portable-rebuilt-10-replay.log",
+    "pythonAll": "m2-python-runtime-final-all-smoke.log",
+    "coreCoverage": "m2-core-current-coverage.log",
+    "realNodeMcpGuardAndRegistry75": "m2-real-node-and-registry-root-gate.log",
+    "newGuardLint0": "m2-real-node-registry-lint-final.json",
+    "newGuardFinal3": "m2-real-node-final-after-lint.log",
+    "installedReadiness121": "m2-qualified-dmg-build-10.log",
+    "copiedDmgSignatureHashes": "m2-copied-dmg-qualification.log",
+    "copiedSkill12": "m2-copied-team-skill.log",
+    "copiedQuestionsStandingTeam24": "m2-copied-questions-team.log",
+    "hostTypecheck": "m2-nodeguard-host-typecheck.log",
+    "packageDependencies": "m2-package-dependency-final-2.log",
+    "intake": "m2-adopted-intake-gate-final.log",
+    "runtimeCensus": "m2-runtime-audit-post-guards.log",
+    "persistence": "m2-persistence-ack-final.log",
+    "unknownCasts": "m2-unknown-cast-post-node-guard.log",
+    "docs": "m2-doc-sync-final.log",
+    "pairingRepaired984": "m2-pairing-after-doc-repairs.log"
+  },
+  "limitations": [
+    "Full lint is not passing: 565 exact inherited diagnostic instances, zero introduced in the final whole-tree census; new guard/registry lint separately clean.",
+    "Broad unit run during concurrent edits was diagnostic, not acceptance; changed owners were independently re-run. No repository-wide green-suite claim.",
+    "doc-sync aggregate ran 41 passing leaves and a pairing failure caused by concurrent README confirmation; final separate pairing checks all 984 pairs and passes. No 42-leaf aggregate-pass claim.",
+    "Internal ad-hoc signed macOS arm64 artifact only; no notarized/public release claim, paid model, live IM-platform, or desktop TCC action claim.",
+    "Post-build changes are test code/devDependencies, source registry/proofs and paired documentation only; production behavior matches build10 and copied bundle hashes."
+  ],
+  "next": [
+    "RC1-06,05,07,08",
+    "RC1-09",
+    "RC1-F1",
+    "RC1-S1"
+  ]
+}

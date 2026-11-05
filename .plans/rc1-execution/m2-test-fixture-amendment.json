@@ -1,0 +1,15 @@
+{
+  "reason": "Self-referencing committed symlink prevented every normal Git pre-commit job from enumerating staged files.",
+  "change": "Create the same symlink only in the isolated replay workspace before boot, remove repository symlink; do not change recorded expected output or production runtime.",
+  "sourceHashes": {
+    "snapshots/session/headless.snapshot.ts": "887c03cb93814689e9d740cdbe90e2a13cb48aea7a91ad2e20d79afa825530d7",
+    "snapshots/session/skill-root-isolation/snapshot.yml": "3b4450b437583ff682104f2da0e222cf6f7933e3da8964958e65ecd15c754424"
+  },
+  "verification": {
+    "skillReplay": "1 selected replay passed; 159 cases deselected",
+    "lint": "0 diagnostics",
+    "whitespace": "0 findings"
+  },
+  "rawLog": "m2-skill-root-temporary-loop-replay.log",
+  "rawLogSha256": "66976b68f373b0e458bf3785cefc464f0030ed5e9092d43f603b246159592acc"
+}

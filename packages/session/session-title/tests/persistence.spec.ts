@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import AgentRegistry from '@deepseek-ai/dsh-agent'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SessionTitleService, { foldSessionTitle } from '@deepseek-ai/dsh-session-title'
 
@@ -69,6 +70,7 @@ describe('session title persistence round trips', () => {
     await writer.plugin(SessionStore)
     await writer.plugin(SessionProjectionRegistry)
     await writer.plugin(JsonlSessionPersistence, { root, compression: 'none' })
+    await writer.plugin(AgentRegistry)
     await writer.plugin(SessionTitleService, CONFIG)
     await appendPersistedTitle(writer, id)
     await writer.fiber.dispose()

@@ -20,6 +20,8 @@ import SqliteSessionQueryEngine from '@deepseek-ai/dsh-session-query-sqlite'
 import GoalService from '@deepseek-ai/dsh-goal'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { type Config as ToolsConfig } from '@deepseek-ai/dsh-tools'
+import { PtcRuntime, type PtcRunRequest, type PtcRunResult, type PtcRunSpec } from '@deepseek-ai/dsh-ptc-runtime'
+import * as PtcToolExecutor from '@deepseek-ai/dsh-tool-executor-ptc'
 import LocalBashExecutor from '@deepseek-ai/dsh-bash-local'
 import * as BashEnvPlugin from '@deepseek-ai/dsh-shell-env'
 import { PwshLocalExecutor } from '@deepseek-ai/dsh-pwsh-local'
@@ -204,6 +206,27 @@ export interface ToolPackage {
  * `packages/`). Ordered by package name (the render order); the completeness
  * guard proves it is exhaustive against the on-disk glob.
  */
+/** Schema harvest only. The executor's inject requires a runtime; this one never runs a program. */
+class CatalogPtcRuntime extends PtcRuntime {
+  readonly language = 'typescript'
+  readonly isolation = 'catalog'
+
+  /**
+   * @param request - the program and bindings the harvest never executes.
+   * @returns a directory and deadline so the runtime contract is satisfied.
+   */
+  resolve(request: PtcRunRequest): PtcRunSpec {
+    return { ...request, cwd: request.cwd ?? process.cwd(), timeoutMs: request.timeoutMs ?? 120_000 }
+  }
+
+  /**
+   * @returns an empty successful result. Catalog boot does not execute programs.
+   */
+  run(): Promise<PtcRunResult> {
+    return Promise.resolve({ logs: [] })
+  }
+}
+
 const TOOL_PACKAGES: ToolPackage[] = [
   {
     pkg: '@deepseek-ai/dsh-plugin-manager',
@@ -273,12 +296,27 @@ const TOOL_PACKAGES: ToolPackage[] = [
       'Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: ptc` / `mode: both` (see the PTC mode Agent Note). Under `ptc` it is the registry\'s only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime\'s language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result.',
   },
   {
+    pkg: '@deepseek-ai/dsh-tool-executor-ptc',
+    dir: 'tool-executor-ptc',
+    source: 'packages/core/tool-executor-ptc/src/index.ts',
+    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.ptcRuntime'],
+    writes: ['tool/call', 'tool/result', 'tool/ptc-dispatch-start', 'tool/ptc-dispatch'],
+    toolsConfig: { mode: 'ptc' },
+    async mount(ctx) {
+      await ctx.plugin(CatalogPtcRuntime)
+      await ctx.plugin(PtcToolExecutor)
+    },
+    note:
+      'Selects the PTC batch executor. Model-direct calls other than run_code are refused before the tool body. The program transport remains the reserved run_code definition in dsh-tools. Nested calls use the step tool set captured for that batch.',
+  },
+  {
     pkg: '@deepseek-ai/dsh-plan-mode',
     dir: 'plan-mode',
     source: 'packages/plan/plan-mode/src/index.ts',
-    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.userQuestions (execution time, opportunistic)'],
+    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.sessionProjections', 'ctx.agents', 'ctx.userQuestions (execution time, opportunistic)'],
     writes: ['tool/call', 'plan/mode inactive on an approved review', 'tool/result'],
     async mount(ctx) {
+      await ctx.plugin(AgentRegistry)
       await ctx.plugin(PlanModeController, { section: 'Tool catalog schema harvest.' })
     },
     note:
@@ -306,10 +344,11 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@deepseek-ai/dsh-tool-present',
     dir: 'tool-present',
     source: 'packages/deliverables/tool-present/src/index.ts',
-    requires: ['ctx.tools', 'ctx.fs', 'ctx.sessionProjections'],
+    requires: ['ctx.tools', 'ctx.fs', 'ctx.sessionProjections', 'ctx.agents'],
     writes: ['tool/call', 'deliverables/presented after a successful final result', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(LocalFileSystem)
+      await ctx.plugin(AgentRegistry)
       await ctx.plugin(ToolPresent)
     },
     note: 'Deliveries belong to the calling Session; Web ui-deliverables supplies source-file opening and cards.',
@@ -516,11 +555,12 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@deepseek-ai/dsh-tool-session-query',
     dir: 'tool-session-query',
     source: 'packages/session-query/tool-session-query/src/index.ts',
-    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.sessionQuery', 'a calling Agent for workspace authority'],
+    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.sessionQuery', 'ctx.sessionProjections', 'ctx.agents', 'a calling Agent for workspace authority'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(SessionStore)
       await ctx.plugin(SqliteSessionQueryEngine, { path: ':memory:' })
+      await ctx.plugin(AgentRegistry)
       await ctx.plugin(ToolSessionQuery)
     },
     note:

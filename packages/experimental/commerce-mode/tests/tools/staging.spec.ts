@@ -3,7 +3,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { ChangeId, ListingId } from '@deepseek-ai/dsh-host-commerce'
 import type { ToolExecutionToken } from '@deepseek-ai/dsh-tools'
-import type { StagedChange } from '../../src/tools/types.ts'
 import { bench, call, callRecorded, disposeBenches, recordRead, SOURCE_ID, text } from './bench.ts'
 
 afterEach(disposeBenches)
@@ -30,8 +29,14 @@ async function boundBench(overrides: Parameters<typeof bench>[0] = {}) {
   return env
 }
 
-function ledger(env: Awaited<ReturnType<typeof boundBench>>): readonly StagedChange[] {
-  return env.ctx.sessionProjections.stateOf(env.owner.session, 'commerceSession')?.ledger ?? []
+function ledger(env: Awaited<ReturnType<typeof boundBench>>): readonly { status: string }[] {
+  // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+  const state = env.ctx.sessionProjections.stateOf(env.owner.session, 'commerceSession')
+  if (typeof state !== 'object' || state === null || !('ledger' in state) || !Array.isArray(state.ledger)) return []
+  return state.ledger.flatMap((change: unknown) => {
+    if (typeof change !== 'object' || change === null || !('status' in change) || typeof change.status !== 'string') return []
+    return [{ ...change, status: change.status }]
+  })
 }
 
 const priceArgs = { summary: 'Raise tea price', items: [{ listing_id: 'P-1', price: 11 }] }

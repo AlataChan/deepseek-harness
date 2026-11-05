@@ -1,0 +1,5 @@
+# Desktop operation registrar. The MCP server row lives on the dedicated preset.
+
+- insert:
+    - id: desktop-operation
+      name: '@deepseek-ai/dsh-experimental-desktop-operation'

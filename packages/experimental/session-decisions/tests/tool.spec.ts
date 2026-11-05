@@ -21,8 +21,9 @@ import { ToolCallId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import ToolRuntime, { defineTool, RUN_CODE_NAME, ToolNotFoundError } from '@deepseek-ai/dsh-tools'
+import type { ToolExecutionInput, ToolExecutionResult, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
+import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import service from '../src/service.ts'
 import * as tools from '../src/tools.ts'
 import { checkRootEligibility, PTC_REFUSAL_MESSAGE } from '../src/root-eligibility.ts'
@@ -85,6 +86,18 @@ async function execute(
     agent,
     ...(parent === undefined ? {} : { parent: parent as never }),
   }))
+}
+
+/** Run one call through the executor pipeline, including a guard denial that never dispatches. */
+async function finishPipeline(pipeline: ToolExecutionPipeline, input: ToolExecutionInput): Promise<ToolExecutionResult> {
+  const prepared = await pipeline.prepare(input)
+  if (prepared.kind === 'dispatch') {
+    return pipeline.complete(prepared.exec, await pipeline.dispatch(prepared.exec))
+  }
+  if (prepared.kind === 'post-result') {
+    return pipeline.complete(prepared.exec, { kind: 'post-result', result: prepared.result })
+  }
+  return prepared.result
 }
 
 /** Assert a failure result and return its error. */
@@ -495,6 +508,7 @@ it('reads the closure and dismissal metadata retained for a settled question', a
 it('handles registry loss while the optional child catalog is still being read', async () => {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjectionRegistry)
   const registry = ctx.plugin(AgentRegistry)
   await registry
   const stub = stubAgent('eligibility-dependency-loss', ctx)
@@ -550,4 +564,72 @@ it('releases the producing guard when a different authenticated human message is
   const human = createUserMessage({ content: [{ type: 'text', text: 'I changed the request.' }], source: { kind: 'user' } })
   ctx.emit('agent/inbox/claimed', { agent: stub.agent, message: human, turn: 1 })
   expect((await execute(ctx, stub.agent, 'read_persistent_question', { decisionId: value.decisionId })).isError).toBe(false)
+})
+
+it('applies the producing-step guard inside PTC and MCP pipelines and lets a queued answer act later', async () => {
+  const { ctx } = await harness()
+  const ran: string[] = []
+  ctx.tools.register(defineTool({
+    name: 'mcp__questions__probe',
+    description: 'MCP probe that must not run while a question guard is armed.',
+    parameters: {},
+    output: {
+      schema: { type: 'string' },
+      render: (_args, value: string) => [{ type: 'text', text: value }],
+    },
+    async execute() {
+      ran.push('mcp')
+      return 'ran'
+    },
+  }))
+  const disarms: string[] = []
+  ctx.provide('goals', {
+    disarm() { disarms.push('disarm') },
+    get() { return { activation: 'disarmed' as const } },
+  })
+  const stub = stubAgent('pipeline-guard', ctx)
+  await ctx.agents.register(stub.agent)
+  const callId = ToolCallId('call-pipeline-q')
+  openProducingStep(stub, callId)
+  const asked = await execute(ctx, stub.agent, 'request_persistent_question', {
+    question: 'Which database?',
+    choices: ['A', 'B'],
+  }, callId)
+  expect(asked.isError).toBe(false)
+  expect(disarms).toEqual(['disarm'])
+  expect(await ctx.sessionDecisions.catalog(stub.session.id)).toHaveLength(1)
+
+  const parent = Symbol('ptc-program') as ToolExecutionToken
+  const ptc = new ToolExecutionPipeline(ctx.tools, {
+    reject: (name, nested) => nested || name === RUN_CODE_NAME
+      ? undefined
+      : new ToolNotFoundError(name, 'direct'),
+  })
+  const mcp = new ToolExecutionPipeline(ctx.tools)
+  const probe = (pipeline: ToolExecutionPipeline, id: string, nested: boolean) => finishPipeline(pipeline, {
+    signal: testToolSignal,
+    callId: ToolCallId(id),
+    name: 'mcp__questions__probe',
+    arguments: {},
+    agent: stub.agent,
+    ...(nested ? { parent } : {}),
+  })
+  expect(failure(await probe(ptc, 'ptc-nested', true)).message).toContain('A persistent question was just asked')
+  expect(failure(await probe(mcp, 'mcp-direct', false)).message).toContain('A persistent question was just asked')
+  expect(ran).toEqual([])
+  expect(disarms).toEqual(['disarm'])
+
+  const queued = createUserMessage({
+    content: [{ type: 'text', text: 'Answer to question later' }],
+    source: { kind: 'user' },
+  })
+  stub.inbox.append('next-turn', queued)
+  closeStep(stub)
+  expect((await probe(ptc, 'ptc-later', true)).isError).toBe(false)
+  expect((await probe(mcp, 'mcp-later', false)).isError).toBe(false)
+  expect(ran).toEqual(['mcp', 'mcp'])
+  expect(stub.inbox.nextTurn.map(message => message.id)).toEqual([queued.id])
+  expect(disarms).toEqual(['disarm'])
+  const goals = ctx.get('goals')
+  expect(goals?.get(stub.agent)).toEqual({ activation: 'disarmed' })
 })

@@ -319,6 +319,37 @@ describe('the shipped registry satisfies the working-tree rules', () => {
     expect(check({ root, registry: REGISTRY, changedUpstreamFiles: changedUpstreamFilesAgainstPin(root, REGISTRY) })).toEqual([])
   }, 30_000)
 
+  it('runs the runtime-consumer audit from the intake command without scanning fixture calls', async () => {
+    const { REGISTRY, intakeCommandViolations, upstreamIntakeViolations: check } = await import('./verify-upstream-intake.ts')
+    const root = new URL('..', import.meta.url).pathname
+    expect(check({ root: '/fixture', registry: REGISTRY, files: [], readFile: () => undefined })).toEqual([])
+    const command = intakeCommandViolations(root)
+    expect(command.runtime.accepted).toBe(false)
+    expect(command.runtime.m2Closed).toBe(true)
+    expect(command.runtime.rows).toHaveLength(32)
+    expect(command.violations.filter(violation => violation.startsWith('runtime-consumer:')).length).toBe(command.runtime.findings.length)
+    const injected = check({
+      root: '/fixture',
+      registry: fixtureRegistry(),
+      files: [],
+      readFile: () => undefined,
+      runtimeConsumerAudit: {
+        sources: [{
+          path: 'packages/owner/src/index.ts',
+          text: 'export function apply(ctx) { const projections = ctx.sessionProjections; projections.register({ key: "alpha", stateVersion: 1 }) }',
+        }],
+        projectionDispositions: {
+          registrations: [{
+            id: 'R01', file: 'packages/owner/src/index.ts', key: 'alpha', stateVersion: 1, awaited: false,
+            newOwner: 'the current registrant package, after it awaits the handle',
+          }],
+        },
+        requestDispositions: { listeners: [] },
+      },
+    })
+    expect(injected.some(violation => violation.includes('synchronous registration'))).toBe(true)
+  }, 60_000)
+
   it('records the ignorable inspection as a non-empty required-not-ignorable finding', async () => {
     const { REGISTRY } = await import('./verify-upstream-intake.ts')
     const finding = REGISTRY.ignorableInspection

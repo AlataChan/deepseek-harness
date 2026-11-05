@@ -826,7 +826,7 @@ describe('automation-only ACP bridge', () => {
     expect(harness.adapter.requests[1]?.tools?.map(tool => tool.name)).toContain('mcp__fixture__add')
   }, 30_000)
 
-  it('leaves absent agent targets for request listeners to supply', async () => {
+  it('leaves absent agent targets available for a later model selection', async () => {
     harness = await makeBridgeHarness({ config: { provider: undefined, model: undefined } })
     await harness.client.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities: {} })
     const { sessionId } = await harness.client.newSession({ cwd: process.cwd(), mcpServers: [] })
@@ -834,20 +834,18 @@ describe('automation-only ACP bridge', () => {
     expect(harness.ctx.agents.get(SessionId(sessionId))?.options).toEqual({})
   })
 
-  it('allows request listeners to supply a route when ACP has no initial selection', async () => {
+  it('accepts a durable model selection when ACP has no initial route', async () => {
     harness = await makeBridgeHarness({
       config: { provider: undefined, model: undefined },
       script: [textResponse('listener-routed')],
     })
-    harness.ctx.on('agent/request', async (_payload, next) => ({
-      ...await next(),
-      provider: 'mock',
-      model: 'mock',
-    }))
     await harness.client.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities: {} })
     const created = await harness.client.newSession({ cwd: process.cwd(), mcpServers: [] })
 
     expect(created.configOptions).toEqual([])
+    const agent = harness.ctx.agents.get(SessionId(created.sessionId))
+    if (agent === undefined) throw new Error('ACP did not create its Agent')
+    agent.model.select({ provider: 'mock', model: 'mock' })
     await expect(harness.client.prompt({
       sessionId: created.sessionId,
       prompt: [{ type: 'text', text: 'route me' }],

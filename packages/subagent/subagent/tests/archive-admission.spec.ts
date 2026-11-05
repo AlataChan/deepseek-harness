@@ -30,6 +30,7 @@ async function liveAgent(ctx: Context, session: Session, initial: AgentStatus): 
   let status = initial
   const agent: LiveAgent = {
     id: session.id,
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     options: {},
     session,
     inbox: unsupportedInbox(),

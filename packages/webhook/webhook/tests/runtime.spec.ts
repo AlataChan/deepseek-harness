@@ -1,4 +1,7 @@
 import { Context } from '@deepseek-ai/cordis'
+import { AgentModel, modelSelectionProjectionDefinition } from '@deepseek-ai/dsh-agent'
+import { Session, SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import WebhookRuntime, {
@@ -218,7 +221,8 @@ describe('WebhookRuntime', () => {
     contexts.push(ctx)
     const followedTwice = Promise.withResolvers<boolean>()
     const messages: unknown[] = []
-    const session = {}
+    await ctx.plugin(SessionProjectionRegistry)
+    const projection = await ctx.sessionProjections.register(modelSelectionProjectionDefinition)
     const attachSession = vi.fn(async () => {})
     ctx.provide('agentDefaultModel', {
       currentSelection: () => ({ provider: 'p', model: 'm' }),
@@ -241,9 +245,11 @@ describe('WebhookRuntime', () => {
     } as never)
     ctx.provide('sessionTitle', { rename: () => ({}) } as never)
     ctx.provide('agents', {
-      create: async (options: { setup?: (agentCtx: unknown, agent: unknown) => Promise<void> }) => {
+      create: async (options: { sessionId: SessionId; setup?: (agentCtx: unknown, agent: unknown) => Promise<void> }) => {
+        const session = Session.create(options.sessionId)
         const agent = {
           session,
+          model: new AgentModel(() => projection.stateOf(session), session, {}),
           followup: (message: unknown) => {
             messages.push(message)
             if (messages.length === 2) followedTwice.resolve(true)

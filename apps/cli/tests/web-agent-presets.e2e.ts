@@ -756,6 +756,7 @@ describe('a switch survives the session', () => {
 
       // The header keeps the creation fact; the log carries what it runs.
       expect(handle.agent.session.header.agentPreset).toBe('standard')
+      // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
       expect(ctx.sessionProjections.stateOf(handle.agent.session, 'agentPreset')).toBe('minimal')
     } finally {
       await handle.dispose()
@@ -771,7 +772,9 @@ describe('a forked session', () => {
       meta: { agentPreset: 'minimal' },
       setup: agentCtx => ctx.agentPresets.mount(agentCtx, 'minimal').then(() => undefined),
     })
-    const inherited = ctx.sessionProjections.stateOf(parent.agent.session, 'agentPreset') ?? undefined
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+    const recordedPreset = ctx.sessionProjections.stateOf(parent.agent.session, 'agentPreset')
+    const inherited = typeof recordedPreset === 'string' ? recordedPreset : undefined
     const child = await ctx.agents.create({
       sessionId: SessionId('preset-fork-child'),
       seed: [],

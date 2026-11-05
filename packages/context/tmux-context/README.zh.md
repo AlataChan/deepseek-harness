@@ -56,6 +56,8 @@ kind: "package-reference"
 <a id="understand-the-implementation"></a>
 ## 理解实现
 
+投影注册完成时，仅当所属 fiber 未销毁且未进入卸载状态，才安装 pre-step 监听器。
+
 <details>
 <summary>实现细节——点击展开</summary>
 

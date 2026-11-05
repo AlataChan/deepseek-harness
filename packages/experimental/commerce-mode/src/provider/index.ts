@@ -105,7 +105,8 @@ export default class CommerceMode extends Commerce {
     }
   }
 
-  protected async [Service.init](): Promise<void> {
+  protected override async [Service.init](): Promise<void> {
+    await super[Service.init]()
     await mkdir(this.config.sourcesRoot, { recursive: true, mode: SOURCES_ROOT_MODE })
     // An existing root is narrowed too, so merchant exports stay private to the Host user.
     await chmod(this.config.sourcesRoot, SOURCES_ROOT_MODE)

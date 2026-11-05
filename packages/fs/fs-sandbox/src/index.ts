@@ -30,7 +30,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { LocalFileSystem } from '@deepseek-ai/dsh-fs-local'
 import type { Config as LocalConfig } from '@deepseek-ai/dsh-fs-local'
 import { FsError } from '@deepseek-ai/dsh-fs'
-import type { FsEditOutcome, FsEditRequest, FsTarget, FsVersion, FsWriteIntent, FsWriteOutcome } from '@deepseek-ai/dsh-fs'
+import type { FsDeleteOutcome, FsEditOutcome, FsEditRequest, FsMoveOutcome, FsTarget, FsVersion, FsWriteIntent, FsWriteOutcome } from '@deepseek-ai/dsh-fs'
 import { writableRoots } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
@@ -106,6 +106,47 @@ export class SandboxedFileSystem extends LocalFileSystem {
     sandboxPolicy?: SandboxExecutionPolicy,
   ): Promise<FsEditOutcome> {
     return super.editText(await this.checkedTarget(target, sandboxPolicy), edit, expected, signal)
+  }
+
+  /**
+   * Fence the removal, then delegate to the inherited delete.
+   * @param target - the resolved file to remove.
+   * @param expected - the version guard; omit for an unconditional removal.
+   * @param signal - aborts before removal.
+   * @param sandboxPolicy - the per-call mode and workspace root; omit to use the deployment fallback.
+   * @returns the delete outcome from the inherited backend.
+   */
+  override async deleteFile(
+    target: FsTarget,
+    expected?: { version: FsVersion },
+    signal?: AbortSignal,
+    sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsDeleteOutcome> {
+    return super.deleteFile(await this.checkedTarget(target, sandboxPolicy), expected, signal)
+  }
+
+  /**
+   * Fence both paths, then delegate to the inherited move.
+   * @param source - the resolved source.
+   * @param destination - the resolved destination.
+   * @param options - replacement text and guards.
+   * @param signal - checked before destination publication.
+   * @param sandboxPolicy - the per-call mode and workspace root; omit to use the deployment fallback.
+   * @returns the move outcome from the inherited backend.
+   */
+  override async moveFile(
+    source: FsTarget,
+    destination: FsTarget,
+    options: { content?: string; expectedSource?: { version: FsVersion }; expectedDestination?: FsWriteIntent },
+    signal?: AbortSignal,
+    sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsMoveOutcome> {
+    return super.moveFile(
+      await this.checkedTarget(source, sandboxPolicy),
+      await this.checkedTarget(destination, sandboxPolicy),
+      options,
+      signal,
+    )
   }
 
   /**

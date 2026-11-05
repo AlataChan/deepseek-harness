@@ -3415,6 +3415,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'experimental-desktop-ask-data BrandSettingsToast id \'desktop-brand-notice\'',
       'experimental-desktop-im ImToast id \'desktop-im-notices\'',
       'experimental-desktop-media WorksPanel id \'desktop-media-works-panel\'',
+      'session-log-export SessionMarkdownCopyToast id \'session-log-download.copy-toast\'',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'shell.overlay\', () => ctx.slots.register(\n      { name: \'shell.overlay\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',

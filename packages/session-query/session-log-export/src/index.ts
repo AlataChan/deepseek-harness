@@ -1,4 +1,4 @@
-/** Session-log download command and Host-owned streaming route. */
+/** Session-log download command and Host-owned ZIP and Markdown routes. */
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
@@ -17,7 +17,8 @@ import {
   type SessionLogCompressionLevel,
   type SessionLogExportReady,
 } from './archive.ts'
-import { SESSION_LOG_EXPORT_PATH } from './routes.ts'
+import { formatSessionMarkdown } from './markdown.ts'
+import { SESSION_LOG_EXPORT_PATH, SESSION_MARKDOWN_EXPORT_PATH } from './routes.ts'
 
 export {
   DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
@@ -40,7 +41,8 @@ export type {
 export const name = 'session-log-download'
 export const inject = ['commands', 'connection']
 
-export { SESSION_LOG_EXPORT_PATH } from './routes.ts'
+export { formatSessionMarkdown } from './markdown.ts'
+export { SESSION_LOG_EXPORT_PATH, SESSION_MARKDOWN_EXPORT_PATH } from './routes.ts'
 
 /** Session-log archive policy. */
 export interface Config {
@@ -71,7 +73,8 @@ const REQUESTED: CommandResult = {
 }
 
 /**
- * Register the Web-only `/export` command and authenticated ZIP download route.
+ * Register the Web-only `/export` command, the authenticated ZIP download route,
+ * and the authenticated complete-history Markdown route.
  * @param ctx - Host context carrying the human-command registry.
  * @param config - resolved compression policy.
  */
@@ -99,10 +102,68 @@ export function apply(ctx: Context, config: Config = {}): void {
       return new Response(null, { status: response.status, headers: response.headers })
     },
   })
+  connectionOf(ctx).fetch.register({
+    path: SESSION_MARKDOWN_EXPORT_PATH,
+    methods: ['GET', 'HEAD'],
+    requestBody: 'buffered',
+    fetch: async (request) => {
+      const response = await sessionMarkdownResponse(ctx, request)
+      if (request.method === 'GET') return response
+      await response.body?.cancel()
+      return new Response(null, { status: response.status, headers: response.headers })
+    },
+  })
 }
 
 function connectionOf(ctx: Context): SessionLogConnection {
   return Reflect.get(ctx, 'connection') as SessionLogConnection
+}
+
+/**
+ * Produce one complete Session transcript as Markdown from one Session
+ * observation. The current Session is flushed before `readSession`, and the
+ * formatter receives that snapshot's events with no artifact path. Abort is
+ * observed around the flush and the read. `readSession` itself has no
+ * cancellation parameter.
+ * @param ctx - host context carrying Connection and session-query.
+ * @param request - authenticated Fetch request with a required `sessionId` query.
+ * @returns the Markdown response, or a sanitized status for invalid, missing, or unavailable reads.
+ */
+async function sessionMarkdownResponse(ctx: Context, request: Request): Promise<Response> {
+  const sessionIdValue = new URL(request.url).searchParams.get('sessionId')
+  if (sessionIdValue === null || sessionIdValue.length === 0) {
+    return new Response('missing or invalid sessionId query parameter', { status: 400 })
+  }
+  const sessionQuery = ctx.get('sessionQuery')
+  if (sessionQuery === undefined) {
+    return new Response('session markdown export is unavailable: missing session-query service', { status: 500 })
+  }
+  const sessionId = brandString<SessionId>(sessionIdValue)
+  try {
+    request.signal.throwIfAborted()
+    await flushLiveSessionLog(sessionLogExportDeps(ctx), sessionId, request.signal)
+    request.signal.throwIfAborted()
+    const snapshot = await sessionQuery.readSession(sessionId)
+    request.signal.throwIfAborted()
+    return new Response(formatSessionMarkdown(snapshot.events), {
+      headers: { 'content-type': 'text/markdown; charset=utf-8' },
+    })
+  } catch (error: unknown) {
+    request.signal.throwIfAborted()
+    if (isSessionNotFound(error)) return new Response('session not found', { status: 404 })
+    return new Response('session markdown export failed to read the stored log', { status: 500 })
+  }
+}
+
+/**
+ * Identify the session-query "not found" failure by its stable machine code.
+ * @param error - an arbitrary rejection from the query service.
+ * @returns whether the error reports a missing Session.
+ */
+function isSessionNotFound(error: unknown): boolean {
+  return error instanceof Error
+    && 'code' in error
+    && error.code === 'SESSION_QUERY_SESSION_NOT_FOUND'
 }
 
 async function sessionLogExportResponse(

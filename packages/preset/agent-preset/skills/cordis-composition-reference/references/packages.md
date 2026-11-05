@@ -153,6 +153,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-agent-tool-presentation` | yes | Agent-plane presentation selector: composes one agent's tools as PTC mode, native, or both |
 | `@deepseek-ai/dsh-session` | no | Event-sourced session store for the DeepSeek Harness |
 | `@deepseek-ai/dsh-system-prompt` | yes | System prompt assembly registry for the DeepSeek Harness |
+| `@deepseek-ai/dsh-tool-executor-ptc` | yes | PTC program execution, tool bindings, and generated SDK prompts |
 | `@deepseek-ai/dsh-tools` | yes | Tool registry and execution pipeline for the DeepSeek Harness |
 
 ## credentials
@@ -202,6 +203,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-desktop-im` | yes | Desktop Feishu and DingTalk settings and single-user durable connections |
 | `@deepseek-ai/dsh-experimental-desktop-media` | yes | octopus_DSH conversation media creation overlay: MiniMax tools, Works, and user-installed FFmpeg |
 | `@deepseek-ai/dsh-experimental-desktop-ngo` | no | octopus_DSH public-service project assistant preset, installed as a fork-owned profile plugin |
+| `@deepseek-ai/dsh-experimental-desktop-operation` | yes | Desktop-operation preset that owns one shared macOS desktop session through pinned agent-desktop |
 | `@deepseek-ai/dsh-experimental-desktop-speech-transcribe` | yes | octopus_DSH long-recording transcription overlay: a speech_transcribe Host tool over the speech-to-text seam |
 | `@deepseek-ai/dsh-experimental-inspector` | yes | Experimental cross-realm CDP hub for Host debugging and Client Runtime inspection |
 | `@deepseek-ai/dsh-experimental-ptc-runtime-python` | yes | CPython subprocess implementation of the DeepSeek Harness PTC execution seam |

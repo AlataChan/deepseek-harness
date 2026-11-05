@@ -60,6 +60,8 @@ agent 每次更新都发送完整列表；新列表替换旧列表，因此没�
 <a id="understand-the-implementation"></a>
 ## 理解实现
 
+投影注册完成后，仅当所属 fiber 仍可接纳 effect 时才安装工具；已销毁或正在卸载的激活不会发布工具。
+
 <details>
 <summary>实现细节——点击展开</summary>
 

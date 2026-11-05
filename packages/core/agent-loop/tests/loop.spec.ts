@@ -3,9 +3,10 @@ import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { createUserMessage, ToolCallId, LlmError, ReasoningEffortId, StreamChunk, expandAssistantStream } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionId, TurnEndReason } from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionId, TOOL_OUTCOME_UNKNOWN, TurnEndReason } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
+import ToolRuntime, { defineContentToolFixture, type ToolExecutor, type ToolExecutionResult, type ToolRunContext } from '@deepseek-ai/dsh-tools'
+import { ToolExecutionPipeline, executeToolBatch, type ScheduledToolDispatch } from '@deepseek-ai/dsh-tools/pipeline'
 import AgentRegistry, { type Agent, type AssistantStreamFrame } from '@deepseek-ai/dsh-agent'
 
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
@@ -600,24 +601,11 @@ describe('agent loop', () => {
     expect(turnEnds[1]?.type === 'turn/end' && turnEnds[1].data.reason.kind).toBe('completed')
   })
 
-  it('supports the model-via-agent/request path with a {{model}} persona: the supplier states it via the assemble waterfall', async () => {
-    // AgentOptions.model unset: the model arrives in the agent/request
-    // waterfall (the loop's documented fallback — see runStep's no-model
-    // error). {{model}} renders BEFORE that waterfall, so the SAME plugin
-    // states the fact early on system-prompt/assemble — the owner of a
-    // late-bound fact owns stating it wherever it is claimed.
+  it('renders {{model}} from the selection captured before prompt assembly', async () => {
     const adapter = new MockAdapter([textResponse('ok')])
     const ctx = await harness(adapter, 'You run on {{model}}.')
-    ctx.on('system-prompt/assemble', async (assembly, _context, next) => {
-      assembly.variables['provider'] = 'mock'
-      assembly.variables['model'] = 'mock'
-      return next()
-    })
-    ctx.on('agent/request', async (_payload, next) => {
-      const config = await next()
-      return { ...config, provider: 'mock', model: 'mock' }
-    })
     const agent = await ctx.agentLoop.create(SessionId('a-late-model'), {})
+    agent.model.select({ provider: 'mock', model: 'mock' })
 
     send(agent, 'hi')
     await waitForIdle(ctx, agent)
@@ -1161,18 +1149,17 @@ describe('agent loop', () => {
     expect(texts).toContain('late steering')
   })
 
-  it('agent/request waterfall switches models by returning a replacement config; the switch is logged', async () => {
+  it('logs the model selected before the step and keeps the prepared config frozen', async () => {
     const adapter = new MockAdapter([textResponse('ok')])
     const ctx = await harness(adapter)
     const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+    agent.model.select({ provider: 'mock', model: 'other-model' })
 
     ctx.on('agent/request', async (_payload, next) => {
       const config = await next()
-      // The seed is frozen — config is not a mutable per-call knob; a switch
-      // is proposed by returning a replacement, and the loop logs it.
       expect(Object.isFrozen(config)).toBe(true)
-      expect(() => { (config as { model: string }).model = 'other-model' }).toThrow(TypeError)
-      return { ...config, model: 'other-model' }
+      expect(() => { (config as { model: string }).model = 'mutated' }).toThrow(TypeError)
+      return config
     })
 
     send(agent, 'hi')
@@ -1831,4 +1818,82 @@ describe('agent loop', () => {
       agent.session.snapshotEvents().map(e => e.type))
     expect(replayed.snapshotEvents().at(-1)?.type).toBe('session/end-seed')
   })
+
+  it('keeps a deferred context once when a later scheduler failure still drains the step', async () => {
+    const adapter = new MockAdapter([[
+      { type: 'block-start', index: 0, blockType: 'tool-call' },
+      { type: 'block-end', index: 0, block: { type: 'tool-call', id: ToolCallId('c1'), name: 'defer', arguments: '{}' } },
+      { type: 'block-start', index: 1, blockType: 'tool-call' },
+      { type: 'block-end', index: 1, block: { type: 'tool-call', id: ToolCallId('c2'), name: 'later', arguments: '{}' } },
+      { type: 'usage', usage: { inputTokens: 5, outputTokens: 5 } },
+      { type: 'finish', reason: { kind: 'tool-calls' } },
+    ]])
+    const ctx = await harness(adapter)
+    ctx.tools.register(defineContentToolFixture({
+      name: 'defer',
+      description: 'Defer one user message.',
+      parameters: {},
+      async execute(_args, exec) {
+        exec.deferContext(createUserMessage({
+          content: [{ type: 'text', text: 'deferred once' }],
+          source: { kind: 'user' },
+        }))
+        return [{ type: 'text', text: 'deferred' }]
+      },
+    }))
+    ctx.tools.register(defineContentToolFixture({
+      name: 'later',
+      description: 'Runs after the deferred context is committed.',
+      parameters: {},
+      async execute() {
+        return [{ type: 'text', text: 'later body' }]
+      },
+    }))
+    const executor: ToolExecutor = {
+      describe: tools => ({
+        schemas: tools.map(tool => ctx.tools.projectSchema(tool)),
+        knownNames: tools.map(tool => tool.name),
+      }),
+      execute: input => executeToolBatch(input, new LaterSchedulerFailure(ctx.tools), () => 1),
+    }
+    ctx.tools.setExecutor(executor)
+    const agent = await ctx.agentLoop.create(SessionId('partial-context'), { provider: 'mock', model: 'mock' })
+    send(agent, 'run both')
+    await waitForIdle(ctx, agent)
+
+    expect(agent.inbox.nextStep).toHaveLength(1)
+    expect(JSON.stringify(agent.inbox.nextStep).match(/deferred once/g)).toEqual(['deferred once'])
+    const splices = agent.session.snapshotEvents().filter(event => event.type === 'agent/inbox/spliced'
+      && event.data.target === 'next-step'
+      && JSON.stringify(event.data).includes('deferred once'))
+    expect(splices).toHaveLength(1)
+    expect(agent.session.snapshotEvents().filter(event => event.type === 'user/message')
+      .some(event => JSON.stringify(event.data).includes('deferred once'))).toBe(false)
+    const calls = agent.session.snapshotEvents().filter(event => event.type === 'tool/call')
+    const results = agent.session.snapshotEvents().filter(event => event.type === 'tool/result')
+    expect(calls.map(event => event.type === 'tool/call' ? event.data.callId : '')).toEqual(['c1', 'c2'])
+    expect(results).toHaveLength(2)
+    expect(results[0]).toMatchObject({
+      data: { message: { isError: false, content: [{ type: 'text', text: 'deferred' }] } },
+    })
+    expect(results[1]).toMatchObject({
+      sourceEventSeqs: [calls[1]?.seq],
+      data: { error: { code: TOOL_OUTCOME_UNKNOWN } },
+    })
+    expect(agent.session.snapshotEvents().at(-1)).toMatchObject({
+      type: 'turn/end',
+      data: { reason: { kind: 'error', error: { code: 'UNKNOWN', message: 'internal scheduler failure' } } },
+    })
+  })
 })
+
+/** Fails the second completion after the first exclusive call has committed. */
+class LaterSchedulerFailure extends ToolExecutionPipeline {
+  private completions = 0
+
+  override async complete(exec: ToolRunContext, slot: ScheduledToolDispatch): Promise<ToolExecutionResult> {
+    this.completions += 1
+    if (this.completions > 1) throw new Error('internal scheduler failure')
+    return super.complete(exec, slot)
+  }
+}

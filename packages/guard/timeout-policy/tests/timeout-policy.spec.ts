@@ -153,7 +153,10 @@ describe('timeout-policy TOOL_TIMEOUT replacement (deadline wins)', () => {
       message: 'tool call aborted',
       info: { name: 'AbortError', code: TOOL_ABORTED },
     })
-    expect(result.content[0]).toMatchObject({ text: 'Error: tool call aborted' })
+    expect(result.content).toEqual([
+      { type: 'text', text: 'stopped cooperatively' },
+      { type: 'text', text: 'Error: tool call aborted' },
+    ])
   })
 
   it('preserves TOOL_TIMEOUT when the deadline wins before a later caller abort', async () => {

@@ -1,5 +1,5 @@
 ---
-description: "Web 会话日志 ZIP 导出：Host 流式传输、认证下载路由、Session Header 操作与 /export 命令。"
+description: "Web 会话日志 ZIP 导出与完整历史 Markdown 复制：Host 路由、Session Header 菜单与 /export 命令。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-session-log-export` 让 Web 界面可以下载会话的完整历史：Session Header 更多操作按钮下的 `下载 Session 日志` 菜单项与 `/export` 斜杠命令都会把会话树——会话本身、其子会话与附件——作为 ZIP 交给浏览器下载。本包拥有 Host 归档流、经过认证的 Fetch 路由以及浏览器控件和反馈。下载目标位置由浏览器选择。设置与用法在前，随后说明实现细节。
+`dsh-session-log-export` 将完整 Session 历史下载为 ZIP，并把已提交的历史复制为 Markdown，包含聊天窗口外的轮次。Header 菜单中的 `Download session log` 和 `/export` 会包含子会话及附件；下载位置由浏览器选择。`Copy Session as Markdown` 读取经过认证的 Host 路由并使用共享剪贴板组件。本包拥有这两条路由、归档流、浏览器控件和失败反馈。
 
 ## 目录
 
@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-当 Web bundle 需要让用户导出会话日志时使用本包。它需要 Connection、命令注册表、Session 查询与持久化以及附件服务。挂载插件，然后在 Session Header 的更多操作菜单中选择 `下载 Session 日志` 或输入 `/export`；浏览器会下载 `dsh-session-<id>.zip`。
+当 Web bundle 需要让用户导出会话日志或将其复制为 Markdown 时使用本包。它需要 Connection、命令注册表和 Session 查询。ZIP 下载另外需要 Session 持久化与附件服务。挂载插件，然后在 Session Header 的更多操作菜单中选择 `下载 Session 日志` 或输入 `/export`；浏览器会下载 `dsh-session-<id>.zip`。选择 `复制会话为 Markdown` 会把完整记录放到剪贴板。
 
 挂载 `ui-message-feedback` 时，同一菜单还提供“反馈”，打开已有的 Session 反馈弹窗。打开或关闭该弹窗不会导出 Session 或提交反馈。反馈入口随反馈插件的可用状态显示；导出功能保持独立可用。
 
@@ -77,7 +77,7 @@ Web bundle 将本包与 Connection、`dsh-commands`、`dsh-client-ui-commands` �
 
 ### 设计拆分
 
-本包分为两部分。Host 半包（[`src/index.ts`](src/index.ts)）注册 `/export` 命令，并向 Connection 贡献精确的 `GET`/`HEAD /api/session.export` Fetch 路由；[`src/archive.ts`](src/archive.ts) 构建有界 ZIP 流。浏览器半包（[`src/client/index.ts`](src/client/index.ts)）提供共享下载控制器和 UI，并观察 `command/executed`，因此只有提交命令的浏览器会启动下载。
+本包分为两部分。Host 半包（[`src/index.ts`](src/index.ts)）注册 `/export` 命令，并向 Connection 贡献精确的 `GET`/`HEAD /api/session.export` 与 `GET`/`HEAD /api/session.markdown` Fetch 路由；[`src/archive.ts`](src/archive.ts) 构建有界 ZIP 流，[`src/markdown.ts`](src/markdown.ts) 渲染一份完整事件快照。浏览器半包（[`src/client/index.ts`](src/client/index.ts)）提供共享下载与复制控制器和 UI，并观察 `command/executed`，因此只有提交命令的浏览器会启动下载。
 
 Header 的更多操作入口使用公共紧凑 Button，点击区域为 28px 正方形，与右侧栏展开控件共用圆角和 hover 底色。
 
@@ -86,6 +86,10 @@ Header 的更多操作入口使用公共紧凑 Button，点击区域为 28px 正
 两条入口都会先向文档相对的 `api/session.export?...` 发出 `HEAD` 预检请求，然后把 GET 路由交给浏览器下载管理器，JavaScript 不缓冲 ZIP。一个控制器按会话持有一项进行中的下载，把并发操作折叠进该任务，并在插件释放时取消预检。弹窗状态存放在按会话键控的快照存储中，因此按钮与命令按会话共享一个弹窗。
 
 Host 路由是由该功能拥有的精确 Fetch 路由贡献。Connection 应用 Host/Origin 与浏览器会话检查并桥接流式 `Response`；本包拥有查询校验、活动会话 flush、基于句柄的日志读取与附件读取、ZIP 生成和 HTTP 状态语义。
+
+### Markdown 复制
+
+`复制会话为 Markdown` 先 flush 当前 Session，再调用 `sessionQuery.readSession`，并格式化该快照中的事件。该路由不输出 Session 文件路径。压缩替换与 fork 继承事件在记录中只出现一次；推理、system、developer 与注入的非人类记录会被省略，格式化器也不会从仅存储的记录发明提问状态。一个控制器持有一项进行中的复制。释放时中止读取，并抑制迟到的剪贴板写入或提示。结果提示是 `shell.overlay` 条目，因此它的寿命不受 Header 菜单关闭影响。
 
 </details>
 
@@ -110,7 +114,7 @@ Host 路由是由该功能拥有的精确 Fetch 路由贡献。Connection 应用
 
 #### 模型看到什么
 
-无。`/export` 留在用户命令平面，ZIP 下载不会进入模型历史。
+无。`/export` 留在用户命令平面，ZIP 下载和 Markdown 复制都不会进入模型历史。
 
 #### Token 影响
 
@@ -129,6 +133,7 @@ Host 路由是由该功能拥有的精确 Fetch 路由贡献。Connection 应用
 
 - **浏览器下载，而非 Host 路径写入**——目标位置由浏览器选择；不会返回 Host 路径或原生文件夹操作。
 - **预检只报告流式传输前的失败**——浏览器接受 GET 后发生的子会话或附件读取失败由浏览器下载管理器报告，不通过弹窗报告。
+- **剪贴板权限由宿主拥有**——写入被拒绝时显示剪贴板失败提示，Session 保持不变。复制过程中关闭 Session 会取消读取，且不会发布迟到的成功提示。
 
 <a id="dev-note"></a>
 ### 开发备注

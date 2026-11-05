@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import ApprovalService from '@deepseek-ai/dsh-user-approval'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import { ToolCallId, createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -119,6 +120,7 @@ describe('InteractionProvider: Approval & User Questions', () => {
 
   it('enforces that argument unavailable requests cannot be approved (reject/cancel only)', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(ApprovalService)
 
@@ -170,6 +172,7 @@ describe('InteractionProvider: Approval & User Questions', () => {
 
   it('cancels pending interactions cleanly during cancelPending()', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(ApprovalService)
 
@@ -211,6 +214,7 @@ describe('InteractionProvider: Approval & User Questions', () => {
 
   it('serializes concurrent interaction requests into a FIFO queue without dropping any', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(ApprovalService)
 
@@ -286,6 +290,7 @@ describe('InteractionProvider: Approval & User Questions', () => {
 
   it('answers multi-question batch with multiSelect and custom response in sequence', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(UserQuestionService)
 
@@ -352,6 +357,7 @@ describe('InteractionProvider: Approval & User Questions', () => {
 
   it('cleans up AbortSignal listeners on settlement to avoid memory leaks', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(ApprovalService)
 
@@ -405,6 +411,7 @@ describe('InteractionProvider: Approval & User Questions', () => {
 
   it('guarantees zero side-effects on rejection for both native and PTC tool execution', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(ApprovalService)
 
@@ -492,6 +499,7 @@ describe('InteractionProvider: Approval & User Questions', () => {
 
   it('cancels pending interactions when active agent changes or disconnects', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(ApprovalService)
 

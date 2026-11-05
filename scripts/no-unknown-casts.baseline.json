@@ -158,9 +158,6 @@
   "packages/api/session-controller/src/list.ts": {
     "a288679a4dcd49ed1fea620d9f3442c1f518406ad8d2d49dba1fafe8a45fbcbd": 1
   },
-  "packages/api/session-controller/src/model-selection-projection.ts": {
-    "921e80b20107c8b88b0fc3cb1ebc1fe52d465175fe782cf9e7a0b72e505ff427": 1
-  },
   "packages/api/session-controller/tests/agent.host.spec.ts": {
     "40b9b8efe71e65b5bddad33acf9b7595d58a7427f077e3aa9ccc488ebb23f4d0": 1,
     "4ddb5771e76b6c641d7049711207ce32902b1599afc4736514bab35c6e1fdf07": 1,
@@ -218,7 +215,6 @@
     "36809c8a43a7b9240089e359618107af0a42e948791f0502d6366df65d43208f": 2,
     "4e05d4d65c076fff556c0dd813f53e90b8c98390825e7293033d8450a8f94ff0": 1,
     "526a22860f8bc330caf4a3f28a28948de5c04b4e17125f04b3738808cfbd4e3e": 1,
-    "9d54088afe33da8176bd4898a775c5a5181111a52a8f682ca300ade28684feac": 1,
     "a6a04773270367c3ea0f54b577d3f766ff738afb6702e09caac1b3fa66a7397d": 1
   },
   "packages/api/session-controller/tests/session-commerce.host.spec.ts": {
@@ -232,9 +228,6 @@
   },
   "packages/api/session-controller/tests/session-media.host.spec.ts": {
     "c051663ae60f381f30367e71bae4da0ea88c490453bbc1d86230b71c0fde8d6f": 1
-  },
-  "packages/api/session-controller/tests/session-models.host.spec.ts": {
-    "7f2d35b6be247c2410599d4b91260905bc2ada88f62507af622fe067a9295f5b": 1
   },
   "packages/api/session-controller/tests/session-pending-submissions.client.spec.ts": {
     "f35467810e1f7bd9ea7659c947c274c48d310411d0eabcf528366708ea3b7ca1": 1
@@ -959,10 +952,7 @@
     "d1250fc465aac30c8474c1ee43ecbafc0a8c072d5e607961da1295acc710a257": 1
   },
   "packages/core/tools/tests/ptc.spec.ts": {
-    "05f243cc5759828058eed400ddb98c32a394915895dc14ddd49ea044652bab97": 1,
-    "4dd1f265ec710503bb27f057a582099a1e9d8b5db80fb45f148e32fd2afb5325": 1,
-    "52faf4558fcd91bd27dbdfa7e497843e8eeb75ea5f68ee231335018d5b3f2053": 1,
-    "88c6953a5e4dd96aede7a09416b7f34dc76d8d917220bb5d0c6b0a04d0d73956": 1
+    "52faf4558fcd91bd27dbdfa7e497843e8eeb75ea5f68ee231335018d5b3f2053": 1
   },
   "packages/core/tools/tests/py-types.spec.ts": {
     "0d733b2c7c458f6a7c4d287ed741c321842339cbe5908a8720660883423474c0": 9,
@@ -1063,9 +1053,6 @@
     "87ef7d60538b938bd8b5748cf4c0a5956ecedb860826c57d9ec789daea2f0355": 6,
     "8cc23b032e15eade28e0e09ea155e4b631c7186735d06dd84996006e6d19e364": 1,
     "f1958372d07fa49fe88e9a25dd46b28fbf771fc4a15f8fbb7612745132757eaa": 1
-  },
-  "packages/experimental/client-ui-agent-team/tests/team-action.client.spec.tsx": {
-    "c94ba434060869565877663c1222630b1f687ed6802cfbfc1545c445dff9911a": 1
   },
   "packages/experimental/commerce-mode/src/client/index.ts": {
     "19d18d4d9c6133c5b2120bc44b9e98623fc469c80f1dd4c0422a970befe723b1": 1
@@ -1529,15 +1516,6 @@
     "d2c3345795169400442563b4923671c090a724eacaaae7f0c190297b967c1c4d": 1,
     "dfa30a521aae411e70eee81fc4c0511178589d0656dea01c1c97131bfe097793": 1
   },
-  "packages/ptc-runtime/ptc-runtime-node/tests/host-failures.spec.ts": {
-    "aa5de2d4958ec64219565d53ec5a9d7f40f1f60037a2d52d1a9c3c65db034d73": 1,
-    "be027af1ef5cb3bfe41eeb19b54dbb176ec7c23ae367d709059839f9851833d5": 1
-  },
-  "packages/ptc-runtime/ptc-runtime-node/tests/launch.spec.ts": {
-    "57f598f462c77fae2b147b07c2e1228199c53dfd43652021af57712b4860732a": 1,
-    "9ddf7336f94d8ff4be8fe0ae7977c1846e6e92e7ea66180f8e2e6f8902b3c915": 1,
-    "e02136d8ab1f1fb84c6e772bbc863ceb3a0a3801f6eb158d5b9be074baa0885c": 1
-  },
   "packages/ptc-runtime/ptc-runtime-node/tests/output-json.spec.ts": {
     "8c4c486bbc27559714f4e0aaf376c72c49ac9157539b03c6c12853b8d3fc6e74": 1
   },
@@ -1630,10 +1608,6 @@
   },
   "packages/session-query/session-log-export/tests/dialog.client.spec.tsx": {
     "a9b1969d76db0b05f87c862956f8ff45c52f1f4a5b32a206339de0c9fee99a77": 1
-  },
-  "packages/session-query/session-log-export/tests/header-action.client.spec.tsx": {
-    "238a292bbe3a61acbc4f2d96fff474df5fba1577357219a88c914813786b56a7": 1,
-    "47d3a14a42ef7142ea22071677b42265f02fba5a2a0cf4210f4f9c7c5a876d10": 1
   },
   "packages/session-query/session-log-export/tests/loader-composition.host.spec.ts": {
     "59c63f734e8bba862325f776e3fcbebd78a84cfb4161f8df41c216950d9bf351": 1,
@@ -2237,9 +2211,6 @@
   },
   "packages/webhook/webhook/tests/loader-composition.spec.ts": {
     "59c63f734e8bba862325f776e3fcbebd78a84cfb4161f8df41c216950d9bf351": 1
-  },
-  "packages/webhook/webhook/tests/session.spec.ts": {
-    "febbe0687d7079e44a15b802235157043bad5a5f188348db89fe00f50532bee8": 1
   },
   "packages/workflow/tool-ralph/src/index.ts": {
     "6fe9024d30e0d4757a348b83d246925b3f5aeaf2e79a0eff4bf12f3c9fb5826b": 1,

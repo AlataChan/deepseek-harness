@@ -23,7 +23,8 @@ export const Config: z<Config> = z.object({
 })
 
 /** Services used by the scoped delivery tool. */
-export const inject = ['tools', 'fs', 'sessionProjections']
+/** Present reads the open turn from `agents.turnBoundaryOf`. */
+export const inject = ['tools', 'fs', 'sessionProjections', 'agents']
 
 /**
  * Register present with durable file references in its tool result.
@@ -75,8 +76,8 @@ export function apply(ctx: Context, config: Config): void {
     },
     async execute(args, exec) {
       if (exec.agent === undefined) throw new Error('present requires an agent Session')
-      const boundary = ctx.sessionProjections.stateOf(exec.agent.session, 'turnBoundary')
-      if (boundary === undefined || boundary.openTurnStartSeq === null) throw new Error('present requires an open turn')
+      const boundary = ctx.agents.turnBoundaryOf(exec.agent.session)
+      if (boundary.openTurnStartSeq === null) throw new Error('present requires an open turn')
       if (args.files.length === 0 || args.files.length > config.maxFiles) throw new Error(`present accepts 1 to ${config.maxFiles} files`)
       const cwd = exec.agent.session.header.cwd
       if (cwd === undefined) throw new Error('present requires a workspace')

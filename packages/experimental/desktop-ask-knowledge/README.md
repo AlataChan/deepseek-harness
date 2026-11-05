@@ -57,7 +57,7 @@ Extraction uses paragraph or sentence boundaries where available and labels ever
 
 #### What the model sees
 
-When `askKnowledgeBinding` is set, the Provider registers the `ask-knowledge:retrieve` system-prompt section. File bytes and API keys never enter the session log.
+When the preset registry is available, prompt routing reads its retained `presetOf(session)` selection; the data-agent preset suppresses knowledge instructions. Without that optional provider, knowledge routing uses its own library binding. When `askKnowledgeBinding` is set, the Provider registers the `ask-knowledge:retrieve` system-prompt section. File bytes and API keys never enter the session log.
 
 ##### Retrieve section
 

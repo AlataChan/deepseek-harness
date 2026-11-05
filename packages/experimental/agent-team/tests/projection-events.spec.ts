@@ -90,7 +90,8 @@ describe('Agent Teams projection events', () => {
     onTestFinished(() => ctx.fiber.dispose())
     await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
-    ctx.effect(() => ctx.sessionProjections.register(teamProjectionDefinition))
+    const handle = await ctx.sessionProjections.register(teamProjectionDefinition)
+    ctx.effect(() => () => handle.dispose())
     const session = ctx.sessions.create(ROOT)
     const restore = (val: unknown) => ctx.sessionProjections.restore({
       agentTeam: { ver: teamProjectionDefinition.stateVersion, seq: -1, val },
@@ -359,7 +360,7 @@ describe('Agent Teams projection events', () => {
     const registry = ctx.plugin(SessionProjectionRegistry)
     try {
       await registry
-      ctx.sessionProjections.register(teamProjectionDefinition)
+      await ctx.sessionProjections.register(teamProjectionDefinition)
       const extension = JSON.parse('{"type":"plugin/custom","__proto__":{"saved":true}}') as ContentBlock
       const queued = event('team/message/queued', {
         version: 2, teamId: TEAM, message: message({ content: [extension] }),

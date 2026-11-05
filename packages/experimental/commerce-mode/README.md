@@ -86,6 +86,8 @@ The same face registers the 电商助手 new-session chip on `conversation.hero.
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+Commerce tools are installed only if their fiber is neither disposed nor unloading after the commerce-session projection becomes ready.
+
 | Path | Responsibility |
 |---|---|
 | `src/provider/index.ts` | `Commerce` Provider, fixed reads, imports, serialized source mutations |

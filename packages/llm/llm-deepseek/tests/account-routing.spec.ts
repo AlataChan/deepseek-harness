@@ -94,17 +94,25 @@ it.each(['tool', 'retry'])('replaces the active provider only after the next req
   const proceed = Promise.withResolvers<undefined>()
   const streaming = Promise.withResolvers<AbortSignal>()
   let requests = 0
+  let accountRequests = 0
+  const providers: string[] = []
   ctx.on('agent/request', async (_event, next) => {
     const config = await next()
-    if (++requests === 1) return config
+    if (++requests < (transition === 'retry' ? 3 : 2)) return config
     preparing.resolve(undefined)
     await proceed.promise
-    return { ...config, provider: 'deepseek-official' }
+    return config
   })
-  ctx.on('agent/request-error', async (_event, next) => { await next(); return { kind: 'retry' } })
+  ctx.on('agent/request-error', async ({ failure }, next) => {
+    const action = await next()
+    if (failure.message !== 'retry fixture') return action
+    agent.model.select({ provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+    return { kind: 'retry' }
+  })
   ctx.on('llm/stream', async function* (request) {
+    providers.push(request.provider)
     if (request.provider === 'deepseek-account') {
-      if (transition === 'retry') {
+      if (transition === 'retry' && ++accountRequests === 1) {
         yield { type: 'finish', reason: { kind: 'error', failure: { code: 'TRANSPORT', message: 'retry fixture' } } }
         return
       }
@@ -118,15 +126,22 @@ it.each(['tool', 'retry'])('replaces the active provider only after the next req
     await new Promise<void>((resolve) => { signal.addEventListener('abort', () => { resolve() }, { once: true }) })
     signal.throwIfAborted()
   })
-  ctx.tools.register(defineContentToolFixture({ name: 'continue', description: '', parameters: {}, execute: async () => [{ type: 'text', text: 'done' }] }))
+  ctx.tools.register(defineContentToolFixture({ name: 'continue', description: '', parameters: {}, execute: async () => {
+    agent.model.select({ provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+    return [{ type: 'text', text: 'done' }]
+  } }))
   const agent = await ctx.agentLoop.create(SessionId('switch-provider'), { provider: 'deepseek-account', model: 'deepseek-v4-flash' })
   expect(agent.session.requestContext()?.provider).toBeUndefined()
   send(agent)
   await preparing.promise
   expect(agent.session.requestContext()?.provider).toBe('deepseek-account')
+  expect(agent.model.current()?.provider).toBe('deepseek-official')
   proceed.resolve(undefined)
   const signal = await streaming.promise
   expect(agent.session.requestContext()?.provider).toBe('deepseek-official')
+  expect(providers).toEqual(transition === 'retry'
+    ? ['deepseek-account', 'deepseek-account', 'deepseek-official']
+    : ['deepseek-account', 'deepseek-official'])
   ctx.emit('deepseek-account/signed-out')
   expect(signal.aborted).toBe(false)
   agent.cancel({ kind: 'user' })
@@ -260,8 +275,9 @@ it('ignores idle account history but uses the last bound route during a new turn
     const config = await next()
     preparing.resolve(undefined)
     await proceed.promise
-    return { ...config, provider: 'deepseek-official' }
+    return config
   })
+  agent.model.select({ provider: 'deepseek-official', model: 'deepseek-v4-flash' })
   try {
     send(agent)
     await preparing.promise

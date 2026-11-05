@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type AgentHandle, type AssistantStreamFrame } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
 import { SessionAlreadyOwnedError } from '@deepseek-ai/dsh-session-persistence'
 import ToolRuntime, { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
@@ -14,6 +15,7 @@ import { createTestAgent, createTestSession } from './fixtures.ts'
 describe('SessionAdapter & Command Routing', () => {
   it('creates and resumes sessions, managing model selection and status updates', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     const mockSession = createTestSession('sess-1')
@@ -98,6 +100,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('handles SessionAlreadyOwnedError gracefully without crashing or corrupting state', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     ctx.agents.setFactory({
@@ -128,6 +131,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('delivers streaming text deltas to renderer and clears on idle', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     const mockSession = createTestSession('stream-sess')
@@ -191,6 +195,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('queues drafts during active turns (draft-until-idle) and dispatches on idle', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     const mockSession = createTestSession('draft-sess')
@@ -242,6 +247,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('validates model and provider against LLM catalog and rejects invalid selections', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     // Provide mock LLM service
@@ -308,6 +314,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('queues multiple pending prompts during running turn without dropping any', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     const mockSession = createTestSession('multi-draft-sess')
@@ -364,6 +371,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('renders tool results using persisted tool presenter metadata from session log', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
@@ -443,6 +451,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('handles deferred factory resolution and disposes late handle cleanly', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     let resolveFactory!: (handle: AgentHandle) => void
@@ -496,6 +505,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('rejects with timeout AggregateError when factory never settles during dispose', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     const neverSettlingFactory = new Promise<AgentHandle>(() => {})
@@ -523,6 +533,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('rejects with AggregateError when handle.dispose never settles during teardown', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     const neverSettlingDispose = new Promise<void>(() => {})
@@ -557,6 +568,7 @@ describe('SessionAdapter & Command Routing', () => {
 
   it('enforces custom maxStreamAccumulatorChars by bounding streaming text accumulator', async () => {
     const ctx = new Context()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
 
     const mockSession = createTestSession('stream-bounded-sess')

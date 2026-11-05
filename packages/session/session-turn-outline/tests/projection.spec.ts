@@ -97,7 +97,10 @@ describe('turn outline projection unit', () => {
     appendPrompt(session, 'prompt')
     appendAssistant(session, 1, 1, 'streamed but unsettled')
     expect(outlineOf(ctx, session)[0]?.response).toBe('')
-    expect(ctx.sessionProjections.stateOf(session, 'turnOutline')?.draft).toBe('streamed but unsettled')
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
+    const outline = ctx.sessionProjections.stateOf(session, 'turnOutline')
+    const draft = typeof outline === 'object' && outline !== null && 'draft' in outline ? outline.draft : undefined
+    expect(draft).toBe('streamed but unsettled')
     endTurn(session, 1)
     expect(outlineOf(ctx, session)[0]?.response).toBe('streamed but unsettled')
   })

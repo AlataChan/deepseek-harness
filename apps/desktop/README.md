@@ -23,12 +23,12 @@ The desktop build uses the following toolchain; installer qualification is docum
 - Rust stable `1.97.0` through rustup
 - `cargo` `1.97.0`
 - `tauri-cli` `2.11.4` (`cargo install tauri-cli --version '^2'`)
-- Node.js `^22.19.0` or `>=24.0.0`
+- Node.js `>=24.9.0`
 
 ## Requirements
 
 - A matching installed or source-built `@deepseek-ai/dsh` runtime on the same machine.
-- Development uses a real `node` executable; distributable DMG and Windows EXE installers bundle Node and the matching Harness runtime.
+- Development uses Node.js 24.9.0 or newer. Distributable DMG and Windows EXE installers bundle Node.js 24.14.0 and the matching Harness runtime.
 - macOS builds `.app` and `.dmg` through `scripts/build-dmg.sh`; `.github/workflows/desktop-windows.yml` builds the Windows NSIS `.exe` through `scripts/build-exe.mjs`. Both formats use the same desktop plugins. Windows readiness includes installed-runtime resolution and companion handshake through the Rust shell with canonical Windows paths, then waits for companion shutdown before deleting the test workspace. The Windows packaging job allows 90 minutes for cold builds, full NSIS upgrade/recovery controls, and installed-app qualification.
 
 ## Build and run

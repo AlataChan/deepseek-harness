@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-使用 `dsh-tool-fs` 可让模型带行号读取 UTF-8 文件、读取受支持的图片、创建或原子地替换文件，以及执行有针对性的字面量编辑。结果都有上限，失败会提供稳定错误码与恢复指令。当写入和编辑必须在成功读取后执行时，请添加 `dsh-fs-observation-policy`；省略它时，变更仍是原子的，但不受此条件约束。图片读取需要持久附件存储和支持图片输入的路由模型。glob 或 grep 搜索请选择同级的发现工具包。
+使用 `dsh-tool-fs` 可让模型带行号读取 UTF-8 文件、读取受支持的图片、创建或原子地替换文件、执行有针对性的字面量编辑，并在启用 `applyPatch` 时应用一份 Codex 风格补丁。结果都有上限，失败会提供稳定错误码与恢复指令。当写入和编辑必须在成功读取后执行时，请添加 `dsh-fs-observation-policy`；省略它时，变更仍是原子的，但不受此条件约束。图片读取需要持久附件存储和支持图片输入的路由模型。glob 或 grep 搜索请选择同级的发现工具包。
 
 ## 目录
 
@@ -47,6 +47,7 @@ kind: "package-reference"
 | `read_image` | `file_path` | 读取并持久保存 PNG/JPEG/WebP/GIF 源图；无扩展名路径（包括规范化附件对象路径）按文件签名识别格式；规范化可在下一次模型请求前缩小图片，因此模型无需先创建缩略图 |
 | `write` | `file_path`、`content` | 创建或完整替换文件；有策略插件时，覆盖要求先在未变版本上执行 `read`，创建不需要 |
 | `edit` | `file_path`、`old_string`、`new_string`、`replace_all?` | 字面量替换，除非 `replace_all` 为 true 否则要求唯一匹配；有策略插件时，要求先执行 `read` 且文件未变 |
+| `apply_patch` | `input` | 可选的 Codex 补丁。创建、更新、删除和移动走与 `write`、`edit` 相同的意图、沙箱和观察路径。语法错误、缺失文件、无法匹配的 hunk、未读目标，以及符号链接源路径或目标路径，都会在任何写入之前被拒绝。已有的 CRLF 文件保持 CRLF 换行。后续失败保留此前的写入。移动若已发布目标路径却无法删除源路径，会同时报告这两项事实，并且不回滚目标路径 |
 
 字段名使用 snake_case，与 Claude Code 和现有 harness 工具 schema 一致。`write` 和 `edit` 的路径描述要求模型先输出 `file_path`，再输出内容或替换字符串；这用于引导流式展示，不强制 JSON 成员顺序。成功返回紧凑信封——读取窗口、图像引用或 `Created file`/`Updated file` 确认——`write`/`edit` 还会派生可回放的 diff 卡片元数据供 UI 展示。
 
@@ -60,6 +61,7 @@ kind: "package-reference"
 | `readMaxLineLength` | `2000` | 每行截断前保留的字符数 |
 | `readMaxBytes` | `51200` | 一次 `read` 调用所选行的字节上限；溢出时以「已达上限」footer 结束窗口 |
 | `readStreamMinSize` | `10485760` | 大于等于该大小或大小未知的文件采用流式读取，而不是整体加载到内存 |
+| `applyPatch` | `false` | 注册 `apply_patch`。已交付的 headless、desktop、standard 和 persistent-question 组合保持关闭，观察策略保持启用 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-tool-fs)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
@@ -96,6 +98,8 @@ kind: "package-reference"
 | [`src/read-image.ts`](src/read-image.ts) | `read_image` 执行器：路由与媒体类型门禁、有界字节、附件保存 |
 | [`src/write.ts`](src/write.ts) | `write` 执行器：意图 waterfall、原子写入、观察 |
 | [`src/edit.ts`](src/edit.ts) | `edit` 执行器：意图 waterfall、字面量编辑、观察 |
+| [`src/apply-patch.ts`](src/apply-patch.ts) | 可选 `apply_patch` 的注册、指导与展示 |
+| [`src/patch/`](src/patch/) | 在 `writeText` 之上解析、预检并按序提交 |
 | [`src/read-render.ts`](src/read-render.ts) | 不依赖 Cordis 的窗口构建与信封格式化 |
 | [`src/sandbox.ts`](src/sandbox.ts) | `write`/`edit` 共享的升权 API：策略解析与拒绝标记映射 |
 | [`src/error.ts`](src/error.ts) | 防护变更失败的稳定模型侧诊断 |
@@ -133,7 +137,7 @@ kind: "package-reference"
 
 #### 模型看到的内容
 
-组装时，每个指导段落通过 `ctx.tools.get(name, scope)` 检查对应工具，仅在该 agent 可见时输出。write 段落仅在 edit 可见时推荐 edit。三个工具都可用时，下方原文保持不变；限制的施加、解除和工具注册变化在下次组装时生效。同一检查适用于直接限制 agent 和 subagent 的 `toolFilter`，也适用于通过 `run_code` 暴露的 PTC 能力。 write/edit 中的先读后改句子描述观察策略，并非要求调用名为 `read` 的工具。隐藏 `read` 时仍保留这些句子：策略继续保护修改操作，其他产生观察记录的操作（例如 `str_replace_editor` 的 `command: view`）也能建立同一文件观察记录。工具可见性不会禁用该前置条件。
+组装时，每个指导段落通过 `ctx.tools.get(name, scope)` 检查对应工具，仅在该 agent 可见时输出。write 段落仅在 edit 可见时推荐 edit。三个工具都可用时，下方原文保持不变；限制的施加、解除和工具注册变化在下次组装时生效。同一检查适用于直接限制 agent 和 subagent 的 `toolFilter`，也适用于通过 `run_code` 暴露的 PTC 能力。 write/edit 中的先读后改句子描述观察策略，并非要求调用名为 `read` 的工具。隐藏 `read` 时仍保留这些句子：策略继续保护修改操作，其他产生观察记录的操作（例如 `str_replace_editor` 的 `command: view`）也能建立同一文件观察记录。工具可见性不会禁用该前置条件。 该段只在 `applyPatch` 为 true 且该工具对该代理可见时出现。其余指导要求每个 hunk 提供足够上下文，被拒绝的补丁不会写入，已开始的补丁在首次失败处停止且不回滚。
 
 ##### Read 指导
 
@@ -153,6 +157,12 @@ Read an existing file before overwriting it with write (the default fs-observati
 Read a file before editing it (the default fs-observation-policy requires it), unless you just created or edited it in this session.
 ```
 
+##### Apply patch 指导
+
+```markdown
+Prefer apply_patch over separate edit calls for changes across files or separated regions.
+```
+
 #### Token 影响
 
 指导成本取决于可见工具及其适用的跨工具推荐。
@@ -165,7 +175,7 @@ Read a file before editing it (the default fs-observation-policy requires it), u
 
 #### 模型看到的内容
 
-模型会看到已生成的 [`read`、`read_image`、`write` 和 `edit` schema](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-fs)，参数使用 snake_case。图片工具只在持久附件存储已挂载时出现；schema 本身与路由无关，严格门禁在执行时拒绝。作用域工具限制可以为某个 agent 移除任一定义。
+模型会看到已生成的 [`read`、`read_image`、`write` 和 `edit` schema](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-fs)，参数使用 snake_case。除非组合设置 `applyPatch: true`，否则没有 `apply_patch`；它唯一的必填参数是 `input`，即 Codex 补丁文本。图片工具只在持久附件存储已挂载时出现；schema 本身与路由无关，严格门禁在执行时拒绝。作用域工具限制可以为某个 agent 移除任一定义。
 
 #### Token 影响
 
@@ -207,7 +217,7 @@ Read a file before editing it (the default fs-observation-policy requires it), u
 
 #### 模型看到的内容
 
-写入精确返回五行包络：`<path><displayPath></path>`、`<type>file</type>`、`<content>`、`Created file` 或 `Updated file`，以及 `</content>`。编辑精确返回 `The file <displayPath> has been updated successfully.`；对于 `replace_all`，精确返回 `The file <displayPath> has been updated. All occurrences were successfully replaced.`。完整写入或替换文本仍保留在 assistant 工具调用参数中。
+写入精确返回五行包络：`<path><displayPath></path>`、`<type>file</type>`、`<content>`、`Created file` 或 `Updated file`，以及 `</content>`。编辑精确返回 `The file <displayPath> has been updated successfully.`；对于 `replace_all`，精确返回 `The file <displayPath> has been updated. All occurrences were successfully replaced.`。完整写入或替换文本仍保留在 assistant 工具调用参数中。完成的 `apply_patch` 返回 `Success. Updated the following files:` 以及 `A` 或 `M` 行。中途停止的补丁会给出已完成数量，并列出失败、未知或跳过的操作。调用卡片列出每个路径以便打开文件，结果卡片根据已持久化的 diff 元数据标题为 `Apply patch` 或 `Apply patch (stopped)`。仍携带这些 diff 的错误结果使用 stopped 标题。
 
 #### Token 影响
 
@@ -245,6 +255,8 @@ Read a file before editing it (the default fs-observation-policy requires it), u
 - **内嵌图像预览依赖 UI 组合**：工具结果卡片经由浏览器的 `tool.call.images` 槽位渲染图像，由附件呈现插件填充；未组合该插件的 UI 改为显示结果的信封文本。
 - **没有附件区域工具**：agent 在拥有文件系统路径时可以通过其他可用工具裁剪图片；没有路径的粘贴或拖入图片无法按更高分辨率重新读取。
 - **没有超时接口**：`read`/`write`/`edit` 不接受超时参数，也不声明超时预算；取消只通过 `exec.signal` 传递（见[提供方理由](../README.zh.md)）。
+- **`apply_patch` 不是一次事务**：删除和移动走 `deleteFile` 与 `moveFile`，并由沙箱围栏。一次移动可能留下已写入的目标路径和仍在的源路径；结果会如实说明，工具不会重试，也不会声称已回滚。
+- **被中止的 `apply_patch` 调用保留已完成的写入**：当 `exec.signal` 中止时，注册表报告 `tool call aborted`，包括同一补丁中更早的操作已经发布之后。这些文件会保留，调用不会重放。
 
 <a id="dev-note"></a>
 ### 开发备注

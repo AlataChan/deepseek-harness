@@ -253,6 +253,7 @@ describe('Loader config interpolation', () => {
       await provider?.update({ disabled: true })
       await provider?.update({ config: { value: 'recovered' } })
       await provider?.update({ disabled: false })
+      await reader!.fiber!.update(reader!.options.config)
       await ctx.loader.await()
       expect(ctx.get('readerResult')).toEqual({ value: 'recovered' })
     } finally {
@@ -376,7 +377,7 @@ describe('profile reconciliation settlement', () => {
       .rejects.toThrow('candidate activation failed')
   })
 
-  it('reports an activation failure that settles while its entry is being removed', async () => {
+  it('removes an entry while its superseded activation fails', async () => {
     const dir = tmp()
     const entered = Promise.withResolvers<undefined>()
     const release = Promise.withResolvers<undefined>()
@@ -389,9 +390,10 @@ describe('profile reconciliation settlement', () => {
     const entry = [...ctx.loader.entries()].find(row => row.options.id === 'candidate')!
     await entry.update({ config: { fail: true } })
     await entered.promise
-    const result = expect(reconcileProfilePatches(ctx, [], NAME)).rejects.toThrow('in-flight failure')
+    const result = expect(reconcileProfilePatches(ctx, [], NAME)).resolves.toEqual([])
     release.resolve(undefined)
     await result
+    expect([...ctx.loader.entries()].some(row => row.options.id === 'candidate')).toBe(false)
   })
 
   it('waits for a removed plugin to release its resources', async () => {
@@ -448,7 +450,7 @@ describe('boot with user patches', () => {
     try {
       const noop = [...ctx.loader.entries()].find(entry => entry.options.id === 'noop')
       // The mounted plugin received the interpolated environment value.
-      expect(noop?.fiber?.config).toEqual({ value: 'user-value' })
+      expect(noop?.fiber?.effectiveConfig).toEqual({ value: 'user-value' })
       expect([...ctx.loader.entries()].some(entry => entry.options.id === 'user-extra')).toBe(true)
     } finally {
       await ctx.fiber.dispose()

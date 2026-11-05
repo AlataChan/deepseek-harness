@@ -29,7 +29,13 @@ export function describeDesktopFailure(reason: string): DesktopFailureCopy {
   if (/Node executable was not found/u.test(reason)) {
     return {
       headline: '没有找到 Node.js。',
-      detail: '请安装 Node.js 22.19 或更新版本，并保证系统能运行 node。',
+      detail: '请安装 Node.js 24.9.0 或更新版本，并保证系统能运行 node。',
+    }
+  }
+  if (/not a supported Harness runtime/u.test(reason)) {
+    return {
+      headline: '当前 Node.js 版本不受支持。',
+      detail: '请安装 Node.js 24.9.0 或更新版本。Node.js 22、23，以及 24.0.0 到 24.8.x 不能用于这个窗口。安装包会自带 Node.js 24.14.0。',
     }
   }
   if (/workspaceRoot is not configured/u.test(reason)) {

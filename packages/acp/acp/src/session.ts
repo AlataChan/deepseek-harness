@@ -130,8 +130,10 @@ export class AcpSession {
       meta: { cwd: options.cwd },
       agentOptions: options.agentOptions,
       signal: options.signal,
-      setup: async (agentCtx) => {
+      setup: async (agentCtx, agent) => {
         modelControl.install(agentCtx)
+        const initial = modelControl.snapshot()
+        if (initial !== undefined) agent.model.select(initial)
         await mountAcpMcpServers(agentCtx, options.mcpServers, options.cwd)
       },
     })
@@ -156,6 +158,8 @@ export class AcpSession {
           selectionFor(agent.session.requestHeader(), options.fallbackSelection),
         )
         modelControl.install(agentCtx)
+        const initial = modelControl.snapshot()
+        if (initial !== undefined) agent.model.select(initial)
         await mountAcpMcpServers(agentCtx, options.mcpServers, options.cwd)
       },
     })
@@ -397,7 +401,10 @@ export class AcpSession {
     if (this.inflight !== undefined && this.inflight.messageId === message.id) this.inflight.turn = turn
     const selection = this.pendingSelections.get(message.id)
     this.pendingSelections.delete(message.id)
-    if (selection !== undefined) this.modelControl.pinTurn(turn, selection)
+    if (selection !== undefined) {
+      this.agent.model.select(selection)
+      this.modelControl.pinTurn(turn, selection)
+    }
   }
 
   /**

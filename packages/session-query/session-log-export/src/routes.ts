@@ -9,3 +9,9 @@ export const SESSION_LOG_EXPORT_PATH = '/api/session.export'
 
 /** Browser-relative form of {@link SESSION_LOG_EXPORT_PATH}. */
 export const SESSION_LOG_EXPORT_ROUTE = SESSION_LOG_EXPORT_PATH.slice(1)
+
+/** Absolute registration path for the Markdown copy route. */
+export const SESSION_MARKDOWN_EXPORT_PATH = '/api/session.markdown'
+
+/** Browser-relative form of {@link SESSION_MARKDOWN_EXPORT_PATH}. */
+export const SESSION_MARKDOWN_EXPORT_ROUTE = SESSION_MARKDOWN_EXPORT_PATH.slice(1)

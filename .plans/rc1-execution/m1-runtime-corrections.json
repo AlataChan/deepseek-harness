@@ -1,0 +1,448 @@
+{
+  "kind": "m1-runtime-corrections",
+  "accepted": false,
+  "m2Closed": true,
+  "note": "The frozen census stays unchanged. A correction overrides one inaccurate census field. A reader replacement counts only when the current file's AST contains that call and receiver.",
+  "corrections": [
+    {
+      "id": "R25",
+      "key": "title",
+      "symbol": "titleProjectionDefinition",
+      "file": "packages/session/session-title/src/index.ts",
+      "censusStateVersion": 3,
+      "actualStateVersion": 1,
+      "baselineHash": "1e3994ae895f6b5f6e0b200e4c19cc0c43da02ddec689c0aef2fead792a7a264",
+      "baselineRevision": "3f528c60a419f1c71c097d44f5c6a78f131256c2",
+      "behavior": "Baseline 3f528c60a419f1c71c097d44f5c6a78f131256c2 titleProjectionDefinition is key title stateVersion 1. titleInput is stateVersion 3. Raising title to the census value 3 is a regression."
+    },
+    {
+      "id": "R03",
+      "key": "modelSelection",
+      "symbol": "modelSelectionProjectionDefinition",
+      "file": "packages/core/agent/src/model-selection.ts",
+      "censusStateVersion": 3,
+      "actualStateVersion": 4,
+      "baselineHash": "8e54dfda2e4a110148f384e0866ce0c6b213096d314aa84c222fa14155498571",
+      "baselineRevision": "3f528c60a419f1c71c097d44f5c6a78f131256c2",
+      "behavior": "Qualified blob 3f528c60a419f1c71c097d44f5c6a78f131256c2 of packages/core/agent/src/model-selection.ts is the pre-projection module. The frozen disposition newOwner text still says tag stateVersion 3 and the ledger row stays stateVersion 2. Live modelSelectionProjectionDefinition is stateVersion 4 because the cache stores origin. Any other live stateVersion is a regression."
+    }
+  ],
+  "readerReplacements": [
+    {
+      "id": "C17",
+      "key": "turnBoundary",
+      "file": "packages/api/session-controller/src/session-commit.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 84
+    },
+    {
+      "id": "C18",
+      "key": "turnBoundary",
+      "file": "packages/context/agent-instructions/src/index.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 287
+    },
+    {
+      "id": "C22",
+      "key": "turnBoundary",
+      "file": "packages/core/agent-loop/src/index.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 536
+    },
+    {
+      "id": "C23",
+      "key": "turnBoundary",
+      "file": "packages/deliverables/tool-present/src/index.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 78
+    },
+    {
+      "id": "C27",
+      "key": "turnBoundary",
+      "file": "packages/experimental/claude-code-mods/src/host-ops.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 401
+    },
+    {
+      "id": "C30",
+      "key": "askDataBinding",
+      "file": "packages/experimental/desktop-ask-data/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "askDataBinding",
+      "line": 72
+    },
+    {
+      "id": "C31",
+      "key": "askKnowledgeBinding",
+      "file": "packages/experimental/desktop-ask-knowledge/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "askKnowledgeBinding",
+      "line": 208
+    },
+    {
+      "id": "C32",
+      "key": "askKnowledgeBinding",
+      "file": "packages/experimental/desktop-ask-knowledge/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "askKnowledgeBinding",
+      "line": 422
+    },
+    {
+      "id": "C33",
+      "key": "askKnowledgeBinding",
+      "file": "packages/experimental/desktop-ask-knowledge/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "askKnowledgeBinding",
+      "line": 468
+    },
+    {
+      "id": "C35",
+      "key": "turnBoundary",
+      "file": "packages/experimental/desktop-ask-knowledge/src/tools.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 174
+    },
+    {
+      "id": "C40",
+      "key": "inbox",
+      "file": "packages/experimental/session-decisions/src/service.ts",
+      "symbol": "inbox",
+      "receiver": "agent",
+      "line": 612
+    },
+    {
+      "id": "C41",
+      "key": "goal",
+      "file": "packages/goal/goal/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "goalProjection",
+      "line": 493
+    },
+    {
+      "id": "C42",
+      "key": "goal",
+      "file": "packages/goal/goal/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "goalProjection",
+      "line": 516
+    },
+    {
+      "id": "C43",
+      "key": "turnBoundary",
+      "file": "packages/goal/tool-goal/src/authority.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 35
+    },
+    {
+      "id": "C44",
+      "key": "turnBoundary",
+      "file": "packages/hooks/hooks-claude-code/src/index.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 318
+    },
+    {
+      "id": "C45",
+      "key": "turnBoundary",
+      "file": "packages/hooks/hooks-codex/src/index.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 287
+    },
+    {
+      "id": "C47",
+      "key": "permissions",
+      "file": "packages/interaction/permission-presets/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "permissionProjection",
+      "line": 336
+    },
+    {
+      "id": "C50",
+      "key": "turnBoundary",
+      "file": "packages/plan/plan-mode/src/index.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 379
+    },
+    {
+      "id": "C51",
+      "key": "plan",
+      "file": "packages/plan/plan-mode/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "planProjection",
+      "line": 388
+    },
+    {
+      "id": "C52",
+      "key": "turnBoundary",
+      "file": "packages/preset/agent-preset-registry/src/index.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 364
+    },
+    {
+      "id": "C60",
+      "key": "turnBoundary",
+      "file": "packages/session/session-title/src/index.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 551
+    },
+    {
+      "id": "C61",
+      "key": "titleInput",
+      "file": "packages/session/session-title/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "titleInput",
+      "line": 730
+    },
+    {
+      "id": "C64",
+      "key": "turnBoundary",
+      "file": "packages/session-query/tool-session-query/src/workspace-access.ts",
+      "symbol": "turnBoundaryOf",
+      "receiver": "agents",
+      "line": 70
+    },
+    {
+      "id": "C01",
+      "key": "modelSelection",
+      "file": "packages/api/session-controller/src/agent.ts",
+      "symbol": "current",
+      "receiver": "model",
+      "line": 287
+    },
+    {
+      "id": "C16",
+      "key": "sessionListMetadata",
+      "file": "packages/api/session-controller/src/list.ts",
+      "symbol": "stateOf",
+      "receiver": "sessionListMetadata",
+      "line": 86
+    },
+    {
+      "id": "C20",
+      "key": "timeContext",
+      "file": "packages/context/time-context/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "timeContext",
+      "line": 193
+    },
+    {
+      "id": "C21",
+      "key": "tmuxContext",
+      "file": "packages/context/tmux-context/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "tmuxContext",
+      "line": 255
+    },
+    {
+      "id": "C29",
+      "key": "commerceSession",
+      "file": "packages/experimental/commerce-mode/src/tools/staging.ts",
+      "symbol": "stateOf",
+      "receiver": "commerceSessions",
+      "line": 57
+    },
+    {
+      "id": "C38",
+      "key": "inbox",
+      "file": "packages/experimental/session-decisions/src/observers.ts",
+      "symbol": "inbox",
+      "receiver": "agent",
+      "line": 325
+    },
+    {
+      "id": "C39",
+      "key": "inbox",
+      "file": "packages/experimental/session-decisions/src/observers.ts",
+      "symbol": "inbox",
+      "receiver": "agent",
+      "line": 434
+    },
+    {
+      "id": "C46",
+      "key": "commerceBinding",
+      "file": "packages/host/commerce/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "commerceBinding",
+      "line": 311
+    },
+    {
+      "id": "C48",
+      "key": "userQuestions",
+      "file": "packages/interaction/user-questions/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "questionProjection",
+      "line": 150
+    },
+    {
+      "id": "C49",
+      "key": "llmRetry",
+      "file": "packages/llm/llm-retry/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "llmRetry",
+      "line": 221
+    },
+    {
+      "id": "C53",
+      "key": "sandboxMode",
+      "file": "packages/sandbox/sandbox-policy/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "sandboxMode",
+      "line": 185
+    },
+    {
+      "id": "C24",
+      "key": "agentTeam",
+      "file": "packages/experimental/agent-team/src/index.ts",
+      "symbol": "stateOf",
+      "receiver": "teamProjection",
+      "line": 147
+    },
+    {
+      "id": "C28",
+      "key": "commerceBinding",
+      "file": "packages/experimental/commerce-mode/src/tools/outcome.ts",
+      "symbol": "bindingOf",
+      "receiver": "get",
+      "line": 300
+    },
+    {
+      "id": "C02",
+      "key": "agentPreset",
+      "file": "packages/api/session-controller/src/agent.ts",
+      "symbol": "presetOf",
+      "receiver": "get",
+      "line": 343
+    },
+    {
+      "id": "C34",
+      "key": "agentPreset",
+      "file": "packages/experimental/desktop-ask-knowledge/src/index.ts",
+      "symbol": "presetOf",
+      "receiver": "get",
+      "line": 1132
+    },
+    {
+      "id": "C03",
+      "key": "askDataBinding",
+      "file": "packages/api/session-controller/src/ask-data.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 126
+    },
+    {
+      "id": "C04",
+      "key": "askDataBinding",
+      "file": "packages/api/session-controller/src/ask-data.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 126
+    },
+    {
+      "id": "C05",
+      "key": "askDataBinding",
+      "file": "packages/api/session-controller/src/ask-data.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 126
+    },
+    {
+      "id": "C06",
+      "key": "askDataBinding",
+      "file": "packages/api/session-controller/src/ask-data.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 126
+    },
+    {
+      "id": "C07",
+      "key": "askKnowledgeBinding",
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 330
+    },
+    {
+      "id": "C08",
+      "key": "askKnowledgeBinding",
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 330
+    },
+    {
+      "id": "C09",
+      "key": "askKnowledgeBinding",
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 330
+    },
+    {
+      "id": "C10",
+      "key": "askDataBinding",
+      "file": "packages/api/session-controller/src/ask-knowledge.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 466
+    },
+    {
+      "id": "C12",
+      "key": "commerceBinding",
+      "file": "packages/api/session-controller/src/commerce.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 184
+    },
+    {
+      "id": "C27",
+      "key": "contextPressure",
+      "file": "packages/experimental/claude-code-mods/src/host-ops.ts",
+      "symbol": "snapshot",
+      "receiver": "get",
+      "line": 399
+    },
+    {
+      "id": "C36",
+      "key": "askKnowledgeBinding",
+      "file": "packages/experimental/desktop-ask-knowledge/src/tools.ts",
+      "symbol": "snapshot",
+      "receiver": "sessionProjections",
+      "line": 710
+    },
+    {
+      "id": "C37",
+      "key": "askKnowledgeBinding",
+      "file": "packages/experimental/desktop-ask-knowledge/src/unbind.ts",
+      "symbol": "snapshot",
+      "receiver": "get",
+      "line": 41
+    },
+    {
+      "id": "C65",
+      "key": "subagentModelSelectionPolicy",
+      "file": "packages/subagent/tool-subagent/src/model-selection-state.ts",
+      "symbol": "stateOf",
+      "receiver": "projections",
+      "line": 63
+    },
+    {
+      "id": "C66",
+      "key": "sandboxMode",
+      "file": "packages/terminal/terminal-bash/src/index.ts",
+      "symbol": "resolve",
+      "receiver": "sandboxPolicy",
+      "line": 55
+    }
+  ]
+}

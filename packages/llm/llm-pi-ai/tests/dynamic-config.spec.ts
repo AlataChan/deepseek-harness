@@ -107,8 +107,10 @@ describe('request-level dynamic profiles', () => {
     await configurations.get(ctx)!.update({ providers: { deepseek: { apiKeyEnv: 'PI_DYNAMIC_KEY', baseURL: server.url } } })
     expect(ctx.llm.listProviders().map(provider => provider.id)).toEqual(['openrouter', 'deepseek'])
     const beforeRejected: unknown = configurations.get(ctx)!.entry.options.config
+    const beforeEffective = configurations.get(ctx)!.entry.fiber!.effectiveConfig
     await expect(configurations.get(ctx)!.update({ providers: { openrouter: { displayName: 'Edited' } } })).rejects.toThrow(failure)
-    expect(configurations.get(ctx)!.entry.options.config).toEqual(beforeRejected)
+    expect(configurations.get(ctx)!.entry.options.config).toBe(beforeRejected)
+    expect(configurations.get(ctx)!.entry.fiber!.effectiveConfig).toBe(beforeEffective)
 
     const diagnostics: Array<string | undefined> = []
     ctx.on('llm/adapters-updated', () => {

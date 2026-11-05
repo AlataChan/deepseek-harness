@@ -598,10 +598,12 @@ export default class SessionDecisionsService extends TypertRemoteService {
   }
 
   /**
-   * Point-in-time queue facts for one saved request ID, from the public
-   * inbox projection. Entered durable evidence is deliberately not scanned
-   * here: B1.3's event-driven observers own entered-evidence settlement
+   * Point-in-time queue facts for one saved request ID, from the live inbox
+   * backed by its retained projection reader. Entered durable evidence is
+   * deliberately not scanned here: observers own entered-evidence settlement
    * through {@link applyFacts}. This covers the prompt-throw path only.
+   * A throw from that reader means the inbox cannot be observed: `pending`
+   * stays omitted so the caller keeps the reservation `submitting`.
    */
   private collectPromptFacts(sessionId: SessionId, requestId: SessionRequestId): DecisionFacts {
     const matches = (source: UserMessage['source']): boolean =>
@@ -609,11 +611,15 @@ export default class SessionDecisionsService extends TypertRemoteService {
     const agents = this.ctx.get('agents')
     const agent = agents?.get(sessionId)
     if (!agents || !agent) return { agentGone: true }
-    const state = this.activeContext.sessionProjections.stateOf(agent.session, 'inbox')
-    if (state === undefined) return {}
-    const pending = [...state['next-turn'], ...state['next-step']]
-      .some(message => matches(message.source))
-    return { pending }
+    let messages: readonly UserMessage[]
+    try {
+      messages = [...agent.inbox.nextTurn, ...agent.inbox.nextStep]
+    } catch (error: unknown) {
+      this.ctx.logger.warn('session-decisions: inbox projection is not observable for %s: %s',
+        sessionId, error instanceof Error ? error.message : String(error))
+      return {}
+    }
+    return { pending: messages.some(message => matches(message.source)) }
   }
 
   /** Read private notification metadata for the trusted channel adapter.

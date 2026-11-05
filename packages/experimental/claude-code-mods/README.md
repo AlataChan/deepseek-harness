@@ -85,10 +85,10 @@ The band is one instance per session, drawn by the first mod in load order whose
 | `$.command` | `register`, `run`, `list` | `ctx.commands`, scoped to the agent whose event is running |
 | `$.tool` | `register`, `call`, `list` | `ctx.tools`; a registered tool is named `mcp__<plugin>__<tool>`; contexts a tool defers to the next request are injected into the session |
 | `$.prompt` | `submit` | `agent.followup()` as a `user`-sourced message, framed as a message from the mod unless `asUser`; the `prompt.submit` it raises carries `origin: { kind: 'plugin', name }` |
-| `$.session` | `id`, `cwd`, `root`, `model`, `turns`, `messages`, `usage`, `version` | the agent's Session and the `turnBoundary` and `contextPressure` projections; `cwd` and `root` both report the session workspace, the harness's one directory per session |
+| `$.session` | `id`, `cwd`, `root`, `model`, `turns`, `messages`, `usage`, `version` | the agent's Session, agent service (`turns`), and `contextPressure` projection; `cwd` and `root` both report the session workspace, the harness's one directory per session |
 | `$.state` | `get`, `set` | memory held for the session, addressed by the `{ plugin, key }` a mod names; a read during `ui.render` subscribes the band |
 | `$.store` | `get`, `set`, `delete`, `keys` | the `claude_code_mods` storage domain, one JSON object per plugin, 4 MiB |
-| `$.clock` | `now`, `sleep`, `after`, `every` | timers owned by the session whose event scheduled them; `sleep` rejects when the event is cancelled |
+| `$.clock` | `now`, `sleep`, `after`, `every` | timers owned by the session whose event scheduled them; `sleep` rejects when the event is cancelled or the bridge starts unloading; unload waits for running callbacks to settle |
 | `$.fs` | `read`, `write`, `list`, `exists`, `stat` | `ctx.fs`, relative to the session workspace, 4 MiB per file |
 | `$.process` | `run` | `ctx.subprocess`, argv without a shell |
 | `$.http` | `fetch` | the process's `fetch`, bodies up to 4 MiB |

@@ -93,19 +93,21 @@ async function mount(
   withBash = false,
 ): Promise<{ ctx: Context; bash: FakeBash | undefined }> {
   const ctx = new Context()
-  await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionProjectionRegistry)
+  await ctx.plugin(AgentRegistry)
   let bash: FakeBash | undefined
   if (withBash) {
     await ctx.plugin(FakeBash)
     bash = ctx.shell as FakeBash
   }
-  await ctx.plugin(tmuxContext, config)
+  const fiber = await ctx.plugin(tmuxContext, config)
+  expect(fiber.effectiveConfig).toEqual(config)
   return { ctx, bash }
 }
 
 function sessionAgent(session: Session, id = 'agent'): Agent {
   const agent: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id: SessionId(id),
     options: {},
     session,
@@ -151,7 +153,7 @@ async function fire(
 ): Promise<void> {
   const decision = await agentEvents(ctx, agent).waterfall(
     'agent/pre-step',
-    { messages: [], turn, step, signal },
+    { modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [], turn, step, signal },
     () => Promise.resolve({ kind: 'enter' as const, messages: [] }),
   )
   if (decision.kind === 'enter') {

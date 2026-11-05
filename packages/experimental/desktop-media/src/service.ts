@@ -7,6 +7,7 @@ import { access, copyFile, mkdir, writeFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type { JobId, JobRegistry } from '@deepseek-ai/dsh-jobs'
 import { MediaError } from './error.ts'
 import { sha256Bytes, sha256File } from './hash.ts'
@@ -106,16 +107,18 @@ export interface MediaApprovalInput {
  * Look up an optional Host seam on this fiber or the root context.
  * @param ctx - plugin or service context.
  * @param name - provided service name.
- * @returns the seam, or undefined.
+ * @returns the untyped seam, or undefined; callers assert their expected service.
  */
-export function optionalHostSeam<T>(ctx: Context, name: string): T | undefined {
-  return (ctx.get(name) ?? ctx.root.get(name)) as T | undefined
+export function optionalHostSeam(ctx: Context, name: string): unknown {
+  return ctx.get(name) ?? ctx.root.get(name)
 }
 
 /**
  * Overlay media service: catalogues, open/reveal, and paid producers.
  */
 export class DesktopMedia extends Service {
+  private mediaProjection: ProjectionHandle<MediaProjectionState> | undefined
+
   /**
    * @param ctx - Host context.
    * @param config - validated plugin configuration.
@@ -127,6 +130,14 @@ export class DesktopMedia extends Service {
     private readonly internals: DesktopMediaInternals = {},
   ) {
     super(ctx, 'desktopMedia')
+  }
+
+  /**
+   * Retain the awaited media projection.
+   * @param handle - registration handle; its disposer releases the unit.
+   */
+  bindMediaProjection(handle: ProjectionHandle<MediaProjectionState>): void {
+    this.mediaProjection = handle
   }
 
   /**
@@ -473,7 +484,7 @@ export class DesktopMedia extends Service {
    * @returns started job ids.
    */
   recover(owner: Agent): readonly JobId[] {
-    const jobs = this.seam<JobRegistry>('jobs')
+    const jobs = this.seam('jobs') as JobRegistry | undefined
     if (jobs === undefined) return []
     return recoverMediaJobs(
       jobs,
@@ -510,23 +521,17 @@ export class DesktopMedia extends Service {
   }
 
   private projectionOf(owner: Agent): MediaProjectionState {
-    const projections = this.seam<{
-      stateOf: (session: Agent['session'], key: 'media') => MediaProjectionState | undefined
-    }>('sessionProjections')
-    if (projections === undefined) return emptyMediaState()
-    const state = projections.stateOf(owner.session, 'media')
-    if (state === undefined) return emptyMediaState()
-    return state
+    return this.mediaProjection?.stateOf(owner.session) ?? emptyMediaState()
   }
 
-  private seam<T>(name: string): T | undefined {
-    return optionalHostSeam<T>(this.ctx, name)
+  private seam(name: string): unknown {
+    return optionalHostSeam(this.ctx, name)
   }
 
   private sessionFlush(): SessionFlush | undefined {
     const injected = this.internals.flush
     if (injected !== undefined) return injected
-    const sessions = this.seam<{ flush: SessionFlush }>('sessions')
+    const sessions = this.seam('sessions') as { flush: SessionFlush } | undefined
     if (sessions?.flush === undefined) return undefined
     return sessions.flush.bind(sessions)
   }
@@ -577,7 +582,7 @@ export class DesktopMedia extends Service {
     requestId: MediaRequestId,
     work: (signal: AbortSignal) => Promise<string>,
   ): JobId {
-    const jobs = this.seam<JobRegistry>('jobs')
+    const jobs = this.seam('jobs') as JobRegistry | undefined
     if (jobs === undefined) throw new MediaError('task-failed', 'background jobs are unavailable')
     try {
       return startMediaJob({
@@ -653,7 +658,7 @@ export class DesktopMedia extends Service {
   private async transport(): Promise<MinimaxTransport> {
     if (this.internals.transport !== undefined) return this.internals.transport
     const credentials = this.internals.credentials
-      ?? this.seam<MinimaxCredentialLookup>('credentials')
+      ?? this.seam('credentials') as MinimaxCredentialLookup | undefined
     if (credentials === undefined) {
       throw new MediaError('credential-missing', 'MINIMAX_API_KEY is not configured')
     }
@@ -772,5 +777,5 @@ export class DesktopMedia extends Service {
 
 function isMissingPath(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error
-    && (error as { code: unknown }).code === 'ENOENT'
+    && error.code === 'ENOENT'
 }

@@ -179,7 +179,8 @@
     "@deepseek-ai/dsh-client-ui-settings-account": "workspace:*",
     "@deepseek-ai/dsh-client-shortcuts": "workspace:*",
     "@deepseek-ai/dsh-client-ui-shortcuts": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-settings-session-log": "workspace:*"
+    "@deepseek-ai/dsh-client-ui-settings-session-log": "workspace:*",
+    "@deepseek-ai/dsh-tool-executor-ptc": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",

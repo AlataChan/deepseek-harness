@@ -1,0 +1,8 @@
+# Authored composition owner. Refresh and replay use cordis.snapshot.yml.
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    dshHome: !!js process.cwd() + '/skill-user-home'
+    agentsHome: !!js process.cwd() + '/skill-user-agents'
+    bundledSkillDir: !!js process.cwd() + '/skill-bundled'
+    watch: false

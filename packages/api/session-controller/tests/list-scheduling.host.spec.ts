@@ -48,6 +48,7 @@ async function harness(rows: readonly Row[], summaryMs = 8, workSliceMs = 8) {
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   const list = new ApiSessionList(ctx, workSliceMs)
+  await list.ready
   const clock = { now: 0 }
   const prepared = new Map<string, Session>()
   const agents = new Map<string, { status: Agent['status'] }>()

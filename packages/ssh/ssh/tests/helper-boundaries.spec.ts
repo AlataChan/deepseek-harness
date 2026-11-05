@@ -218,9 +218,15 @@ describe.skipIf(process.platform === 'win32')('SSH helper wire and lifecycle bou
         argv: ['true'], cwd: test.root, graceMs: 100,
         stdio: { stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' },
       }, preparedSchema)
-      for (const method of ['terminal.write', 'terminal.inspect', 'terminal.signal']) {
+      for (const method of ['terminal.write', 'terminal.inspect', 'terminal.activity', 'terminal.signal']) {
         await expect(test.client.request(method, { id: prepared.id, value: 'x' }, z.unknown())).rejects.toThrow('does not own a terminal')
       }
+      await expect(test.client.request('terminal.resize', { id: prepared.id, cols: 80, rows: 24 }, z.unknown())).rejects.toThrow('does not own a terminal')
+      const resize = vi.spyOn(RemoteProcesses.prototype, 'resizeTerminal').mockResolvedValue(undefined)
+      try {
+        await expect(test.client.request('terminal.resize', { id: prepared.id, cols: 80, rows: 24 }, z.null())).resolves.toBeNull()
+        expect(resize).toHaveBeenCalledWith(prepared.id, 80, 24)
+      } finally { resize.mockRestore() }
       await test.client.request('process.terminate', { id: prepared.id }, z.null())
       for (const method of ['process.start', 'process.done', 'process.wait', 'process.terminate']) {
         await expect(test.client.request(method, { id: randomUUID() }, z.unknown())).rejects.toThrow('Unknown or expired SSH process handle')

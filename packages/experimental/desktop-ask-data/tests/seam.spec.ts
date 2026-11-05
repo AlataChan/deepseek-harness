@@ -12,22 +12,28 @@ describe('DesktopAskData', () => {
     const home = await mkdtemp(join(tmpdir(), 'ask-data-seam-'))
     const ctx = new Context()
     const sections: string[] = []
+    let render: ((context: { agent?: { session: object } }) => string) | undefined
     ctx.provide('systemPrompt', {
       section: (spec: { name: string; text: (context: { agent?: { session: object } }) => string }) => {
         sections.push(spec.name)
-        expect(spec.text({})).toBe('')
-        expect(spec.text({ agent: { session: {} } })).toContain('accept-xlsx-csv')
+        render = spec.text
         return () => {}
       },
     })
     ctx.provide('sessionProjections', {
-      register: () => () => {},
-      stateOf: () => ({ sourceId: 's', connectionRef: 'c', displayName: 'n', readonly: true }),
+      register: () => Promise.resolve({
+        stateOf: () => ({ sourceId: 's', connectionRef: 'c', displayName: 'n', readonly: true }),
+        readerFor: () => () => ({ sourceId: 's', connectionRef: 'c', displayName: 'n', readonly: true }),
+        dispose: () => Promise.resolve(),
+      }),
     })
     const fiber = ctx.plugin(DesktopAskData, { dataHome: home })
     await fiber.await()
     expect(ctx.get('askData')).toBeInstanceOf(DesktopAskData)
     expect(sections).toContain('ask-data:limits')
+    if (render === undefined) throw new Error('Ask-data did not register its prompt section')
+    expect(render({})).toBe('')
+    expect(render({ agent: { session: {} } })).toContain('accept-xlsx-csv')
     await expect(ctx.get('askData')!.listSources()).resolves.toEqual([])
     const ac = new AbortController()
     ac.abort()
@@ -38,20 +44,23 @@ describe('DesktopAskData', () => {
 
   it('uses the default data-home and omits limits when the session is unbound', async () => {
     const ctx = new Context()
-    const texts: string[] = []
+    const texts: ((context: { agent?: { session: object } }) => string)[] = []
     ctx.provide('systemPrompt', {
       section: (spec: { text: (context: { agent?: { session: object } }) => string }) => {
-        texts.push(spec.text({ agent: { session: {} } }))
+        texts.push(spec.text)
         return () => {}
       },
     })
     ctx.provide('sessionProjections', {
-      register: () => () => {},
-      stateOf: () => null,
+      register: () => Promise.resolve({
+        stateOf: () => null,
+        readerFor: () => () => null,
+        dispose: () => Promise.resolve(),
+      }),
     })
     const fiber = ctx.plugin(DesktopAskData, { dataHome: '' })
     await fiber.await()
-    expect(texts).toEqual([''])
+    expect(texts.map(render => render({ agent: { session: {} } }))).toEqual([''])
     await fiber.dispose()
   })
 
@@ -59,7 +68,7 @@ describe('DesktopAskData', () => {
     const home = await mkdtemp(join(tmpdir(), 'ask-data-seam-replace-'))
     const ctx = new Context()
     ctx.provide('systemPrompt', { section: () => () => {} })
-    ctx.provide('sessionProjections', { register: () => () => {}, stateOf: () => null })
+    ctx.provide('sessionProjections', { register: () => Promise.resolve({ stateOf: () => null, readerFor: () => () => null, dispose: () => Promise.resolve() }) })
     const fiber = ctx.plugin(DesktopAskData, { dataHome: home })
     await fiber.await()
     const ask = ctx.get('askData')!

@@ -184,6 +184,49 @@ describe('ToolRuntime', () => {
     })
   })
 
+  it('keeps applied diff metadata when cancellation replaces a finished body', async () => {
+    const ctx = await setup()
+    const diffs = [{ path: 'notes.txt', oldText: null, newText: 'x' }]
+    ctx.tools.register({
+      ...echoTool,
+      name: 'applied-before-cancel',
+      output: {
+        ...echoTool.output,
+        presentationMeta: () => ({ diffs, stopped: true }),
+      },
+      async execute() {
+        return 'applied notes.txt'
+      },
+    })
+    const entered = Promise.withResolvers<undefined>()
+    const release = Promise.withResolvers<undefined>()
+    ctx.on('tools/execute', async (_exec, next) => {
+      const result = await next()
+      entered.resolve(undefined)
+      await release.promise
+      return result
+    })
+    const controller = new AbortController()
+    const pending = ctx.tools.execute({
+      callId: ToolCallId('cancelled-with-meta'),
+      name: 'applied-before-cancel',
+      arguments: {},
+      signal: controller.signal,
+    })
+    await entered.promise
+    controller.abort('cancelled after apply')
+    release.resolve(undefined)
+    await expect(pending).resolves.toMatchObject({
+      content: [
+        { type: 'text', text: 'applied notes.txt' },
+        { type: 'text', text: 'Error: tool call aborted' },
+      ],
+      isError: true,
+      error: { info: { name: 'AbortError', code: TOOL_ABORTED } },
+      meta: { diffs, stopped: true },
+    })
+  })
+
   it('omits meta when no presentation projector is declared', async () => {
     const ctx = await setup()
     ctx.tools.register({
@@ -1439,7 +1482,10 @@ describe('ToolRuntime', () => {
     release.resolve(undefined)
 
     await expect(pending).resolves.toMatchObject({
-      content: [{ type: 'text', text: 'Error: tool call aborted' }],
+      content: [
+        { type: 'text', text: 'body complete' },
+        { type: 'text', text: 'Error: tool call aborted' },
+      ],
       isError: true,
       error: { info: { name: 'AbortError', code: TOOL_ABORTED } },
       additionalContexts: [{ source: { kind: 'child' } }],
@@ -1482,7 +1528,10 @@ describe('ToolRuntime', () => {
     release.resolve(undefined)
 
     await expect(pending).resolves.toMatchObject({
-      content: [{ type: 'text', text: 'Error: tool call aborted' }],
+      content: [
+        { type: 'text', text: 'body complete' },
+        { type: 'text', text: 'Error: tool call aborted' },
+      ],
       isError: true,
       error: { info: { name: 'AbortError', code: TOOL_ABORTED } },
       additionalContexts: [

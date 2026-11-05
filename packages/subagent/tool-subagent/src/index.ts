@@ -8,7 +8,7 @@
  * @module @deepseek-ai/dsh-tool-subagent
  */
 
-import type { Context } from '@deepseek-ai/cordis'
+import { FiberState, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { scopeChainOf, scopeOf } from '@deepseek-ai/dsh-scope'
 import { defineTool } from '@deepseek-ai/dsh-tools'
@@ -306,11 +306,12 @@ function resolveDelegationRun(
 
 /**
  * Install one delegation-tool composition.
+ * Projection-ready continuations install nothing once the owning fiber is disposed or unloading.
  * @param ctx - Context that owns the registrations.
  * @param config - delegation-tool configuration.
  * @param session - unpublished Session supplied by a direct Agent setup; omit for a standing composition.
  */
-export function apply(ctx: Context, config: Config, session?: Session): void {
+export async function apply(ctx: Context, config: Config, session?: Session): Promise<void> {
   // Direct apply() bypasses Schemastery's numeric constraints. A direct-apply
   // omission stays capless (the schema default only runs through the loader).
   if (config.maxDepth !== 'provider-managed') assertSubagentMaxDepth(config.maxDepth)
@@ -323,7 +324,8 @@ export function apply(ctx: Context, config: Config, session?: Session): void {
   const toolName = config.toolName ?? 'subagent'
 
   const modelSelectionCapable = config.modelSelectionSettings === true
-  ctx.sessionProjections.register(subagentModelSelectionProjectionDefinition)
+  const modelSelectionPolicy = await ctx.sessionProjections.register(subagentModelSelectionProjectionDefinition)
+  if (ctx.fiber.uid === null || ctx.fiber.state === FiberState.UNLOADING) return
 
   const assertSubagentProviderConfiguration = (subagentProvider: SubagentProvider): void => {
     if (ctx.subagents.resolveMaxDepth(config.maxDepth) !== undefined && !subagentProvider.capabilities.depthLimit) {
@@ -621,7 +623,7 @@ export function apply(ctx: Context, config: Config, session?: Session): void {
     const freshSession = target.firstLiveSeq === 0
       // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
       && target.eventAt(SessionSeq(0))?.type !== 'session/end-seed'
-    let allowedModels = subagentModelSelectionPolicy(ctx.sessionProjections, target)
+    let allowedModels = subagentModelSelectionPolicy(modelSelectionPolicy, target)
     if (allowedModels === undefined) {
       const parentId = target.header.origin === 'subagent'
         ? target.header.parentSession
@@ -634,14 +636,14 @@ export function apply(ctx: Context, config: Config, session?: Session): void {
         const parent = sessions.get(parentId)
         allowedModels = parent === undefined
           ? undefined
-          : subagentModelSelectionPolicy(ctx.sessionProjections, parent)
+          : subagentModelSelectionPolicy(modelSelectionPolicy, parent)
       } else if (freshSession) {
         const current = settings.current()
         allowedModels = current.enabled ? current.allowedModels : undefined
       }
     }
     if (allowedModels !== undefined) {
-      recordSubagentModelSelection(ctx.sessionProjections, target, allowedModels)
+      recordSubagentModelSelection(modelSelectionPolicy, target, allowedModels)
     }
     return allowedModels === undefined ? undefined : { routes: allowedModels }
   }

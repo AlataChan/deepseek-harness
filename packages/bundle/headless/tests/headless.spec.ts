@@ -4,16 +4,17 @@ import { Readable } from 'node:stream'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { brandString } from '@deepseek-ai/dsh-brand'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { AgentModel } from '@deepseek-ai/dsh-agent'
 import type {
   Agent,
   AgentHandle,
   AssistantStreamFrame,
   CreateAgentOptions,
+  ModelSelection,
   ResumeAgentOptions,
 } from '@deepseek-ai/dsh-agent'
 import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
-import { LlmAttemptId, ToolCallId, createAssistantMessage, createToolResultMessage, type MessageId, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import { LlmAttemptId, ReasoningEffortId, ToolCallId, createAssistantMessage, createToolResultMessage, type MessageId, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Session, SessionId, UserMessage } from '@deepseek-ai/dsh-session'
@@ -57,9 +58,23 @@ interface BenchOptions {
   preliveMeta?: { cwd?: string; origin?: 'subagent'; agentPreset?: string }
   /** Run when the runner awaits idle, e.g. to append to the attached log. */
   onWhenIdle?: (agent: Agent) => void
+  /** Explicit default-model effort. Omission leaves the configured effort absent. */
+  reasoningEffort?: string
 }
 
 const frameStates = new WeakMap<Agent, { attemptId: ReturnType<typeof LlmAttemptId>; revision: number; index: number }>()
+
+function lastModelSelection(session: Session): { lastUsed: ModelSelection | null; lastUsedOrigin: 'explicit' | 'inherited' | null } {
+  let lastUsed: ModelSelection | null = null
+  let lastUsedOrigin: 'explicit' | 'inherited' | null = null
+  for (const event of session.snapshotEvents()) {
+    if (event.type !== 'model/selection') continue
+    const { provider, model, reasoningEffort } = event.data
+    lastUsed = { provider, model, ...(reasoningEffort !== undefined ? { reasoningEffort } : {}) }
+    lastUsedOrigin = event.data.origin === 'inherited' ? 'inherited' : 'explicit'
+  }
+  return { lastUsed, lastUsedOrigin }
+}
 
 function startFrames(agent: Agent, turn = 1, step = 1): void {
   const state = { attemptId: LlmAttemptId(`${agent.id}:test`), revision: 1, index: 0 }
@@ -143,9 +158,15 @@ async function bench(script: Script, options: BenchOptions = {}): Promise<{
   ): Promise<Agent> => {
     const inbox = createInboxStub()
     let idle = Promise.resolve()
+    const agentOptions = createOptions.agentOptions ?? {}
     const agent: Agent = {
       id: session.id,
-      options: createOptions.agentOptions ?? {},
+      options: agentOptions,
+      model: new AgentModel(
+        () => ({ ...lastModelSelection(session), pending: null, pendingOrigin: null }),
+        session,
+        agentOptions,
+      ),
       session,
       inbox,
       status: 'idle',
@@ -172,7 +193,11 @@ async function bench(script: Script, options: BenchOptions = {}): Promise<{
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
-  await ctx.plugin(AgentDefaultModelConfig, { provider: 'test-provider', model: 'test-model' })
+  await ctx.plugin(AgentDefaultModelConfig, {
+    provider: 'test-provider',
+    model: 'test-model',
+    ...options.reasoningEffort === undefined ? {} : { reasoningEffort: options.reasoningEffort },
+  })
   ctx.agents.setFactory({
     async createAgent(ownerCtx: Context, createOptions: CreateAgentOptions): Promise<AgentHandle> {
       const session = ctx.sessions.create(createOptions.sessionId, {
@@ -257,6 +282,99 @@ describe('headless runner', () => {
     test.ctx.sessions.create(brandString<SessionId>('session-exact'), { meta: { cwd } })
     try { expect(await test.run()).toMatchObject({ code: 0, out: 'remote resumed\n' }) }
     finally { await test.ctx.fiber.dispose() }
+  })
+
+  it('starts a fresh Session from agent options without an extra selection event', async () => {
+    let seen: Agent | undefined
+    const test = await bench({
+      afterPrompt(session, message, agent) {
+        seen = agent
+        appendTurn(session, 1, message, 'fresh answer', true)
+      },
+    }, { reasoningEffort: 'high' })
+    try {
+      expect(await test.run()).toMatchObject({ code: 0, out: 'fresh answer\n' })
+      expect(seen?.options).toMatchObject({
+        provider: 'test-provider', model: 'test-model', reasoningEffort: 'high',
+      })
+      expect(seen?.session.snapshotEvents().some(event => event.type === 'model/selection')).toBe(false)
+    } finally { await test.ctx.fiber.dispose() }
+  })
+
+  it('keeps a resumed explicit effort when the configured route omits effort', async () => {
+    const cwd = process.cwd()
+    let seen: Agent | undefined
+    const test = await bench({
+      afterPrompt(session, message, agent) {
+        seen = agent
+        appendTurn(session, 1, message, 'kept effort', true)
+      },
+    }, {
+      sessionId: 'session-exact',
+      observe: async () => ({ header: { cwd, origin: 'user' }, events: [], [Symbol.dispose]() {} }),
+    })
+    const session = test.ctx.sessions.create(brandString<SessionId>('session-exact'), { meta: { cwd } })
+    session.append('model/selection', {
+      provider: 'test-provider', model: 'test-model', reasoningEffort: ReasoningEffortId('high'),
+    })
+    try {
+      expect(await test.run()).toMatchObject({ code: 0, out: 'kept effort\n' })
+      expect(seen?.session.snapshotEvents().filter(event => event.type === 'model/selection').map(event => event.data))
+        .toEqual([{ provider: 'test-provider', model: 'test-model', reasoningEffort: 'high' }])
+      expect(seen?.model.current()).toEqual({
+        provider: 'test-provider', model: 'test-model', reasoningEffort: 'high',
+      })
+    } finally { await test.ctx.fiber.dispose() }
+  })
+
+  it('records a resumed route when it differs, without keeping the previous effort', async () => {
+    const cwd = process.cwd()
+    let seen: Agent | undefined
+    const test = await bench({
+      afterPrompt(session, message, agent) {
+        seen = agent
+        appendTurn(session, 1, message, 'switched', true)
+      },
+    }, {
+      sessionId: 'session-exact',
+      observe: async () => ({ header: { cwd, origin: 'user' }, events: [], [Symbol.dispose]() {} }),
+    })
+    const session = test.ctx.sessions.create(brandString<SessionId>('session-exact'), { meta: { cwd } })
+    session.append('model/selection', {
+      provider: 'other', model: 'old', reasoningEffort: ReasoningEffortId('high'),
+    })
+    try {
+      expect(await test.run()).toMatchObject({ code: 0, out: 'switched\n' })
+      expect(seen?.session.snapshotEvents().filter(event => event.type === 'model/selection').map(event => event.data))
+        .toEqual([
+          { provider: 'other', model: 'old', reasoningEffort: 'high' },
+          { provider: 'test-provider', model: 'test-model' },
+        ])
+    } finally { await test.ctx.fiber.dispose() }
+  })
+
+  it('records a configured effort over a resumed explicit effort', async () => {
+    const cwd = process.cwd()
+    let seen: Agent | undefined
+    const test = await bench({
+      afterPrompt(session, message, agent) {
+        seen = agent
+        appendTurn(session, 1, message, 'replaced', true)
+      },
+    }, {
+      sessionId: 'session-exact',
+      reasoningEffort: 'low',
+      observe: async () => ({ header: { cwd, origin: 'user' }, events: [], [Symbol.dispose]() {} }),
+    })
+    const session = test.ctx.sessions.create(brandString<SessionId>('session-exact'), { meta: { cwd } })
+    session.append('model/selection', {
+      provider: 'test-provider', model: 'test-model', reasoningEffort: ReasoningEffortId('high'),
+    })
+    try {
+      expect(await test.run()).toMatchObject({ code: 0, out: 'replaced\n' })
+      expect(seen?.session.snapshotEvents().filter(event => event.type === 'model/selection').at(-1)?.data)
+        .toEqual({ provider: 'test-provider', model: 'test-model', reasoningEffort: 'low' })
+    } finally { await test.ctx.fiber.dispose() }
   })
 
   it('aggregates the final text across the complete idle-to-idle interval and flushes before exit', async () => {

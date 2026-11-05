@@ -47,7 +47,10 @@ const PROBE_PLUGIN = [
   '  // A profile with no app row settles and exits; the interval holds the',
   '  // loop open until the report lands.',
   '  const keepAlive = setInterval(() => {}, 1_000)',
+  '  ctx.effect(() => () => clearInterval(keepAlive))',
   "  ctx.inject(['agentPresets', 'agents', 'tools', 'commerce'], (scope) => {",
+  '    let disposed = false',
+  '    scope.effect(() => () => { disposed = true })',
   '    void (async () => {',
   '      const fs = await import("node:fs")',
   '      const report = { presets: [], tools: [], services: {}, entries: [] }',
@@ -58,26 +61,29 @@ const PROBE_PLUGIN = [
   '        report.entries.push({ name: String(entry.options.name ?? entry.options.id), state: entry.fiber?.state ?? null })',
   '      }',
   '      // The preset row installs the packaged preset and only then mounts the',
-  '      // scoped tools, so wait for that row to finish activating. A prepare-pass',
-  '      // instance can hold an inactive scope: its reads throw, so retry until the',
-  '      // live instance sees the roster.',
+  '      // scoped tools, so wait for that row to finish activating. A disposed',
+  '      // prepare-pass instance leaves reporting to the live instance.',
   '      const deadline = Date.now() + 60_000',
   '      for (;;) {',
+  '        if (disposed) return',
   '        try {',
   '          report.presets = (await scope.agentPresets.list()).map(preset => preset.id)',
+  "          report.commerce = await scope.agentPresets.resolve('commerce')",
   '          delete report.failure',
   '        } catch (error) {',
+  '          if (disposed) return',
   '          report.failure = error instanceof Error ? error.message : String(error)',
   '        }',
   '        const row = [...ctx.loader.entries()].find(entry =>',
   "          String(entry.options.name) === '@deepseek-ai/dsh-experimental-commerce-mode/preset')",
   '        report.presetRowState = row?.fiber?.state ?? null',
   '        // 2 is FiberState.ACTIVE; a plain .mjs fixture cannot import the enum.',
-  "        const ready = report.presets.includes('commerce') && row?.fiber?.state === 2",
+  "        const ready = report.commerce?.id === 'commerce' && row?.fiber?.state === 2",
   '        if (ready || Date.now() > deadline) break',
   '        await new Promise(resolve => setTimeout(resolve, 50))',
   '      }',
-  '      if (report.presets.includes(\'commerce\')) {',
+  '      if (disposed) return',
+  "      if (report.commerce?.id === 'commerce') {",
   '        try {',
   '          const created = await scope.agents.create({',
   "            sessionId: 'commerce-probe-session',",
@@ -91,7 +97,7 @@ const PROBE_PLUGIN = [
   '          report.failure = error instanceof Error ? error.message : String(error)',
   '        }',
   '      }',
-  '      if (!wrote) {',
+  '      if (!disposed && !wrote) {',
   '        wrote = true',
   '        fs.writeFileSync(process.env.DSH_COMMERCE_PROBE_OUT, JSON.stringify(report))',
   '        clearInterval(keepAlive)',
@@ -184,6 +190,7 @@ describe('linked commerce profile bundle', () => {
     expect(probed, `probe wrote no report. ${diagnostic}`).not.toBe('')
     const probeReport = JSON.parse(probed) as {
       presets: string[]
+      commerce?: { id: string; broken?: string }
       tools: string[]
       services: Record<string, boolean>
       presetRowState: number | null
@@ -193,7 +200,8 @@ describe('linked commerce profile bundle', () => {
     const detail = `${diagnostic}\nservices: ${JSON.stringify(probeReport.services)}\npreset row state: ${String(probeReport.presetRowState)}\ncommerce entries: ${
       JSON.stringify(probeReport.entries.filter(entry => entry.name.includes('commerce')))}`
     expect(probeReport.failure, detail).toBeUndefined()
-    expect(probeReport.presets).toContain('commerce')
+    expect(probeReport.presets).not.toContain('commerce')
+    expect(probeReport.commerce).toEqual({ id: 'commerce' })
     expect(probeReport.tools, detail).toContain('commerce_load_sample')
     expect(probeReport.tools).toContain('commerce_export_changes')
   })

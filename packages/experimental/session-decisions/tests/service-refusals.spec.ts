@@ -408,14 +408,14 @@ it('keeps a prompt rejection uncertain while the inbox projection cannot be obse
   const h = await admissionHarness()
   const q = await h.service.create({ sessionId: SESSION, question: 'Which database?', choices: ['A', 'B'] })
   h.followup.mockImplementationOnce(() => { throw new Error('prompt refused') })
-  const state = h.ctx.sessionProjections.stateOf.bind(h.ctx.sessionProjections)
-  const projection = vi.spyOn(h.ctx.sessionProjections, 'stateOf').mockImplementation((session, name) => {
-    return name === 'inbox' ? undefined : state(session, name)
+  const inbox = vi.spyOn(h.agent.inbox, 'nextTurn', 'get').mockImplementation(() => {
+    throw new Error('inbox projection is not registered')
   })
   try {
     expect(await h.service.submit(q.decisionId, q.revision, q.requestId, { choiceOrdinal: 1 }))
       .toMatchObject({ outcome: 'submitting' })
-  } finally { projection.mockRestore() }
+    expect(await h.service.get(q.decisionId)).toMatchObject({ answerIndex: 'submitting' })
+  } finally { inbox.mockRestore() }
 })
 
 

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
@@ -23,6 +24,7 @@ async function harness(): Promise<Context> {
   await ctx.plugin(SessionStore)
   await ctx.plugin(SystemPrompt, { personaPrefix: '' })
   await ctx.plugin(ToolRegistry)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   return ctx
 }
@@ -58,6 +60,7 @@ describe('LocalFileReferenceService', () => {
   it('defers guidance until optional prompt and tool services become available', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(LocalFileReferenceService)
     try {
@@ -106,12 +109,12 @@ describe('LocalFileReferenceService', () => {
     await ctx.plugin(LocalFileReferenceService)
     await ctx.fileReferences.list(agent, 'README', new AbortController().signal)
 
-    ctx.emit('session/event', agent.session, { type: 'tool/result' } as never)
+    ctx.emit('session/event', agent.session, { type: 'tool/result', seq: 0 } as never)
     expect(invalidate).toHaveBeenCalledOnce()
-    ctx.emit('session/event', agent.session, { type: 'assistant/message' } as never)
+    ctx.emit('session/event', agent.session, { type: 'assistant/message', seq: 0 } as never)
     expect(invalidate).toHaveBeenCalledOnce()
     const orphan = ctx.sessions.create(SessionId('file-reference-orphan'))
-    ctx.emit('session/event', orphan, { type: 'tool/result' } as never)
+    ctx.emit('session/event', orphan, { type: 'tool/result', seq: 0 } as never)
     expect(invalidate).toHaveBeenCalledOnce()
 
     await dispose()

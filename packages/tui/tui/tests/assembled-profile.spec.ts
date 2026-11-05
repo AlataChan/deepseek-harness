@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { type Agent, type AgentHandle } from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { type AgentHandle } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SessionStore, { SessionId, Session } from '@deepseek-ai/dsh-session'
 import SessionProjections from '@deepseek-ai/dsh-session-projection'
 import ApprovalService from '@deepseek-ai/dsh-user-approval'
@@ -25,6 +26,7 @@ describe('T5 Assembled Profile Acceptance', () => {
   it('mounts the experimental profile plugins and executes interactive turns', async () => {
     const ctx = new Context()
     ctx.appExit = vi.fn()
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(ApprovalService)
     await ctx.plugin(UserQuestionService)
@@ -139,11 +141,12 @@ describe('T5 Assembled Profile Acceptance', () => {
     const session = Session.create(SessionId('ptc-nested-sess'))
     session.append('turn/start', { turn: 1 })
 
-    const mockAgent = {
-      id: SessionId('ptc-nested-sess'),
+    const mockAgent = createTestAgent({
+      id: 'ptc-nested-sess',
       session,
+      ctx,
       options: { model: 'default' },
-    } as Agent
+    })
 
     const renderer = new TerminalRenderer(100)
     const dict = getLocale('zh')

@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { useSyncExternalStore } from 'react'
+import type {} from '@deepseek-ai/dsh-client-ui-trajectory/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { createSnapshotStore, type ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import { SessionLogDownloadController } from '../src/client/controller.ts'
+import type { SessionMarkdownCopyState } from '../src/client/copy-controller.ts'
 import { SessionLogDownloadHeaderAction } from '../src/client/HeaderAction.tsx'
 import type { SessionLogDownloadHeaderProps } from '../src/client/HeaderAction.tsx'
+import type {} from '../src/client/index.ts'
 import { en } from '../src/client/locales.ts'
 
 const SID = 'session-export-header' as SessionId
@@ -20,24 +24,45 @@ function bindSnapshot<State>(store: ObservableSnapshot<State>) {
   }
 }
 
-function bench(feedbackAvailable = false) {
+function bench(feedbackAvailable = false, copying = false) {
   const controller = new SessionLogDownloadController(async () => new Response('zip'), vi.fn())
   const request = vi.fn((sessionId: SessionId) => controller.download(sessionId))
+  const copyMarkdown = vi.fn(async () => {})
   const dismiss = vi.fn((sessionId: SessionId) => { controller.dismiss(sessionId) })
   const openFeedback = vi.fn()
   const feedback = createSnapshotStore(feedbackAvailable)
+  const copy = createSnapshotStore<SessionMarkdownCopyState>({ copying, notice: null })
   const useSessionLogDownload = bindSnapshot(controller.store)
-  const props = {
+  const props: SessionLogDownloadHeaderProps = {
     sessionId: SID,
+    useSessions: () => { throw new Error('Session list is not used by this fixture') },
+    useSessionStatus: () => { throw new Error('Session status is not used by this fixture') },
+    useSessionRetainInfo: () => { throw new Error('Retain info is not used by this fixture') },
+    usePanelInfo: () => { throw new Error('Panel info is not used by this fixture') },
+    useWorkspaces: () => { throw new Error('Workspaces are not used by this fixture') },
+    useTrajectory: () => { throw new Error('Trajectory is not used by this fixture') },
+    useResource: () => { throw new Error('Resources are not used by this fixture') },
+    useSession: () => { throw new Error('Session state is not used by the export Header') },
+    useProjection: () => { throw new Error('Projections are not used by the export Header') },
+    useInput: () => { throw new Error('Input state is not used by the export Header') },
+    useConversation: () => { throw new Error('Conversation is not used by the export Header') },
+    useChat: () => { throw new Error('Chat is not used by the export Header') },
+    inputActions: {
+      captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
+      insertText: () => false, persistDraft: () => {}, setDraft: () => {},
+      addAttachments: () => false, removeAttachment: () => {}, pruneAttachments: () => {}, submit: () => {},
+    },
     useSessionLogDownload,
+    useSessionMarkdownCopy: bindSnapshot(copy),
     useFeedbackAvailable: bindSnapshot(feedback),
     openFeedback,
     request,
+    copyMarkdown,
     dismiss,
-    t: (key: keyof typeof en): string => en[key],
-  } as unknown as SessionLogDownloadHeaderProps
+    t: makeTranslate(en),
+  }
   const view = render(<SessionLogDownloadHeaderAction {...props} />)
-  return { controller, request, openFeedback, feedback, view }
+  return { controller, request, copyMarkdown, openFeedback, feedback, copy, view, props }
 }
 
 afterEach(cleanup)
@@ -105,15 +130,18 @@ describe('Session export Header action', () => {
     const pending = new Promise<Response>((resolve) => { release = resolve })
     const controller = new SessionLogDownloadController(() => pending, vi.fn())
     const useSessionLogDownload = bindSnapshot(controller.store)
-    b.view.rerender(<SessionLogDownloadHeaderAction {...({
-      sessionId: SID,
+    const props: SessionLogDownloadHeaderProps = {
+      ...b.props,
       useSessionLogDownload,
+      useSessionMarkdownCopy: bindSnapshot(b.copy),
       useFeedbackAvailable: bindSnapshot(b.feedback),
       openFeedback: b.openFeedback,
       request: (sessionId: SessionId) => controller.download(sessionId),
+      copyMarkdown: b.copyMarkdown,
       dismiss: (sessionId: SessionId) => { controller.dismiss(sessionId) },
-      t: (key: keyof typeof en): string => en[key],
-    } as unknown as SessionLogDownloadHeaderProps)} />)
+      t: makeTranslate(en),
+    }
+    b.view.rerender(<SessionLogDownloadHeaderAction {...props} />)
 
     const download = controller.download(SID)
     const button = b.view.getByRole('button', { name: 'More actions' })
@@ -126,5 +154,38 @@ describe('Session export Header action', () => {
     await download
     await waitFor(() => { expect(button.getAttribute('aria-busy')).toBe('false') })
     expect((item as HTMLButtonElement).disabled).toBe(false)
+    expect((b.view.getByRole('menuitem', { name: 'Copy Session as Markdown' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('ports the open menu to document.body and still copies from a pointer click', () => {
+    const b = bench()
+    fireEvent.click(b.view.getByRole('button', { name: 'More actions' }))
+    const menu = b.view.getByRole('menu')
+    expect(menu.parentElement).toBe(document.body)
+    expect(b.view.container.contains(menu)).toBe(false)
+    expect(b.view.getByRole('menuitem', { name: 'Download session log' })).toBeTruthy()
+    fireEvent.click(b.view.getByRole('menuitem', { name: 'Copy Session as Markdown' }))
+    expect(b.copyMarkdown).toHaveBeenCalledWith(SID)
+    expect(b.request).not.toHaveBeenCalled()
+    expect(b.view.queryByRole('menu')).toBeNull()
+  })
+
+  it('copies through the menu without starting a download', () => {
+    const b = bench()
+    fireEvent.click(b.view.getByRole('button', { name: 'More actions' }))
+    fireEvent.click(b.view.getByRole('menuitem', { name: 'Copy Session as Markdown' }))
+    expect(b.copyMarkdown).toHaveBeenCalledWith(SID)
+    expect(b.request).not.toHaveBeenCalled()
+    expect(b.view.queryByRole('menu')).toBeNull()
+  })
+
+  it('disables only the copy row and marks the button busy while a copy is pending', () => {
+    const b = bench(true, true)
+    const button = b.view.getByRole('button', { name: 'More actions' })
+    expect(button.getAttribute('aria-busy')).toBe('true')
+    fireEvent.click(button)
+    expect((b.view.getByRole('menuitem', { name: 'Copy Session as Markdown' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((b.view.getByRole('menuitem', { name: 'Download session log' }) as HTMLButtonElement).disabled).toBe(false)
+    expect((b.view.getByRole('menuitem', { name: 'Feedback' }) as HTMLButtonElement).disabled).toBe(false)
   })
 })

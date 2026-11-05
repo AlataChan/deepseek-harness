@@ -6,11 +6,11 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { AnonymousEntries, NamedEntries, ScopedLayers, scopeOf, scopeTarget } from '@deepseek-ai/dsh-scope'
+import { AnonymousEntries, NamedEntries, ScopedLayers, scopeChainOf, scopeOf, scopeTarget } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer, Scoped } from '@deepseek-ai/dsh-scope'
 import type { ToolCallId, ContentBlock, ToolSchema } from '@deepseek-ai/dsh-llm'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { Agent, ModelSelection } from '@deepseek-ai/dsh-agent'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import { assertNever, deepFreeze, snapshotJsonValue, type JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { PromptSection, ToolProviderResult } from '@deepseek-ai/dsh-system-prompt'
@@ -23,10 +23,20 @@ import type { ToolCallView, ToolResultView } from './presentation.ts'
 import { assertSupportedJsonSchema, validateJsonSchemaValue } from './json-schema.ts'
 import type { JsonSchemaNode } from './json-schema.ts'
 import { createRunCodeTool, RUN_CODE_NAME } from './ptc.ts'
+import { TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_SCHEDULER } from './scheduler.ts'
+import { ToolExecutorUnavailableError } from './executor.ts'
+import type { ToolBatchInput, ToolExecutor } from './executor.ts'
 import type { PtcSdkLanguage } from './ptc.ts'
 import { renderToolsSdk } from './ts-types.ts'
 import type { ToolSdkSchema } from './ts-types.ts'
 import { renderToolsSdkPy } from './py-types.ts'
+
+declare module '@deepseek-ai/dsh-system-prompt' {
+  interface AssembleContext {
+    /** Step-owned tool selection; absent when inspecting registered definitions. */
+    toolSet?: ResolvedToolSet
+  }
+}
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
@@ -307,8 +317,9 @@ export interface ToolResult {
   /**
    * The tool-private presentation payload projected by its output declaration.
    * It is persisted verbatim on `tool/result` for Host presenters and Client
-   * renderers to narrow independently. Absent when the tool declared no
-   * projector or the call was nested under a composite transport.
+   * renderers to narrow independently. A successful nested composite dispatch
+   * omits it. Cancellation after the body started retains it, including on
+   * `tool/ptc-dispatch`. Absent when the tool declared no projector.
    */
   meta?: JsonValue
 }
@@ -349,6 +360,12 @@ export interface ToolExecutionInput {
   readonly parent?: ToolExecutionToken
   /** Required caller-owned cancellation for this invocation. */
   readonly signal: AbortSignal
+  /**
+   * Step admission shared by native and PTC dispatch.
+   * When present, a definition registered, replaced, or hidden after the
+   * admission is not executable. Omitted calls use the live registry.
+   */
+  readonly toolSet?: ResolvedToolSet
 }
 
 /**
@@ -473,17 +490,10 @@ export interface ToolRuntimeScheduler {
   finish(exec: ToolRunContext, result: ToolExecutionResult): ToolExecutionResult
 }
 
-/**
- * Scheduler entry point omitted from the generated named service API.
- * @internal
- */
-export const TOOL_RUNTIME_SCHEDULER: unique symbol = Symbol('@deepseek-ai/dsh-tools.scheduler')
+export { TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_SCHEDULER } from './scheduler.ts'
 
 /** Canonical error code for cancellation after a tool body was invoked. */
 export const TOOL_ABORTED = 'ABORTED'
-
-/** Canonical error code for cancellation before a tool body was invoked. */
-export const TOOL_ABORTED_BEFORE_DISPATCH = 'ABORTED_BEFORE_DISPATCH'
 
 /** Structured error metadata for a failed tool call (alongside the model-facing text). */
 export interface ToolErrorInfo {
@@ -704,6 +714,28 @@ export interface ToolRestriction {
   readonly deny?: readonly string[]
 }
 
+/** One step's captured route and cancellation, fixed before tool admission. */
+export interface ToolActivationContext {
+  /** Agent whose scope is admitted. */
+  readonly agent: Agent
+  /** Provider, model, and effort captured for this step. */
+  readonly modelSelection: Readonly<ModelSelection>
+  /** Turn cancellation. Admission stops when this aborts. */
+  readonly signal: AbortSignal
+}
+
+/** Tools admitted for one step. `dispose` closes the admission. */
+export interface ResolvedToolSet {
+  /** Drop the admission. A later {@link ResolvedToolSet.view} is empty. */
+  dispose(): void
+  /**
+   * Definitions still admitted for the preparing agent.
+   * @param scope - viewing scope. Any other scope, including after dispose, is empty.
+   * @returns the admitted definitions that are still the same registrations.
+   */
+  view(scope: ScopeKey | undefined): ReadonlyMap<string, ToolDefinition>
+}
+
 /** One restriction compiled at registration for repeated live-global lookup. */
 interface CompiledToolRestriction {
   readonly allow?: ReadonlySet<string>
@@ -844,6 +876,10 @@ export class ToolRuntime extends Service {
    * transport is stateless beyond its closures over `this`.
    */
   private ptcTransport: ToolDefinition | undefined
+  /** Deployment-default executor. An unloaded record stays present with `executor` omitted. */
+  private rootExecutor: { executor?: ToolExecutor; subcallLimit?: number } | undefined
+  /** Scope-owned executor selections. */
+  private readonly scopedExecutors = new Map<ScopeKey, { executor?: ToolExecutor; subcallLimit?: number }>()
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'tools')
@@ -851,7 +887,7 @@ export class ToolRuntime extends Service {
     // optional-input type for direct (non-Loader) construction in tests.
     this.defaultMode = config.mode ?? 'native'
     this.maxParallelSubCalls = resolveMaxParallelSubCalls(config.maxParallelSubCalls)
-    ctx.systemPrompt.tools(context => this.wireSchemas(context.scope))
+    ctx.systemPrompt.tools(context => this.wireSchemas(context.scope, context.toolSet))
     if (this.defaultMode !== 'native') {
       ctx.systemPrompt.section(this.collapseSection())
       ctx.systemPrompt.section(this.sdkSection())
@@ -933,6 +969,108 @@ export class ToolRuntime extends Service {
   }
 
   /**
+   * Overlap cap for one executing scope.
+   * The nearest live executor record wins, then the root record, then the tools-service default.
+   * An unloaded record keeps the executor unavailable and does not keep its cap.
+   * @param scope - agent or preset scope. Omitted reads the root cap.
+   * @returns the positive overlap cap.
+   */
+  nestedSubcallLimit(scope?: ScopeKey): number {
+    if (scope !== undefined) {
+      for (const key of scopeChainOf(scope)) {
+        const limit = this.scopedExecutors.get(key)?.subcallLimit
+        if (limit !== undefined) return limit
+      }
+    }
+    return this.rootExecutor?.subcallLimit ?? this.maxParallelSubCalls
+  }
+
+  /**
+   * Select the executor for the calling scope. Unloading leaves that selection
+   * unavailable so a later call cannot fall through to another executor.
+   * A scope that already has a live executor rejects the new one before its cap is stored.
+   * @param executor - provider owned by the contributing plugin.
+   * @returns the effect disposer.
+   */
+  setExecutor(executor: ToolExecutor): () => Promise<void> {
+    const scope = scopeOf(this.ctx)
+    const existing = scope === undefined ? this.rootExecutor : this.scopedExecutors.get(scope)
+    if (existing?.executor !== undefined) {
+      throw new Error('Only one tool executor may be registered in each scope')
+    }
+    const record: { executor?: ToolExecutor; subcallLimit?: number } = { executor }
+    if (executor.subcallLimit !== undefined) record.subcallLimit = executor.subcallLimit
+    return this.ctx.effect(() => {
+      if (scope === undefined) this.rootExecutor = record
+      else this.scopedExecutors.set(scope, record)
+      return () => {
+        delete record.executor
+        delete record.subcallLimit
+      }
+    }, 'tools.setExecutor()')
+  }
+
+  /**
+   * Resolve the nearest selected executor.
+   * No registration returns undefined so existing native profiles keep
+   * {@link execute}. A registration whose provider unloaded throws.
+   * @param scope - Agent or preset scope. Omitted selects only the root contribution.
+   * @returns the selected executor, or undefined when this scope never selected one.
+   */
+  selectedExecutor(scope?: ScopeKey): ToolExecutor | undefined {
+    let record: { executor?: ToolExecutor } | undefined
+    let found = false
+    for (const key of scopeChainOf(scope)) {
+      const scoped = this.scopedExecutors.get(key)
+      if (scoped !== undefined) {
+        record = scoped
+        found = true
+        break
+      }
+    }
+    if (!found) record = this.rootExecutor
+    if (record === undefined) return undefined
+    if (record.executor === undefined) throw new ToolExecutorUnavailableError()
+    return record.executor
+  }
+
+  /**
+   * Materialize an executor refusal before pre-execute and the tool body.
+   * An already aborted call keeps the canonical pre-dispatch cancellation.
+   * @param input - the caller-supplied call.
+   * @param error - the refusal the selected executor returned.
+   * @returns a final scheduler result. The tool body is not invoked.
+   */
+  refuseBeforePolicy(input: ToolExecutionInput, error: ToolNotFoundError): ScheduledToolPreparation {
+    const created = this.createExecution(input)
+    if (created.kind === 'final-result' && (input.signal.aborted || created.result.error?.info?.code === TOOL_ABORTED_BEFORE_DISPATCH)) {
+      return created
+    }
+    if (input.signal.aborted) {
+      return { kind: 'final-result', exec: created.exec, result: toolAbortedBeforeDispatchResult() }
+    }
+    return { kind: 'final-result', exec: created.exec, result: toolErrorResult(error) }
+  }
+
+  /**
+   * The reserved `run_code` transport, built on first need.
+   * It stays outside the filterable registration layers.
+   * @returns the shared transport definition.
+   */
+  runCodeTransport(): ToolDefinition {
+    return this.requirePtcTransport()
+  }
+
+  /**
+   * Project one definition onto the model-facing schema fields.
+   * @param definition - a visible tool definition.
+   * @returns the detached schema.
+   */
+  projectSchema(definition: ToolDefinition): ToolSchema {
+    return this.schemaOf(definition, true)
+  }
+
+  /**
    * The reserved `run_code` transport, built on first need.
    *
    * It never enters the global layer: per-agent restrictions must not remove
@@ -954,7 +1092,7 @@ export class ToolRuntime extends Service {
       // without demanding one, so a native-default process can still project
       // the transport for an agent that chose code.
       peekRuntime: () => this.ctx.get('ptcRuntime'),
-      maxParallel: this.maxParallelSubCalls,
+      maxParallel: scope => this.nestedSubcallLimit(scope),
       shapeDispatchLog: dispatch => this.shapeDispatchLog(dispatch),
     })
     return this.ptcTransport
@@ -1002,14 +1140,34 @@ export class ToolRuntime extends Service {
   }
 
   /**
+   * Select PTC presentation for the caller.
+   * A root context must already set tools `mode: ptc` and does not record
+   * `presentAs`. `native` or `both` fails at load. A preset scope records
+   * `presentAs('ptc')`.
+   * @returns the disposer for a scoped declaration, or a no-op when the root row is already `ptc`.
+   */
+  requirePtcPresentation(): () => void {
+    if (scopeOf(this.ctx) === undefined) {
+      if (this.defaultMode !== 'ptc') {
+        throw new Error(`ptc executor on the root context requires tools.mode "ptc" (received "${this.defaultMode}"); set the tools config or mount the executor in a preset scope`)
+      }
+      return () => {}
+    }
+    return this.presentAs('ptc')
+  }
+
+  /**
    * Build one scope's wire schemas and names for prompt-order validation.
    * Restrictions do not make known tools invalid, but a mode collapse does.
    */
-  private wireSchemas(scope?: ScopeKey): ToolProviderResult {
+  private wireSchemas(scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolProviderResult {
+    const selected = this.selectedExecutor(scope)
+    if (selected !== undefined) return selected.describe([...this.admittedDefinitions(scope, toolSet).values()])
     const view = this.view(scope)
+    const admitted = toolSet === undefined ? view.visible : toolSet.view(scope)
     const mode = this.modeFor(scope)
     if (mode === 'native') {
-      const schemas = [...view.visible.values()].map(definition => this.schemaOf(definition, false))
+      const schemas = [...admitted.values()].map(definition => this.schemaOf(definition, false))
       return { schemas, knownNames: [...view.knownNames] }
     }
     // Validate the runtime language BEFORE projecting schemas: schemaOf reads
@@ -1018,7 +1176,7 @@ export class ToolRuntime extends Service {
     // renderer-table rejection the canonical assembly-time error for a
     // language with no SDK renderer.
     this.requirePtcRuntime(mode)
-    const schemas = [...view.visible.values()].map(definition => this.schemaOf(definition, false))
+    const schemas = [...admitted.values()].map(definition => this.schemaOf(definition, false))
     if (mode === 'ptc') {
       return {
         schemas: schemas.filter(schema => schema.name === RUN_CODE_NAME),
@@ -1244,21 +1402,83 @@ export class ToolRuntime extends Service {
    * @param nested - whether the call is a transport sub-dispatch, not a model-direct call.
    * @returns the definition that may run, or undefined when the call must be rejected.
    */
-  private resolveExecution(name: string, scope: ScopeKey | undefined, nested: boolean): ToolDefinition | undefined {
-    const tool = this.get(name, scope)
+  private resolveExecution(
+    name: string,
+    scope: ScopeKey | undefined,
+    nested: boolean,
+    toolSet?: ResolvedToolSet,
+  ): ToolDefinition | undefined {
+    const tool = this.admittedDefinition(name, scope, toolSet)
     if (tool === undefined) return undefined
     if (this.collapses(name, scope, nested)) return undefined
     return tool
   }
 
   /**
+   * The definition a call may execute.
+   * Without admission, this is the live view. With admission, the captured
+   * definition must still be the live one.
+   * @param name - the tool name as registered.
+   * @param scope - the viewing scope.
+   * @param toolSet - step admission, when the caller captured one.
+   * @returns the executable definition, or undefined when it is absent or stale.
+   */
+  private admittedDefinition(
+    name: string,
+    scope: ScopeKey | undefined,
+    toolSet: ResolvedToolSet | undefined,
+  ): ToolDefinition | undefined {
+    const live = this.get(name, scope)
+    if (toolSet === undefined) return live
+    // The reserved transport is presentation infrastructure, not a step-admitted capability.
+    if (name === RUN_CODE_NAME && live !== undefined) return live
+    const selected = toolSet.view(scope).get(name)
+    if (selected === undefined || selected !== live) return undefined
+    return selected
+  }
+
+  /** Definitions visible to one prompt or SDK binding. */
+  private admittedDefinitions(scope: ScopeKey | undefined, toolSet?: ResolvedToolSet): ReadonlyMap<string, ToolDefinition> {
+    return toolSet === undefined ? this.view(scope).visible : toolSet.view(scope)
+  }
+
+  /**
+   * Resolve the visible tools for one step. The current registry has no
+   * per-registration condition, so every visible definition is admitted.
+   * A later view drops a definition that was unregistered or replaced.
+   * @param context - preparing agent, captured model selection, and cancellation.
+   * @returns the step selection. The caller disposes it after the step's tool batch settles.
+   */
+  resolve(context: ToolActivationContext): Promise<ResolvedToolSet> {
+    const { agent, signal } = context
+    return Promise.resolve().then(() => {
+      signal.throwIfAborted()
+      const admitted = new Map(this.view(agent).visible)
+      let closed = false
+      return Object.freeze({
+        dispose: () => { closed = true },
+        view: (scope: ScopeKey | undefined): ReadonlyMap<string, ToolDefinition> => {
+          if (closed || scope !== agent) return new Map()
+          const current = this.view(agent).visible
+          const visible = new Map<string, ToolDefinition>()
+          for (const [name, definition] of admitted) {
+            if (current.get(name) === definition) visible.set(name, definition)
+          }
+          return visible
+        },
+      })
+    })
+  }
+
+  /**
    * Project visible definitions onto the allowlisted model-facing schema fields,
    * excluding execution and presentation callbacks.
    * @param scope - the viewing scope (the agent); omitted = the global view.
+   * @param toolSet - optional resolved admission set captured for this step.
    * @returns one deep-cloned schema per visible tool.
    */
-  schemas(scope?: ScopeKey): ToolSchema[] {
-    return [...this.view(scope).visible.values()].map(definition => this.schemaOf(definition, true))
+  schemas(scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolSchema[] {
+    return [...this.admittedDefinitions(scope, toolSet).values()].map(definition => this.schemaOf(definition, true))
   }
 
   /** Project visible callable tools onto the generated PTC mode SDK contract. */
@@ -1301,7 +1521,7 @@ export class ToolRuntime extends Service {
    * @returns the fail-closed scheduling mode.
    */
   executionMode(exec: ToolExecutionInput): ToolExecutionMode {
-    const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+    const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined, exec.toolSet)
     if (!tool?.isConcurrencySafe) return { kind: 'exclusive' }
     try {
       const concurrencySafe: unknown = tool.isConcurrencySafe(exec.arguments)
@@ -1367,7 +1587,30 @@ export class ToolRuntime extends Service {
    * @returns the materialized final result.
    */
   async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult> {
-    return this.prepareExecution(exec, prepared => this.completeScheduledExecution(prepared))
+    const input = snapshotExecutionInput(exec)
+    const selected = this.selectedExecutor(input.agent)
+    if (selected !== undefined) {
+      const batch = await selected.execute(this.executorBatch(input))
+      const settled = batch.results[0]
+      if (settled === undefined) throw new Error('dsh-tools: selected executor returned no result')
+      return settled.result
+    }
+    return this.prepareExecution(input, prepared => this.completeScheduledExecution(prepared))
+  }
+
+  /** One already-parsed call, re-encoded for the selected executor's raw-call batch. */
+  private executorBatch(exec: ToolExecutionInput): ToolBatchInput {
+    return {
+      calls: [{
+        type: 'tool-call',
+        id: exec.callId,
+        name: exec.name,
+        arguments: JSON.stringify(exec.arguments ?? null),
+      }],
+      signal: exec.signal,
+      ...exec.agent === undefined ? {} : { agent: exec.agent },
+      ...exec.toolSet === undefined ? {} : { toolSet: exec.toolSet },
+    }
   }
 
   private async completeScheduledExecution(prepared: ScheduledToolPreparation): Promise<ToolExecutionResult> {
@@ -1404,7 +1647,7 @@ export class ToolRuntime extends Service {
     // observe — or worse, approve — a call that can only fail. An unknown tool
     // keeps the historical dispatch-stage `UNKNOWN_TOOL` path so policy
     // listeners still see every name that reaches the registry.
-    const visible = this.get(name, agent)
+    const visible = this.admittedDefinition(name, agent, exec.toolSet)
     const collapsed = visible !== undefined && this.collapses(name, agent, parent !== undefined)
     const concludingExecutions = this.concludingExecutions
     const base = {
@@ -1416,6 +1659,7 @@ export class ToolRuntime extends Service {
       ...agent !== undefined ? { agent } : {},
       ...parent !== undefined ? { parent } : {},
       ...exec.schema !== undefined ? { schema: exec.schema } : {},
+      ...exec.toolSet !== undefined ? { toolSet: exec.toolSet } : {},
       deferContext(context: UserMessage): void {
         deferredContexts.push(context)
       },
@@ -1575,14 +1819,14 @@ export class ToolRuntime extends Service {
     }
     exec.signal = signal
     try {
-      const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+      const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined, exec.toolSet)
       if (!tool) throw new ToolNotFoundError(exec.name)
       state.bodyInvoked = true
       const returned = await tool.execute(exec.arguments, exec)
       const result = this.createSuccessResult(exec, tool, returned)
       return isAborted(signal)
         ? toolAbortedResult(result)
-        : result
+        : omitNestedPresentation(exec, result)
     } catch (error: unknown) {
       return toolErrorResult(error)
     } finally {
@@ -1804,9 +2048,9 @@ export class ToolRuntime extends Service {
       if (result.isError) {
         throw new TypeError('tools/post-execute cannot replace the value of a failed result')
       }
-      const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+      const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined, exec.toolSet)
       if (tool === undefined) throw new ToolNotFoundError(exec.name)
-      const replaced = this.createSuccessResult(exec, tool, decision.value)
+      const replaced = omitNestedPresentation(exec, this.createSuccessResult(exec, tool, decision.value))
       return this.markCanonical(exec, {
         ...replaced,
         ...additionalContexts.length > 0 ? { additionalContexts } : {},
@@ -1842,7 +2086,7 @@ export class ToolRuntime extends Service {
     }
     const content = snapshotProjection(tool.name, 'render', rendered)
     let meta: JsonValue | undefined
-    if (exec.parent === undefined && tool.output.presentationMeta !== undefined) {
+    if (tool.output.presentationMeta !== undefined) {
       let projected: JsonValue
       try {
         projected = tool.output.presentationMeta(exec.arguments, value)
@@ -1873,9 +2117,9 @@ export class ToolRuntime extends Service {
         ...result.additionalContexts !== undefined ? { additionalContexts: result.additionalContexts } : {},
       })
     }
-    const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+    const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined, exec.toolSet)
     if (tool === undefined) throw new ToolNotFoundError(exec.name)
-    const normalized = this.createSuccessResult(exec, tool, result.value)
+    const normalized = omitNestedPresentation(exec, this.createSuccessResult(exec, tool, result.value))
     return this.markCanonical(exec, {
       ...normalized,
       ...result.additionalContexts !== undefined ? { additionalContexts: result.additionalContexts } : {},
@@ -1954,16 +2198,35 @@ function fuseToolSignals(caller: AbortSignal, wrapper: AbortSignal): FusedToolSi
   return { signal: controller.signal, dispose }
 }
 
+/** Drop presentation metadata from a successful nested composite result. Cancellation retains it. */
+function omitNestedPresentation(exec: { parent?: unknown }, result: ToolExecutionSuccess): ToolExecutionSuccess {
+  if (exec.parent === undefined || result.meta === undefined) return result
+  return {
+    isError: false,
+    value: result.value,
+    content: result.content,
+    ...result.concludesTurn === true ? { concludesTurn: true as const } : {},
+  }
+}
+
+/** Keep a successful body's text, then the abort line. An error or empty prior stays the abort line alone. */
+function abortedContent(prior?: ToolExecutionResult): ToolExecutionResult['content'] {
+  const notice = { type: 'text' as const, text: 'Error: tool call aborted' }
+  if (prior !== undefined && ! prior.isError && prior.content.length > 0) return [...prior.content, notice]
+  return [notice]
+}
+
 /** Canonical result when cancellation supersedes success after body invocation. */
 function toolAbortedResult(prior?: ToolExecutionResult): ToolExecutionResult {
   const additionalContexts = prior?.additionalContexts ?? []
   return {
-    content: [{ type: 'text', text: 'Error: tool call aborted' }],
+    content: abortedContent(prior),
     isError: true,
     error: {
       message: 'tool call aborted',
       info: { name: 'AbortError', code: TOOL_ABORTED },
     },
+    ...prior?.meta !== undefined ? { meta: prior.meta } : {},
     ...additionalContexts.length > 0 ? { additionalContexts } : {},
   }
 }
@@ -1981,5 +2244,28 @@ function toolAbortedBeforeDispatchResult(prior?: ToolExecutionResult): ToolExecu
     ...additionalContexts.length > 0 ? { additionalContexts } : {},
   }
 }
+
+/** Read each caller getter at most once. Later stages reuse the first value. */
+function snapshotExecutionInput(exec: ToolExecutionInput): ToolExecutionInput {
+  const seen = new Map<PropertyKey, unknown>()
+  const read = (key: keyof ToolExecutionInput): unknown => {
+    if (!seen.has(key)) seen.set(key, exec[key])
+    return seen.get(key)
+  }
+  return {
+    get callId() { return read('callId') as ToolCallId },
+    get rootCallId() { return read('rootCallId') as ToolCallId },
+    get name() { return read('name') as string },
+    get schema() { return read('schema') as ToolSchema },
+    get arguments() { return read('arguments') },
+    get agent() { return read('agent') as Agent },
+    get parent() { return read('parent') as ToolExecutionToken },
+    get signal() { return read('signal') as AbortSignal },
+    get toolSet() { return read('toolSet') as ResolvedToolSet },
+  }
+}
+
+export { ToolBatchExecutionError, ToolExecutorUnavailableError } from './executor.ts'
+export type { ToolBatchInput, ToolBatchResult, ToolCallResult, ToolExecutor, ToolModelInput, ToolPromptSection } from './executor.ts'
 
 export default ToolRuntime

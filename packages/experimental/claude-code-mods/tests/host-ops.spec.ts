@@ -111,7 +111,7 @@ describe('services a deployment did not compose', () => {
     await expect(call('store.get', { key: 'k' })).rejects.toThrow(/dsh-storage-domain/)
     await expect(call('fs.read', { path: 'x' })).rejects.toThrow(/dsh-fs/)
     await expect(call('process.run', { argv: ['ls'] })).rejects.toThrow(/dsh-subprocess/)
-    await expect(call('session.turns', {}, agent)).rejects.toThrow(/turnBoundary projection/)
+    await expect(call('session.turns', {}, agent)).rejects.toThrow('$.session.turns needs an agent service (dsh-agent), which this deployment did not compose')
     // Without a drawn surface the ui calls that would redraw the band are plain no-ops.
     await expect(call('ui.invalidate', {}, agent)).resolves.toBeUndefined()
     await expect(call('ui.invalidate', {})).resolves.toBeUndefined()

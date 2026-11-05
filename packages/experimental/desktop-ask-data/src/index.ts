@@ -8,11 +8,12 @@ import type { Volatile } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-settings'
 import { BRAND_MARK_IDS, type BrandMarkId } from './brand-settings.ts'
 
-import type { Context } from '@deepseek-ai/cordis'
+import { Service, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { AskData } from '@deepseek-ai/dsh-host-ask-data'
-import { askDataBindingProjectionDefinition } from '@deepseek-ai/dsh-host-ask-data'
+import { askDataBindingProjectionDefinition, type AskDataBinding } from '@deepseek-ai/dsh-host-ask-data'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type {
   AskDataBindLease, AskDataBindRequest, AskDataImportPreview, AskDataImportSpreadsheetRequest,
   AskDataSource,
@@ -50,6 +51,7 @@ export default class DesktopAskData extends AskData {
   })
 
   private readonly dataHome: string
+  private askDataBinding!: ProjectionHandle<AskDataBinding | null>
 
   /**
    * @param ctx - Host context that registers this service.
@@ -61,18 +63,23 @@ export default class DesktopAskData extends AskData {
     this.dataHome = config.dataHome === undefined || config.dataHome === ''
       ? dshHomePath('profiles', 'desktop', 'data-sources')
       : config.dataHome
-    ctx.sessionProjections.register(askDataBindingProjectionDefinition)
     ctx.systemPrompt.section({
       name: 'ask-data:limits',
       order: 90,
       text: (context) => {
         const session = context.agent?.session
         if (session === undefined) return ''
-        const binding = ctx.sessionProjections.stateOf(session, 'askDataBinding')
+        const binding = this.askDataBinding.stateOf(session)
         if (binding == null) return ''
         return renderAskDataLimitsPrompt()
       },
     })
+  }
+
+  /** Await the binding projection with automatic release on service disposal. */
+  protected async [Service.init](): Promise<void> {
+    const handle = await this.ctx.sessionProjections.register(askDataBindingProjectionDefinition)
+    this.askDataBinding = handle
   }
 
   /**

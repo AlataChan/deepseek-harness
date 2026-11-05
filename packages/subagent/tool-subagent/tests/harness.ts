@@ -58,8 +58,8 @@ export async function setup(toolConfig: SetupConfig, mockConfig: Partial<mock.Co
       sessionId: SessionId(`model-selection-setup-${++setupAgentCounter}`),
       ...parentAgentOptions !== undefined ? { agentOptions: parentAgentOptions } : {},
       setup: async (agentCtx, agent) => {
-        const fiber = agentCtx.inject(tool.inject, (runtimeCtx) => {
-          tool.apply(runtimeCtx, { ...config, modelSelectionSettings: true }, agent.session)
+        const fiber = agentCtx.inject(tool.inject, async (runtimeCtx) => {
+          await tool.apply(runtimeCtx, { ...config, modelSelectionSettings: true }, agent.session)
         })
         await fiber.await()
       },

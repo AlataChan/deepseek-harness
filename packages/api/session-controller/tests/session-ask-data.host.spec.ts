@@ -21,6 +21,7 @@ import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { createSessionTestRemote } from './test-remote.ts'
 import { ASK_DATA_MAX_DECODED_BYTES, type SessionRequestId } from '../src/types.ts'
 import { decodeCanonicalBase64, mapAskDataError } from '../src/ask-data.ts'
+import { isBlankSession } from '../src/session-commit.ts'
 import { CommitFifo, SessionCallGate } from '../src/session-gate.ts'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 
@@ -86,15 +87,16 @@ async function harness(options: {
   const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'dsh-ask-data-session-')))
   const ctx = new Context()
   await ctx.plugin(SessionStore)
-  await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionProjectionRegistry)
-  ctx.sessionProjections.register(askDataBindingProjectionDefinition)
-  ctx.sessionProjections.register(agentPresetProjectionDefinition)
+  await ctx.plugin(AgentRegistry)
+  await ctx.sessionProjections.register(askDataBindingProjectionDefinition)
+  const presetProjection = await ctx.sessionProjections.register(agentPresetProjectionDefinition)
 
   const selects: string[] = []
   const hooks = new Set<(agent: Agent, next: string) => void | Promise<void>>()
   ctx.provide('agentPresets', {
     defaultId: 'standard',
+    presetOf: (session: Session) => presetProjection.stateOf(session),
     resolve: (id?: string) => Promise.resolve({
       id: id ?? 'standard',
       trust: 'system',
@@ -128,10 +130,9 @@ async function harness(options: {
       const unregister = ctx.agents.register(agent)
       return {
         agent,
-        dispose: () => {
-          unregister()
+        dispose: async () => {
+          await unregister()
           detach()
-          return Promise.resolve()
         },
       }
     },
@@ -284,7 +285,7 @@ describe('session ask-data remotes', () => {
     const replay = original as (type: string, data: unknown) => void
     agent.session.append = ((type: string, data: unknown) => {
       if (type === 'ask-data/bound') throw new Error('append failed')
-      return replay(type, data)
+      replay(type, data)
     }) as typeof agent.session.append
     await expect(remote.commitAskData({
       sourceId: 'src-sample',
@@ -312,7 +313,7 @@ describe('session ask-data remotes', () => {
     const replay = original as (type: string, data: unknown) => void
     agent.session.append = ((type: string, data: unknown) => {
       if (type === 'ask-data/bound') throw new Error('append failed')
-      return replay(type, data)
+      replay(type, data)
     }) as typeof agent.session.append
     await expect(remote.commitAskData({
       sourceId: 'src-sample',
@@ -372,9 +373,11 @@ describe('session ask-data remotes', () => {
   it('refuses prompt when askDataBinding is null', async () => {
     const { remote, ctx } = await harness()
     await remote.create({ sessionId: SessionId('s-null'), agentPreset: 'data-agent' })
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     const original = ctx.sessionProjections.stateOf.bind(ctx.sessionProjections)
     vi.spyOn(ctx.sessionProjections, 'stateOf').mockImplementation((session, key) => {
-      if (key === 'askDataBinding') return null as never
+      if (key === 'askDataBinding') return null
+      // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
       return original(session, key)
     })
     await expect(remote.prompt({
@@ -391,9 +394,11 @@ describe('session ask-data remotes', () => {
   it('defaults previousPreset to standard when the projection is empty', async () => {
     const { remote, ctx, selects } = await harness()
     await remote.create({ sessionId: SessionId('s-nopreset'), agentPreset: 'standard' })
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     const original = ctx.sessionProjections.stateOf.bind(ctx.sessionProjections)
     vi.spyOn(ctx.sessionProjections, 'stateOf').mockImplementation((session, key) => {
       if (key === 'agentPreset') return undefined
+      // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
       return original(session, key)
     })
     const stub = ctx.get('askData') as StubAskData
@@ -416,7 +421,7 @@ describe('session ask-data remotes', () => {
       mode: 'queue',
       content: [{ type: 'text', text: 'hi' }],
     })
-    expect(standard.ok === false && standard.error.code === 'session/ask-data-unbound').toBe(false)
+    expect(!standard.ok && standard.error.code === 'session/ask-data-unbound').toBe(false)
     await remote.create({ sessionId: SessionId('s-bound-prompt'), agentPreset: 'data-agent' })
     await remote.commitAskData({ sourceId: 'src-sample', sessionId: SessionId('s-bound-prompt') })
     const bound = await remote.prompt({
@@ -425,7 +430,7 @@ describe('session ask-data remotes', () => {
       mode: 'queue',
       content: [{ type: 'text', text: 'hi' }],
     })
-    expect(bound.ok === false && bound.error.code === 'session/ask-data-unbound').toBe(false)
+    expect(!bound.ok && bound.error.code === 'session/ask-data-unbound').toBe(false)
   })
 
   it('refuses leaving data-agent after a successful bind', async () => {
@@ -592,7 +597,7 @@ describe('session ask-data remotes', () => {
     const original = ctx.get.bind(ctx)
     vi.spyOn(ctx, 'get').mockImplementation(((name: string) => {
       if (name === 'agentPresets') return undefined
-      return original(name as never)
+      original(name as never)
     }) as typeof ctx.get)
     await expect(remote.commitAskData({
       sourceId: 'src-sample',
@@ -632,10 +637,12 @@ describe('session ask-data remotes', () => {
   it('treats sessionListMetadata.blank as authoritative', async () => {
     const { remote, ctx } = await harness()
     await remote.create({ sessionId: SessionId('s-meta'), agentPreset: 'standard' })
-    const original = ctx.sessionProjections.stateOf.bind(ctx.sessionProjections)
-    vi.spyOn(ctx.sessionProjections, 'stateOf').mockImplementation((session, key) => {
-      if (key === 'sessionListMetadata') return { blank: false, lastPromptAt: null }
-      return original(session, key)
+    const agent = ctx.agents.get(SessionId('s-meta'))!
+    agent.session.append('turn/start', { turn: 1 })
+    const actualBoundary = ctx.agents.turnBoundaryOf(agent.session)
+    const boundary = vi.spyOn(ctx.agents, 'turnBoundaryOf').mockReturnValue({
+      ...actualBoundary,
+      openTurnStartSeq: null, lastTurn: 0,
     })
     await expect(remote.commitAskData({
       sourceId: 'src-sample',
@@ -644,35 +651,33 @@ describe('session ask-data remotes', () => {
       ok: false,
       error: { code: 'gateway/bad-request' },
     })
+    expect(boundary).not.toHaveBeenCalled()
   })
 
   it('uses turnBoundary when sessionListMetadata is absent', async () => {
-    const { remote, ctx } = await harness()
-    await remote.create({ sessionId: SessionId('s-turn'), agentPreset: 'data-agent' })
-    const original = ctx.sessionProjections.stateOf.bind(ctx.sessionProjections)
-    vi.spyOn(ctx.sessionProjections, 'stateOf').mockImplementation((session, key) => {
-      if (key === 'sessionListMetadata') return undefined
-      if (key === 'turnBoundary') return { openTurnStartSeq: null, lastTurn: 0 } as never
-      return original(session, key)
-    })
-    await expect(remote.commitAskData({
-      sourceId: 'src-sample',
-      sessionId: SessionId('s-turn'),
-    })).resolves.toMatchObject({ ok: true })
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(AgentRegistry)
+    const session = ctx.sessions.create(SessionId('s-turn'))
+    const agent = stubAgent(session)
+    expect(isBlankSession(ctx, agent)).toBe(true)
+    session.append('turn/start', { turn: 1 })
+    expect(isBlankSession(ctx, agent)).toBe(false)
+    session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    expect(isBlankSession(ctx, agent)).toBe(false)
+    await ctx.fiber.dispose()
   })
 
-  it('treats a missing turnBoundary as blank', async () => {
-    const { remote, ctx } = await harness()
-    await remote.create({ sessionId: SessionId('s-boundry'), agentPreset: 'data-agent' })
-    const original = ctx.sessionProjections.stateOf.bind(ctx.sessionProjections)
-    vi.spyOn(ctx.sessionProjections, 'stateOf').mockImplementation((session, key) => {
-      if (key === 'sessionListMetadata' || key === 'turnBoundary') return undefined
-      return original(session, key)
-    })
-    await expect(remote.commitAskData({
-      sourceId: 'src-sample',
-      sessionId: SessionId('s-boundry'),
-    })).resolves.toMatchObject({ ok: true })
+  it('treats an empty turnBoundary as blank', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(AgentRegistry)
+    const session = ctx.sessions.create(SessionId('s-boundary'))
+    expect(ctx.agents.turnBoundaryOf(session)).toMatchObject({ openTurnStartSeq: null, lastTurn: 0 })
+    expect(isBlankSession(ctx, stubAgent(session))).toBe(true)
+    await ctx.fiber.dispose()
   })
 
   it('rejects an aborted commit and an unresolved existing session', async () => {

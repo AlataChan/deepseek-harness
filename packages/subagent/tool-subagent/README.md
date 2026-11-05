@@ -73,6 +73,8 @@ A call supplies `provider` and `model` together, or supplies only an effort when
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+Installation stops if the plugin fiber is disposed or unloading when its projection becomes ready. Descendant Agent overrides retain their existing ancestry ownership.
+
 <details>
 <summary>Implementation internals — click to expand</summary>
 

@@ -7,30 +7,31 @@ import { MEDIA_CREATION_PROMPT } from '../src/prompt.ts'
 import { mediaProjectionDefinition } from '../src/projection.ts'
 
 describe('host apply', () => {
-  it('registers projection, prompt, tools, and recovers on agent/created', () => {
+  it('registers projection, prompt, tools, and recovers on agent/created', async () => {
     const ctx = new Context()
     const registered: unknown[] = []
     const sections: Array<{ name: string; text: () => string }> = []
     const started: string[] = []
+    const mediaState = {
+      requests: {
+        a: {
+          requestId: 'r_a',
+          kind: 'speech',
+          stage: 'running',
+          label: 'keep',
+          inputHashes: [],
+          estimatedYuan: 0.01,
+          providerTaskId: 't1',
+        },
+      },
+      artifacts: {},
+    }
     ctx.provide('sessionProjections', {
       register(definition: unknown) {
         registered.push(definition)
-        return () => {}
-      },
-      stateOf() {
         return {
-          requests: {
-            a: {
-              requestId: 'r_a',
-              kind: 'speech',
-              stage: 'running',
-              label: 'keep',
-              inputHashes: [],
-              estimatedYuan: 0.01,
-              providerTaskId: 't1',
-            },
-          },
-          artifacts: {},
+          stateOf: () => mediaState,
+          dispose: () => Promise.resolve(),
         }
       },
     })
@@ -51,7 +52,7 @@ describe('host apply', () => {
     })
     const config = { ...plugin.Config({} as never) }
     delete config.mediaRuntimePath
-    plugin.apply(ctx, config)
+    await plugin.apply(ctx, config)
     expect(registered).toContain(mediaProjectionDefinition)
     expect(sections[0]?.name).toBe('desktop-media:creation')
     expect(sections[0]?.text()).toBe(MEDIA_CREATION_PROMPT)
@@ -61,9 +62,9 @@ describe('host apply', () => {
     expect(started).toEqual(['keep'])
   })
 
-  it('skips optional seams and still recovers with no jobs', () => {
+  it('skips optional seams and still recovers with no jobs', async () => {
     const ctx = new Context()
-    plugin.apply(ctx, plugin.Config({} as never))
+    await plugin.apply(ctx, plugin.Config({} as never))
     ctx.emit('agent/created', { agent: { session: { id: 's-1' } } as never, source: 'resume' })
     expect(plugin.name).toBe('experimental-desktop-media')
     expect(plugin.inject).toEqual(['tools', 'jobs', 'sessionProjections', 'systemPrompt', 'sessions'])

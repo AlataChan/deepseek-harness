@@ -1,0 +1,15 @@
+version: 1
+scenario: apply-patch-guarded
+profile: headless
+composition: apply-patch-guarded
+recording: authored
+header:
+  class: apply-patch-guarded
+  pin: true
+replay:
+  override: true
+platform: posix
+permission: workspace-write
+workspace:
+  final: true
+  parent: outside-temp

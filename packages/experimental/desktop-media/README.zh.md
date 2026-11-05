@@ -24,6 +24,8 @@ kind: "package-bundle"
 <a id="config"></a>
 ## Config
 
+投影就绪时，若插件 fiber 已销毁或正在卸载，则不安装提示词、工具或恢复监听器。
+
 ```yaml
 - id: desktop-media
   name: '@deepseek-ai/dsh-experimental-desktop-media'

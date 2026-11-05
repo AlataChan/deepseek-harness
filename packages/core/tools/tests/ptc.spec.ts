@@ -10,10 +10,11 @@ import { PtcRuntime } from '@deepseek-ai/dsh-ptc-runtime'
 import type { PtcRunRequest, PtcRunResult } from '@deepseek-ai/dsh-ptc-runtime'
 import ToolRuntime, { CodeRunFailedError, RUN_CODE_NAME, TOOL_ABORTED_BEFORE_DISPATCH, defineContentToolFixture, defineTool } from '@deepseek-ai/dsh-tools'
 import type { Config, JsonSchemaNode, PostToolDecision, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import { createTestAgent } from '../../../tui/tui/tests/fixtures.ts'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
+import { Session, SessionId, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
 import ApprovalService, { type ApprovalOutcome, type ApprovalRequest } from '@deepseek-ai/dsh-user-approval'
-import type { SessionEventMap } from '@deepseek-ai/dsh-session'
+import type { SessionEventMap, SessionEventType, SurfaceEventType, SurfaceIntent } from '@deepseek-ai/dsh-session'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import SandboxPolicy from '@deepseek-ai/dsh-sandbox-policy'
 import SessionProjections from '@deepseek-ai/dsh-session-projection'
@@ -76,10 +77,11 @@ async function setup(options: SetupOptions = {}) {
 
 /** Mint an agent scope configured like production that can register scoped tool policy. */
 async function mintAgentScope(ctx: Context, name = 'scoped'): Promise<{ scope: Scope; agent: Agent }> {
-  const agent = { id: SessionId(name), session: { header: {}, append: () => {} } } as unknown as Agent
+  const agent = createTestAgent({ id: name, ctx })
   let scope!: Scope
   await ctx.plugin(Object.assign((inner: Context) => { scope = createScope(inner, agent) },
     { inject: ['tools', 'systemPrompt'] }))
+  Object.defineProperty(agent, 'ctx', { value: scope.ctx })
   return { scope, agent }
 }
 
@@ -102,15 +104,22 @@ function registerEcho(ctx: Context, name = 'echo'): unknown[] {
   return calls
 }
 
-/** A structural fake of the owning agent: captures session appends. */
+/** A typed agent with a real Session that also captures session appends. */
 function fakeAgent(): { agent: Agent; events: { type: string; data: unknown }[] } {
   const events: { type: string; data: unknown }[] = []
-  const agent = {
-    session: {
-      header: { cwd: '/workspace' },
-      append: (type: string, data: unknown) => { events.push({ type, data }) },
-    },
-  } as unknown as Agent
+  const session = Session.create(SessionId('ptc-agent'), undefined, {
+    id: SessionId('ptc-agent'), version: SESSION_FORMAT_VERSION,
+    createdAt: 0, isSeeded: false, cwd: '/workspace',
+  })
+  const agent = createTestAgent({ id: session.id, session })
+  const append = agent.session.append.bind(agent.session)
+  vi.spyOn(agent.session, 'append').mockImplementation(<T extends SessionEventType>(
+    type: T, data: SessionEventMap[T],
+    ...args: T extends SurfaceEventType ? [opts: SurfaceIntent<T>] : []
+  ) => {
+    events.push({ type, data })
+    return append<T>(type, data, ...args)
+  })
   return { agent, events }
 }
 
@@ -1752,7 +1761,7 @@ describe('the run_code dispatch bridge', () => {
       },
     }))
     const session = Session.create(SessionId('deep-code-arguments'))
-    const agent = { session } as Agent
+    const agent = { ctx: new Context(), session } as Agent
     runtime.behavior = async (request) => {
       let nested: JsonValue = 'leaf'
       for (let index = 0; index < depth; index++) nested = [nested]
@@ -1909,8 +1918,47 @@ describe('the run_code dispatch bridge', () => {
       message: 'tool call aborted',
       info: { name: 'AbortError', code: 'ABORTED' },
     })
-    expect((result.content[0] as { text: string }).text).toBe('Error: tool call aborted')
+    expect(result.content).toEqual([
+      { type: 'text', text: 'run_code run is over (cancelled-mid-run); echo not dispatched' },
+      { type: 'text', text: 'Error: tool call aborted' },
+    ])
     expect(calls).toEqual([])
+  })
+
+  it('keeps nested diff metadata on the durable dispatch when the run is cancelled', async () => {
+    const { ctx, runtime } = await setup({ mode: 'ptc' })
+    const { agent, events } = fakeAgent()
+    const diffs = [{ path: 'notes.txt', oldText: null, newText: 'x' }]
+    const controller = new AbortController()
+    ctx.tools.register(defineTool({
+      name: 'apply_patch',
+      description: 'apply',
+      parameters: {},
+      output: {
+        schema: { type: 'string' },
+        render: () => [{ type: 'text', text: 'applied notes.txt' }],
+        presentationMeta: () => ({ diffs, stopped: true }),
+      },
+      async execute() {
+        controller.abort('cancelled-after-apply')
+        return 'applied'
+      },
+    }))
+    runtime.behavior = async (request) => {
+      await request.bindings[0]!.functions.apply_patch!({}).catch(() => undefined)
+      return { logs: [], value: 'done' }
+    }
+    const result = await runCode(ctx, 'program', { agent, signal: controller.signal })
+    expect(result.isError).toBe(true)
+    expect(result.error?.info?.code).toBe('ABORTED')
+    const dispatch = events.find(event => event.type === 'tool/ptc-dispatch')?.data as SessionEventMap['tool/ptc-dispatch']
+    expect(dispatch.isError).toBe(true)
+    expect(dispatch.error?.code).toBe('ABORTED')
+    expect(dispatch.meta).toEqual({ diffs, stopped: true })
+    expect(dispatch.content).toEqual([
+      { type: 'text', text: 'applied notes.txt' },
+      { type: 'text', text: 'Error: tool call aborted' },
+    ])
   })
 
   it('a tool/ptc-dispatch event never derives a model message', () => {
@@ -2227,7 +2275,7 @@ describe('per-program execution controls', () => {
     })
     const session = Session.create(SessionId('program-controls'))
     session.append('turn/start', { turn: 1 })
-    const agent = { session } as unknown as Agent
+    const agent = createTestAgent({ id: session.id, session })
     const execute = (args: Record<string, unknown>, signal = testToolSignal) => state.tools.execute({
       callId: ToolCallId('program-controls'), name: RUN_CODE_NAME,
       arguments: { code: 'program', description: 'Test execution controls', ...args }, agent, signal,

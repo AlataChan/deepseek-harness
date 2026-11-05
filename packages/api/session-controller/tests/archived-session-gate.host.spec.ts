@@ -1,5 +1,6 @@
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
@@ -16,6 +17,7 @@ interface Harness {
 async function harness(): Promise<Harness> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   const archived: SessionId[] = []
   ctx.provide('workspaceRegistry', { get archivedSessionIds() { return archived } } as never)
@@ -26,6 +28,7 @@ async function harness(): Promise<Harness> {
 /** A registered idle Agent double: the gate reads only its Session header. */
 async function liveAgent(ctx: Context, session: Session): Promise<Agent> {
   const agent: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id: session.id,
     options: {},
     session,
@@ -47,7 +50,7 @@ async function liveAgent(ctx: Context, session: Session): Promise<Agent> {
 /** Propose one model step for the Agent; the innermost decision enters. */
 const proposed = (ctx: Context, agent: Agent) => ctx.waterfall(
   'agent/pre-step',
-  { agent, messages: [], turn: 1, step: 1, signal: new AbortController().signal },
+  { agent, modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [], turn: 1, step: 1, signal: new AbortController().signal },
   () => Promise.resolve({ kind: 'enter' as const, messages: [] }),
 )
 
@@ -107,6 +110,7 @@ describe('Archived-session gate: lifetime', () => {
   it('stops rejecting once the plugin fiber is disposed', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     const archived: SessionId[] = []
     ctx.provide('workspaceRegistry', { get archivedSessionIds() { return archived } } as never)

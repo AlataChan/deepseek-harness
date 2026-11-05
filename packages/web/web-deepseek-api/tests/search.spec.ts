@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { Session } from '@deepseek-ai/dsh-session'
 import WebRuntime from '@deepseek-ai/dsh-web'
@@ -157,6 +158,7 @@ describe('Search API triggering question', () => {
     vi.stubGlobal('fetch', fetchMock)
     const ctx = new Context()
     try {
+      await ctx.plugin(SessionProjectionRegistry)
       await ctx.plugin(AgentRegistry)
       await ctx.plugin(WebRuntime, { searchProvider: 'deepseek-search-api' })
       await ctx.plugin(webApiPlugin, { apiKey: 'ds-key', ...config })
@@ -237,6 +239,7 @@ describe('Search API account route', () => {
     const ctx = new Context()
     try {
       await ctx.plugin(SessionStore)
+      await ctx.plugin(SessionProjectionRegistry)
       await ctx.plugin(AgentRegistry)
       await ctx.plugin(WebRuntime)
       await ctx.plugin(webApiPlugin, { apiKey: 'ds-key' })

@@ -43,7 +43,7 @@ async function agent(ctx: Context): Promise<Agent> {
   const id = SessionId('pty-loader-agent')
   const session = Session.create(id)
   const value: Agent = {
-    id, options: {}, session, inbox: unsupportedInbox(),
+    id, options: {}, session, inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
     status: 'idle',
     ctx: scope.ctx,
     send: () => {},

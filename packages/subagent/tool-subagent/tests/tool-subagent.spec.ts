@@ -323,7 +323,7 @@ describe('dsh-tool-subagent', () => {
       },
     })
     // Direct apply with only `provider` — no toolName, no agentOptions.
-    tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'bare' })
+    await tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'bare' })
     await new Promise(r => setTimeout(r, 10))
 
     expect(ctx.tools.schemas().some(s => s.name === 'subagent')).toBe(true)
@@ -346,7 +346,7 @@ describe('dsh-tool-subagent', () => {
     // Tool first: no provider yet — the tool must be absent, not broken.
     // Direct apply (schema bypass): also covers the waiting-note's default
     // toolName fallback, which validated config pre-fills.
-    tool.apply(ctx, { provider: 'mock' })
+    await tool.apply(ctx, { provider: 'mock' })
     expect(ctx.tools.schemas().some(s => s.name === 'subagent')).toBe(false)
     // Backend arrives (as a delayed sibling fiber would): the tool appears.
     await mock.mountScriptedProvider(ctx, { name: 'mock', reply: 'late but fine' })
@@ -360,7 +360,7 @@ describe('dsh-tool-subagent', () => {
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(SubagentRuntime)
-    tool.apply(ctx, {
+    await tool.apply(ctx, {
       provider: 'later-continuable',
       backgroundMode: 'continuable',
       maxDepth: 'provider-managed',
@@ -719,12 +719,10 @@ describe('dsh-tool-subagent', () => {
 
   it('validates maxDepth when apply() is invoked directly without Schemastery', async () => {
     const ctx = await projectedContext()
-    expect(() => {
-      tool.apply(ctx, {
-        provider: 'unused',
-        maxDepth: Number.NaN,
-      })
-    }).toThrow('subagent maxDepth must be a non-negative safe integer')
+    await expect(tool.apply(ctx, {
+      provider: 'unused',
+      maxDepth: Number.NaN,
+    })).rejects.toThrow('subagent maxDepth must be a non-negative safe integer')
   })
 
   it('a partial toolFilter (deny only) does not materialize an empty allow-list (deny-all trap)', async () => {
@@ -845,7 +843,7 @@ describe('dsh-tool-subagent background mode', () => {
         throw new Error('one-shot policy must not prepare a continuable child')
       },
     })
-    tool.apply(ctx, {
+    await tool.apply(ctx, {
       provider: 'resumable',
       toolName: 'subagent_resumable',
       backgroundMode: 'one-shot',
@@ -1028,7 +1026,7 @@ describe('dsh-tool-subagent background mode', () => {
       inheritsParentContext: false,
       start: async () => { throw new Error('setup failed') },
     })
-    tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'broken-start', toolName: 'subagent_broken' })
+    await tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'broken-start', toolName: 'subagent_broken' })
 
     const started = await ctx.tools.execute({
       signal: testToolSignal,
@@ -1059,7 +1057,7 @@ describe('dsh-tool-subagent background mode', () => {
         request.signal.addEventListener('abort', () => { reject(new Error('startup aborted')) }, { once: true })
       }),
     })
-    tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'pending-start', toolName: 'subagent_pending' })
+    await tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'pending-start', toolName: 'subagent_pending' })
 
     await ctx.tools.execute({
       signal: testToolSignal,
@@ -1102,7 +1100,7 @@ describe('dsh-tool-subagent background mode', () => {
         }, { once: true })
       }),
     })
-    tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'broken-start-rollback', toolName: 'subagent_broken_rollback' })
+    await tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'broken-start-rollback', toolName: 'subagent_broken_rollback' })
 
     await ctx.tools.execute({
       signal: testToolSignal,
@@ -1155,7 +1153,7 @@ describe('dsh-tool-subagent background mode', () => {
       },
     })
     // Direct apply preserves omitted agentOptions instead of applying schema defaults.
-    tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'hanging', toolName: 'subagent_hang' })
+    await tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'hanging', toolName: 'subagent_hang' })
 
     const startOne = await ctx.tools.execute({ signal: testToolSignal, callId: ToolCallId('h1'), name: 'subagent_hang', arguments: { description: 'one', prompt: 'p', run_in_background: true }, agent: parent })
     const startTwo = await ctx.tools.execute({ signal: testToolSignal, callId: ToolCallId('h2'), name: 'subagent_hang', arguments: { description: 'two', prompt: 'p', run_in_background: true }, agent: parent })
@@ -1299,7 +1297,7 @@ describe('dsh-tool-subagent continuable background mode', () => {
         return {}
       },
     })
-    tool.apply(ctx, {
+    await tool.apply(ctx, {
       provider: 'gated',
       toolName: 'subagent_gated',
       backgroundMode: 'continuable',
@@ -1374,7 +1372,7 @@ describe('background preflight failure (no orphaned child, by construction)', ()
         }
       },
     })
-    tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'probe', toolName: 'subagent_probe' })
+    await tool.apply(ctx, { maxDepth: 'provider-managed', provider: 'probe', toolName: 'subagent_probe' })
 
     const result = await ctx.tools.execute({
       signal: testToolSignal,

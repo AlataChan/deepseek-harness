@@ -57,6 +57,8 @@ When the open turn contains exactly one Host-validated browser zone, the timesta
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+The pre-step listener is installed only if its fiber is neither disposed nor unloading when projection registration completes.
+
 <details>
 <summary>Implementation internals — click to expand</summary>
 

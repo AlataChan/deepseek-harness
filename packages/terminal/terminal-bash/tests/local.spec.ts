@@ -40,7 +40,7 @@ function stubAgent(ctx: Context, rawId: string): Agent {
   const scope = ctx.plugin(() => {})
   const session = Session.create(id)
   const agent: Agent = {
-    id, options: {}, session, inbox: unsupportedInbox(),
+    id, options: {}, session, inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
     status: 'idle',
     ctx: scope.ctx,
     send: () => {},

@@ -4,6 +4,7 @@ import { runInNewContext } from 'node:vm'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 
 function agent(id: string): Agent {
   return { id: SessionId(id) } as Agent
@@ -15,6 +16,7 @@ async function harness(): Promise<{
   dispose: () => Promise<void>
 }> {
   const ctx = new Context()
+  await ctx.plugin(SessionProjectionRegistry)
   const fiber = await ctx.plugin(AgentRegistry)
   return {
     ctx,

@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/desktop-operation/README.md
+/:
+  en: 592da0846c263273
+  zh: 80c43a1f03128edc
+/deepseek-ai-dsh-experimental-desktop-operation:
+  en: 6b99040820c96c34
+  zh: 48637482e7182d83
+/deepseek-ai-dsh-experimental-desktop-operation/summary:
+  en: 22f291edc2849450
+  zh: 56d6b067ad614c25
+/deepseek-ai-dsh-experimental-desktop-operation/table-of-contents:
+  en: d0f9862ef86c1fcb
+  zh: 206e7ee35b6f931b
+/deepseek-ai-dsh-experimental-desktop-operation/use-this-package:
+  en: f1ce261ebe3b9755
+  zh: 8f7eff83c21e8d76
+/deepseek-ai-dsh-experimental-desktop-operation/config:
+  en: 1fa64716c65e9670
+  zh: e325f028b482d392
+/deepseek-ai-dsh-experimental-desktop-operation/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-desktop-operation/model-experience/shared-desktop-catalog:
+  en: 2e70da7ca6a32ad4
+  zh: eb16f52a9b256962
+/deepseek-ai-dsh-experimental-desktop-operation/model-experience/shared-desktop-catalog/what-the-model-sees:
+  en: a3506dad28fbb6bf
+  zh: 7adabac81a0c43d6
+/deepseek-ai-dsh-experimental-desktop-operation/model-experience/shared-desktop-catalog/token-effect:
+  en: eb92bcf08ffa19e5
+  zh: 20555fbff1accd25
+/deepseek-ai-dsh-experimental-desktop-operation/model-experience/shared-desktop-catalog/kv-cache-effect:
+  en: 96977688fb75e5fe
+  zh: af5e96b083f28bb6
+/deepseek-ai-dsh-experimental-desktop-operation/known-limitations-and-deferred-work:
+  en: a4539031a88efaa3
+  zh: e974ca2dac663044
+/deepseek-ai-dsh-experimental-desktop-operation/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: e88aeb617ffb74ea

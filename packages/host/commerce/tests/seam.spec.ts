@@ -225,7 +225,9 @@ describe('Commerce seam', () => {
     const binding = await commerce.bind(owner, SOURCE_ID)
     const replay = agent('replay-fold', owner.session.snapshotEvents())
 
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(owner.session, 'commerceBinding')).toEqual(binding)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(replay.session, 'commerceBinding')).toEqual(binding)
     await fiber.dispose()
   })
@@ -234,11 +236,13 @@ describe('Commerce seam', () => {
     const { ctx, fiber } = await createBench()
     const owner = agent('dispose')
     expect(ctx.get('commerce')).toBeInstanceOf(StubCommerce)
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(owner.session, 'commerceBinding')).toBeNull()
 
     await fiber.dispose()
 
     expect(ctx.get('commerce')).toBeUndefined()
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     expect(ctx.sessionProjections.stateOf(owner.session, 'commerceBinding')).toBeUndefined()
   })
 

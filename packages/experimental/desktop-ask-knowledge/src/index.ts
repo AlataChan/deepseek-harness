@@ -4,16 +4,18 @@
  * @module @deepseek-ai/dsh-experimental-desktop-ask-knowledge
  */
 
-import type { Context } from '@deepseek-ai/cordis'
+import { Service, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { AskKnowledge, AskKnowledgeError } from '@deepseek-ai/dsh-host-ask-knowledge'
-import { askKnowledgeBindingProjectionDefinition } from '@deepseek-ai/dsh-host-ask-knowledge'
+import { askKnowledgeBindingProjectionDefinition, type AskKnowledgeBinding } from '@deepseek-ai/dsh-host-ask-knowledge'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
+import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type {
   AskKnowledgeAttachLease, AskKnowledgeBundle, AskKnowledgeExtractResult, AskKnowledgeIngestHandle,
   AskKnowledgeIngestResult, AskKnowledgeLibrary, AskKnowledgeLibraryId, AskKnowledgeLookup,
   AskKnowledgeStatus,
 } from '@deepseek-ai/dsh-host-ask-knowledge'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-credentials'
@@ -177,6 +179,8 @@ export default class DesktopAskKnowledge extends AskKnowledge {
   private readonly documentMigrations = new Map<string, Promise<string | undefined>>()
   private readonly documentRuns = new Map<string, { controller: AbortController; done: Promise<unknown> }>()
   private readonly config: Config
+  private readonly projectionReady: Promise<void>
+  private askKnowledgeBinding: ProjectionHandle<AskKnowledgeBinding | null> | undefined
   private readonly uploads = new Map<string, IngestUpload>()
   private readonly cancelledHandles = new Set<string>()
   private readonly bounds: ResultBounds
@@ -195,17 +199,14 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       maxChars: config.maxResultChars,
       maxTokens: config.maxResultTokens,
     })
-    ctx.effect(
-      () => ctx.sessionProjections.register(askKnowledgeBindingProjectionDefinition),
-      'desktop-ask-knowledge.projection',
-    )
+    this.projectionReady = this.openProjection()
     ctx.effect(() => ctx.systemPrompt.section({
       name: 'ask-knowledge:retrieve',
       order: 91,
       text: (context) => {
         const session = context.agent?.session
         if (session === undefined) return ''
-        const binding = ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')
+        const binding = this.askKnowledgeBinding?.stateOf(session)
         const parts: string[] = []
         if (binding != null && sessionPreset(ctx, session) !== 'data-agent') {
           parts.push(renderAskKnowledgeRetrievePrompt())
@@ -227,9 +228,9 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       () => registerDocumentsService(ctx, this.config),
       'desktop-ask-knowledge.documents-service',
     )
-    this.ready = this.initialize()
+    this.ready = this.projectionReady.then(() => this.initialize())
     // Preserve the failure for callers while observing it until first use.
-    void this.ready.catch(error => ctx.logger('ask-knowledge').warn(error))
+    void this.ready.catch((error: unknown) => { ctx.logger('ask-knowledge').warn(error) })
     ctx.effect(() => async () => {
       this.lifetime.abort()
       for (const upload of this.uploads.values()) {
@@ -240,9 +241,23 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       await Promise.allSettled([...this.documentRuns.values()].map(run => run.done))
       await Promise.allSettled([...this.documentMigrations.values()])
       await runner.dispose()
-      await this.ready.catch(error => ctx.logger('ask-knowledge').warn(error))
+      await this.ready.catch((error: unknown) => { ctx.logger('ask-knowledge').warn(error) })
       await Promise.all([...this.uploads.values()].map(disposeUpload))
     })
+  }
+
+  /** Await the binding projection before the sidecar becomes ready. */
+  protected async [Service.init](): Promise<void> {
+    await this.projectionReady
+  }
+
+  /** Register the binding projection and release it with this service. */
+  private async openProjection(): Promise<void> {
+    await this.ctx.effect(async () => {
+      const handle = await this.ctx.sessionProjections.register(askKnowledgeBindingProjectionDefinition)
+      this.askKnowledgeBinding = handle
+      return () => handle.dispose()
+    }, 'ask-knowledge binding projection')
   }
 
   /**
@@ -407,7 +422,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
         const vault = await assertVaultDir(home, row)
         await recoverPendingAudits(this.ctx, this.config, vault, signal)
         await healRejectedProposals(this.config, vault, signal)
-        const previous = this.ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')
+        const previous = this.askKnowledgeBinding?.stateOf(session)
         if (previous != null && previous.libraryId !== request.libraryId) {
           session.append('ask-knowledge/unbound', { libraryId: previous.libraryId })
         }
@@ -417,17 +432,14 @@ export default class DesktopAskKnowledge extends AskKnowledge {
         }
         return {
           binding,
-          rollback: async () => {
-            await withSessionLock(request.sessionId, async () => {
-              const live = this.ctx.get('sessions')?.get(request.sessionId)
-              if (live === undefined) return
-              if (previous == null) {
-                live.append('ask-knowledge/unbound', { libraryId: request.libraryId })
-                return
-              }
-              live.append('ask-knowledge/bound', previous)
-            })
-          },
+          rollback: () => withSessionLock(request.sessionId, () => {
+            const live = this.ctx.get('sessions')?.get(request.sessionId)
+            if (live !== undefined) {
+              if (previous == null) live.append('ask-knowledge/unbound', { libraryId: request.libraryId })
+              else live.append('ask-knowledge/bound', previous)
+            }
+            return Promise.resolve()
+          }),
         }
       })
     })
@@ -448,14 +460,14 @@ export default class DesktopAskKnowledge extends AskKnowledge {
    */
   override async detach(request: { sessionId: SessionId }, signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted()
-    await withSessionLock(request.sessionId, async () => {
+    await withSessionLock(request.sessionId, () => {
       const session = this.ctx.get('sessions')?.get(request.sessionId)
       if (session === undefined) {
         throw new AskKnowledgeError('session-busy', `session ${request.sessionId} is not live`)
       }
-      const binding = this.ctx.sessionProjections.stateOf(session, 'askKnowledgeBinding')
-      if (binding == null) return
-      session.append('ask-knowledge/unbound', { libraryId: binding.libraryId })
+      const binding = this.askKnowledgeBinding?.stateOf(session)
+      if (binding != null) session.append('ask-knowledge/unbound', { libraryId: binding.libraryId })
+      return Promise.resolve()
     })
   }
 
@@ -561,8 +573,9 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       const operationSignal = signal === undefined
         ? AbortSignal.any([this.lifetime.signal, upload.controller.signal])
         : AbortSignal.any([signal, this.lifetime.signal, upload.controller.signal])
+      const uploadCancelled = (): boolean => upload.cancelled
       const assertNotCancelled = () => {
-        if (upload.cancelled || upload.controller.signal.aborted || this.cancelledHandles.has(request.handle) ||
+        if (uploadCancelled() || upload.controller.signal.aborted || this.cancelledHandles.has(request.handle) ||
           !this.uploads.has(request.handle)) {
           throw new AskKnowledgeError('ingest-failed', 'upload was cancelled')
         }
@@ -587,7 +600,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       const completion = Promise.withResolvers<undefined>()
       const key = `${upload.libraryId}:${stored.document.id}`
       this.documentRuns.set(key, { controller, done: completion.promise })
-      conversionRun = { key, settle: () => completion.resolve(undefined) }
+      conversionRun = { key, settle: () => { completion.resolve(undefined) } }
       let converted: ConversionResult
       try {
         assertNotCancelled()
@@ -599,7 +612,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
         assertNotCancelled()
         conversionSignal.throwIfAborted()
       } catch (error) {
-        const isCancelled = upload.cancelled || upload.controller.signal.aborted || this.cancelledHandles.has(request.handle) ||
+        const isCancelled = uploadCancelled() || upload.controller.signal.aborted || this.cancelledHandles.has(request.handle) ||
           controller.signal.aborted
         await runSidecar(this.config, { command: 'record-conversion', vault, libraryId: upload.libraryId,
           documentId: stored.document.id, jobId: job.jobId, conversionStatus: isCancelled ? 'cancelled' : 'failed',
@@ -640,7 +653,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       } catch (error) {
         await runSidecar(this.config, { command: 'record-conversion', vault, libraryId: upload.libraryId,
           documentId: stored.document.id, jobId: job.jobId,
-          conversionStatus: conversionSignal.aborted || upload.cancelled ? 'cancelled' : 'failed',
+          conversionStatus: conversionSignal.aborted || uploadCancelled() ? 'cancelled' : 'failed',
           conversion: converted.diagnostics, error: error instanceof Error ? error.message : String(error) },
         { signal: this.lifetime.signal })
         throw error
@@ -876,7 +889,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
     let migration = this.documentMigrations.get(libraryId)
     if (!migration) {
       migration = new DocumentsServiceImpl(this.config).migrateLibrary(libraryId, this.lifetime.signal).then(
-        () => undefined, error => error instanceof Error ? error.message : String(error),
+        () => undefined, (error: unknown) => error instanceof Error ? error.message : String(error),
       )
       this.documentMigrations.set(libraryId, migration)
     }
@@ -916,7 +929,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
     const accepted = Promise.withResolvers<undefined>()
     let admitted = false
     const work = this.performDocumentAction(request, () => { admitted = true; accepted.resolve(undefined) })
-    void work.catch((error) => { if (admitted) this.ctx.logger('ask-knowledge').warn(error) })
+    void work.catch((error: unknown) => { if (admitted) this.ctx.logger('ask-knowledge').warn(error) })
     await Promise.race([accepted.promise, work])
   }
 
@@ -932,7 +945,7 @@ export default class DesktopAskKnowledge extends AskKnowledge {
       const run = this.documentRuns.get(key)
       run?.controller.abort()
       await runSidecar(this.config, { command: 'document-action', vault, libraryId, documentId, action }, { signal: this.lifetime.signal })
-      await run?.done.catch((error) => { if (!run.controller.signal.aborted) throw error })
+      await run?.done.catch((error: unknown) => { if (!run.controller.signal.aborted) throw error })
       return
     }
     if (action === 'original' || action === 'text' || action === 'sources') {
@@ -1113,12 +1126,8 @@ void resumeDeleting
  * @param session - live Session.
  * @returns the preset id, or undefined when the unit is absent.
  */
-function sessionPreset(ctx: Context, session: object): string | undefined {
-  const projections = ctx.sessionProjections as {
-    stateOf(target: object, key: string): unknown
-  }
-  const value = projections.stateOf(session, 'agentPreset')
-  return typeof value === 'string' ? value : undefined
+function sessionPreset(ctx: Context, session: Session): string | undefined {
+  return ctx.get('agentPresets')?.presetOf(session) ?? undefined
 }
 
 /** Publish complete normalized bytes without exposing an unfinished .md file. */

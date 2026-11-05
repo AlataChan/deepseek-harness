@@ -11,7 +11,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, FiberState } from '@deepseek-ai/cordis'
+import { SessionController } from '../src/index.ts'
 import { z } from 'zod'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
@@ -128,7 +129,6 @@ async function harness(withRegistry: boolean): Promise<{
   ownedContexts.add(ctx)
   if (!withRegistry) {
     await ctx.plugin(SessionStore)
-    await ctx.plugin(AgentRegistry)
     const session = ctx.sessions.create(undefined, { meta: { cwd: '/workspace' } })
     return {
       ctx,
@@ -166,8 +166,8 @@ describe('session.history projections block', () => {
   it('keeps the v0 numeric seed cut on the wire while logical headers expose only lineage', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
-    await ctx.plugin(AgentRegistry)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(AgentRegistry)
     const parent = ctx.sessions.create(SessionId('wire-seed-parent'), { meta: { cwd: '/workspace' } })
     parent.append('turn/start', { turn: 1 })
     parent.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
@@ -225,7 +225,7 @@ describe('session.history projections block', () => {
 
   it('serves the unit value on the tail page with asOfSeq = last event seq', async () => {
     const { ctx, session } = await harness(true)
-    ctx.sessionProjections.register(lastUserUnit())
+    await ctx.sessionProjections.register(lastUserUnit())
     seedMessages(session, 3)
     const snapshot = await opening(remote(ctx), session.id)
     const { records, projections } = snapshot
@@ -309,7 +309,7 @@ describe('session.history projections block', () => {
 
   it('returns a complete current replacement cut on each follow generation', async () => {
     const { ctx, session } = await harness(true)
-    ctx.sessionProjections.register(lastUserUnit())
+    await ctx.sessionProjections.register(lastUserUnit())
     seedMessages(session, 2)
 
     const snapshot = await opening(remote(ctx), session.id)
@@ -323,7 +323,7 @@ describe('session.history projections block', () => {
 
   it('projects an empty log at cursor -1', async () => {
     const { ctx, session } = await harness(true)
-    ctx.sessionProjections.register(lastUserUnit())
+    await ctx.sessionProjections.register(lastUserUnit())
 
     const snapshot = await opening(remote(ctx), session.id)
 
@@ -386,7 +386,7 @@ describe('session.history projections block', () => {
 
   it('never carries the block on loadOlder pages (beforeSeq present)', async () => {
     const { ctx, session } = await harness(true)
-    ctx.sessionProjections.register(lastUserUnit())
+    await ctx.sessionProjections.register(lastUserUnit())
     seedMessages(session, 5)
     const older = await page(remote(ctx), request({
       sessionId: session.id, throughSeq: session.seq - 1, beforeSeq: 3, maxMessages: 2,
@@ -407,7 +407,7 @@ describe('session.history projections block', () => {
 
   it('never exposes a host-only unit through history, listing, or push frames', async () => {
     const { ctx, session } = await harness(true)
-    ctx.sessionProjections.register(internalCountUnit())
+    await ctx.sessionProjections.register(internalCountUnit())
     const proxy = remote(ctx)
     await new Promise(resolve => setTimeout(resolve, 0))
     const abort = new AbortController()
@@ -438,13 +438,13 @@ describe('session.history projections block', () => {
 
   it('drops a disposed registration from subsequent tail pages (empty block, key absent)', async () => {
     const { ctx, session } = await harness(true)
-    const dispose = ctx.sessionProjections.register(lastUserUnit())
+    const handle = await ctx.sessionProjections.register(lastUserUnit())
     seedMessages(session, 1)
     const proxy = remote(ctx)
     const before = await opening(proxy, session.id)
     expect(before.projections.values['test/last-user']).toEqual({ text: 'm0' })
 
-    dispose()
+    await handle.dispose()
     const after = await opening(proxy, session.id)
     // The registry stays mounted; only the disposed key leaves while the
     // gateway-owned Session-list unit remains.
@@ -475,7 +475,7 @@ describe('session.history projections block', () => {
 describe('session.list projections column', () => {
   it('serves every already-materialized wire value from the live registry without folding', async () => {
     const { ctx, session } = await harness(true)
-    ctx.sessionProjections.register(lastUserUnit())
+    await ctx.sessionProjections.register(lastUserUnit())
     const gateway = remote(ctx)
     await new Promise(resolve => setTimeout(resolve, 0))
     session.append('turn/start', { turn: 1 })
@@ -496,7 +496,7 @@ describe('session.list projections column', () => {
     const session = ctx.sessions.create(SessionId('preset-list'), {
       meta: { cwd: '/workspace', agentPreset: 'standard' },
     })
-    ctx.sessionProjections.register(agentPresetProjectionDefinition)
+    await ctx.sessionProjections.register(agentPresetProjectionDefinition)
     const gateway = remote(ctx)
     await new Promise(resolve => setTimeout(resolve, 0))
     session.append('agent-preset/selected', { agentPreset: 'minimal' })
@@ -512,7 +512,7 @@ describe('session.list projections column', () => {
     seedMessages(session, 1)
     const unit = lastUserUnit()
     const apply = vi.fn(unit.apply)
-    ctx.sessionProjections.register({ ...unit, apply })
+    await ctx.sessionProjections.register({ ...unit, apply })
 
     const response = await remote(ctx).list(request({}))
     if (!response.ok) throw new Error('unreachable')
@@ -522,14 +522,17 @@ describe('session.list projections column', () => {
     expect(apply).not.toHaveBeenCalled()
   })
 
-  it('omits the column entirely when no registry is mounted', async () => {
-    const { ctx, session } = await harness(false)
-    seedMessages(session, 1)
-    const response = await remote(ctx).list(request({}))
-    if (!response.ok) throw new Error('unreachable')
-    const row = response.value.items.find(item => item.sessionId === session.id)
-    expect(row).toBeDefined()
-    expect(row !== undefined && 'projections' in row).toBe(false)
+  it('keeps the controller unavailable when the required registry is absent', async () => {
+    const ctx = new Context()
+    ownedContexts.add(ctx)
+    // Every other required service is present; none runs before injection completes.
+    for (const service of SessionController.inject) {
+      if (service !== 'sessionProjections') ctx.provide(service, {} as never)
+    }
+    const fiber = ctx.plugin(SessionController, {})
+    await fiber
+    expect(fiber.state).toBe(FiberState.PENDING)
+    expect(ctx.get('sessionController')).toBeUndefined()
   })
 
   it('serves every available cold projection hint from the cache with zero log loads', async () => {
@@ -578,9 +581,9 @@ describe('session.list projections column', () => {
       await ctx.plugin(StorageJson, { root })
       await ctx.plugin(StorageDomain, { backend: 'json' })
       await ctx.plugin(SessionStore)
-      await ctx.plugin(AgentRegistry)
       await ctx.plugin(SessionProjectionRegistry)
-      ctx.sessionProjections.register(privatePromptUnit())
+      await ctx.plugin(AgentRegistry)
+      await ctx.sessionProjections.register(privatePromptUnit())
       await ctx.plugin(SessionProjectionCache, { writeEveryEvents: 100, writeIntervalMs: 60_000 })
       const gateway = remote(ctx)
       await new Promise(resolve => setTimeout(resolve, 0))
@@ -633,9 +636,9 @@ describe('session.list projections column', () => {
       await ctx.plugin(StorageJson, { root })
       await ctx.plugin(StorageDomain, { backend: 'json' })
       await ctx.plugin(SessionStore)
-      await ctx.plugin(AgentRegistry)
       await ctx.plugin(SessionProjectionRegistry)
-      ctx.sessionProjections.register(titleProjectionDefinition)
+      await ctx.plugin(AgentRegistry)
+      await ctx.sessionProjections.register(titleProjectionDefinition)
       await ctx.plugin(SessionProjectionCache, { writeEveryEvents: 100, writeIntervalMs: 60_000 })
       return ctx
     }
@@ -721,7 +724,7 @@ describe('session.list projections column', () => {
 
   it('a throwing column read degrades that row, never the listing', async () => {
     const { ctx, session } = await harness(true)
-    ctx.sessionProjections.register({
+    await ctx.sessionProjections.register({
       ...lastUserUnit(),
       wire: {
         viewSchema: z.union([z.object({ text: z.string() }), z.null()]),
@@ -754,7 +757,7 @@ describe('Session control projection frames', () => {
 
   it('broadcasts changed view references with the causing seq and skips same-reference applies', async () => {
     const { ctx, session } = await harness(true)
-    ctx.sessionProjections.register(lastUserUnit())
+    await ctx.sessionProjections.register(lastUserUnit())
     const proxy = remote(ctx)
     // The controller's onChanged subscription lives in an inject child whose
     // fiber activates asynchronously; yield until it lands before appending.

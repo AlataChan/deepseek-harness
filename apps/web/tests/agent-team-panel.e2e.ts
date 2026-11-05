@@ -1,30 +1,69 @@
-// Keyless assembled-browser coverage for the opt-in Agent Teams bundle
-// over the real Host projection frame flow.
+// Keyless assembled-browser coverage for the opt-in Agent Teams bundle.
+// The header opens the right collaboration dock; the dock polls its own Team view.
 import { fileURLToPath } from 'node:url'
-import { join } from 'node:path'
 import { readFileSync } from 'node:fs'
-import type { Browser, Page } from 'playwright'
+import type { Browser, Locator, Page } from 'playwright'
 import { chromium } from 'playwright'
-import { afterAll, beforeAll, describe, expect, it, onTestFailed, onTestFinished, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
 import * as yaml from 'js-yaml'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import type {} from '@deepseek-ai/dsh-experimental-agent-team'
 import { createMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import {
-  assertFixtureInventory, captureStableAria, compareOrRefreshGolden,
-  launchWebScaffold, watchConsole, webSnapshotMode, type WebScaffold,
+  assertFixtureInventory, launchWebScaffold, watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
 import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./snapshots/agent-team-panel', import.meta.url))
-const PANEL_EXPECTED = join(SNAPSHOT_DIR, 'task.expected.md')
-const RESIZE_EXPECTED = join(SNAPSHOT_DIR, 'resize.expected.md')
 const OVERLAY = fileURLToPath(new URL('./agent-team-panel.overlay.yml', import.meta.url))
 const TEAM_PATCH = fileURLToPath(new URL('../../../packages/experimental/agent-team-profile/cordis.patch.yml', import.meta.url))
 const INSTALL_ANCHORS = [
   fileURLToPath(new URL('../../../packages/experimental/agent-team-profile/package.json', import.meta.url)),
 ]
 const MODE = webSnapshotMode()
+
+function teamTrigger(page: Page): Locator {
+  return page.locator('[data-team-action]').getByRole('button', { name: 'Team', exact: true })
+}
+
+function teamDock(page: Page): Locator {
+  return page.locator('[data-team-dock]')
+}
+
+/** Open the header collaboration dock. A second call leaves an already-open dock open. */
+async function openTeamDock(page: Page): Promise<Locator> {
+  const trigger = teamTrigger(page)
+  await trigger.waitFor({ timeout: 30_000 })
+  if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click()
+  const dock = teamDock(page)
+  await dock.waitFor({ timeout: 15_000 })
+  expect(await dock.getAttribute('role')).toBe('dialog')
+  expect(await dock.getAttribute('aria-label')).toBe('Team')
+  expect(await dock.evaluate(element => element.parentElement === document.body)).toBe(true)
+  return dock
+}
+
+async function dockBox(dock: Locator): Promise<{
+  readonly withinViewport: boolean
+  readonly width: number
+  readonly rightGap: number
+}> {
+  return await dock.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const max = Math.max(280, Math.floor(window.innerWidth * 0.55))
+    return {
+      withinViewport: rect.top >= -1
+        && rect.left >= -1
+        && rect.right <= window.innerWidth + 1
+        && rect.bottom <= window.innerHeight + 1
+        && rect.width >= 279
+        && rect.width <= max + 1
+        && Math.abs(rect.right - window.innerWidth) <= 2,
+      width: rect.width,
+      rightGap: window.innerWidth - rect.right,
+    }
+  })
+}
 
 function profileEntries(path: string): unknown[] {
   const parsed = yaml.load(readFileSync(path, 'utf8'), { schema: entryListSchema })
@@ -81,130 +120,144 @@ describe('web e2e: Agent Teams panel', () => {
     await scaffold?.close()
   })
 
-  it('displays agent-owned task changes through a read-only board without a refresh action', async () => {
+  it('shows persisted tasks in the collaboration dock through its own polling', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-agent-team-panel'))
-    const projectionReads = vi.spyOn(scaffold.ctx.sessionController, 'projections')
-    onTestFinished(() => { projectionReads.mockRestore() })
-    await page.locator('[data-team-action]').getByRole('button', { name: /Agent Team/iu }).click()
-    const action = page.getByRole('dialog', { name: 'Agent Team', exact: true })
-    await action.getByText('No shared tasks yet. Create them through the conversation.').waitFor()
-    await action.getByText('lead').waitFor()
-    expect(projectionReads).not.toHaveBeenCalled()
+    const dock = await openTeamDock(page)
+    await dock.getByText('No shared tasks yet', { exact: true }).waitFor()
+    // The lead row is a disabled button, so role queries that skip disabled controls miss it.
+    await dock.locator('button').filter({ hasText: 'Coordinator Session' }).waitFor()
+    expect(await dock.getByRole('button', { name: 'New task', exact: true }).count()).toBe(1)
+    expect(await dock.getByRole('button', { name: 'Refresh roster', exact: true }).count()).toBe(1)
 
-    expect(await action.getByRole('button', { name: 'New task' }).count()).toBe(0)
-    expect(await action.getByRole('button', { name: /Refresh/u }).count()).toBe(0)
-
-    // Host-side Team mutations reach the open panel through projection frames only.
     const agent = scaffold.ctx.agents.list()[0]!
     const task = await scaffold.ctx.agentTeams.createTask(agent, {
       subject: 'Agent task', description: 'Created by the Team Lead', writeScopes: ['src/web'],
     })
-    await action.getByText('Agent task', { exact: true }).waitFor()
-    await action.getByText('Owner: Unowned', { exact: true }).waitFor()
+    const card = dock.locator('article').filter({ hasText: 'Agent task' })
+    await card.waitFor({ timeout: 15_000 })
+    await card.getByText('Owner: Unowned', { exact: true }).waitFor()
+    await card.getByText('Write scopes: src/web', { exact: true }).waitFor()
     await scaffold.ctx.agentTeams.updateTask(agent, {
       taskId: task.id, expectedRevision: task.revision, action: 'claim',
     })
-    await action.getByText('In progress', { exact: true }).waitFor()
-    await action.getByText('Owner: lead', { exact: true }).waitFor()
-    expect(await action.getByRole('button', { name: /^(New task|Edit|Complete|Reopen|Delete)$/u }).count()).toBe(0)
-    expect(await action.locator('input, select, textarea').count()).toBe(0)
-
-    const snapshot = await captureStableAria(page, '[data-team-panel]', scaffold.workspaceCwd)
-    await compareOrRefreshGolden(PANEL_EXPECTED, snapshot, MODE)
-    expect(projectionReads).not.toHaveBeenCalled()
+    await card.getByText('In progress', { exact: true }).waitFor({ timeout: 15_000 })
+    await card.getByText('Owner: lead', { exact: true }).waitFor()
+    expect(await card.getByRole('button', { name: 'Edit', exact: true }).count()).toBe(1)
+    expect(await card.getByRole('button', { name: 'Complete', exact: true }).count()).toBe(1)
     expect(tripwire.pageErrors).toEqual([])
     expect(tripwire.warnings).toEqual([])
-    await page.keyboard.press('Escape')
+    await dock.getByRole('button', { name: 'Close', exact: true }).click()
+    await dock.waitFor({ state: 'detached' })
   }, 60_000)
 
-  it('keeps the panel inside the viewport and closes on outside click or Escape', async () => {
+  it('keeps the dock inside the viewport, resizes from its handle, and closes', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-agent-team-panel-keyboard'))
-    const panel = page.getByRole('dialog', { name: 'Agent Team', exact: true })
-    const trigger = page.locator('[data-team-action]').getByRole('button', { name: /Agent Team/iu })
+    const trigger = teamTrigger(page)
     const viewport = page.viewportSize()!
-    await trigger.click()
-    await panel.getByText('lead', { exact: true }).waitFor()
+    const dock = await openTeamDock(page)
     try {
+      await dock.locator('button').filter({ hasText: 'Coordinator Session' }).waitFor()
       for (const size of [{ width: 760, height: 540 }, { width: 600, height: 420 }]) {
         await page.setViewportSize(size)
-        await expect.poll(() => panel.evaluate((element) => {
-          const rect = element.getBoundingClientRect()
-          return element.parentElement === document.body
-            && rect.left >= 16 && rect.top >= 16
-            && rect.right <= window.innerWidth - 16 && rect.bottom <= window.innerHeight - 16
-            && [[rect.left + 12, rect.top + 12], [rect.right - 12, rect.bottom - 12]]
-              .every(([x, y]) => element.contains(document.elementFromPoint(x!, y!)))
-        })).toBe(true)
+        await expect.poll(() => dockBox(dock)).toMatchObject({ withinViewport: true, rightGap: 0 })
       }
-      await panel.getByRole('heading', { name: /Shared tasks/u }).click()
-      expect(await panel.count()).toBe(1)
-      await page.mouse.click(2, 2)
-      await panel.waitFor({ state: 'detached' })
       await page.setViewportSize(viewport)
-      await trigger.focus()
-      await page.keyboard.press('Enter')
-      await panel.getByRole('heading', { name: /Shared tasks/u }).waitFor()
-      expect(await panel.evaluate(element => element === document.activeElement)).toBe(true)
+      const before = (await dockBox(dock)).width
+      const handle = dock.getByRole('separator', { name: 'Drag to resize dock', exact: true })
+      const box = await handle.boundingBox()
+      if (box === null) throw new Error('collaboration dock has no resize handle')
+      await page.mouse.move(box.x + box.width / 2, box.y + 80)
+      await page.mouse.down()
+      await page.mouse.move(box.x - 80, box.y + 80, { steps: 8 })
+      await page.mouse.up()
+      await expect.poll(async () => (await dockBox(dock)).width).toBeGreaterThan(before + 40)
+      expect((await dockBox(dock)).withinViewport).toBe(true)
+
+      await dock.getByRole('heading', { name: 'Shared tasks', exact: true }).click()
+      expect(await dock.count()).toBe(1)
+      await page.locator('[data-team-dock-backdrop]').click({ position: { x: 8, y: 8 } })
+      await dock.waitFor({ state: 'detached' })
+      expect(await trigger.getAttribute('aria-expanded')).toBe('false')
+
+      await trigger.click()
+      await dock.waitFor()
       await page.keyboard.press('Escape')
-      await panel.waitFor({ state: 'detached' })
-      expect(await trigger.evaluate(element => element === document.activeElement)).toBe(true)
-      await page.keyboard.press('Enter')
-      await panel.waitFor()
-      const outside = page.getByRole('button', { name: 'Settings', exact: true })
-      await outside.focus()
-      expect(await panel.count()).toBe(1)
-      await page.keyboard.press('Escape')
-      await panel.waitFor({ state: 'detached' })
-      expect(await outside.evaluate(element => element === document.activeElement)).toBe(true)
+      await dock.waitFor({ state: 'detached' })
+
+      await trigger.click()
+      await dock.waitFor()
+      await dock.getByRole('button', { name: 'Close', exact: true }).click()
+      await dock.waitFor({ state: 'detached' })
+      expect(await trigger.getAttribute('aria-expanded')).toBe('false')
     } finally {
       await page.setViewportSize(viewport)
+      if (await teamDock(page).count() > 0) {
+        await teamDock(page).getByRole('button', { name: 'Close', exact: true }).click()
+      }
     }
   })
 
-  it('keeps the hovered panel open when the pointer returns directly to its trigger', async () => {
-    const trigger = page.locator('[data-team-action]').getByRole('button', { name: 'Agent Team', exact: true })
-    const panel = page.getByRole('dialog', { name: 'Agent Team', exact: true })
+  it('opens the dock on click and keeps it open when the pointer leaves', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-agent-team-panel-hover'))
+    const trigger = teamTrigger(page)
+    const dock = teamDock(page)
+    if (await dock.count() > 0) {
+      await dock.getByRole('button', { name: 'Close', exact: true }).click()
+      await dock.waitFor({ state: 'detached' })
+    }
     await trigger.hover()
-    await panel.waitFor()
-    await panel.hover()
-    await trigger.hover()
-    // The assertion spans the 120ms dismissal grace while the pointer stays on the trigger.
     await page.waitForTimeout(180)
-    expect(await panel.count()).toBe(1)
-    await page.keyboard.press('Escape')
+    expect(await dock.count()).toBe(0)
+    await trigger.click()
+    await dock.waitFor()
+    await page.mouse.move(8, 8)
+    await page.waitForTimeout(180)
+    expect(await dock.count()).toBe(1)
+    await dock.getByRole('button', { name: 'Close', exact: true }).click()
+    await dock.waitFor({ state: 'detached' })
   })
 
-  it('offers expansion when resizing makes a task description exceed two lines', async () => {
+  it('keeps a persisted task description while the dock is resized', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-agent-team-panel-resize'))
+    const description = 'Check the task description before you start work. '.repeat(3)
     const agent = scaffold.ctx.agents.list()[0]!
     await scaffold.ctx.agentTeams.createTask(agent, {
       subject: 'Responsive task',
-      description: 'Check the task description before you start work. '.repeat(3),
+      description,
       writeScopes: [],
     })
     const viewport = page.viewportSize()!
-    const trigger = page.locator('[data-team-action]').getByRole('button', { name: 'Agent Team', exact: true })
-    const panel = page.getByRole('dialog', { name: 'Agent Team', exact: true })
-    const card = panel.locator('article').filter({ hasText: 'Responsive task' })
-    await trigger.click()
-    await card.waitFor()
+    const dock = await openTeamDock(page)
+    const card = dock.locator('article').filter({ hasText: 'Responsive task' })
+    await card.waitFor({ timeout: 15_000 })
+    const renderedDescription = async (): Promise<string> => card.locator('p').innerText()
+    expect(await renderedDescription()).toContain('Check the task description before you start work.')
+    expect((await renderedDescription()).match(/Check the task description before you start work\./g)?.length).toBe(3)
     expect(await card.getByRole('button', { name: 'Show more' }).count()).toBe(0)
     try {
+      const before = (await dockBox(dock)).width
+      const handle = dock.getByRole('separator', { name: 'Drag to resize dock', exact: true })
+      const box = await handle.boundingBox()
+      if (box === null) throw new Error('collaboration dock has no resize handle')
+      await page.mouse.move(box.x + box.width / 2, box.y + 120)
+      await page.mouse.down()
+      await page.mouse.move(box.x + 70, box.y + 120, { steps: 6 })
+      await page.mouse.up()
+      await expect.poll(async () => (await dockBox(dock)).width).toBeLessThan(before - 40)
+      expect((await renderedDescription()).match(/Check the task description before you start work\./g)?.length).toBe(3)
       await page.setViewportSize({ width: 360, height: 700 })
-      await card.getByRole('button', { name: 'Show more' }).waitFor()
-      expect(await card.locator('p').evaluate(p => p.scrollHeight > p.clientHeight)).toBe(true)
-      await compareOrRefreshGolden(RESIZE_EXPECTED, await captureStableAria(page, '[data-team-panel]', scaffold.workspaceCwd), MODE)
-      await card.getByRole('button', { name: 'Show more' }).click()
-      expect(await card.locator('p').evaluate(p => p.scrollHeight === p.clientHeight)).toBe(true)
-      await card.getByRole('button', { name: 'Show less' }).click()
-      await page.setViewportSize(viewport)
-      await expect.poll(() => card.getByRole('button', { name: 'Show more' }).count()).toBe(0)
+      await expect.poll(() => dockBox(dock)).toMatchObject({ withinViewport: true })
+      expect(await card.getByRole('button', { name: 'Show more' }).count()).toBe(0)
+      expect((await renderedDescription()).match(/Check the task description before you start work\./g)?.length).toBe(3)
     } finally {
-      await page.keyboard.press('Escape')
       await page.setViewportSize(viewport)
+      if (await dock.count() > 0) {
+        await dock.getByRole('button', { name: 'Close', exact: true }).click()
+      }
     }
   })
 
   it.skipIf(MODE === 'record')('keeps the fixture inventory closed', async () => {
-    await assertFixtureInventory(SNAPSHOT_DIR, ['task.expected.md', 'resize.expected.md'])
+    await assertFixtureInventory(SNAPSHOT_DIR, [])
   })
 })

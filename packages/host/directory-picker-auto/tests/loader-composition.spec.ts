@@ -290,7 +290,7 @@ describe('real Loader composition', () => {
     expect(renameControl.attempts).toBeGreaterThanOrEqual(2)
   })
 
-  it('reports a terminal debounced-write failure again to the teardown owner', { timeout: 60_000 }, async () => {
+  it('retries a failed debounced write before teardown', { timeout: 60_000 }, async () => {
     stubAttendedHost()
     const { ctx } = await loadComposition('127.0.0.1')
     const autoEntry = [...ctx.loader.entries()].find(entry => entry.options.name === AUTO)!
@@ -300,7 +300,10 @@ describe('real Loader composition', () => {
 
     await autoEntry.fiber!.dispose()
     await expect.poll(() => renameControl.injectedFailures).toBe(1)
-    await expect(include.stop()).rejects.toMatchObject({ code: 'EIO' })
+    await expect(include.stop()).resolves.toBeUndefined()
+    expect(renameControl.attempts).toBeGreaterThanOrEqual(2)
+    expect(await readFile(include.filename, 'utf8')).not.toContain(NATIVE_SURFACE)
+    expect(await readFile(include.filename, 'utf8')).not.toContain(BROWSE_SURFACE)
     await expect(ctx.fiber.dispose()).resolves.not.toThrow()
     context = undefined
   })

@@ -12,10 +12,12 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import { FsError } from './types.ts'
 import type {
+  FsDeleteOutcome,
   FsDirEntry,
   FsEditOutcome,
   FsEditRequest,
   FsInfo,
+  FsMoveOutcome,
   FsPathInfo,
   FsObservation,
   FsTarget,
@@ -30,11 +32,14 @@ export {
   FsVersion,
 } from './types.ts'
 export type {
+  FsDeleteOutcome,
   FsEditOutcome,
   FsEditRequest,
   FsDirEntry,
   FsErrorCode,
   FsInfo,
+  FsMoveOutcome,
+  FsMoveSourceFailure,
   FsObservation,
   FsPathInfo,
   FsTarget,
@@ -83,6 +88,14 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
      */
     'fs/edit-intent'(target: FsTarget, actor: object | undefined, next: () => { version: FsVersion } | undefined | Promise<{ version: FsVersion } | undefined>): Promise<{ version: FsVersion } | undefined>
+    /**
+     * Single-slot decision for {@link FileSystem.deleteFile}. Calling `next()`
+     * yields an unconditional removal; the first returned guard wins.
+     * @param target - the resolved source about to be removed.
+     * @param actor - the opaque tool-execution context the decider keys off.
+     * @mode waterfall
+     */
+    'fs/delete-intent'(target: FsTarget, actor: object | undefined, next: () => { version: FsVersion } | undefined | Promise<{ version: FsVersion } | undefined>): Promise<{ version: FsVersion } | undefined>
     /**
      * Record an authoritative positive or negative observation. Listeners must
      * be synchronous recorders: throws fail the tool call and returned promises
@@ -318,6 +331,52 @@ export abstract class FileSystem extends Service {
     signal?: AbortSignal,
     sandboxPolicy?: SandboxExecutionPolicy,
   ): Promise<FsEditOutcome>
+
+  /**
+   * Remove a regular file. A missing or stale guarded target reports
+   * `FS_STALE_VERSION`. A directory or other non-file reports
+   * `FS_NOT_REGULAR_FILE`. Resolution has already followed symlinks, so this
+   * removes the real file.
+   * @param target - the resolved file to remove.
+   * @param expected - the version guard; omit for an unconditional removal.
+   * @param signal - aborts before removal.
+   * @param sandboxPolicy - the per-call mode and workspace root this removal
+   * runs under; a sandboxing backend fences it, and the bare backend ignores it.
+   * @returns the bounded LF-normalized removed text, or null when no basis is available.
+   */
+  abstract deleteFile(
+    target: FsTarget,
+    expected?: { version: FsVersion },
+    signal?: AbortSignal,
+    sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsDeleteOutcome>
+
+  /**
+   * Publish the source text, or `options.content` when a caller already applied
+   * a patch, at the destination, then remove the source. Both targets stay
+   * locked in canonical order. Identical targets report `FS_SAME_TARGET`.
+   * The source guard follows `editText` and the destination guard follows
+   * `writeText`. The two effects are separate: a published destination with a
+   * retained source is reported through `sourceDeleted: false` and is not rolled back.
+   * @param source - the resolved regular source.
+   * @param destination - the resolved destination within the same provider.
+   * @param options - optional replacement text and the source and destination guards.
+   * @param signal - checked before destination publication. After publication, both effects are reported.
+   * @param sandboxPolicy - the per-call mode and workspace root both paths run
+   * under; a sandboxing backend fences them, and the bare backend ignores it.
+   * @returns the bounded source basis, the destination outcome, and the source-removal status.
+   */
+  abstract moveFile(
+    source: FsTarget,
+    destination: FsTarget,
+    options: {
+      content?: string
+      expectedSource?: { version: FsVersion }
+      expectedDestination?: FsWriteIntent
+    },
+    signal?: AbortSignal,
+    sandboxPolicy?: SandboxExecutionPolicy,
+  ): Promise<FsMoveOutcome>
 }
 
 export default FileSystem

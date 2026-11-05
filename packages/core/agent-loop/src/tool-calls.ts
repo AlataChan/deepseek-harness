@@ -14,7 +14,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { createToolResultMessage, type ToolCallBlock } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionSeq, UserMessage } from '@deepseek-ai/dsh-session'
-import { TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_SCHEDULER, type ToolExecutionInput, type ToolExecutionMode, type ToolExecutionResult, type ToolRunContext } from '@deepseek-ai/dsh-tools'
+import { TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_SCHEDULER, ToolBatchExecutionError, type ResolvedToolSet, type ToolExecutionInput, type ToolExecutionMode, type ToolExecutionResult, type ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 
 /** One tool call after argument parsing, ready to schedule. */
@@ -56,6 +56,7 @@ interface GroupOutcome {
  * @param toolCalls - assistant calls in model order.
  * @param signal - abort signal shared by the step.
  * @param acceptContext - accepts committed result context for the next step boundary.
+ * @param toolSet - the step admission captured before the model request. Omitted calls use the live registry.
  */
 export async function executeToolCalls(
   ctx: Context,
@@ -64,8 +65,32 @@ export async function executeToolCalls(
   toolCalls: ToolCallBlock[],
   signal: AbortSignal,
   acceptContext: (context: UserMessage) => void,
+  toolSet?: ResolvedToolSet,
 ): Promise<{ concluded: boolean }> {
   const agent = ctx.agents.requireInitiator()
+  const selected = ctx.tools.selectedExecutor(agent)
+  if (selected !== undefined) {
+    try {
+      const batch = await selected.execute({
+        calls: toolCalls,
+        signal,
+        agent,
+        log: { turn, step },
+        maxParallelToolCalls: ctx.agentLoop.config.maxParallelToolCalls.get(),
+        ...toolSet === undefined ? {} : { toolSet },
+      })
+      for (const message of batch.additionalContexts) acceptContext(message)
+      return { concluded: batch.concluded }
+    } catch (error: unknown) {
+      if (error instanceof ToolBatchExecutionError) {
+        for (const message of error.partial.additionalContexts) acceptContext(message)
+        const cause = error.cause
+        if (cause instanceof Error) throw cause
+        throw error
+      }
+      throw error
+    }
+  }
   const { session } = agent
 
   // Inputs are distinct because tools/execute wrappers may replace `exec.signal`.
@@ -77,13 +102,14 @@ export async function executeToolCalls(
       arguments: parseArguments(block.arguments),
       agent,
       signal,
+      ...toolSet === undefined ? {} : { toolSet },
     },
   }))
 
   let next = 0
   let concluded = false
   while (next < planned.length) {
-    // Commit before classifying again so registry changes affect unstarted calls.
+    // Commit before classifying again. The captured step admission refuses a same-name replacement.
     // oxlint-disable-next-line typescript/no-non-null-assertion -- bounded by the loop condition
     const first = planned[next]!
     const mode = ctx.tools.executionMode(first.exec).kind
@@ -198,7 +224,8 @@ async function runGroup(
 
   const fillPool = async (): Promise<void> => {
     while (!aborted && nextToStart < group.length && inFlight.size < maxParallelToolCalls) {
-      // Re-read later modes after ordered commits so registry changes can create a barrier.
+      // Re-read later modes after ordered commits. A definition that no longer matches
+      // the step admission is not parallel, so the remaining calls leave this group.
       // oxlint-disable-next-line typescript/no-non-null-assertion -- bounded by the loop condition
       const nextCall = group[nextToStart]!
       if (nextToStart > 0 && mode === 'parallel'

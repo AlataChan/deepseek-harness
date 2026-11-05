@@ -70,7 +70,7 @@ export class SessionAskDataController {
     try {
       return await this.requireAskData().listSources(signal)
     } catch (error: unknown) {
-      throw mapAskDataError(error, signal)
+      mapAskDataError(error, signal)
     }
   }
 
@@ -95,7 +95,7 @@ export class SessionAskDataController {
           : { replaceSourceId: brandString<AskDataSourceId>(request.replaceSourceId) },
       }, signal)
     } catch (error: unknown) {
-      throw mapAskDataError(error, signal)
+      mapAskDataError(error, signal)
     }
   }
 
@@ -109,7 +109,7 @@ export class SessionAskDataController {
     try {
       return await this.requireAskData().importSample(signal)
     } catch (error: unknown) {
-      throw mapAskDataError(error, signal)
+      mapAskDataError(error, signal)
     }
   }
 
@@ -123,7 +123,7 @@ export class SessionAskDataController {
     if (session === undefined) {
       throw new RemoteError('session/not-found', `session "${sessionId}" not found`, { sessionId })
     }
-    return this.ctx.sessionProjections.stateOf(session, 'askDataBinding') ?? null
+    return readAskDataBinding(this.ctx.sessionProjections.snapshot(session, ['askDataBinding']).values.askDataBinding)
   }
 
   /**
@@ -133,8 +133,8 @@ export class SessionAskDataController {
    */
   assertPromptAllowed(sessionId: SessionId, agent: Agent): void {
     const preset = this.agents.presetForSession(agent.session)
-    const binding = this.ctx.sessionProjections.stateOf(agent.session, 'askDataBinding')
-    if (preset === 'data-agent' && (binding === undefined || binding === null)) {
+    const binding = readAskDataBinding(this.ctx.sessionProjections.snapshot(agent.session, ['askDataBinding']).values.askDataBinding)
+    if (preset === 'data-agent' && binding === null) {
       throw new RemoteError(
         'session/ask-data-unbound',
         `session "${sessionId}" is data-agent without an ask-data bind`,
@@ -153,7 +153,7 @@ export class SessionAskDataController {
     if (this.gate.isExternallyHeld(sessionId)) {
       throw new RemoteError('session/busy', `session "${sessionId}" is busy`, { sessionId })
     }
-    const binding = this.ctx.sessionProjections.stateOf(agent.session, 'askDataBinding')
+    const binding = readAskDataBinding(this.ctx.sessionProjections.snapshot(agent.session, ['askDataBinding']).values.askDataBinding)
     if (binding != null && nextPreset !== 'data-agent') {
       throw new RemoteError(
         'session/ask-data-bound',
@@ -194,7 +194,7 @@ export class SessionAskDataController {
     const found = await this.agents.resolveAgent(sessionId)
     if ('error' in found) throw found.error
     const agent = found.agent
-    const existing = this.ctx.sessionProjections.stateOf(agent.session, 'askDataBinding')
+    const existing = readAskDataBinding(this.ctx.sessionProjections.snapshot(agent.session, ['askDataBinding']).values.askDataBinding)
     if (existing != null && existing.sourceId !== sourceId) {
       throw new RemoteError(
         'gateway/bad-request',
@@ -241,7 +241,7 @@ export class SessionAskDataController {
         stillBlank: () => isBlankSession(this.ctx, agent),
         ctx: this.ctx,
       })
-      throw mapAskDataError(error, signal)
+      mapAskDataError(error, signal)
     }
   }
 
@@ -280,7 +280,7 @@ export class SessionAskDataController {
           created: true,
           ctx: this.ctx,
         })
-        throw mapAskDataError(error, signal)
+        mapAskDataError(error, signal)
       }
     })
   }
@@ -321,6 +321,26 @@ const ASK_DATA_SEAM: SeamFailureCodes = {
  * @param error - thrown value.
  * @param signal - caller lifetime.
  * @returns never; always throws.
+ */
+function readAskDataBinding(value: unknown): SessionAskDataBinding | null {
+  if (typeof value !== 'object' || value === null) return null
+  if (!('sourceId' in value) || typeof value.sourceId !== 'string') return null
+  if (!('connectionRef' in value) || typeof value.connectionRef !== 'string') return null
+  if (!('displayName' in value) || typeof value.displayName !== 'string') return null
+  if (!('readonly' in value) || typeof value.readonly !== 'boolean') return null
+  return {
+    sourceId: value.sourceId,
+    connectionRef: value.connectionRef,
+    displayName: value.displayName,
+    readonly: value.readonly,
+  }
+}
+
+/**
+ * Map a data-source failure to its public controller error.
+ * @param error - caught failure from the data provider.
+ * @param signal - request cancellation signal.
+ * @returns never; throws the classified failure.
  */
 export function mapAskDataError(error: unknown, signal: AbortSignal): never {
   mapSeamFailure(error, signal, ASK_DATA_SEAM)

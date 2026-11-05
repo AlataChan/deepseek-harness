@@ -3,6 +3,7 @@ import { Context, type Fiber } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import SessionStore, { Session, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import AgentRegistry from '@deepseek-ai/dsh-agent'
 import SessionTitleService, {
   SessionTitleProviderId,
   type Config,
@@ -31,6 +32,7 @@ async function setup(config: Config = CONFIG): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
+  await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionTitleService, config)
   return ctx
 }
@@ -257,6 +259,7 @@ describe('SessionTitleService configuration and refresh boundaries', () => {
         (error: unknown) => error,
       )
     })
+    await ctx.plugin(AgentRegistry)
     const fiber = await ctx.plugin(SessionTitleService, CONFIG)
     lifecycle.fiber = fiber
     const session = startSession(ctx, 'service-dispose-fallback')
@@ -277,6 +280,7 @@ describe('SessionTitleService configuration and refresh boundaries', () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(AgentRegistry)
     const fiber = await ctx.plugin(SessionTitleService, CONFIG)
     const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => undefined)
     const session = startSession(ctx, 'service-unload-started-fallback')
@@ -293,6 +297,7 @@ describe('SessionTitleService configuration and refresh boundaries', () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(AgentRegistry)
     const fiber = await ctx.plugin(SessionTitleService, CONFIG)
     const result = deferred<SessionTitleProviderResult>()
     const requests: SessionTitleProviderRequest[] = []

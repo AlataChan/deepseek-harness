@@ -1,7 +1,7 @@
 /** Native commerce import, read, staging, and export tools scoped to the commerce agent preset. */
 
 import { basename } from 'node:path'
-import type { Context } from '@deepseek-ai/cordis'
+import { FiberState, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { ListingId } from '@deepseek-ai/dsh-host-commerce'
 import { canonicalPath } from '@deepseek-ai/dsh-sandbox'
@@ -17,7 +17,7 @@ import {
 import { commerceSessionProjectionDefinition } from './projection.ts'
 import { MIN_RESULT_CHARS } from './render.ts'
 import { registerExportTool } from './export.ts'
-import { boundSession, registerStagingTools, type StagingConfig } from './staging.ts'
+import { bindCommerceSessionProjection, boundSession, registerStagingTools, type StagingConfig } from './staging.ts'
 
 // Type-only imports install the Context service and projection declarations.
 import type {} from '@deepseek-ai/dsh-fs'
@@ -67,11 +67,12 @@ const PARENT_PATH_SEGMENT = /(?:^|[\\/])\.\.(?:[\\/]|$)/
 
 /**
  * Register the commerce projection with the import, read, staging, and export tools on the current scope.
+ * Projection-ready continuations install nothing once the owning fiber is disposed or unloading.
  * A Host accepts one mount: a second `./tools` or `./preset` mount fails at load.
  * @param ctx - root or preset-scope context holding the injected services.
  * @param config - tool input, output, read-record, and staging bounds.
  */
-export function apply(ctx: Context, config: Config): void {
+export async function apply(ctx: Context, config: Config): Promise<void> {
   // Scopes share the root service store, so the second mount's claim throws.
   try {
     ctx.provide(TOOL_MOUNT_SERVICE, config)
@@ -81,7 +82,9 @@ export function apply(ctx: Context, config: Config): void {
       { cause },
     )
   }
-  ctx.sessionProjections.register(commerceSessionProjectionDefinition)
+  const commerceSession = await ctx.sessionProjections.register(commerceSessionProjectionDefinition)
+  if (ctx.fiber.uid === null || ctx.fiber.state === FiberState.UNLOADING) return
+  bindCommerceSessionProjection(ctx, commerceSession)
 
   const output = outputFor(config)
 

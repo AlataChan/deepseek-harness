@@ -72,6 +72,7 @@ describe.each([false, true])('web e2e: selected blank writer held: %s', (held) =
     if (!held) {
       expect(selectedId).toBe(HELD)
       const reclaimed = scaffold.ctx.agents.get(HELD)!
+      // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
       expect(scaffold.ctx.sessionProjections.stateOf(reclaimed.session, 'plan')).toMatchObject({ active: true })
       await expect(scaffold.ctx.sessionPersistence.open(HELD, 'write'))
         .rejects.toMatchObject({ name: 'SessionAlreadyOwnedError' })

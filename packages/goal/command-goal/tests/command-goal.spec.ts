@@ -25,6 +25,7 @@ function stubAgent(ctx: Context, id: string): { agent: Agent; session: Session }
   const inbox = createInboxStub()
   let status: AgentStatus = 'idle'
   const agent: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id: session.id,
     options: {},
     session,

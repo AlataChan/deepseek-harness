@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { pathToFileURL } from 'node:url'
 import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Context, type Fiber } from '@deepseek-ai/cordis'
+import { Context, FiberState, type Fiber } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
@@ -520,6 +520,8 @@ describe('the mods API over harness services', () => {
       const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`
       const run = await h.ctx.commands.execute(agent, `/probe ${url}`, [], new AbortController().signal)
       expect(run?.result.kind).toBe('success')
+      expect(h.warn.mock.calls.flat().filter(line => String(line).startsWith('claude-code-mods:'))).toEqual([])
+      expect(run?.result.text).toMatch(/^api-mod: \{/u)
       const out = JSON.parse(String(run?.result.text).replace(/^api-mod: /, '')) as Record<string, unknown>
       expect(out.read).toBe('# Notes')
       expect(readFileSync(join(h.workspace, 'notes.md'), 'utf8')).toBe('# Notes')
@@ -914,17 +916,18 @@ describe('loading diagnostics and configuration', () => {
     const mod = writeMod('sleeper-mod', `
       export function register(on) {
         on('session.start', async ($, e, next) => {
-          $.clock.after(1, async () => { await $.clock.sleep(60_000) })
+          $.clock.after(1, async () => { $.ui.log('sleeper callback started'); await $.clock.sleep(60_000) })
           return next(e)
         })
       }
     `)
     const h = await harness([mod], new MockAdapter([]))
     await h.agent()
-    await new Promise(resolve => setTimeout(resolve, 20))
+    await expect.poll(() => h.info.mock.calls.some(call => call.includes('sleeper-mod: sleeper callback started'))).toBe(true)
     const started = Date.now()
     await h.mods.dispose()
     expect(Date.now() - started).toBeLessThan(5_000)
+    expect(h.mods.state).toBe(FiberState.DISPOSED)
     expect(h.warn).toHaveBeenCalledWith('claude-code-mods: sleeper-mod: timer callback failed: claude-code-mods disposed')
   })
 

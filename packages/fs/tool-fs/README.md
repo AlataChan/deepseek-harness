@@ -1,5 +1,5 @@
 ---
-description: "The model-facing read, read_image, write, and edit tools for users and maintainers composing or debugging filesystem access for agents."
+description: "The model-facing read, read_image, write, edit, and opt-in apply_patch tools for users and maintainers composing or debugging filesystem access for agents."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use `dsh-tool-fs` to let a model read UTF-8 files with line numbers, read supported images, create or atomically replace files, and apply targeted literal edits. Results are capped, and failures provide stable error codes and recovery instructions. Add `dsh-fs-observation-policy` when writes and edits must follow a successful read; without it, mutations remain atomic but are unconditional. Image reads require durable attachment storage and an image-capable routed model. Choose the sibling discovery package for glob or grep searches.
+Use `dsh-tool-fs` to let a model read UTF-8 files with line numbers, read supported images, create or atomically replace files, apply targeted literal edits, and, when `applyPatch` is enabled, apply one Codex-style patch. Results are capped, and failures provide stable error codes and recovery instructions. Add `dsh-fs-observation-policy` when writes and edits must follow a successful read; without it, mutations remain atomic but are unconditional. Image reads require durable attachment storage and an image-capable routed model. Choose the sibling discovery package for glob or grep searches.
 
 ## Table of Contents
 
@@ -47,6 +47,7 @@ The policy plugin is optional: without it the tools run against the bare provide
 | `read_image` | `file_path` | Reads and persists a PNG/JPEG/WebP/GIF source; an extension-less path (normalized attachment object paths included) is identified from its file signature; normalization can downscale it before the next model request, so the model need not create a thumbnail first |
 | `write` | `file_path`, `content` | Creates or fully replaces a file; with the policy plugin, overwriting requires a prior `read` at the unchanged version, creating does not |
 | `edit` | `file_path`, `old_string`, `new_string`, `replace_all?` | Literal replacement requiring a unique match unless `replace_all` is true; with the policy plugin, requires a prior `read` and an unchanged file |
+| `apply_patch` | `input` | Opt-in Codex patch that creates, updates, deletes, and moves files through the same intent, sandbox, and observation path as `write` and `edit`. Syntax errors, missing files, unmatched hunks, unread targets, and symbolic-link sources or destinations are rejected before any write. An existing CRLF file keeps CRLF endings. A later failure keeps earlier writes. A move that publishes its destination and cannot remove the source reports both facts and does not roll the destination back |
 
 Field names are snake_case to match Claude Code and existing harness tool schemas. The `write` and `edit` path descriptions ask the model to emit `file_path` before the content or replacement strings; this guides streaming presentation but does not enforce JSON member order. Successes return compact envelopes — a read window, an image reference, or a `Created file`/`Updated file` confirmation — and `write`/`edit` derive replayable diff-card metadata for UI presentation.
 
@@ -60,6 +61,7 @@ All keys are optional; the defaults are the shipped read caps.
 | `readMaxLineLength` | `2000` | Characters kept per line before truncation |
 | `readMaxBytes` | `51200` | Byte cap on one `read` call's selected lines; overflow ends the window with a capped footer |
 | `readStreamMinSize` | `10485760` | Files at or above this size (or of unknown size) stream instead of loading whole into memory |
+| `applyPatch` | `false` | Register `apply_patch`. Shipped headless, desktop, standard, and persistent-question compositions leave this off, and the observation policy stays enabled |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-tool-fs) is the exhaustive source for every accepted field and its JSDoc.
 
@@ -96,6 +98,8 @@ The tools are the executor; policy is an event gate. The tools inject no policy 
 | [`src/read-image.ts`](src/read-image.ts) | `read_image` executor: route and media-type gates, bounded bytes, attachment save |
 | [`src/write.ts`](src/write.ts) | `write` executor: intent waterfall, atomic write, observation |
 | [`src/edit.ts`](src/edit.ts) | `edit` executor: intent waterfall, literal edit, observation |
+| [`src/apply-patch.ts`](src/apply-patch.ts) | Opt-in `apply_patch` registration, guidance, and presenters |
+| [`src/patch/`](src/patch/) | Parse, preflight, and sequential commit over `writeText` |
 | [`src/read-render.ts`](src/read-render.ts) | Cordis-free windowing and envelope formatting |
 | [`src/sandbox.ts`](src/sandbox.ts) | Escalation API shared by `write`/`edit`: policy resolution and denial-marker mapping |
 | [`src/error.ts`](src/error.ts) | Stable model-facing diagnostics for guarded-mutation failures |
@@ -133,7 +137,7 @@ Read these pages when the package-level contract is not enough. They move from t
 
 #### What the model sees
 
-At assembly time, each guidance section checks `ctx.tools.get(name, scope)` and renders only while its tool is visible to that agent. The write paragraph recommends edit only while edit is visible. The text below is unchanged when all three tools are available; restrictions, their removal, and tool registration changes take effect on the next assembly. The same check works for direct agent restrictions and subagent `toolFilter`, including PTC capabilities behind `run_code`. The read-before-mutation sentences in write/edit describe the observation policy, not a requirement to invoke the tool named `read`. They remain when `read` is hidden: the policy still guards mutations, and another observing operation, such as `str_replace_editor` with `command: view`, can establish the same file observation. Tool visibility does not disable that precondition.
+At assembly time, each guidance section checks `ctx.tools.get(name, scope)` and renders only while its tool is visible to that agent. The write paragraph recommends edit only while edit is visible. The text below is unchanged when all three tools are available; restrictions, their removal, and tool registration changes take effect on the next assembly. The same check works for direct agent restrictions and subagent `toolFilter`, including PTC capabilities behind `run_code`. The read-before-mutation sentences in write/edit describe the observation policy, not a requirement to invoke the tool named `read`. They remain when `read` is hidden: the policy still guards mutations, and another observing operation, such as `str_replace_editor` with `command: view`, can establish the same file observation. Tool visibility does not disable that precondition. The section is present only while `applyPatch` is true and the tool is visible to that agent. The rest of the guidance tells the model to give each hunk enough context, that a rejected patch writes nothing, and that a started patch stops at the first failure without rollback.
 
 ##### Read guidance
 
@@ -153,6 +157,12 @@ Read an existing file before overwriting it with write (the default fs-observati
 Read a file before editing it (the default fs-observation-policy requires it), unless you just created or edited it in this session.
 ```
 
+##### Apply patch guidance
+
+```markdown
+Prefer apply_patch over separate edit calls for changes across files or separated regions.
+```
+
 #### Token effect
 
 Guidance cost follows the visible tools and their applicable cross-tool recommendations.
@@ -165,7 +175,7 @@ Prefix-stable while the visible tool set, plugin scope, and guidance text are un
 
 #### What the model sees
 
-The model sees the generated [`read`, `read_image`, `write`, and `edit` schemas](../../../docs/tool-catalog.md#deepseek-aidsh-tool-fs), with snake_case arguments. The image tool appears only while a durable attachment store is mounted; its schema is route-independent, and the strict gate refuses at execution. Scoped tool restrictions can remove any definition for one agent.
+The model sees the generated [`read`, `read_image`, `write`, and `edit` schemas](../../../docs/tool-catalog.md#deepseek-aidsh-tool-fs), with snake_case arguments. `apply_patch` is absent unless the composition sets `applyPatch: true`; its one required argument is `input`, the Codex patch text. The image tool appears only while a durable attachment store is mounted; its schema is route-independent, and the strict gate refuses at execution. Scoped tool restrictions can remove any definition for one agent.
 
 #### Token effect
 
@@ -207,7 +217,7 @@ Append-only; newly visible content follows the reusable request prefix and does 
 
 #### What the model sees
 
-Write returns the exact five-line envelope `<path><displayPath></path>`, `<type>file</type>`, `<content>`, `Created file` or `Updated file`, then `</content>`. Edit returns exactly `The file <displayPath> has been updated successfully.` or, for `replace_all`, `The file <displayPath> has been updated. All occurrences were successfully replaced.` The full write or replacement text remains in the assistant tool-call arguments.
+Write returns the exact five-line envelope `<path><displayPath></path>`, `<type>file</type>`, `<content>`, `Created file` or `Updated file`, then `</content>`. Edit returns exactly `The file <displayPath> has been updated successfully.` or, for `replace_all`, `The file <displayPath> has been updated. All occurrences were successfully replaced.` The full write or replacement text remains in the assistant tool-call arguments. A finished `apply_patch` returns `Success. Updated the following files:` plus `A` or `M` lines. A stopped patch names the completed count and the failed, unknown, or skipped operations. The call card lists every path for file-open, and the result card is `Apply patch` or `Apply patch (stopped)` from persisted diff metadata. An error result that still carries those diffs uses the stopped title.
 
 #### Token effect
 
@@ -245,6 +255,8 @@ These limits define when the tool suite is a poor fit or needs special operation
 - **Inline image preview rides the UI composition** — the tool-result card renders the image through the browser's `tool.call.images` slot, which the attachment presentation plugin fills; a UI without that plugin shows the result's envelope text instead.
 - **No attachment-region tool** — an agent may crop an image through another available tool when it has a filesystem path; a pasted or dragged image without a path cannot be re-read at higher resolution.
 - **No timeout surface** — `read`/`write`/`edit` take no timeout argument and declare no timeout budget; cancellation rides `exec.signal` only ([provider rationale](../README.md)).
+- **`apply_patch` is not one transaction** — delete and move go through `deleteFile` and `moveFile`, which the sandbox fences. A move can leave the destination written and the source in place; the result says so, and the tool does not retry or claim a rollback.
+- **An aborted `apply_patch` call keeps finished writes** — the registry reports `tool call aborted` when `exec.signal` aborts, including after an earlier operation in the same patch has already been published. Those files stay, and the call is not replayed.
 
 <a id="dev-note"></a>
 ### Dev Note

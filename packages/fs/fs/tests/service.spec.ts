@@ -83,6 +83,8 @@ class FakeFileSystem extends FileSystem {
     this.files.set(target.targetKey, after)
     return { version: FsVersion('v3'), before: content, after }
   }
+  override async deleteFile(): Promise<never> { throw new Error('fixture does not delete files') }
+  override async moveFile(): Promise<never> { throw new Error('fixture does not move files') }
 }
 
 describe('FileSystem provider seam', () => {

@@ -8,6 +8,11 @@
     "rewriteRelativeImportExtensions": false
   },
   "include": [
+    "apps/web/tests/apply-patch-review.e2e.ts",
+    "snapshots/session/apply-patch-guarded/inspect.ts",
+    "snapshots/session/apply-patch-guarded-ptc/inspect.ts",
+    "snapshots/session/instruction-chain-budgets/inspect.ts",
+    "snapshots/session/skill-root-isolation/inspect.ts",
     "apps/web/product-isolation.ts",
     "apps/web/tests/connection-recovery.e2e.ts",
     "apps/web/tests/server-restart.e2e.ts",
@@ -56,6 +61,7 @@
     "apps/web/tests/navigation-panes.e2e.ts",
     "apps/web/tests/focus-rings.e2e.ts",
     "apps/web/tests/chat-scroll-fixture.ts",
+    "apps/web/tests/session-history-markdown.e2e.ts",
     "apps/web/tests/trajectory-virtualization.e2e.ts",
     "apps/web/tests/lifecycle-chrome.e2e.ts",
     "apps/web/tests/reasoning-preview.e2e.ts",
@@ -221,6 +227,7 @@
     "scripts/client-bundle-purity.spec.ts"
   ],
   "references": [
+    { "path": "./packages/experimental/desktop-operation/tsconfig.host.json" },
     { "path": "./packages/telemetry/otel" },
     { "path": "./packages/tui/tui" },
     { "path": "./packages/bundle/tui" },
@@ -366,6 +373,7 @@
     { "path": "./packages/experimental/im-service-bundle" },
     { "path": "./packages/experimental/claude-code-mods" },
     { "path": "./packages/core/tools" },
+    { "path": "./packages/core/tool-executor-ptc" },
     { "path": "./packages/core/agent-tool-presentation" },
     { "path": "./packages/skill/skill" },
     { "path": "./packages/skill/skill-badge" },
@@ -411,6 +419,7 @@
     { "path": "./packages/deliverables/workspace-changes" },
     { "path": "./packages/fs/fs" },
     { "path": "./packages/fs/fs-local" },
+    { "path": "./packages/fs/fs-patch" },
     { "path": "./packages/fs/fs-observation-policy" },
     { "path": "./packages/fs/fs-sandbox" },
     { "path": "./packages/fs/tool-fs" },

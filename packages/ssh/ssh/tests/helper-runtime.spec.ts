@@ -6,7 +6,7 @@ import { SubprocessExecutableNotFoundError } from '@deepseek-ai/dsh-subprocess'
 import { LocalSubprocessRuntime } from '@deepseek-ai/dsh-subprocess-local'
 import { z } from 'zod'
 import { createHelperHarness as helper } from './fixtures/helper.ts'
-import { targetSchema, writeResultSchema, editResultSchema, infoSchema, entriesSchema } from '../src/schemas.ts'
+import { deleteResultSchema, editResultSchema, entriesSchema, infoSchema, moveResultSchema, targetSchema, writeResultSchema } from '../src/schemas.ts'
 
 
 const policy = (workspaceRoot: string) => ({ mode: 'workspace-write', workspaceRoot })
@@ -42,6 +42,41 @@ describe.skipIf(process.platform === 'win32')('SSH helper runtime', () => {
       await test.client.request('fs.edit', { target, edit: { oldString: 'third', newString: 'fourth', replaceAll: false }, policy: policy(test.root) }, editResultSchema)
       expect(await test.client.request('fs.readText', { target }, z.string())).toBe('fourth text')
       await expect(test.client.request('fs.write', { target, content: 'denied', policy: { mode: 'read-only', workspaceRoot: test.root } }, writeResultSchema)).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+      const destination = await test.client.request('fs.resolve', { path: 'moved.txt' }, targetSchema)
+      const current = await test.client.request('fs.stat', { target }, infoSchema)
+      const moved = await test.client.request('fs.move', {
+        source: target,
+        destination,
+        options: { expectedSource: { version: current.version } },
+        policy: policy(test.root),
+      }, moveResultSchema)
+      expect(moved.sourceDeleted).toBe(true)
+      expect(moved.destination.after).toBe('fourth text')
+      await expect(test.client.request('fs.delete', {
+        target: destination, expected: { version: moved.destination.version }, policy: { mode: 'read-only', workspaceRoot: test.root },
+      }, deleteResultSchema)).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+      const deleted = await test.client.request('fs.delete', {
+        target: destination, expected: { version: moved.destination.version }, policy: policy(test.root),
+      }, deleteResultSchema)
+      expect(deleted.before).toBe('fourth text')
+      const again = await test.client.request('fs.resolve', { path: 'again.txt' }, targetSchema)
+      await test.client.request('fs.write', {
+        target: again, content: 'plain', policy: policy(test.root), expected: { kind: 'createIfAbsent' },
+      }, writeResultSchema)
+      expect((await test.client.request('fs.delete', { target: again, policy: policy(test.root) }, deleteResultSchema)).before).toBe('plain')
+      const source = await test.client.request('fs.resolve', { path: 'src.txt' }, targetSchema)
+      const dest = await test.client.request('fs.resolve', { path: 'dst.txt' }, targetSchema)
+      await test.client.request('fs.write', {
+        target: source, content: 'body', policy: policy(test.root), expected: { kind: 'createIfAbsent' },
+      }, writeResultSchema)
+      const rewritten = await test.client.request('fs.move', {
+        source,
+        destination: dest,
+        options: { content: 'next body', expectedDestination: { kind: 'createIfAbsent' } },
+        policy: policy(test.root),
+      }, moveResultSchema)
+      expect(rewritten.sourceDeleted).toBe(true)
+      expect(rewritten.destination.after).toBe('next body')
     } finally { await test.close() }
   })
 

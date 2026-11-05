@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import TerminalSessionService, { TerminalBackendCleanupError, TerminalError, TerminalSessionId } from '@deepseek-ai/dsh-terminal'
 import type {
@@ -27,7 +28,7 @@ function stubAgent(ctx: Context, rawId: string): Agent {
     id,
     options: {},
     session,
-    inbox: unsupportedInbox(),
+    inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
     status: 'idle',
     ctx: scopeFiber.ctx,
     send: () => {},
@@ -120,6 +121,7 @@ function backend(type = 'stub') {
 
 async function harness() {
   const ctx = new Context()
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   const fiber = await ctx.plugin(TerminalSessionService)
   ptyServiceDisposers.set(ctx, async () => { await fiber.dispose() })

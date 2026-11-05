@@ -1,0 +1,78 @@
+[
+  {
+    "kind": "chunks",
+    "chunks": [
+      {
+        "type": "block-start",
+        "index": 0,
+        "blockType": "tool-call"
+      },
+      {
+        "type": "tool-call-delta",
+        "index": 0,
+        "id": "call_patch_ptc",
+        "name": "run_code",
+        "argumentsDelta": "{\"code\":\"const patch = (lines) => ['*** Begin Patch', ...lines, '*** End Patch'].join('\\\\n')\\nawait tools.read({ file_path: 'notes.txt' })\\nawait tools.read({ file_path: 'gone.txt' })\\nawait tools.read({ file_path: 'move-src.txt' })\\nconst success = await tools.apply_patch({ input: patch([\\n  '*** Add File: created.txt', '+created',\\n  '*** Update File: notes.txt', '@@', '-hello', '+hi',\\n  '*** Delete File: gone.txt',\\n  '*** Update File: move-src.txt', '*** Move to: move-dst.txt', '@@', '-move me', '+moved',\\n]) })\\nconst caught = async (input) => {\\n  try { return JSON.stringify(await tools.apply_patch({ input })) }\\n  catch (error) { return error instanceof Error ? error.message : String(error) }\\n}\\nconst unread = await caught(patch(['*** Delete File: secret.txt']))\\nconst link = await caught(patch(['*** Delete File: link.txt']))\\nconst partial = await tools.apply_patch({ input: patch([\\n  '*** Add File: kept.txt', '+kept',\\n  '*** Add File: ../escape.txt', '+nope',\\n]) })\\nreturn { success: String(success), unread, link, partial: String(partial) }\",\"description\":\"Apply the guarded patch cases\"}"
+      },
+      {
+        "type": "block-end",
+        "index": 0,
+        "block": {
+          "type": "tool-call",
+          "id": "call_patch_ptc",
+          "name": "run_code",
+          "arguments": "{\"code\":\"const patch = (lines) => ['*** Begin Patch', ...lines, '*** End Patch'].join('\\\\n')\\nawait tools.read({ file_path: 'notes.txt' })\\nawait tools.read({ file_path: 'gone.txt' })\\nawait tools.read({ file_path: 'move-src.txt' })\\nconst success = await tools.apply_patch({ input: patch([\\n  '*** Add File: created.txt', '+created',\\n  '*** Update File: notes.txt', '@@', '-hello', '+hi',\\n  '*** Delete File: gone.txt',\\n  '*** Update File: move-src.txt', '*** Move to: move-dst.txt', '@@', '-move me', '+moved',\\n]) })\\nconst caught = async (input) => {\\n  try { return JSON.stringify(await tools.apply_patch({ input })) }\\n  catch (error) { return error instanceof Error ? error.message : String(error) }\\n}\\nconst unread = await caught(patch(['*** Delete File: secret.txt']))\\nconst link = await caught(patch(['*** Delete File: link.txt']))\\nconst partial = await tools.apply_patch({ input: patch([\\n  '*** Add File: kept.txt', '+kept',\\n  '*** Add File: ../escape.txt', '+nope',\\n]) })\\nreturn { success: String(success), unread, link, partial: String(partial) }\",\"description\":\"Apply the guarded patch cases\"}"
+        }
+      },
+      {
+        "type": "usage",
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 5
+        }
+      },
+      {
+        "type": "finish",
+        "reason": {
+          "kind": "tool-calls"
+        }
+      }
+    ]
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      {
+        "type": "block-start",
+        "index": 0,
+        "blockType": "text"
+      },
+      {
+        "type": "text-delta",
+        "index": 0,
+        "text": "DONE"
+      },
+      {
+        "type": "block-end",
+        "index": 0,
+        "block": {
+          "type": "text",
+          "text": "DONE"
+        }
+      },
+      {
+        "type": "usage",
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 2
+        }
+      },
+      {
+        "type": "finish",
+        "reason": {
+          "kind": "stop"
+        }
+      }
+    ]
+  }
+]

@@ -1,83 +1,17 @@
-/** Durable model-selection intent and request-use projection. */
+/** Session Controller participation in the core model-selection projection. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import { z } from 'zod'
-import type {
-  ModelSelection,
-  ModelSelectionProjection,
-  ModelSelectionProjectionState,
-} from './types.ts'
-
-const modelSelectionSchema = z.object({
-  provider: z.string().min(1),
-  model: z.string().min(1),
-  reasoningEffort: z.string().min(1).optional(),
-}) as unknown as z.ZodType<ModelSelection>
-
-const modelSelectionProjectionStateSchema = z.object({
-  lastUsed: modelSelectionSchema.nullable(),
-  pending: modelSelectionSchema.nullable(),
-}) as z.ZodType<ModelSelectionProjectionState>
-
-const modelSelectionProjectionSchema = z.object({
-  lastUsed: modelSelectionSchema.nullable(),
-  next: modelSelectionSchema.nullable(),
-}) as z.ZodType<ModelSelectionProjection>
+import { modelSelectionProjectionDefinition } from '@deepseek-ai/dsh-agent'
 
 /**
- * Advance durable model-selection state by one Session event.
- * @param state - selection state before the event.
- * @param event - next committed Session event.
- * @returns the original or advanced selection state.
- */
-function applyModelSelectionProjection(
-  state: ModelSelectionProjectionState,
-  event: SessionEvent,
-): ModelSelectionProjectionState {
-  if (event.type === 'model/selection') {
-    return sameSelection(state.pending, event.data)
-      ? state
-      : { lastUsed: state.lastUsed, pending: event.data }
-  }
-  if (event.type !== 'request/header') return state
-  const lastUsed: ModelSelection = {
-    provider: event.data.header.config.provider,
-    model: event.data.header.config.model,
-    ...(event.data.header.config.reasoningEffort === undefined
-      ? {}
-      : { reasoningEffort: String(event.data.header.config.reasoningEffort) }),
-  }
-  const pending = sameSelection(state.pending, lastUsed) ? null : state.pending
-  return sameSelection(state.lastUsed, lastUsed) && pending === state.pending
-    ? state
-    : { lastUsed, pending }
-}
-
-const modelSelectionProjection = {
-  key: 'modelSelection',
-  stateSchema: modelSelectionProjectionStateSchema,
-  init: () => ({ lastUsed: null, pending: null }),
-  apply: applyModelSelectionProjection,
-  wire: {
-    viewSchema: modelSelectionProjectionSchema,
-    view: state => ({ lastUsed: state.lastUsed, next: state.pending ?? state.lastUsed }),
-  },
-  stateVersion: 2,
-} satisfies ProjectionDefinition<'modelSelection', ModelSelectionProjectionState>
-
-function sameSelection(left: ModelSelection | null, right: ModelSelection | null): boolean {
-  return left === right || (left !== null && right !== null
-    && left.provider === right.provider
-    && left.model === right.model
-    && left.reasoningEffort === right.reasoningEffort)
-}
-
-/**
- * Register the durable model-selection projection when the registry is present.
+ * Register the core `modelSelection` unit at stateVersion 4.
+ * A second registration shares that version; the retired v2 fold is not installed.
  * @param ctx - Session Controller context.
+ * @returns completion of the registration handoff.
  */
-export function installModelSelectionProjection(ctx: Context): void {
-  ctx.sessionProjections.register(modelSelectionProjection)
+export async function installModelSelectionProjection(ctx: Context): Promise<void> {
+  await ctx.effect(async () => {
+    const handle = await ctx.sessionProjections.register(modelSelectionProjectionDefinition)
+    return () => handle.dispose()
+  }, 'session-controller model selection projection')
 }

@@ -1,5 +1,8 @@
-import type { Context } from '@deepseek-ai/cordis'
-import { ReasoningEffortId, type LlmCallConfig } from '@deepseek-ai/dsh-llm'
+import { Context } from '@deepseek-ai/cordis'
+import { AgentModel, modelSelectionProjectionDefinition, type ModelSelection } from '@deepseek-ai/dsh-agent'
+import { Session, SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   WebhookDeliveryId,
@@ -21,34 +24,33 @@ interface SessionHarness {
   readonly ctx: Context
   readonly calls: string[]
   readonly messages: unknown[]
-  readonly modelListeners: Map<string, unknown>
-  readonly agent: unknown
-  markRequestHeader(): void
+  readonly session: Session
+  readonly model: AgentModel
+  markRequestHeader(config: ModelSelection): void
   readonly controller: AbortController
   readonly request: WebhookSessionRequest
 }
 
 const active: SessionHarness[] = []
 
-afterEach(() => {
-  active.length = 0
+afterEach(async () => {
+  await Promise.all(active.splice(0).map(test => test.ctx.fiber.dispose()))
 })
 
 /** Build a same-process fake around the private creation transaction. */
-function harness(options: HarnessOptions = {}): SessionHarness {
+async function harness(options: HarnessOptions = {}): Promise<SessionHarness> {
   const calls: string[] = []
   const messages: unknown[] = []
-  const modelListeners = new Map<string, unknown>()
+  const ctx = new Context()
+  await ctx.plugin(SessionProjectionRegistry)
+  const projection = await ctx.sessionProjections.register(modelSelectionProjectionDefinition)
   const controller = new AbortController()
-  let requestHeader: object | undefined
-  const session = {
-    id: 'webhook-session',
-    header: { cwd: '/workspace' },
-    requestHeader: () => requestHeader,
-  }
+  const session = Session.create(SessionId('webhook-session'))
+  const model = new AgentModel(() => projection.stateOf(session), session, {})
   const agent = {
-    id: 'webhook-session',
+    id: session.id,
     session,
+    model,
     followup(message: unknown) {
       calls.push('followup')
       if (options.failAt === 'followup') throw new Error('followup failed')
@@ -120,12 +122,7 @@ function harness(options: HarnessOptions = {}): SessionHarness {
       async create(createOptions: { setup?: (ctx: unknown, agent: unknown) => Promise<void> }) {
         calls.push('agent-create')
         if (options.failAt === 'agent') throw new Error('agent failed')
-        await createOptions.setup?.({
-          on(event: string, listener: unknown) {
-            modelListeners.set(event, listener)
-            return () => {}
-          },
-        }, agent)
+        await createOptions.setup?.(ctx, agent)
         if (options.abortAt === 'agent') controller.abort(new Error('abort after agent'))
         return handle
       },
@@ -138,13 +135,16 @@ function harness(options: HarnessOptions = {}): SessionHarness {
       },
     },
   }
+  Object.assign(ctx, fake)
   const result: SessionHarness = {
-    ctx: fake as unknown as Context,
+    ctx,
     calls,
     messages,
-    modelListeners,
-    agent,
-    markRequestHeader() { requestHeader = {} },
+    session,
+    model,
+    markRequestHeader(config) {
+      session.append('request/header', { header: { config }, reason: 'initial' })
+    },
     controller,
     request: {
       workspacePath: '/workspace',
@@ -176,25 +176,9 @@ async function create(test: SessionHarness, request = test.request): Promise<voi
   )
 }
 
-/** Read the initial model-selection listener installed during Agent setup. */
-function modelRequestListener(test: SessionHarness): (
-  payload: unknown,
-  next: () => Promise<LlmCallConfig>,
-) => Promise<LlmCallConfig> {
-  const listener = test.modelListeners.get('agent/request')
-  if (typeof listener !== 'function') {
-    throw new Error('webhook Session did not install its initial model selection')
-  }
-  const request = listener as (
-    payload: unknown,
-    next: () => Promise<LlmCallConfig>,
-  ) => Promise<LlmCallConfig>
-  return (_payload, next) => request({ agent: test.agent }, next)
-}
-
 describe('webhook Session creation', () => {
   it('preflights, mounts, attaches, configures, titles, and prompts in order', async () => {
-    const test = harness()
+    const test = await harness()
     await create(test)
     expect(test.calls).toEqual([
       'default-model',
@@ -220,54 +204,47 @@ describe('webhook Session creation', () => {
   })
 
   it('uses a complete explicit model without consulting the default', async () => {
-    const test = harness()
+    const test = await harness()
     await create(test, { ...test.request, model: { provider: 'p', model: 'm', maxTokens: 10 } })
     expect(test.calls).not.toContain('default-model')
-    const withoutCap = harness()
+    const withoutCap = await harness()
+    withoutCap.markRequestHeader({ provider: 'p', model: 'm', reasoningEffort: ReasoningEffortId('inherited') })
     await create(withoutCap, { ...withoutCap.request, model: { provider: 'p', model: 'm' } })
     expect(withoutCap.calls).not.toContain('default-model')
-    await expect(modelRequestListener(withoutCap)(undefined, async () => ({
-      provider: 'p', model: 'm', reasoningEffort: ReasoningEffortId('inherited'),
-    }))).resolves.toEqual({ provider: 'p', model: 'm' })
+    expect(test.model.current()).toEqual({ provider: 'p', model: 'm' })
+    expect(withoutCap.model.current()).toEqual({ provider: 'p', model: 'm' })
+    expect(withoutCap.session.snapshotEvents().filter(event => event.type === 'model/selection')).toMatchObject([
+      { type: 'model/selection', data: { provider: 'p', model: 'm' } },
+    ])
+    expect(withoutCap.model.current()).not.toHaveProperty('reasoningEffort')
   })
 
-  it('preserves default reasoning until the first request header is durable', async () => {
-    const test = harness()
+  it('preserves default reasoning until a matching request header is durable', async () => {
+    const test = await harness()
     await create(test)
-    const request = modelRequestListener(test)
-
-    await expect(request(undefined, async () => ({
-      provider: 'other-provider',
-      model: 'default-model',
-      reasoningEffort: ReasoningEffortId('other-provider-effort'),
-    }))).resolves.toMatchObject({ reasoningEffort: 'other-provider-effort' })
-    await expect(request(undefined, async () => ({
-      provider: 'default-provider',
-      model: 'other-model',
-      reasoningEffort: ReasoningEffortId('other-model-effort'),
-    }))).resolves.toMatchObject({ reasoningEffort: 'other-model-effort' })
-
-    const routed: unknown = await request(undefined, async () => ({
+    const selected = {
       provider: 'default-provider',
       model: 'default-model',
-      reasoningEffort: ReasoningEffortId('inherited'),
-    }))
-    expect(routed).toEqual({
-      provider: 'default-provider',
-      model: 'default-model',
-      reasoningEffort: 'high',
-    })
-
-    test.markRequestHeader()
-    await expect(request(undefined, async () => ({
+      reasoningEffort: ReasoningEffortId('high'),
+    }
+    expect(test.model.current()).toEqual(selected)
+    for (const config of [
+      { ...selected, provider: 'other-provider' },
+      { ...selected, model: 'other-model' },
+      { ...selected, reasoningEffort: ReasoningEffortId('inherited') },
+    ]) {
+      test.markRequestHeader(config)
+      expect(test.model.current()).toEqual(selected)
+    }
+    test.markRequestHeader(selected)
+    expect(test.model.current()).toEqual(selected)
+    const later = {
       provider: 'later-provider',
       model: 'later-model',
       reasoningEffort: ReasoningEffortId('later'),
-    }))).resolves.toEqual({
-      provider: 'later-provider',
-      model: 'later-model',
-      reasoningEffort: 'later',
-    })
+    }
+    test.markRequestHeader(later)
+    expect(test.model.current()).toEqual(later)
   })
 
   it.each([
@@ -282,7 +259,7 @@ describe('webhook Session creation', () => {
     [{ workspacePath: '/w', title: 't', prompt: 'p', agentPreset: 'a', permissionPreset: 'x', model: {} }, /provider/],
     [{ workspacePath: '/w', title: 't', prompt: 'p', agentPreset: 'a', permissionPreset: 'x', model: { provider: 'p', model: 'm', maxTokens: 0 } }, /maxTokens/],
   ] as const)('rejects malformed rule result %# before side effects', async (request, message) => {
-    const test = harness()
+    const test = await harness()
     await expect(create(test, request as never)).rejects.toThrow(message)
     expect(test.calls).toEqual([])
   })
@@ -290,7 +267,7 @@ describe('webhook Session creation', () => {
   it.each([
     'permission-resolve', 'preset-resolve', 'standing', 'workspace', 'agent', 'attach',
   ] as const)('contains a %s failure before prompt admission', async (failAt) => {
-    const test = harness({ failAt })
+    const test = await harness({ failAt })
     await expect(create(test)).rejects.toThrow()
     expect(test.calls).not.toContain('followup')
     if (failAt === 'attach') expect(test.calls).toContain('dispose')
@@ -299,7 +276,7 @@ describe('webhook Session creation', () => {
   it.each(['permission-set', 'title', 'followup'] as const)(
     'detaches and disposes after a %s failure',
     async (failAt) => {
-      const test = harness({ failAt })
+      const test = await harness({ failAt })
       await expect(create(test)).rejects.toThrow()
       expect(test.calls).toContain('detach')
       expect(test.calls).toContain('dispose')
@@ -307,13 +284,13 @@ describe('webhook Session creation', () => {
   )
 
   it('preserves the original failure while reporting rollback failures', async () => {
-    const test = harness({ failAt: 'title', failDetach: true, failDispose: true })
+    const test = await harness({ failAt: 'title', failDetach: true, failDispose: true })
     await expect(create(test)).rejects.toThrow('title failed')
     expect((test.ctx.logger.warn as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(2)
   })
 
   it.each(['workspace', 'agent'] as const)('honors cancellation after %s settlement', async (abortAt) => {
-    const test = harness({ abortAt })
+    const test = await harness({ abortAt })
     await expect(create(test)).rejects.toThrow(/abort after/)
     expect(test.calls).not.toContain('followup')
     if (abortAt === 'agent') expect(test.calls).toContain('dispose')

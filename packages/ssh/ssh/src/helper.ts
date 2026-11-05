@@ -120,6 +120,8 @@ export async function runSshHelper(transport: HelperTransport): Promise<void> {
       const input = z.object({
         id: processIdSchema, cols: z.number().int().positive(), rows: z.number().int().positive(),
       }).strict().parse(raw)
+      /* v8 ignore next -- resizeTerminal rejects before returning for a non-terminal
+       * reservation; helper-boundaries asserts that rejection, and v8 does not mark the awaited throw. */
       await processes.resizeTerminal(input.id, input.cols, input.rows)
       return null
     }
@@ -239,6 +241,40 @@ export async function runSshHelper(transport: HelperTransport): Promise<void> {
           ? undefined : z.object({ version: z.string() }).strict().parse(input.expected) as { version: FsVersion },
         signal, resolved,
       )
+    }
+    if (method === 'fs.delete') {
+      const input = z.object({
+        target: targetSchema,
+        expected: z.object({ version: z.string() }).strict().optional(),
+        policy: policySchema,
+      }).strict().parse(raw)
+      const resolved = await policy(input.policy, signal)
+      return ctx.fs.deleteFile(
+        asTarget(input.target),
+        input.expected === undefined ? undefined : input.expected as { version: FsVersion },
+        signal,
+        resolved,
+      )
+    }
+    if (method === 'fs.move') {
+      const input = z.object({
+        source: targetSchema,
+        destination: targetSchema,
+        options: z.object({
+          content: z.string().optional(),
+          expectedSource: z.object({ version: z.string() }).strict().optional(),
+          expectedDestination: intentSchema.optional(),
+        }).strict(),
+        policy: policySchema,
+      }).strict().parse(raw)
+      const resolved = await policy(input.policy, signal)
+      return ctx.fs.moveFile(asTarget(input.source), asTarget(input.destination), {
+        ...(input.options.content === undefined ? {} : { content: input.options.content }),
+        ...(input.options.expectedSource === undefined ? {} : { expectedSource: input.options.expectedSource as { version: FsVersion } }),
+        ...(input.options.expectedDestination === undefined
+          ? {}
+          : { expectedDestination: input.options.expectedDestination as FsWriteIntent }),
+      }, signal, resolved)
     }
     throw new Error(`Unknown SSH helper operation: ${method}`)
   })

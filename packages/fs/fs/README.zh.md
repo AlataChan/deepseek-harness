@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-应用需要在宿主、受限或远程执行环境中使用一致的文件系统操作时，选择 `dsh-fs`。消费方可以解析稳定的文件身份、在受支持时映射共享宿主文件、执行有界的文本与字节读取、列出目录、监听目标，并原子地写入文本及执行字面量编辑。版本防护是可选的，因此后端无需策略强制也能工作；调用方可以提供防护，在文件变化后拒绝变更。在宿主执行时选择 `fs-local` 或 `fs-sandbox`。面向模型的文件系统工具由 `dsh-tool-fs` 单独提供。
+应用需要在宿主、受限或远程执行环境中使用一致的文件系统操作时，选择 `dsh-fs`。消费方可以解析稳定的文件身份、在受支持时映射共享宿主文件、执行有界的文本与字节读取、列出目录、监听目标，并原子地写入文本、执行字面量编辑、删除普通文件和移动普通文件。版本防护是可选的，因此后端无需策略强制也能工作；调用方可以提供防护，在文件变化后拒绝变更。在宿主执行时选择 `fs-local` 或 `fs-sandbox`。面向模型的文件系统工具由 `dsh-tool-fs` 单独提供。
 
 ## 目录
 
@@ -33,7 +33,7 @@ kind: "package-reference"
 
 ### 服务能做什么
 
-通过 `ctx.fs`，你可以把任意路径解析为稳定的目标身份、完整读取或分片流式读取文本文件、按显式上限读取原始字节、列出一层目录、原子地创建或替换文件，并原子地应用字面量文本编辑。两个变更操作上的版本防护都是可选的：省略它即无条件创建或覆盖，提供它则在文件自上次观察以来发生变化时失败。读取、列出与变更操作的失败使用携带稳定错误码（如 `FS_NOT_FOUND`、`FS_STALE_VERSION`、`FS_AMBIGUOUS_EDIT`）的类型化 `FsError`，调用方依据错误码分支，绝不解析消息文本。
+通过 `ctx.fs`，你可以把任意路径解析为稳定的目标身份、完整读取或分片流式读取文本文件、按显式上限读取原始字节、列出一层目录、原子地创建或替换文件、原子地应用字面量文本编辑、删除普通文件，以及把普通文件移动到另一路径。移动先发布目标路径，再删除源路径；源删除失败时目标路径保留，结果会说明源文件仍在。两个变更操作上的版本防护都是可选的：省略它即无条件创建或覆盖，提供它则在文件自上次观察以来发生变化时失败。读取、列出与变更操作的失败使用携带稳定错误码（如 `FS_NOT_FOUND`、`FS_STALE_VERSION`、`FS_AMBIGUOUS_EDIT`）的类型化 `FsError`，调用方依据错误码分支，绝不解析消息文本。
 
 `watch(target, changed, signal)` 报告单个文件或目录直接子项的失效通知。观察就绪后，它返回调用方必须等待完成的异步关闭函数。signal 取消初始化；不支持监听的提供方直接拒绝，不使用轮询。
 
@@ -69,7 +69,7 @@ kind: "package-reference"
 
 ### `fs/*` 策略事件
 
-本包声明三个事件，使发出方（`dsh-tool-fs`）与策略监听器（`dsh-fs-observation-policy`）共享词汇，而无需让发出方依赖策略插件。`fs/write-intent` 与 `fs/edit-intent` 是单槽决策 waterfall（瀑布式事件）：第一个监听器直接决策，绝不调用 `next()`。`fs/observed` 是发后即忘的记录事件，携带 `FsObservation`——存在并带版本，或确认缺失。事件只携带 `dsh-fs` 词汇和一个不透明 `object` 参与者。
+本包声明文件系统事件，使发出方（`dsh-tool-fs`）与策略监听器（`dsh-fs-observation-policy`）共享词汇，而无需让发出方依赖策略插件。`fs/write-intent`、`fs/edit-intent` 与 `fs/delete-intent` 是单槽决策 waterfall（瀑布式事件）：第一个监听器直接决策，绝不调用 `next()`。`fs/observed` 是发后即忘的记录事件，携带 `FsObservation`——存在并带版本，或确认缺失。事件只携带 `dsh-fs` 词汇和一个不透明 `object` 参与者。
 
 ### 不变式
 
@@ -111,8 +111,8 @@ kind: "package-reference"
 
 这些限制说明该约定何时不合适，或何时需要特别的运维注意。它们是当前包约束，不是通用文件系统对比或任务积压。
 
-- **变更操作约定只支持文本**：文本读取和两个变更操作都以 `FS_NOT_TEXT` 拒绝二进制/非 UTF-8 内容；`readBytes` 与 `readByteRange` 是原始字节原语，二进制安全的变更操作仍延期。
-- **没有删除、重命名或复制**：`listDir` 只列出一层，递归、glob、分页与搜索不在范围内（见[目录列出笔记](../../../.agents/notes/archived/architecture/2026-07-03-filesystem-directory-listing-seam.md)）。
+- **写入、编辑和移动只支持文本**：`writeText`、`editText` 与 `moveFile` 以 `FS_NOT_TEXT` 拒绝二进制或非 UTF-8 内容。`deleteFile` 删除普通文件；字节不是有界文本差异时，返回的 basis 为 null。`readBytes` 与 `readByteRange` 仍是原始字节原语。
+- **没有复制，也不删除目录**：`deleteFile` 与 `moveFile` 只接受普通文件。`listDir` 只列出一层，递归、glob、分页与搜索不在范围内（见[目录列出笔记](../../../.agents/notes/archived/architecture/2026-07-03-filesystem-directory-listing-seam.md)）。
 - **没有 I/O deadline**：该 seam 不启动超时；取消只是每个原语上尽力而为的可选 `AbortSignal`（见[fs 能力族立场](../README.zh.md)）。
 - **先解析后操作使远程后端每次工具调用需要两次往返**：折叠或缓存解析由这种后端自行决定。
 

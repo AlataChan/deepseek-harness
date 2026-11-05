@@ -1,0 +1,14 @@
+version: 1
+scenario: skill-root-isolation
+profile: headless
+composition: skill-root-isolation
+recording: authored
+# Preparation creates the self-symlink at .dsh/skills/loop in the temporary workspace. Windows does not run this scenario.
+platform: posix
+header:
+  class: skill-root-isolation
+  pin: true
+  systemPromptSource: text-turn
+  toolSchemasSource: text-turn
+replay:
+  override: true

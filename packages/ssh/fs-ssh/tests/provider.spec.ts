@@ -115,6 +115,23 @@ describe('SSH filesystem provider', () => {
     expect(dispatch).toHaveBeenLastCalledWith('fs.write', { target, content: 'new', expected, policy }, signal)
     expect(await fs.editText(target, edit, { version: FsVersion('v2') }, signal, policy)).toEqual(edited)
     expect(dispatch).toHaveBeenLastCalledWith('fs.edit', { target, edit, expected: { version: 'v2' }, policy }, signal)
+    const deleted = { before: 'old' }
+    const destination = { targetKey: FsTargetKey('/remote/work/other.txt'), displayPath: 'other.txt' }
+    const moved = {
+      sourceBefore: 'old',
+      destination: { operation: 'create', version: 'v4', before: null, after: 'next' },
+      sourceDeleted: true as const,
+    }
+    dispatch.mockResolvedValueOnce(deleted).mockResolvedValueOnce(moved)
+    expect(await fs.deleteFile(target, { version: FsVersion('v1') }, signal, policy)).toEqual(deleted)
+    expect(dispatch).toHaveBeenLastCalledWith('fs.delete', { target, expected: { version: 'v1' }, policy }, signal)
+    expect(await fs.moveFile(target, destination, { content: 'next', expectedSource: { version: FsVersion('v3') } }, signal, policy)).toEqual(moved)
+    expect(dispatch).toHaveBeenLastCalledWith('fs.move', {
+      source: target,
+      destination,
+      options: { content: 'next', expectedSource: { version: 'v3' } },
+      policy,
+    }, signal)
   })
 
   it('resolves deployment policy for mutations without an explicit policy', async () => {
@@ -123,6 +140,13 @@ describe('SSH filesystem provider', () => {
       .mockResolvedValueOnce({ version: 'v2', before: 'new', after: 'next' })
     await fs.writeText(target, 'new', { kind: 'createIfAbsent' })
     await fs.editText(target, { oldString: 'new', newString: 'next', replaceAll: true })
+    dispatch.mockResolvedValueOnce({ before: 'next' }).mockResolvedValueOnce({
+      sourceBefore: 'next',
+      destination: { operation: 'create', version: 'v3', before: null, after: 'next' },
+      sourceDeleted: true,
+    })
+    await fs.deleteFile(target)
+    await fs.moveFile(target, { targetKey: FsTargetKey('/remote/work/other.txt'), displayPath: 'other.txt' }, {})
     for (const [, params] of dispatch.mock.calls) expect(params).toMatchObject({ policy: { mode: 'read-only', workspaceRoot: '/remote/work' } })
   })
 

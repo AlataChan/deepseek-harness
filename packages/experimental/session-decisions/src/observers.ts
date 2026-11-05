@@ -292,10 +292,13 @@ export class DecisionObservers {
           // notification is consumed, never settled as withdrawal.
           if (prior.textDigest !== digest) {
             const replacement = digest
-            void this.store()?.updateAnswerDigest(record.decisionId, replacement).catch((error: unknown) => {
-              this.ctx.logger.error('session-decisions: answer digest edit-follow failed for %s: %s',
-                record.decisionId, error instanceof Error ? error.message : String(error))
-            })
+            const store = this.store()
+            if (store !== undefined) {
+              void store.updateAnswerDigest(record.decisionId, replacement).catch((error: unknown) => {
+                this.ctx.logger.error('session-decisions: answer digest edit-follow failed for %s: %s',
+                  record.decisionId, error instanceof Error ? error.message : String(error))
+              })
+            }
           }
           this.editConsumed.add(record.decisionId)
         }
@@ -308,21 +311,34 @@ export class DecisionObservers {
       if (open !== undefined && open.lifecycle === 'open') supersede = open.decisionId
     }
     if (supersede !== undefined) {
-      void this.store()?.supersede(supersede).catch((error: unknown) => {
-        this.ctx.logger.warn('session-decisions: supersede after ordinary input failed for %s: %s',
-          supersede, error instanceof Error ? error.message : String(error))
-        this.onSupersedeFailed(supersede)
-      })
+      const store = this.store()
+      if (store !== undefined) {
+        void store.supersede(supersede).catch((error: unknown) => {
+          this.ctx.logger.warn('session-decisions: supersede after ordinary input failed for %s: %s',
+            supersede, error instanceof Error ? error.message : String(error))
+          this.onSupersedeFailed(supersede)
+        })
+      }
     }
     this.detectAbsence(session)
   }
 
-  /** Re-observe the projection: tracked messages no longer pending lost their queue slot. */
+  /**
+   * Re-observe the retained inbox reader: tracked messages no longer pending lost their queue slot.
+   * A throw from that reader is not absence evidence, so the reservation stays `submitting`.
+   */
   private detectAbsence(session: Session): void {
     if (this.pendingAnswers.size === 0) return
-    const state = this.ctx.get('sessionProjections')?.stateOf(session, 'inbox')
-    if (state === undefined) return
-    const live = new Set([...state['next-turn'], ...state['next-step']].map(message => message.id))
+    const agent = this.ctx.get('agents')?.get(session.id)
+    if (agent === undefined) return
+    let live: Set<MessageId>
+    try {
+      live = new Set([...agent.inbox.nextTurn, ...agent.inbox.nextStep].map(message => message.id))
+    } catch (error: unknown) {
+      this.ctx.logger.warn('session-decisions: inbox projection is not observable for %s: %s',
+        session.id, error instanceof Error ? error.message : String(error))
+      return
+    }
     for (const [decisionId, pending] of this.pendingAnswers) {
       if (pending.sessionId !== session.id || live.has(pending.messageId)) continue
       this.pendingAnswers.delete(decisionId)
@@ -431,9 +447,15 @@ export class DecisionObservers {
   private inspectPending(agent: Agent): void {
     const store = this.store()
     if (store === undefined) return
-    const state = this.ctx.get('sessionProjections')?.stateOf(agent.session, 'inbox')
-    if (state === undefined) return
-    for (const message of [...state['next-turn'], ...state['next-step']]) {
+    let messages: readonly UserMessage[]
+    try {
+      messages = [...agent.inbox.nextTurn, ...agent.inbox.nextStep]
+    } catch (error: unknown) {
+      this.ctx.logger.warn('session-decisions: inbox projection is not observable for %s: %s',
+        agent.session.id, error instanceof Error ? error.message : String(error))
+      return
+    }
+    for (const message of messages) {
       const rpcId = userRpcId(message)
       if (rpcId === undefined) continue
       const record = store.byRequestId(rpcId)

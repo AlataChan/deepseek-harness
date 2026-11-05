@@ -146,15 +146,16 @@ async function harness(options: {
   const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'dsh-ask-knowledge-session-')))
   const ctx = new Context()
   await ctx.plugin(SessionStore)
-  await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionProjectionRegistry)
-  ctx.sessionProjections.register(askKnowledgeBindingProjectionDefinition)
-  ctx.sessionProjections.register(askDataBindingProjectionDefinition)
-  ctx.sessionProjections.register(agentPresetProjectionDefinition)
+  await ctx.plugin(AgentRegistry)
+  await ctx.sessionProjections.register(askKnowledgeBindingProjectionDefinition)
+  await ctx.sessionProjections.register(askDataBindingProjectionDefinition)
+  const presetProjection = await ctx.sessionProjections.register(agentPresetProjectionDefinition)
   const selects: string[] = []
   const hooks = new Set<(agent: Agent, next: string) => void | Promise<void>>()
   ctx.provide('agentPresets', {
     defaultId: 'standard',
+    presetOf: (session: Session) => presetProjection.stateOf(session),
     resolve: (id?: string) => Promise.resolve({
       id: id ?? 'standard',
       trust: 'system',
@@ -187,10 +188,9 @@ async function harness(options: {
       const unregister = ctx.agents.register(agent)
       return {
         agent,
-        dispose: () => {
-          unregister()
+        dispose: async () => {
+          await unregister()
           detach()
-          return Promise.resolve()
         },
       }
     },
@@ -199,7 +199,7 @@ async function harness(options: {
     },
   }
   ctx.agents.setFactory(factory)
-  ctx.provide('workspaceRegistry', (options.workspaces ?? { get: () => undefined }) as never)
+  ctx.provide('workspaceRegistry', (options.workspaces ?? { get: () => undefined, list: () => [] }) as never)
   if (options.askKnowledge !== false) await ctx.plugin(StubAskKnowledge)
   const remote = createSessionTestRemote(ctx, {
     defaultModelSelection: () => ({ provider: 'test', model: 'test-model' }),
@@ -275,7 +275,7 @@ describe('session ask-knowledge remotes', () => {
       libraryId: 'lib-1',
       sessionId: created.value.sessionId,
     })
-    expect(attached.ok).toBe(true)
+    expect(attached.ok, attached.ok ? 'attached' : attached.error.message).toBe(true)
     if (!attached.ok) throw new Error('attach failed')
     expect(attached.value.sessionId).not.toBe(created.value.sessionId)
     const knowledge = ctx.sessions.get(attached.value.sessionId)
@@ -322,7 +322,7 @@ describe('session ask-knowledge remotes', () => {
       libraryId: 'lib-1',
       sessionId: created.value.sessionId,
     })
-    expect(attached.ok).toBe(true)
+    expect(attached.ok, attached.ok ? 'attached' : attached.error.message).toBe(true)
     if (!attached.ok) throw new Error('attach failed')
     expect(attached.value.sessionId).not.toBe(created.value.sessionId)
     expect(attachedIds).toEqual([attached.value.sessionId])
@@ -353,7 +353,7 @@ describe('session ask-knowledge remotes', () => {
   it('creates a standard session when attach omits sessionId', async () => {
     const { remote, ctx, selects } = await harness()
     const attached = await remote.attachAskKnowledge({ libraryId: 'lib-1' })
-    expect(attached.ok).toBe(true)
+    expect(attached.ok, attached.ok ? 'attached' : attached.error.message).toBe(true)
     if (!attached.ok) throw new Error('attach failed')
     const live = ctx.sessions.get(attached.value.sessionId)
     expect(live?.header.agentPreset).toBe('standard')
@@ -406,7 +406,7 @@ describe('session ask-knowledge remotes', () => {
       mode: 'queue',
       content: [{ type: 'text', text: 'hello' }],
     })
-    expect(prompted.ok === false && prompted.error.code === 'session/ask-knowledge-unbound').toBe(false)
+    expect(!prompted.ok && prompted.error.code === 'session/ask-knowledge-unbound').toBe(false)
     expect(prompted.ok).toBe(true)
   })
 

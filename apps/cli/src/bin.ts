@@ -8,6 +8,7 @@
 
 import { getDshRuntimeVersion, loadLayeredEnv, StartupError } from '@deepseek-ai/dsh-app-boot'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import { assertSupportedNode } from '@deepseek-ai/dsh-installed-runtime'
 import { parseDshArgs } from './args.ts'
 import { reportStartupFailure } from './startup-diagnostics.ts'
 import type { RunProfileOptions } from './profile-boot.ts'
@@ -24,6 +25,18 @@ export type RunCliOptions = Pick<RunProfileOptions, 'packageManager'> & {
  * @returns a promise that settles when the selected command mode finishes.
  */
 export async function runCli(options: RunCliOptions = {}): Promise<void> {
+  try {
+    assertSupportedNode(process.version)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    await new Promise<void>((resolve, reject) => {
+      process.stderr.write(`dsh: ${message}\n`, (writeError) => {
+        if (writeError) reject(writeError)
+        else resolve()
+      })
+    })
+    process.exit(1)
+  }
   const version = getDshRuntimeVersion()
   const { manageDesktopProfile, ...profileOptions } = options
   const invocation = parseDshArgs(process.argv.slice(2), version, manageDesktopProfile)

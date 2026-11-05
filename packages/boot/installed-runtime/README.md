@@ -24,6 +24,8 @@ Accepted package names are caller-supplied; the VS Code extension and the deskto
 
 `lib/cli.js` is a self-contained file: a native shell can copy it alone and run it with a real Node executable. It writes one JSON object to stdout and never executes `dsh` or a package-manager shim. Required flags are `--companion vscode|desktop` and at least one `--accepted <package>`. Optional flags are `--runtime-path`, `--node-path`, and `--path`. Success prints `{ nodePath, packageRoot, companionEntry, runtimeVersion, discoveryPath }`. Failure prints `{ "error": "<message>" }` and exits 1.
 
+Resolution accepts Node.js >=24.9.0, including 24.14 and newer majors. Node.js 22, 23, and 24.0.0 through 24.8.x fail with an error that names that floor and tells the caller to install a supported Node or use the packaged desktop app, which provisions Node.js 24.14.0. `assertSupportedNode` is that check. Source `dsh` calls it with `process.version` before profile launch.
+
 ## Model Experience
 
 None, as this package only locates process launch paths and contributes no model context.

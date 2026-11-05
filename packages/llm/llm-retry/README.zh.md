@@ -62,6 +62,8 @@ kind: "package-reference"
 <a id="understand-the-implementation"></a>
 ## 理解实现
 
+投影注册完成后，仅当插件 fiber 未销毁且未进入卸载状态，才安装恢复监听器。卸载仍会中止并等待活动恢复任务结束。
+
 <details>
 <summary>实现细节——点击展开</summary>
 

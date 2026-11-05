@@ -29,7 +29,7 @@ Choose this package when you compose a deployment that executes model-written pr
 
 ### Run a program
 
-Give the runtime a program and binding namespaces, then call `resolve(request)` followed by `run(spec)`. Resolution validates optional cwd, timeout and sandbox policy against the provider's capabilities and fills deployment defaults. The program runs as an async function body, so top-level `await` and `return` work; a lossless-JSON completion becomes `result.value`, captured text becomes `result.logs`, and program failures become `result.error`. Each output channel preserves its own order, while cross-channel interleaving is backend-dependent.
+Give the runtime a program and binding namespaces, then call `resolve(request)` followed by `run(spec)`. Resolution validates optional cwd, timeout and sandbox policy against the provider's capabilities and fills deployment defaults. The default `programFormat` is `function-body`, so top-level `await` and `return` work; a lossless-JSON completion becomes `result.value`, captured text becomes `result.logs`, and program failures become `result.error`. The base class reports `retainsState` false and a `release(owner)` that completes immediately, so an optional `stateOwner` is not stored. A retaining provider keeps that owner's program memory until `release`. `stateOwner` is not a session event. Each output channel preserves its own order, while cross-channel interleaving is backend-dependent.
 
 ```text
 const spec = ctx.ptcRuntime.resolve({
@@ -70,7 +70,7 @@ The package is the Service Definition role of the PTC execution capability seam 
 
 The readonly `timeout` descriptor exposes numeric `{ defaultMs, maxMs }` for consumer presentation; an absent descriptor means numeric overrides are unsupported. An omitted `timeoutMs` selects the provider default; a number requests a validated, capped elapsed budget; explicit `null` requests no elapsed deadline. A provider rejects choices it does not support. The Node workflow adapter requests `null`, while the model-facing `run_code` tool accepts only positive numeric overrides.
 
-`executionInstructions` supplies provider-owned usage guidance, or an empty string when none is needed. Consumers can include it in their program presentation without identifying the provider from its language or isolation descriptor; PTC includes it in the logged `run_code` schema.
+`programFormat` reports `function-body`, `repl`, or `script`. `retainsState` reports whether one `stateOwner` keeps program memory across runs. `release(owner)` waits until that owner's execution resources are gone. The base class is stateless: the format is `function-body`, `retainsState` is false, and `release` resolves without disposing a process. The Node provider overrides format, retention, and `release` from its execution mode, including persistent in-memory and VM Script runs. `executionInstructions` supplies provider-owned usage guidance, or an empty string when none is needed. Consumers can include it in their program presentation without identifying the provider from its language or isolation descriptor; PTC includes it in the logged `run_code` schema.
 
 `resolve(request)` owns supported option validation and deployment defaulting. `run(spec)` executes the complete inputs and resolves program outcomes after cleanup. Language and substrate descriptors guide presentation; `sandboxMode` indicates whether the consumer can pass a resolved file policy. Neither descriptors nor a successful program result substitute for the backend's reported enforcement facts.
 

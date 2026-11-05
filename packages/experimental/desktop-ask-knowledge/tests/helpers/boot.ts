@@ -4,8 +4,8 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import SessionStore from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import DesktopAskKnowledge from '../../src/index.ts'
 import { installFakeSidecar, installPythonSidecar } from './install-sidecar.ts'
@@ -25,15 +25,9 @@ export interface OverlayBoot {
   readonly sections: Map<string, RecordedSection>
 }
 
-interface ProjectionDef {
-  readonly key: string
-  init: (header: unknown) => unknown
-  apply: (state: unknown, event: SessionEvent) => unknown
-}
-
 /**
  * Start the overlay with a fake or Python sidecar. Sessions and projections are
- * in-memory so tests do not wait on SessionStore / SessionProjectionRegistry.
+ * real in-memory providers, without a persistence backend.
  * @param options - tools / credentials / python sidecar.
  * @returns the live context.
  */
@@ -68,43 +62,8 @@ export async function bootOverlay(options: {
       })),
     }),
   })
-  if (options.sessions !== false) {
-    const byId = new Map<string, Session>()
-    const defs: ProjectionDef[] = []
-    ctx.provide('sessions', {
-      prepare: (id?: SessionId) => Session.create(id ?? SessionId(`s-${byId.size}`)),
-      enter: (session: Session) => {
-        byId.set(session.id, session)
-        return () => {
-          byId.delete(session.id)
-        }
-      },
-      announce: () => {},
-      get: (id: SessionId) => byId.get(id),
-      list: () => [...byId.values()],
-    })
-    ctx.provide('sessionProjections', {
-      register: (definition: ProjectionDef) => {
-        defs.push(definition)
-        return () => {
-          const index = defs.indexOf(definition)
-          if (index >= 0) defs.splice(index, 1)
-        }
-      },
-      stateOf: (session: Session, key: string) => {
-        const definition = defs.find(item => item.key === key)
-        if (definition === undefined) return undefined
-        let state = definition.init(session.header)
-        for (const event of session.snapshotEvents()) state = definition.apply(state, event)
-        return state
-      },
-    })
-  } else {
-    ctx.provide('sessionProjections', {
-      register: () => () => {},
-      stateOf: () => null,
-    })
-  }
+  if (options.sessions !== false) await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjectionRegistry)
   if (options.tools === true) {
     const toolsFiber = ctx.plugin(ToolRuntime)
     await toolsFiber

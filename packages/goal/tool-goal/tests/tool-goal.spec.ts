@@ -54,6 +54,7 @@ function stubAgent(rawId: string, supplied?: Session, suppliedCtx?: Context): St
   const inbox = createInboxStub()
   let status: AgentStatus = 'running'
   const agent: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id: session.id,
     options: {},
     session,
@@ -104,7 +105,7 @@ async function harness(config: toolGoal.Config = {}) {
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(ToolRuntime)
-  ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
+  await ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
   await ctx.plugin(GoalService)
   const fiber = await ctx.plugin(toolGoal, config)
   const root = stubAgent(`goal-tool-root-${Math.random()}`, undefined, ctx)

@@ -235,9 +235,17 @@ describe('SubagentRuntime.listChildren', () => {
       })
     }
     const listSessions = vi.spyOn(ctx.sessionQuery, 'listSessions')
+    // oxlint-disable-next-line typescript/no-deprecated -- legacy projection key read kept
     const state = ctx.sessionProjections.stateOf(parent, 'subagentCatalog')
+    interface CatalogChunk { readonly values: readonly unknown[]; readonly previous: CatalogChunk | undefined }
+    const chunkOf = (value: unknown): CatalogChunk | undefined => {
+      if (typeof value !== 'object' || value === null || !('values' in value) || !Array.isArray(value.values)) return undefined
+      const previous = 'previous' in value && value.previous != null ? chunkOf(value.previous) : undefined
+      return { values: value.values, previous }
+    }
+    const head = typeof state === 'object' && state !== null && 'head' in state ? chunkOf(state.head) : undefined
     const chunkLengths: number[] = []
-    for (let chunk = state?.head; chunk !== undefined; chunk = chunk.previous) {
+    for (let chunk = head; chunk !== undefined; chunk = chunk.previous) {
       chunkLengths.push(chunk.values.length)
     }
     expect(chunkLengths).toEqual([1, ...Array.from({ length: 16 }, () => 64)])

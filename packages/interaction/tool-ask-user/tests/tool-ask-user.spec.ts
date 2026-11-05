@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createToolResultMessage, ToolCallId, type ToolSchema } from '@deepseek-ai/dsh-llm'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { Session, SessionId, SessionSeq, SESSION_FORMAT_VERSION, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -69,6 +70,7 @@ interface OptionSchemaShape {
 
 async function setup(config: toolAskUser.Config = { mode: 'timed', timeout: -1 }) {
   const ctx = new Context()
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
@@ -80,6 +82,7 @@ async function setup(config: toolAskUser.Config = { mode: 'timed', timeout: -1 }
 function stubAgent(id: string, delegationDepth = 0): Agent {
   const agentId = SessionId(id)
   const agent: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id: agentId,
     options: {},
     session: Session.create(agentId, [], {

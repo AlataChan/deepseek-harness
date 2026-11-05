@@ -1,0 +1,28 @@
+▶ S1: packaged team-orchestration payload, pins, and seed revision
+✓ Packaged payload verified: SKILL.md + package.json + references/task-spec.md, references/recovery.md with pinned sha256
+    SKILL.md: 8103154a79a588ca36e9572233482cfc23d7fe455b520a0820167e121eabfa48
+    references/task-spec.md: 9f3989e529d3c93333a97934805e4eefa74db0d91008adda7b004327abf2bd6a
+    references/recovery.md: 10a94a4a093caa3b277d98ce1ef1bb7e70248af2a88934e2ae2d8ee23cc28984
+    package.json: 0bd6a3100beaf4ffaa6979992b22585cbe0ca42b3d3dda83fb657e0ec6e0d022
+✓ Packaged guide documents the real Team tool surface it guides
+▶ S2: installed filesystem-provider discovery and project>home>bundled precedence
+✓ Bundled tier discovers the packaged payload through the real provider
+✓ Precedence home > bundled proven through the real provider
+✓ Precedence project > home proven through the real provider
+✓ Unrelated user skill discovered from its own home directory
+▶ S3: skill-tool + resource reads through a real controller turn
+✓ Real turn loaded the skill through the skill tool and read both packaged refs via the read tool
+✓ Unknown-skill control reports the honest error through the real tool path
+▶ S4: explicit ad-hoc team flow through the REAL Team tools
+✓ Explicit team flow through REAL tools: roster holds 2 members (lead + researcher)
+▶ S5: ordinary-chat control
+✓ Ordinary-chat control: no skill load, no team tool traffic, turn completed
+▶ S6: restart persistence and refresh inputs
+✓ Cold restart preserves the seeded skill, both refs, and the unrelated user skill
+✓ Cold restart retains the exact durable Team message identity and content
+
+▶ LINKED GATE (not claimed here): the standing-native Team / full task mail /
+  effective-model-route installed gate lives in orchestration/verify-installed-questions-and-team.mjs
+  (agentTeams/listInstitutionSquads + ensureInstitutionSquad + cold-restart Lead binding).
+
+✓ READY: installed team-skill qualification passed (12 checks).

@@ -27,6 +27,7 @@ const SUMMARY_SESSION = 'summary-live' as SessionId
  */
 function agentStub(id: SessionId): Agent {
   return {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id,
     options: {},
     session: sessionOf(id),

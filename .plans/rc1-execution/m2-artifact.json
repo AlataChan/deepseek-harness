@@ -1,0 +1,35 @@
+{
+  "dmg": "/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/dist/octopus_DSH.dmg",
+  "bytes": 337894041,
+  "sha256": "8f567c413f4786a11dc80acf6d72f8151cd78df51ef00c81661b64550f998673",
+  "release_metadata": {
+    "schemaVersion": 1,
+    "mode": "internal",
+    "repository": "AlataChan/deepseek-harness",
+    "ref": "local",
+    "sourceState": {
+      "modifiedAtBuild": true,
+      "modifiedAtPackaging": true
+    },
+    "release": {
+      "version": "0.2.1-alpha.1",
+      "commit": "3f528c60a419f1c71c097d44f5c6a78f131256c2"
+    },
+    "shellVersion": "0.1.2-rc.3",
+    "target": "macos-arm64",
+    "payloadSha256": "e021b40b178239c212a7325b796aefb534273bfc1a24b79ebf09c54638a5e3ce",
+    "artifact": {
+      "name": "octopus_DSH.dmg",
+      "bytes": 337894041,
+      "sha256": "8f567c413f4786a11dc80acf6d72f8151cd78df51ef00c81661b64550f998673"
+    }
+  },
+  "copied_app": "/var/folders/h2/bxwgfbt15zg3gz5hf37bhf2w0000gn/T/octopus-m2-dmg-15pwdpl6/octopus_DSH.app",
+  "copy": "read-only mount, ditto copy, successful detach",
+  "signature_verification": "codesign --verify --deep --strict passed",
+  "question_host_and_client": "byte-identical to the final built source",
+  "im_desktop_bundle": "byte-identical to the patched built source",
+  "desktop_im_inlined_consumer": "byte-identical to the patched built source",
+  "team_client_bundle": "byte-identical to the final built source",
+  "client_catalog_bundle": "byte-identical; selected question composer present, excluded branding absent"
+}

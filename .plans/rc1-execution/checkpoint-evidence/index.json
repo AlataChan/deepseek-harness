@@ -1,0 +1,79 @@
+[
+  {
+    "raw": ".plans/rc1-execution/m2-integrated-candidate-build-10.log",
+    "rawSha256": "02eb59e7436208cdfb2a997bd198a2aef00dd219fe19a14b3ed762daee59f821",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-integrated-candidate-build-10.log.txt",
+    "committedSha256": "4ce76a376dd8bbf1be5df05e824437e72097a72e0ce2e9ccf5684f7ca692070a",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-tauri-build-10.log",
+    "rawSha256": "bc0d4d7004c2b9ccf04dfd8a8a16e3a0169fa0627cd3e98b7625fe3e636476a1",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-tauri-build-10.log.txt",
+    "committedSha256": "7bb5dd2993f2e1edeea88f34e1b0a229dab9296c2c81c706971210cf5e2ece40",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-browser-build-10-verify.log",
+    "rawSha256": "d35f4811749acb81ad6c36c1fa68a26dd2b8f590e520133c476e9871bee84d5c",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-browser-build-10-verify.log.txt",
+    "committedSha256": "a164fb75e961a9e35ef5a151d5ed006e42a004e33c1061b8d89bd09bbd294018",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-sdk-rebuilt-10-replay.log",
+    "rawSha256": "e69dd9b162bb3a41142bb4884d437cdc7a594222067a81254fa70874a30c2fe2",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-sdk-rebuilt-10-replay.log.txt",
+    "committedSha256": "0f1ec937b77304eb2a79422ad2b0c5a8349e9867ed96fd7b85f330786a10c270",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-portable-rebuilt-10-replay.log",
+    "rawSha256": "bc5c070c6f64fe1a4ddd163b9496bf33cc5cb2118c012000684a7d480ad7a4f9",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-portable-rebuilt-10-replay.log.txt",
+    "committedSha256": "b677266636ab789b184da5cdad5bf606ba9d651e69ec9723c02f9cb20516a231",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-core-current-coverage.log",
+    "rawSha256": "8509a1a55557a97233a36994610cad5992ec5c80ef0394bd95551f9dbdbcad8c",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-core-current-coverage.log.txt",
+    "committedSha256": "7c0932e3c237050eb551f064955f26c6c8e0f4691cb188c0ba0a897bf1cc945c",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-real-node-and-registry-root-gate.log",
+    "rawSha256": "2fc4a7b7b7a5ca6b84f8bfc8dfeaa4d4650e5e467ee6848f430f699b700ec390",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-real-node-and-registry-root-gate.log.txt",
+    "committedSha256": "f6e95292251a9b756ecd70394a3d5f833db0e90866269e6bc1b89e4e3f3440f6",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-real-node-registry-lint-final.json",
+    "rawSha256": "18cbbfa7dd0622038f09dae217064eb09705533637be7fb5e00a292514b6c93f",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-real-node-registry-lint-final.json.txt",
+    "committedSha256": "32777f4096a9c8922691d7bf90fdca71801ad03b68fd4230c6eb578dfb901b40",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-real-node-final-after-lint.log",
+    "rawSha256": "e87dccb4e6982bfdc07f2f4f6b7de3c039ae0f3ec1903fd1a05c39ca35e64fc3",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-real-node-final-after-lint.log.txt",
+    "committedSha256": "aafaeedfab7aad80cb02b2402a9fc66f456b247c3fb627aca436cf3fecbaff11",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-qualified-dmg-build-10.log",
+    "rawSha256": "4c1e0ad8cb91170c04e5438357983af5dbc9fec77e64ff3deb2c19defeeeb036",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-qualified-dmg-build-10.log.txt",
+    "committedSha256": "c4a2fcdb7ea3816d7121649e70b329db0ea68bd8f75a1aa21570c707f2b8484c",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  },
+  {
+    "raw": ".plans/rc1-execution/m2-nodeguard-host-typecheck.log",
+    "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "committed": ".plans/rc1-execution/checkpoint-evidence/m2-nodeguard-host-typecheck.log.txt",
+    "committedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "normalization": "Trailing line whitespace and blank final lines only; raw file retained unchanged locally."
+  }
+]

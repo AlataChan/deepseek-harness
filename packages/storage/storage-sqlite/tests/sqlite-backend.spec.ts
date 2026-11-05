@@ -72,6 +72,54 @@ describe('sqlite backend specifics', () => {
     }
   })
 
+  it('reads a listed compatible unit version without rewriting the stamp', async () => {
+    const path = await freshDbPath()
+    const writer = backendAt(path)
+    const unit = await writer.kv.open(DESCRIPTOR)
+    await unit.putRecord('records', 'kept', { n: 1 })
+    await writer.close()
+
+    const reader = backendAt(path)
+    const opened = await reader.kv.open({ ...DESCRIPTOR, version: 2, compatibleVersions: [1] })
+    expect((await opened.loadAll()).tables['records']).toEqual({ kept: { n: 1 } })
+    await opened.putRecord('records', 'added', { n: 2 })
+    await reader.close()
+
+    const db = new DatabaseSync(path)
+    try {
+      const unitRow = db.prepare('SELECT version FROM units WHERE name = ?').get('specimen') as { version: number }
+      expect(unitRow.version).toBe(1)
+      const schema = db.prepare('PRAGMA user_version').get() as { user_version: number }
+      expect(schema.user_version).toBe(STORAGE_SQLITE_SCHEMA_VERSION)
+      const rows = db.prepare('SELECT key FROM u_specimen_records ORDER BY key').all() as { key: string }[]
+      expect(rows.map(row => row.key)).toEqual(['added', 'kept'])
+    } finally {
+      db.close()
+    }
+  })
+
+  it('rejects a unit version outside the descriptor and compatibleVersions', async () => {
+    const path = await freshDbPath()
+    const writer = backendAt(path)
+    await (await writer.kv.open(DESCRIPTOR)).close()
+    await writer.close()
+
+    const reader = backendAt(path)
+    await expect(reader.kv.open({ ...DESCRIPTOR, version: 3, compatibleVersions: [2] })).rejects.toMatchObject({
+      name: 'StorageError',
+      code: 'version-mismatch',
+    })
+    await reader.close()
+
+    const db = new DatabaseSync(path)
+    try {
+      const unitRow = db.prepare('SELECT version FROM units WHERE name = ?').get('specimen') as { version: number }
+      expect(unitRow.version).toBe(1)
+    } finally {
+      db.close()
+    }
+  })
+
   it('rejects a mismatched database schema version', async () => {
     const path = await freshDbPath()
     const db = new DatabaseSync(path)

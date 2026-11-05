@@ -174,6 +174,7 @@ export function createTestAgent(options: TestAgentOptions = {}): Agent {
   const inbox = createTestInbox()
 
   const agent: Agent = {
+    model: { current: () => undefined, select: () => {}, origin: () => null },
     id,
     session,
     inbox,

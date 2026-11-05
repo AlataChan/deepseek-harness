@@ -1006,7 +1006,7 @@ export async function boot(
     ctx.provide('dshHomePath', dshHomePath)
     // Fiber.update() discards the restart promise. Observe it before the
     // waterfall returns; activation audits still report the failed fiber.
-    ctx.on('internal/update', (_config, _noSave, next: () => unknown) => {
+    ctx.on('internal/update', (_resolved, next) => {
       void Promise.resolve(next()).catch((error: unknown) => { ctx.logger.error(error) })
     }, { global: true, prepend: true })
     await ctx.plugin(Loader)

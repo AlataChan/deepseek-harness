@@ -76,6 +76,13 @@ abstract describeSource( sourceId: CommerceSourceId, signal?: AbortSignal, ): Pr
 async bind( agent: Agent, sourceId: CommerceSourceId, signal?: AbortSignal, ): Promise<CommerceBinding>
 
 /**
+ * Read the Session's committed commerce binding.
+ * @param session - live Session.
+ * @returns the binding, or null before one is committed.
+ */
+bindingOf(session: Agent['session']): CommerceBinding | null
+
+/**
  * Search bounded listing summaries in one source.
  * @param sourceId - source to search.
  * @param request - optional terms and required result cap.

@@ -14,9 +14,11 @@ import z from '@deepseek-ai/schemastery'
 import { FileSystem, FsError, FsVersion } from '@deepseek-ai/dsh-fs'
 import type {
   FsDirEntry,
+  FsDeleteOutcome,
   FsEditOutcome,
   FsEditRequest,
   FsInfo,
+  FsMoveOutcome,
   FsPathInfo,
   FsTarget,
   FsWriteIntent,
@@ -32,6 +34,7 @@ import {
   readForEdit,
   readByteWindow,
   readTextForDiff,
+  removeFile,
   readWholeBytes,
   readWholeText,
   resolveLocalTarget,
@@ -128,6 +131,16 @@ export class LocalFileSystem extends FileSystem {
         this.locks.delete(targetKey)
       }
     }
+  }
+
+  /** Lock every key in sorted order so two moves cannot deadlock. */
+  private withLocks<T>(keys: readonly string[], op: () => Promise<T>): Promise<T> {
+    const ordered = [...new Set(keys)].sort()
+    const run = (index: number): Promise<T> => {
+      const key = ordered[index]
+      return key === undefined ? op() : this.withLock(key, () => run(index + 1))
+    }
+    return run(0)
   }
 
   override async resolve(path: string, opts?: { cwd?: string; signal?: AbortSignal }): Promise<FsTarget> {
@@ -288,6 +301,102 @@ export class LocalFileSystem extends FileSystem {
         after: edited.content,
       }
     })
+  }
+
+  override async deleteFile(
+    target: FsTarget,
+    expected?: { version: FsVersion },
+    signal?: AbortSignal,
+  ): Promise<FsDeleteOutcome> {
+    return this.withLock(target.targetKey, async () => {
+      await this.requireFile(target, expected, 'delete')
+      const before = await readTextForDiff(target.targetKey, this.config.diffBasisMaxBytes, signal)
+      await this.internals.inspectAfterDiffBasis?.()
+      if (signal?.aborted) throw new FsError('delete aborted', 'FS_ABORTED')
+      await removeFile(target.targetKey, target.displayPath, this.internals)
+      return { before }
+    })
+  }
+
+  override async moveFile(
+    source: FsTarget,
+    destination: FsTarget,
+    options: { content?: string; expectedSource?: { version: FsVersion }; expectedDestination?: FsWriteIntent },
+    signal?: AbortSignal,
+  ): Promise<FsMoveOutcome> {
+    if (source.targetKey === destination.targetKey) {
+      throw new FsError(`cannot move "${source.displayPath}" to itself`, 'FS_SAME_TARGET')
+    }
+    return this.withLocks([source.targetKey, destination.targetKey], async () => {
+      const sourceInfo = await this.requireFile(source, options.expectedSource, 'move')
+      const existing = await this.writeTarget(destination, options.expectedDestination)
+      const original = await readForEdit(source.targetKey, source.displayPath, signal)
+      const after = options.content ?? original.content
+      const stored = options.content === undefined ? restoreLineEndings(original.content, original.lineEndings) : options.content
+      const before = existing !== null && Buffer.byteLength(stored, 'utf8') < this.config.diffBasisMaxBytes
+        ? await readTextForDiff(destination.targetKey, this.config.diffBasisMaxBytes, signal)
+        : null
+      await this.internals.inspectAfterDiffBasis?.()
+      if (signal?.aborted) throw new FsError('move aborted', 'FS_ABORTED')
+      await writeFileAtomic(
+        destination.targetKey,
+        stored,
+        existing?.mode ?? sourceInfo.mode,
+        signal,
+        this.internals,
+        options.expectedDestination?.kind === 'createIfAbsent' ? { displayPath: destination.displayPath } : undefined,
+      )
+      const destinationOutcome: FsWriteOutcome = {
+        operation: existing ? 'update' : 'create',
+        version: this.versionAfterWrite(await probe(destination.targetKey), destination),
+        before,
+        after: normalizeLineEndings(after),
+      }
+      const sourceBefore = Buffer.byteLength(original.content, 'utf8') < this.config.diffBasisMaxBytes ? original.content : null
+      try {
+        await removeFile(source.targetKey, source.displayPath, this.internals)
+      } catch (error) {
+        /* v8 ignore next -- removeFile maps every removal failure to FsError before it leaves. */
+        if (!(error instanceof FsError)) throw error
+        return {
+          sourceBefore,
+          destination: destinationOutcome,
+          sourceDeleted: false,
+          sourceFailure: { code: error.code, message: error.message },
+        }
+      }
+      return { sourceBefore, destination: destinationOutcome, sourceDeleted: true }
+    })
+  }
+
+  private async writeTarget(target: FsTarget, expected?: FsWriteIntent): Promise<Awaited<ReturnType<typeof probe>>> {
+    const existing = await probe(target.targetKey)
+    if (existing && existing.type !== 'file') {
+      throw new FsError(`cannot write "${target.displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
+    }
+    if (expected?.kind === 'replaceIfVersion') {
+      if (!existing) throw new FsError(`cannot write "${target.displayPath}": file no longer exists`, 'FS_STALE_VERSION')
+      if (existing.version !== expected.version) {
+        throw new FsError(`cannot write "${target.displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
+      }
+    } else if (expected?.kind === 'createIfAbsent' && existing) {
+      throw new FsError(`cannot overwrite existing "${target.displayPath}" without reading it first`, 'FS_NOT_OBSERVED')
+    }
+    return existing
+  }
+
+  private async requireFile(
+    target: FsTarget,
+    expected: { version: FsVersion } | undefined,
+    verb: string,
+  ): Promise<NonNullable<Awaited<ReturnType<typeof probe>>>> {
+    const existing = await probe(target.targetKey)
+    if (!existing) throw new FsError(`cannot ${verb} "${target.displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
+    if (existing.type !== 'file') throw new FsError(`cannot ${verb} "${target.displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
+    if (expected && existing.version !== expected.version) {
+      throw new FsError(`cannot ${verb} "${target.displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
+    }
+    return existing
   }
 
   /* v8 ignore next 5 -- the post-write probe finding the file absent requires a

@@ -48,7 +48,7 @@ async function agent(ctx: Context, cwd: string): Promise<Agent> {
     id,
     options: {},
     session,
-    inbox: unsupportedInbox(),
+    inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
     status: 'idle',
     ctx: scope.ctx,
     send: () => {},

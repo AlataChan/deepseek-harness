@@ -96,8 +96,24 @@ function appliedDiffs(meta: unknown): DiffHunk[] | 'empty' | null {
  * @param block - running or settled Tool block.
  * @returns the diff-card props, or null for the generic path.
  */
+function settledApplyPatchDiffs(block: ToolCallBlock): DiffCardModel | null | undefined {
+  const parsed = parsedToolCall(block)
+  if (parsed?.name !== 'apply_patch') return undefined
+  if (!('kind' in block)) return null
+  const applied = appliedDiffs(block.meta)
+  if (!Array.isArray(applied)) return null
+  return { card: { diffs: applied } }
+}
+
+/**
+ * Select committed patch diffs or the ordinary edit preview for one root call.
+ * @param block - logged tool call and its current result metadata.
+ * @returns the available diff card, or null when no root diff is present.
+ */
 export function diffCardModel(block: ToolCallBlock): DiffCardModel | null {
   if (block.parentCallId !== undefined) return null
+  const patch = settledApplyPatchDiffs(block)
+  if (patch !== undefined) return patch
   const intended = intendedDiff(block)
   if (intended === null) return null
   if (!('kind' in block)) return { card: { diffs: [intended.diff] } }

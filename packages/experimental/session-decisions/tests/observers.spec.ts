@@ -285,9 +285,15 @@ it('contains notifications while the inbox projection capability is absent', asy
   const fixture = await openStore(new FakeClock())
   const { ctx, store } = fixture
   await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   const carrier = stubAgent('missing-projection', ctx)
   await ctx.agents.register(carrier.agent)
+  const missingReader = () => {
+    throw new Error('inbox projection is not registered')
+  }
+  const nextTurn = vi.spyOn(carrier.inbox, 'nextTurn', 'get').mockImplementation(missingReader)
+  const nextStep = vi.spyOn(carrier.inbox, 'nextStep', 'get').mockImplementation(missingReader)
   const q = await store.create({ sessionId: carrier.session.id, question: 'Which database?', choices: ['A', 'B'] })
   await store.reserveAnswer(q.decisionId, q.revision, { requestId: answerRequestId(q.decisionId) })
   const settled: Promise<unknown>[] = []
@@ -301,7 +307,12 @@ it('contains notifications while the inbox projection capability is absent', asy
     carrier.session.append('agent/inbox/spliced', { target: 'next-turn', start: 0, removedCount: 1, inserted: [] })
     await Promise.all(settled)
     expect(store.get(q.decisionId)?.answerIndex).toBe('submitting')
-  } finally { observer.dispose(); await fixture.dispose() }
+  } finally {
+    nextTurn.mockRestore()
+    nextStep.mockRestore()
+    observer.dispose()
+    await fixture.dispose()
+  }
 })
 
 
