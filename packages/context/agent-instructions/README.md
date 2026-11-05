@@ -23,6 +23,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Mount this plugin when agents should work from the workspace's own instruction files. `dsh-base` already includes it with a 65,536-byte budget for each instruction chain, so base-backed profiles only need to replace the row when they want another `maxBytes`; providerless trees load nothing until a filesystem provider is present.
@@ -76,6 +77,7 @@ When all files fit within `maxBytes` together, the message holds them with no bu
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -111,6 +113,7 @@ Every injected message carries a typed source with its change list; a complete b
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the instruction-file format to the design decision and the exhaustive configuration.
@@ -123,6 +126,9 @@ Read these pages when the package-level contract is not enough. They move from t
 -----
 
 <a id="model-experience"></a> <a id="prompt-shape"></a>
+
+Project instruction discovery uses the validated execution directory. Global instruction locations and the configured independent byte budgets retain their existing meaning. See [working directories](../../../docs/subsystems/working-directory.md).
+
 ## Model Experience
 
 ### Baseline context
@@ -221,6 +227,7 @@ These limits define when instruction loading is a poor fit or needs operational 
 - **Budget is not shared across chains** — bytes one chain leaves unused do not extend the other, so a 70 KiB user-global file is truncated to fit `maxBytes` even when the project chain uses 1 KiB.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

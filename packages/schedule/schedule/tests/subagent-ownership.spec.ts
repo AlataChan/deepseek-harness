@@ -37,7 +37,7 @@ function table(test: Awaited<ReturnType<typeof setup>>) {
 }
 
 function childTask(record: ScheduleRecord): ScheduleTask {
-  return { sessionId: childId, record, status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false } }
+  return { target: { kind: 'session', sessionId: childId }, involvedSessionIds: [childId], record, status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false } }
 }
 
 it('refuses to create a reminder for a live subagent Session and stores nothing', async () => {
@@ -47,7 +47,7 @@ it('refuses to create a reminder for a live subagent Session and stores nothing'
   const changed = vi.fn()
   test.ctx.on('schedule/changed', changed)
 
-  await expect(test.service.create(child.session.id, { prompt: 'Check', title: 'Check', after_seconds: 60 }))
+  await expect(test.service.create({ prompt: 'Check', title: 'Check', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: child.session.id } }))
     .rejects.toMatchObject({ code: 'subagent_session' })
 
   expect([...table(test).entries()]).toEqual([])
@@ -62,7 +62,7 @@ it('refuses to create for a Session whose live Agent a delegating parent owns', 
   const child = agentFor(test.ctx, childId, { parentSession: parentId, delegationDepth: 1 })
   test.ctx.agents.enter(child, parent)
 
-  await expect(test.service.create(childId, { prompt: 'Check', title: 'Check', after_seconds: 60 }))
+  await expect(test.service.create({ prompt: 'Check', title: 'Check', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: childId } }))
     .rejects.toMatchObject({ code: 'subagent_session' })
 
   expect([...table(test).entries()]).toEqual([])
@@ -80,9 +80,9 @@ it('refuses to update a stored reminder bound to a delegated child Session', asy
 
   // The refusal travels the ordinary non-mutating result so the Web editor renders
   // `timing.subagentSession` instead of a generic Remote failure.
-  await expect(test.service.update({
-    sessionId: childId, id: record.id, expected: record, change: { kind: 'every', every_seconds: 600 },
-  })).resolves.toEqual({
+  await expect(test.service.edit({
+    id: record.id, action: 'update', patch: { timing: { kind: 'every', every_seconds: 600 } },
+  })).rejects.toMatchObject({
     code: 'subagent_session',
     message: 'This Session belongs to subagent routing, which never receives reminder delivery.',
   })
@@ -100,7 +100,7 @@ it('refuses a delegated child recorded only by its delegation depth', async () =
   const child = agentFor(test.ctx, childId, { delegationDepth: 1 })
   await test.ctx.agents.register(child)
 
-  await expect(test.service.create(child.session.id, { prompt: 'Check', title: 'Check', after_seconds: 60 }))
+  await expect(test.service.create({ prompt: 'Check', title: 'Check', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: child.session.id } }))
     .rejects.toMatchObject({ code: 'subagent_session' })
 
   expect([...table(test).entries()]).toEqual([])
@@ -111,10 +111,10 @@ it('still creates a reminder for a top-level Agent', async () => {
   const owner = agentFor(test.ctx, parentId)
   await test.ctx.agents.register(owner)
 
-  const record = await test.service.create(parentId, { prompt: 'Check', title: 'Check', after_seconds: 60 })
+  const record = await test.service.create({ prompt: 'Check', title: 'Check', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: parentId } })
 
   expect(record.title).toBe('Check')
-  expect(await test.service.list({ sessionId: parentId })).toEqual([record])
+  expect((await test.service.list({ active: true })).items).toEqual([record])
 })
 
 it('still lists and deletes a stored reminder bound to a delegated child Session', async () => {
@@ -123,8 +123,8 @@ it('still lists and deletes a stored reminder bound to a delegated child Session
   const child = agentFor(test.ctx, childId, { origin: 'subagent', delegationDepth: 1 })
   await test.ctx.agents.register(child)
 
-  expect(await test.service.list({ sessionId: childId })).toEqual([record])
+  expect((await test.service.list({ active: true })).items).toEqual([{ ...record, target: { kind: 'session', sessionId: childId }, involvedSessionIds: [childId], status: 'active' }])
   expect((await test.service.catalog()).map(entry => entry.id)).toEqual([record.id])
-  expect(await test.service.delete({ sessionId: childId, id: record.id })).toEqual({ id: record.id, deleted: true })
+  expect(await test.service.edit({ id: record.id, action: 'delete' })).toEqual({ id: record.id, deleted: true })
   expect(table(test).get(record.id)).toBeUndefined()
 })

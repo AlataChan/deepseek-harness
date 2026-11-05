@@ -1,9 +1,11 @@
 // An enclosing `[data-conversation-scroll]` owns scrolling when present;
 // otherwise this view owns it. Each row subscribes to one stable node key.
 
+import { createPortal } from 'react-dom'
+import { useTextInteraction } from './text-interaction.ts'
 import { memo, useCallback, useMemo, useRef, useState, type ComponentProps } from 'react'
 import type {
-  NodeKey, RenderEntry, RenderMessageImages,
+  NodeKey, RenderEntry, RenderMessageImages, TurnLocation,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { InboxState } from '@deepseek-ai/dsh-agent/types'
 import type { PendingSubmission } from '@deepseek-ai/dsh-api-session-controller/client'
@@ -11,6 +13,8 @@ import {
   Button, IconChevronDownOutlineRegular, MarkdownDelegateProvider, Modal,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps, OpenFileOptions } from '../contract/slots.ts'
+import type { ChatNode } from '../contract/chat-nodes.ts'
+import { TURN_PROCESS_INDEPENDENT_KINDS } from '../contract/turn-process.ts'
 import type { ChatSnapshot } from '../contract/snapshot.ts'
 import { PendingSteeringBubble, PendingSubmissionBubble } from './MessageItem.tsx'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
@@ -103,6 +107,8 @@ export function ChatView({
   sessionId, openFile, openSkill, openExternalLink, loadOlder, loadThrough, loadImage, inspectCall, chatScroll, forkAt, fileMentions,
   usePresentation, useProjection, t,
 }: ChatViewSlotProps) {
+  const selectionRoot = useRef<HTMLDivElement>(null)
+  const quote = useTextInteraction(selectionRoot)
   const order = useChat(s => s.order)
   const groupedEntries = useConversation(snapshot => snapshot.views.grouped('chat')?.entries)
   const entries = useMemo<readonly RenderEntry[]>(() => groupedEntries
@@ -185,8 +191,8 @@ export function ChatView({
   // recompute trigger: durable user material always arrives as an append, and
   // every append replaces the order array.
   const [visibleSubmissions, lastInputTurn] = useMemo(() => {
-    if (pendingSubmissions.length === 0) return [pendingSubmissions, undefined] as const
     const observed = observedInputs(order, nodeStore)
+    if (pendingSubmissions.length === 0) return [pendingSubmissions, observed.lastInputTurn] as const
     return [pendingSubmissions.filter(submission => (
       submission.placement !== 'queued' && !observed.rpcIds.has(submission.requestId)
     )), observed.lastInputTurn] as const
@@ -214,6 +220,31 @@ export function ChatView({
   const firstKey = order[0]
   const firstSeq = firstKey === undefined ? null : nodeStore.get(firstKey)?.anchorSeq ?? null
   const lastKey = order.at(-1) ?? null
+  const processTurnSet = useRef<ReadonlySet<number>>(new Set())
+  const { deferredTurn, nonReplyProcessTurns } = useMemo(() => {
+    const processTurns = new Set<number>()
+    let latest: TurnLocation | undefined
+    let inputSeq = -1
+    for (const node of nodeStore.values()) {
+      if (node.kind === 'user' || node.kind === 'steering' || node.kind === 'turn-trigger') inputSeq = Math.max(inputSeq, node.anchorSeq)
+      const location = node.location
+      const value = node as ChatNode
+      if ((location.kind === 'turn' || location.kind === 'step') && !TURN_PROCESS_INDEPENDENT_KINDS.has(value.kind)
+        && (value.kind !== 'assistant-step' || value.data.blocks.some(block => block.kind === 'reasoning' && block.text.trim() !== ''))) {
+        processTurns.add(location.turn.turn)
+      }
+      if ((location.kind === 'turn' || location.kind === 'step')
+        && (latest === undefined || location.turn.turn > latest.turn)) latest = location.turn
+    }
+    const previous = processTurnSet.current
+    if (previous.size !== processTurns.size || [...processTurns].some(turn => !previous.has(turn))) {
+      processTurnSet.current = processTurns
+    }
+    return {
+      deferredTurn: latest?.status === 'closed' && latest.end !== undefined && inputSeq <= latest.end.seq ? latest.turn : undefined,
+      nonReplyProcessTurns: processTurnSet.current,
+    }
+  }, [order, nodeStore])
   const latestSteering = pendingInputs.findLast(item => 'source' in item)
   const steeringId = latestSteering?.source.kind === 'user' && 'rpcId' in latestSteering.source
     ? latestSteering.source.rpcId : latestSteering?.id ?? null
@@ -237,7 +268,7 @@ export function ChatView({
           t={t}
         />
       )}
-      <div className={css.root} data-chat-following-tail={scroll.followingTail ? '' : undefined}>
+      <div ref={selectionRoot} className={css.root} data-text-interaction-source="" data-chat-following-tail={scroll.followingTail ? '' : undefined}>
         <div ref={scroll.listRef} className={css.scroll}>
           <div ref={scroll.columnRef} className={css.column} data-chat-flow="">
             {openState === 'loading' && <div className={css.hint}>{t('chat.loadingHistory')}</div>}
@@ -259,10 +290,12 @@ export function ChatView({
                 pendingInputs={pendingInputs}
                 lastInputTurn={lastInputTurn}
                 nodeStore={nodeStore}
+                nonReplyProcessTurns={nonReplyProcessTurns}
                 useChatGroup={useChatGroup}
                 useChatNode={useChatNode}
                 useChatNodeProcess={useChatNodeProcess}
                 usePresentation={usePresentation}
+                deferCollapseTurn={pendingInputs.length === 0 ? deferredTurn : undefined}
                 useStore={useStore}
                 actions={actions}
                 cwd={cwd}
@@ -284,6 +317,11 @@ export function ChatView({
           </div>
         </div>
       </div>
+      {quote.selection !== null && createPortal(<div data-quote-action="" style={{
+        position: 'fixed', left: quote.selection.left, top: quote.selection.top, zIndex: 1000,
+      }}>{renderSlot('conversation.chat.text-interaction', {
+          dismiss: quote.dismiss, readText: quote.readText, clearSelection: quote.clearSelection,
+        }, { entryKey: 'quote' })}</div>, document.body)}
       {!scroll.followingTail && (
         <div className={css.toBottomSlot}>
           <button

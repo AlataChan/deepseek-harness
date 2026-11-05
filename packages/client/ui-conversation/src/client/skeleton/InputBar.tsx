@@ -17,7 +17,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import type { ChangeEvent, KeyboardEvent, MouseEvent } from 'react'
 import clsx from 'clsx'
 import {
-  IconPlusOutlineMedium, IconWarningOutlineRegular, Toast, Tooltip,
+  focusWithoutRing, isMobileDevice, IconPlusOutlineMedium, IconWarningOutlineRegular, Toast, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 // Type-only: the `plan` projection key merge (the TodoDock posture — the
 // composer reads a host-computed value; the domain owns the key).
@@ -31,7 +31,7 @@ import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ComposerBarProps } from '../contract/slots.ts'
 import { DraftEditor } from '../input/editor/DraftEditor.tsx'
 import {
-  focusDraftEditor, installDraftFilePicker, installDraftKeymap, installDraftWheel,
+  focusDraftEditor, installDraftKeyboardDismissal, installDraftFilePicker, installDraftKeymap, installDraftWheel,
   keepDraftFocus, revealDraftSelection,
 } from '../input/editor/view-binding.ts'
 import { resolveSubmitMode } from '../input/submission-policy.ts'
@@ -143,7 +143,7 @@ export const InputBar = memo(function InputBar({
   // the composer asking for the only thing it prevents. The other reasons to
   // be disabled do lock it — there is no session to choose a model for.
   const modelSeatLocked = removed || inert || !live
-  const machineBusy = input?.phase === 'adjudicating' || input?.phase === 'submitting'
+  const machineBusy = input?.phase === 'adjudicating' || input?.phase === 'submitting' || input?.phase === 'sending'
   // The no-workspace surface remains the resident DOM node but acts as the
   // existing picker trigger. Message controls stay locked until a Session
   // exists; the trigger itself is read-only rather than disabled so pointer
@@ -177,9 +177,23 @@ export const InputBar = memo(function InputBar({
   // is ours to perform — switching to a longer draft otherwise leaves the
   // caret (restored at the draft's end) off screen.
   useEffect(() => {
-    if (locked || editor === null) return
+    if (locked || editor === null || isMobileDevice()) return
     focusDraftEditor(editor, revealSelection)
   }, [locked, sessionId, editor])
+
+  useEffect(() => {
+    if (editor !== null) return installDraftKeyboardDismissal(editor, cardRef)
+  }, [editor])
+  const busyPhaseSeen = useRef(false)
+  useEffect(() => {
+    if (machineBusy) { busyPhaseSeen.current = true; return }
+    if (!busyPhaseSeen.current) return
+    busyPhaseSeen.current = false
+    if (locked || editor === null || (document.activeElement !== null && document.activeElement !== document.body)) return
+    if (isMobileDevice() && draft.trim() === '') {
+      if (cardRef.current !== null) focusWithoutRing(cardRef.current, { preventScroll: true })
+    } else focusDraftEditor(editor, revealSelection)
+  }, [machineBusy])
 
   // A persisted draft arrives AFTER the unlock effect: DefaultConversationViews
   // adopts it in its own mount effect, and a parent's mount effect runs after
@@ -324,7 +338,7 @@ export const InputBar = memo(function InputBar({
   // Claim ghost hint: rendered by CSS as generated content after the last
   // paragraph while the claim's args are blank (a hint implies a single-line
   // token draft). The translated per-command hint wins over the claim's own.
-  const claimActive = (input?.phase === 'claimed' || input?.phase === 'submitting')
+  const claimActive = (input?.phase === 'claimed' || input?.phase === 'submitting' || input?.phase === 'sending')
     && input.claim !== undefined && draft.startsWith(input.claim.token)
   const rawHint = claimActive && input.claim.hint !== undefined
     && draft.slice(input.claim.token.length).trim() === ''
@@ -374,6 +388,7 @@ export const InputBar = memo(function InputBar({
           click's reopen (close-then-open flickers the chip's open echo). */}
       <div
         ref={cardRef}
+        tabIndex={-1}
         className={clsx(css.card, workspaceTrigger && css.cardWorkspaceTrigger)}
         data-composer-card
         onClick={workspaceTrigger ? onRequestWorkspace : undefined}
@@ -477,7 +492,8 @@ export const InputBar = memo(function InputBar({
               <button
                 type="button"
                 className={css.primary}
-                aria-label={primaryLabel}
+                aria-label={input?.phase === 'sending' ? t('input.sending') : primaryLabel}
+                aria-busy={input?.phase === 'sending' || undefined}
                 disabled={primaryDisabled}
                 onMouseDown={keepFocus}
                 onClick={onPrimary}

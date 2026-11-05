@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -36,6 +37,12 @@ const testToolSignal = new AbortController().signal
 
 /** Every temp dir created by this file, removed after each test. */
 const tempDirs: string[] = []
+let workspace: string
+beforeEach(async () => {
+  workspace = await tempDir('skill-workspace')
+  await mkdir(join(workspace, 'scoped'))
+  await mkdir(join(workspace, 'other'))
+})
 afterEach(async () => {
   for (const dir of tempDirs.splice(0)) await rm(dir, { recursive: true, force: true })
 })
@@ -60,6 +67,7 @@ async function setup(home: string, config: toolSkill.Config = {}): Promise<Conte
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(SkillRegistry)
   await ctx.plugin(SkillFileSystem, { dshHome: join(home, '.dsh'), agentsHome: join(home, '.agents'), watch: false })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(toolSkill, config)
   return ctx
 }
@@ -201,9 +209,10 @@ describe('dsh-tool-skill', () => {
     await ctx.plugin(SkillFileSystem, { dshHome: join(home, '.dsh'), agentsHome: join(home, '.agents'), watch: false })
     ctx.skills.register({ name: 'lifecycle-skill', description: 'Lifecycle', source: 'runtime', content: 'body' })
 
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(toolSkill)
     expect(ctx.tools.schemas().map(tool => tool.name)).toEqual(['skill'])
-    expect(await composePrefix(ctx, '/workspace')).toHaveLength(1)
+    expect(await composePrefix(ctx, workspace)).toHaveLength(1)
     expect(ctx.tools.get('skill')?.presentCall?.({ name: 'project-skill' })).toEqual({
       card: 'generic',
       title: 'Load skill project-skill',
@@ -212,7 +221,7 @@ describe('dsh-tool-skill', () => {
     })
     await fiber.dispose()
     expect(ctx.tools.schemas()).toEqual([])
-    expect(await composePrefix(ctx, '/workspace')).toEqual([])
+    expect(await composePrefix(ctx, workspace)).toEqual([])
 
     toolSkill.apply(ctx)
     expect(ctx.tools.schemas().map(tool => tool.name)).toEqual(['skill'])
@@ -234,7 +243,7 @@ describe('dsh-tool-skill', () => {
     }))
     const controller = new AbortController()
 
-    await composePrefix(ctx, '/workspace', controller.signal)
+    await composePrefix(ctx, workspace, controller.signal)
 
     expect(seenSignal).toBe(controller.signal)
   })
@@ -287,7 +296,7 @@ describe('dsh-tool-skill', () => {
       }
     })
 
-    const prefix = await composePrefix(ctx, '/workspace')
+    const prefix = await composePrefix(ctx, workspace)
 
     expect(prefix).toEqual([
       {
@@ -333,7 +342,7 @@ describe('dsh-tool-skill', () => {
     expect(rendered).not.toContain('/secret/path')
     expect(rendered).not.toContain('Secret body')
     expect(rendered).not.toContain('user-only-skill')
-    expect(renderPrompt(await ctx.systemPrompt.assemble({ agent: agentForCwd('/workspace') }))).not.toContain('<available_skills>')
+    expect(renderPrompt(await ctx.systemPrompt.assemble({ agent: agentForCwd(workspace) }))).not.toContain('<available_skills>')
   })
 
   it('does not inject a catalog when no model-invocable skills are available', async () => {
@@ -347,7 +356,7 @@ describe('dsh-tool-skill', () => {
       content: 'User-only body.',
     })
 
-    const agent = agentForCwd('/workspace')
+    const agent = agentForCwd(workspace)
     expect(await composePrefixForAgent(ctx, agent)).toEqual([])
     expect(await composePrefixForAgent(ctx, agent)).toEqual([])
   })
@@ -371,7 +380,7 @@ describe('dsh-tool-skill', () => {
       invalidate = control.invalidate
       return provider
     })
-    const session = Session.create(SessionId('incomplete-prefix'))
+    const session = Session.create(SessionId('incomplete-prefix'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('incomplete-prefix'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
 
@@ -387,7 +396,7 @@ describe('dsh-tool-skill', () => {
   it('records an empty baseline across repeated step observations', async () => {
     const home = await tempDir('tool-empty-step')
     const ctx = await setup(home)
-    const session = Session.create(SessionId('empty-step'))
+    const session = Session.create(SessionId('empty-step'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('empty-step'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
 
@@ -406,7 +415,7 @@ describe('dsh-tool-skill', () => {
       source: 'runtime',
       content: 'First body.',
     })
-    const session = Session.create(SessionId('proposed-catalog'))
+    const session = Session.create(SessionId('proposed-catalog'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('proposed-catalog'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
     await fireStep(ctx, agent, 1, 1)
@@ -440,7 +449,7 @@ describe('dsh-tool-skill', () => {
   it('removes a stale proposed catalog before the first empty baseline', async () => {
     const home = await tempDir('tool-proposed-empty-catalog')
     const ctx = await setup(home)
-    const session = Session.create(SessionId('proposed-empty-catalog'))
+    const session = Session.create(SessionId('proposed-empty-catalog'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('proposed-empty-catalog'), createdAt: 0, cwd: workspace, isSeeded: false })
     const malformed = createUserMessage({
       content: [{ type: 'text', text: 'preserve unreadable claimed context' }],
       source: { kind: 'skill-catalog', form: 'catalog' } as never,
@@ -468,7 +477,7 @@ describe('dsh-tool-skill', () => {
       source: 'runtime',
       content: 'First body.',
     })
-    const session = Session.create(SessionId('matching-proposal'))
+    const session = Session.create(SessionId('matching-proposal'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('matching-proposal'), createdAt: 0, cwd: workspace, isSeeded: false })
     const proposed = createUserMessage({
       content: catalogContent(['- `first-skill`: First skill']),
       source: {
@@ -492,7 +501,7 @@ describe('dsh-tool-skill', () => {
       source: 'runtime',
       content: 'First body.',
     })
-    const session = Session.create(SessionId('dynamic-catalog'))
+    const session = Session.create(SessionId('dynamic-catalog'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('dynamic-catalog'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
 
@@ -541,7 +550,7 @@ describe('dsh-tool-skill', () => {
       source: 'runtime',
       content: 'Resumed body.',
     })
-    const session = Session.create(SessionId('catalog-resume'))
+    const session = Session.create(SessionId('catalog-resume'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('catalog-resume'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
     session.append('user/message', createUserMessage({
@@ -591,7 +600,7 @@ describe('dsh-tool-skill', () => {
       source: 'runtime',
       content: 'Live body.',
     })
-    const session = Session.create(SessionId('catalog-malformed'))
+    const session = Session.create(SessionId('catalog-malformed'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('catalog-malformed'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
     for (const source of [
@@ -622,13 +631,13 @@ describe('dsh-tool-skill', () => {
   it('rejects a missing event below the current Session length', async () => {
     const home = await tempDir('tool-catalog-missing-event')
     const ctx = await setup(home)
-    const session = Session.create(SessionId('catalog-missing-event'))
+    const session = Session.create(SessionId('catalog-missing-event'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('catalog-missing-event'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
     Object.defineProperty(session, 'eventAt', { value: () => undefined })
 
     await expect(fireStep(ctx, agent, 1, 1))
-      .rejects.toThrow('skill catalog cannot read seq 1 below the current Session length')
+      .rejects.toThrow('skill catalog cannot read seq 2 below the current Session length')
   })
 
   it('re-establishes the current catalog after compaction hides its durable message', async () => {
@@ -640,7 +649,7 @@ describe('dsh-tool-skill', () => {
       source: 'runtime',
       content: 'First body.',
     })
-    const session = Session.create(SessionId('catalog-compaction'))
+    const session = Session.create(SessionId('catalog-compaction'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('catalog-compaction'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
     expect(JSON.stringify(await composePrefixForAgent(ctx, agent))).toContain('first-skill')
@@ -665,7 +674,7 @@ describe('dsh-tool-skill', () => {
     const root = join(home, '.dsh/skills')
     await writeSkill(root, 'body-skill', 'Stable description', 'First body.')
     const ctx = await setup(home)
-    const session = Session.create(SessionId('body-refresh'))
+    const session = Session.create(SessionId('body-refresh'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('body-refresh'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
 
@@ -689,7 +698,7 @@ describe('dsh-tool-skill', () => {
   it('resolves the layered registry as the calling agent sees it', async () => {
     const home = await tempDir('tool-scoped-layer')
     const ctx = await setup(home)
-    const { agent, scope } = await mintAgentScope(ctx, '/workspace/scoped')
+    const { agent, scope } = await mintAgentScope(ctx, join(workspace, 'scoped'))
     const scopedSkills = scope.ctx.get('skills')
     if (scopedSkills === undefined) throw new Error('skills service missing')
     scopedSkills.register({
@@ -700,7 +709,7 @@ describe('dsh-tool-skill', () => {
     })
 
     expect(JSON.stringify(await composePrefixForAgent(ctx, agent))).toContain('preset-only-skill')
-    expect(JSON.stringify(await composePrefix(ctx, '/workspace/other'))).not.toContain('preset-only-skill')
+    expect(JSON.stringify(await composePrefix(ctx, join(workspace, 'other')))).not.toContain('preset-only-skill')
 
     const scoped = await ctx.tools.execute({
       signal: testToolSignal,
@@ -717,7 +726,7 @@ describe('dsh-tool-skill', () => {
       callId: ToolCallId('foreign-load'),
       name: 'skill',
       arguments: { name: 'preset-only-skill' },
-      agent: agentForCwd('/workspace/other'),
+      agent: agentForCwd(join(workspace, 'other')),
     })
     expect(foreign.isError).toBe(true)
     await scope.dispose()
@@ -732,7 +741,7 @@ describe('dsh-tool-skill', () => {
       source: 'runtime',
       content: 'Stable body.',
     })
-    const session = Session.create(SessionId('incomplete-catalog'))
+    const session = Session.create(SessionId('incomplete-catalog'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('incomplete-catalog'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
     expect(JSON.stringify(await composePrefixForAgent(ctx, agent))).toContain('stable-skill')
@@ -756,7 +765,7 @@ describe('dsh-tool-skill', () => {
     const home = await tempDir('tool-restricted-catalog')
     const ctx = await setup(home)
     ctx.skills.register({ name: 'listed-skill', description: 'Listed', source: 'runtime', content: 'body' })
-    const session = Session.create(SessionId('restricted-catalog'))
+    const session = Session.create(SessionId('restricted-catalog'), [], { version: SESSION_FORMAT_VERSION, id: SessionId('restricted-catalog'), createdAt: 0, cwd: workspace, isSeeded: false })
     const agent = sessionAgent(session)
     openMessageTurn(session)
     const { scope } = await mintAgentScope(ctx, agent)
@@ -767,7 +776,7 @@ describe('dsh-tool-skill', () => {
     expect(catalogMessages(session)).toEqual([])
     await fireStep(ctx, agent, 1, 1)
     expect(catalogMessages(session)).toEqual([])
-    expect(await composePrefix(ctx, '/workspace')).toHaveLength(1)
+    expect(await composePrefix(ctx, workspace)).toHaveLength(1)
     await scope.dispose()
   })
 
@@ -775,7 +784,7 @@ describe('dsh-tool-skill', () => {
     const home = await tempDir('tool-shadowed-catalog')
     const ctx = await setup(home)
     ctx.skills.register({ name: 'listed-skill', description: 'Listed', source: 'runtime', content: 'body' })
-    const { agent, scope } = await mintAgentScope(ctx, '/workspace')
+    const { agent, scope } = await mintAgentScope(ctx, workspace)
     scope.ctx.tools.register(defineContentToolFixture({
       name: 'skill',
       description: 'A scoped tool with unrelated semantics.',
@@ -787,7 +796,7 @@ describe('dsh-tool-skill', () => {
 
     expect(ctx.tools.get('skill', agent)).not.toBe(ctx.tools.get('skill'))
     expect(await composePrefixForAgent(ctx, agent)).toEqual([])
-    expect(await composePrefix(ctx, '/workspace')).toHaveLength(1)
+    expect(await composePrefix(ctx, workspace)).toHaveLength(1)
     await scope.dispose()
   })
 
@@ -801,6 +810,7 @@ describe('dsh-tool-skill', () => {
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(SkillFileSystem, { dshHome: join(home, '.dsh'), agentsHome: join(home, '.agents'), watch: false })
 
+    await mountDirectoryFixture(ctx, process.cwd())
     await expect(ctx.plugin(toolSkill, { catalogDescriptionMaxLength: 2 })).rejects.toThrow('greater than or equal to 3')
   })
 
@@ -816,7 +826,7 @@ describe('dsh-tool-skill', () => {
       callId: ToolCallId('c1'),
       name: 'skill',
       arguments: { name: 'project-skill' },
-      agent: { session: { header: { cwd: project } } } as never,
+      agent: agentForCwd(project),
     })
 
     expect(result.isError).toBe(false)

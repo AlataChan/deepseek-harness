@@ -262,7 +262,7 @@ export interface ChatViewInjected {
 /** Full Chat view props. */
 export type ChatViewSlotProps =
   PropsRuntime<'conversation.view'>
-  & PropsRenderSlots<'conversation.chat.node' | 'conversation.message.images'>
+  & PropsRenderSlots<'conversation.chat.node' | 'conversation.message.images' | 'conversation.chat.text-interaction'>
   & PropsStore<ChatStore>
   & InjectFace<ChatViewInjected>
   & PropsLocale<'chat'>
@@ -282,6 +282,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 
   interface SlotMap {
+    /** Selected transcript text actions, keyed by feature. */
+    'conversation.chat.text-interaction': {
+      kind: 'keyed'
+      scope: 'session'
+      owner: { dismiss: () => void; clearSelection: () => void; readText: () => string | null }
+    }
     /**
      * Final Chat node renderer, keyed by `ChatNodeKind`. The component receives
      * the typed node, shared Chat actions, and Turn-data hook. Reusing a key

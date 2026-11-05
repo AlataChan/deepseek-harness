@@ -30,7 +30,7 @@ it('refuses an array-shaped tables map instead of opening an empty task catalog'
   const root = await mkdtemp(join(tmpdir(), 'dsh-schedule-malformed-')); roots.push(root)
   const path = join(root, 'schedule.json')
   const task = {
-    sessionId: 'session-1',
+    target: { kind: 'session', sessionId: 'session-1' }, involvedSessionIds: ['session-1'],
     record: createAtScheduleRecord(ScheduleId('kept'), 'Keep me', '2099-01-01T00:00:00.000Z', 0, 'Keep me'),
     status: 'active',
   }

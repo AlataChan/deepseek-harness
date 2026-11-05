@@ -23,6 +23,7 @@ Run [Claude Code mods](https://code.claude.com/docs/en/plugins/mods/overview) in
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 A mod is a plugin. `defineMod` takes the mod's `register` function with the identity `plugin.json` would hold and returns a Cordis plugin whose config is the `options` object `register` receives, overlaid on the `userConfig` defaults you name. Mount the bridge first, then the mods in chain order.
@@ -72,6 +73,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 `e.tool` and `tool` matchers use Claude Code's names where a harness tool has one (`Bash` ↔ `bash`, `Read` ↔ `read`, `Edit` ↔ `edit`, `Write` ↔ `write`, `Glob` ↔ `glob`, `Grep` ↔ `grep`, `WebFetch` ↔ `web_fetch`, `WebSearch` ↔ `web_search`, `Task` ↔ `subagent`, `TodoWrite` ↔ `todo_write`, `AskUserQuestion` ↔ `ask_user_question`, `ExitPlanMode` ↔ `exit_plan_mode`, `Skill` ↔ `skill`); every other tool keeps its harness name. Subagent events carry `e.agentId`. Every other Claude Code event name registers without error, never fires, and is named in a warning when the mod loads.
 
 <a id="the-band-above-the-prompt"></a>
+
 ### The band above the prompt
 
 The band is one instance per session, drawn by the first mod in load order whose `ui.render` hook returns a tree; a hook that calls `next(e)` yields to the next mod, so put a mod that draws only while it holds something (Blast Radius, Replay Theater) before one that draws whenever it has a reading (Token Weather). The band redraws after `session.start`, when a `$.state` value the last drawing read is written, after `$.ui.open`, `$.ui.close`, and `$.ui.invalidate`, after each `tool.call` chain and `turn.complete` settle, and after a button press. A `Button`'s `onPress` stays in the host; the Web band sends a click back with the generation it saw, and a click on an earlier drawing is reported and ignored. `$.ui.open` answers `{ isPlaced: false }`: no pane is placed, and a mod that degrades to the band draws there. The [test kit](#test-a-mod)'s `$.ui.mount` renders the same hooks without a Client.
@@ -97,6 +99,7 @@ The band is one instance per session, drawn by the first mod in load order whose
 A call whose service is not composed rejects with the missing service's package name; a namespace or method outside this table rejects with `no implementation for <namespace>.<method>`. A mod runs in this process with its full authority: `$.env` reads and writes the harness environment, `$.http.fetch` reaches any URL, `$.fs` and `$.tool.call` act as the session does.
 
 <a id="test-a-mod"></a>
+
 ### Test a mod
 
 `createModTestKit` from `@deepseek-ai/dsh-experimental-claude-code-mods/testing` loads `defineMod` plugins or bare definitions and raises events through them with stubs beneath, in the shape of `claude-code/testing`: `kit.on('tool.call', () => ({ result: 'ok' }))` answers in the engine's place, `kit.$.tool.call({ tool: 'Bash', command: 'ls' })` raises the event, `kit.$.ui.mount({ component: 'AbovePrompt' })` renders the band and finds or presses its elements, and `mock.store(kit.on)` answers `$.store` from memory. Inside this repository, `claude-code/testing` resolves to the kit plus Vitest's `describe`, `test`, and `expect`, so the [example mods' tests](examples/token-weather/tests/token-weather.test.ts) run as written for `claude plugin test`.
@@ -104,6 +107,7 @@ A call whose service is not composed rejects with the missing service's package 
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -140,6 +144,7 @@ A call whose service is not composed rejects with the missing service's package 
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 - [Compatibility with Claude Code mods](../../../docs/subsystems/claude-code-mods.md) — every way this bridge differs from Claude Code mods, with the fix or the reason.
@@ -152,7 +157,10 @@ A call whose service is not composed rejects with the missing service's package 
 
 -----
 
+Mod file operations, process launches and session.cwd use the validated execution directory; session.root retains the original project identity. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Prompt context and submitted prompts
@@ -208,6 +216,7 @@ These limits describe where a Claude Code mod behaves differently through this b
 - **`plugin.json` and `hooks.json`** — not read; `defineMod` carries the identity, and a plugin's settings hooks need `@deepseek-ai/dsh-hooks-claude-code`.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

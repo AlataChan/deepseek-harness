@@ -23,6 +23,7 @@ Use `dsh-tools` to expose typed capabilities to models, validate calls, enforce 
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Mount `dsh-tools` wherever agents call tools: it provides `ctx.tools`, the registry every tool plugin registers into and the loop dispatches through. Registering a tool is enough to make it visible — the registry feeds its schemas into the system-prompt assembly automatically.
@@ -95,6 +96,7 @@ A tool can retain pure `presentCall()` and `presentResult()` methods for Host-lo
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -134,6 +136,7 @@ Successful image-bearing subcall results become deferred user-message context wi
 `run_code` accepts `timeoutMs` when the mounted runtime supports an override; its schema reports the configured default and maximum, the runtime's usage instructions and the Session working directory. The Node default is 120,000 ms with a 600,000 ms cap, including nested tool and approval waits. A wider `sandbox_permissions` mode requires a non-empty `justification` and approval before the program starts. The schema asks the model to write that reason in the current user's language. The grant applies to that complete execution; standing Session policy and nested tools retain their own authority. Programs are never replayed automatically: inspect earlier effects before explicitly retrying a denied program.
 
 <a id="extension-points"></a>
+
 ### Extension points
 
 Tool plugins call `ctx.tools.register()` and their schemas flow into prompt assembly automatically. `tools/pre-execute` is the reorderable allow/deny/ask gate; `ctx.tools.guard()` adds monotonic owner policy after it; `tools/execute` wraps normalized canonical dispatch for timeout, retry, or metrics; `tools/post-execute` may replace content or value, block with feedback, or attach ordered contexts; `tools/result` observes the immutable final outcome. MCP servers discover tools and register them with the server's schemas.
@@ -143,6 +146,7 @@ Tool plugins call `ctx.tools.register()` and their schemas flow into prompt asse
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 The package-level contract is enough for most consumers; read these when you need the surrounding domain.
@@ -156,7 +160,10 @@ The package-level contract is enough for most consumers; read these when you nee
 
 -----
 
+PTC runs in the calling Agent’s validated execution directory. The sandbox policy still uses the original project root, and changing directories grants no additional permissions. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Normal tool schemas
@@ -238,6 +245,7 @@ These limits define when the registry needs special care. They are current packa
 `defineTool()`, registry schema projection, and system-prompt assembly preserve `deferLoading: true`. The marker requests deferred definition loading and does not imply a `tool-addition` record; the [LLM package](../../../packages/llm/llm/README.md#known-limitations-and-deferred-work) documents provider enforcement limits.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

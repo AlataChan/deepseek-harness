@@ -33,6 +33,7 @@ import {
 import { managementText, noticeText, packageText, registryText, rowText, type Translate } from './presentation.ts'
 import type { PluginPackageRef, PluginRowRef, PluginsSubject } from './slot-contract.ts'
 import type { ConfigPageForm } from './slot-contract.ts'
+import { VersionSection, UpdateDialog } from './versions.tsx'
 import css from './PluginManagerPage.module.css'
 
 /** Full component props assembled by the main slot renderer. */
@@ -610,9 +611,10 @@ function RowDetail({ pkg, row, t, resolveText, onBack, renderSlot, form }: {
  */
 function PackageDetail({
   pkg, t, resolveText, busy, rowBusy, configured, configure, renderSlot,
-  onBack, onSetEnabled, onUninstall, onSetRowEnabled,
+  onBack, onSetEnabled, onUninstall, onSetRowEnabled, versions,
 }: {
   readonly pkg: PackageView
+  readonly versions: ReactNode
   readonly t: Translate
   readonly resolveText: ResolveText
   readonly busy: boolean
@@ -688,6 +690,7 @@ function PackageDetail({
           toggle={pkg.enabled ? { busy: row => busy || rowBusy(row), onSetEnabled: onSetRowEnabled } : undefined}
           configure={configure}
         />
+        {versions}
         <SourceSection pkg={pkg} t={t} />
         {renderSlot('plugins.detail.section', { subject })}
       </div>
@@ -1490,6 +1493,7 @@ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
         ? (
           <PackageDetail
             pkg={openPkg}
+            versions={<VersionSection pkg={openPkg} check={state.versions[openPkg.name]} t={t} busy={state.update?.phase === 'running' || state.busy.includes(openPkg.name)} onCheck={() => { props.checkVersions(openPkg.name) }} onUpdate={(version) => { props.openUpdate(openPkg.name, version) }} />}
             t={t}
             resolveText={resolveText}
             busy={state.busy.includes(openPkg.name)}
@@ -1551,6 +1555,7 @@ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
         onChangeRegistry={props.changeRegistry}
         onUseGithubMirror={props.useGithubMirror}
       />
+      <UpdateDialog update={state.update} t={t} onConfirm={props.runUpdate} onClose={props.closeUpdate} />
       {state.confirm === null
         ? null
         : (

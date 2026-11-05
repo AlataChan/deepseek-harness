@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在任何 agent 调用工具的地方挂载 `dsh-tools`：它提供 `ctx.tools`，即每个工具插件注册进去、循环分发所经过的注册表。注册一个工具就足以让它可见——注册表会自动把其 schema 送入系统提示词组装。
@@ -95,6 +96,7 @@ ctx.tools.register(defineTool({
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -134,6 +136,7 @@ ctx.tools.register(defineTool({
 当已挂载运行时支持覆盖时，`run_code` 接受 `timeoutMs`；其 schema 报告配置的默认值和上限、运行时使用说明及 Session 工作目录。Node 默认值为 120,000 ms，上限为 600,000 ms，包含嵌套工具和审批等待。更宽的 `sandbox_permissions` 模式要求非空 `justification`，并在程序启动前获得审批。schema 提示模型使用当前用户的语言撰写理由。授权仅用于该次完整执行；常驻 Session 策略与嵌套工具保留各自权限。程序不会自动重放：显式重试被拒程序前，应检查先前已发生的效果。
 
 <a id="extension-points"></a>
+
 ### 扩展点
 
 工具插件调用 `ctx.tools.register()`，其 schema 会自动流入提示词组装。`tools/pre-execute` 是可重排的允许／拒绝／询问门禁；`ctx.tools.guard()` 在其后添加单调的拥有方策略；`tools/execute` 为超时、重试或指标包装规范化后的规范分发；`tools/post-execute` 可以替换内容或值、通过反馈阻止，或附加有序上下文；`tools/result` 观测不可变的最终结果。MCP 服务器发现工具后，用服务器的 schema 调用 `ctx.tools.register()`。
@@ -143,6 +146,7 @@ ctx.tools.register(defineTool({
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 包级约定对大多数消费方已经足够；需要周边领域时再阅读以下页面。
@@ -156,7 +160,10 @@ ctx.tools.register(defineTool({
 
 -----
 
+PTC 在调用 Agent 已校验的执行目录中运行。沙箱策略仍使用原项目根目录，切换目录不会增加权限。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 普通工具 schema
@@ -238,6 +245,7 @@ Program-only SDK bindings:
 `defineTool()`、注册表模式投影和系统提示组装会保留 `deferLoading: true`。该标记请求延迟加载工具定义，并不意味着存在 `tool-addition` 记录；提供方执行语义的限制见 [LLM 包](../../../packages/llm/llm/README.zh.md#known-limitations-and-deferred-work)。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

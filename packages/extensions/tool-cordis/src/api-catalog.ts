@@ -2484,6 +2484,67 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'forgePanel',
+    summary: 'Owns local worktree requests and serialized Agent maintenance, without remote publication.',
+    description: 'Owns local worktree requests and serialized Agent maintenance, without remote publication.',
+    methods: [
+      {
+        signature: '@Remote async localDiff(session: Session, scope: ForgeLocalScope, signal: AbortSignal): Promise<ForgeLocalDiff>',
+        description: 'Read a bounded local diff without external diff helpers.',
+        parameters: [{ name: 'session', description: 'Session to inspect.' }, { name: 'scope', description: 'Local comparison to read.' }, { name: 'signal', description: 'Cancellation.' }],
+        returns: 'bounded local comparison.',
+      },
+      {
+        signature: '@Remote async localText(session: Session, scope: ForgeLocalScope, path: string, signal: AbortSignal): Promise<string>',
+        description: 'Read the current text of a checkout-relative file.',
+        parameters: [{ name: 'session', description: 'Session to inspect.' }, { name: 'scope', description: 'Local comparison.' }, { name: 'path', description: 'Checkout-relative file.' }, { name: 'signal', description: 'Cancellation.' }],
+        returns: 'current file text.',
+      },
+      {
+        signature: '@Remote requestWorktree(session: Session, from: string | null, signal: AbortSignal): void',
+        description: 'Record a request consumed before the first model step.',
+        parameters: [{ name: 'session', description: 'Session before its first turn.' }, { name: 'from', description: 'Local base ref, or null for HEAD.' }, { name: 'signal', description: 'Cancellation before recording.' }],
+        returns: 'after the operation is recorded or completed.',
+      },
+      {
+        signature: '@Remote cancelWorktree(session: Session, signal: AbortSignal): void',
+        description: 'Withdraw a request and release its waiting message.',
+        parameters: [{ name: 'session', description: 'Session with an open request.' }, { name: 'signal', description: 'Cancellation before recording.' }],
+        returns: 'after the operation is recorded or completed.',
+      },
+      {
+        signature: '@Remote stopCreation(session: Session, signal: AbortSignal): void',
+        description: 'Abort a held attempt while retaining its request for retry.',
+        parameters: [{ name: 'session', description: 'Session whose held attempt stops.' }, { name: 'signal', description: 'Cancellation of the control request.' }],
+        returns: 'after the operation is recorded or completed.',
+      },
+      {
+        signature: '@Remote retryWorktree(session: Session, signal: AbortSignal): void',
+        description: 'Retry a held creation with a fresh name.',
+        parameters: [{ name: 'session', description: 'Session waiting after a failed or stopped creation.' }, { name: 'signal', description: 'Cancellation of the control request.' }],
+        returns: 'after the operation is recorded or completed.',
+      },
+      {
+        signature: '@Remote async restoreWorktree(session: Session, signal: AbortSignal): Promise<void>',
+        description: 'Restore a removed checkout without changing the execution directory.',
+        parameters: [{ name: 'session', description: 'Session retaining the missing checkout.' }, { name: 'signal', description: 'Cancels restoration.' }],
+        returns: 'after the operation is recorded or completed.',
+      },
+      {
+        signature: '@Remote async continueInProject(session: Session, signal: AbortSignal): Promise<void>',
+        description: 'Return to the immutable original project without removing the checkout.',
+        parameters: [{ name: 'session', description: 'Session retaining the original project identity.' }, { name: 'signal', description: 'Cancels directory validation.' }],
+        returns: 'after the operation is recorded or completed.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *follow(session: Session, signal: AbortSignal): AsyncIterable<ForgePanelState>',
+        description: 'Follow one Session only while the caller retains its stream.',
+        parameters: [{ name: 'session', description: 'original Session identity.' }, { name: 'signal', description: 'ends the subscription.' }],
+        returns: 'local checkout states in publication order.',
+      },
+    ],
+  },
+  {
     key: 'fs',
     summary: 'Abstract filesystem provider.',
     description: 'Abstract filesystem provider. Targets must preserve identity across aliases; reads expose regular UTF-8 text or typed errors, listings are stable and content-free, and mutations are atomic. Optional guards add stale protection without changing the unguarded provider contract.',
@@ -3194,6 +3255,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'The package the spec names, or why it is refused.',
       },
       {
+        signature: '@Remote async listVersions(name: string, options?: ListVersionsOptions, signal?: AbortSignal): Promise<PluginVersionList>',
+        description: 'Read the published versions newer than an installed registry package\'s version, from the first registry that answers.',
+        parameters: [{ name: 'name', description: 'Installed profile dependency name.' }, { name: 'options', description: 'The registry asked first; absent, the one the package was installed from in this process, else the configured one.' }, { name: 'signal', description: 'Ends the lookups early.' }],
+        returns: 'At most `versionListLimit` newer versions, newest first, with their tags, deprecation, bundle declaration, and DSH compatibility, and the registry that answered; or why no list could be read, with every registry asked.',
+      },
+      {
+        signature: '@Remote async updateBundle(name: string, version: string, options?: UpdateBundleOptions, signal?: AbortSignal): Promise<PluginUpdateResult>',
+        description: 'Replace an installed registry bundle with a newer published version. The target is checked on the registry first: it must exist, declare a bundle, and accept the running DSH version, or nothing changes. With HMR the installed version is removed, so its plugins stop, and the target is installed with the same selection; when that installation fails or is cancelled, the removed version is installed again from the registry it came from. Without HMR the target is installed over the running version and the result reports the restart.',
+        parameters: [{ name: 'name', description: 'Installed profile dependency name.' }, { name: 'version', description: 'Exact published version newer than the installed one.' }, { name: 'options', description: 'The registry asked first, as for `listVersions`, and the request id naming the progress and the target installation\'s logs and cancellation.' }, { name: 'signal', description: 'Stops checking or target installation; a removed version is restored independently.' }],
+        returns: 'The versions, the last step that ran with its result, and the reinstallation when one ran.',
+      },
+      {
         signature: '@Remote setPluginEnabled(id: PluginEntryId, enabled: boolean): Promise<ChangeResult>',
         description: 'Persist a plugin entry\'s desired enablement and apply it on live profiles.',
         parameters: [{ name: 'id', description: 'Loader entry identity returned by listPlugins.' }, { name: 'enabled', description: 'Whether the plugin should run.' }],
@@ -3369,41 +3442,70 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Shared management service; reads, deletion, and timing edits never activate a Session.\n\n`sessionPersistence` is a load-order requirement rather than a directly called service: a delivery commits only when `ctx.sessions.flush()` reports that a `session/flush` listener participated, and the persistence backend providing this service is the plugin that registers that listener.',
     methods: [
       {
-        signature: 'async create(sessionId: SessionId, request: ScheduleCreateRequest, signal?: AbortSignal): Promise<ScheduleRecord>',
-        description: 'Create a reminder bound to the caller-selected Session without activating it.\n\nThe request must supply a title; a missing, blank-after-trim, or over-long title rejects with `invalid_prompt` instead of deriving one from the prompt. A Session a delegated child owns rejects with `subagent_session`, because delivery can never reach it: the child is one whose delegation depth is above zero. The record is built from the clock reading taken before the request joins the serialized queue, so a create that waits behind a longer operation keeps its request-time anchor and may already be due when the queue reaches it.',
-        parameters: [{ name: 'sessionId', description: 'Original Session receiving the reminder.' }, { name: 'request', description: 'Validated tool selector, required title, and reminder content.' }, { name: 'signal', description: 'Optional cancellation checked before persistence begins, including after FIFO waits.' }],
-        returns: 'The durably stored schedule. Cancellation does not roll back an in-flight write.',
+        signature: '@Remote(\'create\') async remoteCreate(request: ScheduleCreateRequest, signal?: AbortSignal): Promise<ScheduleCatalogEntry>',
+        description: 'Create a task for a human caller without manufacturing an acting Session.',
+        parameters: [{ name: 'request', description: 'Content, timing, and optional destination.' }, { name: 'signal', description: 'Cancellation before persistence.' }],
+        returns: 'The committed task.',
       },
       {
-        signature: '@Remote(\'list\') async list(request: ScheduleListRequest): Promise<ScheduleRecord[]>',
-        description: 'Read the selected Session\'s active tasks without resuming its Agent.',
-        parameters: [{ name: 'request', description: 'Session whose task list is requested.' }],
-        returns: 'Persisted reminders in storage order.',
+        signature: 'async create(request: ScheduleCreateRequest, actor?: Session, signal?: AbortSignal): Promise<ScheduleCatalogEntry>',
+        description: 'Create one task; the actual acting Session is recorded only as involved.',
+        parameters: [{ name: 'request', description: 'Content, timing, and optional destination (defaults to new_once).' }, { name: 'actor', description: 'Actual model caller; omitted for human remotes.' }, { name: 'signal', description: 'Cancellation checked before the durable write, including FIFO waits.' }],
+        returns: 'Persisted task; an accepted write is not rolled back by cancellation.',
+      },
+      {
+        signature: 'async list(request: ScheduleListRequest = {}): Promise<ScheduleListResult>',
+        description: 'Read one Host-wide page without activating a Session.',
+        parameters: [{ name: 'request', description: 'Activity filter and pagination.' }],
+        returns: 'Sorted page with total and applied bounds.',
+      },
+      {
+        signature: '@Remote(\'list\') async remoteList(request: ScheduleListRequest): Promise<ScheduleListResult>',
+        description: 'Read one task page for a human Remote caller.',
+        parameters: [{ name: 'request', description: 'Activity filter and page bounds.' }],
+        returns: 'The requested page without Session activation.',
       },
       {
         signature: '@Remote(\'catalog\') async catalog(): Promise<ScheduleCatalogEntry[]>',
-        description: 'Read all active and inactive Host reminders with their original Session bindings. A deleted reminder has no row, so it is absent here. Does not activate Sessions or read Session history.',
+        description: 'Read all retained Host tasks.',
         parameters: [],
-        returns: 'Reminders ordered by scheduledAt ascending, then lexicographically by id.',
+        returns: 'Active tasks first, then occurrence and identity order.',
+      },
+      {
+        signature: '@Remote(\'view\') async view(request: ScheduleViewRequest): Promise<ScheduleViewResult>',
+        description: 'Read one retained task.',
+        parameters: [{ name: 'request', description: 'Task identity.' }],
+        returns: 'Current task or lookup miss.',
       },
       {
         signature: '@Remote(\'history\') async history(request: ScheduleDeliveryHistoryRequest): Promise<ScheduleDeliveryHistoryResult>',
-        description: 'Read saved inbox deliveries without activating or reading the original Session. The task\'s own row supplies its binding, so its records stay readable through this lookup.',
-        parameters: [{ name: 'request', description: 'Session binding, task identity, explicit limit, and optional exclusive message cursor.' }],
-        returns: 'Newest-first deliveries in append order, or a task/cursor lookup failure.',
-        throws: ['ScheduleInputError when limit is not a safe integer from 1 through 100.'],
+        description: 'Read saved receipts without activating a Session.',
+        parameters: [{ name: 'request', description: 'Task identity, page size, and exclusive message cursor.' }],
+        returns: 'Newest-first saved deliveries or lookup miss.',
       },
       {
-        signature: '@Remote(\'delete\') async delete(request: ScheduleDeleteRequest, signal?: AbortSignal): Promise<ScheduleDeleteResult>',
-        description: 'Delete one task belonging to the selected Session, leaving queued messages intact.\n\nThe row is removed: the task no longer schedules, leaves `list` and `catalog`, and its saved delivery records go with it. A task bound to a Session a delegated child owns stays deletable even though creation and timing edits refuse that binding, so a task stored before that rule existed remains removable.',
-        parameters: [{ name: 'request', description: 'Session and exact task identity.' }, { name: 'signal', description: 'Optional cancellation checked before persistence begins, including after FIFO waits.' }],
-        returns: 'Whether that Session owned a deleted task. Cancellation does not roll back an in-flight write.',
+        signature: '@Remote(\'edit\') async remoteEdit(request: ScheduleEditRequest, signal?: AbortSignal): Promise<ScheduleEditResult>',
+        description: 'Human edit entry point, with no acting Session.',
+        parameters: [{ name: 'request', description: 'Closed update/delete operation.' }, { name: 'signal', description: 'Cancellation before the durable write.' }],
+        returns: 'Committed entry, deletion, or conflict/miss.',
       },
       {
-        signature: '@Remote(\'update\') async update(request: ScheduleUpdateRequest, signal?: AbortSignal): Promise<ScheduleUpdateResult>',
-        description: 'Update the name, instruction, and timing of an active task within the original Session binding without activating the Session or changing saved deliveries.\n\nEach supplied field replaces its stored value; an omitted field keeps it. A name or instruction change alone does not reset the committed target. A Session a delegated child owns returns the non-mutating `subagent_session` result, so an edit cannot re-arm a task bound to a Session delivery can never reach, and the Web editor can explain the refusal through the ordinary result it already renders.',
-        parameters: [{ name: 'request', description: 'Task binding, complete observed record, and any combination of timing, name, and instruction.' }, { name: 'signal', description: 'Cancellation checked after domain readiness and FIFO waits, before persistence begins.' }],
-        returns: 'The committed record, unchanged record for a no-op, or a non-mutating input/lookup/conflict/refusal result. Storage and lifecycle failures reject; cancellation after a write starts does not roll it back.',
+        signature: 'async edit(request: ScheduleEditRequest, actor?: Session, signal?: AbortSignal): Promise<ScheduleEditResult>',
+        description: 'Apply a complete task patch or delete through one revision check and FIFO slot.',
+        parameters: [{ name: 'request', description: 'Operation and optional expectedUpdatedAt compare token.' }, { name: 'actor', description: 'Actual acting Agent Session, never human authority.' }, { name: 'signal', description: 'Cancellation before persistence, including readiness and FIFO waits.' }],
+        returns: 'Committed entry, deletion, or a non-mutating conflict/miss.',
+      },
+      {
+        signature: '@Remote(\'run\') async run(request: ScheduleRunRequest, signal?: AbortSignal): Promise<ScheduleRunResult>',
+        description: 'Deliver immediately without consuming the scheduled occurrence.',
+        parameters: [{ name: 'request', description: 'Task identity.' }, { name: 'signal', description: 'Cancellation checked before delivery admission.' }],
+        returns: 'Updated task, lookup miss, or an already-running refusal.',
+      },
+      {
+        signature: '@Remote(\'deleteInactive\') async deleteInactive(signal?: AbortSignal): Promise<ScheduleDeleteInactiveResult>',
+        description: 'Delete ended rows, retaining paused and active tasks. Each deletion is independently durable.',
+        parameters: [{ name: 'signal', description: 'Cancellation before the first durable deletion.' }],
+        returns: 'Number removed; a partial failure rejects and announces completed deletions.',
       },
     ],
   },
@@ -4853,7 +4955,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'suppressRuntimeContext(): () => void',
-        description: 'Suppress every dynamic runtime-context contribution in the calling context\'s scope without changing the services that own or enforce those facts. Multiple suppressors remain independently disposable.',
+        description: 'Suppress optional dynamic runtime-context contributions in the calling context\'s scope without changing the services that own or enforce those facts. Multiple suppressors remain independently disposable.',
         parameters: [],
         returns: 'the exact Cordis effect disposer.',
       },
@@ -4868,6 +4970,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Register a prompt variable in the calling context\'s scope. Scoped values shadow globals; invalid or duplicate names throw. A provider may return `undefined`, but rendering a section that references that value then fails.',
         parameters: [{ name: 'name', description: 'the `[a-z][a-z0-9_]*` reference name.' }, { name: 'provider', description: 'evaluated for each assembly.' }],
         returns: 'the exact Cordis effect disposer.',
+      },
+      {
+        signature: 'refreshContext(assembly: PromptAssembly, context: AssembleContext = {}): PromptAssembly',
+        description: 'Refresh accepted registered runtime facts for request admission. Contexts added only by the assembly waterfall retain their accepted values. Current suppression removes optional contexts, and missing required registrations are restored in registry order. Sections, tools, and interpolation variables retain the accepted assembly; their providers and waterfall do not rerun.',
+        parameters: [{ name: 'assembly', description: 'accepted assembly for this scope and step.' }, { name: 'context', description: 'the same scope and current plugin-defined assembly fields.' }],
+        returns: 'the accepted assembly with current runtime-context provider text.',
       },
       {
         signature: 'async assemble(context: AssembleContext = {}): Promise<PromptAssembly>',
@@ -5428,6 +5536,38 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'workingDirectory',
+    summary: 'One owner for each Session\'s effective directory and its model-visible changes.',
+    description: 'One owner for each Session\'s effective directory and its model-visible changes.',
+    methods: [
+      {
+        signature: 'readonly defaultDirectory: string',
+        description: 'Absolute deployment fallback for Sessions with no recorded original directory.',
+        parameters: [],
+      },
+      {
+        signature: 'get(session: Session): string',
+        description: 'Read the committed directory without filesystem I/O.',
+        parameters: [{ name: 'session', description: 'Session whose directory is requested.' }],
+        returns: 'its effective absolute directory.',
+      },
+      {
+        signature: 'ensure(agent: Agent, signal?: AbortSignal): Promise<string>',
+        description: 'Validate the current directory and restore the original project when it disappeared.',
+        parameters: [{ name: 'agent', description: 'live or unpublished Agent owning the Session.' }, { name: 'signal', description: 'cancellation for filesystem inspection.' }],
+        returns: 'the existing directory; recovery is committed before fulfillment. A notice failure is warned without reverting the committed state.',
+        throws: ['when the original project is also unavailable.'],
+      },
+      {
+        signature: 'set(agent: Agent, path: string, signal?: AbortSignal): Promise<string>',
+        description: 'Change one Session\'s directory without changing existing processes or permissions.',
+        parameters: [{ name: 'agent', description: 'live or unpublished Agent owning the Session.' }, { name: 'path', description: 'absolute path or a path relative to its current directory.' }, { name: 'signal', description: 'cancellation before the durable change.' }],
+        returns: 'the canonical absolute directory, committed before fulfillment. A notice failure is warned; the next request still receives the committed directory.',
+        throws: ['when the requested path is not an existing directory.'],
+      },
+    ],
+  },
+  {
     key: 'workspaceChanges',
     summary: 'Serves the summaries and file comparisons the recorder keeps for live Sessions.',
     description: 'Serves the summaries and file comparisons the recorder keeps for live Sessions.',
@@ -5642,6 +5782,25 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Resolve by canonical directory path without creating or mutating a workspace. A missing path rejects during `realpath`; an existing unowned directory returns `undefined`.',
         parameters: [{ name: 'path', description: 'Existing directory path in a fully qualified spelling.' }],
         returns: 'the workspace owning the canonical path, when one exists.',
+      },
+    ],
+  },
+  {
+    key: 'worktrees',
+    summary: 'Creates retained Git worktrees under the mounted filesystem and sandbox providers.',
+    description: 'Creates retained Git worktrees under the mounted filesystem and sandbox providers.',
+    methods: [
+      {
+        signature: 'async create( agent: Agent, request: CreateWorktreeRequest = {}, signal?: AbortSignal, onPhase?: (phase: CreateWorktreePhase) => void, ): Promise<CreatedWorktree>',
+        description: 'Create a fresh branch and checkout at a pinned local revision, then enter it. Existing branches or checkout paths fail. Uncommitted files stay in the source checkout. Checkout disables configured clean, smudge, and process filters without changing Git config. Repository-local replacement refs still apply; baseCommit reports the resolved object name. The new checkout becomes current only after Git setup succeeds. Failures may retain newly allocated Git/filesystem artifacts; no branch or checkout is removed automatically.',
+        parameters: [{ name: 'agent', description: 'caller whose current directory selects the source repository and file policy.' }, { name: 'request', description: 'optional new name and local revision; defaults are generated name and HEAD.' }, { name: 'signal', description: 'cancellation of lookup, creation, and working-directory publication.' }, { name: 'onPhase', description: 'receives each stage before it begins; it must not throw.' }],
+        returns: 'canonical checkout path, branch name, pinned commit, and source repository root.',
+      },
+      {
+        signature: 'async restore( agent: Agent, request: RestoreWorktreeRequest, signal?: AbortSignal, onPhase?: (phase: CreateWorktreePhase) => void, ): Promise<RestoredWorktree>',
+        description: 'Check out a removed worktree again at its recorded directory: its branch when the branch still exists, otherwise a new branch of the same name at `baseCommit`. Only the missing target\'s unlocked registration is removed, and an existing directory fails. Changes that were never committed are not recovered. Checkout disables configured clean, smudge, and process filters, as creation does. The calling Session\'s working directory does not change. Failures may retain newly allocated Git/filesystem artifacts.',
+        parameters: [{ name: 'agent', description: 'caller whose sandbox policy confines the commands.' }, { name: 'request', description: 'recorded directory, branch, base commit, and source repository root.' }, { name: 'signal', description: 'cancellation of the restoration.' }, { name: 'onPhase', description: 'receives each stage before it begins; it must not throw.' }],
+        returns: 'the directory and whether the branch was created again.',
       },
     ],
   },
@@ -6074,11 +6233,27 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'progress', description: 'the installation\'s request id and phase, with the attempt while installing.' }],
   },
   {
+    name: 'plugin-manager/operation',
+    mode: 'parallel',
+    signature: '\'plugin-manager/operation\'(operation: PluginOperation): void | Promise<void>',
+    summary: 'Correlated management facts without raw specs, configs or output.',
+    description: 'Correlated management facts without raw specs, configs or output.',
+    parameters: [{ name: 'operation', description: 'A start, settlement, or unknown outcome.' }],
+  },
+  {
+    name: 'plugin-manager/update-state',
+    mode: 'emit',
+    signature: '\'plugin-manager/update-state\'(progress: PluginUpdateProgress): void',
+    summary: 'Progress for an explicitly requested update.',
+    description: 'Progress for an explicitly requested update.',
+    parameters: [{ name: 'progress', description: 'Request identity and current step.' }],
+  },
+  {
     name: 'schedule/changed',
     mode: 'emit',
     signature: '\'schedule/changed\'(): void',
-    summary: 'Durable task set changed; clients refetch global task and Session-active catalogs.',
-    description: 'Durable task set changed; clients refetch global task and Session-active catalogs.',
+    summary: 'Task or delivery execution state changed; clients refetch task catalogs.',
+    description: 'Task or delivery execution state changed; clients refetch task catalogs.',
     parameters: [],
   },
   {
@@ -6607,7 +6782,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AssembledContext',
-    declaration: 'export interface AssembledContext {\n    name: string;\n    text: string;\n}',
+    declaration: 'export interface AssembledContext {\n    name: string;\n    text: string;\n    interpolate?: boolean;\n}',
   },
   {
     name: 'AssembledSection',
@@ -6771,7 +6946,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'BundleInfo',
-    declaration: 'export interface BundleInfo {\n    name: string;\n    version?: string;\n    meta?: PluginLocalizedMeta;\n    description?: string;\n    enabled: boolean;\n    installed: boolean;\n    source?: string;\n    optional: boolean;\n    removable: boolean;\n    readOnlyReason?: ReadOnlyReason;\n    error?: ManagementError;\n    rows: BundleRowInfo[];\n    overrides: string[];\n}',
+    declaration: 'export interface BundleInfo {\n    name: string;\n    version?: string;\n    meta?: PluginLocalizedMeta;\n    description?: string;\n    enabled: boolean;\n    installed: boolean;\n    source?: string;\n    optional: boolean;\n    updatable: boolean;\n    removable: boolean;\n    readOnlyReason?: ReadOnlyReason;\n    error?: ManagementError;\n    rows: BundleRowInfo[];\n    overrides: string[];\n}',
   },
   {
     name: 'BundleRowInfo',
@@ -7186,6 +7361,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CreateAssistantProfileOptions {\n    readonly id?: string | undefined;\n    readonly name: string;\n    readonly avatar?: string | undefined;\n    readonly responsibility: string;\n    readonly instructions?: string | undefined;\n    readonly capabilities?: CapabilityPolicy | undefined;\n    readonly defaultModel?: AssistantModelSelection | undefined;\n}',
   },
   {
+    name: 'CreatedWorktree',
+    declaration: 'export interface CreatedWorktree {\n    path: string;\n    branch: string;\n    baseCommit: string;\n    repositoryRoot: string;\n}',
+  },
+  {
     name: 'CreateGoalRequest',
     declaration: 'export interface CreateGoalRequest {\n    readonly objective: string;\n    readonly maxGoalRounds?: number;\n}',
   },
@@ -7216,6 +7395,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CreateVideoArgs',
     declaration: 'export interface CreateVideoArgs {\n    readonly prompt: string;\n    readonly duration: number;\n    readonly ratio: DesktopMediaConfig[\'defaultRatio\'];\n    readonly resolution: DesktopMediaConfig[\'defaultResolution\'];\n    readonly model: DesktopMediaConfig[\'videoModel\'];\n    readonly imageIds?: readonly string[];\n    readonly imageMode?: \'reference\' | \'first_last\';\n}',
+  },
+  {
+    name: 'CreateWorktreePhase',
+    declaration: 'export type CreateWorktreePhase = \'prepare\' | \'checkout\';',
+  },
+  {
+    name: 'CreateWorktreeRequest',
+    declaration: 'export interface CreateWorktreeRequest {\n    name?: string;\n    from?: string;\n}',
   },
   {
     name: 'CredentialInfo',
@@ -7546,8 +7733,80 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ForeignOwnershipConflict {\n    readonly sessionId: SessionId;\n    readonly conflictType: ConflictType;\n    readonly activeToken: ExecutionOwnershipToken;\n    readonly attemptedBy: string;\n    readonly details: string;\n    readonly detectedAt: number;\n}',
   },
   {
-    name: 'FrequencyTooHighError',
-    declaration: 'export interface FrequencyTooHighError {\n    readonly code: \'frequency_too_high\';\n    readonly message: string;\n}',
+    name: 'ForgeChangedFile',
+    declaration: 'export interface ForgeChangedFile {\n    readonly path: string;\n    readonly additions: number;\n    readonly deletions: number;\n    readonly binary: boolean;\n}',
+  },
+  {
+    name: 'ForgeCheckout',
+    declaration: 'export interface ForgeCheckout {\n    readonly root: string;\n    readonly branch: string | null;\n    readonly linked: boolean;\n    readonly commit: string | null;\n}',
+  },
+  {
+    name: 'ForgeCheckoutState',
+    declaration: 'export type ForgeCheckoutState = {\n    readonly state: \'pending\';\n} | {\n    readonly state: \'none\';\n} | {\n    readonly state: \'failed\';\n    readonly message: string;\n} | {\n    readonly state: \'ready\';\n    readonly checkout: ForgeCheckout;\n};',
+  },
+  {
+    name: 'ForgeDiffFile',
+    declaration: 'export interface ForgeDiffFile {\n    readonly path: string;\n    readonly previousPath: string | null;\n    readonly status: ForgeDiffStatus;\n    readonly binary: boolean;\n    readonly oversized: boolean;\n    readonly untracked: boolean;\n    readonly additions: number;\n    readonly deletions: number;\n    readonly hunks: readonly ForgeDiffHunk[];\n}',
+  },
+  {
+    name: 'ForgeDiffHunk',
+    declaration: 'export interface ForgeDiffHunk {\n    readonly oldStart: number;\n    readonly oldLines: number;\n    readonly newStart: number;\n    readonly newLines: number;\n    readonly lines: readonly string[];\n}',
+  },
+  {
+    name: 'ForgeDiffStatus',
+    declaration: 'export type ForgeDiffStatus = \'added\' | \'deleted\' | \'modified\' | \'renamed\';',
+  },
+  {
+    name: 'ForgeLocalChanges',
+    declaration: 'export interface ForgeLocalChanges {\n    readonly base: string;\n    readonly files: readonly ForgeChangedFile[];\n}',
+  },
+  {
+    name: 'ForgeLocalDiff',
+    declaration: 'export interface ForgeLocalDiff {\n    readonly base: string | null;\n    readonly files: readonly ForgeDiffFile[];\n    readonly omitted: number;\n}',
+  },
+  {
+    name: 'ForgeLocalScope',
+    declaration: 'export type ForgeLocalScope = {\n    readonly kind: \'branch\';\n} | {\n    readonly kind: \'uncommitted\';\n} | {\n    readonly kind: \'unstaged\';\n} | {\n    readonly kind: \'staged\';\n};',
+  },
+  {
+    name: 'ForgeMissingWorktree',
+    declaration: 'export interface ForgeMissingWorktree {\n    readonly branchExists: boolean | null;\n}',
+  },
+  {
+    name: 'ForgePanelState',
+    declaration: 'export interface ForgePanelState {\n    readonly directory: string;\n    readonly checkout: ForgeCheckoutState;\n    readonly worktree: ForgePanelWorktree;\n    readonly local: ForgeLocalChanges | null;\n}',
+  },
+  {
+    name: 'ForgePanelWorktree',
+    declaration: 'export interface ForgePanelWorktree {\n    readonly editable: boolean;\n    readonly blocker: ForgeWorktreeBlocker | null;\n    readonly request: ForgeWorktreeRequest | null;\n    readonly created: ForgeSessionWorktree | null;\n    readonly creation: ForgeWorktreeCreation | null;\n    readonly failure: ForgeWorktreeFailure | null;\n    readonly missing: ForgeMissingWorktree | null;\n    readonly restoration: ForgeWorktreeRestoration | null;\n    readonly waiting: ForgeWorktreeWaiting | null;\n}',
+  },
+  {
+    name: 'ForgeSessionWorktree',
+    declaration: 'export interface ForgeSessionWorktree {\n    readonly path: string;\n    readonly branch: string;\n    readonly from: string | null;\n    readonly baseCommit: string;\n    readonly repositoryRoot: string;\n}',
+  },
+  {
+    name: 'ForgeWorktreeBlocker',
+    declaration: 'export type ForgeWorktreeBlocker = \'not-git\' | \'outside-writable-root\' | \'read-only\';',
+  },
+  {
+    name: 'ForgeWorktreeCreation',
+    declaration: 'export interface ForgeWorktreeCreation {\n    readonly phase: \'prepare\' | \'checkout\';\n    readonly branch: string;\n    readonly from: string | null;\n    readonly held: boolean;\n}',
+  },
+  {
+    name: 'ForgeWorktreeFailure',
+    declaration: 'export interface ForgeWorktreeFailure {\n    readonly branch: string | null;\n    readonly from: string | null;\n    readonly phase: \'prepare\' | \'checkout\';\n    readonly message: string;\n}',
+  },
+  {
+    name: 'ForgeWorktreeRequest',
+    declaration: 'export interface ForgeWorktreeRequest {\n    readonly from: string | null;\n}',
+  },
+  {
+    name: 'ForgeWorktreeRestoration',
+    declaration: 'export interface ForgeWorktreeRestoration {\n    readonly phase: \'prepare\' | \'checkout\';\n}',
+  },
+  {
+    name: 'ForgeWorktreeWaiting',
+    declaration: 'export type ForgeWorktreeWaiting = \'creation\' | \'restoration\';',
   },
   {
     name: 'FsDeleteOutcome',
@@ -7843,7 +8102,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'InstallBundleOptions',
-    declaration: 'export interface InstallBundleOptions {\n    enabled?: boolean;\n    requestId?: PluginInstallRequestId;\n    approvedBuilds?: string[];\n    registry?: Registry;\n}',
+    declaration: 'export interface InstallBundleOptions {\n    saveExact?: boolean;\n    enabled?: boolean;\n    requestId?: PluginInstallRequestId;\n    approvedBuilds?: string[];\n    registry?: Registry;\n}',
   },
   {
     name: 'InstallSpecKind',
@@ -7880,26 +8139,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'InstitutionSquadView',
     declaration: 'export interface InstitutionSquadView {\n    readonly id: InstitutionSquadId;\n    readonly displayName: string;\n    readonly displayNameEn: string;\n    readonly leadSessionId?: SessionId;\n    readonly established: boolean;\n    readonly seats: readonly InstitutionSeatView[];\n}',
-  },
-  {
-    name: 'InternalScheduleError',
-    declaration: 'export interface InternalScheduleError {\n    readonly code: \'internal_error\';\n    readonly message: string;\n}',
-  },
-  {
-    name: 'InvalidPromptError',
-    declaration: 'export interface InvalidPromptError {\n    readonly code: \'invalid_prompt\';\n    readonly message: string;\n}',
-  },
-  {
-    name: 'InvalidRuleError',
-    declaration: 'export interface InvalidRuleError {\n    readonly code: \'invalid_rule\';\n    readonly message: string;\n}',
-  },
-  {
-    name: 'InvalidSelectorError',
-    declaration: 'export interface InvalidSelectorError {\n    readonly code: \'invalid_selector\';\n    readonly message: string;\n}',
-  },
-  {
-    name: 'InvalidTimeZoneError',
-    declaration: 'export interface InvalidTimeZoneError {\n    readonly code: \'invalid_time_zone\';\n    readonly message: string;\n}',
   },
   {
     name: 'InvocationDescriptor',
@@ -8060,6 +8299,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ListMemoryOptions',
     declaration: 'export interface ListMemoryOptions {\n    readonly includeRemoved?: boolean | undefined;\n    readonly includeArchived?: boolean | undefined;\n    readonly limit?: number | undefined;\n}',
+  },
+  {
+    name: 'ListVersionsOptions',
+    declaration: 'export interface ListVersionsOptions {\n    readonly registry?: Registry;\n}',
   },
   {
     name: 'LlmAdapter',
@@ -8430,10 +8673,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface NormalizedFeishuCardAction {\n    readonly provider: \'feishu\';\n    readonly appId: string;\n    readonly tenantKey: string;\n    readonly chatId: string;\n    readonly operatorId: string;\n    readonly openId: string;\n    readonly openMessageId: string;\n    readonly actionTag: string;\n    readonly actionName?: string | undefined;\n    readonly actionValue: Record<string, unknown>;\n    readonly formValue?: Record<string, unknown> | undefined;\n    readonly token: string;\n}',
   },
   {
-    name: 'NotFutureError',
-    declaration: 'export interface NotFutureError {\n    readonly code: \'not_future\';\n    readonly message: string;\n}',
-  },
-  {
     name: 'ObjectJsonSchema',
     declaration: 'export type ObjectJsonSchema = JsonSchemaNode & {\n    type: \'object\';\n};',
   },
@@ -8570,6 +8809,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PluginLocalizedMeta {\n    readonly title?: LocalizedText;\n    readonly description?: LocalizedText;\n    readonly icon?: string;\n    readonly error?: string;\n}',
   },
   {
+    name: 'PluginOperation',
+    declaration: 'export type PluginOperation = {\n    readonly id: PluginOperationId;\n    readonly time: string;\n    readonly reason: PluginChange[\'reason\'];\n    readonly target: string | null;\n    readonly stage: ChangeResult[\'stage\'];\n    readonly enabled?: boolean | undefined;\n    readonly version?: string | undefined;\n} & ({\n    readonly phase: \'started\';\n} | {\n    readonly phase: \'settled\';\n    readonly application: ChangeResult[\'application\'];\n    readonly changed: boolean;\n    readonly errorCode?: ManagementError[\'code\'] | undefined;\n} | {\n    readonly phase: \'unknown\';\n});',
+  },
+  {
+    name: 'PluginOperationId',
+    declaration: 'export type PluginOperationId = Branded<\'PluginOperationId\'>;',
+  },
+  {
     name: 'PluginOptions',
     declaration: 'export type PluginOptions = Readonly<Record<string, PluginOptionValue>>;',
   },
@@ -8584,6 +8831,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PluginSpecInspection',
     declaration: 'export type PluginSpecInspection = {\n    readonly status: \'accepted\';\n    readonly kind: InstallSpecKind;\n    readonly name?: string;\n    readonly version?: string;\n    readonly description?: string;\n    readonly bundle: boolean | null;\n    readonly registry: Registry;\n    readonly host?: string;\n} | {\n    readonly status: \'refused\';\n    readonly problem: PluginInspectProblem;\n    readonly reason: string;\n    readonly registries?: Registry[];\n};',
+  },
+  {
+    name: 'PluginUpdateProgress',
+    declaration: 'export interface PluginUpdateProgress {\n    readonly requestId: PluginInstallRequestId;\n    readonly step: PluginUpdateStep;\n}',
+  },
+  {
+    name: 'PluginUpdateResult',
+    declaration: 'export interface PluginUpdateResult {\n    readonly from: string;\n    readonly to: string;\n    readonly step: \'check\' | \'remove\' | \'install\';\n    readonly result: ChangeResult;\n    readonly restore?: ChangeResult;\n}',
+  },
+  {
+    name: 'PluginUpdateStep',
+    declaration: 'export type PluginUpdateStep = \'checking\' | \'removing\' | \'installing\' | \'restoring\';',
+  },
+  {
+    name: 'PluginVersion',
+    declaration: 'export interface PluginVersion {\n    readonly version: string;\n    readonly publishedAt?: string;\n    readonly tags: readonly string[];\n    readonly prerelease: boolean;\n    readonly deprecated?: string;\n    readonly bundle: boolean;\n    readonly incompatible?: IncompatiblePlugin;\n}',
+  },
+  {
+    name: 'PluginVersionList',
+    declaration: 'export type PluginVersionList = {\n    readonly status: \'listed\';\n    readonly installed: string;\n    readonly registry: Registry;\n    readonly attempts: readonly RegistryAttempt[];\n    readonly versions: readonly PluginVersion[];\n    readonly omitted: number;\n} | {\n    readonly status: \'refused\';\n    readonly problem: \'not-updatable\' | \'not-found\' | \'network\' | \'unknown\';\n    readonly reason: string;\n    readonly attempts: readonly RegistryAttempt[];\n};',
   },
   {
     name: 'PostPublicReplyOptions',
@@ -8687,7 +8954,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PromptContext',
-    declaration: 'export interface PromptContext {\n    readonly name: string;\n    readonly order: number;\n    readonly text: string | ((context: AssembleContext) => string);\n}',
+    declaration: 'export interface PromptContext {\n    readonly name: string;\n    readonly order: number;\n    readonly text: string | ((context: AssembleContext) => string);\n    readonly interpolate?: boolean;\n    readonly required?: boolean;\n}',
   },
   {
     name: 'PromptContextOrderName',
@@ -8858,6 +9125,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type Registry = string | null;',
   },
   {
+    name: 'RegistryAttempt',
+    declaration: 'export interface RegistryAttempt {\n    readonly registry: Registry;\n    readonly problem?: \'not-found\' | \'network\' | \'unknown\';\n    readonly reason?: string;\n}',
+  },
+  {
     name: 'Reload',
     declaration: 'export interface Reload {\n    filename: string;\n    modules: ReloadModules;\n    runtime?: Plugin.Runtime | undefined;\n}',
   },
@@ -8954,6 +9225,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface RestoredSessionOptions {\n    readonly seed: SessionEvent[];\n    readonly meta: SessionHeader;\n    readonly inheritedEventCount: SessionLogOffset;\n    readonly eventState: SessionSeedEventState;\n}',
   },
   {
+    name: 'RestoredWorktree',
+    declaration: 'export interface RestoredWorktree {\n    path: string;\n    branchRecreated: boolean;\n}',
+  },
+  {
+    name: 'RestoreWorktreeRequest',
+    declaration: 'export interface RestoreWorktreeRequest {\n    path: string;\n    branch: string;\n    baseCommit: string;\n    repositoryRoot: string;\n}',
+  },
+  {
     name: 'ResumeAgentOptions',
     declaration: 'export interface ResumeAgentOptions {\n    readonly resumeSessionId: SessionId;\n    readonly parentAgent?: Agent;\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
   },
@@ -9043,31 +9322,43 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ScheduleCatalogEntry',
-    declaration: 'export type ScheduleCatalogEntry = ScheduleRecord & {\n    readonly sessionId: SessionId;\n    readonly status: \'active\' | \'inactive\';\n    readonly lastDelivery?: ScheduleDeliveryReceipt;\n};',
+    declaration: 'export type ScheduleCatalogEntry = ScheduleRecord & {\n    readonly target: ScheduleTarget;\n    readonly involvedSessionIds: SessionId[];\n    readonly status: \'active\' | \'paused\' | \'ended\';\n    readonly createdAt?: string;\n    readonly updatedAt?: string;\n    readonly executionActive?: true;\n    readonly deliveryFloorEndsAt?: string;\n    readonly lastDelivery?: ScheduleDeliveryReceipt;\n};',
+  },
+  {
+    name: 'ScheduleConflictResult',
+    declaration: 'export interface ScheduleConflictResult {\n    readonly id: ScheduleId;\n    readonly code: \'schedule_conflict\';\n}',
   },
   {
     name: 'ScheduleCreateRequest',
-    declaration: 'export interface ScheduleCreateRequest {\n    prompt: string;\n    title: string;\n    after_seconds?: number;\n    at?: AtInput;\n    every_seconds?: number;\n    daily?: DailyInput;\n    weekly?: WeeklyInput;\n    cron?: CronInput;\n}',
+    declaration: 'export interface ScheduleCreateRequest {\n    readonly title: string;\n    readonly prompt: string;\n    readonly timing: ScheduleTiming;\n    readonly target?: ScheduleTargetRequest;\n}',
   },
   {
-    name: 'ScheduleDeleteRequest',
-    declaration: 'export interface ScheduleDeleteRequest extends ScheduleListRequest {\n    id: ScheduleId;\n}',
+    name: 'ScheduleDeleteInactiveResult',
+    declaration: 'export interface ScheduleDeleteInactiveResult {\n    readonly deleted: number;\n}',
   },
   {
     name: 'ScheduleDeleteResult',
-    declaration: 'export type ScheduleDeleteResult = {\n    readonly id: ScheduleId;\n    readonly deleted: true;\n} | {\n    readonly id: ScheduleId;\n    readonly deleted: false;\n    readonly code: \'schedule_not_found\';\n};',
+    declaration: 'export type ScheduleDeleteResult = {\n    readonly id: ScheduleId;\n    readonly deleted: true;\n};',
+  },
+  {
+    name: 'ScheduleDeliveryHistoryMiss',
+    declaration: 'export interface ScheduleDeliveryHistoryMiss {\n    readonly id: ScheduleId;\n    readonly code: \'schedule_not_found\' | \'delivery_cursor_not_found\';\n}',
+  },
+  {
+    name: 'ScheduleDeliveryHistoryPage',
+    declaration: 'export interface ScheduleDeliveryHistoryPage {\n    readonly id: ScheduleId;\n    readonly records: ScheduleDeliveryRecord[];\n    readonly earlierRecordsUnavailable: boolean;\n    readonly earlierRecordsPruned: boolean;\n    readonly retention: DeliveryRetentionBounds;\n    readonly nextBefore?: MessageId;\n}',
   },
   {
     name: 'ScheduleDeliveryHistoryRequest',
-    declaration: 'export interface ScheduleDeliveryHistoryRequest extends ScheduleDeleteRequest {\n    limit: number;\n    before?: MessageId;\n}',
+    declaration: 'export interface ScheduleDeliveryHistoryRequest {\n    readonly id: ScheduleId;\n    readonly limit: number;\n    readonly before?: MessageId;\n}',
   },
   {
     name: 'ScheduleDeliveryHistoryResult',
-    declaration: 'export type ScheduleDeliveryHistoryResult = {\n    readonly id: ScheduleId;\n    readonly records: ScheduleDeliveryRecord[];\n    readonly earlierRecordsUnavailable: boolean;\n    readonly earlierRecordsPruned: boolean;\n    readonly retention: DeliveryRetentionBounds;\n    readonly nextBefore?: MessageId;\n} | {\n    readonly id: ScheduleId;\n    readonly code: \'schedule_not_found\' | \'delivery_cursor_not_found\';\n};',
+    declaration: 'export type ScheduleDeliveryHistoryResult = ScheduleDeliveryHistoryPage | ScheduleDeliveryHistoryMiss;',
   },
   {
     name: 'ScheduleDeliveryReceipt',
-    declaration: 'export interface ScheduleDeliveryReceipt {\n    readonly scheduledAt: string;\n    readonly deliveredAt: string;\n    readonly messageId: MessageId;\n}',
+    declaration: 'export interface ScheduleDeliveryReceipt {\n    readonly scheduledAt: string;\n    readonly deliveredAt: string;\n    readonly messageId: MessageId;\n    readonly targetSessionId: SessionId;\n}',
   },
   {
     name: 'ScheduleDeliveryRecord',
@@ -9082,12 +9373,36 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ScheduledToolPreparation = {\n    kind: \'dispatch\';\n    exec: ToolRunContext;\n} | {\n    kind: \'post-result\';\n    exec: ToolRunContext;\n    result: ToolExecutionResult;\n} | {\n    kind: \'final-result\';\n    exec: ToolRunContext;\n    result: ToolExecutionResult;\n};',
   },
   {
+    name: 'ScheduleEditRequest',
+    declaration: 'export type ScheduleEditRequest = {\n    readonly id: ScheduleId;\n    readonly action: \'update\';\n    readonly patch: SchedulePatch;\n    readonly expectedUpdatedAt?: string | null;\n} | {\n    readonly id: ScheduleId;\n    readonly action: \'delete\';\n    readonly expectedUpdatedAt?: string | null;\n};',
+  },
+  {
+    name: 'ScheduleEditResult',
+    declaration: 'export type ScheduleEditResult = ScheduleCatalogEntry | Extract<ScheduleDeleteResult, {\n    readonly deleted: true;\n}> | ScheduleNotFoundResult | ScheduleConflictResult;',
+  },
+  {
+    name: 'ScheduleExecutionPendingResult',
+    declaration: 'export interface ScheduleExecutionPendingResult {\n    readonly id: ScheduleId;\n    readonly code: \'schedule_execution_pending\';\n}',
+  },
+  {
     name: 'ScheduleId',
     declaration: 'export type ScheduleId = Branded<\'ScheduleId\'>;',
   },
   {
     name: 'ScheduleListRequest',
-    declaration: 'export interface ScheduleListRequest {\n    sessionId: SessionId;\n}',
+    declaration: 'export interface ScheduleListRequest {\n    readonly active?: boolean;\n    readonly limit?: number;\n    readonly offset?: number;\n}',
+  },
+  {
+    name: 'ScheduleListResult',
+    declaration: 'export interface ScheduleListResult {\n    readonly items: ScheduleCatalogEntry[];\n    readonly shown: number;\n    readonly total: number;\n    readonly limit: number;\n    readonly offset: number;\n}',
+  },
+  {
+    name: 'ScheduleNotFoundResult',
+    declaration: 'export interface ScheduleNotFoundResult {\n    readonly id: ScheduleId;\n    readonly code: \'schedule_not_found\';\n}',
+  },
+  {
+    name: 'SchedulePatch',
+    declaration: 'export interface SchedulePatch {\n    readonly title?: string;\n    readonly prompt?: string;\n    readonly timing?: ScheduleTiming;\n    readonly target?: ScheduleTargetRequest;\n    readonly active?: boolean;\n}',
   },
   {
     name: 'ScheduleRecord',
@@ -9098,28 +9413,36 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ScheduleRoundOptions {\n    readonly id?: GroupRoundId | undefined;\n    readonly discussionId: GroupDiscussionId;\n    readonly teamId: TeamDefinitionId;\n    readonly prompt: string;\n    readonly recipients?: readonly TeamSeatId[] | undefined;\n    readonly bounds?: RoundBoundsConfig | undefined;\n}',
   },
   {
-    name: 'ScheduleTimingChange',
-    declaration: 'export type ScheduleTimingChange = {\n    readonly kind: \'at\';\n    readonly at: AtInput;\n} | {\n    readonly kind: \'every\';\n    readonly every_seconds: number;\n} | {\n    readonly kind: \'daily\';\n    readonly daily: DailyInput;\n} | {\n    readonly kind: \'weekly\';\n    readonly weekly: WeeklyInput;\n} | {\n    readonly kind: \'cron\';\n    readonly cron: CronInput;\n};',
+    name: 'ScheduleRunRequest',
+    declaration: 'export interface ScheduleRunRequest {\n    readonly id: ScheduleId;\n}',
   },
   {
-    name: 'ScheduleToolError',
-    declaration: 'export type ScheduleToolError = InvalidPromptError | InvalidSelectorError | InvalidRuleError | InvalidTimeZoneError | NotFutureError | TimeOutOfRangeError | FrequencyTooHighError | SubagentSessionError | InternalScheduleError;',
+    name: 'ScheduleRunResult',
+    declaration: 'export type ScheduleRunResult = ScheduleCatalogEntry | ScheduleNotFoundResult | ScheduleExecutionPendingResult;',
   },
   {
-    name: 'ScheduleUpdateContent',
-    declaration: 'export interface ScheduleUpdateContent {\n    readonly title?: string;\n    readonly prompt?: string;\n}',
+    name: 'ScheduleSessionCreateSpec',
+    declaration: 'export interface ScheduleSessionCreateSpec {\n    readonly cwd?: string;\n    readonly agentPreset?: string;\n}',
   },
   {
-    name: 'ScheduleUpdateMiss',
-    declaration: 'export interface ScheduleUpdateMiss {\n    readonly id: ScheduleId;\n    readonly updated: false;\n    readonly code: \'schedule_not_found\' | \'schedule_ended\' | \'schedule_conflict\';\n}',
+    name: 'ScheduleTarget',
+    declaration: 'export type ScheduleTarget = {\n    readonly kind: \'session\';\n    readonly sessionId: SessionId;\n} | {\n    readonly kind: \'new_once\';\n    readonly sessionId: SessionId;\n    readonly create: ScheduleSessionCreateSpec;\n} | {\n    readonly kind: \'new\';\n    readonly create: ScheduleSessionCreateSpec;\n};',
   },
   {
-    name: 'ScheduleUpdateRequest',
-    declaration: 'export interface ScheduleUpdateRequest extends ScheduleDeleteRequest, ScheduleUpdateContent {\n    readonly expected: ScheduleRecord;\n    readonly change?: ScheduleTimingChange;\n}',
+    name: 'ScheduleTargetRequest',
+    declaration: 'export type ScheduleTargetRequest = {\n    readonly kind: \'session\';\n    readonly sessionId: SessionId;\n} | {\n    readonly kind: \'new_once\';\n    readonly create?: ScheduleSessionCreateSpec;\n} | {\n    readonly kind: \'new\';\n    readonly create?: ScheduleSessionCreateSpec;\n};',
   },
   {
-    name: 'ScheduleUpdateResult',
-    declaration: 'export type ScheduleUpdateResult = {\n    readonly id: ScheduleId;\n    readonly updated: boolean;\n    readonly record: ScheduleRecord;\n} | ScheduleUpdateMiss | ScheduleToolError;',
+    name: 'ScheduleTiming',
+    declaration: 'export type ScheduleTiming = {\n    readonly kind: \'after\';\n    readonly after_seconds: number;\n} | {\n    readonly kind: \'at\';\n    readonly at: AtInput;\n} | {\n    readonly kind: \'every\';\n    readonly every_seconds: number;\n} | {\n    readonly kind: \'daily\';\n    readonly daily: DailyInput;\n} | {\n    readonly kind: \'weekly\';\n    readonly weekly: WeeklyInput;\n} | {\n    readonly kind: \'cron\';\n    readonly cron: CronInput;\n};',
+  },
+  {
+    name: 'ScheduleViewRequest',
+    declaration: 'export interface ScheduleViewRequest {\n    readonly id: ScheduleId;\n}',
+  },
+  {
+    name: 'ScheduleViewResult',
+    declaration: 'export type ScheduleViewResult = ScheduleCatalogEntry | ScheduleNotFoundResult;',
   },
   {
     name: 'Scoped',
@@ -10298,10 +10621,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SubagentSendMessageOptions {\n    readonly signal: AbortSignal;\n}',
   },
   {
-    name: 'SubagentSessionError',
-    declaration: 'export interface SubagentSessionError {\n    readonly code: \'subagent_session\';\n    readonly message: string;\n}',
-  },
-  {
     name: 'SubagentStartRequest',
     declaration: 'export interface SubagentStartRequest {\n    readonly label?: string;\n    readonly prompt: ContentBlock[];\n    readonly parent: Agent;\n    readonly signal: AbortSignal;\n    readonly agentOptions?: AgentOptions;\n    readonly outputSchema?: ObjectJsonSchema;\n    readonly maxDepth?: number;\n    readonly toolFilter?: ToolRestriction;\n    readonly persona?: string;\n}',
   },
@@ -10411,7 +10730,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SystemPrompt',
-    declaration: 'export class SystemPrompt extends Service {\n    static Config: z<Config>;\n    constructor(ctx: Context, config: Config);\n    section(section: PromptSection): () => void;\n    getSectionOrder(name: PromptSectionOrderName): number;\n    getContextOrder(name: PromptContextOrderName): number;\n    context(context: PromptContext): () => void;\n    suppressRuntimeContext(): () => void;\n    tools(provider: (context: AssembleContext) => ToolProviderResult): () => void;\n    variable(name: string, provider: (context: AssembleContext) => string | undefined): () => void;\n    async assemble(context: AssembleContext = {}): Promise<PromptAssembly>;\n}',
+    declaration: 'export class SystemPrompt extends Service {\n    static Config: z<Config>;\n    constructor(ctx: Context, config: Config);\n    section(section: PromptSection): () => void;\n    getSectionOrder(name: PromptSectionOrderName): number;\n    getContextOrder(name: PromptContextOrderName): number;\n    context(context: PromptContext): () => void;\n    suppressRuntimeContext(): () => void;\n    tools(provider: (context: AssembleContext) => ToolProviderResult): () => void;\n    variable(name: string, provider: (context: AssembleContext) => string | undefined): () => void;\n    refreshContext(assembly: PromptAssembly, context: AssembleContext = {}): PromptAssembly;\n    async assemble(context: AssembleContext = {}): Promise<PromptAssembly>;\n}',
   },
   {
     name: 'SystemPromptMessageSource',
@@ -10628,10 +10947,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'TimedUserQuestionResult',
     declaration: 'export type TimedUserQuestionResult = AskUserQuestionAnswer | {\n    pending: true;\n    callId: ToolCallId;\n};',
-  },
-  {
-    name: 'TimeOutOfRangeError',
-    declaration: 'export interface TimeOutOfRangeError {\n    readonly code: \'time_out_of_range\';\n    readonly message: string;\n}',
   },
   {
     name: 'ToastOptions',
@@ -11004,6 +11319,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'UpdateAssistantProfileOptions',
     declaration: 'export interface UpdateAssistantProfileOptions {\n    readonly name?: string | undefined;\n    readonly avatar?: string | undefined;\n    readonly responsibility?: string | undefined;\n    readonly instructions?: string | undefined;\n    readonly capabilities?: CapabilityPolicy | undefined;\n    readonly defaultModel?: AssistantModelSelection | undefined;\n}',
+  },
+  {
+    name: 'UpdateBundleOptions',
+    declaration: 'export interface UpdateBundleOptions {\n    readonly registry?: Registry;\n    readonly requestId?: PluginInstallRequestId;\n}',
   },
   {
     name: 'UpdateInstitutionSeatRequest',

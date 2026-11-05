@@ -26,6 +26,7 @@ import { relativizeToCwd, workspaceTitleOf } from '@deepseek-ai/dsh-util-workspa
 import { ConversationController, UnsupportedImageMediaTypeError, isImageMediaType } from './service.ts'
 import { ComposerBlockRegistry } from './input/blocks.ts'
 import type { ComposerBlock } from './contract/composer-blocks.ts'
+import { createViewPins } from './view-pins.ts'
 import { InputHub } from './input/hub.ts'
 import { ComposerSubmissionPolicy } from './input/submission-policy.ts'
 import { queueDockEntry } from './queue/QueueDock.tsx'
@@ -184,6 +185,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
   const restoreView = (sessionId: SessionId): void => {
     activateView(sessionId, readConversationViewPreference(sessionId))
   }
+  const viewPins = createViewPins()
   const conversationViews = createSnapshotStore<readonly ViewTab[]>(viewTabs())
   const bindings = new Set<SessionBinding>()
   const trackedBindings = new WeakSet<SessionBinding>()
@@ -406,11 +408,13 @@ export function apply(ctx: Context, config: Config = Config({})): void {
       'conversation.session.header.lineage': { kind: 'single', scope: 'session' },
       'conversation.session.header.actions': { kind: 'list', scope: 'session' },
       'conversation.session.header.utilities': { kind: 'list', scope: 'session' },
+      'conversation.session.header.views.actions': { kind: 'single', scope: 'session' },
       'conversation.session.header.corner': { kind: 'single', scope: 'session' },
     },
     store: conversationStore,
     inject: (sessionId: SessionId, actions: BoundActions<typeof conversationStore>): ConversationSessionHeaderInjected => ({
-      hooks: { conversationViews },
+      hooks: { conversationViews, entryPins: viewPins.unpinned },
+      setPinned: viewPins.setPinned,
       open: (id) => { workspaceNavigation.openSession(id) },
       selectView: (view) => {
         activateView(sessionId, view)

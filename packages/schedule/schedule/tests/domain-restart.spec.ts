@@ -38,11 +38,11 @@ it('reopens persisted task bindings and coalesces an overdue recurring schedule'
   const createdAt = Date.parse('2026-09-16T00:00:00Z')
   const record = createEveryScheduleRecord(ScheduleId('persisted'), 'Check progress', 300, createdAt, 'Check progress')
   const first = await open(root)
-  await first.domain.table('tasks').put(record.id, { sessionId: SessionId('cold-session'), record, status: 'active' })
+  await first.domain.table('tasks').put(record.id, { target: { kind: 'session', sessionId: SessionId('cold-session') }, involvedSessionIds: [SessionId('cold-session')], record, status: 'active' })
   await first.ctx.fiber.dispose()
   const second = await open(root)
   const stored = second.domain.table('tasks').get(record.id)
-  expect(stored).toEqual({ sessionId: 'cold-session', record, status: 'active' })
+  expect(stored).toEqual({ target: { kind: 'session', sessionId: 'cold-session' }, involvedSessionIds: ['cold-session'], record, status: 'active' })
   if (stored?.record.kind !== 'every') throw new Error('Expected recurring task')
   expect(resolveEveryOccurrence(stored.record, createdAt + 3_600_000)).toEqual({
     occurrenceAt: '2026-09-16T01:00:00.000Z', nextScheduledAt: '2026-09-16T01:05:00.000Z',
@@ -56,10 +56,10 @@ it('reopens persisted task bindings and coalesces an overdue recurring schedule'
 it('retains an ended task and receipt in JSON storage until explicit deletion', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-schedule-ended-')); roots.push(root)
   const record = createAfterScheduleRecord(ScheduleId('ended'), 'Delivered', 1, Date.parse('2026-09-16T00:00:00Z'), 'Delivered')
-  const task = {
-    sessionId: SessionId('original'), record, status: 'inactive' as const,
-    lastDelivery: { scheduledAt: record.scheduledAt, deliveredAt: '2026-09-16T00:00:02.000Z', messageId: MessageId('delivered-message') },
-    deliveryHistory: { earlierRecordsUnavailable: false, records: [{
+  const task: ScheduleTask = {
+    target: { kind: 'session', sessionId: SessionId('original') }, involvedSessionIds: [SessionId('original')], record, status: 'ended' as const,
+    lastDelivery: { targetSessionId: SessionId('original'),  scheduledAt: record.scheduledAt, deliveredAt: '2026-09-16T00:00:02.000Z', messageId: MessageId('delivered-message') },
+    deliveryHistory: { earlierRecordsUnavailable: false, records: [{ targetSessionId: SessionId('original'),
       scheduledAt: record.scheduledAt, deliveredAt: '2026-09-16T00:00:02.000Z', messageId: MessageId('delivered-message'), prompt: 'Delivered',
     }] },
   }
@@ -82,32 +82,32 @@ it('reopens active and ended daily tasks with their rules and receipts alongside
   }, createdAt, 'Daily check')
   const records: ScheduleTask[] = [
     {
-      sessionId: SessionId('daily-session'), status: 'active', record: daily,
-      lastDelivery: {
+      target: { kind: 'session', sessionId: SessionId('daily-session') }, involvedSessionIds: [SessionId('daily-session')], status: 'active', record: daily,
+      lastDelivery: { targetSessionId: SessionId('daily-session'),
         scheduledAt: '2026-09-15T00:30:00.125Z', deliveredAt: '2026-09-15T00:30:02.000Z',
         messageId: MessageId('previous-daily'),
       },
     },
     {
-      sessionId: SessionId('ended-session'), status: 'inactive',
+      target: { kind: 'session', sessionId: SessionId('ended-session') }, involvedSessionIds: [SessionId('ended-session')], status: 'ended',
       record: createDailyScheduleRecord(ScheduleId('daily-ended'), 'Final daily', {
         time: '23:59:59.999', time_zone: 'UTC',
       }, Date.parse('9999-12-31T00:00:00.000Z'), 'Final daily'),
-      lastDelivery: {
+      lastDelivery: { targetSessionId: SessionId('ended-session'),
         scheduledAt: '9999-12-31T23:59:59.999Z', deliveredAt: '9999-12-31T23:59:59.999Z',
         messageId: MessageId('final-daily'),
       },
     },
     {
-      sessionId: SessionId('after-session'), status: 'active',
+      target: { kind: 'session', sessionId: SessionId('after-session') }, involvedSessionIds: [SessionId('after-session')], status: 'active',
       record: createAfterScheduleRecord(ScheduleId('old-after'), 'Delay', 60, createdAt, 'Delay'),
     },
     {
-      sessionId: SessionId('at-session'), status: 'active',
+      target: { kind: 'session', sessionId: SessionId('at-session') }, involvedSessionIds: [SessionId('at-session')], status: 'active',
       record: createAtScheduleRecord(ScheduleId('old-at'), 'Absolute', '2026-09-16T01:00:00Z', createdAt, 'Absolute'),
     },
     {
-      sessionId: SessionId('every-session'), status: 'active',
+      target: { kind: 'session', sessionId: SessionId('every-session') }, involvedSessionIds: [SessionId('every-session')], status: 'active',
       record: createEveryScheduleRecord(ScheduleId('old-every'), 'Fixed rate', 300, createdAt, 'Fixed rate'),
     },
   ]
@@ -128,13 +128,13 @@ it('reopens active and ended daily tasks with their rules and receipts alongside
 it('preserves a stored daily zone alias and pinned UTC target across JSON reopen', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-schedule-daily-alias-')); roots.push(root)
   const task: ScheduleTask = {
-    sessionId: SessionId('alias-session'), status: 'active',
+    target: { kind: 'session', sessionId: SessionId('alias-session') }, involvedSessionIds: [SessionId('alias-session')], status: 'active',
     record: {
       id: ScheduleId('daily-alias'), kind: 'daily', title: 'Preserve stored rule', prompt: 'Preserve stored rule',
       // A stored target need not match the current time-zone database's resolution of the rule.
       time: '09:00:00.000', timeZone: 'US/Eastern', scheduledAt: '2026-09-16T14:00:00.000Z',
     },
-    lastDelivery: {
+    lastDelivery: { targetSessionId: SessionId('alias-session'),
       scheduledAt: '2026-09-15T14:00:00.000Z', deliveredAt: '2026-09-15T14:00:03.000Z',
       messageId: MessageId('alias-receipt'),
     },
@@ -152,20 +152,20 @@ it('preserves a stored daily zone alias and pinned UTC target across JSON reopen
 it('reopens a weekly task with its stored zone alias, weekday set, receipts, and history', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-schedule-weekly-alias-')); roots.push(root)
   const task: ScheduleTask = {
-    sessionId: SessionId('weekly-session'), status: 'active',
+    target: { kind: 'session', sessionId: SessionId('weekly-session') }, involvedSessionIds: [SessionId('weekly-session')], status: 'active',
     record: {
       id: ScheduleId('weekly-alias'), kind: 'weekly', title: 'Weekly check', prompt: 'Weekly check',
       // A stored target need not match the current time-zone database's resolution of the rule.
       time: '08:30:00.125', timeZone: 'US/Eastern', weekdays: [1, 5],
       scheduledAt: '2026-09-18T12:30:00.125Z',
     },
-    lastDelivery: {
+    lastDelivery: { targetSessionId: SessionId('weekly-session'),
       scheduledAt: '2026-09-14T12:30:00.125Z', deliveredAt: '2026-09-14T12:30:02.000Z',
       messageId: MessageId('previous-weekly'),
     },
     deliveryHistory: {
       earlierRecordsUnavailable: false,
-      records: [{
+      records: [{ targetSessionId: SessionId('weekly-session'),
         scheduledAt: '2026-09-14T12:30:00.125Z', deliveredAt: '2026-09-14T12:30:02.000Z',
         messageId: MessageId('previous-weekly'), prompt: 'Weekly check',
       }],
@@ -196,26 +196,26 @@ it('opens old version-1 tasks without status as active without changing the stor
   const pool = new MemoryMediaPool()
   pool.versions.set('schedule', 1)
   pool.media.set('schedule', {
-    tables: new Map([['tasks', new Map([[record.id, { sessionId: 'original', record }]])]]), global: null,
+    tables: new Map([['tasks', new Map([[record.id, { target: { kind: 'session', sessionId: 'original' }, involvedSessionIds: ['original'], record }]])]]), global: null,
   })
   ctx.storage.backend.register('memory', new MemoryStorageBackend(pool))
   const facility = new DomainFacility(ctx, { backend: 'memory' })
   const domain = await facility.open(scheduleDomain)
   ctx.effect(() => () => domain.close())
-  expect(domain.table('tasks').get(record.id)).toEqual({ sessionId: 'original', record, status: 'active' })
+  expect(domain.table('tasks').get(record.id)).toEqual({ target: { kind: 'session', sessionId: 'original' }, involvedSessionIds: ['original'], record, status: 'active' })
   expect(pool.versions.get('schedule')).toBe(1)
 })
 
 const record = createAfterScheduleRecord(ScheduleId('validation'), 'Validate', 1, Date.parse('2026-09-16T00:00:00Z'), 'Validate')
-const lastDelivery = {
+const lastDelivery = { targetSessionId: SessionId('cold'),
   scheduledAt: record.scheduledAt, deliveredAt: '2026-09-16T00:00:02.000Z', messageId: 'receipt-message',
 }
 
 it('accepts retained statuses and optional rigorously decoded delivery receipts', () => {
-  expect(scheduleTaskSchema.parse({ sessionId: 'cold', record })).toEqual({ sessionId: 'cold', record, status: 'active' })
-  for (const status of ['active', 'inactive']) {
-    expect(scheduleTaskSchema.parse({ sessionId: 'cold', record, status, lastDelivery }))
-      .toEqual({ sessionId: 'cold', record, status, lastDelivery })
+  expect(scheduleTaskSchema.parse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record })).toEqual({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, status: 'active' })
+  for (const status of ['active', 'ended']) {
+    expect(scheduleTaskSchema.parse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, status, lastDelivery }))
+      .toEqual({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, status, lastDelivery })
   }
 })
 
@@ -225,7 +225,7 @@ it.each([
   { ...lastDelivery, messageId: '  ' }, { ...lastDelivery, messageId: ' message' },
   { ...lastDelivery, messageId: 42 }, { ...lastDelivery, completion: 'done' },
 ])('rejects malformed stored delivery receipt %#', (receipt) => {
-  expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record, lastDelivery: receipt }).success).toBe(false)
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, lastDelivery: receipt }).success).toBe(false)
 })
 
 it.each([
@@ -234,30 +234,30 @@ it.each([
   '2026-04-31T00:00:00.000Z', '2026-09-16T24:00:00.000Z', '2026-09-16T00:00:60.000Z',
 ])('rejects noncanonical or nonexistent receipt instant %s', (instant) => {
   for (const key of ['scheduledAt', 'deliveredAt']) {
-    expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record, lastDelivery: { ...lastDelivery, [key]: instant } }).success)
+    expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, lastDelivery: { ...lastDelivery, [key]: instant } }).success)
       .toBe(false)
   }
 })
 
 it('requires a latest receipt for nonempty saved history and accepts empty known history', () => {
   const deliveryHistory = { records: [lastDelivery], earlierRecordsUnavailable: false }
-  expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record, deliveryHistory }).success).toBe(false)
-  expect(scheduleTaskSchema.parse({ sessionId: 'cold', record, deliveryHistory: { records: [], earlierRecordsUnavailable: false } }))
-    .toEqual({ sessionId: 'cold', record, status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false } })
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, deliveryHistory }).success).toBe(false)
+  expect(scheduleTaskSchema.parse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, deliveryHistory: { records: [], earlierRecordsUnavailable: false } }))
+    .toEqual({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false } })
 })
 
 it('accepts append-ordered history despite scheduled and delivered wall-clock rollback', () => {
   const earlier = { ...lastDelivery, scheduledAt: '2026-09-17T00:00:00.000Z', deliveredAt: '2026-09-18T00:00:00.000Z', messageId: 'earlier' }
-  const task = { sessionId: 'cold', record, status: 'inactive', lastDelivery,
+  const task = { target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, status: 'ended', lastDelivery,
     deliveryHistory: { records: [earlier, { ...lastDelivery, prompt: 'Sent prompt' }], earlierRecordsUnavailable: true } }
   expect(scheduleTaskSchema.parse(task)).toEqual(task)
 })
 
 it('rejects malformed persisted schedule values rather than opening a partial task', () => {
-  expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record: { id: 'invalid' } }).success).toBe(false)
-  expect(scheduleTaskSchema.safeParse({ sessionId: '', record: {} }).success).toBe(false)
-  expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record, status: 'completed' }).success).toBe(false)
-  expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record, status: null }).success).toBe(false)
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record: { id: 'invalid' } }).success).toBe(false)
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: '' }, involvedSessionIds: [''], record: {} }).success).toBe(false)
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, status: 'completed' }).success).toBe(false)
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record, status: null }).success).toBe(false)
 })
 
 const dailyRecord = {
@@ -267,7 +267,7 @@ const dailyRecord = {
 
 it.each(['id', 'kind', 'title', 'prompt', 'time', 'timeZone', 'scheduledAt'])('rejects a stored daily record missing %s', (key) => {
   const incomplete = Object.fromEntries(Object.entries(dailyRecord).filter(([field]) => field !== key))
-  expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record: incomplete }).success).toBe(false)
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record: incomplete }).success).toBe(false)
 })
 
 it.each([
@@ -277,18 +277,18 @@ it.each([
   { scheduledAt: '2026-02-30T00:30:00.125Z' }, { scheduledAt: '+010000-01-01T00:00:00.000Z' },
   { everySeconds: 300 }, { time_zone: 'Asia/Shanghai' }, { date: '2026-09-16' },
 ])('rejects malformed or extra durable daily fields %#', (fields) => {
-  expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record: { ...dailyRecord, ...fields } }).success).toBe(false)
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record: { ...dailyRecord, ...fields } }).success).toBe(false)
 })
 
 it.each([
   '', '08:30', '8:30:00.125', '08:30:00', '08:30:00.1', '08:30:00.12', '08:30:00.1234',
   '24:00:00.000', '08:60:00.000', '08:30:60.000', '08:30:00.000Z', ' 08:30:00.125',
 ])('rejects a noncanonical or nonexistent stored daily time %s', (time) => {
-  expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record: { ...dailyRecord, time } }).success).toBe(false)
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record: { ...dailyRecord, time } }).success).toBe(false)
 })
 
 it.each(['', 'UTC ', ' Asia/Shanghai', 'Not/A_Zone', '+08:00', 'CST'])('rejects an invalid stored daily zone %s', (timeZone) => {
-  expect(scheduleTaskSchema.safeParse({ sessionId: 'cold', record: { ...dailyRecord, timeZone } }).success).toBe(false)
+  expect(scheduleTaskSchema.safeParse({ target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record: { ...dailyRecord, timeZone } }).success).toBe(false)
 })
 
 it.each([
@@ -307,7 +307,7 @@ it.each([
   const facility = new DomainFacility(ctx, { backend: 'memory' })
   const first = await facility.open(scheduleDomain)
   await first.close()
-  pool.media.get('schedule')!.tables.set('tasks', new Map([['broken', { sessionId: 'cold', record: invalidRecord }]]))
+  pool.media.get('schedule')!.tables.set('tasks', new Map([['broken', { target: { kind: 'session', sessionId: 'cold' }, involvedSessionIds: ['cold'], record: invalidRecord }]]))
   const reopened = new DomainFacility(ctx, { backend: 'memory' })
   await expect(reopened.open(scheduleDomain)).rejects.toThrow()
 })

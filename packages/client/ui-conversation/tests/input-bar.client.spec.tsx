@@ -9,6 +9,8 @@
 // the shell (jsdom's beforeinput lacks the ranges Lexical needs).
 
 import './control-row-dom.ts'
+import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
+import * as focus from '@deepseek-ai/dsh-client-ui-primitives/src/focus.ts'
 import type { InboxState } from '@deepseek-ai/dsh-agent/types'
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
@@ -520,8 +522,8 @@ describe('image draft rail', () => {
     sink.mockImplementationOnce(() => new Promise<SubmitOutcome>((resolve) => { settle = resolve }))
     fireEvent.keyDown(textarea, { key: 'Enter' })
     expect(sink).toHaveBeenCalledWith('', ['draft-1'], 'queue', expect.any(AbortSignal))
-    // Optimistic commit: the rail clears at submit, before the admission settles.
-    expect(attachmentOwner(result.slotCalls).attachments).toEqual([])
+    // Admission retains the browser-owned rail until the Host accepts.
+    expect(attachmentOwner(result.slotCalls).attachments.map(attachment => attachment.id)).toEqual(['draft-1'])
     await act(async () => { settle({ kind: 'success' }) })
     expect(attachmentOwner(result.slotCalls).attachments).toEqual([])
   })
@@ -536,7 +538,7 @@ describe('image draft rail', () => {
     let fail!: (outcome: SubmitOutcome) => void
     sink.mockImplementationOnce(() => new Promise<SubmitOutcome>((resolve) => { fail = resolve }))
     fireEvent.keyDown(textarea, { key: 'Enter' })
-    expect(attachmentOwner(result.slotCalls).attachments).toEqual([])
+    expect(attachmentOwner(result.slotCalls).attachments.map(attachment => attachment.id)).toEqual(['draft-1'])
     await act(async () => { fail({ kind: 'error', text: '图片发送失败' }) })
     await vi.waitFor(() => {
       expect(attachmentOwner(result.slotCalls).attachments).toEqual([attachments[0]])
@@ -1776,4 +1778,52 @@ it('places context usage below the composer and hides it until the activity clos
   fireEvent.click(view.getByRole('button', { name: '上下文已用 25%' }))
   expect(view.getByRole('dialog', { name: '上下文已用' })).toBeTruthy()
   expect(view.getByRole('button', { name: '发送消息' })).toBeTruthy()
+})
+
+
+it('leaves the resident mobile workspace trigger unfocused after modal selection, retains refusal, and dismisses acceptance', async () => {
+  const mobile = vi.spyOn(focus, 'isMobileDevice').mockReturnValue(true)
+  onTestFinished(() => { mobile.mockRestore() })
+  const { shell, sink, textarea, view, props } = bench({ inert: true, onRequestWorkspace: () => {} })
+  expect(document.activeElement).not.toBe(textarea)
+  const tree = (open: boolean, disabled: boolean) => <>
+    <InputBar {...props} disabled={disabled} />
+    <primitives.Modal open={open} title="Workspace" closeLabel="Close" onClose={() => {}}>
+      <input data-modal-autofocus aria-label="Workspace path" />
+    </primitives.Modal>
+  </>
+  view.rerender(tree(false, true))
+  textarea.focus()
+  view.rerender(tree(true, true))
+  expect(document.activeElement).toBe(view.getByRole('textbox', { name: 'Workspace path' }))
+  view.rerender(tree(true, false))
+  expect(textarea.getAttribute('contenteditable')).toBe('true')
+  view.rerender(tree(false, false))
+  expect(view.container.querySelector('[data-composer-input]')).toBe(textarea)
+  expect(document.activeElement).not.toBe(textarea)
+  act(() => { shell.setDraft('retained mobile draft'); textarea.focus() })
+  const first = Promise.withResolvers<SubmitOutcome>()
+  sink.mockReturnValueOnce(first.promise)
+  act(() => { shell.submit() })
+  expect(shell.snapshot.draft).toBe('retained mobile draft')
+  await act(async () => { first.resolve({ kind: 'error' }); await first.promise })
+  expect(document.activeElement).toBe(textarea)
+  expect(shell.snapshot.draft).toBe('retained mobile draft')
+  act(() => { shell.submit() })
+  await vi.waitFor(() => { expect(shell.snapshot.draft).toBe('') })
+  expect(document.activeElement).toBe(view.container.querySelector('[data-composer-card]'))
+})
+
+
+it('removes an adjacent quote atomically with Backspace', async () => {
+  const { shell, textarea, view } = bench()
+  act(() => { shell.actions.insertQuote('first\nsecond') })
+  expect(view.container.querySelectorAll('[data-composer-quote]')).toHaveLength(1)
+  act(() => { shell.editor.update(() => {
+    const tail = $getRoot().getLastDescendant()
+    if ($isTextNode(tail)) tail.select(0, 0)
+  }, { discrete: true }) })
+  fireEvent.keyDown(textarea, { key: 'Backspace' })
+  await vi.waitFor(() => { expect(view.container.querySelector('[data-composer-quote]')).toBeNull() })
+  expect(shell.draftSnapshot.quotes ?? []).toEqual([])
 })

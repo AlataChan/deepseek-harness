@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { join, resolve } from 'node:path'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { SessionId } from '@deepseek-ai/dsh-session'
+import { mountDirectoryFixture, createDirectoryFixtureAgent } from '@deepseek-ai/dsh-working-directory-testkit'
+import { afterAll, describe, expect, it } from 'vitest'
+import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
@@ -36,24 +40,30 @@ async function mount(
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(Lsp)
   if (provider) (ctx.lsp as Lsp).registerProvider(provider)
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolLsp, config)
   return { ctx }
 }
 
 let seq = 0
 const testToolSignal = new AbortController().signal
-const workspaceRoot = resolve('/virtual/workspace')
-const resolvedWorkspaceRoot = resolve('/virtual/real-workspace')
+const fixtureRoot = realpathSync(mkdtempSync(join(tmpdir(), 'lsp-tool-fixture-')))
+afterAll(() =>{  rmSync(fixtureRoot, { recursive: true, force: true }) })
+const workspaceRoot = join(fixtureRoot, 'workspace')
+mkdirSync(workspaceRoot)
+const resolvedWorkspaceRoot = join(fixtureRoot, 'real-workspace')
 const resolvedWorkspaceUri = pathToFileURL(resolvedWorkspaceRoot).href
-const workspaceAlias = resolve('/virtual/workspace-alias')
+const workspaceAlias = join(fixtureRoot, 'workspace-alias')
 /** `cwd: null` means "no agent" (tests LSP_WORKSPACE_REQUIRED); a string is the session cwd. */
-function call(ctx: Context, args: unknown, cwd: string | null = workspaceRoot) {
+async function call(ctx: Context, args: unknown, cwd: string | null = workspaceRoot) {
+  if (cwd !== null) mkdirSync(cwd, { recursive: true })
+  const caller = cwd === null ? undefined : await createDirectoryFixtureAgent(ctx, SessionId(`lsp-${seq + 1}`), cwd)
   return ctx.tools.execute({
     signal: testToolSignal,
     callId: `c-${++seq}` as never,
     name: 'lsp',
     arguments: args,
-    ...cwd !== null ? { agent: { session: { header: { cwd } } } as never } : {},
+    ...caller === undefined ? {} : { agent: caller },
   })
 }
 
@@ -131,7 +141,7 @@ describe('tool-lsp execution', () => {
   })
 
   it('keeps all acquired locations in the canonical value when presentation is capped', async () => {
-    const cappedWorkspaceRoot = resolve('/virtual/capped-workspace')
+    const cappedWorkspaceRoot = join(fixtureRoot, 'capped-workspace')
     const locations = [
       { uri: pathToFileURL(join(cappedWorkspaceRoot, 'a.ts')).href, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } },
       { uri: pathToFileURL(join(cappedWorkspaceRoot, 'b.ts')).href, range: { start: { line: 1, character: 2 }, end: { line: 1, character: 3 } } },
@@ -176,13 +186,13 @@ describe('tool-lsp execution', () => {
   it('preserves an optional hover range in the canonical value', async () => {
     const range = { start: { line: 2, character: 3 }, end: { line: 2, character: 7 } }
     const { ctx } = await mount(stubProvider(() => ({ kind: 'hover', hover: { contents: 'number', range } })))
-    const result = await call(ctx, { operation: 'hover', file_path: 'a.ts', line: 3, character: 4 }, '/ws')
+    const result = await call(ctx, { operation: 'hover', file_path: 'a.ts', line: 3, character: 4 }, workspaceRoot)
     expect(result).toMatchObject({ isError: false, value: { kind: 'hover', hover: { contents: 'number', range } } })
   })
 
   it('preserves a null hover result as an explicit value', async () => {
     const { ctx } = await mount(stubProvider(() => ({ kind: 'hover', hover: null })))
-    const result = await call(ctx, { operation: 'hover', file_path: 'a.ts', line: 1, character: 1 }, '/ws')
+    const result = await call(ctx, { operation: 'hover', file_path: 'a.ts', line: 1, character: 1 }, workspaceRoot)
     expect(result.content[0]).toEqual({ type: 'text', text: 'No hover information.' })
     expect(result).toMatchObject({ isError: false, value: { kind: 'hover', hover: null } })
   })

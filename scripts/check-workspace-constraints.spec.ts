@@ -455,7 +455,7 @@ it('requires isolated IM and desktop adapter entries and rejects unrelated paylo
   const dir = 'packages/experimental/im-feishu'
   const manifest = JSON.parse(readFileSync(new URL(`../${dir}/package.json`, import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
   expect(checkWorkspaceManifest({ dir, manifest })).toEqual([])
-  for (const omitted of ['lib/runtime-plugin.js', 'lib/ingress-plugin.js', 'lib/desktop.js']) {
+  for (const omitted of ['lib/runtime-plugin.js', 'lib/ingress-plugin.js', 'lib/desktop.js', 'lib/card-channel.js']) {
     expect(checkWorkspaceManifest({ dir, manifest: { ...manifest, files: manifest.files!.filter(file => file !== omitted) } }))
       .toEqual([expect.stringContaining('package.json files must be')])
   }

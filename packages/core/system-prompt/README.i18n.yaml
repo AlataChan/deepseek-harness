@@ -18,7 +18,7 @@
   en: 7bea567207cd7e00
   zh: ffc050b05f07ba7f
 /deepseek-ai-dsh-system-prompt/use-this-package/configure-the-prompt:
-  en: 77c27acfc831cf4c
+  en: 87e28893e6cf58d7
   zh: ae4d89acd08eb204
 /deepseek-ai-dsh-system-prompt/use-this-package/contribute-a-prompt-section:
   en: 15d70e3b8eddd636
@@ -30,8 +30,8 @@
   en: 009ef267dac2f270
   zh: e79c24bff5cd836f
 /deepseek-ai-dsh-system-prompt/use-this-package/suppress-runtime-context:
-  en: 61e2c1a3f18b48dd
-  zh: 29ecab2639f60103
+  en: e531bc39f8c7f634
+  zh: 6419f4f26e6019ef
 /deepseek-ai-dsh-system-prompt/understand-the-implementation:
   en: ce7e776e9d516bdb
   zh: 59d2751743db7795
@@ -57,7 +57,7 @@
   en: cf78b9dd5596495f
   zh: bd44560f8c2435e8
 /deepseek-ai-dsh-system-prompt/model-experience/system-prompt/what-the-model-sees:
-  en: 9927fdee4f8aa8ec
+  en: 0bd93ac5ad25b6e1
   zh: 3687314c357fa7f4
 /deepseek-ai-dsh-system-prompt/model-experience/system-prompt/what-the-model-sees/harness-identity:
   en: 40effd71cb503319
@@ -85,4 +85,4 @@
   zh: be34f1770fa2e027
 /deepseek-ai-dsh-system-prompt/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
-  zh: 3bb0c20c93f16f98
+  zh: 06c0d99b8ecab09a

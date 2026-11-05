@@ -26,6 +26,10 @@
           {
             "type": "text",
             "text": "Exercise the packaged minimal agent's persistent shell."
+          },
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"{{cwd}}\"."
           }
         ]
       }
@@ -58,6 +62,10 @@
           {
             "type": "text",
             "text": "Exercise the packaged minimal agent's persistent shell."
+          },
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"{{cwd}}\"."
           }
         ]
       },
@@ -109,6 +117,10 @@
           {
             "type": "text",
             "text": "Exercise the packaged minimal agent's persistent shell."
+          },
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"{{cwd}}\"."
           }
         ]
       },

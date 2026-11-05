@@ -12,14 +12,14 @@ import {
 
 const SESSION = 'ambient-session' as SessionId
 const id = 'ambient-task' as ScheduleId
-const row: ScheduleRecord = {
+const row: ScheduleCatalogEntry = { target: { kind: 'session' as const, sessionId: SESSION }, involvedSessionIds: [SESSION], status: 'active',
   id, kind: 'at', title: 'Read status', prompt: 'Read status', scheduledAt: '2026-10-01T00:00:00.000Z',
 }
 const failure = { ok: false as const, error: new RemoteError('gateway/internal', 'Unavailable', {}) }
 
-function catalogEntry(taskId: string, sessionId: string, status: 'active' | 'inactive'): ScheduleCatalogEntry {
+function catalogEntry(taskId: string, sessionId: string, status: 'active' | 'ended'): ScheduleCatalogEntry {
   return {
-    id: taskId as ScheduleId, sessionId: sessionId as SessionId, status, kind: 'at',
+    id: taskId as ScheduleId, target: { kind: 'session' as const, sessionId: sessionId as SessionId }, involvedSessionIds: [sessionId as SessionId], status, kind: 'at',
     title: 'Read status', prompt: 'Read status', scheduledAt: '2026-10-01T00:00:00.000Z',
   }
 }
@@ -44,7 +44,7 @@ describe('Session schedule state', () => {
       .mockResolvedValue({ ok: true, value: { id, deleted: true } })
     const ctx = {
       remote: {
-        schedule: { list, delete: remove },
+        schedule: { catalog: list, edit: remove },
         $on: vi.fn((_event: 'schedule/changed', listener: () => void) => {
           changed = listener
           return changedDisposed
@@ -57,23 +57,23 @@ describe('Session schedule state', () => {
     }
     const entry = createSessionScheduleSource(ctx as never, SESSION)
     const dispose = entry.hooks.catalog.subscribe(vi.fn())
-    expect(list).toHaveBeenCalledWith({ sessionId: SESSION })
-    await Promise.resolve()
+    expect(list).toHaveBeenCalledWith()
+    await new Promise<void>((resolve) =>{  queueMicrotask(() =>{  queueMicrotask(resolve) }) })
     expect(entry.hooks.catalog.getSnapshot()).toMatchObject({ status: 'ready', records: [row] })
 
     list.mockResolvedValueOnce({ ok: true, value: [] })
     changed()
-    await Promise.resolve()
+    await new Promise<void>((resolve) =>{  queueMicrotask(() =>{  queueMicrotask(resolve) }) })
     expect(entry.hooks.catalog.getSnapshot().records).toEqual([])
 
     list.mockResolvedValueOnce(failure)
     reset()
-    await Promise.resolve()
+    await new Promise<void>((resolve) =>{  queueMicrotask(() =>{  queueMicrotask(resolve) }) })
     expect(entry.hooks.catalog.getSnapshot().status).toBe('error')
 
     list.mockResolvedValueOnce({ ok: true, value: [row] })
     await entry.onDelete(id)
-    expect(remove).toHaveBeenCalledWith({ sessionId: SESSION, id })
+    expect(remove).toHaveBeenCalledWith({ id, action: 'delete' })
     expect(entry.hooks.catalog.getSnapshot().records).toEqual([row])
 
     dispose()
@@ -86,7 +86,7 @@ describe('shared Host catalog projection', () => {
   it('selects only the given Session active tasks from active and ended rows', () => {
     const mine = catalogEntry('mine', SESSION, 'active')
     const other = catalogEntry('other', 'other-session', 'active')
-    const ended = catalogEntry('ended', SESSION, 'inactive')
+    const ended = catalogEntry('ended', SESSION, 'ended')
     const catalog = hostSnapshot('ready', [mine, other, ended])
 
     expect(selectSessionScheduleFacts(catalog, SESSION)).toEqual({ hasActive: true, records: [mine] })
@@ -97,7 +97,7 @@ describe('shared Host catalog projection', () => {
   })
 
   it('answers no active task for an ended-only Session', () => {
-    const catalog = hostSnapshot('ready', [catalogEntry('ended', SESSION, 'inactive')])
+    const catalog = hostSnapshot('ready', [catalogEntry('ended', SESSION, 'ended')])
     expect(selectSessionScheduleFacts(catalog, SESSION)).toEqual({ hasActive: false, records: [] })
   })
 

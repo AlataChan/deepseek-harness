@@ -161,6 +161,22 @@ export type UseConversationViews = SnapshotSelectorHook<readonly ViewTab[]>
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
+    /** Custom content for the view tab More menu. */
+    'conversation.session.header.views.actions': {
+      kind: 'single'
+      scope: 'session'
+      owner: {
+        entries: readonly {
+          id: string
+          label: string
+          pinned: boolean
+          active: boolean
+        }[]
+        onOpen: (id: string) => void
+        onPinnedChange: (id: string, pinned: boolean) => void
+        onDismiss: () => void
+      } }
+
     /** Conversation shell beneath its root-scoped main-panel entry. */
     'main.conversation': { kind: 'single'; scope: 'session-maybe' }
     /** Strict per-Session Conversation body. */
@@ -469,7 +485,12 @@ export interface ConversationSessionInjected {
 /** Business callbacks injected into the strict Session header. */
 export interface ConversationSessionHeaderInjected {
   /** Package-owned View roster source bound only for the Conversation header. */
-  readonly hooks: { readonly conversationViews: ObservableSnapshot<readonly ViewTab[]> }
+  readonly hooks: {
+    readonly conversationViews: ObservableSnapshot<readonly ViewTab[]>
+    readonly entryPins: ObservableSnapshot<readonly string[]>
+  }
+  /** Pin or unpin a registered view; Chat remains fixed. */
+  setPinned: (id: string, pinned: boolean) => void
   /** Select a Session through the Session Controller. */
   open: (sessionId: SessionId) => void
   /** Select and activate one registered Conversation View. */
@@ -635,7 +656,7 @@ export type ConversationSessionHeaderSlotProps =
   PropsRuntime<'conversation.session.header'>
   & PropsRenderSlots<
     'conversation.session.header.lineage'
-    | 'conversation.session.header.actions'
+    | 'conversation.session.header.views.actions' | 'conversation.session.header.actions'
     | 'conversation.session.header.utilities'
     | 'conversation.session.header.corner'
   >

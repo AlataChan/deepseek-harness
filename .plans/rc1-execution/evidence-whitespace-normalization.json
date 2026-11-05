@@ -1,0 +1,387 @@
+[
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/api-diagnostics.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/api-diagnostics.log.gz",
+    "originalSha256": "adba259bcb3e9da5b77f5f842101a42ae6f22233626a8ada61fb732c8c0c309a",
+    "reviewCopySha256": "b29515f76ba26070586776b6a6e1eece5cc8c40e4d0f6fb154e6b1779c121fff",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/api-repair.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/api-repair.log.gz",
+    "originalSha256": "bf504356808e3c5a3ad0f98ec4c38688cda9a4b0003e82eef506a3dc1c55ae7e",
+    "reviewCopySha256": "e5a3d1292f8b24788c536387cb588340bcdd1204184a2a922524472c6ab4bd7c",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/assembled-settings-and-versions.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/assembled-settings-and-versions.log.gz",
+    "originalSha256": "512c1d1bb93df93836731f9d3c53144b9ed90b71409396714d38104d427c0ec5",
+    "reviewCopySha256": "f0a208551a2f6a8d6edad9482500b7d629538ad7633e06fe4c2eaf274d3cf11f",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/baseline.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/baseline.log.gz",
+    "originalSha256": "d33af1e9da8b69ae4b00d975174efa77c20fd686f2dad2a771d4adc9e8a6c9ed",
+    "reviewCopySha256": "f9432c9732643a4200f0084b34412d4716e0b7d4c65816d2c1e716d758bb9478",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/before-callback-ref.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/before-callback-ref.log.gz",
+    "originalSha256": "20fcc59cd2b24da54adf169b70c468a5aa94044561724a6ba670bb5f26520801",
+    "reviewCopySha256": "4a333f78834aa208e3aade8b517c53d45d846d41347d18fe02c1177dc83b871c",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/before-mobile-fix.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/before-mobile-fix.log.gz",
+    "originalSha256": "a847012c7fc31865654c1abc7d8b0aa0322361993b86a492a4d6e178459b06e4",
+    "reviewCopySha256": "28a7e6396917a8deb116f706c2c6ab5679395c27efd7a544f0ebb53f700c5a79",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/before-simplification.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/before-simplification.log.gz",
+    "originalSha256": "8e08729ef7f3322103dcef518d2b531dbc8d843c5dacf81adef15e0deb09edb4",
+    "reviewCopySha256": "9dbffe5b44d4a8305884a581e3e2e04648f9c48add9a53a0a6b9ffd2ed6384f9",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/callback-ref-lint.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/callback-ref-lint.json.gz",
+    "originalSha256": "5f0114d980f39b7b5b987697b1e6451da747e53d0ccd38f4e374ee2c1b0c6e25",
+    "reviewCopySha256": "976ef853846a225713168d1d728b00ef56edf7fc118d6a679b21320a4fc64e95",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/callback-ref-qualified.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/callback-ref-qualified.log.gz",
+    "originalSha256": "6abd5ea8a6aa75433307ea4d570eb8dc34038d9bc8374d34e591510ac9e20386",
+    "reviewCopySha256": "26fd420e922f69741aa82724b175e9225b613278fbfa93c1d832a4fa11e4cb8c",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/empty-quotes.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/empty-quotes.log.gz",
+    "originalSha256": "db702abcd02898cee996bef7811fcd1e86ba385a0d3faf7a8dd42d429808c8bb",
+    "reviewCopySha256": "84da66b11d1cb80b4e0a69205c10a1c410a99b01f8d2465bd8dedcbc0932cef6",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/final.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/final.log.gz",
+    "originalSha256": "afd55f865fa0b25f552152681fde4f966f57d0007766df0318936d5aadebbfd7",
+    "reviewCopySha256": "4ad751080887fa58fadedf30313486c08bb5864affbeab85f0c5968409fc0b06",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/SidebarRoot.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/SidebarRoot.diff.gz",
+    "originalSha256": "33a33191a56ad949ec3f5a3514a35100b2a390066bc8c334511d6e250fbbcb7a",
+    "reviewCopySha256": "41737e0cd156014c12e83ea20feca659c4329ab64caae566999fb57df3cfbec9",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/SidebarRoot.tsx.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/SidebarRoot.tsx.diff.gz",
+    "originalSha256": "3b38830b7bc1877fab8622eb51c0ce487acd7f2efab2922a5480833eb654a273",
+    "reviewCopySha256": "62fe33dc072ec3c388b0aa2cb2d418847018feb167d6710acd564ca5c293f353",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/SidebarRoot.tsx.final.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/SidebarRoot.tsx.final.diff.gz",
+    "originalSha256": "e9626dd104758c7fc4a64e6a1106ca4cc85160d20df7d98815e7abaa14cfe05a",
+    "reviewCopySha256": "f402b50fae56c4b4c718b018a27a17664369bd945dc045040170a18c6ceeb6e0",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/focus.ts.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/focus.ts.diff.gz",
+    "originalSha256": "ed2aae95ce0abf6d247e8174661c9121b99d07478144e41dfc3d73a18c668a26",
+    "reviewCopySha256": "be885a7f933f5163ed13d85a26c05e4ec84b4cdf6fe6ad77a146e6e7526c2cb7",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/focus.ts.final.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/focus.ts.final.diff.gz",
+    "originalSha256": "ed2aae95ce0abf6d247e8174661c9121b99d07478144e41dfc3d73a18c668a26",
+    "reviewCopySha256": "be885a7f933f5163ed13d85a26c05e4ec84b4cdf6fe6ad77a146e6e7526c2cb7",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/useModalLayer.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/useModalLayer.diff.gz",
+    "originalSha256": "7084cca63b3f84a62cae5f4be5470bc09edc9819ed95ac64cbb5f466382bbe50",
+    "reviewCopySha256": "e837b3b1be44aa55ab3714b239863cad15092ead083bda94b4f4ec4f0b756254",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/useModalLayer.ts.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/useModalLayer.ts.diff.gz",
+    "originalSha256": "e3d7ca78f243330f879bfd0a9373499ea9587a987022d7db75fbb140253db5e0",
+    "reviewCopySha256": "d85e9218a4c0d2b8e1308c004b8404296d9a9673319b514ad2d017276bc65cbd",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/useModalLayer.ts.final.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/useModalLayer.ts.final.diff.gz",
+    "originalSha256": "39fe21b756453eff7154789dfb577fa6ba2d75a3d340ca9f47a56b715b5720f0",
+    "reviewCopySha256": "22fd53bd5b34c5fef229b31c0ad7d68bdfab12c0f851504c2de9df016c447994",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/user-text.tsx.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/user-text.tsx.diff.gz",
+    "originalSha256": "76b97ff3bb9ed578c1e258b8229fafb10f9499441a8037d30d0b202d9523c546",
+    "reviewCopySha256": "6668c449ae098c86f92ffb3fd6478bd4d1f7942dd06a5414de5186778489ac11",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/frozen-baseline/user-text.tsx.final.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/frozen-baseline/user-text.tsx.final.diff.gz",
+    "originalSha256": "76b97ff3bb9ed578c1e258b8229fafb10f9499441a8037d30d0b202d9523c546",
+    "reviewCopySha256": "6668c449ae098c86f92ffb3fd6478bd4d1f7942dd06a5414de5186778489ac11",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/last-fixture-repair.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/last-fixture-repair.log.gz",
+    "originalSha256": "1d2c26262841820607bda6c54db0ba3c55877cd593b464d0dea63e93190a4727",
+    "reviewCopySha256": "329f2e3ce2974c1dd22148f56b3ea0308edb324cea400d91fc9ff0ed489e06a9",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/lint-final-qualified.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/lint-final-qualified.json.gz",
+    "originalSha256": "d876614158bedf266faa71584b01e58bd7f9a9560c7b31e3b2ddabb127e747b5",
+    "reviewCopySha256": "d57f86ace3c6a82f6773f5490ad2f3858f979442cd3fd7c9fe9af320db880555",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/lint-final-source.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/lint-final-source.json.gz",
+    "originalSha256": "25e1b35167b3ad1bdf5c379e63da57a4adb4f45d8baa02b51ab63d93824be24b",
+    "reviewCopySha256": "cece83969857c6fe32faca41d8ee08bb641b729b7de0988e430ddeab69cbac05",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/lint-final.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/lint-final.json.gz",
+    "originalSha256": "86788fbecab523932e99a696122307d40be81b37e0965dc15f9b42a82cdf63d1",
+    "reviewCopySha256": "5da88ab0c70bdb4d38cca7f40887f0638c297af1604cd31abd9f592d5b79b2fb",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/lint-qualified.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/lint-qualified.json.gz",
+    "originalSha256": "88b6b6bcd6ad4cc0319cdb32b6895f974f9708e6ad3f4426ea3b010f9852fe1b",
+    "reviewCopySha256": "433c9258d631f57910ca521fc94d26d4978f5cfe973c9bc7610ec7d49d7eec1b",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/lint.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/lint.json.gz",
+    "originalSha256": "6ffe1d13e035b09c4e7f4252ef748922b462a288b448c2d32243305a34b116f4",
+    "reviewCopySha256": "a22a51850bb60148f6af8c6d614de6e197fe99b083e5de1a7e8549763d11f198",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/mobile-closure-tests.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/mobile-closure-tests.log.gz",
+    "originalSha256": "0f93ac3d2ef8a5fe804fdf237bc9ea0a297e58f5275c618537c2085523db5cfa",
+    "reviewCopySha256": "f410ca40f323038fbef1e3ae07663a43f7edebb4d596f7471ca47e3af58a4c8e",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/mobile-closure.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/mobile-closure.log.gz",
+    "originalSha256": "6ad93a57a58815c9dd45c727c88d732c9271ddbd891e3f35086adfeed73c0809",
+    "reviewCopySha256": "46e865dbcb8aa423c7c380da33a9bdf0ef2f8a9cd5b68f64243378763593f1bd",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/mobile-deferred-unlock-after.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/mobile-deferred-unlock-after.log.gz",
+    "originalSha256": "afbd32d61bc8081d294dd46c3280e6d85893e8f2ba59cd3ff3a7ca027646dcae",
+    "reviewCopySha256": "cd3541e58e9322f3fdf20b82e66a3a3f2fbd389c1eacbc4aa50fd7290e720455",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/mobile-deferred-unlock-before.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/mobile-deferred-unlock-before.log.gz",
+    "originalSha256": "ccf520456c7af3686e55e9dd406b7a7c21e78e3d8a9ed31eb7af9351c502cdc8",
+    "reviewCopySha256": "03fa0bf7dcfc6c57a862ec3c04954cb2c4b5eff6e89bcb1aff82f547c79c5d1a",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/mobile-deferred-unlock-lint.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/mobile-deferred-unlock-lint.json.gz",
+    "originalSha256": "0abc0e58aee6aa867e31fb90c8d45cdf718307902da478f85a35a7b4e1661da7",
+    "reviewCopySha256": "0f454c150effd4cc100747645a7e0a6556846bc8feb7026ef6addbe9bfb96670",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/mobile-sidebar-lint-final.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/mobile-sidebar-lint-final.json.gz",
+    "originalSha256": "3763dfa3e83e65bb6d71f219848a0c581d253a9718ab475d4616f4ba7e72da3d",
+    "reviewCopySha256": "bd10b4612c9f2d0ba395638b48469bdc7bd38f9b2d416b56e4ed9fcf91d75ddd",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/mobile-sidebar-lint.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/mobile-sidebar-lint.json.gz",
+    "originalSha256": "c391e2027123a37fa53a6b025cf5fc871b979ac3b2cc7f4cf77a4ed2ab8af231",
+    "reviewCopySha256": "f424ead6dc07e1383255c0a9fe591c21d3e3932afc16e319da82176bba40ccf1",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/mobile-sidebar-qualified.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/mobile-sidebar-qualified.log.gz",
+    "originalSha256": "bb8867af3fa877b041c630b887223a3e3684d40d5780a8b5512ab09fb437d7f3",
+    "reviewCopySha256": "ff3e6959b4f77686abffd6cc2969ce9a2efc0fb8dd666d6e7b6ab9a3fd48e20d",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/new-behavior-tests-final.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/new-behavior-tests-final.log.gz",
+    "originalSha256": "0513f93bf0a41a08428b0ce516c1faeb796fb348c92137914a966c136df1db88",
+    "reviewCopySha256": "c1f1943d945036bfbd53f3dbcabc31c65bda7df49396f7593022e34a7da263f3",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/new-behavior-tests.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/new-behavior-tests.log.gz",
+    "originalSha256": "774c68186c211196a072b6dc9b861f9b460babf13e3a685485f945e928abb6e2",
+    "reviewCopySha256": "76171399e7c7016b9c54e1189eb1506f4be82dc2ce3cf599c9088425d79dcc6c",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/proposed-sidebar-layout.diff",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/proposed-sidebar-layout.diff.gz",
+    "originalSha256": "5b6682d1b318efde361b4435ee5eadafb1ccc99bb420215a0078076928ba3070",
+    "reviewCopySha256": "77fe44562caf10509d9a340ee4435bc9d60cb56189a1b48bcc195209106a236f",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/sidebar-baseline-navigation-closure.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/sidebar-baseline-navigation-closure.log.gz",
+    "originalSha256": "fccd50738b5e247a97ef03b958758e42b151157513f52793b2a17dbef4ab634b",
+    "reviewCopySha256": "f9be9cbd4f4c415cdeb5e1234ad7796bc8cf3ab9170ee404fbdae0cf74e8818d",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/sidebar-mobile-closure.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/sidebar-mobile-closure.log.gz",
+    "originalSha256": "7f6198812b1d3815a8108141658127a203abea733ff3034a7174c3c40890fedb",
+    "reviewCopySha256": "3c2b6de1569f0102388131542137e497ebc9b7e6992d6697e0e3d94be5b1f972",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/sidebar-seam-closure.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/sidebar-seam-closure.log.gz",
+    "originalSha256": "d5aecc79fa328c2bf66ee1a1e8e50717542c239358ed57638ec4258793d90685",
+    "reviewCopySha256": "af13403c2aa0c0c29457cada5ad8a7ff760337023674414bdda3017950b2a022",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/client-independent-coverage/source-simplification-focused.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/client-independent-coverage/source-simplification-focused.log.gz",
+    "originalSha256": "4b1f3cf96d38b1e3f3287940f57f0fd8e27d93809efd687d0d3ff39d8d137eb2",
+    "reviewCopySha256": "384214ef019e6178afd1763607a74cc58d5100c3ef09d7e698992a1ec5b51841",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-browser-current-refresh.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-browser-current-refresh.log.gz",
+    "originalSha256": "8ff8e8f5215edd216a36465b8096710730d13d815b47545f37b28704a0e4443e",
+    "reviewCopySha256": "3adc183637eaec01f88f0eec5030c9af3395d8bfeb95f5f7204a7e7055484c24",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-browser-strict-final.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-browser-strict-final.log.gz",
+    "originalSha256": "72e0eccd1d5d94f27c10b1d0faf3e79737776c1b562ca2c6676490761a7dec72",
+    "reviewCopySha256": "879481c2403d98d9a2e47aee7e3d823742111f038bcc3c22e3ee0677e317fd7a",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-dmg-build-final-3.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-dmg-build-final-3.log.gz",
+    "originalSha256": "851260a51f0bb2682f1b7ea73bda9bca06b7b3b5ffaba385b962a032f7cd4f53",
+    "reviewCopySha256": "64a0f808ce9f33e45dbf7959bb2e5d17d48dece32dd5604093127182dea4bc8e",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-full-lint-final.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-full-lint-final.json.gz",
+    "originalSha256": "c0aa6726f23abb984e5d2f18b92d021951c8489e32242db0ddb68842b7346ee2",
+    "reviewCopySha256": "bdf78712a89ad0955df06504325e85db5ebd89b08358ee762993d5e62d29dd5c",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-full-source-build-final-11.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-full-source-build-final-11.log.gz",
+    "originalSha256": "cd6053058c6b7128acf55d81ff8a1df9e6752ea6605dbcb3dd2329c5203e087f",
+    "reviewCopySha256": "435216dcc53b8698b3feb98a16095e6ec910c8624927314e63cbdf2865a85103",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-observed-unit-repairs-final.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-observed-unit-repairs-final.log.gz",
+    "originalSha256": "7e57d5d29f500376e7f8bebdf06774b2f4e345941db4e53ae2366b8a2892c9b6",
+    "reviewCopySha256": "f07ede10a4286adc7bd6f131d9d2c793828d3fa4c3f668167b46cd2fece34acf",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-plugin-manager-whole-final.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-plugin-manager-whole-final.log.gz",
+    "originalSha256": "50437106cd74202a35986202e129fb2a67b08c28b2baa63e86f0c65e45fa0f19",
+    "reviewCopySha256": "94b614340464c0e20ae29ca34816fc54b554695bb64dc36b1086a9fc9af30ebf",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-root-browser-final-5.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-root-browser-final-5.log.gz",
+    "originalSha256": "01b34f0d808d7bbc5f11b6328531a0c840dcb1e070549c3a98fa3adf2d8a6ff4",
+    "reviewCopySha256": "470df15cea240f666c8a6d8c46ccc86c33c2479578ba58e5de3c958720629639",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-root-worktree-browser-9.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-root-worktree-browser-9.log.gz",
+    "originalSha256": "7fa5772cb824ed2a748e143b841a092b002d2a18736c72e9a80e8fe4fce9973a",
+    "reviewCopySha256": "74779f8f3046c94dc4e92411db29acd80557763c8e37b3354e336517f1be8bab",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-style-final-with-baseline.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-style-final-with-baseline.log.gz",
+    "originalSha256": "464554e52d3eb1c0e00c56de8960814d1b7fc4b4e24ecab67c6cdfd3da7f2cdf",
+    "reviewCopySha256": "b0ec99389e82b7c4505a9d0ef17c98bfac66ddc16fd21e7fe26abb735666f003",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/dependent-tauri-build-final-3.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/dependent-tauri-build-final-3.log.gz",
+    "originalSha256": "f2802513deaafe979a1262eee6e865135c7279a55823dc734977a3a143b887e8",
+    "reviewCopySha256": "3f44917588bfec6e7833aa6c77f2586b659ffd1e72684dc19791e615e168bfc5",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/m2-lint-current-2.json",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/m2-lint-current-2.json.gz",
+    "originalSha256": "c2c1744b1eb071283563f8fdae5e813344ca59ba7a567a06d54a25e949340525",
+    "reviewCopySha256": "834edc8e004dd798609cb75b4d42f54276e5306bbc136126d57f814781f02330",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  },
+  {
+    "file": ".plans/rc1-execution/rc1-09-root-final-coverage.log",
+    "originalArchive": ".plans/rc1-execution/raw-tool-output/rc1-09-root-final-coverage.log.gz",
+    "originalSha256": "ade5fc3aaf8634ae2c3fdf3143093e0b3dc8948f38266f84f7d0e700e7aa17e6",
+    "reviewCopySha256": "a753fe522ff69c54495be17abd9dfea7e900820152a2fcb7ca27d3d8f3eaaa37",
+    "change": "Trailing whitespace and terminal blank lines only; original bytes retained in gzip archive."
+  }
+]

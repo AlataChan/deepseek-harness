@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { chmod, mkdtemp, mkdir, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -128,7 +129,14 @@ class RecordingFileSystem extends FileSystem {
     signal?.throwIfAborted()
     if (this.throwOnStat.has(target.targetKey)) throw new Error(`stat failed: ${target.displayPath}`)
     const entry = this.entries.get(target.targetKey)
-    if (entry === undefined) return undefined
+    if (entry === undefined) {
+      const hasChildren = [...this.entries.keys()].some(key => key.startsWith(`${target.targetKey}/`))
+      const host = await stat(target.displayPath).catch(() => undefined)
+      if (hasChildren || host?.isDirectory() || target.displayPath === '/virtual/repo') {
+        return { type: 'directory', version: FsVersion(`directory:${target.targetKey}`), size: 0 }
+      }
+      return undefined
+    }
     const info: FsInfo = {
       version: entry.version ?? FsVersion(`v:${target.targetKey}:${entry.type}:${entry.content ?? ''}`),
       type: entry.type,
@@ -215,6 +223,7 @@ class BlockingReadFileSystem extends RecordingFileSystem {
 async function mountAgentInstructionsPlugin(ctx: Context, config: AgentInstructions.Config): Promise<Awaited<ReturnType<Context['plugin']>>> {
   if (ctx.get('sessionProjections') === undefined) await ctx.plugin(SessionProjectionRegistry)
   if (ctx.get('agents') === undefined) await ctx.plugin(AgentRegistry)
+  await mountDirectoryFixture(ctx, process.cwd())
   return ctx.plugin(AgentInstructions, config)
 }
 
@@ -227,6 +236,7 @@ async function mountFileToolsAndAgentInstructions(ctx: Context, config: AgentIns
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(LocalFileSystem, { cwd: '/' })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolFs)
   return mountAgentInstructionsPlugin(ctx, config)
 }
@@ -284,6 +294,10 @@ async function agentInstructionsOf(agent: Agent): Promise<UserMessage> {
 }
 
 async function syncAgentInstructions(ctx: Context, agent: Agent): Promise<void> {
+  const fs = ctx.get('fs')
+  if (fs instanceof RecordingFileSystem && agent.session.header.cwd !== undefined) {
+    fs.entries.set(agent.session.header.cwd, { type: 'directory' })
+  }
   await agentEvents(ctx, agent).waterfall(
     'agent/pre-step', { modelSelection: { provider: 'fixture', model: 'fixture' }, messages: [], turn: 1, step: 1, signal: testToolSignal },
     async () => ({ kind: 'enter' as const, messages: [] }),
@@ -317,6 +331,10 @@ async function appendAdditionalContexts(ctx: Context, agent: TestAgent): Promise
 const composedPrefixes = new WeakMap<object, Message[]>()
 
 async function composeBaselinePrefix(ctx: Context, agent: TestAgent): Promise<Message[]> {
+  const fs = ctx.get('fs')
+  if (fs instanceof RecordingFileSystem && agent.session.header.cwd !== undefined) {
+    fs.entries.set(agent.session.header.cwd, { type: 'directory' })
+  }
   const signal = new AbortController().signal
   await agentEvents(ctx, agent).waterfall(
     'agent/pre-step',
@@ -1451,7 +1469,7 @@ describe('workspace context request injection', () => {
     await expect(mountAgentInstructionsPlugin(ctx, {} as AgentInstructions.Config)).rejects.toThrow(/maxBytes/)
   })
 
-  it('mounts without requiring a filesystem provider', async () => {
+  it('mounts with an explicit directory owner and its filesystem provider', async () => {
     const ctx = new Context()
     try {
       await mountAgentInstructionsPlugin(ctx, { maxBytes: 65536 })
@@ -1460,13 +1478,14 @@ describe('workspace context request injection', () => {
     }
   })
 
-  it('requires projections without making the optional filesystem a static dependency', () => {
-    expect(AgentInstructions.inject).toEqual(['sessionProjections', 'agents'])
+  it('requires the directory owner, projections, and Agent registry', () => {
+    expect(AgentInstructions.inject).toEqual(['workingDirectory', 'sessionProjections', 'agents'])
   })
 
   it('withholds instruction effects without the Agent registry that owns turn boundaries', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionProjectionRegistry)
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(AgentInstructions, { maxBytes: 65536 })
     expect(fiber.state).not.toBe(FiberState.ACTIVE)
     const agent = await stubAgent('/virtual/repo')
@@ -1488,18 +1507,17 @@ describe('workspace context request injection', () => {
     expect(baselineEvents(agent)).toEqual([])
   })
 
-  it('does not inject baseline context when no filesystem provider is present', async () => {
+  it('keeps instruction listeners inactive without the required directory owner', async () => {
     const ctx = new Context()
     try {
-      await mountAgentInstructionsPlugin(ctx, { maxBytes: 65536 })
+      await ctx.plugin(SessionProjectionRegistry)
+      await ctx.plugin(AgentRegistry)
+      const fiber = await ctx.plugin(AgentInstructions, { maxBytes: 65536 })
+      expect(fiber.state).not.toBe(FiberState.ACTIVE)
       const agent = await stubAgent('/virtual/repo')
-
       await composeBaselinePrefix(ctx, agent)
-
       expectNoDerivedMessages(agent)
-    } finally {
-      await ctx.fiber.dispose()
-    }
+    } finally { await ctx.fiber.dispose() }
   })
 
   it('contributes baseline instructions through durable injected history', async () => {
@@ -3080,13 +3098,13 @@ describe('dynamic nested workspace context injection', () => {
       agent.followup(createUserMessage({ content: [{ type: 'text', text: 'read and abort' }], source: { kind: 'user' } }))
       await agent.whenIdle()
       expect(agent.session.snapshotEvents().filter(event =>
-        event.type === 'user/message' && event.data.source.kind !== 'user',
+        event.type === 'user/message' && event.data.source.kind === 'agent-instructions',
       )).toHaveLength(0)
 
       agent.followup(createUserMessage({ content: [{ type: 'text', text: 'retry the read' }], source: { kind: 'user' } }))
       await agent.whenIdle()
 
-      const contexts = agent.session.snapshotEvents().filter(event => event.type === 'user/message' && event.data.source.kind !== 'user')
+      const contexts = agent.session.snapshotEvents().filter(event => event.type === 'user/message' && event.data.source.kind === 'agent-instructions')
       expect(contexts).toHaveLength(1)
       expect(adapter.requests).toHaveLength(3)
       expect(adapter.requests.at(-1)?.messages.map(blocks => blocksText(blocks.content)).join('\n'))

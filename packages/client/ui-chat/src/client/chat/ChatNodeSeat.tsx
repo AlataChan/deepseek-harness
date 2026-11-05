@@ -5,6 +5,7 @@ import type { ConversationLocationDataStore, ConversationTurnDataMap } from '@de
 import type { ChatNodeHookContext, ChatNodeOwnerProps, ChatViewSlotProps, UsePresentation } from '../contract/slots.ts'
 import type { ChatNode } from '../contract/chat-nodes.ts'
 import type { ChatNodeStore } from '../contract/snapshot.ts'
+import { hasAssistantReplyContent } from '../contract/assistant-content.ts'
 import { TURN_PROCESS_INDEPENDENT_KINDS, turnProcessAlwaysOpen } from '../contract/turn-process.ts'
 import { storedTurnProcessEntry } from '../stores.ts'
 import { useSearchableHidden } from './searchable-hidden.ts'
@@ -12,6 +13,8 @@ import css from './ChatView.module.css'
 
 interface ChatNodeSeatProps extends ChatNodeOwnerProps {
   readonly nodeKey: string
+  readonly nonReplyProcessTurns: ReadonlySet<number>
+  readonly deferCollapseTurn?: number | undefined
   /** A replaced Builder must rebind keyed hooks even when references and keys survive. */
   readonly nodeStore: ChatNodeStore
   readonly useChatNode: ChatViewSlotProps['useChatNode']
@@ -43,7 +46,7 @@ function turnOf(node: ChatNode | undefined): number | undefined {
  * only seats whose visibility actually changes.
  */
 export const ChatNodeSeat = memo(function ChatNodeSeat({
-  nodeKey, groupPart, useChatNode, useChatNodeProcess, usePresentation,
+  nodeKey, groupPart, deferCollapseTurn, nonReplyProcessTurns, useChatNode, useChatNodeProcess, usePresentation,
   cwd, openFile, openSkill, inspectCall, forkAt,
   loadImage, renderMessageImages, fileMentions, useStore, actions, renderSlot, t,
 }: ChatNodeSeatProps) {
@@ -62,13 +65,17 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
   const liveProcess = processPresentation !== undefined && !processPresentation.turnClosed
   const interleavedInput = processPresentation?.hasInterleavedInput === true
   const alwaysOpen = liveProcess || interleavedInput || turnProcessAlwaysOpen(routedNode)
-  const processOpen = alwaysOpen || processEntry !== undefined
+  const deferCollapse = usePresentation(policy => policy.collapseTiming === 'next-input') && turn === deferCollapseTurn
+  const processOpen = alwaysOpen || (processEntry?.open ?? deferCollapse)
   const setOpen = useCallback((open: boolean) => {
     if (processSpec !== undefined && !alwaysOpen) {
       actions.setTurnProcessOpen(processSpec.turn, processSpec.answerStep ?? 0, open)
     }
   }, [actions, processSpec, alwaysOpen])
   const foldCompleted = usePresentation(policy => policy.foldCompletedTurns)
+  const keepReplies = usePresentation(policy => policy.foldedReplies === 'all')
+  const replyRow = keepReplies && routedNode?.kind === 'assistant-step' && groupPart !== 'reasoning'
+    && hasAssistantReplyContent(routedNode.data.blocks)
   // A loaded end makes a partial historical Turn eligible without its start.
   const processWindowReady = processSpec !== undefined
     && processPresentation !== undefined
@@ -77,6 +84,7 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
     && (processPresentation.turnStarted || processPresentation.turnClosed)
   const processMember = routedNode !== undefined
     && processWindowReady
+    && !replyRow
     && !TURN_PROCESS_INDEPENDENT_KINDS.has(routedNode.kind)
     && routedNode.anchorSeq >= processSpec.processStartSeq
     && (liveProcess || processSpec.answerAnchorSeq === null || routedNode.anchorSeq < processSpec.answerAnchorSeq
@@ -87,19 +95,21 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
     && groupPart !== 'reasoning'
     && routedNode.kind === 'assistant-step'
     && routedNode.data.step === processSpec.answerStep
-  const ownsDisclosure = routedNode?.kind === 'turn-process' || processAnswer
+  const ownsDisclosure = routedNode?.kind === 'turn-process' || processAnswer || replyRow
   const foldable = processWindowReady
     && (liveProcess || processMember || ownsDisclosure)
+  const nonReplyProcess = turn !== undefined && nonReplyProcessTurns.has(turn)
   const turnProcess = useMemo(() => processSpec === undefined
     ? undefined
     : {
       spec: processSpec,
       foldable,
-      hasContent: !interleavedInput && (processPresentation?.hasExternalProcess === true || processSpec.inlineReasoning),
+      hasContent: !interleavedInput && (processSpec.inlineReasoning || (keepReplies
+        ? nonReplyProcess : processPresentation?.hasExternalProcess === true)),
       open: processOpen,
       setOpen,
     }, [
-    foldable, interleavedInput, processOpen, processSpec, processPresentation?.hasExternalProcess, setOpen,
+    foldable, interleavedInput, keepReplies, nonReplyProcess, processOpen, processSpec, processPresentation?.hasExternalProcess, setOpen,
   ])
   const controllerInactive = routedNode?.kind === 'turn-process'
     && foldCompleted && !foldable

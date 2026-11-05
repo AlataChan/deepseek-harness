@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * Bridge for unmodified Codex command hooks on harness interception points. It
  * supports five points (SessionStart, prompt/tool pre/post, Stop), regex-only
@@ -44,7 +45,7 @@ import { parseCodexConfig, type CodexHookConfig } from './config.ts'
 /* jscpd:ignore-end */
 
 export const name = 'hooks-codex'
-export const inject = ['shell', 'sessionProjections', 'agents']
+export const inject = ['workingDirectory', 'shell', 'sessionProjections', 'agents']
 
 /** Plugin config: where the Codex hooks.json lives + the model name for payloads. */
 export interface Config {
@@ -131,7 +132,7 @@ export function apply(ctx: Context, config: Config): void {
     const outputs: HookOutput[] = []
     // Run hooks in the agent's session workspace so relative paths address the
     // user's project rather than the server launch directory.
-    const workdir = opts.agent?.session.header.cwd
+    const workdir = opts.agent === undefined ? undefined : await ctx.workingDirectory.ensure(opts.agent, opts.signal)
     for (const group of groups) {
       // Codex always interprets matchers as regexes; it has no literal fast path.
       if (!matchesMatcher(group.matcher, matchQuery, 'codex')) continue

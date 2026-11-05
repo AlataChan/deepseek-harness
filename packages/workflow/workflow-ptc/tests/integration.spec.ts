@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -20,6 +21,7 @@ async function setup(script: Script) {
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(SubagentRuntime)
   await ctx.plugin(spawn, { providerName: 'spawn' })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(PtcWorkflowEngine, {})
   ctx.llm.registerAdapter(['mock'], adapter)
   const parent = await ctx.agentLoop.create(SessionId('parent'), { provider: 'mock', model: 'mock' })

@@ -430,7 +430,7 @@ describe('draft documents in the input shell', () => {
   })
 
   it.each(['detached default-send', 'attachment'] as const)(
-    'refuses draft initialization during a %s flight despite its editable phase', async (kind) => {
+    'refuses draft initialization during a %s admission', async (kind) => {
       const outcome = Promise.withResolvers<SubmitOutcome>()
       const started = Promise.withResolvers<undefined>()
       const sink = vi.fn<SessionInputDeps['defaultSink']>(() => { started.resolve(undefined); return outcome.promise })
@@ -443,9 +443,8 @@ describe('draft documents in the input shell', () => {
         await started.promise
         expect(sink).toHaveBeenCalledOnce()
         expect(sink.mock.calls[0]?.[1]).toEqual(kind === 'attachment' ? [sentAttachment] : [])
-        shell.setDraft(documentOf('next message ', file))
-        shell.addAttachments(['next-image' as DraftAttachmentId])
-        expect(shell.snapshot.phase).toBe('plain')
+        expect(shell.addAttachments(['next-image' as DraftAttachmentId])).toBe(false)
+        expect(shell.snapshot.phase).toBe('sending')
         expectInitializationBlocked(shell)
         outcome.resolve({ kind: 'error', text: 'flight rejected' })
         await vi.waitFor(() => { expect(shell.notices.getSnapshot()?.text).toBe('flight rejected') })
@@ -499,41 +498,26 @@ describe('draft documents in the input shell', () => {
     expect(chips(shell)).toMatchObject([{ ref: file.ref, appearance: 'file' }])
   })
 
-  it('restores and persists failed structured sends in submission order after reversed settlement', async () => {
+  it('retains the exact structured document through refusal and retries it once', async () => {
     const first = Promise.withResolvers<SubmitOutcome>()
-    const second = Promise.withResolvers<SubmitOutcome>()
-    const provider = triggerProvider(createSnapshotStore<ReadonlyMap<'/' | '@', readonly string[]>>(new Map()))
     const sink = vi.fn<SessionInputDeps['defaultSink']>()
-      .mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+      .mockReturnValueOnce(first.promise).mockResolvedValue({ kind: 'success' })
+    const provider = triggerProvider(createSnapshotStore<ReadonlyMap<'/' | '@', readonly string[]>>(new Map()))
     const shell = makeShell({ inputTriggers: () => provider, defaultSink: sink })
-    const write = vi.fn<(draft: DraftSnapshot) => void>()
-    shell.bindDraftPersistence(write)
-    const firstDraft = documentOf('first 🙂 ', file)
-    const secondDraft = documentOf('second ', session)
-    try {
-      shell.setDraft(firstDraft)
-      shell.submit()
-      shell.setDraft(secondDraft)
-      shell.submit()
-      await vi.waitFor(() => { expect(sink).toHaveBeenCalledTimes(2) })
-      expect(shell.draftSnapshot).toEqual({ text: '', references: [] })
-      second.resolve({ kind: 'error', text: 'second rejected' })
-      await vi.waitFor(() => { expect(shell.draftSnapshot).toEqual(secondDraft) })
-      expect(write).toHaveBeenLastCalledWith(secondDraft)
-      first.resolve({ kind: 'error', text: 'first rejected' })
-      const expected = documentOf('first 🙂 ', file, '\n\nsecond ', session)
-      await vi.waitFor(() => { expect(shell.draftSnapshot).toEqual(expected) })
-      expect(write).toHaveBeenLastCalledWith(expected)
-      expect(parseStoredDraft(JSON.parse(JSON.stringify(write.mock.calls.at(-1)?.[0])))).toEqual(expected)
-      expect(chips(shell)).toMatchObject([{ ref: file.ref }, { ref: session.ref }])
-      expect(shell.requestDraftInitialization({ prompt: 'next', clearPreviousDraft: true })).toBe('applied')
-    } finally {
-      shell.dispose()
-      first.resolve({ kind: 'error' })
-      second.resolve({ kind: 'error' })
-      await Promise.all([first.promise, second.promise])
-      await setImmediate()
-    }
+    const draft = documentOf('first 🙂 ', file)
+    shell.setDraft(draft)
+    shell.submit()
+    shell.submit()
+    await vi.waitFor(() => { expect(sink).toHaveBeenCalledOnce() })
+    expect(shell.draftSnapshot).toEqual(draft)
+    expect(shell.snapshot.phase).toBe('sending')
+    first.resolve({ kind: 'error', text: 'refused' })
+    await vi.waitFor(() => { expect(shell.snapshot.phase).toBe('plain') })
+    expect(shell.draftSnapshot).toEqual(draft)
+    expect(chips(shell)).toMatchObject([{ ref: file.ref }])
+    shell.submit()
+    await vi.waitFor(() => { expect(shell.draftSnapshot).toEqual({ text: '', references: [] }) })
+    expect(sink).toHaveBeenCalledTimes(2)
   })
 
   it.each(['reject', 'dispose then resolve', 'dispose then reject'] as const)(
@@ -559,7 +543,7 @@ describe('draft documents in the input shell', () => {
         shell.submit()
         const signal = await started.promise
         expect(signal.aborted).toBe(false)
-        expect(shell.snapshot.phase).toBe('plain')
+        expect(shell.snapshot.phase).toBe('sending')
         expectInitializationBlocked(shell)
         shell.bindDraftPersistence(write)
 
@@ -619,5 +603,39 @@ describe('plain-text reference catalogs', () => {
     expect(scanTextRefs('@"some folder/ trailing', new Map())).toEqual([
       { start: 0, end: 14, trigger: '@' },
     ])
+  })
+})
+
+
+describe('atomic draft quotes', () => {
+  it('serializes multiline quoted references literally and preserves surrounding chips', async () => {
+    const sink = vi.fn<SessionInputDeps['defaultSink']>(() => Promise.resolve({ kind: 'success' }))
+    const provider = triggerProvider(createSnapshotStore<ReadonlyMap<'/' | '@', readonly string[]>>(new Map()))
+    const shell = makeShell({ inputTriggers: () => provider, defaultSink: sink })
+    shell.setDraft(documentOf('before ', file))
+    expect(shell.actions.insertQuote('@quoted/file.ts\n/quoted-skill')).toBe(true)
+    const draft = shell.draftSnapshot
+    expect(draft.quotes).toHaveLength(1)
+    expect(draft.references).toHaveLength(1)
+    shell.submit()
+    await vi.waitFor(() => { expect(sink).toHaveBeenCalledOnce() })
+    expect(sink.mock.calls[0]?.[0]).toContain('\n\n> @quoted/file.ts\n> /quoted-skill')
+    expect(sink.mock.calls[0]?.[0]).not.toContain('> >')
+  })
+
+  it('retains quote identity after refusal and restores it through the existing draft store', async () => {
+    const sink = vi.fn<SessionInputDeps['defaultSink']>(() => Promise.resolve({ kind: 'error', text: 'refused' }))
+    const shell = makeShell({ defaultSink: sink })
+    shell.actions.insertQuote('first\nsecond')
+    const before = shell.draftSnapshot
+    shell.submit()
+    await vi.waitFor(() => { expect(shell.snapshot.phase).toBe('plain') })
+    expect(shell.draftSnapshot).toEqual(before)
+    const stored = parseStoredDraft(JSON.parse(JSON.stringify(before)))
+    expect(stored).toEqual(before)
+    const restored = makeShell()
+    if (stored === undefined) throw new Error('draft failed to parse')
+    restored.setDraft(stored)
+    expect(restored.draftSnapshot).toEqual(before)
   })
 })

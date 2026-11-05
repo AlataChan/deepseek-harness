@@ -166,6 +166,8 @@
 }
 
 .search {
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
   display: flex;
   flex: 0 1 164px;
   align-items: center;
@@ -212,4 +214,9 @@
   width: 12px;
   height: 12px;
   cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .actions { flex: 1; min-width: 0; overflow-x: auto; }
+  .search { flex: 0 1 100px; min-width: 60px; }
 }

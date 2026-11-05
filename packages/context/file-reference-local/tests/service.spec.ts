@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -26,6 +27,7 @@ async function harness(): Promise<Context> {
   await ctx.plugin(ToolRegistry)
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
+  await mountDirectoryFixture(ctx, process.cwd())
   return ctx
 }
 
@@ -57,16 +59,16 @@ async function stubAgent(
 }
 
 describe('LocalFileReferenceService', () => {
-  it('defers guidance until optional prompt and tool services become available', async () => {
+  it('defers read guidance until optional tool services become available', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(LocalFileReferenceService)
     try {
       const { agent } = await stubAgent(ctx, 'deferred-prompt')
       expect(ctx.agents.get(agent.id)).toBe(agent)
-      await ctx.plugin(SystemPrompt, { personaPrefix: '' })
       await ctx.plugin(ToolRegistry)
       ctx.tools.register(defineContentToolFixture({
         name: 'read', description: 'read a file', parameters: {}, execute: () => Promise.resolve([]),
@@ -80,6 +82,7 @@ describe('LocalFileReferenceService', () => {
   it('serves the addressed workspace and installs read-tool guidance for existing agents', async () => {
     const ctx = await harness()
     const { agent } = await stubAgent(ctx)
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = ctx.plugin(LocalFileReferenceService, {
       maxResults: 5,
       maxEntries: 100,
@@ -106,6 +109,7 @@ describe('LocalFileReferenceService', () => {
     const { agent, dispose } = await stubAgent(ctx)
     const invalidate = vi.spyOn(WorkspaceFileSearch.prototype, 'invalidate')
     const close = vi.spyOn(WorkspaceFileSearch.prototype, 'dispose')
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(LocalFileReferenceService)
     await ctx.fileReferences.list(agent, 'README', new AbortController().signal)
 
@@ -124,6 +128,7 @@ describe('LocalFileReferenceService', () => {
 
   it('installs guidance for agents announced after the service and validates deployment tunables', async () => {
     const ctx = await harness()
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(LocalFileReferenceService)
     const { agent } = await stubAgent(ctx)
     await expect(ctx.fileReferences.list(agent, '', new AbortController().signal))

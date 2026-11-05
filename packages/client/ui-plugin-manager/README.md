@@ -7,6 +7,7 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
+
 ## Summary
 
 Use the **Plugins** entry in the Web sidebar to manage the profile's installed bundles and the official bundles the installation ships switched off. Switch bundles and their rows on and off, install a bundle after the Host has read what the spec names, watch pnpm's output, stop a run, and enable what it added. Uninstalling asks for confirmation. A plugin that registers a configuration page is edited here, on its own page; Settings keeps the read-only inventory.
@@ -23,7 +24,10 @@ Use the **Plugins** entry in the Web sidebar to manage the profile's installed b
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
+
+An eligible installed package's existing detail page contains one **Versions** section. **Check for updates** reads newer versions; opening the page and refreshing inventory never contact the registry. Select a listed compatible version, review the old and new versions, then choose **Confirm update**. The dialog shows checking, removal, installation and restoration progress, and retains the result, rollback failure or unknown transport outcome. Locked packages have no Versions section. Restart outcomes use the existing next-start notice. Checks and updates are user actions; no automatic update or marketplace is enabled.
 
 Select **Plugins** in the sidebar. The information button uses an 11px caption-colored icon in a 20px square hover area, with a 4px gap after the subtitle. It explains that this page configures official plugins and installs or manages other plugins, while **Settings → Built-in plugins** shows the built-in inventory and runtime status. Hover or focus shows the shared tooltip; clicking keeps it open until another click, Escape, Tab, or an outside click. The page reads the inventory and the bundles through `api-remotes` when first opened; a Host without a managed profile shows the page as unavailable. **Official** comes first and lists the bundles the installation ships for switching on — off until switched on, without an uninstall, and tagged **Experimental** for experimental features — followed by the official plugins that registered a configuration page; **Installed** lists the bundles the profile holds. Cards are listed by name, so switching a bundle on or off does not move its card. A dependency without a bundle patch is not a plugin and is not listed unless the profile selects it, in which case it carries a problem tag. Global configuration remains in the Settings **Built-in plugins** section.
 
@@ -93,6 +97,7 @@ A row's page exists only while a `plugins.row.config` entry names the row, so a 
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 Package management uses the profile's dependency records: installed bundles can be toggled and removed; installation-owned bundles remain locked. A selected bundle that neither the profile nor the installation holds also offers uninstall, which only removes it from the profile's bundle list. This distinction does not select startup failure policy.
@@ -125,6 +130,7 @@ The page's `main` registration declares `plugins.item`, `plugins.bundle.config`,
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 These pages cover the sidebar, the Remote calls, and the Host-side manager.
@@ -137,6 +143,7 @@ These pages cover the sidebar, the Remote calls, and the Host-side manager.
 -----
 
 <a id="model-experience"></a>
+
 ## Model Experience
 
 None, as the package is a browser-side management surface that registers nothing model-facing.
@@ -163,6 +170,7 @@ These limits define the reach of the management view; they are current package c
 - **Every registry read runs pnpm** — opening the dialog, the check, and the install each ask pnpm what its own configuration names; a machine without pnpm reads it as unknown and is offered no fallback.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

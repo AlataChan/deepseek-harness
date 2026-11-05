@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="conversation-assembly"></a>
+
 ## Conversation 组装
 
 `UiConversation.events` 是 event Definition 的唯一 registry，`UiConversation.views` 是 target snapshot builder 的唯一 registry。两者都拒绝重复 key、保持注册顺序、返回幂等 disposer，并在 contribution roster 变化时重建现有 binding。`UiConversation.binding(bindingOrSessionId)` 为当前 Session Controller binding 返回 identity 稳定的 Conversation binding，不会另开 event source。
@@ -34,6 +35,7 @@ shell 选择解析出 target 或 target source 收到首个 subscriber 时，该
 target package 通过 declaration merge 扩展 snapshot 与 Location data map，再调用 `ctx.uiConversation.events.register(...)` 和 `ctx.uiConversation.views.register(...)`。target 通过 `ctx.uiConversation.binding(binding).target(targetId)` 读取其 Session-owned source。注册属于 Cordis effect，返回的 disposer 从同一个 registry 移除 contribution。共享的请求检查服务于每个 target：`ctx.uiConversation.inspectSystemPrompt(previous, event)` 将系统消息与位置替换解释为不可变的已加载 surface 状态。它按 surface 顺序选择最后一个非空的存活系统节点，为连续重写只保留存活的替换位置；遇到未建立索引的更早端点后，提示词保持不可用，直到向前补页回放提供其顺序。target 自有的 Definition 独立保留历史卡片。`ctx.uiConversation.inspectRequestPrompt(previous, header, system)` 根据该有效提示词分类请求变更；普通消息与流式分片无需处理系统状态。
 
 <a id="shell-and-standard-props"></a>
+
 ## Shell 与标准 props
 
 本包注册 optional-Session `conversation` shell、strict Session header/body、View list、composer chain 与 bar、输入区域、Hero 区域、可选的 `conversation.atmosphere` 底板、queue dock、草稿持久化和 phase 计算。`ctx.uiSession.provide()` 从同一个 Session binding 物化 Conversation 与 input source，并将 `inputActions` 作为稳定标准 prop 提供。
@@ -44,13 +46,16 @@ Session 首次绑定或缓存的 Session 成为 current 时，shell 会在渲染
 
 常驻 composer 在无 Session 与有 Session 之间保持挂载。无 Session 时，同一个编辑器表面保持 inert，Workspace picker 连接 blank Session。该表面是 shell 所有的 Lexical 编辑器：引用 chip 是携带 owner 序列化身份的原子 decorator 节点（提交时经 owner codec 展开），已认领的 slash command 保持为带样式的行首文本，文件夹文本引用以图标前缀携带文件夹图形，草稿的剪贴板投影镜像到逐 Session Conversation store。Queue 操作通过 scoped `ctx.conversation` service 寻址准确的 queue occurrence；queue 预览经 `ui-primitives` 的共享行内引用投影渲染已发送文本（wire 会话形式折叠为其标签），并按原始附件顺序展示本地或持久化的图片和文件。图片使用缩略图，文件使用紧凑的名称与大小卡片。编辑态展示字面发送文本，持久化缩略图通过会话图片 URL 缓存解析。繁忙时 Enter 行为保存在 Host-backed `ui-conversation` settings namespace。
 
-默认发送采用乐观提交：Enter 在同一事务里清空草稿、occurrence 表和撤销历史，composer 保持 `plain`，发送作为 detached attempt 运行，发送期间可以继续输入和提交。`sendSession` 在序列化之前用投递模式注册 Session 提交回显（`session.beginSubmission`），并在 `pendingSubmissions` 中保留图片与文件的选择顺序；Session 根据该模式与当前运行状态推导位置，因此空闲发送进入 transcript，繁忙时 Queue 进入 QueueDock，繁忙时 Steer 进入 pending-steering 区域。随后让出一帧，图片经浏览器原生 `FileReader` data-URL 路径编码，文件则引用已暂存凭证。命令提交也用同一凭证表示通用文件，因此发送 `/goal` 或 `/plan` 时不会再次读取这些浏览器文件。prompt 复用提交 `requestId`；queue 或历史以同一 `rpcId` 被观察后，回显只退休一次。多个并发发送失败时，在用户编辑还原内容之前按提交顺序合并还原；命令提交保持冻结的 `submitting` 阶段。Detached attempt 持有附件 id，直到 admission 完成或 Session scope 销毁。回显以 observed 退休时，durable 图片缓存立即公开每个预览 URL，读取 admitted 附件后用规范化 URL 替换预览，并在各 URL 停止使用后撤销，同时释放文件卡。选中的通用文件进入同一个先进先出的后台上传队列；`maxConcurrentFileUploads` 默认允许两个 Worker transport 同时运行，Conversation service 在切换 Session 时继续持有排队和运行中的传输操作及字节进度，移除草稿会跳过排队中的传输或中止正在运行的传输。continuable 子代理禁用附件入口，也不创建本地回显，因为其 transport 不保留浏览器 request id。
+普通发送占用一个 `sending` 阶段，保留完整草稿、引用标签、引用文本、附件和撤销历史，直到 Host 接纳。该次发送期间编辑器保持只读。接纳后清空文档和历史；拒绝后原草稿恢复编辑。`sendSession` 在图片序列化前预留私有提交标识，仅在接纳后公开回显。显示位置仍由捕获的投递模式和运行状态决定。图片使用浏览器原生 `FileReader` data-URL 路径；普通文件使用暂存回执，命令提交也复用这些回执。队列或历史观察只结算一次该标识，将预览转交持久缓存或释放文件卡片。普通文件保留 FIFO 上传队列，`maxConcurrentFileUploads` 默认并发上限为二；移除附件会跳过等待传输或中止正在进行的传输。可继续的子会话仍为每次发送生成独立请求 ID，并省略本地回显。
 
-排队提交的本地回显在禁用的编辑、删除、插话按钮旁显示“发送中…”；折叠后的队列在标题栏保留发送状态。匹配的 Host 队列行替换回显后，各操作按原有的纯文本内容和运行状态要求启用。仅收到 prompt 确认不会启用队列操作。提交失败会移除回显并显示错误；输入框为空或仍保留上一次自动恢复的内容时，composer 恢复失败草稿，保留用户随后输入的文字。
+Host 接纳后，排队提交的本地回显可能保留到匹配的队列投影到达。交接期间编辑、删除和插话操作保持禁用；Host 队列行根据原有内容与运行状态规则启用操作。拒绝会保留草稿和附件。已经观察到接纳的输入不会因稍后的回执错误而回滚。
+
+手机和平板上的输入框不会自动获取焦点。只有已接纳草稿的清空才会将焦点移到不可编辑的输入卡片，避免重新唤起虚拟键盘；拒绝发送后保留编辑焦点。选中的引用是不可拆分的草稿节点，序列化为普通多行 Markdown，其中的资源标记保持原文。
 
 Send 和 Stop 按钮禁用时不显示提示气泡，轮次结束后由 Stop 切换成禁用 Send 的按钮也遵循此规则。普通 composer 运行时，如果草稿为空或输入不可用，主指针操作保持为 Stop。可提交的文字或附件会把同一位置切换为 Send；清空或成功提交草稿后恢复 Stop。繁忙态 Enter 设置为普通 Session 与可继续 child 选择 Queue 或 Steer 投递，运行中的 Send 按钮按 plain Enter 解析出的同一模式投递；当它在普通消息草稿上可用（没有待上传文件）时，其标签以该模式命名（排队发送或插话发送），因此该设置同时约束 Enter 与按钮，而 Cmd/Ctrl+Enter 仍使用另一模式；空闲会话、空草稿与 `/` 命令行保留普通的 Send 标签。它们的 QueueDock 行共享 Edit、Remove 与 Steer，空草稿也共享 steer-all 组合键。One-shot child 继续只读。Plan Mode 与 active goal 不改变附件入口。可继续 child 保留独立的 Send 与 Stop 操作，但不提供回形针、粘贴或拖放入口；parent 离线时，Send 与 composer 手势锁定，但在线 inbox 的 QueueDock 控制仍可使用（[决策](../../../.agents/notes/archived/bug-fix/2026-08-20-running-draft-primary-send.md)、[inbox 控制](../../../.agents/notes/archived/feature/2026-08-27-continuable-subagent-human-inbox-control.md)）。
 
 <a id="temporary-composer-entries"></a>
+
 ## 临时 composer entry
 
 `conversation.composer` 是通用 chain，其完整 owner currency 为：
@@ -99,6 +104,7 @@ try {
 selector 必须是 owner currency 的纯函数。非 null 返回值作为 `matched` 传给组件；`PropsRuntime<'conversation.composer'>` 提供标准 Session 与 global props。Chain 顺序仍按 `priority` 升序，再按注册顺序；首个返回非 null 的 selector 获选。Shell 会在 takeover 下保持默认 composer 挂载。Request 状态、listener、response encoding 和任何 request-specific child slot 都属于业务 package，不进入 `SessionSnapshot`，也不由 core package 声明。
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 无，因为本包渲染浏览器状态，并通过 Session Controller API 发送用户确认提交的输入，而不构造模型请求。
@@ -115,6 +121,7 @@ selector 必须是 owner currency 的纯函数。非 null 返回值作为 `match
 
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

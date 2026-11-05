@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /** Scoped tool that declares filesystem deliveries in their owning Session. */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -24,7 +25,7 @@ export const Config: z<Config> = z.object({
 
 /** Services used by the scoped delivery tool. */
 /** Present reads the open turn from `agents.turnBoundaryOf`. */
-export const inject = ['tools', 'fs', 'sessionProjections', 'agents']
+export const inject = ['workingDirectory', 'tools', 'fs', 'sessionProjections', 'agents']
 
 /**
  * Register present with durable file references in its tool result.
@@ -79,8 +80,7 @@ export function apply(ctx: Context, config: Config): void {
       const boundary = ctx.agents.turnBoundaryOf(exec.agent.session)
       if (boundary.openTurnStartSeq === null) throw new Error('present requires an open turn')
       if (args.files.length === 0 || args.files.length > config.maxFiles) throw new Error(`present accepts 1 to ${config.maxFiles} files`)
-      const cwd = exec.agent.session.header.cwd
-      if (cwd === undefined) throw new Error('present requires a workspace')
+      const cwd = await ctx.workingDirectory.ensure(exec.agent, exec.signal)
       const options = { cwd, signal: exec.signal }
       const files: PresentedFile[] = []
       for (const file of args.files) {

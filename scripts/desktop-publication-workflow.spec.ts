@@ -62,7 +62,7 @@ it('finishes macOS assembly before importing a non-extractable codesign-only key
   expect(steps.slice(imported + 1, cleaned).some(step => /pnpm|npm|pip|dlx/.test(step.run ?? ''))).toBe(false)
   expect(steps.slice(imported + 1, cleaned).some(step => step.run?.includes('--sign-prepared'))).toBe(true)
   const script = readFileSync('scripts/build-dmg.sh', 'utf8')
-  expect(script).toContain('ROOT_SIGN_ARGS=(--entitlements "$REPO_ROOT/scripts/desktop-app-entitlements.plist")')
+  expect(script).toContain('/usr/bin/codesign --force --entitlements "$REPO_ROOT/scripts/desktop-app-entitlements.plist" "${SIGN_ARGS[@]}" "$APP_BUNDLE"')
   const app = readFileSync('scripts/desktop-app-entitlements.plist', 'utf8')
   expect(app.match(/<key>.*?<\/key>/g)).toEqual(['<key>com.apple.security.device.audio-input</key>'])
   const node = readFileSync('scripts/desktop-node-entitlements.plist', 'utf8')

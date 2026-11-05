@@ -23,6 +23,7 @@ agent（智能体）及宿主 UI 可以用各 agent 本地工作区中经过排�
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 当 `@file` 补全应发现 Harness 宿主自身的文件系统——即随附 `read` 工具所操作的命名空间——时，挂载此提供方。每个 agent 的工作区从该会话的工作目录开始建立索引；会话没有工作目录时回退到宿主进程目录。
@@ -54,6 +55,7 @@ agent（智能体）及宿主 UI 可以用各 agent 本地工作区中经过排�
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -81,6 +83,7 @@ agent（智能体）及宿主 UI 可以用各 agent 本地工作区中经过排�
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 包级约定不够用时阅读以下页面。它们从本提供方所实现的 seam 进入其候选所指向的工具。
@@ -92,7 +95,10 @@ agent（智能体）及宿主 UI 可以用各 agent 本地工作区中经过排�
 
 -----
 
+文件引用查找使用已校验的执行目录。目录变更提交后会使旧搜索缓存失效，后续补全不会返回上一目录的结果。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### `read` 可用时的文件引用指引
@@ -128,6 +134,7 @@ Tokens prefixed with @ are paths the user explicitly referenced. Relative paths 
 - **没有忽略文件语义**：`.gitignore` 和其他项目忽略文件不会影响发现；系统只排除已配置的目录基名。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

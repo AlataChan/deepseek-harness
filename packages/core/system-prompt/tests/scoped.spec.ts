@@ -224,3 +224,18 @@ describe('scoped assemble dispatch', () => {
   })
 
 })
+
+it('refreshes a scoped suppression without suppressing required operational facts', async () => {
+  const ctx = await mount()
+  try {
+    const scope = await mintScope(ctx, 'refresh-suppression')
+    const key = scopeKeyOf(scope)
+    ctx.systemPrompt.context({ name: 'required', order: 1, required: true, text: 'Required.' })
+    ctx.systemPrompt.context({ name: 'optional', order: 2, text: 'Optional.' })
+    const accepted = await ctx.systemPrompt.assemble({ scope: key })
+    const dispose = scope.ctx.systemPrompt.suppressRuntimeContext()
+    expect(ctx.systemPrompt.refreshContext(accepted, { scope: key }).contexts.map(entry => entry.name)).toEqual(['required'])
+    dispose()
+    expect(ctx.systemPrompt.refreshContext(accepted, { scope: key }).contexts.map(entry => entry.name)).toEqual(['required', 'optional'])
+  } finally { await ctx.fiber.dispose() }
+})

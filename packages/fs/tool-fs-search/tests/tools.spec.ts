@@ -1,3 +1,4 @@
+import { mountDirectoryFixture, createDirectoryFixtureAgent } from '@deepseek-ai/dsh-working-directory-testkit'
 /**
  * Consumer-surface tests for the search tools over a FAKE subprocess service
  * and a FAKE spill backend, exercised through `ctx.tools.execute()` so nothing
@@ -10,7 +11,11 @@
  * Real-`rg` behavior is pinned separately in integration.spec.ts.
  */
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { Context } from '@deepseek-ai/cordis'
 import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
 import { join, sep } from 'node:path'
@@ -48,6 +53,16 @@ declare module '@deepseek-ai/dsh-llm' {
 }
 
 const testToolSignal = new AbortController().signal
+let workspace: string
+const contexts: Context[] = []
+beforeEach(async () => {
+  workspace = await realpath(await mkdtemp(join(tmpdir(), 'search-owner-')))
+  await mkdir(join(workspace, 'workspace'))
+})
+afterEach(async () => {
+  await Promise.all(contexts.splice(0).map(ctx => ctx.fiber.dispose()))
+  await rm(workspace, { recursive: true, force: true })
+})
 
 /**
  * Normalize a POSIX-style test path to the platform separator: the sampler and
@@ -198,6 +213,7 @@ const DEFAULT_CONFIG = { sampleOverCapGlobResults: true } satisfies ToolFsSearch
 
 async function setup(options: SetupOptions = {}) {
   const ctx = new Context()
+  contexts.push(ctx)
   const warnings: string[] = []
   ctx.logger.warn = ((message: unknown) => { warnings.push(String(message)) }) as typeof ctx.logger.warn
   await ctx.plugin(SystemPrompt)
@@ -205,6 +221,7 @@ async function setup(options: SetupOptions = {}) {
   await ctx.plugin(FakeSubprocess)
   const subprocess = ctx.subprocess as FakeSubprocess
   if (options.spill === true) await ctx.plugin(FakeSpill)
+  await mountDirectoryFixture(ctx, process.cwd())
   const fiber = await ctx.plugin(ToolFsSearch, { ...DEFAULT_CONFIG, ...options.config })
   const spill = options.spill === true ? ctx.get('spillStore') as FakeSpill : undefined
   return { ctx, subprocess, spill, fiber, warnings }
@@ -214,18 +231,21 @@ async function setup(options: SetupOptions = {}) {
 const agent = (cwd?: string) => ({ session: { header: { id: 'session-1', ...cwd !== undefined ? { cwd } : {} } } })
 
 let callCounter = 0
-function call(
+async function call(
   ctx: Context,
   name: string,
   args: unknown,
-  options: { agent?: object; signal?: AbortSignal; parent?: ToolExecutionToken } = {},
+  options: { agent?: Agent | { session: { header: { cwd?: string } } }; signal?: AbortSignal; parent?: ToolExecutionToken } = {},
 ) {
+  const source = options.agent
+  const owner = source === undefined ? undefined : 'ctx' in source ? source
+    : await createDirectoryFixtureAgent(ctx, SessionId('session-1'), source.session.header.cwd ?? process.cwd())
   return ctx.tools.execute({
     signal: testToolSignal,
     callId: ToolCallId(`call-${++callCounter}`),
     name,
     arguments: args,
-    ...options.agent ? { agent: options.agent as never } : {},
+    ...owner ? { agent: owner } : {},
     ...options.signal ? { signal: options.signal } : {},
     ...options.parent ? { parent: options.parent } : {},
   })
@@ -258,6 +278,7 @@ describe('registration', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolFsSearch, DEFAULT_CONFIG) // no subprocess service
     expect(ctx.tools.schemas()).toHaveLength(0)
   })
@@ -314,6 +335,7 @@ describe('config validation', () => {
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FakeSubprocess)
+    await mountDirectoryFixture(ctx, process.cwd())
     await expect(ctx.plugin(ToolFsSearch, { ...DEFAULT_CONFIG, ...config })).rejects.toThrow(new RegExp(`tool-fs-search: ${name} must be a positive integer`))
   })
 
@@ -322,6 +344,7 @@ describe('config validation', () => {
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FakeSubprocess)
+    await mountDirectoryFixture(ctx, process.cwd())
     await expect(ctx.plugin(ToolFsSearch, {
       ...DEFAULT_CONFIG,
       graceMs: MAX_TIMER_DELAY_MS + 1,
@@ -386,8 +409,8 @@ describe('workdir derivation and signal forwarding', () => {
   it('forwards the session cwd as the spawn cwd', async () => {
     const { ctx, subprocess } = await setup()
     subprocess.handler = () => runResult('a.ts\n')
-    await call(ctx, 'glob', { pattern: '*' }, { agent: agent('/sessions/s1') })
-    expect(subprocess.spawns[0]?.cwd).toBe('/sessions/s1')
+    await call(ctx, 'glob', { pattern: '*' }, { agent: agent(workspace) })
+    expect(subprocess.spawns[0]?.cwd).toBe(workspace)
   })
 
   it('defaults the spawn cwd to process.cwd() without a session cwd', async () => {
@@ -734,8 +757,8 @@ describe('cross-directory sampling', () => {
 describe('glob results', () => {
   it('lists workdir-relative paths (absolute output under the workdir is relativized)', async () => {
     const { ctx, subprocess } = await setup()
-    subprocess.handler = () => runResult('/sessions/s1/src/a.ts\n/elsewhere/b.ts\nrel/c.ts\n')
-    const result = await call(ctx, 'glob', { pattern: '*' }, { agent: agent('/sessions/s1') })
+    subprocess.handler = () => runResult(`${workspace}/src/a.ts\n/elsewhere/b.ts\nrel/c.ts\n`)
+    const result = await call(ctx, 'glob', { pattern: '*' }, { agent: agent(workspace) })
     if (result.isError) throw new Error('expected glob success')
     expect(result.value).toEqual({ root: '.', paths: [join('src', 'a.ts'), '/elsewhere/b.ts', 'rel/c.ts'] })
     expect(text(result)).toBe(`${join('src', 'a.ts')}\n/elsewhere/b.ts\nrel/c.ts`)
@@ -771,7 +794,7 @@ describe('glob results', () => {
       })],
     }))
     subprocess.handler = () => runResult('a.ts\nb.ts\nc.ts\nd.ts\n')
-    const result = await call(ctx, 'glob', { pattern: '*.ts' }, { agent: agent('/w') })
+    const result = await call(ctx, 'glob', { pattern: '*.ts' }, { agent: agent(workspace) })
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected glob success')
     expect(result.value).toEqual({ root: '.', paths: ['a.ts', 'b.ts', 'c.ts', 'd.ts'] })
@@ -794,7 +817,7 @@ describe('glob results', () => {
     // workspace. The sample reaches every top-level entry instead.
     const { ctx, subprocess } = await setup({ config: { globMaxResults: 3 } })
     subprocess.handler = () => runResult(['vendor/a.ts', 'vendor/b.ts', 'vendor/c.ts', 'src/d.ts', 'guide/e.md', 'top.txt'].map(w).join('\n'))
-    const result = await call(ctx, 'glob', { pattern: '*' }, { agent: agent('/w') })
+    const result = await call(ctx, 'glob', { pattern: '*' }, { agent: agent(workspace) })
     expect(text(result)).toBe(['vendor/a.ts', 'src/d.ts', 'guide/e.md'].map(w).join('\n') + '\n\n'
       + '(Showing 3 of 6 paths, sampled across 3 of the 4 top-level entries this pattern matched '
       + 'instead of taken in modification-time order. Narrow path to inspect a specific subtree. '
@@ -806,7 +829,7 @@ describe('glob results', () => {
       config: { globMaxResults: 3, sampleOverCapGlobResults: false },
     })
     subprocess.handler = () => runResult(['vendor/a.ts', 'vendor/b.ts', 'vendor/c.ts', 'src/d.ts', 'guide/e.md'].join('\n'))
-    expect(text(await call(ctx, 'glob', { pattern: '*' }, { agent: agent('/w') })))
+    expect(text(await call(ctx, 'glob', { pattern: '*' }, { agent: agent(workspace) })))
       .toBe('vendor/a.ts\nvendor/b.ts\nvendor/c.ts\n\n'
         + '(Showing 3 of 5 paths. The complete result could not be saved; narrow pattern or path to see more.)')
   })
@@ -819,7 +842,7 @@ describe('glob results', () => {
       'workspace/source/c.ts',
       'workspace/guides/d.md',
     ].map(w).join('\n'))
-    const result = await call(ctx, 'glob', { pattern: '*', path: w('workspace') }, { agent: agent('/w') })
+    const result = await call(ctx, 'glob', { pattern: '*', path: w('workspace') }, { agent: agent(workspace) })
     expect(text(result)).toContain(['workspace/vendor/a.ts', 'workspace/source/c.ts', 'workspace/guides/d.md'].map(w).join('\n'))
     expect(text(result)).toContain('sampled across 3 of the 3 top-level entries')
   })
@@ -827,12 +850,12 @@ describe('glob results', () => {
   it('samples relative to an absolute search root after workdir display conversion', async () => {
     const { ctx, subprocess } = await setup({ config: { globMaxResults: 3 } })
     subprocess.handler = () => runResult([
-      '/w/workspace/vendor/a.ts',
-      '/w/workspace/vendor/b.ts',
-      '/w/workspace/source/c.ts',
-      '/w/workspace/guides/d.md',
+      `${workspace}/workspace/vendor/a.ts`,
+      `${workspace}/workspace/vendor/b.ts`,
+      `${workspace}/workspace/source/c.ts`,
+      `${workspace}/workspace/guides/d.md`,
     ].map(w).join('\n'))
-    const result = await call(ctx, 'glob', { pattern: '*', path: w('/w/workspace') }, { agent: agent(w('/w')) })
+    const result = await call(ctx, 'glob', { pattern: '*', path: w(`${workspace}/workspace`) }, { agent: agent(w(workspace)) })
     expect(text(result)).toContain(['workspace/vendor/a.ts', 'workspace/source/c.ts', 'workspace/guides/d.md'].map(w).join('\n'))
     expect(text(result)).toContain('sampled across 3 of the 3 top-level entries')
   })
@@ -840,7 +863,7 @@ describe('glob results', () => {
   it('drops the narrowing hint when the sample reaches every top-level entry', async () => {
     const { ctx, subprocess } = await setup({ config: { globMaxResults: 3 } })
     subprocess.handler = () => runResult(['vendor/a.ts', 'vendor/b.ts', 'vendor/c.ts', 'src/d.ts'].map(w).join('\n'))
-    expect(text(await call(ctx, 'glob', { pattern: '*' }, { agent: agent('/w') })))
+    expect(text(await call(ctx, 'glob', { pattern: '*' }, { agent: agent(workspace) })))
       .toBe(['vendor/a.ts', 'vendor/b.ts', 'src/d.ts'].map(w).join('\n') + '\n\n'
         + '(Showing 3 of 4 paths, sampled across 2 of the 2 top-level entries this pattern matched '
         + 'instead of taken in modification-time order. '
@@ -850,21 +873,21 @@ describe('glob results', () => {
   it('keeps modification-time order untouched when the whole result fits', async () => {
     const { ctx, subprocess } = await setup({ config: { globMaxResults: 4 } })
     subprocess.handler = () => runResult('vendor/a.ts\nvendor/b.ts\nsrc/c.ts\n')
-    expect(text(await call(ctx, 'glob', { pattern: '*' }, { agent: agent('/w') })))
+    expect(text(await call(ctx, 'glob', { pattern: '*' }, { agent: agent(workspace) })))
       .toBe('vendor/a.ts\nvendor/b.ts\nsrc/c.ts')
   })
 
   it('keeps the plain footer for a flat result, where the sample is the modification-time head', async () => {
     const { ctx, subprocess } = await setup({ config: { globMaxResults: 2 } })
     subprocess.handler = () => runResult('a.ts\nb.ts\nc.ts\n')
-    expect(text(await call(ctx, 'glob', { pattern: '*' }, { agent: agent('/w') })))
+    expect(text(await call(ctx, 'glob', { pattern: '*' }, { agent: agent(workspace) })))
       .toBe('a.ts\nb.ts\n\n(Showing 2 of 3 paths. The complete result could not be saved; narrow pattern or path to see more.)')
   })
 
   it('does not create a spill file when the result fits inline', async () => {
     const { ctx, subprocess, spill } = await setup({ spill: true })
     subprocess.handler = () => runResult('a.ts\nb.ts\n')
-    const result = await call(ctx, 'glob', { pattern: '*' }, { agent: agent('/w') })
+    const result = await call(ctx, 'glob', { pattern: '*' }, { agent: agent(workspace) })
     expect(text(result)).toBe('a.ts\nb.ts')
     expect(spill?.saves).toHaveLength(0)
   })
@@ -877,7 +900,7 @@ describe('glob results', () => {
     }))
     subprocess.handler = () => runResult('old-a.ts\nold-b.ts\n')
 
-    const result = await call(ctx, 'glob', { pattern: '*.ts' }, { agent: agent('/w') })
+    const result = await call(ctx, 'glob', { pattern: '*.ts' }, { agent: agent(workspace) })
 
     if (result.isError) throw new Error('expected glob replacement success')
     expect(result.value).toEqual({ root: '.', paths: ['replacement-a.ts', 'replacement-b.ts'] })
@@ -890,7 +913,7 @@ describe('glob results', () => {
     const { ctx, subprocess, spill } = await setup({ config: { globMaxResults: 2 }, spill: true })
     subprocess.handler = () => runResult('a.ts\nb.ts\nc.ts\nd.ts\n')
     const result = await call(ctx, 'glob', { pattern: '*.ts' }, {
-      agent: agent('/w'),
+      agent: agent(workspace),
       parent: Symbol('run_code') as ToolExecutionToken,
     })
     if (result.isError) throw new Error('expected glob success')
@@ -907,7 +930,7 @@ describe('glob results', () => {
     const { ctx, subprocess, spill } = await setup({ config: { globMaxResults: 1 }, spill: mode.spill })
     if (mode.fail && spill) spill.failWith = new Error('disk full')
     subprocess.handler = () => runResult('a.ts\nb.ts\n')
-    const result = await call(ctx, 'glob', { pattern: '*' }, mode.ownerless ? {} : { agent: agent('/w') })
+    const result = await call(ctx, 'glob', { pattern: '*' }, mode.ownerless ? {} : { agent: agent(workspace) })
     expect(result.isError).toBe(false) // spill unavailability never fails the search
     expect(text(result)).toBe('a.ts\n\n(Showing 1 of 2 paths. The complete result could not be saved; narrow pattern or path to see more.)')
   })
@@ -946,8 +969,8 @@ describe('grep results', () => {
 
   it('relativizes absolute match paths against the resolved workdir', async () => {
     const { ctx, subprocess } = await setup()
-    subprocess.handler = () => runResult(`${matchLine('/sessions/s1/deep/a.ts', 2, 'hit')}\n`)
-    const result = await call(ctx, 'grep', { pattern: 'hit', path: '/sessions/s1' }, { agent: agent('/sessions/s1') })
+    subprocess.handler = () => runResult(`${matchLine(`${workspace}/deep/a.ts`, 2, 'hit')}\n`)
+    const result = await call(ctx, 'grep', { pattern: 'hit', path: workspace }, { agent: agent(workspace) })
     expect(text(result)).toContain(`${join('deep', 'a.ts')}\nLine 2: hit`)
   })
 
@@ -988,7 +1011,7 @@ describe('grep results', () => {
       matchLine('b.ts', 3, 'three'),
       '',
     ].join('\n'))
-    const result = await call(ctx, 'grep', { pattern: 'e' }, { agent: agent('/w') })
+    const result = await call(ctx, 'grep', { pattern: 'e' }, { agent: agent(workspace) })
     if (result.isError) throw new Error('expected grep success')
     expect(result.value).toEqual({
       matches: [
@@ -1019,7 +1042,7 @@ describe('grep results', () => {
     }))
     subprocess.handler = () => runResult(`${matchLine('old.ts', 1, 'old')}\n`)
 
-    const result = await call(ctx, 'grep', { pattern: 'old' }, { agent: agent('/w') })
+    const result = await call(ctx, 'grep', { pattern: 'old' }, { agent: agent(workspace) })
 
     if (result.isError) throw new Error('expected grep replacement success')
     expect(result.value).toEqual({
@@ -1037,7 +1060,7 @@ describe('grep results', () => {
     const { ctx, subprocess, spill } = await setup({ config: { grepMaxMatches: 1 }, spill: true })
     subprocess.handler = () => runResult(`${matchLine('a.ts', 1, 'one')}\n${matchLine('b.ts', 2, 'two')}\n`)
     const result = await call(ctx, 'grep', { pattern: 'o' }, {
-      agent: agent('/w'),
+      agent: agent(workspace),
       parent: Symbol('run_code') as ToolExecutionToken,
     })
     if (result.isError) throw new Error('expected grep success')
@@ -1054,7 +1077,7 @@ describe('grep results', () => {
   it('reports the unsaved remainder when capped with no spill backend', async () => {
     const { ctx, subprocess } = await setup({ config: { grepMaxMatches: 1 } })
     subprocess.handler = () => runResult(`${matchLine('a.ts', 1, 'one')}\n${matchLine('a.ts', 2, 'two')}\n`)
-    const result = await call(ctx, 'grep', { pattern: 'o' }, { agent: agent('/w') })
+    const result = await call(ctx, 'grep', { pattern: 'o' }, { agent: agent(workspace) })
     expect(result.isError).toBe(false)
     expect(text(result)).toBe('Found 1 of 2 matches\n\na.ts\nLine 1: one\n\n(The complete result could not be saved; narrow pattern, path, or include to see more.)')
   })
@@ -1128,7 +1151,7 @@ describe('presentation', () => {
       matchLine('b.ts', 3, 'three'),
       '',
     ].join('\n'))
-    const result = await call(ctx, 'grep', { pattern: 'e' }, { agent: agent('/w') })
+    const result = await call(ctx, 'grep', { pattern: 'e' }, { agent: agent(workspace) })
     if (result.isError) throw new Error('expected grep success')
     // The presentationMeta projection rides the result meta (a surface call).
     expect(result.meta).toEqual({
@@ -1150,7 +1173,7 @@ describe('presentation', () => {
   it('glob projects a search card from a real execute, a flat path list with total and truncation', async () => {
     const { ctx, subprocess } = await setup({ config: { globMaxResults: 2 } })
     subprocess.handler = () => runResult('a.ts\nb.ts\nc.ts\n')
-    const result = await call(ctx, 'glob', { pattern: '*.ts' }, { agent: agent('/w') })
+    const result = await call(ctx, 'glob', { pattern: '*.ts' }, { agent: agent(workspace) })
     if (result.isError) throw new Error('expected glob success')
     expect(result.meta).toEqual({ shape: 'paths', paths: ['a.ts', 'b.ts'], truncated: true, total: 3 })
     const view = presentGlobResult({ pattern: '*.ts' }, result)
@@ -1161,7 +1184,7 @@ describe('presentation', () => {
     const { ctx, subprocess } = await setup()
     subprocess.handler = () => runResult(`${matchLine('a.ts', 1, 'one')}\n`)
     const result = await call(ctx, 'grep', { pattern: 'o' }, {
-      agent: agent('/w'),
+      agent: agent(workspace),
       parent: Symbol('run_code') as ToolExecutionToken,
     })
     if (result.isError) throw new Error('expected grep success')
@@ -1190,13 +1213,13 @@ describe('presentation', () => {
 
 describe('helpers', () => {
   it('toWorkdirRelative maps inside-workdir absolutes and passes everything else through', () => {
-    expect(toWorkdirRelative('/w/a/b.ts', '/w')).toBe(join('a', 'b.ts'))
-    expect(toWorkdirRelative('/w', '/w')).toBe('.')
-    expect(toWorkdirRelative('/other/b.ts', '/w')).toBe('/other/b.ts')
-    expect(toWorkdirRelative('/w-sibling/b.ts', '/w')).toBe('/w-sibling/b.ts')
-    expect(toWorkdirRelative('rel/b.ts', '/w')).toBe('rel/b.ts')
+    expect(toWorkdirRelative(`${workspace}/a/b.ts`, workspace)).toBe(join('a', 'b.ts'))
+    expect(toWorkdirRelative(workspace, workspace)).toBe('.')
+    expect(toWorkdirRelative('/other/b.ts', workspace)).toBe('/other/b.ts')
+    expect(toWorkdirRelative('/w-sibling/b.ts', workspace)).toBe('/w-sibling/b.ts')
+    expect(toWorkdirRelative('rel/b.ts', workspace)).toBe('rel/b.ts')
     // Normalization makes this land OUTSIDE the workdir → original path kept.
-    expect(toWorkdirRelative('/w/../up.ts', '/w')).toBe('/w/../up.ts')
+    expect(toWorkdirRelative(`${workspace}/../up.ts`, workspace)).toBe(`${workspace}/../up.ts`)
   })
 
   it('previewLine keeps a within-budget line untouched', () => {

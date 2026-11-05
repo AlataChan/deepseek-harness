@@ -65,7 +65,7 @@ class Preflight {
   }
 
   private async symlinkPath(path: string, verb: string, displayPath: string): Promise<PatchFailure | undefined> {
-    const options = sessionResolveOptions(this.exec, this.policy?.workspaceRoot)
+    const options = await sessionResolveOptions(this.ctx, this.exec)
     const info = await this.ctx.fs.lstat(
       path,
       options.cwd === undefined ? undefined : { cwd: options.cwd },

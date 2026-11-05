@@ -9,6 +9,9 @@ export const zh = {
   'region.sessions': '会话',
   'region.files': '文件',
   'panels.label': '全局面板',
+  'panels.more': '更多面板',
+  'panels.pin': '固定{name}',
+  'panels.unpin': '取消固定{name}',
 } satisfies Record<string, string>
 
 /** The sidebar namespace key union. */
@@ -23,4 +26,7 @@ export const en = {
   'region.sessions': 'Sessions',
   'region.files': 'Files',
   'panels.label': 'Global panels',
+  'panels.more': 'More panels',
+  'panels.pin': 'Pin {name}',
+  'panels.unpin': 'Unpin {name}',
 } satisfies Record<SidebarKey, string>

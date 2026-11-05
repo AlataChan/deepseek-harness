@@ -1,0 +1,9 @@
+- insert:
+    - id: worktree
+      name: '@deepseek-ai/dsh-experimental-worktree'
+    - id: tool-worktree
+      name: '@deepseek-ai/dsh-experimental-tool-worktree'
+    - id: local-worktree-panel
+      name: '@deepseek-ai/dsh-experimental-client-ui-forge'
+    - id: worktree-review-client
+      name: '@deepseek-ai/dsh-experimental-worktree-review'

@@ -1,0 +1,39 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04
+      Coverage enabled with v8
+
+dsh-test-bin: warning: 1 entry did not activate
+missing-plugin (./missing.mjs): failed to import
+dsh-test-bin: warning: 1 entry did not activate
+candidate (./candidate.mjs): Error: candidate activation failed
+    at new apply (file:///private/var/folders/h2/bxwgfbt15zg3gz5hf37bhf2w0000gn/T/dsh-user-patches-Zgsha3/candidate.mjs:1:33)
+    at Fiber.execute (/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/vendor/cordis/src/fiber.ts:259:30)
+    at /Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/vendor/cordis/src/fiber.ts:372:45
+    at file:///var/folders/h2/bxwgfbt15zg3gz5hf37bhf2w0000gn/T/dsh-user-patches-Zgsha3/#candidate
+    at file:///var/folders/h2/bxwgfbt15zg3gz5hf37bhf2w0000gn/T/dsh-user-patches-Zgsha3/#include
+
+ Test Files  27 passed (27)
+      Tests  715 passed | 4 skipped (719)
+   Start at  12:59:50
+   Duration  25.76s (transform 3.99s, setup 290ms, import 6.74s, tests 35.94s, environment 930ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.96 |    99.95 |     100 |     100 |
+ ...t/app-boot/src |   99.75 |    99.55 |     100 |     100 |
+  index.ts         |   99.72 |    99.49 |     100 |     100 | 302
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.96% ( 2521/2522 )
+Branches     : 99.95% ( 2298/2299 )
+Functions    : 100% ( 531/531 )
+Lines        : 100% ( 2053/2053 )
+================================================================================
+ERROR: Coverage for statements (99.72%) does not meet global threshold (100%) for packages/boot/app-boot/src/index.ts
+ERROR: Coverage for branches (99.49%) does not meet global threshold (100%) for packages/boot/app-boot/src/index.ts

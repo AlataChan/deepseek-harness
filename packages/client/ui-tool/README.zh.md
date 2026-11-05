@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 工具调用在对话中显示为卡片：一个根调用树带其嵌套子调用，每个原子调用由所属视图渲染。所有生命周期状态都保留工具的普通业务图标；失败与中断仍通过冻结调用／结果状态、无障碍状态文本和失败摘要明确表达。用户可通过宿主回调打开文件或检查调用。折叠的 `web_fetch` 行把其 http(s) URL 显示为链接，在新浏览器标签页中打开。
@@ -60,6 +61,7 @@ owner 载荷为 `ToolCallOwnerProps`：`callId`、`toolName`、`phase` 判别字
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -100,6 +102,7 @@ terminal model 使用浏览器安全入口 `@deepseek-ai/dsh-spill-policy/notice
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 以下页面覆盖对话宿主、视图 slot 与卡片模型。
@@ -114,7 +117,10 @@ terminal model 使用浏览器安全入口 `@deepseek-ai/dsh-spill-policy/notice
 
 -----
 
+定时任务详情卡读取当前分页列表、查看和编辑结果中的持久化状态与目标。已发布日志中的历史 `schedule_update`、`schedule_delete` 调用保留原有展示方式；这些展示适配器不会注册运行时工具。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 无。该包渲染流式工具身份与已记录调用，不改变模型上下文。
@@ -136,6 +142,7 @@ terminal model 使用浏览器安全入口 `@deepseek-ai/dsh-spill-policy/notice
 - **工具文案复用 `ui-conversation` locale namespace**：工具标题、行 chrome 与无 Cordis 的 primitive label 使用该字典；展示转换器模型保留 locale key 或数据，而不是已渲染文案。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

@@ -14,6 +14,8 @@
     "types": ["node"]
   },
   "include": [
+    "packages/session/message-quotes/tests/**/*.ts",
+    "packages/session/message-quotes/tests/**/*.tsx",
     // The native/renderer keyboard fixture imports only these Cordis-free Desktop modules.
     "apps/desktop/tests/keyboard.spec.ts",
     "apps/desktop/src/keyboard.ts",
@@ -51,6 +53,10 @@
     "packages/client/*/tests/**/*.host.spec.ts"
   ],
   "references": [
+    { "path": "./packages/fs/fs-local" },
+    { "path": "./packages/session/message-quotes" },
+    { "path": "./packages/experimental/client-ui-forge/tsconfig.client.json" },
+    { "path": "./packages/experimental/worktree-review/tsconfig.client.json" },
     { "path": "./packages/experimental/desktop-operation/tsconfig.client.json" },
     { "path": "./packages/util/atomic-write" },
     { "path": "./packages/experimental/client-ui-voice-input" },

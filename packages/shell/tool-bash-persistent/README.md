@@ -23,6 +23,7 @@ This package gives an agent a `bash` tool whose cwd, exported variables, functio
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Load this plugin in any composition where the agent should keep shell state between commands — for example long build sessions, activated environments, or scripts that export variables for later steps. It registers the `bash` tool and requires the `ctx.tools` and `ctx.terminals` services plus an owning agent session at execution time.
@@ -61,6 +62,7 @@ A call without an owning agent session fails with `bash requires an owning agent
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -90,6 +92,7 @@ A first command spawns the shell through `ctx.terminals.spawn`, disables input e
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the terminal family to the seam, the backends, and the design note behind owner-scoped sessions.
@@ -104,7 +107,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+New terminal sessions start in the validated Session execution directory. Already-running terminals retain their own directory and are not moved by subsequent directory changes. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Tool schema
@@ -148,6 +154,7 @@ These limits define when the tool is a poor fit or needs special care. They are 
 - **Environment facts such as network access and package mirrors belong in the configured `description`** — not this package's default.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

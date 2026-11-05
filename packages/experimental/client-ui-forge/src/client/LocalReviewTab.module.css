@@ -1,0 +1,15 @@
+.panel { box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 16px; height: 100%; overflow: auto; color: var(--dsw-alias-label-primary); font-size: 13px; }
+.header { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.header > svg { width: 16px; height: 16px; }
+.header > button { margin-left: auto; }
+.actions, .scopes { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.directory { margin: 0; overflow-wrap: anywhere; color: var(--dsw-alias-label-secondary); }
+.file { min-width: 0; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-md); overflow: hidden; }
+.file h3 { margin: 0; padding: 8px; overflow-wrap: anywhere; font-size: 13px; font-weight: 500; }
+.file h3 span { white-space: nowrap; }
+.patch { margin: 0; overflow-x: auto; font: var(--dsw-font-markdown-code-block); }
+.patch > span { display: block; min-width: max-content; padding: 0 8px; }
+.number { display: inline-block; width: 4ch; margin-right: 8px; color: var(--dsw-alias-label-secondary); user-select: none; }
+.added { color: var(--dsw-alias-state-success-primary); background: var(--dsw-alias-code-diff-added); }
+.deleted { color: var(--dsw-alias-state-error-primary); background: var(--dsw-alias-code-diff-deleted); }
+.context { color: var(--dsw-alias-label-secondary); }

@@ -23,11 +23,13 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在任何运行 agent 的地方挂载 `dsh-system-prompt`：它提供 `ctx.systemPrompt`，即每个提示词贡献所落入的注册表。贡献带作用域——通过 `agent.ctx` 注册只影响该 agent，并遮蔽同名全局项。
 
 <a id="configure-the-prompt"></a>
+
 ### 配置提示词
 
 配置拥有固定开场白、runtime 上下文、部署 persona 前缀与后缀与工具顺序；其余一切来自已注册的贡献。
@@ -79,11 +81,12 @@ ctx.systemPrompt.variable('cwd', ({ agent }) => agent?.session.header.cwd)
 
 ### 抑制运行时上下文
 
-`suppressRuntimeContext()` 移除调用作用域的所有动态运行时上下文贡献，但不禁用拥有底层事实的服务；多个抑制器独立组合，当不再存在抑制器时该 effect 会恢复上下文。
+`suppressRuntimeContext()` 移除调用作用域的可选动态运行时上下文贡献，但不禁用拥有底层事实的服务；多个抑制器独立组合，当不再存在抑制器时该 effect 会恢复上下文。
 
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -114,6 +117,7 @@ ctx.systemPrompt.variable('cwd', ({ agent }) => agent?.session.header.cwd)
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 包级约定对大多数消费方已经足够；需要周边领域时再阅读以下页面。
@@ -127,6 +131,7 @@ ctx.systemPrompt.variable('cwd', ({ agent }) => agent?.session.header.cwd)
 -----
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 系统提示词
@@ -176,6 +181,7 @@ schema token 在每次请求中重复。限制工具会为该 agent 移除其全
 
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>
@@ -184,3 +190,5 @@ schema token 在每次请求中重复。限制工具会为该 agent 移除其全
 无。
 
 </details>
+
+必需的 `required: true` 运行事实在抑制状态下仍保留；`interpolate: false` 按字面保留文本。请求接纳时刷新已接受的注册事实，不会再次运行段落、工具、变量或组装瀑布。

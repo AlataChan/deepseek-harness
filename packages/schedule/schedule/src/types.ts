@@ -193,32 +193,6 @@ export type RecurringScheduleRecord = EveryScheduleRecord | DailyScheduleRecord 
 /** Reminder rule and target, stored with its original Session binding. */
 export type ScheduleRecord = OneShotScheduleRecord | RecurringScheduleRecord
 
-/** Durable Session inbox delivery acknowledgment, not model execution completion. */
-export interface ScheduleDeliveryReceipt {
-  /** Canonical UTC target of the delivered occurrence. */
-  readonly scheduledAt: string
-  /** Canonical UTC time sampled after Session persistence acknowledged delivery. */
-  readonly deliveredAt: string
-  /** Identity of the delivered message, shared by tasks in one recurring batch. */
-  readonly messageId: MessageId
-}
-
-/** Saved inbox delivery with its immutable sent prompt when recorded by this Host. */
-export interface ScheduleDeliveryRecord extends ScheduleDeliveryReceipt {
-  /** Prompt sent for this occurrence; unavailable for legacy receipts. */
-  readonly prompt?: string
-}
-
-/** Browser-safe retained reminder with its original Session binding. */
-export type ScheduleCatalogEntry = ScheduleRecord & {
-  /** Session receiving this reminder when it becomes due. */
-  readonly sessionId: SessionId
-  /** Inactive reminders remain visible but never schedule another delivery. */
-  readonly status: 'active' | 'inactive'
-  /** Most recent durably acknowledged inbox delivery, when available. */
-  readonly lastDelivery?: ScheduleDeliveryReceipt
-}
-
 /** Creates one durable reminder record. */
 export interface ScheduleCreateChange {
   readonly version: 1
@@ -261,11 +235,11 @@ export type ScheduleState = 'scheduled' | 'overdue'
 /** Host-driven delivery resumes the original Session when needed. */
 export type ScheduleDeliveryMode = 'host'
 
-/** Complete model-facing view of one active reminder. */
+/** Timing projection used by reminder formatting. */
 export type ScheduleView = ScheduleRecord & {
   /** Whether the target remains in the future. */
   readonly state: ScheduleState
-  /** Reminder delivery never leaves the owning session. */
+  /** Delivery is managed by the Host. */
   readonly deliveryMode: ScheduleDeliveryMode
 }
 
@@ -335,20 +309,6 @@ export type ScheduleToolError =
   | SubagentSessionError
   | InternalScheduleError
 
-/** Canonical `schedule_create` value. */
-export type ScheduleCreateValue = ScheduleView | ScheduleToolError
-
-/** Canonical `schedule_list` value. */
-export type ScheduleListValue = ScheduleView[] | ScheduleToolError
-
-/** Successful `schedule_delete` value, including the non-mutating not-found result. */
-export type ScheduleDeleteResult =
-  | { readonly id: ScheduleId; readonly deleted: true }
-  | { readonly id: ScheduleId; readonly deleted: false; readonly code: 'schedule_not_found' }
-
-/** Canonical `schedule_delete` value. */
-export type ScheduleDeleteValue = ScheduleDeleteResult | ScheduleToolError
-
 declare module '@deepseek-ai/dsh-workspace/types' {
   interface SessionActivityKindMap {
     /** A scheduled follow-up for this session is still active. */
@@ -366,115 +326,300 @@ declare module '@deepseek-ai/dsh-session/types' {
   }
 }
 
-/** Reminder creation selector, shared by the model consumer and Host service. */
-export interface ScheduleCreateRequest {
-  /** Non-empty reminder text. */
-  prompt: string
-  /** Required task name of at most 120 characters, non-empty after trimming; names the card, detail heading, and task lists. */
-  title: string
-  /** Relative one-shot delay in seconds. */
-  after_seconds?: number
-  /** Absolute one-shot target. */
-  at?: AtInput
-  /** Fixed recurrence interval in seconds. */
-  every_seconds?: number
-  /** Daily wall-clock time in an explicit IANA zone. */
-  daily?: DailyInput
-  /** Weekly wall-clock time and explicit ISO weekday set in an IANA zone. */
-  weekly?: WeeklyInput
-  /** Five-field cron expression evaluated in an explicit IANA zone. */
-  cron?: CronInput
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /** Task or delivery execution state changed; clients refetch task catalogs.
+     * @mode emit
+     */
+    'schedule/changed'(): void
+  }
 }
 
-/** Session-scoped task list, without Agent activation. */
-export interface ScheduleListRequest {
-  /** Original Session binding. */
-  sessionId: SessionId
-}
-
-/** Delete request identifying a task within its original Session binding. */
-export interface ScheduleDeleteRequest extends ScheduleListRequest {
-  /** Task to remove. */
-  id: ScheduleId
-}
-
-/** Timing-only edit; it may select a different recurrence kind than the stored record, and one-shot targets use an absolute `at`. */
-export type ScheduleTimingChange =
+/** Timing accepted by the shared management API. */
+export type ScheduleTiming =
+  | { readonly kind: 'after'; readonly after_seconds: number }
   | { readonly kind: 'at'; readonly at: AtInput }
   | { readonly kind: 'every'; readonly every_seconds: number }
   | { readonly kind: 'daily'; readonly daily: DailyInput }
   | { readonly kind: 'weekly'; readonly weekly: WeeklyInput }
   | { readonly kind: 'cron'; readonly cron: CronInput }
 
-/** Replacement task name and instruction carried by one compare-and-update request. */
-export interface ScheduleUpdateContent {
-  /** Task name of at most 120 characters, non-empty after trimming; omitted keeps the stored name. */
-  readonly title?: string
-  /** Reminder instruction, non-empty after trimming; omitted keeps the stored instruction. */
+/** Values used when a target creates a Session. */
+export interface ScheduleSessionCreateSpec {
+  /** Project directory of the created Session, which joins the Workspace registered there; omission uses the Host project directory. */
+  readonly cwd?: string
+  /** Agent preset of the created Session; omission uses the default preset. */
+  readonly agentPreset?: string
+}
+
+/** Stored delivery destination; it is independent of the Session that manages the task. */
+export type ScheduleTarget =
+  | {
+    /** Every occurrence goes to one existing Session. */
+    readonly kind: 'session'
+    /** Session that receives each delivery. */
+    readonly sessionId: SessionId
+  }
+  | {
+    /** The first delivery creates one Session; later deliveries go to that Session. */
+    readonly kind: 'new_once'
+    /** Reserved at creation; the first delivery creates it and the target becomes `session`. */
+    readonly sessionId: SessionId
+    /** Values used to create the reserved Session. */
+    readonly create: ScheduleSessionCreateSpec
+  }
+  | {
+    /** Every delivery creates a fresh Session. */
+    readonly kind: 'new'
+    /** Values used to create each Session. */
+    readonly create: ScheduleSessionCreateSpec
+  }
+
+/** Destination accepted by create and edit; the Host reserves the `new_once` Session id. */
+export type ScheduleTargetRequest =
+  | {
+    /** Deliver to one existing Session that is not a delegated child. */
+    readonly kind: 'session'
+    /** Existing Session that receives each delivery. */
+    readonly sessionId: SessionId
+  }
+  | {
+    /** Create one Session at the first delivery. */
+    readonly kind: 'new_once'
+    /** Creation values; omission uses the Host defaults. */
+    readonly create?: ScheduleSessionCreateSpec
+  }
+  | {
+    /** Create a fresh Session at each delivery. */
+    readonly kind: 'new'
+    /** Creation values; omission uses the Host defaults. */
+    readonly create?: ScheduleSessionCreateSpec
+  }
+
+/** Durable Session inbox delivery acknowledgment, not model execution completion. */
+export interface ScheduleDeliveryReceipt {
+  /** Canonical UTC target of the delivered occurrence. */
+  readonly scheduledAt: string
+  /** Canonical UTC time sampled after Session persistence acknowledged delivery. */
+  readonly deliveredAt: string
+  /** Identity of the delivered message, shared by tasks in one recurring batch. */
+  readonly messageId: MessageId
+  /** Session that durably accepted the delivered message. */
+  readonly targetSessionId: SessionId
+}
+
+/** Saved inbox delivery with its immutable sent prompt when recorded by this Host. */
+export interface ScheduleDeliveryRecord extends ScheduleDeliveryReceipt {
+  /** Prompt sent for this occurrence; unavailable for legacy receipts. */
   readonly prompt?: string
 }
 
-/** Compare-and-update request within the original Session binding. */
-export interface ScheduleUpdateRequest extends ScheduleDeleteRequest, ScheduleUpdateContent {
-  /** Complete record observed when editing began, including the committed target. */
-  readonly expected: ScheduleRecord
-  /** New timing; its kind may differ from the stored record's kind, and an omitted value keeps the committed target. */
-  readonly change?: ScheduleTimingChange
-}
-
-/** Non-mutating compare-and-update outcome: unknown, inactive, or changed since the read. */
-export interface ScheduleUpdateMiss {
+/** Bounded newest-first query over the saved deliveries of one task. */
+export interface ScheduleDeliveryHistoryRequest {
+  /** Task whose saved deliveries are read. */
   readonly id: ScheduleId
-  readonly updated: false
-  readonly code: 'schedule_not_found' | 'schedule_ended' | 'schedule_conflict'
-}
-
-/** Successful current record, non-mutating lookup/conflict failure, or invalid name/instruction/timing. */
-export type ScheduleUpdateResult =
-  | { readonly id: ScheduleId; readonly updated: boolean; readonly record: ScheduleRecord }
-  | ScheduleUpdateMiss
-  | ScheduleToolError
-
-/** Canonical `schedule_update` value: the committed record as a view, or the non-mutating lookup/conflict result. */
-export type ScheduleUpdateValue = ScheduleView | ScheduleUpdateMiss | ScheduleToolError
-
-/** Explicitly bounded saved-delivery query within one Session binding. */
-export interface ScheduleDeliveryHistoryRequest extends ScheduleDeleteRequest {
   /** Required safe-integer page size from 1 through 100. */
-  limit: number
+  readonly limit: number
   /** Message identity of the oldest entry in the previous page; excluded from this page. */
-  before?: MessageId
+  readonly before?: MessageId
 }
 
-/** Configured limits applied when appending one task's delivery receipt. */
+/** One newest-first page of saved deliveries. */
+export interface ScheduleDeliveryHistoryPage {
+  /** Task whose saved deliveries this page lists. */
+  readonly id: ScheduleId
+  /** Saved deliveries, newest first. */
+  readonly records: ScheduleDeliveryRecord[]
+  /** Whether deliveries before the saved records may exist; the Host never reconstructs them. */
+  readonly earlierRecordsUnavailable: boolean
+  /** Whether a retention limit removed saved records; legacy history without that fact is false. */
+  readonly earlierRecordsPruned: boolean
+  /** Current Host retention limits; the delivery writer applies the same limits. */
+  readonly retention: DeliveryRetentionBounds
+  /** Cursor for the next page; present only when older saved records remain. */
+  readonly nextBefore?: MessageId
+}
+
+/** Non-mutating miss: the task or the page cursor does not exist. */
+export interface ScheduleDeliveryHistoryMiss {
+  /** Requested task identity. */
+  readonly id: ScheduleId
+  /** `delivery_cursor_not_found` means `before` names no saved record of this task. */
+  readonly code: 'schedule_not_found' | 'delivery_cursor_not_found'
+}
+
+/** One saved-delivery page, or a non-mutating lookup miss. */
+export type ScheduleDeliveryHistoryResult = ScheduleDeliveryHistoryPage | ScheduleDeliveryHistoryMiss
+
+/** Browser-safe Host task state. */
+export type ScheduleCatalogEntry = ScheduleRecord & {
+  /** Destination of the next delivery. */
+  readonly target: ScheduleTarget
+  /** Creating/editing Agent Sessions and existing or reserved destinations; fresh `new` destinations are excluded. */
+  readonly involvedSessionIds: SessionId[]
+  /** Only `active` tasks have a timer obligation; `paused` and `ended` tasks stay visible. */
+  readonly status: 'active' | 'paused' | 'ended'
+  /** Canonical UTC creation time. */
+  readonly createdAt?: string
+  /** Canonical UTC time of the latest stored change; editors send it back as `expectedUpdatedAt`. */
+  readonly updatedAt?: string
+  /**
+   * The latest delivery is queued or running in its reused target Session; a `new` target, whose deliveries run beside one
+   * another, never sets it.
+   */
+  readonly executionActive?: true
+  /** End of the minimum delivery interval, present while it remains in the future. */
+  readonly deliveryFloorEndsAt?: string
+  /** Most recent durably acknowledged inbox delivery, when available. */
+  readonly lastDelivery?: ScheduleDeliveryReceipt
+}
+
+/** Host task creation request. */
+export interface ScheduleCreateRequest {
+  /** Task name of at most 120 characters, non-empty after trimming. */
+  readonly title: string
+  /** Instruction sent at each occurrence; non-empty after trimming. */
+  readonly prompt: string
+  /** Authoritative typed timing with at least one future occurrence. */
+  readonly timing: ScheduleTiming
+  /** Delivery destination; omission creates one Session at first delivery and reuses it. */
+  readonly target?: ScheduleTargetRequest
+}
+
+/** Host-wide task list request. */
+export interface ScheduleListRequest {
+  /** `true` lists only active tasks; `false` lists only paused and ended tasks; omission lists all tasks. */
+  readonly active?: boolean
+  /** Page size from 1 through 500; the default is 100. */
+  readonly limit?: number
+  /** Number of sorted tasks to skip; the default is 0. */
+  readonly offset?: number
+}
+
+/** One page of the Host-wide task list; active tasks come first, ordered by next occurrence. */
+export interface ScheduleListResult {
+  /** Tasks in this page. */
+  readonly items: ScheduleCatalogEntry[]
+  /** Number of tasks in this page. */
+  readonly shown: number
+  /** Number of tasks that match the filter. */
+  readonly total: number
+  /** Applied page size. */
+  readonly limit: number
+  /** Applied offset. */
+  readonly offset: number
+}
+
+/** Read one task by canonical identity. */
+export interface ScheduleViewRequest {
+  /** Task to read. */
+  readonly id: ScheduleId
+}
+
+/** Non-mutating miss for an unknown task identity. */
+export interface ScheduleNotFoundResult {
+  /** Requested task identity. */
+  readonly id: ScheduleId
+  /** Lookup miss discriminator. */
+  readonly code: 'schedule_not_found'
+}
+
+/** Current task state, or a lookup miss. */
+export type ScheduleViewResult = ScheduleCatalogEntry | ScheduleNotFoundResult
+
+/** Fields changed together by one atomic update; an omitted field keeps its stored value. */
+export interface SchedulePatch {
+  /** Replacement task name. */
+  readonly title?: string
+  /** Replacement instruction. */
+  readonly prompt?: string
+  /** Replacement timing; a changed rule recomputes the next occurrence. */
+  readonly timing?: ScheduleTiming
+  /** Replacement destination. */
+  readonly target?: ScheduleTargetRequest
+  /** `false` pauses the task; `true` resumes a recurrence from its first future occurrence. */
+  readonly active?: boolean
+}
+
+/** One closed edit operation. */
+export type ScheduleEditRequest =
+  | {
+    /** Task to change. */
+    readonly id: ScheduleId
+    /** Apply `patch` as one atomic change. */
+    readonly action: 'update'
+    /** Fields to change; at least one member is required. */
+    readonly patch: SchedulePatch
+    /** `updatedAt` value that the editor read; a different stored value returns `schedule_conflict`. */
+    readonly expectedUpdatedAt?: string | null
+  }
+  | {
+    /** Task to remove. */
+    readonly id: ScheduleId
+    /** Remove the task and its saved deliveries. */
+    readonly action: 'delete'
+    /** `updatedAt` value that the editor read; a different stored value returns `schedule_conflict`. */
+    readonly expectedUpdatedAt?: string | null
+  }
+
+/** Non-mutating refusal: the stored task changed after the editor read it. */
+export interface ScheduleConflictResult {
+  /** Requested task identity. */
+  readonly id: ScheduleId
+  /** Optimistic revision mismatch discriminator. */
+  readonly code: 'schedule_conflict'
+}
+
+/** Updated task state, a completed deletion, or a non-mutating miss or conflict. */
+export type ScheduleEditResult =
+  | ScheduleCatalogEntry
+  | Extract<ScheduleDeleteResult, { readonly deleted: true }>
+  | ScheduleNotFoundResult
+  | ScheduleConflictResult
+
+/** Manual execution request from the human task manager. */
+export interface ScheduleRunRequest {
+  /** Task to run now. */
+  readonly id: ScheduleId
+}
+
+/** Non-mutating refusal: one execution of this task already owns its admission slot. */
+export interface ScheduleExecutionPendingResult {
+  /** Requested task identity. */
+  readonly id: ScheduleId
+  /** Consolidated execution discriminator. */
+  readonly code: 'schedule_execution_pending'
+}
+
+/** Task state after a manual delivery, or a non-mutating miss or refusal. */
+export type ScheduleRunResult = ScheduleCatalogEntry | ScheduleNotFoundResult | ScheduleExecutionPendingResult
+
+
+/** Successful Host-wide removal of every ended task, whether or not any remained. */
+export interface ScheduleDeleteInactiveResult {
+  /** Ended task rows this call removed; zero when the Host held none. */
+  readonly deleted: number
+}
+
+
+/** Input validation codes returned to model tools. */
+export type ScheduleInputErrorCode = Exclude<ScheduleToolError['code'], 'internal_error'>
+
+/** Removal of one task and its saved deliveries. */
+export type ScheduleDeleteResult = { readonly id: ScheduleId; readonly deleted: true }
+
+/** Retention limits applied only when appending a delivery receipt. */
 export interface DeliveryRetentionBounds {
-  /** Retained window in days, measured back from the acknowledgment being appended. */
+  /** Retained window measured back from the appended acknowledgment. */
   readonly days: number
-  /** Maximum retained records per task; the newest survive. */
+  /** Maximum saved receipts per task. */
   readonly records: number
 }
 
-/** Newest-first saved deliveries, or a non-mutating task/cursor lookup failure. */
-export type ScheduleDeliveryHistoryResult =
-  | {
-    readonly id: ScheduleId
-    readonly records: ScheduleDeliveryRecord[]
-    /** Whether earlier delivery records may be unavailable; missing receipts are never reconstructed. */
-    readonly earlierRecordsUnavailable: boolean
-    /** True only after an append removed saved records; absent legacy evidence is false. */
-    readonly earlierRecordsPruned: boolean
-    /** Current Host retention configuration, also used by the delivery writer. */
-    readonly retention: DeliveryRetentionBounds
-    /** Oldest returned message identity, present only when older saved records remain. */
-    readonly nextBefore?: MessageId
-  }
-  | { readonly id: ScheduleId; readonly code: 'schedule_not_found' | 'delivery_cursor_not_found' }
-
-declare module '@deepseek-ai/cordis' {
-  interface Events {
-    /** Durable task set changed; clients refetch global task and Session-active catalogs.
-     * @mode emit
-     */
-    'schedule/changed'(): void
+/** Stable validation failures carried separately from successful task values. */
+declare module '@deepseek-ai/dsh-typert-protocol' {
+  interface RemoteErrorDetailsMap {
+    /** A Schedule mutation or list request failed input validation before storage. */
+    'schedule/input-invalid': { readonly code: ScheduleInputErrorCode }
   }
 }

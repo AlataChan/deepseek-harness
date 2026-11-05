@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * Shared execution plumbing for the `glob` / `grep` search tools: the
  * package-owned `SEARCH_*` error vocabulary, one spawn helper that runs the
@@ -231,7 +232,7 @@ export async function runRipgrep(
   if (exec.signal.aborted) {
     throw new SearchError(`${toolName} was aborted before completion (tool timeout or caller cancellation)`, 'SEARCH_ABORTED')
   }
-  const cwd = exec.agent?.session.header.cwd
+  const cwd = exec.agent === undefined ? undefined : await ctx.workingDirectory.ensure(exec.agent, exec.signal)
   const workdir = cwd ?? process.cwd()
   let handle: SubprocessHandle
   try {

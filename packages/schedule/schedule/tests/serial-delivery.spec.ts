@@ -45,7 +45,7 @@ describe('due delivery during Agent creation', () => {
     const id = ScheduleId('due')
     const record = createAfterScheduleRecord(id, 'Due reminder', 1, Date.now() - 2_000, 'Due reminder')
     const seeded = await ctx.storageDomain.open(scheduleDomain)
-    await seeded.table('tasks').put(record.id, { sessionId, record, status: 'active' })
+    await seeded.table('tasks').put(record.id, { target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], record, status: 'active' })
     await seeded.close()
     const available = Promise.withResolvers<Agent>()
     // The resolver returns the Agent while its serial publication listeners are blocked.
@@ -92,7 +92,7 @@ describe('due delivery during Agent creation', () => {
       expect(created).toBe(true)
       expect(laterCreated).toBe(true)
       // The receipt commits after the flush resolves, so the settled record is observed asynchronously.
-      await expect.poll(async () => (await ctx.schedule.catalog())[0]?.status).toBe('inactive')
+      await expect.poll(async () => (await ctx.schedule.catalog())[0]?.status).toBe('ended')
       const [entry] = await ctx.schedule.catalog()
       expect(entry?.lastDelivery?.messageId).toBe(delivered[0]?.id)
     } finally {

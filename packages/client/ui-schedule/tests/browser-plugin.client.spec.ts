@@ -11,7 +11,7 @@ import { apply as applyNode } from '../src/index.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { ScheduleId, ScheduleCatalogEntry, ScheduleUpdateRequest, ScheduleUpdateResult } from '@deepseek-ai/dsh-schedule/client'
+import type { ScheduleId, ScheduleCatalogEntry, ScheduleEditRequest, ScheduleEditResult } from '@deepseek-ai/dsh-schedule/client'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { CatalogInjected } from '../src/client/catalog-source.ts'
@@ -177,7 +177,7 @@ describe('ui-schedule browser half', () => {
       onChanged = listener
       return unsubscribe
     })
-    const ctx = await baseContext({ schedule: { list, delete: remove }, $on: subscribe })
+    const ctx = await baseContext({ schedule: { catalog: list, edit: remove }, $on: subscribe })
     declareHeader(ctx)
     const fiber = ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
@@ -185,11 +185,11 @@ describe('ui-schedule browser half', () => {
     const face = injectedFace(entry, sessionId as never) as CatalogInjected
     const dispose = face.hooks.catalog.subscribe(vi.fn())
     try {
-      await Promise.resolve()
-      expect(list).toHaveBeenLastCalledWith({ sessionId })
+      await face.onRetry()
+      expect(list).toHaveBeenLastCalledWith()
       expect(face.hooks.catalog.getSnapshot().status).toBe('ready')
       await face.onDelete(id)
-      expect(remove).toHaveBeenCalledWith({ sessionId, id })
+      expect(remove).toHaveBeenCalledWith({ id, action: 'delete' })
       expect(list).toHaveBeenCalledTimes(2)
       onChanged!()
       await Promise.resolve()
@@ -213,7 +213,7 @@ describe('ui-schedule browser half', () => {
     const remove = vi.fn()
       .mockResolvedValueOnce({ ok: true, value: { id, deleted: true } })
       .mockResolvedValueOnce({ ok: false, error: new RemoteError('gateway/internal', 'Unavailable', {}) })
-    const ctx = await baseContext({ schedule: { list, delete: remove }, $on: () => () => {} })
+    const ctx = await baseContext({ schedule: { catalog: list, edit: remove }, $on: () => () => {} })
     const owner = ctx.slots.register({
       name: 'root',
       children: {
@@ -391,7 +391,7 @@ describe('ui-schedule browser half', () => {
 
   it('retains an ended task in the global page and navigates and deletes with its original Session binding', async () => {
     const record: ScheduleCatalogEntry = {
-      id: 'host-task' as ScheduleId, sessionId: 'cold-original' as SessionId, status: 'active',
+      id: 'host-task' as ScheduleId, target: { kind: 'session' as const, sessionId: 'cold-original' as SessionId }, involvedSessionIds: ['cold-original' as SessionId], status: 'active',
       kind: 'after', title: 'Review deployment', prompt: 'Review deployment', afterSeconds: 60,
       scheduledAt: '2099-01-01T00:00:00.000Z',
     }
@@ -403,7 +403,7 @@ describe('ui-schedule browser half', () => {
     const history = vi.fn().mockResolvedValue(historyResult)
     const remove = vi.fn().mockResolvedValue({ ok: true, value: { id: record.id, deleted: true } })
     let onChanged: (() => void) | undefined
-    const ctx = await baseContext({ schedule: { catalog, history, delete: remove }, $on: (_event, listener) => {
+    const ctx = await baseContext({ schedule: { catalog, history, edit: remove }, $on: (_event, listener) => {
       onChanged = listener
       return () => { onChanged = undefined }
     } })
@@ -430,38 +430,38 @@ describe('ui-schedule browser half', () => {
     const dispose = face.hooks.catalog.subscribe(vi.fn())
     try {
       await vi.waitFor(() => { expect(face.hooks.catalog.getSnapshot().records).toEqual([record]) })
-      const ended: ScheduleCatalogEntry = { ...record, status: 'inactive' }
+      const ended: ScheduleCatalogEntry = { ...record, status: 'ended' }
       catalog.mockResolvedValue({ ok: true, value: [ended] })
       onChanged!()
       await vi.waitFor(() => { expect(face.hooks.catalog.getSnapshot().records).toEqual([ended]) })
       expect(remove).not.toHaveBeenCalled()
       expect(history).not.toHaveBeenCalled()
-      const request = { id: record.id, sessionId: record.sessionId, limit: 20 }
+      const request = { id: record.id, limit: 20 }
       expect(await face.loadHistory(request)).toBe(historyResult)
       expect(history).toHaveBeenCalledExactlyOnceWith(request)
       expect(openSession).not.toHaveBeenCalled()
-      face.onOpenSession(record.sessionId)
-      expect(openSession).toHaveBeenCalledWith(record.sessionId)
+      face.onOpenSession(sessionOf(record))
+      expect(openSession).toHaveBeenCalledWith(sessionOf(record))
       const available = ctx.sessions.list.getSnapshot()
       const workspace = ctx.workspaces.list.getSnapshot()
       const sessionRead = vi.spyOn(ctx.sessions.list, 'getSnapshot')
       const workspaceRead = vi.spyOn(ctx.workspaces.list, 'getSnapshot')
       sessionRead.mockReturnValue({ ...available, phase: 'pending' })
-      face.onOpenSession(record.sessionId)
+      face.onOpenSession(sessionOf(record))
       expect(openSession).toHaveBeenCalledTimes(1)
       sessionRead.mockReturnValue({ ...available, ids: [], byId: {} })
-      face.onOpenSession(record.sessionId)
+      face.onOpenSession(sessionOf(record))
       expect(openSession).toHaveBeenCalledTimes(1)
       sessionRead.mockReturnValue(available)
-      workspaceRead.mockReturnValue({ ...workspace, archivedSessionIds: [record.sessionId] })
-      face.onOpenSession(record.sessionId)
+      workspaceRead.mockReturnValue({ ...workspace, archivedSessionIds: [sessionOf(record)] })
+      face.onOpenSession(sessionOf(record))
       expect(openSession).toHaveBeenCalledTimes(1)
       workspaceRead.mockReturnValue(workspace)
-      face.onOpenSession(record.sessionId)
+      face.onOpenSession(sessionOf(record))
       expect(openSession).toHaveBeenCalledTimes(2)
       catalog.mockResolvedValue({ ok: true, value: [] })
       await face.onDelete(record.id)
-      expect(remove).toHaveBeenCalledWith({ sessionId: record.sessionId, id: record.id })
+      expect(remove).toHaveBeenCalledWith({ id: record.id, action: 'delete', expectedUpdatedAt: null })
       expect(face.hooks.catalog.getSnapshot().records).toEqual([])
       await face.onDelete(record.id)
       expect(remove).toHaveBeenCalledTimes(1)
@@ -537,7 +537,7 @@ describe('task timing Remote injection', () => {
   it.each(['saved', 'noop', 'conflict', 'ended', 'missing', 'invalid', 'remote', 'reject'] as const)(
     'preserves the exact request and refreshes only acknowledged or stale %s results', async (mode) => {
       const record: ScheduleCatalogEntry = {
-        id: 'timing' as ScheduleId, sessionId: 'cold-original' as SessionId, status: 'active', kind: 'every',
+        id: 'timing' as ScheduleId, target: { kind: 'session' as const, sessionId: 'cold-original' as SessionId }, involvedSessionIds: ['cold-original' as SessionId], status: 'active', kind: 'every',
         title: 'Original instruction', prompt: 'Original instruction', everySeconds: 301,
         scheduledAt: '2099-01-01T00:00:00.000Z',
       }
@@ -545,24 +545,22 @@ describe('task timing Remote injection', () => {
         id: record.id, kind: 'every' as const, title: record.title, prompt: record.prompt,
         everySeconds: 301, scheduledAt: record.scheduledAt,
       }
-      const request: ScheduleUpdateRequest = {
-        sessionId: record.sessionId, id: record.id, expected, change: { kind: 'every', every_seconds: 601 },
-      }
+      const request: ScheduleEditRequest = { id: record.id, action: 'update', expectedUpdatedAt: null, patch: { timing: { kind: 'every', every_seconds: 601 } } }
       const error = new RemoteError('gateway/internal', 'Storage unavailable', {})
-      const replies: Record<Exclude<typeof mode, 'reject'>, RemoteResult<ScheduleUpdateResult>> = {
-        saved: { ok: true, value: { id: record.id, updated: true, record: { ...expected, everySeconds: 601 } } },
-        noop: { ok: true, value: { id: record.id, updated: false, record: expected } },
-        conflict: { ok: true, value: { id: record.id, updated: false, code: 'schedule_conflict' } },
-        ended: { ok: true, value: { id: record.id, updated: false, code: 'schedule_ended' } },
-        missing: { ok: true, value: { id: record.id, updated: false, code: 'schedule_not_found' } },
-        invalid: { ok: true, value: { code: 'invalid_rule', message: 'Invalid' } },
+      const replies: Record<Exclude<typeof mode, 'reject'>, RemoteResult<ScheduleEditResult>> = {
+        saved: { ok: true, value: { ...record, ...{ ...expected, everySeconds: 601 } } },
+        noop: { ok: true, value: { ...record, ...expected } },
+        conflict: { ok: true, value: { id: record.id,  code: 'schedule_conflict' } },
+        ended: { ok: true, value: { ...record, status: 'ended' } },
+        missing: { ok: true, value: { id: record.id,  code: 'schedule_not_found' } },
+        invalid: { ok: false, error: new RemoteError('schedule/input-invalid', 'Invalid', { code: 'invalid_rule' }) },
         remote: { ok: false, error },
       }
       const catalog = vi.fn().mockResolvedValue({ ok: true, value: [record] })
-      const update = vi.fn<(input: ScheduleUpdateRequest) => Promise<RemoteResult<ScheduleUpdateResult>>>()
+      const update = vi.fn<(input: ScheduleEditRequest) => Promise<RemoteResult<ScheduleEditResult>>>()
       if (mode === 'reject') update.mockRejectedValue(error)
       else update.mockResolvedValue(replies[mode])
-      const ctx = await baseContext({ schedule: { catalog, update }, $on: () => () => {} })
+      const ctx = await baseContext({ schedule: { catalog, edit: update }, $on: () => () => {} })
       ctx.slots.register({ name: 'root', children: { main: { kind: 'keyed', scope: 'root' } } } as never, Empty)
       await ctx.plugin({ inject: [...inject], apply }).await()
       const face = injectedFace(ctx.slots.entries('main')[0]!, undefined as never) as TaskManagerInjected
@@ -574,7 +572,7 @@ describe('task timing Remote injection', () => {
         const read = Promise.withResolvers<RemoteResult<ScheduleCatalogEntry[]>>()
         catalog.mockReturnValue(read.promise)
         const completion = vi.fn()
-        const updating = face.onUpdateTiming(request).then((value) => { completion(); return value })
+        const updating = face.onEditTask(request).then((value) => { completion(); return value })
         if (mode === 'reject') {
           await expect(updating).rejects.toBe(error)
           expect(catalog).not.toHaveBeenCalled()
@@ -589,7 +587,7 @@ describe('task timing Remote injection', () => {
           expect(await updating).toBe(replies[mode])
           expect(face.hooks.catalog.getSnapshot().records).toEqual([refreshed])
           catalog.mockRejectedValueOnce(error)
-          expect(await face.onUpdateTiming(request)).toBe(replies[mode])
+          expect(await face.onEditTask(request)).toBe(replies[mode])
           expect(face.hooks.catalog.getSnapshot()).toMatchObject({ records: [refreshed], status: 'error' })
         }
         expect(update.mock.calls[0]![0]).toBe(request)
@@ -602,7 +600,7 @@ describe('task timing Remote injection', () => {
 
   it('reads again for an accepted update instead of joining the read in flight', async () => {
     const record: ScheduleCatalogEntry = {
-      id: 'timing' as ScheduleId, sessionId: 'cold-original' as SessionId, status: 'active', kind: 'every',
+      id: 'timing' as ScheduleId, target: { kind: 'session' as const, sessionId: 'cold-original' as SessionId }, involvedSessionIds: ['cold-original' as SessionId], status: 'active', kind: 'every',
       title: 'Original instruction', prompt: 'Original instruction', everySeconds: 301,
       scheduledAt: '2099-01-01T00:00:00.000Z',
     }
@@ -610,17 +608,15 @@ describe('task timing Remote injection', () => {
       id: record.id, kind: 'every' as const, title: record.title, prompt: record.prompt,
       everySeconds: 301, scheduledAt: record.scheduledAt,
     }
-    const request: ScheduleUpdateRequest = {
-      sessionId: record.sessionId, id: record.id, expected, change: { kind: 'every', every_seconds: 601 },
+    const request: ScheduleEditRequest = { id: record.id, action: 'update', expectedUpdatedAt: null, patch: { timing: { kind: 'every', every_seconds: 601 } } }
+    const accepted: RemoteResult<ScheduleEditResult> = {
+      ok: true, value: { ...record, ...{ ...expected, everySeconds: 601 } },
     }
-    const accepted: RemoteResult<ScheduleUpdateResult> = {
-      ok: true, value: { id: record.id, updated: true, record: { ...expected, everySeconds: 601 } },
-    }
-    const reply = Promise.withResolvers<RemoteResult<ScheduleUpdateResult>>()
+    const reply = Promise.withResolvers<RemoteResult<ScheduleEditResult>>()
     const catalog = vi.fn().mockResolvedValue({ ok: true, value: [record] })
-    const update = vi.fn<(input: ScheduleUpdateRequest) => Promise<RemoteResult<ScheduleUpdateResult>>>()
+    const update = vi.fn<(input: ScheduleEditRequest) => Promise<RemoteResult<ScheduleEditResult>>>()
       .mockReturnValue(reply.promise)
-    const ctx = await baseContext({ schedule: { catalog, update }, $on: () => () => {} })
+    const ctx = await baseContext({ schedule: { catalog, edit: update }, $on: () => () => {} })
     ctx.slots.register({ name: 'root', children: { main: { kind: 'keyed', scope: 'root' } } } as never, Empty)
     await ctx.plugin({ inject: [...inject], apply }).await()
     const face = injectedFace(ctx.slots.entries('main')[0]!, undefined as never) as TaskManagerInjected
@@ -639,7 +635,7 @@ describe('task timing Remote injection', () => {
       // sharing path itself is pinned at the source, in the catalog cases
       // `reuses the read in flight for a caller that has not seen it` and
       // `does not reuse a read issued before the caller’s ordinal`.
-      const updating = face.onUpdateTiming(request)
+      const updating = face.onEditTask(request)
       const stale = Promise.withResolvers<RemoteResult<ScheduleCatalogEntry[]>>()
       const fresh = { ...record, everySeconds: 601 }
       catalog.mockReturnValueOnce(stale.promise)
@@ -675,4 +671,39 @@ describe('ui-schedule node half', () => {
   it('keeps the node half inert', () => {
     expect(applyNode).not.toThrow()
   })
+})
+
+/** Session destination carried by the existing-session fixtures in this suite. */
+function sessionOf(task: ScheduleCatalogEntry): SessionId {
+  if (task.target.kind === 'new') throw new Error('Expected an existing fixture Session')
+  return task.target.sessionId
+}
+
+it('binds human create/run/clear remotes in the existing panel and refreshes after each mutation', async () => {
+  const task: ScheduleCatalogEntry = { id: 'manual-bound' as ScheduleId, kind: 'after', title: 'Bound', prompt: 'Inspect',
+    afterSeconds: 60, scheduledAt: '2099-01-01T00:00:00.000Z', target: { kind: 'new', create: {} },
+    involvedSessionIds: [], status: 'active',
+  }
+  const catalog = vi.fn().mockResolvedValue({ ok: true, value: [task] })
+  const create = vi.fn().mockResolvedValue({ ok: true, value: task })
+  const run = vi.fn().mockResolvedValue({ ok: true, value: task })
+  const deleteInactive = vi.fn().mockResolvedValue({ ok: true, value: { deleted: 1 } })
+  const ctx = await baseContext({ schedule: { catalog, create, run, deleteInactive }, $on: () => () => {} })
+  const owner = ctx.slots.register({ name: 'root', children: { main: { kind: 'keyed', scope: 'root' } } } as never, Empty)
+  const fiber = ctx.plugin({ inject: [...inject], apply }); await fiber.await()
+  const face = injectedFace(ctx.slots.entries('main')[0]!, undefined as never) as TaskManagerInjected
+  const dispose = face.hooks.catalog.subscribe(vi.fn())
+  try {
+    await face.onRetry()
+    const request = { title: task.title, prompt: task.prompt, timing: { kind: 'after' as const, after_seconds: 60 } }
+    expect(await face.onCreate(request)).toEqual({ ok: true, value: task })
+    expect(create).toHaveBeenCalledExactlyOnceWith(request)
+    expect(await face.onRun({ id: task.id })).toEqual({ ok: true, value: task })
+    expect(run).toHaveBeenCalledExactlyOnceWith({ id: task.id })
+    expect(await face.onClearEnded()).toBe(true)
+    expect(deleteInactive).toHaveBeenCalledExactlyOnceWith()
+    expect(catalog).toHaveBeenCalledTimes(4)
+  } finally {
+    dispose(); await fiber.dispose(); owner(); await ctx.fiber.dispose()
+  }
 })

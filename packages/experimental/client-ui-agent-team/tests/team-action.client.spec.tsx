@@ -136,7 +136,7 @@ function props(
     ...actions,
     inputActions: {
       captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
-      insertText: () => false,
+      insertText: () => false, insertQuote: () => false,
       persistDraft: () => {},
       setDraft: vi.fn(),
       addAttachments: () => false,
@@ -218,7 +218,7 @@ describe('TeamAction', () => {
       ...props(injected),
       inputActions: {
         captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
-        insertText: () => false,
+        insertText: () => false, insertQuote: () => false,
         persistDraft: () => {},
         setDraft,
         addAttachments: () => false,
@@ -250,7 +250,7 @@ describe('TeamAction', () => {
       useInput: ((selector: (s: { draft: string }) => unknown) => selector({ draft: 'existing draft' })) as never,
       inputActions: {
         captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
-        insertText: () => false,
+        insertText: () => false, insertQuote: () => false,
         persistDraft: () => {},
         setDraft,
         submit,
@@ -300,7 +300,7 @@ describe('TeamAction', () => {
       ...props(actions({ load })),
       inputActions: {
         captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
-        insertText: () => false,
+        insertText: () => false, insertQuote: () => false,
         persistDraft: () => {},
         setDraft,
         addAttachments: () => false,

@@ -1,0 +1,848 @@
+{
+  "status": "bounded implementation authorized after M2 acceptance",
+  "implementationAuthorized": true,
+  "m2Accepted": true,
+  "shaKind": "git blob",
+  "blobRule": "currentBlob is git hash-object of the working tree at inspection. A clean file matches HEAD 3f528c60a419f1c71c097d44f5c6a78f131256c2. tagBlob is git rev-parse dsh-v0.2.2-rc.1:path. null means the path is absent on that side. Do not copy a tag file over a current file.",
+  "worktreeCommit": "3f528c60a419f1c71c097d44f5c6a78f131256c2",
+  "sourceCeiling": {
+    "tag": "dsh-v0.2.2-rc.1",
+    "commit": "66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db",
+    "rule": "Behavior is taken from this tag. Do not follow origin master past the tag."
+  },
+  "pins": {
+    "upstreamPin": "dsh-v0.2.1-alpha.1",
+    "productVersion": "0.2.1-alpha.1",
+    "backport": "One BackportEntry per accepted item, after M2 and this manifest are accepted. sourceTag dsh-v0.2.2-rc.1, basePin dsh-v0.2.1-alpha.1. This candidate does not edit scripts/upstream-intake-registry.ts."
+  },
+  "order": [
+    "RC1-06",
+    "RC1-05",
+    "RC1-07",
+    "RC1-08"
+  ],
+  "orderRule": "RC1-06 lands the sending phase and the requestId reservation before quote nodes or mobile keyboard dismissal depend on it. RC1-05 then adds quotes on that retained draft. RC1-07 then changes focus and viewport on the same InputBar. RC1-08 waits until RC1-05 has finished ChatView.tsx, because both edit that file. RC1-08 does not wait on the Lexical patch.",
+  "items": [
+    {
+      "id": "RC1-06",
+      "title": "Composer Host admission, draft retention, and prompt retry deduplication",
+      "adaptation": "One ordinary send occupies a sending phase. The editor stays read-only and the draft, quotes, and attachments stay put until the Host accepts. Acceptance clears the draft. Refusal or failure returns the same document to editing. The transcript echo is published only after acceptance. commands.prompt reserves the requestId synchronously before any attachment await and shares that one admission with a concurrent retry.",
+      "chosen": [
+        {
+          "path": "packages/client/ui-conversation/src/client/input/machine.ts",
+          "currentBlob": "910a0a66fec9c122207e41197b4826132777b890",
+          "tagBlob": "16fe7dd034987c10fcad4aa2a97d10fe0ad2b442",
+          "change": "Replace detached enter-time commit with one sending phase. commit-draft runs only when sink settlement is ok. A failed sink leaves the document unchanged. Do not copy the tag file: it also threads quote occurrences. Add those fields in RC1-05, on this phase."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/input/facade.ts",
+          "currentBlob": "9f4a264e46e6f09451d3fb1c7118da8a34ebb63d",
+          "tagBlob": "6306216b1c747189a6579f632aaf7785689b1b66",
+          "change": "Execute the sending-phase effects. Do not clear the editor before the Host result. Keep fork attachment ownership until acceptance."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/contract/input.ts",
+          "currentBlob": "52ec80eda9273b8b2249d282246fa9cb2ff12fae",
+          "tagBlob": "82f030c775471d9cefb855e137652323d26e7dca",
+          "change": "Add the sending phase and sink settlement to the existing input union. Do not import tag-only analytics fields."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/service.ts",
+          "currentBlob": "2ef2309ccf25a26ce042e2cd1b331faa652151b2",
+          "tagBlob": "af19eb7721bba847ea06ed570a1b2a2cb45bb1d0",
+          "change": "Treat Host acceptance, including an inbox row that already carries the requestId, as success. A refusal leaves draft attachments registered. Do not release them on a receipt error after the Host has the message."
+        },
+        {
+          "path": "packages/api/session-controller/src/client/sessions/session.ts",
+          "currentBlob": "284abc5656033356f1f088a621ec9a31c1572600",
+          "tagBlob": "253da9c463c688908d3c6a13555b343a7952f85b",
+          "change": "Publish the local echo and the blank-to-engaging edge only after acceptance. A rejected first prompt leaves the session blank. Keep the current subagent branch that mints a new requestId at the continuable prompt call. Do not copy the tag branch that reuses requestId."
+        },
+        {
+          "path": "packages/api/session-controller/src/client/contract/session.ts",
+          "currentBlob": "2c8f16c4ae452d39a9f8f3582d231fa4cc34e9a9",
+          "tagBlob": "9233ac84cbab35a2e1bc12eee602af03e9f338ff",
+          "change": "Document acceptance versus echo publication on the existing prompt and beginSubmission methods. Do not replace the contract file."
+        },
+        {
+          "path": "packages/api/session-controller/src/client/contract/snapshot.ts",
+          "currentBlob": "161cd858b4310ea1bf62b3b68902e5dbf1271e68",
+          "tagBlob": "78e0c8c8a3cfeedfaad3b277fcac2adf02aaa27a",
+          "change": "Keep pending submissions out of the published snapshot until accepted. The requestId field stays."
+        },
+        {
+          "path": "packages/api/session-controller/src/commands.ts",
+          "currentBlob": "7e900b92aee6e6862d433ecfe03bc83399f75c0c",
+          "tagBlob": "5309872331989824b0f09b97840f913e96f74b8a",
+          "change": "Reserve requestId before resolveAgent returns to the caller and before admitPromptContent. Concurrent calls with the same id share one promise. Success leaves the user message in the inbox or log; a later call returns accepted and does not enqueue again. Failure drops the reservation so one retry can enqueue once. Keep selectionFor for the image check. Do not move source construction to the remote and do not copy the tag prompt."
+        },
+        {
+          "path": "packages/api/session-controller/README.md",
+          "currentBlob": "cfbaff082e26c5188440121433dcf10a9a98fea6",
+          "tagBlob": "3a9dc2cd6be039f165d8c26aa5d386cdb4394323",
+          "change": "State the reservation and that an accepted user message is not removed when a duplicate receipt arrives. Pair README.zh.md and README.i18n.yaml."
+        },
+        {
+          "path": "packages/api/session-controller/README.zh.md",
+          "currentBlob": "672aa4e2a618cd3dbb6fceaab4c935cc257bb816",
+          "tagBlob": "9259bdad17a518af9cfe1827883ee1854eb8af9a",
+          "change": "Pair the English admission paragraph. Do not copy the tag page."
+        },
+        {
+          "path": "packages/api/session-controller/README.i18n.yaml",
+          "currentBlob": "ad559f73cb063005df56e66c4cada6e42713913b",
+          "tagBlob": "8bea04d9dbbb4c69452e75cc9442661caa9b24e2",
+          "change": "Re-record the paired admission paragraph."
+        },
+        {
+          "path": "packages/client/ui-conversation/README.md",
+          "currentBlob": "e7d828ab644919aa6c539678584dcb617a04f032",
+          "tagBlob": "14f54dc2874cb729732c62edf778eff76a48a6e7",
+          "change": "State that the draft remains until Host acceptance. Pair the Chinese page and i18n record in the same change. Do not copy the tag page."
+        },
+        {
+          "path": "packages/client/ui-conversation/README.zh.md",
+          "currentBlob": "dee8624abd72ef61f58069dba97199302825f1aa",
+          "tagBlob": "473e15825e308ac22382f989a27053e203100681",
+          "change": "Pair the English draft-retention paragraph."
+        },
+        {
+          "path": "packages/client/ui-conversation/README.i18n.yaml",
+          "currentBlob": "888c4eabe812e71c29ceb9c0ee21446440c199ff",
+          "tagBlob": "f17358e4b5491decb376112073a55b019997cbca",
+          "change": "Re-record the paired paragraph."
+        }
+      ],
+      "proposedFilenames": [
+        {
+          "path": "packages/api/session-controller/tests/prompt-request-reservation.host.spec.ts",
+          "currentBlob": null,
+          "tagBlob": null,
+          "role": "Two overlapping prompt calls with one requestId enqueue one user message. The second waiter sees the first result. A failed attempt can be retried once. Two different requestIds both enqueue. An id already in the inbox returns accepted and does not add a second message."
+        }
+      ]
+    },
+    {
+      "id": "RC1-05",
+      "title": "Quoting",
+      "adaptation": "A selection becomes one composer quote node. The sent user message is ordinary Markdown blockquote text, one > prefix per line, with no quote metadata and no new session event. The existing projectUserText path renders those spans as a quote preview and still draws session, file, and skill chips. The selection button is one keyed chat slot.",
+      "chosen": [
+        {
+          "path": "packages/client/ui-conversation/src/client/input/editor/keymap.ts",
+          "currentBlob": "e105a1d6c076bdeb21e0d0967cd08165de267dca",
+          "tagBlob": "a2573fdefc9ad1c76ab2130ffb6aed7ac86e7f89",
+          "change": "Remove or exit a quote node from the existing keymap. Do not replace the file."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/input/editor/runtime.ts",
+          "currentBlob": "7cbac8676b05c2b1c053dde4e99f2367b5c3b1eb",
+          "tagBlob": "f162943b6f150ee4b0f96bd91f33abf67abe4c49",
+          "change": "Insert and delete quote nodes on the current editor. A failed send keeps them because RC1-06 has not cleared the draft."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/input/editor/projection.ts",
+          "currentBlob": "f48a5b595ddf3e89d67047d3e82237d202c30b9d",
+          "tagBlob": "dacc465d3bcd09279821a0eca23fa592d34c6a81",
+          "change": "Project quote spans into the draft snapshot the serializer reads. Do not copy the tag projection."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/contract/draft-editor.ts",
+          "currentBlob": "c2426e7a365e560d6a9cb3009a3668be81280daf",
+          "tagBlob": "b305bb3a3c5192ee69ad753432d66108e96bd208",
+          "change": "Add the quote span to the existing draft snapshot. Keep current chip and attachment fields."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/draft.ts",
+          "currentBlob": "90efabe5e755a145c7f4f120aa6012267856d409",
+          "tagBlob": "e4cee855b2c7d9d9493200102b7c5f1d1a0d7322",
+          "change": "Restore quote nodes with the retained draft. Do not add browser persistence."
+        },
+        {
+          "path": "packages/client/ui-primitives/src/user-text.tsx",
+          "currentBlob": "01289a4334f8fb5d01c6916d245a0b889ae3aace",
+          "tagBlob": "150448313c20ebd7baec8b3359f94bede796a56b",
+          "change": "Decorate recognized blockquote spans inside the current function. Keep session wire forms, bare mentions, file paths, and loaded skill tokens. Do not replace this file with the tag copy."
+        },
+        {
+          "path": "packages/client/ui-primitives/src/index.ts",
+          "currentBlob": "a76b58d346590b185ec32fa2a07b618427c640ec",
+          "tagBlob": "13f9986965f26d359f46224b16ef1cf5547b26ec",
+          "change": "Export QuotePreview and formatQuoteText from the primitives barrel. Do not copy the tag barrel."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/apply.ts",
+          "currentBlob": "be93f483a99fe70873b459ecd95cf80d5bd7d583",
+          "tagBlob": "d3a6df8b96c7cfd94ad9325c417551e3bab7d5cb",
+          "change": "Declare one keyed child conversation.chat.text-interaction. Do not copy the tag apply."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/contract/slots.ts",
+          "currentBlob": "5c7a8e37cda0cc228361aec2724c14d1ba9ab340",
+          "tagBlob": "a87960174743b1f328aa286fccadab1dc02196d2",
+          "change": "Add that one child to the chat slot map. Do not import the tag slot map."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/chat/ChatView.tsx",
+          "currentBlob": "460f98b014c54660ee8c04a5b94ec122ae7da456",
+          "tagBlob": "e265ab635f61bfa7d1d396a8ad37d9ef422d00a5",
+          "change": "Render the quote action only while a transcript selection is active. RC1-08 later adds the collapse-timing read to this same file."
+        },
+        {
+          "path": "packages/client/ui-primitives/README.md",
+          "currentBlob": "9ce34c70955b33f6435882be2ebf3ebc522a8187",
+          "tagBlob": "1e38950360b6e61e68cd16cd4bc644c2d9cbadb0",
+          "change": "State that formatQuoteText emits ordinary Markdown and that projectUserText still owns reference chips. Pair README.zh.md and README.i18n.yaml."
+        },
+        {
+          "path": "packages/client/ui-primitives/README.zh.md",
+          "currentBlob": "92a8de27b0eb986b80744d6b29773d595514e070",
+          "tagBlob": "d7c8b68585d2228f4c69b8b452a6e1d024e8bf3f",
+          "change": "Pair the English quote paragraph."
+        },
+        {
+          "path": "packages/client/ui-primitives/README.i18n.yaml",
+          "currentBlob": "2a527cf24920c74407a82fe405104e7395bd854e",
+          "tagBlob": "6bdac6f1ab98088f697d3e26030e47eea6e9dce0",
+          "change": "Re-record the paired paragraph."
+        }
+      ],
+      "proposedFilenames": [
+        {
+          "path": "packages/session/message-quotes/package.json",
+          "currentBlob": null,
+          "tagBlob": "9e0b168bf769e13b5a286cbe7694f223c769c6a0",
+          "role": "New workspace package. No new third-party dependency. Client inject stays session-controller, locale, ui-chat, ui-conversation, and ui-renderer. Drop locale files other than en and zh from the published files list."
+        },
+        {
+          "path": "packages/session/message-quotes/src/index.ts",
+          "currentBlob": null,
+          "tagBlob": "c6974f8db04908a79767a57d25eb753698986e07",
+          "role": "Empty Host apply. The browser entry is the client export."
+        },
+        {
+          "path": "packages/session/message-quotes/src/client/index.ts",
+          "currentBlob": null,
+          "tagBlob": "e7a9348052797d7fcde28a9b0c26094a31982244",
+          "role": "Register en and zh only. Register the selection slot. Do not register ja, es, fr, de, ru, or pt. Do not call a userText service; that service is absent here."
+        },
+        {
+          "path": "packages/session/message-quotes/src/client/locales.ts",
+          "currentBlob": null,
+          "tagBlob": "4d704e803e65f339c893c2db3893ea45f84cd209",
+          "role": "Keep quote.add as \u5f15\u7528\u6587\u672c and Quote text. Omit the other dictionaries in the tag file."
+        },
+        {
+          "path": "packages/session/message-quotes/locale/en.json",
+          "currentBlob": null,
+          "tagBlob": "dd73eca27abcc08ff50c7688ebbf03f6fbba5b04",
+          "role": "Package meta title and description."
+        },
+        {
+          "path": "packages/session/message-quotes/locale/zh.json",
+          "currentBlob": null,
+          "tagBlob": "e739f21ccf8160b2aa9b98b9e15693a30ef0aaa8",
+          "role": "Package meta \u6d88\u606f\u5f15\u7528."
+        },
+        {
+          "path": "packages/session/message-quotes/src/client/quote-text.ts",
+          "currentBlob": null,
+          "tagBlob": "ac9768e9b9c597cef46db9536815a0f75367e156",
+          "role": "Recognize explicit blockquote lines with up to three leading spaces. No lazy continuation and no fenced-code parsing."
+        },
+        {
+          "path": "packages/session/message-quotes/src/client/QuoteSelection.tsx",
+          "currentBlob": null,
+          "tagBlob": "431628ac9147271d7a46dd2cebdb1bf21bda3bcd",
+          "role": "Quote-text button. Hidden when the session is removed or the subagent is not a live continuable child. Inserts into the current composer."
+        },
+        {
+          "path": "packages/session/message-quotes/src/client/QuoteSelection.module.css",
+          "currentBlob": null,
+          "tagBlob": "66eda4cfe68b00264b5500d58e3398d0a46c6cf5",
+          "role": "Selection button. Use the shared floating-surface tokens."
+        },
+        {
+          "path": "packages/session/message-quotes/README.md",
+          "currentBlob": null,
+          "tagBlob": "60ecd388940322920add25f314567db972f17072",
+          "role": "Model Experience: the model sees ordinary blockquote lines. Adapt the page so it does not claim a userText registry this tree does not have."
+        },
+        {
+          "path": "packages/session/message-quotes/README.zh.md",
+          "currentBlob": null,
+          "tagBlob": "91d95c41652a980a7e73c674e50064815ba845f5",
+          "role": "Chinese pair."
+        },
+        {
+          "path": "packages/session/message-quotes/README.i18n.yaml",
+          "currentBlob": null,
+          "tagBlob": "8d01daa02566f0486327d050a9bcf0c8393a480b",
+          "role": "Pairing record for the adapted pages."
+        },
+        {
+          "path": "packages/session/message-quotes/tsconfig.json",
+          "currentBlob": null,
+          "tagBlob": "51efa3354327026e7815ea864eba6035c20e7211",
+          "role": "Client face. Add the aggregate reference when the package is created. This candidate does not edit the aggregate."
+        },
+        {
+          "path": "packages/session/message-quotes/tsdown.config.ts",
+          "currentBlob": null,
+          "tagBlob": "71d5bd77f85a1bc0378ea441b06e7581618ee777",
+          "role": "Client bundle. Do not run the bundler in this candidate."
+        },
+        {
+          "path": "packages/session/message-quotes/tests/quote-text.client.spec.ts",
+          "currentBlob": null,
+          "tagBlob": "86f30b093ad41fe7958adb0247edc6caf8175d1a",
+          "role": "Recognition, including a negative case for a greater-than sign that is not a line marker."
+        },
+        {
+          "path": "packages/session/message-quotes/tests/quote-selection.client.spec.tsx",
+          "currentBlob": null,
+          "tagBlob": "1f773bfa83e8cd43ec1114d99009fcc116f04689",
+          "role": "Button inserts a quote and refuses a removed session."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/input/editor/QuoteNode.tsx",
+          "currentBlob": null,
+          "tagBlob": "ecd42af89ddcfcdf6e4bde3ff781c943ddcfba51",
+          "role": "Atomic composer node. Removal label comes from the locale seat. Not a public package export."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/input/prompt.ts",
+          "currentBlob": null,
+          "tagBlob": "548256599cd291692084c6217de31bc537e6b2b2",
+          "role": "Serialize quote nodes to Markdown with a blank line between quote and surrounding text. Quoted reference text stays text; it does not become a new chip gesture."
+        },
+        {
+          "path": "packages/client/ui-primitives/src/QuotePreview.tsx",
+          "currentBlob": null,
+          "tagBlob": "4cc56d2cec4a96233a3ba2e13737c3bbaa7871f8",
+          "role": "Plain-text preview of the quoted excerpt, including session labels, with one remove control in the editor."
+        },
+        {
+          "path": "packages/client/ui-primitives/src/markdown/quote-text.ts",
+          "currentBlob": null,
+          "tagBlob": "603855d624c202299143906dc913697d293d4c30",
+          "role": "formatQuoteText. One > prefix per line."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/chat/text-selection.ts",
+          "currentBlob": null,
+          "tagBlob": "bc3ae4dec02dbe82c48cf6b9f628b7db5c4e51f8",
+          "role": "DOM selection geometry for the quote button. Do not add a second selection owner."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/chat/text-interaction.ts",
+          "currentBlob": null,
+          "tagBlob": "f497b66952d78d7a61970ef47a81ab0749fcff47",
+          "role": "Open the quote slot for an active selection and close it when the selection clears."
+        }
+      ]
+    },
+    {
+      "id": "RC1-07",
+      "title": "Mobile and tablet keyboard and viewport input",
+      "adaptation": "Phone and tablet detection, focus after send, and caret placement against the visual viewport. A CSS width rule is not this item. The Lexical scroll patch is a root metadata request.",
+      "chosen": [
+        {
+          "path": "packages/client/ui-primitives/src/focus.ts",
+          "currentBlob": "bc7e5a372a89e2c1502b12b787bdf08884af0de3",
+          "tagBlob": "c2c107acef9b085db313fbeb6026e724d50f233b",
+          "change": "Add isMobileDevice. True for Android, iPhone, iPad, and iPod user agents, and for MacIntel with more than one touch point. Cache until reload. Keep focusWithoutRing."
+        },
+        {
+          "path": "packages/client/ui-primitives/src/index.ts",
+          "currentBlob": "a76b58d346590b185ec32fa2a07b618427c640ec",
+          "tagBlob": "13f9986965f26d359f46224b16ef1cf5547b26ec",
+          "change": "Export isMobileDevice. This is the same barrel edit as RC1-05; do it once."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/skeleton/InputBar.tsx",
+          "currentBlob": "031413132b461b76c8632a06dfbdadd2d5f38dd9",
+          "tagBlob": "892a41022331f529188cbbed9221b89d7f6d62ad",
+          "change": "Skip automatic editor focus on a mobile device. After an accepted send, move focus to the composer card with preventScroll so the virtual keyboard does not reopen. A refused send leaves focus and text in the editor. Depends on the RC1-06 sending phase."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/input/editor/view-binding.ts",
+          "currentBlob": "f42b3a42be3a93df943ee7d037232614b0f5b8aa",
+          "tagBlob": "9018592b8be81062442c37fe9b6847ec983e8842",
+          "change": "Add installDraftKeyboardDismissal. It runs only after the draft is cleared and only when the editor itself held focus."
+        },
+        {
+          "path": "packages/client/ui-primitives/src/useAnchoredPosition.ts",
+          "currentBlob": "f87e4d06975ced7bc10484d70741a6f8178814a6",
+          "tagBlob": "61a891e5a98212571162efa58183d72e8b18b4a2",
+          "change": "Clamp an open panel to visualViewport offset and size, and listen to that viewport's scroll and resize. Keep the current top and bottom placement. Do not copy the tag hook."
+        },
+        {
+          "path": "packages/client/ui-conversation/tests/input-bar.client.spec.tsx",
+          "currentBlob": "3b025155ebb031ac37b46c96bb5bfa8cdc55e80c",
+          "tagBlob": "bf3f83e1336b6285278b68e8e9692bf0c76e4487",
+          "change": "Cover mobile mount, accepted-send focus move, and refused-send retention. Do not replace the file."
+        },
+        {
+          "path": "packages/client/ui-primitives/tests/use-anchored-position.client.spec.tsx",
+          "currentBlob": "a3083af168b90b38243ef3173cd584c211db786f",
+          "tagBlob": "df02d5a43ad9ce9023cc43b3d9183f64d29facbd",
+          "change": "A visual viewport offset moves the panel. A desktop layout viewport case still clamps."
+        }
+      ],
+      "proposedFilenames": [
+        {
+          "path": "packages/client/ui-conversation/tests/editor-viewport.client.spec.ts",
+          "currentBlob": null,
+          "tagBlob": "b000350885517c14e5de90607608151eabfcef8c",
+          "role": "Stub visualViewport. A caret already above the keyboard does not call scrollBy. A caret below it scrolls once. Adapt the fixture to the fork editor if QuoteNode labels are not present yet."
+        },
+        {
+          "path": "patches/lexical@0.49.0.patch",
+          "currentBlob": null,
+          "tagBlob": "9581885353570681024d139372ed6f62868afdd1",
+          "role": "In scrollIntoViewIfNeeded, use visualViewport.pageTop minus scrollY instead of offsetTop. Root owns pnpm-workspace.yaml and the lockfile. This candidate does not edit them. lexical stays ^0.49.0."
+        },
+        {
+          "path": "apps/web/tests/composer-focus.e2e.ts",
+          "currentBlob": null,
+          "tagBlob": "111f21947223e112b7805ab153b5acfe24f8492c",
+          "role": "Keyless built-client case. Typing while offsetTop tracks scrollY keeps the composer rect and page scroll. Root runs it after the integrated build."
+        }
+      ]
+    },
+    {
+      "id": "RC1-08",
+      "title": "Trajectory and subcall folding, folded replies, sidebar and view More menus",
+      "adaptation": "Three independent trajectory fold sets, a Host profile choice for which assistant replies stay visible when a turn folds, and overflow More menus for view tabs and sidebar panels. Fold state in the trajectory view is component state. Reply choices are profile settings. Neither is a session event.",
+      "chosen": [
+        {
+          "path": "packages/client/ui-trajectory/src/client/TrajectoryView.tsx",
+          "currentBlob": "6c2cd98ec8de072f940a2d2fae627dbcd1ca409b",
+          "tagBlob": "3c70561dad8b2b3b5cc48e28b819388fca6263dc",
+          "change": "Hold collapsed turn ids, assistant tool-call ids, and nested tool ids in component state. Do not persist them and do not copy the tag view."
+        },
+        {
+          "path": "packages/client/ui-trajectory/src/client/TrajectoryToolbar.tsx",
+          "currentBlob": "c3861f03a95f96183ca22e2e67fe7f432f3c353f",
+          "tagBlob": "983038054ea6c4a457e029e5fc86d9d8e867ab6d",
+          "change": "Add expand-all and collapse-all for subcalls beside the existing fold controls. The controls stay usable in a narrow pane."
+        },
+        {
+          "path": "packages/client/ui-trajectory/src/client/TrajectoryTable.tsx",
+          "currentBlob": "9eeeb5c2abb0e62994ae0031be32f21a4d806c06",
+          "tagBlob": "6b7acc0dca2d1df106f7b9183cbebe7d4a743382",
+          "change": "Fold rows after the first in a turn, an assistant's tool calls, and a tool's nested calls from those three sets. Do not copy the tag table."
+        },
+        {
+          "path": "packages/client/ui-trajectory/src/client/trajectory-virtual-rows.ts",
+          "currentBlob": "0b968197a612adc6192125c16d7be7902b1baab5",
+          "tagBlob": "26d0cf36c58a05a150171df360fc76ba22378bb3",
+          "change": "Omit folded rows from the virtual list. Expanding restores them in ledger order."
+        },
+        {
+          "path": "packages/client/ui-trajectory/src/client/locales.ts",
+          "currentBlob": "f131be1f23bb148e13eec6dcadedfdfd8c2f654d",
+          "tagBlob": "8ab3d3c0b531579960e171b79d6dbee7c50dcddf",
+          "change": "Add en and zh only: Subcalls / \u5b50\u8c03\u7528, Expand subcalls / \u5c55\u5f00\u6240\u6709\u5b50\u8c03\u7528, Collapse subcalls / \u6536\u8d77\u6240\u6709\u5b50\u8c03\u7528. Do not copy the tag locale module."
+        },
+        {
+          "path": "packages/client/ui-trajectory/README.md",
+          "currentBlob": "e960d2300ce6a99c0ec3505856b6b7253cd05760",
+          "tagBlob": "265c6fffd96e9cf9c384dd87d64c18009356aeb8",
+          "change": "State the three fold sets and that they are not saved. Pair README.zh.md and README.i18n.yaml."
+        },
+        {
+          "path": "packages/client/ui-trajectory/README.zh.md",
+          "currentBlob": "060daef60e861ce8cb5de80670dcb3fe2d64ed1e",
+          "tagBlob": "bed828aa7f11d0e5fb687ada53b5a23ddf62251a",
+          "change": "Pair the English fold paragraph."
+        },
+        {
+          "path": "packages/client/ui-trajectory/README.i18n.yaml",
+          "currentBlob": "3d968ec180f081e5b0d055539129d617aa751d64",
+          "tagBlob": "262d052c0b45afd2be30498538b97b0882800f26",
+          "change": "Re-record the paired paragraph."
+        },
+        {
+          "path": "packages/client/ui-trajectory/tests/views.client.spec.tsx",
+          "currentBlob": "3d5f46716c53099e10b3b6724e7eb766303ebb26",
+          "tagBlob": "9b61aaef033d24c8e0105a254ea9b3a09c596a09",
+          "change": "Subcall collapse hides nested rows and expand restores them. A turn fold does not force the subcall set."
+        },
+        {
+          "path": "packages/client/ui-trajectory/tests/table.client.spec.tsx",
+          "currentBlob": "7d054adc9b4ccf042feed9f01f383a54641d58a2",
+          "tagBlob": "802d54e5f7617ecdbdfa1eae0d50fcb06f0d3933",
+          "change": "Folded rows leave the virtual list. Do not replace the file."
+        },
+        {
+          "path": "packages/client/ui-chat/src/chat-settings.ts",
+          "currentBlob": "c4c6ce3b954749f01e9b4c99cc4e40920b65a95c",
+          "tagBlob": "ae9333ba37a7eb330019d10df5ff9d84b43c7f26",
+          "change": "Add ui-chat.collapseTiming with completion and next-input, default completion, and ui-chat.foldedReplies with all and final, default all. A missing value does not write the default."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/presentation-policy.ts",
+          "currentBlob": "5b3ee1a7d54d852398822ea44b94f03fff711489",
+          "tagBlob": "e1ff9ac04293c78965a6c9b068aaee63234665cd",
+          "change": "Carry collapseTiming and foldedReplies on the existing policy object. Verbose still sets foldCompletedTurns false."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/transcript-view.ts",
+          "currentBlob": "a9ed31f0e4369a1c514d088d8a0a3993da54813d",
+          "tagBlob": "66b8b7a53b4dbc5928a4853b8635b1bf966ddcf0",
+          "change": "Read and write the two fields through the current Host profile settings. Do not add a session projection."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/settings/TranscriptViewRow.tsx",
+          "currentBlob": "14d2d587033fd6a7946434108370a6910a8572fd",
+          "tagBlob": "ee0d5de8369ee371a2581be3936c40fd9bd4bf59",
+          "change": "Add the two settings under Work details. Hide folded replies while verbose is selected. en and zh copy only."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/locale.ts",
+          "currentBlob": "4c4bfa7e12648a55a70eef435a490620938488c1",
+          "tagBlob": "6f0e6eda52ccf1938a75179e72ff5e0087b38e69",
+          "change": "Add the en and zh strings for collapse timing and replies after collapse. Do not add de, es, fr, ja, pt, or ru."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/chat/AssistantNodeView.tsx",
+          "currentBlob": "76ce74ef0294f7397cb5cb765edabaf23d2f09d9",
+          "tagBlob": "ad5963c093ff4a493480d768c3cf984de0bdb074",
+          "change": "When foldedReplies is all, keep every assistant reply visible while the process folds. When it is final, keep the final answer."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/chat/ChatNodeSeat.tsx",
+          "currentBlob": "f2269daf9d93fb64065e5cf3de6301342ab4349e",
+          "tagBlob": "4efdb94142b591fea37e5be720dbe23d44135ba8",
+          "change": "Same reply rule for a seat that is not the last reply. A turn whose range is only replies offers no collapse control."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/chat/ChatGroupSeat.tsx",
+          "currentBlob": "443cb0407a3eb0b6b7e22d2b8be315d4eecd3155",
+          "tagBlob": "f219a5ae56002c5a9a4f0805f79410572c5364be",
+          "change": "completion folds immediately. next-input waits for the following send. Do not copy the tag seat."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/chat/ChatView.tsx",
+          "currentBlob": "460f98b014c54660ee8c04a5b94ec122ae7da456",
+          "tagBlob": "e265ab635f61bfa7d1d396a8ad37d9ef422d00a5",
+          "change": "After RC1-05, add the collapse-timing read. Keep the quote slot mount from RC1-05."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/conversation-nodes/README.md",
+          "currentBlob": "3621a86e32f350f5987b55ce60aab7e8aab5d746",
+          "tagBlob": "f3cc0552bee5a7bc5e23aaac4115064cdcd34712",
+          "change": "State both settings, their defaults, and that they are Host profile settings. Pair the Chinese page and i18n record."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/conversation-nodes/README.zh.md",
+          "currentBlob": "e2d4c62742b76ce31cb02b4bd4841f8d57230435",
+          "tagBlob": "21ecd7226bc5d47cdf60df79d865b315be998766",
+          "change": "Pair the English settings paragraph. Use \u5b8c\u6210\u65f6\u6536\u8d77, \u4e0b\u6b21\u53d1\u9001\u65f6\u6536\u8d77, \u5168\u90e8\u56de\u590d, and \u4ec5\u6700\u7ec8\u56de\u7b54."
+        },
+        {
+          "path": "packages/client/ui-chat/src/client/conversation-nodes/README.i18n.yaml",
+          "currentBlob": "87b6c2526a5613a104d501c1c324fe8f75ce869a",
+          "tagBlob": "16edc1228e03759771a1bde509fbfcd9d9328740",
+          "change": "Re-record the paired paragraph."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/skeleton/ConversationSession.tsx",
+          "currentBlob": "f1179cf32b614f0b4343446465f2b1836bb3f044",
+          "tagBlob": "14602cbca0e1f54140aaaffd986444324555a4ab",
+          "change": "When view tabs overflow, put the rest in one More menu labeled \u66f4\u591a\u4f1a\u8bdd\u89c6\u56fe / More conversation views. A tab tooltip appears only when the label estimate exceeds the cell. Do not copy the tag header."
+        },
+        {
+          "path": "packages/client/ui-conversation/src/client/locales.ts",
+          "currentBlob": "5f978ed0c8d6666ee4daa7f4fea9940e38b83cd3",
+          "tagBlob": "2918c177a0476a159daea567ad496c86c96ce958",
+          "change": "Add session.moreViews in en and zh only. Do not copy the tag locale module."
+        },
+        {
+          "path": "packages/client/ui-sidebar/src/client/SidebarRoot.tsx",
+          "currentBlob": "1182782cae2ff6de91a6bbab14c2e741bd1059b6",
+          "tagBlob": "f03ecc32aae8728aa544307ced0e44cb49b3c999",
+          "change": "When panel rows overflow, put the rest in one More menu. Keep the whale rail, the workspace foot, and every current panel registration. Do not copy the tag sidebar."
+        },
+        {
+          "path": "packages/client/ui-sidebar/README.md",
+          "currentBlob": "1986c500b7c1ebe2317d2e54b2ba9e05624cedb1",
+          "tagBlob": "8783f2622c341d0d73ddca7139c175156ce87088",
+          "change": "State the overflow menu. Pair README.zh.md and README.i18n.yaml."
+        },
+        {
+          "path": "packages/client/ui-sidebar/README.zh.md",
+          "currentBlob": "f017442a1912c59295a2f61a427767363aa0f73f",
+          "tagBlob": "15acbfc85965d2345024d1a0a7e29d0d02482bf7",
+          "change": "Pair the English overflow paragraph."
+        },
+        {
+          "path": "packages/client/ui-sidebar/README.i18n.yaml",
+          "currentBlob": "fb2545b6867f39f37870089b14a51e83818cf41e",
+          "tagBlob": "50458ab3dacc2ac54470cf839824edfabe2b2830",
+          "change": "Re-record the paired paragraph."
+        }
+      ],
+      "proposedFilenames": []
+    }
+  ],
+  "overlap": [
+    {
+      "paths": [
+        "packages/client/ui-conversation/src/client/input/machine.ts",
+        "packages/client/ui-conversation/src/client/input/facade.ts",
+        "packages/client/ui-conversation/src/client/contract/input.ts",
+        "packages/client/ui-conversation/src/client/contract/draft-editor.ts"
+      ],
+      "owners": [
+        "RC1-06",
+        "RC1-05"
+      ],
+      "rule": "RC1-06 adds the sending phase. RC1-05 adds quote fields to the attempt that phase already freezes."
+    },
+    {
+      "paths": [
+        "packages/client/ui-conversation/src/client/skeleton/InputBar.tsx",
+        "packages/client/ui-conversation/src/client/input/editor/view-binding.ts"
+      ],
+      "owners": [
+        "RC1-06",
+        "RC1-07"
+      ],
+      "rule": "Keyboard dismissal runs after an accepted clear. It does not run while a refused draft is still editing."
+    },
+    {
+      "paths": [
+        "packages/client/ui-primitives/src/index.ts"
+      ],
+      "owners": [
+        "RC1-05",
+        "RC1-07"
+      ],
+      "rule": "One barrel edit exports QuotePreview, formatQuoteText, and isMobileDevice."
+    },
+    {
+      "paths": [
+        "packages/client/ui-chat/src/client/chat/ChatView.tsx"
+      ],
+      "owners": [
+        "RC1-05",
+        "RC1-08"
+      ],
+      "rule": "RC1-05 mounts the quote slot. RC1-08 adds the collapse-timing read afterward."
+    }
+  ],
+  "slots": [
+    {
+      "item": "RC1-05",
+      "name": "conversation.chat.text-interaction",
+      "kind": "keyed",
+      "scope": "session",
+      "key": "quote",
+      "rule": "One quote action. Do not add conversation.user.text or a second text-interaction parent."
+    },
+    {
+      "item": "RC1-08",
+      "name": "conversation.view",
+      "rule": "Keep the current list. Overflow goes to the More menu. Do not add a view."
+    },
+    {
+      "item": "RC1-08",
+      "name": "sidebar.panellist",
+      "rule": "Keep every current registration, including team, files, ask data, ask knowledge, and schedules. Overflow goes to one More menu. Do not add a panel."
+    }
+  ],
+  "modelVisible": {
+    "RC1-05": "The accepted user message text contains ordinary Markdown blockquote lines. Session references and skills still apply to that text. No new event type and no quote field on the message.",
+    "RC1-06": "The accepted message is the existing user message with source kind user and rpcId. A refused prompt adds no message. A duplicate requestId does not add a second message.",
+    "RC1-07": "No model-visible change.",
+    "RC1-08": "No model-visible change. Folded rows and hidden replies are presentation. The session log still holds the full text."
+  },
+  "logged": {
+    "RC1-05": "Logged only as the existing user/message text block.",
+    "RC1-06": "Logged only when followup or steer accepts the message. The reservation is process memory.",
+    "RC1-07": "Nothing.",
+    "RC1-08": "Nothing. collapseTiming and foldedReplies are Host profile settings. Trajectory fold sets are component state."
+  },
+  "persistence": {
+    "sessionFormat": "unchanged",
+    "sqlite": "unchanged",
+    "questionAnswers": "session-decisions keeps the canonical requestId and the full human answer across restart. This candidate does not edit that store.",
+    "drafts": "Browser editor state. A failed admission keeps the draft. Restart does not invent a draft from a message that was never accepted.",
+    "settings": "ui-chat.collapseTiming and ui-chat.foldedReplies. Missing values read as completion and all and are not written on open."
+  },
+  "dependencies": {
+    "newNpm": [],
+    "newWorkspacePackage": "@deepseek-ai/dsh-message-quotes",
+    "rootOwnedRequests": [
+      "Add one client row id message-quotes for @deepseek-ai/dsh-message-quotes in packages/bundle/web-app/cordis.patch.yml. Current blob 15f79204a674ede2efa7dced2d00fdab5b5515d5. Do not copy the tag patch d751fcc46286ce101da2a26d782bbff7d7de6aa8.",
+      "Add the workspace dependency to packages/bundle/web-app/package.json. Working tree blob 690bf50f92d6396332e03d54a7b5d4b7e798f654 is dirty. Do not replace the file.",
+      "Add the same dependency to apps/web/package.json. Current blob fe5bc571a15f29f681ca9d2febbfaf14dcc3d6de.",
+      "Register the client tsconfig aggregate reference.",
+      "Add patches/lexical@0.49.0.patch to pnpm patchedDependencies. pnpm-workspace.yaml current blob d21878f5377329e640916d6d3f45eed5a0101b10. Root owns the lockfile. Do not bump lexical past ^0.49.0."
+    ],
+    "newExports": [
+      "isMobileDevice from @deepseek-ai/dsh-client-ui-primitives",
+      "QuotePreview and formatQuoteText from @deepseek-ai/dsh-client-ui-primitives",
+      "message-quotes Host apply and client apply, inject, and name"
+    ],
+    "forbiddenExports": [
+      "QuoteNode from the ui-conversation client entry",
+      "A userText or interactions service on ui-conversation",
+      "dsh.client.external for message-quotes",
+      "submission-analytics and @deepseek-ai/dsh-client-product-analytics"
+    ]
+  },
+  "retainUnchanged": [
+    {
+      "path": "packages/api/session-controller/src/index.ts",
+      "currentBlob": "f56f1559764af8e28734164f541cea4b5318e5a0",
+      "tagBlob": "8e81986f0bc9f4990003c0f07d065e6b0b77543a",
+      "reason": "Dirty M1 file. Prompt stays on commands.prompt. Do not take the tag remote, principal source, or attachment read that skips session history."
+    },
+    {
+      "path": "packages/api/session-controller/src/client/sessions/session.ts",
+      "currentBlob": "284abc5656033356f1f088a621ec9a31c1572600",
+      "tagBlob": "253da9c463c688908d3c6a13555b343a7952f85b",
+      "reason": "The continuable branch mints a new requestId. The tag reuses the caller id, and packages/subagent/subagent/src/index.ts awaits admitPromptContent with no reservation. Reusing the id without that reservation would enqueue duplicates. The subagent file is dirty M1, blob 03cd45f97eb15e17943fd1949df2adc9c5888188.",
+      "scopeNote": "subagent requestId"
+    },
+    {
+      "path": "packages/experimental/session-decisions/src/service.ts",
+      "currentBlob": "4795a4c630f3e74fc056cbd17bcf8322c5d1f2f9",
+      "tagBlob": null,
+      "reason": "Fork question answers. Dirty M1 file. Keep reserveAnswer, the stored requestId, and the full human answer across restart."
+    },
+    {
+      "path": "packages/client/ui-user-questions/src/client/QuestionComposer.tsx",
+      "currentBlob": "33bbcbec0aa3b887e65c3636ba5e5215bfeb7cee",
+      "tagBlob": "a24372c9906cfb6b6d2c649d4869ada221be1512",
+      "reason": "Keep the fork question card. Do not import the tag answered-batch bubble rewrite."
+    },
+    {
+      "path": "packages/experimental/client-ui-agent-team/src/client/index.ts",
+      "currentBlob": "591c40e52245860cf1d9d85f23b97f84e765fdf3",
+      "tagBlob": "a4896c82afa067ca98c056cf1b2c7672e5115a2e",
+      "reason": "Keep the team pod. Do not replace it with the tag client."
+    },
+    {
+      "path": "packages/session-query/session-log-export/src/markdown.ts",
+      "currentBlob": "4ebd1d6be455679b8f6a9ad7285a7c4c3a54961d",
+      "tagBlob": "4ebd1d6be455679b8f6a9ad7285a7c4c3a54961d",
+      "reason": "Whole-history Markdown already matches the tag blob. Do not edit it here."
+    },
+    {
+      "path": "packages/session-query/session-log-export/src/archive.ts",
+      "currentBlob": "9ff6416689a6b43c635e6279235c9c84bf149713",
+      "tagBlob": "9ff6416689a6b43c635e6279235c9c84bf149713",
+      "reason": "ZIP export already matches the tag blob."
+    },
+    {
+      "path": "packages/session-query/session-log-export/src/client/HeaderAction.tsx",
+      "currentBlob": "42d2553d446c7ac3bea75222dfabe10ac77d38d9",
+      "tagBlob": "fcf0cfd8624d93876eec4150cf4649642662aa41",
+      "reason": "Dirty from the Markdown-copy work. Do not replace the header menu."
+    },
+    {
+      "path": "packages/session-query/session-log-export/src/index.ts",
+      "currentBlob": "98d25070d6f5d65be2925753d7e62e0bd766868e",
+      "tagBlob": "5fe99dce5f64b6c9ce1e8dfaa10e50160b5d8f50",
+      "reason": "Dirty. Leave the export host on its current working tree."
+    },
+    {
+      "path": "packages/client/connection/src/client/index.ts",
+      "currentBlob": "e9d80a64f4e622939b60af70a4cdd785d47e53ea",
+      "tagBlob": "501b7280adba3e81497f5027edd3b1db575cf55b",
+      "reason": "Keep __DSH_TRANSPORT__ and the native picker bridge."
+    },
+    {
+      "path": "packages/client/ui-chat/src/client/chat/MessageItem.tsx",
+      "currentBlob": "9005150af0d6449e744ec9ea2402673d9c1fd0c2",
+      "tagBlob": "f9551a8698068bac3e08681a5b75e2e0b1d284fd",
+      "reason": "User bubbles already call projectUserText. Quote decoration stays in that function."
+    }
+  ],
+  "excluded": [
+    "Tag locales de, es, fr, ja, pt, and ru",
+    "packages/client/ui-conversation/src/client/user-text and the userText registry",
+    "packages/client/ui-conversation/src/client/conversation/interaction-registry.ts",
+    "packages/client/ui-conversation/src/client/input/submission-analytics.ts",
+    "Tag QuestionReplyView and UserMessageBubble replacement of the question card",
+    "Whole copies of ui-conversation, ui-chat, ui-sidebar, ui-trajectory, or ui-primitives",
+    "Stage C, a second task board, OAR, CUA, Forge, account, analytics, and release-feed defaults",
+    "Electron desktop and any native pin move",
+    "A new session event, session format bump, or SQLite schema bump",
+    "Intake registry edits, dependency installs, generator writes, and source emits"
+  ],
+  "acceptance": {
+    "notRun": "This candidate did not run tests, browsers, builds, or recorders.",
+    "RC1-06": {
+      "unit": [
+        "pnpm exec vitest run packages/api/session-controller/tests/prompt-request-reservation.host.spec.ts",
+        "pnpm exec vitest run packages/client/ui-conversation/tests/input-matrix.client.spec.tsx packages/client/ui-conversation/tests/draft-document.client.spec.ts packages/api/session-controller/tests/session-pending-submissions.client.spec.ts"
+      ],
+      "keyless": "Adapt apps/web/tests/prompt-admission.e2e.ts from tag blob 7a7b104f652acf9c701e06a6d8f8e1478b70b71b. The message appears after Host acceptance. A refused send leaves the draft.",
+      "negative": [
+        "Two overlapping calls with one requestId produce one inbox message.",
+        "A failed attempt leaves the draft and enqueues nothing.",
+        "A retry after failure enqueues one message.",
+        "A requestId already in the inbox returns accepted and does not add a message.",
+        "An accepted message remains if a later duplicate call returns.",
+        "A queued question answer with its stored requestId remains after restart.",
+        "The continuable composer path still mints a new requestId."
+      ]
+    },
+    "RC1-05": {
+      "unit": [
+        "pnpm exec vitest run packages/session/message-quotes/tests/quote-text.client.spec.ts packages/session/message-quotes/tests/quote-selection.client.spec.tsx",
+        "pnpm exec vitest run packages/client/ui-conversation/tests/draft-document.client.spec.ts"
+      ],
+      "keyless": "Adapt apps/web/tests/rich-text-quotes.e2e.ts from tag blob 91dc43717b15b999710da822542579c3a00586b7. Select text, quote it, send, and read the blockquote back. Root runs the built client.",
+      "negative": [
+        "The logged user message has no quote metadata.",
+        "A greater-than sign inside a line is not a quote.",
+        "Session and skill chips still render outside the quote span.",
+        "A failed send keeps the quote node in the draft.",
+        "ja, es, fr, de, ru, and pt dictionaries are not registered."
+      ]
+    },
+    "RC1-07": {
+      "unit": [
+        "pnpm exec vitest run packages/client/ui-conversation/tests/editor-viewport.client.spec.ts packages/client/ui-conversation/tests/input-bar.client.spec.tsx packages/client/ui-primitives/tests/use-anchored-position.client.spec.tsx"
+      ],
+      "keyless": "pnpm exec vitest run apps/web/tests/composer-focus.e2e.ts against the built client. This is a browser focus and visual-viewport case, not a stylesheet check.",
+      "browser": [
+        "On a phone-sized WebKit page, focus the composer, type, send, and confirm focus leaves the contenteditable after acceptance while the draft is empty.",
+        "Refuse the send and confirm the caret and text stay in the editor.",
+        "Open a composer menu and confirm it stays inside the visual viewport when offsetTop and height change.",
+        "Desktop mount still focuses the editor."
+      ],
+      "negative": [
+        "A media-query CSS change without the focus and scroll cases does not pass.",
+        "The Tauri file picker path in the connection client is unchanged.",
+        "Accepted-send dismissal does not run when the draft still holds a refused message."
+      ]
+    },
+    "RC1-08": {
+      "unit": [
+        "pnpm exec vitest run packages/client/ui-trajectory/tests/views.client.spec.tsx packages/client/ui-trajectory/tests/table.client.spec.tsx",
+        "pnpm exec vitest run packages/client/ui-chat/tests"
+      ],
+      "keyless": "Replay one existing trajectory transcript and one chat transcript. All replies stay visible under the default foldedReplies value. Final answer only hides an intermediate reply and keeps the last one. The question card and team pod still open.",
+      "browser": [
+        "Overflow the view tab row and open More. The active view remains selectable.",
+        "Overflow the sidebar and open More. Team, files, ask data, and ask knowledge remain reachable.",
+        "Collapse subcalls and confirm the parent row stays. Expand restores the nested rows."
+      ],
+      "negative": [
+        "Verbose offers no turn fold.",
+        "A missing settings value does not write collapseTiming or foldedReplies.",
+        "QuestionComposer and the team pod files are unchanged.",
+        "ZIP archive.ts and markdown.ts blobs stay 9ff6416689a6b43c635e6279235c9c84bf149713 and 4ebd1d6be455679b8f6a9ad7285a7c4c3a54961d.",
+        "No second task board, Forge, OAR, CUA, analytics, or account row is added."
+      ]
+    }
+  },
+  "m2ExitFreeze": "m2-exit-source-freeze.json"
+}

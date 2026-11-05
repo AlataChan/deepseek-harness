@@ -23,6 +23,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 An agent uses `lsp` when textual matches are ambiguous or before a change that needs precise definitions, implementations, or references; the tool's prompt guidance tells it to prefer `search`/`read` for ordinary navigation.
@@ -52,6 +53,7 @@ The tool requires a session workspace root (`header.cwd`) with no fallback; abse
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -81,6 +83,7 @@ This section explains the design decisions behind the tool and where the code re
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the model-facing surface to the seam and the provider.
@@ -92,7 +95,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+Each query uses the validated execution directory as its requested language-server workspace; provider-resolved workspace identities still determine result paths. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### System prompt
@@ -168,6 +174,7 @@ These limits define when the tool is a poor fit. They are current package constr
 - **No cross-server completeness promise** — supported servers may return empty or partial results depending on indexing readiness; the tool promises no completeness across languages or servers.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

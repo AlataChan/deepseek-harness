@@ -25,6 +25,25 @@ function startupError(reason: unknown): StartupError {
 }
 
 describe('startup diagnostic files', () => {
+  it('saves the pre-disposal composition through the public startup failure reporter', async () => {
+    const dir = await home()
+    const error = startupError('activation failed')
+    error.composition = {
+      plugins: [{ id: 'waiting', module: 'safe-module', version: '1.0.0', state: 'pending',
+        source: 'file:///safe-profile/cordis.yml', missing: ['requiredService'] }],
+      services: [{ consumer: 'waiting', service: 'requiredService', providers: [] }],
+      omittedPlugins: 2,
+      omittedServices: 3,
+    }
+    await reportStartupFailure(error, { home: dir, version: '1.2.3', profile: 'web' }, () => {})
+    const [file] = await readdir(join(dir, 'logs'))
+    if (file === undefined) throw new Error('Startup report was not saved')
+    const report = await readFile(join(dir, 'logs', file), 'utf8')
+    for (const value of ['composition', 'safe-module', 'requiredService', 'omittedPlugins: 2', 'omittedServices: 3']) {
+      expect(report).toContain(value)
+    }
+  })
+
   it('prints the summary and saved path to stderr by default', async () => {
     const dir = await home()
     const write = vi.spyOn(process.stderr, 'write').mockImplementation((_text, callback?: BufferEncoding | ((error?: Error | null) => void)) => {

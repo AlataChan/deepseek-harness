@@ -23,8 +23,8 @@ const renderImagesStub: RenderMessageImages = ({ images }) => (
 )
 
 function TrajectoryTable(
-  props: Omit<ComponentProps<typeof LocalizedTrajectoryTable>, 't' | 'renderImages'>
-    & { renderImages?: RenderMessageImages },
+  props: Omit<ComponentProps<typeof LocalizedTrajectoryTable>, 't' | 'renderImages' | 'collapsedTools' | 'onToggleTool'>
+    & { renderImages?: RenderMessageImages; collapsedTools?: ReadonlySet<string>; onToggleTool?: (id: string) => void },
 ) {
   const inferred: Array<NonNullable<typeof props.requestNumbers>[number] & { firstIndex: number }> = []
   for (const turn of props.turns) {
@@ -59,6 +59,8 @@ function TrajectoryTable(
   return (
     <LocalizedTrajectoryTable
       renderImages={renderImagesStub}
+      collapsedTools={new Set<string>()}
+      onToggleTool={() => {}}
       {...props}
       requestNumbers={requestNumbers}
       t={t}
@@ -165,6 +167,8 @@ describe('TrajectoryTable', () => {
     const assistant = TURNS[0]!.groups[0]!.cells[0]!
     render(
       <LocalizedTrajectoryTable
+        collapsedTools={new Set<string>()}
+        onToggleTool={() => {}}
         t={tZh}
         renderImages={renderImagesStub}
         turns={TURNS}
@@ -1071,7 +1075,9 @@ describe('TrajectoryTable', () => {
         runningCalls: [],
       }, translate)
       const renderImages = vi.fn<RenderMessageImages>(renderImagesStub)
-      const view = render(<LocalizedTrajectoryTable turns={turns} {...FOLD_PROPS} t={translate} renderImages={renderImages} />)
+      const view = render(<LocalizedTrajectoryTable
+        collapsedTools={new Set<string>()}
+        onToggleTool={() => {}} turns={turns} {...FOLD_PROPS} t={translate} renderImages={renderImages} />)
       fireEvent.click(view.container.querySelector('[data-trajectory-row-key]')!)
       for (const tab of [summaryTab, previewTab]) {
         fireEvent.click(screen.getByRole('tab', { name: tab }))

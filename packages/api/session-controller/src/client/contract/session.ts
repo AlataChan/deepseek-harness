@@ -66,8 +66,8 @@ export interface ISession {
   /** Host-computed projection values by key (the useProjection seat). */
   readonly projections: ProjectionsFace
   /**
-   * Register one local submission echo in `snapshot.pendingSubmissions`,
-   * synchronously, before the caller serializes and sends the prompt. The
+   * Reserve one local submission before serialization. Host acceptance publishes
+   * its echo in `snapshot.pendingSubmissions`; pending admission stays private. The
    * Chat echoes persist until durable admission; transcript identities also
    * wait for the Inbox claim watermark so stale queue rows stay suppressed.
    * Queued echoes retire on queue acceptance. Identified failures retire

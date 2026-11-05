@@ -1,0 +1,37 @@
+{
+  "commit": "f10cfa2ca102715bfc41cea9b60f9741042c7025",
+  "commands": [
+    {
+      "executable": "git",
+      "args": [
+        "show",
+        "f10cfa2ca1:packages/client/ui-primitives/src/focus.ts"
+      ],
+      "path": "packages/client/ui-primitives/src/focus.ts"
+    },
+    {
+      "executable": "git",
+      "args": [
+        "show",
+        "f10cfa2ca1:packages/client/ui-primitives/src/useModalLayer.ts"
+      ],
+      "path": "packages/client/ui-primitives/src/useModalLayer.ts"
+    },
+    {
+      "executable": "git",
+      "args": [
+        "show",
+        "f10cfa2ca1:packages/client/ui-primitives/src/user-text.tsx"
+      ],
+      "path": "packages/client/ui-primitives/src/user-text.tsx"
+    },
+    {
+      "executable": "git",
+      "args": [
+        "show",
+        "f10cfa2ca1:packages/client/ui-sidebar/src/client/SidebarRoot.tsx"
+      ],
+      "path": "packages/client/ui-sidebar/src/client/SidebarRoot.tsx"
+    }
+  ]
+}

@@ -23,6 +23,7 @@ Use `dsh-storage` to keep typed application data durable without adding it to se
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Use this package to give a composition durable, non-session storage: mount it together with backend and domain-form packages, and host-side packages read and write validated records through `ctx.storageDomain`. The hub itself adds nothing observable — it is the meeting point that makes the family work, and everything below is what a composition gets from it.
@@ -60,6 +61,7 @@ With these rows, the `json` backend registers itself and the `domain` data form 
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -76,7 +78,7 @@ The hub is a pure registration table with two faces, designed so backends and da
 
 ### The backend contract
 
-[`src/backend.ts`](src/backend.ts) is the normative contract for backend implementers, checked clause by clause by the shared conformance suite in `tests/contract.ts`. A backend owns exactly one medium and exposes optional data-shape facets; `kv` is the only facet, and opening a unit yields a versioned, globally-singleton schema handle whose single calls are atomic and durable once resolved. Unit and table names must match `UNIT_NAME_RE`; record keys are arbitrary strings that never reach file paths. The unit does not serialize concurrent writes — ordering belongs to the caller — and a stored version that is neither the descriptor version nor, on SQLite, a listed `compatibleVersions` entry rejects `version-mismatch` (no migration; a listed SQLite stamp and its rows stay). JSON `single` reads stay exact-version.
+[`src/backend.ts`](src/backend.ts) is the normative contract for backend implementers, checked clause by clause by the shared conformance suite in `tests/contract.ts`. A backend owns exactly one medium and exposes optional data-shape facets; `kv` is the only facet, and opening a unit yields a versioned, globally-singleton schema handle whose single calls are atomic and durable once resolved. Unit and table names must match `UNIT_NAME_RE`; record keys are arbitrary strings that never reach file paths. The unit does not serialize concurrent writes — ordering belongs to the caller — and a stored version that is neither the descriptor version nor a listed `compatibleVersions` entry rejects `version-mismatch` (no migration; a listed SQLite stamp and its rows stay). JSON `single` reads compatible older files without writing and stamps the current version on the next successful mutation.
 
 ### Source map
 
@@ -93,6 +95,7 @@ The hub is a pure registration table with two faces, designed so backends and da
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the hub's view is not enough: the subsystem reference is the authoritative contract, and the Agent Note records the family design and its deferred work.
@@ -104,6 +107,7 @@ Read these pages when the hub's view is not enough: the subsystem reference is t
 -----
 
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Backend and form registrations
@@ -131,6 +135,7 @@ These limits define what the hub cannot do. They are current package constraints
 - **Forms resolve lazily** — reading `ctx.storage.domain` before the domain plugin mounts throws `form-not-mounted`; assemblies order plugins accordingly rather than silently deferring.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

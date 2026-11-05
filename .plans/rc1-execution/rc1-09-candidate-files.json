@@ -1,0 +1,283 @@
+{
+  "item": "RC1-09",
+  "status": "bounded implementation authorized after M2 acceptance",
+  "implementationAuthorized": true,
+  "shaKind": "git blob of the working tree for currentBlob; git blob at the source tag for tagBlob",
+  "worktreeCommit": "3f528c60a419f1c71c097d44f5c6a78f131256c2",
+  "sourceCeiling": {
+    "tag": "dsh-v0.2.2-rc.1",
+    "commit": "66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db",
+    "rule": "Behavior is taken from the tag and adapted to the current PluginManager. Do not follow origin master past the tag. Do not copy a listed file wholesale."
+  },
+  "pins": {
+    "upstreamPin": "dsh-v0.2.1-alpha.1",
+    "productVersion": "0.2.1-alpha.1",
+    "nativeArchive": "agent-desktop-v1.2.0-aarch64-apple-darwin.tar.gz",
+    "nativeArchiveBytes": 2230641,
+    "nativeArchiveSha256": "219813428bb1ad8decae172faed05c5964a2415170df402e2786ccfa6452ba82",
+    "nativeBinarySha256": "dec75e0bba0d1f9b589bdb88188770ad1a199cde9e02cf0a5b94175491f738e9",
+    "nativeHelperSha256": "4a795a40ba7fc93b726b0834342f0225779c30d83e28f1f219db479860c38a78",
+    "backport": "One BackportEntry later, after M2 and this manifest are accepted. sourceTag dsh-v0.2.2-rc.1, basePin dsh-v0.2.1-alpha.1. This candidate does not edit scripts/upstream-intake-registry.ts."
+  },
+  "entry": {
+    "surface": "existing plugin page",
+    "invocation": "user",
+    "rule": "One Versions section on the current plugin page. listVersions runs only from that check action. updateBundle runs only after the user confirms a selected version. Opening the page, refresh, boot, and the agent tool do not call them."
+  },
+  "chosen": [
+    {
+      "path": "packages/boot/plugin-manager/src/index.ts",
+      "currentBlob": "ddec3b262019a584a3781de9074db9141073db3a",
+      "tagBlob": "ceb82aac476df7c7d928f7f111f114c118f2bd81",
+      "change": "Add listVersions and updateBundle on the current PluginManager. Reuse registries, registryPlan, viewProfilePackage, installBundle, removeBundle, and evaluatePluginCompatibility. Check AbortSignal before a lookup and before remove or install. Refuse locked, file, workspace, shipped, alias, management, and non-semver packages before any write. With HMR, restore the previous version after an install or activation failure. Without HMR, install over the running version and report the existing restart-required result. Add Config versionListLimit default 20 and versionLookupConcurrency default 4. Emit plugin-manager/update-state. Do not add gitTransportTimeoutMs, official, or availability."
+    },
+    {
+      "path": "packages/boot/plugin-manager/src/operations.ts",
+      "currentBlob": "2df35b7efc94b00188f75b0351cc2035d5f6ebf1",
+      "tagBlob": "d0ab1dccab51614d890918b6d72fa5c1c40d3c27",
+      "change": "Add optional fields to viewProfilePackage. The default remains name, version, description, and dsh, so inspect stays unchanged. listVersions passes versions, time, and dist-tags, then name, version, engines, peerDependencies, deprecated, and dsh."
+    },
+    {
+      "path": "packages/boot/plugin-manager/src/types.ts",
+      "currentBlob": "90194e9427c6d056ca6854dd751bda202e622081",
+      "tagBlob": "221607f1e80cc0e4f4c8d1e41292862a85d11038",
+      "change": "Keep IncompatiblePlugin.peers. Add updatable on BundleInfo and only RegistryAttempt, PluginVersion, PluginVersionList, ListVersionsOptions, UpdateBundleOptions, PluginUpdateStep, PluginUpdateProgress, PluginUpdateResult, PluginOperationId, and PluginOperation. Do not import the tag file or @deepseek-ai/dsh-plugin-detail."
+    },
+    {
+      "path": "packages/boot/plugin-manager/package.json",
+      "currentBlob": "a93090ef6790c657c347bdf5bfea65037ded3ef3",
+      "tagBlob": "834862e01db4e9a7ed6e9de970bcdfa3c79315ee",
+      "change": "Later root install adds semver ^7.8.5 and devDependency @types/semver ^7.8.0. Keep execa ^10.0.0 and zod ^4.4.3. Do not add hosted-git-info, @deepseek-ai/dsh-official-bundles, @deepseek-ai/dsh-plugin-detail, or @deepseek-ai/dsh-timeout. This candidate does not edit the file."
+    },
+    {
+      "path": "packages/boot/plugin-manager/tests/manager.spec.ts",
+      "currentBlob": "f7b9dad229137fe4e5e79f5eae2a14f142b49f27",
+      "tagBlob": "207f34291f0ed1c75072c78737745e9b61e0e6a5",
+      "change": "Add the list, refuse, rollback, failed-restore, cancellation, and no-HMR restart cases named in the manifest. Keep the three existing activation tests at lines 505, 695, and 807. Do not replace the file with the tag spec."
+    },
+    {
+      "path": "packages/boot/app-boot/src/index.ts",
+      "currentBlob": "3484d87f4d7e5b17eb3a9570572bac33da618f64",
+      "tagBlob": "daf1406a43919b1f0795af6c13191b99d1981eaa",
+      "change": "Call captureStartupComposition in the boot failure path while ctx.get('loader') is defined, before ctx.fiber.dispose(). Do not read ctx.loader after disposal."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/src/client/manager-store.ts",
+      "currentBlob": "00c5308527fb026ad4612c4855a68b98a62a53d5",
+      "tagBlob": "2ca4f1cdb630f393bceb67d74377ba85dca4bcda",
+      "change": "Add a user check action and a confirmed update action. Do not call listVersions from refresh or first render. Keep the current application handling for applied, failed, restart-required, and cancelled."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx",
+      "currentBlob": "1c1f742537ea3a5bd51c0d2ac47f7b75ababcb0d",
+      "tagBlob": "19bd838984e11f74aa77586b0e16f2d1496d508c",
+      "change": "Render the Versions section for an updatable row only. Confirm before updateBundle. Show progress, rollback, failure, and the existing restartNotice. Do not add a second page."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css",
+      "currentBlob": "82a5c763850f41e153d494bae56efc504a40bfac",
+      "tagBlob": "4b7b5f55a2d7281fbe65954ecf9413e54064d937",
+      "change": "Add only the rules the Versions section uses. Do not replace the module with the tag stylesheet."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/src/client/locales.ts",
+      "currentBlob": "5c6962ab29142a5ec2714f64c7eaa483f5cb223b",
+      "tagBlob": "6b31b7ffa80a036820714ae7c31a855ca69b9bc8",
+      "change": "Add the Versions section strings to the existing zh and en dictionaries. Do not add de, es, fr, ja, pt, or ru."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/tests/manager-store.client.spec.ts",
+      "currentBlob": "e6d7436f6ec812e7edd4e8414189588f77ce192b",
+      "tagBlob": "67b95bded71d2e4385464bc585c01b220c061e22",
+      "change": "Cover user-invoked check, no check on refresh, confirm, progress, restart-required, and a disposed answer that does not install. Do not copy the tag Official-install cases."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/tests/components.client.spec.tsx",
+      "currentBlob": "35f5faea8fc5449a16a532e8b4596bfa9b1f5034",
+      "tagBlob": "29dd9ffd63fc9c3d839cf598ac0a31c1d2b7e465",
+      "change": "Cover the Versions section, its absence on a locked row, confirm, and restartNotice. Do not replace the file with the tag spec."
+    },
+    {
+      "path": "apps/web/tests/plugin-manager.e2e.ts",
+      "currentBlob": "e5e96bc0b181fa1aacc18dfd4ed55006bdd0c2ed",
+      "tagBlob": "527a1bcc73f20ac6dd552984b72126c2c3b66b52",
+      "change": "Add one keyless scripted case: check an eligible package, refuse a locked pin, confirm an update, and show the restart sentence. No live registry. Root runs it after the integrated build."
+    },
+    {
+      "path": "packages/boot/plugin-manager/README.md",
+      "currentBlob": "d70c1ec19c97254613fa016591c4457fd2ae6558",
+      "tagBlob": "a06788d42ace2496c39038441940562859b348c4",
+      "change": "Document listVersions, updateBundle, locked pins, and the two rollback policies. Do not copy the tag page."
+    },
+    {
+      "path": "packages/boot/plugin-manager/README.zh.md",
+      "currentBlob": "dd06c123c6f130edce768e46dbe1ab2f57f87d26",
+      "tagBlob": "db1c756faeaef69fafaa755af7f0eb48843c85cd",
+      "change": "Same contract as the English README."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/README.md",
+      "currentBlob": "be0027f5c9007c2387a3e88e35e7bf75b35d8bee",
+      "tagBlob": "03ed8e8c24d63bb44691059cb9c3debaec6ea926",
+      "change": "Document the user-invoked Versions section on the existing page."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/README.zh.md",
+      "currentBlob": "ed983891126707b1ad88325b5efadd4b02c709e9",
+      "tagBlob": "b0dedeaad9d2991e1d24d0545d06a246e8498085",
+      "change": "Same contract as the English client README."
+    }
+  ],
+  "proposedFilenames": [
+    {
+      "path": "packages/boot/plugin-manager/src/versions.ts",
+      "tagBlob": "7b5d75c08ac1edb53789bb4a662d39ac71bdafde",
+      "role": "Parse pnpm view JSON into newer versions and one version's manifest facts. semver comparison only. No network and no desktop release feed."
+    },
+    {
+      "path": "packages/boot/plugin-manager/tests/versions.spec.ts",
+      "tagBlob": "8e7b6d90d02472d66953cf316756c4a7d1b2e968",
+      "role": "Reader tests for omitted identity, order, and non-object time or tags."
+    },
+    {
+      "path": "packages/boot/plugin-manager/src/diagnostic.ts",
+      "tagBlob": "aa79fe5527cb54ffb7eba0c72f426b7bb86a03a1",
+      "role": "Validate one PluginOperation record. Malformed, oversized, and unknown records return undefined."
+    },
+    {
+      "path": "packages/boot/plugin-manager/tests/diagnostic.spec.ts",
+      "tagBlob": "351e4d95562d696827e281de9a9a0ee3644495dd",
+      "role": "Diagnostic field, phase, size, and settled-result tests from the tag."
+    },
+    {
+      "path": "packages/boot/app-boot/src/startup-diagnostics.ts",
+      "tagBlob": "c9fe7299351d7ac998bb8326643d911e5641dc12",
+      "role": "Snapshot configured entries while the Loader is mounted. Omit config, service values, and logger arguments."
+    },
+    {
+      "path": "packages/boot/app-boot/tests/startup-diagnostics.spec.ts",
+      "tagBlob": "9d55d4808bf0946095d3c0e24cce620fa92e0106",
+      "role": "Tag startup diagnostic cases, asserted before disposal."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/src/client/versions.tsx",
+      "tagBlob": "dfb352a89035f9266c050999e51c3836aecf4ed5",
+      "role": "Versions section. Adapt the tag component to a user check, existing locales, and restartNotice. Do not import RestartReason or extra locales."
+    }
+  ],
+  "retainUnchanged": [
+    {
+      "path": "packages/boot/plugin-manager/src/failure.ts",
+      "currentBlob": "b8f01b075ece8d6283c3b4ff694c78a724ffb602",
+      "reason": "incompatiblePlugin keeps peers. The tag hunk that returns requirements is out of this slice."
+    },
+    {
+      "path": "packages/boot/plugin-manager/src/install-failure.ts",
+      "currentBlob": "009eeb1ad97928bdf448d7e48dbc2200eb0bb0db",
+      "reason": "Current classifiers already serve registry lookup failures. Do not add the git-prepare pattern in this slice."
+    },
+    {
+      "path": "packages/boot/plugin-manager/src/install-spec.ts",
+      "currentBlob": "4b76f1925e4b2e947af1f152adde356fbffb4980",
+      "reason": "parseInstallSpec already distinguishes registry, path, git, and tarball. Update refusal uses it."
+    },
+    {
+      "path": "packages/boot/plugin-manager/src/registry.ts",
+      "currentBlob": "92f67daab7fc3543ed7b8fb7ebbf8c8079452265",
+      "tagBlob": "92f67daab7fc3543ed7b8fb7ebbf8c8079452265",
+      "reason": "Current file matches the tag. registryPlan stays the configured-registry order."
+    },
+    {
+      "path": "packages/boot/plugin-manager/src/tools.ts",
+      "currentBlob": "df9b0a200e8b195fc2765eeac593140216641320",
+      "reason": "The agent tool does not gain pnpm view, listVersions, or updateBundle."
+    },
+    {
+      "path": "packages/client/ui-plugin-manager/src/client/presentation.ts",
+      "currentBlob": "33998a49aec53cf62d9c1f74b9e336a088ecdf2e",
+      "tagBlob": "e532eadc9e1dd0093882d38ad8f2c65590bfeeb9",
+      "reason": "Restart display uses the existing restartNotice key. Do not add RestartReason."
+    },
+    {
+      "path": "apps/desktop/src/bootstrap.ts",
+      "currentBlob": "68dbccfbd14f3f11c3848b73fdffb23e4cca0b31",
+      "reason": "Companion runtimeVersion and graph release version mismatch checks stay."
+    },
+    {
+      "path": "packages/experimental/desktop-operation/native/PIN.json",
+      "currentBlob": "9993d986b8b8ce78ab7201199a42a125195e2501",
+      "reason": "Native archive and binary digests stay. Update does not read or write this file."
+    },
+    {
+      "path": "scripts/desktop-profile-plugins.json",
+      "currentBlob": "d9e014f2b3c6586552ac0b1a313b2776b26ada19",
+      "reason": "shippedBundles and plugins[].name stay locked against update. Marketplace is not added. dsh-context stays defaultEnabled false."
+    },
+    {
+      "path": "scripts/upstream-intake-registry.ts",
+      "currentBlob": "372b61a06984acb2937e41266fec62917d7f1d66",
+      "reason": "No BackportEntry and no UPSTREAM_PIN change in this candidate."
+    }
+  ],
+  "filenameFreeze": "Implementation may edit only chosen paths and add only the seven paths in proposedFilenames. No other new source, test, locale, or CSS file is in this candidate.",
+  "dependencies": {
+    "add": [
+      {
+        "name": "semver",
+        "section": "dependencies",
+        "range": "^7.8.5",
+        "source": "tag packages/boot/plugin-manager/package.json"
+      },
+      {
+        "name": "@types/semver",
+        "section": "devDependencies",
+        "range": "^7.8.0",
+        "source": "tag packages/boot/plugin-manager/package.json"
+      }
+    ],
+    "keep": [
+      "execa ^10.0.0",
+      "zod ^4.4.3"
+    ],
+    "doNotAdd": [
+      "hosted-git-info",
+      "@deepseek-ai/dsh-official-bundles",
+      "@deepseek-ai/dsh-plugin-detail",
+      "@deepseek-ai/dsh-timeout"
+    ],
+    "install": "Root owns the later install. This candidate does not edit package.json or the lockfile."
+  },
+  "persistence": {
+    "sessionFormat": "unchanged",
+    "sessionEvent": false,
+    "cordisEvent": "plugin-manager/update-state",
+    "profileWrites": "The existing install and remove path. One update is check, then at most remove plus install, then at most one restore install of the previous version."
+  },
+  "docs": {
+    "readmes": "The four README paths in chosen, English and Chinese together.",
+    "upgradeGuide": "One guide in the implementation change for the new listVersions and updateBundle remotes. This candidate does not write it.",
+    "pairingRecord": "Root regenerates README.i18n.yaml with verify-translation-pairing. That yaml is not a hand-edited candidate file."
+  },
+  "tests": {
+    "host": "PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false pnpm --config.enable-global-virtual-store=false --config.verify-deps-before-run=error exec vitest run packages/boot/plugin-manager/tests/manager.spec.ts packages/boot/plugin-manager/tests/versions.spec.ts packages/boot/plugin-manager/tests/diagnostic.spec.ts packages/boot/app-boot/tests/startup-diagnostics.spec.ts",
+    "client": "PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false pnpm --config.enable-global-virtual-store=false --config.verify-deps-before-run=error exec vitest run packages/client/ui-plugin-manager/tests/manager-store.client.spec.ts packages/client/ui-plugin-manager/tests/components.client.spec.tsx",
+    "browser": "Root-owned after the integrated client build. Extend apps/web/tests/plugin-manager.e2e.ts. This candidate does not launch a browser."
+  },
+  "excluded": [
+    "Wholesale replacement of packages/boot/plugin-manager or packages/client/ui-plugin-manager",
+    "Tag types.ts imports and types for official bundles, plugin detail, BundleDetail, and RestartReason",
+    "packages/boot/plugin-manager/src/official-install-target.ts",
+    "packages/boot/plugin-manager/src/git-transport.ts",
+    "packages/boot/plugin-manager/src/bundle-detail.ts",
+    "packages/boot/plugin-market",
+    "Default marketplace activation",
+    "Desktop release-feed paths in scripts/upstream-intake-registry.ts NEVER_MERGE, including apps/desktop update coordinator, journal, HTTP executor, dialog, overlay, electron-builder, and desktop release scripts",
+    "Electron, account, policy, and product analytics",
+    "Agent-tool pnpm view, listVersions, or updateBundle",
+    "A second plugin page or a new generic installer",
+    "Session events, loader version bumps, intake-registry edits, lockfile edits, generator writes, and source emits",
+    "Origin master commits after 66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db"
+  ],
+  "m2Accepted": true,
+  "m2ExitFreeze": "m2-exit-source-freeze.json"
+}

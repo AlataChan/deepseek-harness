@@ -57,7 +57,8 @@ function mountShell({
     <SidebarRoot
       collapsed={current.collapsed} width={current.width}
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
-      usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])} useShortcuts={selector => selector(shortcuts)}
+      usePanelInfo={usePanelInfo} selectPanel={() => {}} setPinned={() => {}} useEntryPins={select => select([])}
+      usePanels={selector => selector([])} useShortcuts={selector => selector(shortcuts)}
       useResource={useResource} useWorkspaces={neverHook}
       useFilesOccupied={sel => sel(current.filesOccupied)}
       startSession={startSession} toggleSidebar={toggleSidebar} t={t}
@@ -130,6 +131,7 @@ describe('SidebarRoot shell', () => {
       usePanelInfo={neverHook} useSessions={neverHook} useSessionStatus={neverHook}
       useSessionRetainInfo={neverHook} useResource={useResource} useWorkspaces={neverHook}
       useFilesOccupied={select => select(false)}
+      setPinned={() => {}} useEntryPins={select => select([])}
       usePanels={select => select([])} useShortcuts={select => select([shortcut])} />)
     const button = screen.getByRole('button', { name: 'New session' })
     expect(button.getAttribute('aria-keyshortcuts')).toBe('Control+N')
@@ -156,7 +158,8 @@ describe('SidebarRoot shell', () => {
     const { container } = render(<SidebarRoot
       collapsed={false} width={300}
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
-      usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])} useShortcuts={selector => selector([])}
+      usePanelInfo={usePanelInfo} selectPanel={() => {}} setPinned={() => {}} useEntryPins={select => select([])}
+      usePanels={selector => selector([])} useShortcuts={selector => selector([])}
       useResource={useResource} useWorkspaces={neverHook}
       useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
@@ -177,7 +180,8 @@ describe('SidebarRoot shell', () => {
     render(<SidebarRoot
       collapsed={false} width={300}
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
-      usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])} useShortcuts={selector => selector([])}
+      usePanelInfo={usePanelInfo} selectPanel={() => {}} setPinned={() => {}} useEntryPins={select => select([])}
+      usePanels={selector => selector([])} useShortcuts={selector => selector([])}
       useResource={useResource} useWorkspaces={neverHook}
       useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
@@ -193,7 +197,8 @@ describe('SidebarRoot shell', () => {
     render(<SidebarRoot
       collapsed={false} width={300}
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
-      usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])} useShortcuts={selector => selector([])}
+      usePanelInfo={usePanelInfo} selectPanel={() => {}} setPinned={() => {}} useEntryPins={select => select([])}
+      usePanels={selector => selector([])} useShortcuts={selector => selector([])}
       useResource={useResource} useWorkspaces={neverHook}
       useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
@@ -246,8 +251,15 @@ describe('SidebarRoot shell', () => {
     const b = mountShell({ filesOccupied: true })
     expect(screen.getByRole('tab', { name: 'Sessions' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Files' })).toBeTruthy()
+    b.filesOwner().expandSidebar()
+    expect(b.toggleSidebar).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('tab', { name: 'Files' }))
     expect(screen.getByRole('tab', { name: 'Files' }).getAttribute('aria-selected')).toBe('true')
+    fireEvent.click(screen.getByRole('tab', { name: 'Sessions' }))
+    expect(screen.getByRole('tab', { name: 'Sessions' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByTestId('region')).toBeTruthy()
+    expect(screen.getByTestId('files-region')).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Files' }))
     b.rerender({ filesOccupied: false })
     expect(screen.queryByRole('tab', { name: 'Files' })).toBeNull()
     expect(screen.getByTestId('region')).toBeTruthy()
@@ -271,7 +283,8 @@ describe('SidebarRoot shell', () => {
     render(<SidebarRoot
       collapsed width={56}
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
-      usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])} useShortcuts={selector => selector([])}
+      usePanelInfo={usePanelInfo} selectPanel={() => {}} setPinned={() => {}} useEntryPins={select => select([])}
+      usePanels={selector => selector([])} useShortcuts={selector => selector([])}
       useResource={useResource} useWorkspaces={neverHook}
       useFilesOccupied={sel => sel(false)}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}

@@ -5,6 +5,7 @@
  * after each action and after every `plugin-manager/changed` event, so a
  * change made on another surface shows here without a manual refresh.
  */
+import type { PluginVersionList, PluginVersion, PluginUpdateResult, PluginUpdateStep, PluginUpdateProgress } from '@deepseek-ai/dsh-plugin-manager/types'
 import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {
@@ -88,6 +89,7 @@ export interface PackageView {
   /** Whether the installation ships the bundle for the person to switch on: official, off until selected, never removable. */
   readonly optional: boolean
   /** Whether the Host removes the bundle: a profile dependency, or a selection that neither the profile nor the installation holds. */
+  readonly updatable: boolean
   readonly removable: boolean
   /** Whether the bundle is in the profile's layer list. */
   readonly enabled: boolean
@@ -275,6 +277,50 @@ export interface ConfirmState {
   readonly packageName: string
 }
 
+/** One package's version check: in flight, or the Host's answer and when it arrived. */
+export type VersionCheck =
+  | { readonly phase: 'checking' }
+  | { readonly phase: 'done'; readonly list: PluginVersionList; readonly checkedAt: number }
+
+/**
+ * The version an update offers first: the newest one that declares a bundle, accepts the running DSH version, and is
+ * neither deprecated nor a prerelease.
+ * @param list - the Host's version list.
+ * @returns the version, or undefined when none qualifies or the list was refused.
+ */
+export function updateCandidate(list: PluginVersionList): PluginVersion | undefined {
+  if (list.status !== 'listed') return undefined
+  return list.versions.find(version => installable(version) && version.deprecated === undefined && !version.prerelease)
+}
+
+/**
+ * Whether the Host can install a listed version in place of the installed one.
+ * @param version - one listed version.
+ * @returns true when it declares a bundle and accepts the running DSH version.
+ */
+export function installable(version: PluginVersion): boolean {
+  return version.bundle && version.incompatible === undefined
+}
+
+/** One update from its confirmation to its outcome. */
+export interface UpdateState {
+  readonly packageName: string
+  readonly from: string
+  readonly to: string
+  /** The registry that listed the target; the Host checks and installs it there. */
+  readonly registry: Registry
+  readonly phase: 'confirm' | 'running' | 'done'
+  /** The steps the Host announced, in order; the last one runs while the update does. */
+  readonly steps: readonly PluginUpdateStep[]
+  readonly requestId?: PluginInstallRequestId
+  /** The Host's answer, once it settled. */
+  readonly result: PluginUpdateResult | null
+  /** The transport's words when the answer was lost; the Host may still have finished the update. */
+  readonly lost?: string
+  /** Whether the failed installation's pnpm output is unfolded. */
+  readonly outputOpen: boolean
+}
+
 /** What the tab renders. */
 export interface PluginManagerState {
   /** `unavailable` when the Host runs without a managed profile; `error` keeps the last packages. */
@@ -285,6 +331,8 @@ export interface PluginManagerState {
    * cached refresh failures reported by toast. Background reads do not start the spinner.
    */
   readonly refreshStatus: 'idle' | 'refreshing' | 'failed'
+  readonly versions: Readonly<Record<string, VersionCheck>>
+  readonly update: UpdateState | null
   readonly packages: readonly PackageView[]
   /** Package names and row keys with an action crossing the wire. */
   readonly busy: readonly string[]
@@ -310,6 +358,14 @@ export interface PluginManagerFace {
     configLedger: HostObservable<ConfigLedger>
   }
   /** Read the Host once the tab first renders. */
+  /** Explicitly check newer versions; render and refresh never call this. */
+  checkVersions: (packageName: string) => void
+  /** Open confirmation for a checked installable version. */
+  openUpdate: (packageName: string, version: string) => void
+  /** Install only the confirmed selection. */
+  runUpdate: () => void
+  /** Dismiss confirmation or an outcome; running updates remain visible. */
+  closeUpdate: () => void
   ensure: () => void
   /** Read the Host again. */
   refresh: () => void
@@ -424,6 +480,7 @@ export function packageView(bundle: BundleInfo, plugins: readonly PluginInfo[]):
   })
   return {
     name: bundle.name,
+    updatable: bundle.updatable,
     installed: bundle.installed,
     optional: bundle.optional,
     removable: bundle.removable,
@@ -531,7 +588,7 @@ export class PluginManagerController {
   ) {
     this.store = createSnapshotStore<PluginManagerState>({
       status: 'idle', refreshStatus: 'idle', packages: [], busy: [], notice: null,
-      install: IDLE_INSTALL, confirm: null, highlight: null,
+      install: IDLE_INSTALL, confirm: null, highlight: null, versions: {}, update: null,
     })
   }
 
@@ -545,6 +602,7 @@ export class PluginManagerController {
 
   /** Stop publishing and drop every late settlement. */
   dispose(): void {
+    this.pendingConfirm = undefined
     this.disposed = true
     this.registryRead = undefined
     this.request = undefined
@@ -560,6 +618,19 @@ export class PluginManagerController {
   inject(configLedger: HostObservable<ConfigLedger>, resolveText: PluginManagerFace['resolveText']): PluginManagerFace {
     return {
       resolveText,
+      checkVersions: (name) => { void this.checkVersions(name) },
+      openUpdate: (name, version) => {
+        const state = this.getSnapshot()
+        if (this.disposed || state.update?.phase === 'running' || !state.packages.some(pkg => pkg.name === name && pkg.updatable)) return
+        const check = state.versions[name]
+        if (check?.phase !== 'done' || check.list.status !== 'listed') return
+        const list = check.list
+        if (!state.packages.some(pkg => pkg.name === name && pkg.version === list.installed)
+          || !list.versions.some(item => item.version === version && installable(item))) return
+        this.patch({ update: { packageName: name, from: check.list.installed, to: version, registry: check.list.registry, phase: 'confirm', steps: [], result: null, outputOpen: false } })
+      },
+      runUpdate: () => { void this.runUpdate() },
+      closeUpdate: () => { if (this.getSnapshot().update?.phase !== 'running') this.patch({ update: null }) },
       hooks: { pluginManager: this.store, configLedger, configurations: this.ctx.configForms.describe() },
       configForm: id => this.ctx.configForms.get(id),
       ensure: () => { if (this.getSnapshot().status === 'idle') void this.load() },
@@ -695,6 +766,48 @@ export class PluginManagerController {
   }
 
   /**
+   * Follow the Host's steps of this tab's update.
+   * @param progress - a request id and step received from the Host.
+   */
+  updateProgress(progress: PluginUpdateProgress): void {
+    const update = this.getSnapshot().update
+    if (update?.phase !== 'running' || update.requestId !== progress.requestId || update.steps.includes(progress.step)) return
+    this.patch({ update: { ...update, steps: [...update.steps, progress.step] } })
+  }
+
+  /** Read one package's newer versions; a transport failure reads as an unknown refusal. */
+  private async checkVersions(packageName: string): Promise<void> {
+    const { versions, update } = this.getSnapshot()
+    // A check during the package's update would answer for the version being replaced.
+    if (this.disposed || !this.getSnapshot().packages.some(pkg => pkg.name === packageName && pkg.updatable) || versions[packageName]?.phase === 'checking' || (update?.phase === 'running' && update.packageName === packageName)) return
+    this.patchVersions(packageName, { phase: 'checking' })
+    // The generated Remote takes every business argument before its optional signal; `{}` asks the Host's own plan.
+    const answer = await this.ctx.remote.pluginManager.listVersions(packageName, {})
+    if (this.isDisposed()) return
+    const list: PluginVersionList = answer.ok ? answer.value : { status: 'refused', problem: 'unknown', reason: answer.error.message, attempts: [] }
+    this.patchVersions(packageName, { phase: 'done', list, checkedAt: Date.now() })
+  }
+
+  /** Hand the confirmed update to the Host and retain its outcome without another registry check. */
+  private async runUpdate(): Promise<void> {
+    const update = this.getSnapshot().update
+    if (this.disposed || update === null || update.phase !== 'confirm') return
+    const requestId = randomUUID() as PluginInstallRequestId
+    const running: UpdateState = { ...update, phase: 'running', steps: [], requestId, result: null }
+    this.patch({ update: running })
+    const answer = await this.ctx.remote.pluginManager.updateBundle(update.packageName, update.to, { registry: update.registry, requestId })
+    // Nothing closes or replaces a running update before its answer; after disposal `patch` publishes nothing.
+    if (this.isDisposed()) return
+    const current = this.getSnapshot().update
+    this.patch({ update: { ...running, ...current, phase: 'done', ...answer.ok ? { result: answer.value } : { lost: answer.error.message } } })
+    await this.load()
+  }
+
+  private patchVersions(packageName: string, check: VersionCheck): void {
+    this.patch({ versions: { ...this.getSnapshot().versions, [packageName]: check } })
+  }
+
+  /**
    * Fold a chunk belonging to this installation into its pnpm command.
    * A final chunk may arrive after the install answer and still updates an existing run.
    * @param chunk - the chunk the Host forwarded.
@@ -791,10 +904,15 @@ export class PluginManagerController {
           continue
         }
         this.hasCachedInventory = true
+        const packages = sortPackages(bundles.value.map(bundle => packageView(bundle, plugins.value)))
+        const versions = Object.fromEntries(Object.entries(this.getSnapshot().versions).filter(([name, check]) => {
+          const pkg = packages.find(item => item.name === name)
+          return pkg?.updatable === true && (check.phase === 'checking' || check.list.status !== 'listed' || check.list.installed === pkg.version)
+        }))
         this.patch({
           status: 'ready',
           refreshStatus: this.getSnapshot().refreshStatus === 'refreshing' ? 'refreshing' : 'idle',
-          packages: sortPackages(bundles.value.map(bundle => packageView(bundle, plugins.value))),
+          packages, versions,
         })
       } while (this.shouldRerun())
     } finally {
@@ -1118,6 +1236,8 @@ export class PluginManagerController {
         return
     }
   }
+
+  private isDisposed(): boolean { return this.disposed }
 
   private patch(next: Partial<PluginManagerState>): void {
     if (this.disposed) return

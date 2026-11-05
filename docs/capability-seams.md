@@ -7,6 +7,17 @@ A service can be a core spine service, a swappable capability seam, a bundle/com
 
 ```mermaid
 flowchart LR
+  pkg_working_directory["working-directory"]
+  svc_workingDirectory["ctx.workingDirectory<br/>Session execution directory"]
+  pkg_tool_working_directory["tool-working-directory"]
+  pkg_tool_fs["tool-fs"]
+  pkg_tools["tools"]
+  pkg_experimental_client_ui_forge["experimental-client-ui-forge"]
+  pkg_experimental_worktree["experimental-worktree"]
+  svc_worktrees["ctx.worktrees<br/>Local Git checkout allocation and restoration"]
+  pkg_experimental_tool_worktree["experimental-tool-worktree"]
+  svc_forgePanel["ctx.forgePanel<br/>Local Changes panel"]
+  pkg_experimental_worktree_review["experimental-worktree-review"]
   pkg_hmr["hmr"]
   svc_hmr["ctx.hmr<br/>Serialized module and configuration reloads"]
   pkg_app_boot["app-boot"]
@@ -39,7 +50,6 @@ flowchart LR
   svc_attachments["ctx.attachments<br/>Durable binary attachment storage"]
   pkg_attachment_local["attachment-local"]
   pkg_api_session_controller["api-session-controller"]
-  pkg_tool_fs["tool-fs"]
   pkg_llm_pi_ai["llm-pi-ai"]
   pkg_llm_deepseek["llm-deepseek"]
   pkg_client_file_upload["client-file-upload"]
@@ -156,7 +166,6 @@ flowchart LR
   pkg_session_title_all_prompts_llm["session-title-all-prompts-llm"]
   pkg_system_prompt["system-prompt"]
   svc_systemPrompt["ctx.systemPrompt<br/>System prompt assembly registry"]
-  pkg_tools["tools"]
   pkg_tool_terminal["tool-terminal"]
   pkg_tool_web["tool-web"]
   svc_tools["ctx.tools<br/>Tool registry and guarded execution pipeline"]
@@ -347,6 +356,7 @@ flowchart LR
   pkg_experimental_browser_use_playwright_mcp --> svc_browserUse
   pkg_experimental_browser_use_stagehand_native --> svc_browserUse
   pkg_experimental_claude_code_mods --> svc_claudeCodeMods
+  pkg_experimental_client_ui_forge --> svc_forgePanel
   pkg_experimental_commerce_mode --> svc_commerce
   pkg_experimental_computer_use_cua_driver_mcp --> svc_computerUse
   pkg_experimental_computer_use_cua_driver_native --> svc_computerUse
@@ -361,6 +371,7 @@ flowchart LR
   pkg_experimental_session_decisions --> svc_sessionDecisions
   pkg_experimental_speech_to_text --> svc_speechToText
   pkg_experimental_speech_to_text_sensevoice --> svc_speechToText
+  pkg_experimental_worktree --> svc_worktrees
   pkg_file_reference --> svc_fileReferences
   pkg_file_reference_local --> svc_fileReferences
   pkg_fs --> svc_fs
@@ -461,6 +472,7 @@ flowchart LR
   pkg_webhook --> svc_webhookRuntime
   pkg_workflow --> svc_workflowEngine
   pkg_workflow_ptc --> svc_workflowEngine
+  pkg_working_directory --> svc_workingDirectory
   pkg_workspace --> svc_workspaceRegistry
   pkg_workspace_changes --> svc_workspaceChanges
   svc_agentDefaultModel --> pkg_api_session_controller
@@ -507,6 +519,7 @@ flowchart LR
   svc_dynamicCordisRunner --> pkg_tool_cordis
   svc_fileReferences --> pkg_api_session_controller
   svc_fileUploads --> pkg_api_session_controller
+  svc_forgePanel --> pkg_experimental_worktree_review
   svc_fs --> pkg_tool_fs
   svc_hmr --> pkg_app_boot
   svc_jobs --> pkg_api_job_controller
@@ -610,14 +623,23 @@ flowchart LR
   svc_webhookRuntime --> pkg_webhook_github
   svc_workflowEngine --> pkg_tool_ralph
   svc_workflowEngine --> pkg_tool_workflow
+  svc_workingDirectory --> pkg_experimental_client_ui_forge
+  svc_workingDirectory --> pkg_tool_fs
+  svc_workingDirectory --> pkg_tool_working_directory
+  svc_workingDirectory --> pkg_tools
   svc_workspaceEntries --> pkg_api_session_controller
   svc_workspaceRegistry --> pkg_api_session_controller
   svc_workspaceRegistry --> pkg_api_workspace_controller
+  svc_worktrees --> pkg_experimental_client_ui_forge
+  svc_worktrees --> pkg_experimental_tool_worktree
   svc_fs -. event gate .-> pkg_fs_observation_policy
 ```
 
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.workingDirectory` | `core` | [`working-directory`](../packages/session/working-directory) | - | [`tool-working-directory`](../packages/session/tool-working-directory), [`tool-fs`](../packages/fs/tool-fs), [`tools`](../packages/core/tools), [`experimental-client-ui-forge`](../packages/experimental/client-ui-forge) | - | Keeps execution cwd separate from original workspace identity and logs directory changes and required model context. |
+| `ctx.worktrees` | `service` | [`experimental-worktree`](../packages/experimental/worktree) | - | [`experimental-tool-worktree`](../packages/experimental/tool-worktree), [`experimental-client-ui-forge`](../packages/experimental/client-ui-forge) | - | Creates and restores local checkouts without merge, publication or expanded sandbox authority. |
+| `ctx.forgePanel` | `service` | [`experimental-client-ui-forge`](../packages/experimental/client-ui-forge) | - | [`experimental-worktree-review`](../packages/experimental/worktree-review) | - | Serves checkout requests, bounded local diffs and missing-checkout recovery to the optional Client panel. |
 | `ctx.hmr` | `core` | [`hmr`](../packages/boot/hmr) | - | [`app-boot`](../packages/boot/app-boot) | - | Owns module and exact configuration watchers; application mutations share its queue and automatic reloads await the application file lock. |
 | `ctx.pluginRegistryProbe` | `core` | [`client-ui-plugin-manager`](../packages/client/ui-plugin-manager) | - | [`client-ui-plugin-manager`](../packages/client/ui-plugin-manager) | - | Races public registry responses on the Host; the Client owns the initial registry recommendation. |
 | `ctx.pluginManager` | `core` | [`plugin-manager`](../packages/boot/plugin-manager) | - | [`plugin-manager`](../packages/boot/plugin-manager), `ui-settings-plugin-inventory` | - | Shares profile package operations with the CLI and reports persisted and running state to Web and agent callers. |

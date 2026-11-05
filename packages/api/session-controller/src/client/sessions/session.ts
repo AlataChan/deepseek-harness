@@ -116,7 +116,7 @@ export class Session implements SessionFace {
   private parentAvailable: boolean | undefined
   /**
    * Sticky send marker, private input of the composerPhase derivation: set
-   * synchronously before prompt()'s first await, never reset — the blank →
+   * after Host acceptance, never reset — the blank →
    * engaging edge of the phase machine (see ComposerPhase).
    */
   private promptAttempted = false
@@ -133,6 +133,8 @@ export class Session implements SessionFace {
    *  Inbox projection and its durable event cannot both retire one echo. */
   private readonly submissionSettlements = new Map<SessionRequestId, {
     readonly placement: PendingSubmission['placement']
+    readonly echo: PendingSubmission
+    accepted: boolean
     /** Latest received Inbox position; null means removed from that queue. */
     receipt?: {
       readonly target: InboxTarget
@@ -220,26 +222,19 @@ export class Session implements SessionFace {
 
   /**
    * Register one local submission echo (see the ISession declaration).
-   * Synchronous through markDirty: the echo is in the very next snapshot, so
-   * the conversation can paint it before the caller starts serializing.
+   * The input is retained privately until Host acceptance publishes its echo.
    * @param input - echo content and the optional settlement callback.
    * @returns the minted identity for {@link prompt} plus the pre-prompt abandon path.
    */
   beginSubmission(input: BeginSubmissionInput): SubmissionHandle {
     const requestId = randomUUID() as SessionRequestId
     const placement = this.running ? input.mode === 'steer' ? 'steering' : 'queued' : 'transcript'
-    this.pendingSubmissions = [...this.pendingSubmissions, {
-      requestId,
-      placement,
-      time: Date.now(),
-      text: input.text,
-      attachments: input.attachments,
-    }]
-    this.submissionSettlements.set(requestId, { placement, onRetire: input.onRetire, retiring: false })
-    // The blank → engaging edge flips here, ahead of prompt(): the composer
-    // docks and the echo renders on the click's own frame.
-    this.promptAttempted = true
-    this.notifier.markDirty()
+    const echo: PendingSubmission = {
+      requestId, placement, time: Date.now(), text: input.text, attachments: input.attachments,
+    }
+    this.submissionSettlements.set(requestId, {
+      placement, echo, accepted: false, onRetire: input.onRetire, retiring: false,
+    })
     return { requestId, abandon: () => { this.retireFailedSubmission(requestId) } }
   }
 
@@ -259,12 +254,7 @@ export class Session implements SessionFace {
   ): Promise<RemoteResult<{ accepted: true }>> {
     this.promptError = null
     this.lastAgentError = null
-    // Synchronous, before the first await: the blank → engaging edge must be
-    // visible on the session area's very first frame when a caller sends
-    // ahead of navigation (first-send flow).
-    this.promptAttempted = true
-    if (this.blankBit) this.firstPromptPendingTurn = true
-    this.notifier.markDirty()
+    const settlement = requestId === undefined ? undefined : this.submissionSettlements.get(requestId)
     let result: RemoteResult<{ accepted: true }>
     if (this.address === undefined) {
       const clientTimeZone = resolvedClientTimeZone()
@@ -299,13 +289,22 @@ export class Session implements SessionFace {
       }, signal)
       result = routed.ok ? { ok: true, value: { accepted: true } } : routed
     }
+    if (!result.ok && settlement?.accepted === true) result = { ok: true, value: { accepted: true } }
     if (!result.ok) {
       if (requestId !== undefined) this.retireFailedSubmission(requestId)
       this.promptError = { op: 'send', error: result.error }
       this.notifier.markDirty()
       return result
     }
-    // Rejection must leave a first prompt blank and eligible for workspace reuse.
+    this.promptAttempted = true
+    if (this.blankBit) this.firstPromptPendingTurn = true
+    if (settlement !== undefined && !settlement.retiring
+      && !this.pendingSubmissions.some(echo => echo.requestId === settlement.echo.requestId)) {
+      settlement.accepted = true
+      this.pendingSubmissions = [...this.pendingSubmissions, settlement.echo]
+    }
+    this.notifier.markDirty()
+    // Rejection leaves a first prompt blank and eligible for workspace reuse.
     if (this.blankBit) {
       this.blankBit = false
       this.notifier.markDirty()
@@ -797,6 +796,7 @@ export class Session implements SessionFace {
       const settlement = this.submissionSettlements.get(source.rpcId)
       if (settlement === undefined || settlement.placement === 'queued'
         || settlement.retiring || (settlement.receipt?.seq ?? -1) > seq) continue
+      settlement.accepted = true
       settlement.receipt = { target, seq, index: start + index, attachments: attachmentRefsIn(message.content) }
     }
   }
@@ -806,6 +806,7 @@ export class Session implements SessionFace {
     if (source.kind !== 'user' || !('rpcId' in source)) return
     const settlement = this.submissionSettlements.get(source.rpcId)
     if (settlement === undefined || settlement.retiring) return
+    settlement.accepted = true
     if (!admitted) {
       if (settlement.placement === 'queued') this.scheduleObservedRetirement(source.rpcId, attachmentRefsIn(message.content))
       return
@@ -849,6 +850,7 @@ export class Session implements SessionFace {
   ): void {
     const settlement = this.submissionSettlements.get(requestId)
     if (settlement === undefined || settlement.retiring) return
+    settlement.accepted = true
     settlement.retiring = true
     scheduleFrame(() => { this.finishSubmission(requestId, { reason: 'observed', attachments }) })
   }

@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * Model-facing read, read_image, write, edit, and optional apply_patch tools over `ctx.fs`. This package owns schemas, validation,
  * read windows, formatting, and observation events, never a concrete provider. An optional
@@ -20,7 +21,7 @@ import { FsSandboxController } from './sandbox.ts'
 export const name = 'tool-fs'
 
 /** Services required by the filesystem tool suite. */
-export const inject = ['tools', 'fs', 'systemPrompt']
+export const inject = ['workingDirectory', 'tools', 'fs', 'systemPrompt']
 
 /** Plugin config (all optional — `Config` supplies the defaults). */
 export interface Config {

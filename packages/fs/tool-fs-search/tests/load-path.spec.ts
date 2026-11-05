@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 /**
  * Real-load-path guard for @deepseek-ai/dsh-tool-fs-search. `tool-fs-search` is
  * a NAMESPACE plugin with `inject` — so a stray `export default apply` would
@@ -30,7 +31,7 @@ describe('dsh-tool-fs-search real-load-path guard', () => {
     const unwrapped = loader.unwrapExports(toolFsSearch) as Record<string, unknown>
     expect(unwrapped).toBe(toolFsSearch)
     expect(unwrapped.name).toBe('tool-fs-search')
-    expect(unwrapped.inject).toEqual(['tools', 'systemPrompt', 'subprocess'])
+    expect(unwrapped.inject).toEqual(['workingDirectory', 'tools', 'systemPrompt', 'subprocess'])
     expect(typeof unwrapped.Config).toBe('function')
     expect(typeof unwrapped.apply).toBe('function')
   })
@@ -44,6 +45,7 @@ describe('dsh-tool-fs-search real-load-path guard', () => {
     const loader = Object.create(Loader.prototype) as Loader
     const unwrapped = loader.unwrapExports(toolFsSearch) as Parameters<Context['plugin']>[0]
     // A collapsed export shape (dropped inject) would throw "without inject" here.
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(unwrapped, { sampleOverCapGlobResults: true })
     expect(ctx.tools.schemas().map(s => s.name)).toEqual(expect.arrayContaining(['glob', 'grep']))
     await fiber.dispose()

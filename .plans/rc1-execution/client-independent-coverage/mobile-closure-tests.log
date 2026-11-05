@@ -1,0 +1,68 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04
+
+TypeError: Cannot read properties of null (reading 'shadowRoot')
+    at Finder.onError (file:///Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:194:13)
+    at DOMSelector.matches (file:///Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/index.js:229:20)
+    at HTMLDivElementImpl.matches (/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/node_modules/.pnpm/jsdom@29.1.1_@noble+hashes@2.3.0/node_modules/jsdom/lib/jsdom/living/nodes/Element-impl.js:539:24)
+    at HTMLDivElement.matches (/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/node_modules/.pnpm/jsdom@29.1.1_@noble+hashes@2.3.0/node_modules/jsdom/lib/generated/idl/Element.js:657:34)
+    at focusWithoutRing (/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/packages/client/ui-primitives/src/focus.ts:42:16)
+    at /Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/packages/client/ui-primitives/src/useModalLayer.ts:63:52
+    at commitHookEffectListMount (/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:23189:26)
+    at commitLayoutEffectOnFiber (/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:23312:15)
+    at commitLayoutMountEffects_complete (/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:24727:9)
+    at commitLayoutEffects_begin (/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:24713:7)
+stderr | packages/client/ui-primitives/tests/modal-layer.client.spec.tsx > handles a modal document without an active element and releases its Escape listener
+The above error occurred in the <DetachedModal> component:
+
+    at DetachedModal (/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/packages/client/ui-primitives/tests/modal-layer.client.spec.tsx:533:47)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+ ❯ |thread-safe| packages/client/ui-primitives/tests/modal-layer.client.spec.tsx (19 tests | 1 failed) 164ms
+   × handles a modal document without an active element and releases its Escape listener 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |thread-safe| packages/client/ui-primitives/tests/modal-layer.client.spec.tsx > handles a modal document without an active element and releases its Escape listener
+TypeError: Cannot read properties of null (reading 'shadowRoot')
+ ❯ Finder.onError node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:194:13
+ ❯ DOMSelector.matches node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/index.js:229:20
+ ❯ HTMLDivElementImpl.matches node_modules/.pnpm/jsdom@29.1.1_@noble+hashes@2.3.0/node_modules/jsdom/lib/jsdom/living/nodes/Element-impl.js:539:24
+ ❯ HTMLDivElement.matches node_modules/.pnpm/jsdom@29.1.1_@noble+hashes@2.3.0/node_modules/jsdom/lib/generated/idl/Element.js:657:34
+ ❯ focusWithoutRing packages/client/ui-primitives/src/focus.ts:42:16
+     40|   element.addEventListener('keydown', navigate, true)
+     41|   element.focus(options)
+     42|   if (!element.matches(':focus')) release()
+       |                ^
+     43| }
+     44|
+ ❯ packages/client/ui-primitives/src/useModalLayer.ts:63:52
+ ❯ commitHookEffectListMount node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:23189:26
+ ❯ commitLayoutEffectOnFiber node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:23312:15
+ ❯ commitLayoutMountEffects_complete node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:24727:9
+ ❯ commitLayoutEffects_begin node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:24713:7
+
+Caused by: TypeError: Cannot read properties of null (reading 'shadowRoot')
+ ❯ Finder._matchPseudoClassSelector node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:1201:36
+ ❯ Finder._matchSelectorForElement node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:1890:21
+ ❯ Finder._matchSelector node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:1951:19
+ ❯ Finder._matchLeaves node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:2002:19
+ ❯ Finder._matchSelf node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:2313:26
+ ❯ Finder._findEntryNodesForOther node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:2535:32
+ ❯ Finder._findEntryNodes node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:2598:23
+ ❯ Finder._collectNodes node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:2765:52
+ ❯ Finder.find node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/js/finder.js:3032:25
+ ❯ DOMSelector.matches node_modules/.pnpm/@asamuzakjp+dom-selector@7.1.1/node_modules/@asamuzakjp/dom-selector/src/index.js:226:61
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 23 passed (24)
+   Start at  12:46:43
+   Duration  740ms (transform 163ms, setup 80ms, import 165ms, tests 170ms, environment 585ms)

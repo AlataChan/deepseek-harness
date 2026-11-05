@@ -11,20 +11,21 @@ import {
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type {
-  ScheduleCatalogEntry, ScheduleId, ScheduleRecord, ScheduleTimingChange, ScheduleUpdateContent,
-  ScheduleUpdateRequest, ScheduleUpdateResult,
+  ScheduleCatalogEntry, ScheduleId, ScheduleRecord, ScheduleTiming, SchedulePatch,
+  ScheduleEditResult, ScheduleInputErrorCode, ScheduleTargetRequest, ScheduleCreateRequest, ScheduleRunRequest, ScheduleRunResult,
 } from '@deepseek-ai/dsh-schedule/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { CatalogFeedback } from './CatalogFeedback.tsx'
 import { IconCalendarOutlineRegular } from './CalendarIcon.tsx'
 import { ClockPicker } from './ClockPicker.tsx'
 import { DatePicker } from './DatePicker.tsx'
 import { DeliveryHistory, type DeliveryHistoryInjected } from './DeliveryHistory.tsx'
 import type { CatalogDeleteOutcome, CatalogSnapshot } from './catalog-source.ts'
-import { draftZone, secondPrecision, slashDate, timingDraft, timingError, timingSnapshot, zonedWallClock } from './task-timing.ts'
+import { draftZone, secondPrecision, slashDate, timingDraft, timingError, zonedWallClock } from './task-timing.ts'
 import type { TaskTimingInjected, TimingDraft } from './task-timing.ts'
 import { useRelativeClock } from './relative-clock.ts'
 import { formatScheduleFrequency, nextRunParts, recordTimeZone, zoneChoices, zoneLabel, zoneName } from './schedule-format.ts'
+import { targetSessionId, targetRequest } from './task-record.ts'
 import type { FrequencyZone } from './schedule-format.ts'
 import { cronPreview, cronShapeExpression, parseCronExpression, recognizeCronShape } from './task-cron.ts'
 import type { CronBuilderState } from './task-cron.ts'
@@ -176,6 +177,8 @@ export interface TaskDetailInjected extends DeliveryHistoryInjected, TaskTimingI
    * @param id - Session bound to the shown task.
    */
   readonly onOpenSession: (id: SessionId) => void
+  /** Deliver now through the Host; it does not consume the scheduled occurrence. */
+  readonly onRun: (request: ScheduleRunRequest) => Promise<RemoteResult<ScheduleRunResult>>
 }
 
 /** One task's detail, as the Tasks page and the task tab both compose it. */
@@ -289,7 +292,7 @@ export function useTaskDetail(
  * @returns the detail region, its deletion confirmation dialog, and the linked Session entry.
  */
 export function TaskDetail({
-  task, authoritative, id, status, deleting, onDelete, onRetry, onUpdateTiming, loadHistory, onOpenSession,
+  task, authoritative, id, status, deleting, onDelete, onRetry, onEditTask, loadHistory, onOpenSession, onRun,
   onEditState, tab, onTabChange, confirmId, onConfirm, onDeleted, onClose, withinSession, useSessions, useWorkspaces, t,
 }: TaskDetailProps): ReactNode {
   const sessions = useSessions(snapshot => snapshot)
@@ -305,10 +308,11 @@ export function TaskDetail({
   const now = useRelativeClock()
   const busy = deleting.includes(task.id) || status === 'loading'
   const confirming = authoritative && confirmId === task.id
-  const sessionLink = sessionLinkState(task.sessionId, sessions, workspaces)
-  const linkedSession = sessionLabel(task.sessionId, sessions)
-  const sessionNotice = sessionLink === 'available' ? undefined : t(sessionLinkMessages[sessionLink])
-  const linkedShown = tab === 'rule' && withinSession !== task.sessionId
+  const destination = targetSessionId(task)
+  const sessionLink = destination === undefined ? 'unavailable' : sessionLinkState(destination, sessions, workspaces)
+  const linkedSession = destination === undefined ? { titled: false, text: '' } : sessionLabel(destination, sessions)
+  const sessionNotice = destination === undefined || sessionLink === 'available' ? undefined : t(sessionLinkMessages[sessionLink])
+  const linkedShown = tab === 'rule' && destination !== undefined && withinSession !== destination
   const linkedText = t('detail.session')
   const [linkedCompact, setLinkedCompact] = useState(false)
   const linkedRef = useRef<HTMLSpanElement>(null)
@@ -351,7 +355,17 @@ export function TaskDetail({
     for (const tab of tabs.children) observer.observe(tab)
     return () => { observer.disconnect() }
   }, [linkedShown, linkedCompact, linkedText])
-  const taskIdentity = `${task.sessionId}\u0000${task.id}`
+  const [targetDraft, setTargetDraft] = useState<ScheduleTargetRequest>(() => targetRequest(task.target))
+  const targetSeed = JSON.stringify(targetRequest(task.target))
+  const previousTarget = useRef({ id: task.id, seed: targetSeed })
+  useEffect(() => {
+    const previous = previousTarget.current
+    setTargetDraft(current => previous.id !== task.id || JSON.stringify(current) === previous.seed
+      ? targetRequest(task.target) : current)
+    previousTarget.current = { id: task.id, seed: targetSeed }
+  }, [task.id, task.target, targetSeed])
+  const targetDirty = JSON.stringify(targetDraft) !== JSON.stringify(targetRequest(task.target))
+  const taskIdentity = `${destination}\u0000${task.id}`
   const [edit, setEdit] = useState<RuleEdit>(() => initialRuleEdit(task))
   // The elapsed-interval unit lives here, not in the Run time card, so the saved
   // draft's below-floor message states the same unit the row shows.
@@ -412,7 +426,7 @@ export function TaskDetail({
     // name control would place a text caret the reader did not ask for. Focusing
     // without scrolling keeps a restored panel from jumping as it re-renders.
     panelRef.current?.focus({ preventScroll: true })
-  }, [task.sessionId, task.id])
+  }, [destination, task.id])
 
   useEffect(() => {
     // The owner retains this task while a save is in flight or failed and after
@@ -480,7 +494,7 @@ export function TaskDetail({
     // An ended task is read-only: its unsaved notice and Cancel action are gone,
     // so a surviving draft would read as the stored rule. The refresh replaces
     // the draft with the stored values instead.
-    setEdit(task.status === 'inactive'
+    setEdit(task.status === 'ended'
       ? { propKey, stored: storedValues, shown: storedValues }
       // `mergeRuleDraft` decides by rule kind: a staged switch keeps its own time
       // fields, a remote kind change adopts or keeps a whole rule, and matching
@@ -492,13 +506,13 @@ export function TaskDetail({
   useEffect(() => {
     // An ended task is read-only and offers no Cancel, so nothing can submit the
     // draft any more: the stored values replace it rather than reading as saved.
-    if (task.status !== 'inactive') return
+    if (task.status !== 'ended') return
     setEdit(current => (shownValues(current.shown) === shownValues(current.stored)
       ? current
       : { ...current, shown: current.stored }))
   }, [task.status])
   const shown = edit.shown
-  const dirty = shownValues(shown) !== shownValues(edit.stored)
+  const dirty = targetDirty || shownValues(shown) !== shownValues(edit.stored)
   // The deletion is done once the refreshed catalog reports no row: the owner
   // then leaves the task through `onDeleted`, and the guards below keep the
   // one frame before that effect from showing a rule the deletion removed.
@@ -626,6 +640,7 @@ export function TaskDetail({
     setEdit(current => ({ ...current, shown: { ...current.shown, ...patch } }))
   }
   const cancelDraft = (): void => {
+    setTargetDraft(targetRequest(task.target))
     // The stored values become the shown values again, so the notice clears with them.
     chosenWeekdays.current = undefined
     setEdit(current => ({ ...current, shown: current.stored }))
@@ -641,19 +656,13 @@ export function TaskDetail({
     const generation = ++submissions.current
     setPending(true)
     setFailure(undefined)
-    const request: ScheduleUpdateRequest = {
-      sessionId: task.sessionId, id: task.id,
-      // The refreshed record stays the complete expected rule even while an
-      // unsaved draft keeps the shown values.
-      expected: timingSnapshot(task),
-      ...contentChange(shown, storedValues),
+    const patch: SchedulePatch = { ...contentChange(shown, storedValues),
+      ...(targetDirty ? { target: targetDraft } : {}),
+      ...(timingValues(shown) === timingValues(storedValues) ? {} : { timing: ruleChange(shown.draft, shown.kind, shown.weekdays) }),
     }
-    let result: RemoteResult<ScheduleUpdateResult>
+    let result: RemoteResult<ScheduleEditResult>
     try {
-      // A name- or instruction-only save submits no timing change: `change` is optional.
-      result = await onUpdateTiming(timingValues(shown) === timingValues(storedValues)
-        ? request
-        : { ...request, change: ruleChange(shown.draft, shown.kind, shown.weekdays) })
+      result = await onEditTask({ id: task.id, action: 'update', expectedUpdatedAt: task.updatedAt ?? null, patch })
     } catch (_error: unknown) {
       // A rejected request cannot establish whether the Host committed the edit.
       if (!mounted.current || identityRef.current !== submitted
@@ -666,14 +675,16 @@ export function TaskDetail({
       || generation !== submissions.current) return
     setPending(false)
     if (!result.ok) {
-      setFailure('rule.error.unknown')
+      setFailure(result.error.code === 'schedule/input-invalid' ? ruleError(result.error.details.code) : 'rule.error.unknown')
       return
     }
     if ('code' in result.value) {
       setFailure(ruleError(result.value.code))
       return
     }
-    const saved = ruleValues(result.value.record)
+    if (!('target' in result.value)) return
+    setTargetDraft(targetRequest(result.value.target))
+    const saved = ruleValues(result.value)
     // A refresh that landed while this save was in flight already seeded a newer
     // record. This response describes the record the save submitted, so it must
     // not put those older values back; the newer seed stays authoritative and
@@ -739,11 +750,11 @@ export function TaskDetail({
               <Button
                 size={linkedCompact ? 'sm' : 'md'}
                 className={linkedCompact ? css.detailIconButton : css.linkedSession}
-                title={linkedCompact ? undefined : linkedSession.titled ? linkedSession.text : task.sessionId}
+                title={linkedCompact ? undefined : linkedSession.titled ? linkedSession.text : destination}
                 aria-label={linkedAction}
                 aria-describedby={linkedDescribedBy}
                 disabled={sessionLink !== 'available'}
-                onClick={() => { onOpenSession(task.sessionId) }}
+                onClick={() => { onOpenSession(destination) }}
               >
                 {linkedCompact
                   ? <>
@@ -813,16 +824,14 @@ export function TaskDetail({
             never be edited again, so its stored name is plain text rather than
             a read-only field. */}
         {tab === 'rule' && !deleted && <header className={css.detailHeader}>
-          {task.status === 'inactive'
-            ? <h2 className={css.readonlyName}>{shown.title}</h2>
-            : <input
-              ref={nameRef}
-              className={css.editName}
-              aria-label={t('detail.name')}
-              disabled={busy || pending}
-              value={shown.title}
-              onChange={(event) => { editContent({ title: event.target.value }) }}
-            />}
+          {task.status === 'ended' ? <h2 className={css.readonlyName}>{shown.title}</h2> : <input
+            ref={nameRef}
+            className={css.editName}
+            aria-label={t('detail.name')}
+            disabled={busy || pending}
+            value={shown.title}
+            onChange={(event) => { editContent({ title: event.target.value }) }}
+          />}
         </header>}
         {tab === 'rule' && !deleted && <div className={css.nextRun}>
           {task.status === 'active'
@@ -835,24 +844,38 @@ export function TaskDetail({
                   local stamp as well. */}
               <span className={css.nextRunRelative}>{nextRun.relative}</span>
             </p>
-            : <p>{t('status.inactive')}</p>}
+            : <p>{t('status.ended')}</p>}
         </div>}
         <div role="tabpanel" id={`${id}-rule-panel`} aria-labelledby={`${id}-rule-tab`}
           hidden={tab !== 'rule' || deleted} tabIndex={0}>
           {!deleted && <>
-            {task.status === 'inactive'
-              ? <p className={css.readonlyPrompt}>{shown.prompt}</p>
-              : <textarea
-                className={css.instruction}
-                aria-label={t('detail.instruction')}
-                disabled={busy || pending}
-                value={shown.prompt}
-                onChange={(event) => { editContent({ prompt: event.target.value }) }}
-              />}
+            {task.status === 'ended' ? <p className={css.readonlyPrompt}>{shown.prompt}</p> : <textarea
+              className={css.instruction}
+              aria-label={t('detail.instruction')}
+              disabled={busy || pending}
+              value={shown.prompt}
+              onChange={(event) => { editContent({ prompt: event.target.value }) }}
+            />}
+            {task.status !== 'ended' && <TargetFields value={targetDraft} onChange={setTargetDraft} disabled={busy || pending} t={t} />}
+            <div className={css.creationActions}>
+              <Button disabled={busy || pending || task.executionActive === true} onClick={() => {
+                setPending(true)
+                void onRun({ id: task.id }).then((result) => {
+                  if (!result.ok || 'code' in result.value) setFailure('rule.error.unknown')
+                }, () => { setFailure('rule.error.unknown') }).finally(() => { setPending(false) })
+              }}>{t('run.action')}</Button>
+              <Button disabled={busy || pending} onClick={() => {
+                setPending(true)
+                void onEditTask({ id: task.id, action: 'update', expectedUpdatedAt: task.updatedAt ?? null,
+                  patch: { active: task.status !== 'active' } }).then((result) => {
+                  if (!result.ok || 'code' in result.value) setFailure('rule.error.unknown')
+                }, () => { setFailure('rule.error.unknown') }).finally(() => { setPending(false) })
+              }}>{t(task.status === 'active' ? 'pause.action' : 'resume.action')}</Button>
+            </div>
             <RuleCard
-              key={JSON.stringify([task.sessionId, task.id])}
+              key={JSON.stringify([destination, task.id])}
               task={task}
-              disabled={busy || pending || task.status === 'inactive'}
+              disabled={busy || pending || task.status === 'ended'}
               values={shown}
               intervalUnit={intervalUnit}
               failure={shownFailure === 'timing.invalidInterval' ? INTERVAL_ERROR_KEYS[intervalUnit] : shownFailure}
@@ -870,9 +893,8 @@ export function TaskDetail({
               task mounts no history in the frame before `onDeleted` closes
               this detail: no read is attempted against the removed row. */}
           {tab === 'records' && !deleted && <DeliveryHistory
-            key={JSON.stringify([task.sessionId, task.id])}
+            key={JSON.stringify([destination, task.id])}
             id={task.id}
-            sessionId={task.sessionId}
             latestMessageId={task.lastDelivery?.messageId}
             timeZone={recordTimeZone(task)}
             loadHistory={loadHistory}
@@ -893,7 +915,7 @@ export function TaskDetail({
         {t(shownFailure === 'timing.invalidInterval' ? INTERVAL_ERROR_KEYS[intervalUnit] : shownFailure)}</p>}
       {/* The mock's staged-edit bar sits under the detail tab strip and
           appears only while the draft differs from the stored task. */}
-      {dirty && !deleted && task.status !== 'inactive' && <footer className={css.saveFooter}>
+      {dirty && !deleted && task.status !== 'ended' && <footer className={css.saveFooter}>
         <span className={css.saveNotice}>{t('rule.unsaved')}</span>
         <Button disabled={pending} onClick={cancelDraft}>{t('rule.cancel')}</Button>
         <Button variant="primary" disabled={pending || !dirty} onClick={() => { void saveDraft() }}>
@@ -1065,7 +1087,7 @@ function ruleChange(
   draft: TimingDraft,
   kind: RuleKind,
   weekdays: readonly Weekday[],
-): ScheduleTimingChange {
+): ScheduleTiming {
   switch (kind) {
     case 'once': return {
       kind: 'at',
@@ -1142,7 +1164,7 @@ function draftError(shown: RuleShown): TaskManagerKey | undefined {
  * @param stored - authoritative values the request carries as its expected record.
  * @returns content fields to submit, empty when both already match that record.
  */
-function contentChange(shown: RuleShown, stored: RuleShown): ScheduleUpdateContent {
+function contentChange(shown: RuleShown, stored: RuleShown): SchedulePatch {
   const content: { title?: string; prompt?: string } = {}
   const title = shown.title.trim()
   const prompt = shown.prompt.trim()
@@ -1221,7 +1243,7 @@ const RULE_ERROR_OVERRIDES: Readonly<Partial<Record<TaskManagerKey, TaskManagerK
  * @param code - error code returned by the compare-and-update.
  * @returns dictionary key describing the recovery action.
  */
-function ruleError(code: Extract<ScheduleUpdateResult, { code: string }>['code']): TaskManagerKey {
+function ruleError(code: ScheduleInputErrorCode | Extract<ScheduleEditResult, { code: string }>['code']): TaskManagerKey {
   const key = timingError(code)
   return RULE_ERROR_OVERRIDES[key] ?? key
 }
@@ -2228,4 +2250,141 @@ function CronStepper({ id, min, max, value, disabled, increaseLabel, decreaseLab
       </button>
     </span>
   </span>
+}
+
+/** Manual task creation inside the existing task page's detail pane. */
+export interface TaskCreateProps extends PropsLocale<'schedule.manager'> {
+  /** Human Remote operation; it carries no acting Session. */
+  readonly onCreate: (request: ScheduleCreateRequest) => Promise<RemoteResult<ScheduleCatalogEntry>>
+  /** Select the committed task after catalog readback. */
+  readonly onCreated: (id: ScheduleId) => void
+  /** Close the detail pane. */
+  readonly onClose: () => void
+}
+
+/** Destination fields used by creation and retained-task edits. */
+function TargetFields({ value, onChange, disabled, t }: PropsLocale<'schedule.manager'> & {
+  value: ScheduleTargetRequest
+  onChange: (value: ScheduleTargetRequest) => void
+  disabled: boolean
+}): ReactNode {
+  const id = useId()
+  return <fieldset disabled={disabled}>
+    <legend>{t('target.label')}</legend>
+    <label htmlFor={`${id}-kind`}>{t('target.kind')}</label>
+    <select id={`${id}-kind`} value={value.kind} onChange={(event) => {
+      const kind = event.target.value
+      onChange(kind === 'session' ? { kind, sessionId: SessionId('') }
+        : { kind: kind === 'new' ? 'new' : 'new_once', create: {} })
+    }}>
+      {(['session', 'new_once', 'new'] as const).map(kind => <option key={kind} value={kind}>{t(`target.${kind}`)}</option>)}
+    </select>
+    {value.kind === 'session' ? <>
+      <label htmlFor={`${id}-session`}>{t('target.sessionId')}</label>
+      <input id={`${id}-session`} value={value.sessionId} onChange={(event) => {
+        onChange({ kind: 'session', sessionId: SessionId(event.target.value) })
+      }} />
+    </> : <>
+      <label htmlFor={`${id}-cwd`}>{t('target.cwd')}</label>
+      <input id={`${id}-cwd`} value={value.create?.cwd ?? ''} onChange={(event) => {
+        const { cwd: _cwd, ...kept } = value.create ?? {}
+        onChange({ ...value, create: { ...kept, ...(event.target.value === '' ? {} : { cwd: event.target.value }) } })
+      }} />
+      <label htmlFor={`${id}-preset`}>{t('target.preset')}</label>
+      <input id={`${id}-preset`} value={value.create?.agentPreset ?? ''} onChange={(event) => {
+        const { agentPreset: _preset, ...kept } = value.create ?? {}
+        onChange({ ...value, create: { ...kept, ...(event.target.value === '' ? {} : { agentPreset: event.target.value }) } })
+      }} />
+    </>}
+  </fieldset>
+}
+
+/**
+ * Create a task with any of the six supported timings and three destinations.
+ * @param props - Human create action, navigation, and locale.
+ * @returns The manual form in the task detail pane.
+ */
+export function TaskCreate({ onCreate, onCreated, onClose, t }: TaskCreateProps): ReactNode {
+  const id = useId()
+  const [title, setTitle] = useState('')
+  const [prompt, setPrompt] = useState('')
+  const [kind, setKind] = useState<ScheduleTiming['kind']>('after')
+  const [target, setTarget] = useState<ScheduleTargetRequest>({ kind: 'new_once' })
+  const [seconds, setSeconds] = useState('60')
+  const [at, setAt] = useState('')
+  const [time, setTime] = useState('09:00:00')
+  const [zone, setZone] = useState('UTC')
+  const [weekdays, setWeekdays] = useState('1,2,3,4,5')
+  const [expression, setExpression] = useState('0 9 * * *')
+  const [pending, setPending] = useState(false)
+  const [failure, setFailure] = useState(false)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+  const submit = async (): Promise<void> => {
+    const timing: ScheduleTiming = kind === 'after' ? { kind, after_seconds: Number(seconds) }
+      : kind === 'every' ? { kind, every_seconds: Number(seconds) }
+        : kind === 'at' ? { kind, at }
+          : kind === 'daily' ? { kind, daily: { time, time_zone: zone } }
+            : kind === 'weekly' ? { kind, weekly: { time, time_zone: zone, weekdays: weekdays.split(',').map(Number) } }
+              : { kind, cron: { expression, time_zone: zone } }
+    setPending(true); setFailure(false)
+    try {
+      const result = await onCreate({ title, prompt, timing, target })
+      if (!mounted.current) return
+      if (result.ok) onCreated(result.value.id)
+      else setFailure(true)
+    } catch (_error) {
+      // A rejected Remote operation does not establish whether the task was stored.
+      if (mounted.current) setFailure(true)
+    } finally {
+      if (mounted.current) setPending(false)
+    }
+  }
+  return <aside className={css.detail} aria-label={t('manual.title')}>
+    <h2>{t('manual.title')}</h2>
+    <form onSubmit={(event) => { event.preventDefault(); if (!pending) void submit() }}>
+      <fieldset disabled={pending}>
+        <label htmlFor={`${id}-name`}>{t('detail.name')}</label>
+        <input id={`${id}-name`} value={title} maxLength={120} required onChange={(event) => { setTitle(event.target.value) }} />
+        <label htmlFor={`${id}-prompt`}>{t('detail.instruction')}</label>
+        <textarea id={`${id}-prompt`} value={prompt} required onChange={(event) => { setPrompt(event.target.value) }} />
+        <label htmlFor={`${id}-timing`}>{t('manual.timing')}</label>
+        <select id={`${id}-timing`} value={kind} onChange={(event) => { setKind(event.target.value as ScheduleTiming['kind']) }}>
+          {(['after', 'at', 'every', 'daily', 'weekly', 'cron'] as const).map(value => <option key={value} value={value}>{t(`manual.${value}`)}</option>)}
+        </select>
+        {(kind === 'after' || kind === 'every') && <>
+          <label htmlFor={`${id}-seconds`}>{t('manual.seconds')}</label>
+          <input id={`${id}-seconds`} type="number" value={seconds} min={kind === 'every' ? 60 : 1} step={1}
+            onChange={(event) => { setSeconds(event.target.value) }} required />
+        </>}
+        {kind === 'at' && <>
+          <label htmlFor={`${id}-at`}>{t('manual.instant')}</label>
+          <input id={`${id}-at`} value={at} onChange={(event) => { setAt(event.target.value) }} required />
+        </>}
+        {(kind === 'daily' || kind === 'weekly') && <>
+          <label htmlFor={`${id}-time`}>{t('timing.time')}</label>
+          <input id={`${id}-time`} type="time" step={1} value={time} onChange={(event) => { setTime(event.target.value) }} required />
+        </>}
+        {kind === 'weekly' && <>
+          <label htmlFor={`${id}-days`}>{t('manual.weekdays')}</label>
+          <input id={`${id}-days`} value={weekdays} onChange={(event) => { setWeekdays(event.target.value) }} required />
+        </>}
+        {kind === 'cron' && <>
+          <label htmlFor={`${id}-cron`}>{t('rule.cronLabel')}</label>
+          <input id={`${id}-cron`} value={expression} onChange={(event) => { setExpression(event.target.value) }} required />
+        </>}
+        {(kind === 'daily' || kind === 'weekly' || kind === 'cron') && <>
+          <label htmlFor={`${id}-zone`}>{t('timing.zone')}</label>
+          <input id={`${id}-zone`} value={zone} onChange={(event) => { setZone(event.target.value) }} required />
+        </>}
+      </fieldset>
+      <TargetFields value={target} onChange={setTarget} disabled={pending} t={t} />
+      {failure && <p role="alert">{t('manual.error')}</p>}
+      <Button type="button" onClick={onClose} disabled={pending}>{t('rule.cancel')}</Button>
+      <Button type="submit" disabled={pending}>{t(pending ? 'rule.saving' : 'manual.create')}</Button>
+    </form>
+  </aside>
 }

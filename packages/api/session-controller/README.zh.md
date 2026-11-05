@@ -22,6 +22,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 历史页与 follow opening snapshot 为每个持久 Session event 携带一条 `{ type: 'event', event: SessionWireEvent }` record。Client 把每条已接受 record 保留为一个持久 `SessionEventLikeEntry`；Assistant token 边界保留在 `assistant/message` 或 `assistant/attempt` 的紧凑 stream 内。工具参数、结果内容、失败信息和 `tool/result.data.meta` 原样通过；controller 不解析 Tool definition、不运行 presenter，也不附加 UI 数据。
@@ -36,10 +37,13 @@ Client adapter 提供 `SessionEventStream`，即绑定到一个普通 Session �
 
 媒体 Remote 对 `ctx.desktopMedia` 做鸭子类型调用，因此本官方包不导入实验 overlay：`listMediaWorks`、`listMediaVoices`、`mediaRuntimeStatus`、`openMediaWork`、`revealMediaWork`、`copyMediaWorkPath`、`importMediaBytes` 和 `saveMediaWorkAs` 都不会激活 Agent。没有 overlay 的 Host 返回 `session/media-unavailable`。
 
-Session 对象还承载本地提交回显：`session.beginSubmission` 在调用方序列化与 prompt 之前，同步把一条回显写入 `SessionSnapshot.pendingSubmissions`，会话 UI 因此能在点击提交的当帧显示消息。回显按顺序存放图片预览与持久文件引用。Session 根据当前运行状态与请求的投递模式推导其 `transcript`、`queued` 或 `steering` 位置，并在序列化期间保留该位置。prompt 的 `requestId` 是关联标识：Host 把它回显为 durable user source 的 `rpcId`，queue occurrence 也把它投影为 `SessionQueuedItem.rpcId`。回显在观察到其 durable event 或 queue occurrence 后延迟一个动画帧退休，带标识的 prompt 失败或被放弃时立即退休，销毁时按 failed 退休。每次退休恰好触发一次 `onRetire`；observed 退休还会携带有序的持久附件引用，让 composer 释放成功卡片并保留失败草稿。回显只存在于 Client 内存；刷新与重连只从 durable event 重建会话。
+Session 对象通过 `session.beginSubmission` 私下预留本地提交标识。Host 接纳后，`SessionSnapshot.pendingSubmissions` 最多公开一个匹配的回显；并发接纳回执不会重复回显。回显按顺序存放图片预览与持久文件引用。Session 根据当前运行状态与请求的投递模式推导其 `transcript`、`queued` 或 `steering` 位置，并在序列化期间保留该位置。prompt 的 `requestId` 是关联标识：Host 把它回显为 durable user source 的 `rpcId`，queue occurrence 也把它投影为 `SessionQueuedItem.rpcId`。回显在观察到其 durable event 或 queue occurrence 后延迟一个动画帧退休，带标识的 prompt 失败或被放弃时立即退休，销毁时按 failed 退休。每次退休恰好触发一次 `onRetire`；observed 退休还会携带有序的持久附件引用，让 composer 释放成功卡片并保留失败草稿。回显只存在于 Client 内存；刷新与重连只从 durable event 重建会话。
 
+
+提示请求 ID 在解析 Agent 和接纳附件前预留。并发重试共享同一次接纳结果；失败后可以重试。重复回执不会删除收件箱或日志中已接纳的用户消息。
 
 <a id="session-media-references"></a>
+
 ## 会话媒体引用
 
 当 `connection`、`fs` 与 `attachments` 均被组合时，`SessionMediaReferences` 在鉴权 `connection.fetch` 通道上挂载 `GET|HEAD /api/file?path=<绝对路径>`。它通过 `ctx.fs` 读取普通文件，包括已注册工作区之外的临时路径与远程提供方中的文件。目录包含关系与 MIME 类别均不限制访问；`mime-types` 提供响应类型，未知扩展名使用 `application/octet-stream`。GET 复用 `readBytes` 执行读取前及读取中的字节限制；HEAD 只读取元数据。所有文件均使用 `ctx.attachments.imageLimits.maxImageBytes`（通常为 20 MiB）；超过此上限返回 413。响应包含完整文件，忽略 Range，并携带 `private, no-store`、`nosniff` 与 sandbox CSP，使直接打开的 HTML/SVG 无法以 API 源身份执行脚本。客户端重写位于 `ui-chat`（`AssistantMarkdown`）；音视频文件响应已可用，Markdown 音视频播放器节点仍是独立工作。
@@ -47,6 +51,7 @@ Session 对象还承载本地提交回显：`session.beginSubmission` 在调用�
 -----
 
 <a id="configuration"></a>
+
 ## 配置
 
 | 字段 | 默认值 | 含义 |
@@ -58,6 +63,7 @@ Session 对象还承载本地提交回显：`session.beginSubmission` 在调用�
 -----
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 无，因为被调用的 Agent 命令拥有任何模型可见效果。
@@ -78,6 +84,7 @@ Session 对象还承载本地提交回显：`session.beginSubmission` 在调用�
 
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

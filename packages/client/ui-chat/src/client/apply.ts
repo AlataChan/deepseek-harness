@@ -146,7 +146,7 @@ export function apply(ctx: Context): void {
     }, LinkOpeningRow))
   })
   const transcriptView = new TranscriptViewPolicy(chatSettings, 'dshDesktop' in globalThis ? 'standard' : DEFAULT_TRANSCRIPT_VIEW_MODE)
-  const presentation = derivePresentationPolicy(transcriptView.mode)
+  const presentation = derivePresentationPolicy(transcriptView.mode, transcriptView.collapseTiming, transcriptView.foldedReplies)
   const performancePolicy = new PerformanceUsagePolicy(chatSettings)
   ctx.effect(() => () => { transcriptView.dispose(); performancePolicy.dispose() })
   const performanceUsage = performancePolicy.mode
@@ -169,8 +169,14 @@ export function apply(ctx: Context): void {
     order: 12,
     locale: NS,
     inject: (): TranscriptViewRowInjected => ({
-      hooks: { transcriptView: transcriptView.mode },
+      hooks: {
+        transcriptView: transcriptView.mode,
+        collapseTiming: transcriptView.collapseTiming,
+        foldedReplies: transcriptView.foldedReplies,
+      },
       setTranscriptView: (mode) => { transcriptView.setMode(mode) },
+      setCollapseTiming: (timing) => { transcriptView.setCollapseTiming(timing) },
+      setFoldedReplies: (replies) => { transcriptView.setFoldedReplies(replies) },
     }),
   }, TranscriptViewRow))
 
@@ -182,6 +188,7 @@ export function apply(ctx: Context): void {
       label: () => t('view.chat'),
       locale: NS,
       children: {
+        'conversation.chat.text-interaction': { kind: 'keyed', scope: 'session' },
         'conversation.chat.node': { kind: 'keyed', scope: 'session', inject: CHAT_NODE_INJECT },
         'conversation.message.images': { kind: 'single', scope: 'session' },
       },

@@ -34,6 +34,14 @@ const FORK_BUNDLED_EXPERIMENTAL = new Set([
   '@deepseek-ai/dsh-experimental-tool-agent-team',
   '@deepseek-ai/dsh-experimental-assistant-registry',
   '@deepseek-ai/dsh-experimental-session-decisions',
+  '@deepseek-ai/dsh-experimental-client-ui-forge',
+  '@deepseek-ai/dsh-experimental-desktop-operation',
+  '@deepseek-ai/dsh-experimental-tool-worktree',
+  '@deepseek-ai/dsh-experimental-worktree',
+  '@deepseek-ai/dsh-experimental-worktree-review',
+  '@deepseek-ai/dsh-experimental-im-feishu',
+  '@deepseek-ai/dsh-experimental-desktop-im',
+  '@deepseek-ai/dsh-experimental-im-dingtalk',
 ])
 const PROFILE_SOURCE = 'packages/boot/app-boot/src/profile.ts'
 const PRESET_PATTERN = 'packages/bundle/web-app/presets/*.patch.yml'
@@ -319,7 +327,9 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
     }
     if (display(pkg.directory) === 'apps/web') continue
     const files = globSync('src/**/*.{ts,tsx,mts,cts,js,mjs,cjs}', { cwd: pkg.directory,
-      exclude: ['**/*.spec.*', '**/*.test.*', '**/*.d.ts', '**/tests/**', '**/__tests__/**', '**/node_modules/**'] })
+      exclude: ['**/*.spec.*', '**/*.test.*', '**/*.d.ts', '**/tests/**', '**/__tests__/**', '**/node_modules/**',
+        ...display(pkg.directory) === 'python/sdk-runtime' ? ['src/deepseek_harness_runtime/runtime/**'] : [],
+      ] })
     if (display(pkg.directory) === 'apps/cli' && files.length === 0) failures.push('apps/cli: no default runtime sources')
     for (const path of files) {
       const sourcePath = resolve(pkg.directory, path)

@@ -43,6 +43,6 @@ describe('unreadable legacy Schedule history', () => {
     expect(warning).toHaveBeenCalledWith(expect.stringContaining(reason))
     expect(warning).toHaveBeenCalledWith(expect.stringContaining('the legacy reminder is ignored'))
     expect(await test.service.catalog()).toEqual([])
-    expect(await test.service.list({ sessionId })).toEqual([])
+    expect((await test.service.list({ active: true })).items).toEqual([])
   })
 })

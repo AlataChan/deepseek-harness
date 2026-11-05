@@ -1,0 +1,39 @@
+--- packages/client/ui-sidebar/src/client/SidebarRoot.tsx
++++ packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+@@ -27,6 +27,7 @@
+   SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps,
+ } from './contract/slots.ts'
+ import { FIXED_PANEL_ID } from './panel-pins.ts'
++import { panelCapacity } from './panel-capacity.ts'
+ import css from './SidebarRoot.module.css'
+
+ /** Wide-content unmount delay; matches the 150ms wide-content fade-out. */
+@@ -148,10 +149,11 @@
+   // hide rather than restarting from a hidden bar.
+   const column = useRef<HTMLDivElement>(null)
+   useLayoutEffect(() => {
+-    const element = column.current
+-    if (element === null) return
++    // React assigns the rendered column ref before this mount layout effect.
++    const element = column.current!
+     const measure = (): void => {
+-      if (element.clientHeight > 0) setPanelLimit(Math.max(1, Math.floor((element.clientHeight - 280) / 44)))
++      const height = element.clientHeight
++      setPanelLimit(previous => panelCapacity(height, previous))
+     }
+     measure()
+     const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
+--- /dev/null
++++ packages/client/ui-sidebar/src/client/panel-capacity.ts
+@@ -0,0 +1,11 @@
++/** Sidebar launcher capacity from the measured column height. */
++
++/**
++ * Retain the previous capacity until the column has a positive measured height.
++ * @param height - current column client height.
++ * @param previous - capacity retained during unavailable layout.
++ * @returns at least one launcher for positive height, otherwise the previous capacity.
++ */
++export function panelCapacity(height: number, previous: number): number {
++  return height > 0 ? Math.max(1, Math.floor((height - 280) / 44)) : previous
++}

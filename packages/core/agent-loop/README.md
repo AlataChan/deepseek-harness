@@ -23,6 +23,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Mount `dsh-agent-loop` in any composition that should run agents. It supplies the driver behind `ctx.agents` and starts any agents you declare in its config; both [`dsh-base`](../../bundle/base/README.md) and [`dsh-sdk-minimal`](../../bundle/sdk-minimal/README.md) mount it as an explicit row.
@@ -77,6 +78,7 @@ Each step captures `agent.model.current()` before tool admission, prompt assembl
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 Factory activation stops if its fiber is disposed or unloading when the core projection handles become ready. Factory removal and Agent transaction draining remain owned by that fiber.
@@ -134,6 +136,7 @@ Before closing a failed step, the driver records an error result for each unansw
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 The package-level contract is enough for most consumers; read these when you need the surrounding domain and the design rationale.
@@ -147,6 +150,7 @@ The package-level contract is enough for most consumers; read these when you nee
 -----
 
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Complete conversation request
@@ -219,6 +223,7 @@ These limits define when the loop needs special care. They are current package c
 - **No built-in turn budget** — tool calls or steering continue the current turn; a policy that bounds runaway turns must cancel from an existing lifecycle extension point such as `agent/turn-stopping`.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>
@@ -227,3 +232,5 @@ These limits define when the loop needs special care. They are current package c
 None.
 
 </details>
+
+Request admission refreshes accepted registered runtime facts after route preparation and immediately before projecting the durable context snapshot. Required operational facts survive optional-context suppression; every dispatched request remains reconstructable from the Session log.

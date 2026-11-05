@@ -65,6 +65,8 @@ export interface BundleInfo {
    * held by the installation's dependencies, selected by no shipped template, and never removable.
    */
   optional: boolean
+  /** Whether an explicit version check and update may replace this registry dependency. */
+  updatable: boolean
   removable: boolean
   readOnlyReason?: ReadOnlyReason
   error?: ManagementError
@@ -147,6 +149,8 @@ export type PluginInstallRequestId = Branded<'PluginInstallRequestId'>
 
 /** Bundle installation defaults to activation; callers that offer cancellation supply their request id. */
 export interface InstallBundleOptions {
+  /** Save the exact version when replacing or restoring a bundle. */
+  saveExact?: boolean
   enabled?: boolean
   requestId?: PluginInstallRequestId
   /** Explicitly allow these pending packages' scripts for this profile, then install; a name no longer pending refuses the call. */
@@ -203,6 +207,91 @@ export type PluginSpecInspection =
     readonly registries?: Registry[]
   }
 
+/** One registry a lookup asked, in order; the registry that answered carries no problem. */
+export interface RegistryAttempt {
+  readonly registry: Registry
+  /** Why this registry gave no usable answer; absent for the registry that answered. */
+  readonly problem?: 'not-found' | 'network' | 'unknown'
+  /** What pnpm or the registry said, verbatim. */
+  readonly reason?: string
+}
+
+/** One published version newer than the installed one. */
+export interface PluginVersion {
+  readonly version: string
+  /** The registry's publication time, as an ISO 8601 string. */
+  readonly publishedAt?: string
+  /** The dist-tags pointing at this version, such as `latest`. */
+  readonly tags: readonly string[]
+  /** Whether the version carries a semver prerelease suffix. */
+  readonly prerelease: boolean
+  /** The registry's deprecation message, when the version is deprecated. */
+  readonly deprecated?: string
+  /** Whether the version declares a `dsh.bundle`; a version that does not cannot replace a bundle. */
+  readonly bundle: boolean
+  /** Present when the version's `engines.dsh` or DSH peers reject the running DSH version without an exemption for the exact pair. */
+  readonly incompatible?: IncompatiblePlugin
+}
+
+/** The versions a registry offers for an installed registry package, read without changing the profile. */
+export type PluginVersionList =
+  | {
+    readonly status: 'listed'
+    /** The installed version the list is newer than. */
+    readonly installed: string
+    /** The registry that answered; an update installs from it. */
+    readonly registry: Registry
+    readonly attempts: readonly RegistryAttempt[]
+    /** Published versions newer than `installed`, newest first, at most `versionListLimit` of them. */
+    readonly versions: readonly PluginVersion[]
+    /** Newer versions beyond `versionListLimit` that the list leaves out. */
+    readonly omitted: number
+  }
+  | {
+    readonly status: 'refused'
+    /** `not-updatable`: the package is not an installed profile dependency resolved from a registry. */
+    readonly problem: 'not-updatable' | 'not-found' | 'network' | 'unknown'
+    readonly reason: string
+    /** The registries asked, in order; empty for `not-updatable`. */
+    readonly attempts: readonly RegistryAttempt[]
+  }
+
+/** Where a version listing asks. */
+export interface ListVersionsOptions {
+  /** The registry asked first; absent, the one this process last installed the package from, else the configured one. */
+  readonly registry?: Registry
+}
+
+/** Where an update asks for its target, and the request id its progress names. */
+export interface UpdateBundleOptions {
+  /** The registry asked first, normally the one that answered `listVersions`; absent, as for `listVersions`. */
+  readonly registry?: Registry
+  /** Names the update's progress and the target installation's logs; `cancelInstall` stops only that installation. */
+  readonly requestId?: PluginInstallRequestId
+}
+
+/** The step of an update its Host progress names. */
+export type PluginUpdateStep = 'checking' | 'removing' | 'installing' | 'restoring'
+
+/** Progress of one update request. */
+export interface PluginUpdateProgress {
+  readonly requestId: PluginInstallRequestId
+  readonly step: PluginUpdateStep
+}
+
+/**
+ * How an update ended. `result` belongs to the last step that ran: the target check, the removal of the installed
+ * version, or the target's installation. `restore` is present when the target's installation failed or was cancelled
+ * after the installed version was removed, and reports the reinstallation of that version.
+ */
+export interface PluginUpdateResult {
+  readonly from: string
+  readonly to: string
+  readonly step: 'check' | 'remove' | 'install'
+  readonly result: ChangeResult
+  readonly restore?: ChangeResult
+}
+
 /** The Host phase of one installation, before its install call settles; `installing` is announced once per registry asked. */
 export interface PluginInstallProgress {
   readonly requestId: PluginInstallRequestId
@@ -238,8 +327,44 @@ export interface PluginChange {
   readonly reason: 'plugin' | 'bundle' | 'install' | 'remove'
 }
 
+/** Identifies one manager invocation, including time spent waiting for its profile lock. */
+export type PluginOperationId = Branded<'PluginOperationId'>
+
+/** Management facts for diagnostic consumers; recent operations do not establish a crash's cause. */
+export type PluginOperation = {
+  readonly id: PluginOperationId
+  readonly time: string
+  readonly reason: PluginChange['reason']
+  /** Known entry id or parsed registry package name; unrecognized targets and raw specs are omitted. */
+  readonly target: string | null
+  readonly stage: ChangeResult['stage']
+  readonly enabled?: boolean | undefined
+  /** Request-time or resolved package version; absence means unusable or unavailable, never the latest registry version. */
+  readonly version?: string | undefined
+} & (
+  | { readonly phase: 'started' }
+  | {
+    readonly phase: 'settled'
+    readonly application: ChangeResult['application']
+    readonly changed: boolean
+    readonly errorCode?: ManagementError['code'] | undefined
+  }
+  /** An exception escaped the operation result; persisted or applied changes cannot be inferred. */
+  | { readonly phase: 'unknown' }
+)
+
 declare module '@deepseek-ai/cordis' {
   interface Events {
+    /** Correlated management facts without raw specs, configs or output.
+     * @mode parallel
+     * @param operation - A start, settlement, or unknown outcome.
+     */
+    'plugin-manager/operation'(operation: PluginOperation): void | Promise<void>
+    /** Progress for an explicitly requested update.
+     * @mode emit
+     * @param progress - Request identity and current step.
+     */
+    'plugin-manager/update-state'(progress: PluginUpdateProgress): void
     /**
      * The profile's plugins, bundles, or composition changed: a manager
      * operation completed. A patch generation applied outside the manager,

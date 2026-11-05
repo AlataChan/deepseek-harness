@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 /** The Node compatibility matrix runs this complete source-entry smoke. */
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -18,8 +19,9 @@ async function setup(mode: SandboxMode) {
     inheritsParentContext: false,
     start: () => Promise.reject(new Error('source runtime smoke must not start a child')),
   })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(PtcWorkflowEngine, {})
-  return { ctx, parent: fakeParent(ctx), ...files }
+  return { ctx, parent: await fakeParent(ctx), ...files }
 }
 
 it('runs the default workflow config through the source PTC runtime', async () => {

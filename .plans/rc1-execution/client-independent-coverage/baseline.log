@@ -1,0 +1,202 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04
+      Coverage enabled with v8
+
+ ❯ |thread-safe| packages/api/session-controller/tests/session.client.spec.ts (61 tests | 3 failed) 823ms
+     × publishes the first-prompt lifecycle synchronously before the Remote settles 19ms
+     × does not await a first turn when the history already contains one 9ms
+     × keeps the attempted-first-prompt state when the Host rejects the prompt 5ms
+ ❯ |thread-safe| packages/api/session-controller/tests/session-ask-data.host.spec.ts (33 tests | 1 failed) 335ms
+     × fails commit when agent-presets is missing on a non-data-agent session 18ms
+ ❯ |thread-safe| packages/api/session-controller/tests/agent.host.spec.ts (18 tests | 1 failed) 97ms
+     × resumes a matching persisted identity and preserves its selected preset 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |thread-safe| packages/api/session-controller/tests/agent.host.spec.ts > ApiSession create or adoption > resumes a matching persisted identity and preserves its selected preset
+AssertionError: promise rejected "TypeError: this.ctx.get(...)?.presetOf is…" instead of resolving
+ ❯ packages/api/session-controller/tests/agent.host.spec.ts:455:78
+    453|     })
+    454|
+    455|     await expect(agents.ensureSession(meta.id, '/workspace', true, 'mi…
+       |                                                                              ^
+    456|     expect(resume).toHaveBeenCalledWith(expect.objectContaining({ resu…
+    457|   })
+
+Caused by: TypeError: this.ctx.get(...)?.presetOf is not a function
+ ❯ ApiSessionAgentController.presetForSession packages/api/session-controller/src/agent.ts:343:42
+ ❯ ApiSessionAgentController.ensureSession packages/api/session-controller/src/agent.ts:269:60
+ ❯ packages/api/session-controller/tests/agent.host.spec.ts:455:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |thread-safe| packages/api/session-controller/tests/session-ask-data.host.spec.ts > session ask-data remotes > fails commit when agent-presets is missing on a non-data-agent session
+AssertionError: expected { ok: false, …(1) } to match object { ok: false, …(1) }
+(3 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "error": {
+-     "code": "gateway/internal",
++   "error": RemoteError {
++     "code": "session/ask-data-unavailable",
+    },
+    "ok": false,
+  }
+
+ ❯ packages/api/session-controller/tests/session-ask-data.host.spec.ts:605:7
+    603|       sourceId: 'src-sample',
+    604|       sessionId: SessionId('s-nopreset'),
+    605|     })).resolves.toMatchObject({
+       |       ^
+    606|       ok: false,
+    607|       error: { code: 'gateway/internal' },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |thread-safe| packages/api/session-controller/tests/session.client.spec.ts > prompt and cancel errors > publishes the first-prompt lifecycle synchronously before the Remote settles
+AssertionError: expected { sessionId: 'fk-s1', …(13) } to match object { blank: true, …(2) }
+(11 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "awaitingFirstTurn": true,
++   "awaitingFirstTurn": false,
+    "blank": true,
+-   "promptAttempted": true,
++   "promptAttempted": false,
+  }
+
+ ❯ packages/api/session-controller/tests/session.client.spec.ts:610:35
+    608|     })
+    609|     const inFlight = session.prompt([{ type: 'text', text: '要发的' }], '…
+    610|     expect(session.getSnapshot()).toMatchObject({
+       |                                   ^
+    611|       blank: true, promptAttempted: true, awaitingFirstTurn: true,
+    612|     })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |thread-safe| packages/api/session-controller/tests/session.client.spec.ts > prompt and cancel errors > does not await a first turn when the history already contains one
+AssertionError: expected { sessionId: 'fk-s1', …(13) } to match object { blank: false, …(2) }
+(11 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "awaitingFirstTurn": false,
+    "blank": false,
+-   "promptAttempted": true,
++   "promptAttempted": false,
+  }
+
+ ❯ packages/api/session-controller/tests/session.client.spec.ts:632:35
+    630|     session.handleBlank(false)
+    631|     const inFlight = session.prompt([{ type: 'text', text: '继续' }], 'q…
+    632|     expect(session.getSnapshot()).toMatchObject({ blank: false, prompt…
+       |                                   ^
+    633|     expect((await inFlight).ok).toBe(true)
+    634|     expect(session.getSnapshot()).toMatchObject({ blank: false, awaiti…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  |thread-safe| packages/api/session-controller/tests/session.client.spec.ts > prompt and cancel errors > keeps the attempted-first-prompt state when the Host rejects the prompt
+AssertionError: expected { sessionId: 'fk-s1', …(13) } to match object { blank: true, …(2) }
+(13 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "awaitingFirstTurn": true,
++   "awaitingFirstTurn": false,
+    "blank": true,
+-   "promptAttempted": true,
++   "promptAttempted": false,
+  }
+
+ ❯ packages/api/session-controller/tests/session.client.spec.ts:659:35
+    657|     expect(result.ok).toBe(false)
+    658|     expect(session.getSnapshot().promptError).toMatchObject({ op: 'sen…
+    659|     expect(session.getSnapshot()).toMatchObject({
+       |                                   ^
+    660|       blank: true, promptAttempted: true, awaitingFirstTurn: true,
+    661|     })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  3 failed | 217 passed (220)
+      Tests  5 failed | 3908 passed (3913)
+   Start at  12:35:05
+   Duration  72.06s (transform 20.60s, setup 4.91s, import 131.44s, tests 61.69s, environment 53.26s)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   97.15 |    97.45 |   94.69 |   98.09 |
+ ...controller/src |     100 |    99.55 |     100 |     100 |
+  commands.ts      |     100 |    99.55 |     100 |     100 | 327
+ ...hat/src/client |   97.95 |    96.77 |    97.5 |   98.75 |
+  apply.ts         |   98.57 |      100 |   96.72 |   98.29 | 178-179
+  ...cript-view.ts |   93.33 |    90.47 |     100 |     100 | 53-63
+ ...lient/settings |    87.5 |      100 |      80 |   84.61 |
+  ...ptViewRow.tsx |    87.5 |      100 |      80 |   84.61 | 77,86
+ ...primitives/src |   97.22 |    96.87 |   92.59 |   98.69 |
+  QuotePreview.tsx |   16.66 |      100 |   33.33 |   33.33 | 20-21
+  focus.ts         |     100 |    92.85 |     100 |     100 | 11
+  useModalLayer.ts |     100 |    98.52 |     100 |     100 | 56
+  user-text.tsx    |     100 |    95.58 |     100 |     100 | 69,105,117
+ ...bar/src/client |   96.42 |     94.4 |   96.36 |   99.04 |
+  SidebarRoot.tsx  |   97.63 |    95.79 |      98 |   98.94 | 360
+  panel-pins.ts    |   81.81 |    66.66 |      80 |     100 | 31-32
+ ...age-quotes/src |       0 |        0 |       0 |       0 |
+  index.ts         |       0 |        0 |       0 |       0 |
+ ...tes/src/client |   71.87 |      100 |      70 |   69.56 |
+  index.ts         |       0 |      100 |       0 |       0 | 18-24
+  locales.ts       |       0 |      100 |     100 |       0 | 2-6
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 97.15% ( 854/879 )
+Branches     : 97.45% ( 575/590 )
+Functions    : 94.69% ( 214/226 )
+Lines        : 98.09% ( 721/735 )
+================================================================================
+ERROR: Coverage for lines (84.61%) does not meet global threshold (100%) for packages/client/ui-chat/src/client/settings/TranscriptViewRow.tsx
+ERROR: Coverage for functions (80%) does not meet global threshold (100%) for packages/client/ui-chat/src/client/settings/TranscriptViewRow.tsx
+ERROR: Coverage for statements (87.5%) does not meet global threshold (100%) for packages/client/ui-chat/src/client/settings/TranscriptViewRow.tsx
+ERROR: Coverage for lines (98.29%) does not meet global threshold (100%) for packages/client/ui-chat/src/client/apply.ts
+ERROR: Coverage for functions (96.72%) does not meet global threshold (100%) for packages/client/ui-chat/src/client/apply.ts
+ERROR: Coverage for statements (98.57%) does not meet global threshold (100%) for packages/client/ui-chat/src/client/apply.ts
+ERROR: Coverage for branches (99.55%) does not meet global threshold (100%) for packages/api/session-controller/src/commands.ts
+ERROR: Coverage for statements (93.33%) does not meet global threshold (100%) for packages/client/ui-chat/src/client/transcript-view.ts
+ERROR: Coverage for branches (90.47%) does not meet global threshold (100%) for packages/client/ui-chat/src/client/transcript-view.ts
+ERROR: Coverage for branches (92.85%) does not meet global threshold (100%) for packages/client/ui-primitives/src/focus.ts
+ERROR: Coverage for lines (33.33%) does not meet global threshold (100%) for packages/client/ui-primitives/src/QuotePreview.tsx
+ERROR: Coverage for functions (33.33%) does not meet global threshold (100%) for packages/client/ui-primitives/src/QuotePreview.tsx
+ERROR: Coverage for statements (16.66%) does not meet global threshold (100%) for packages/client/ui-primitives/src/QuotePreview.tsx
+ERROR: Coverage for branches (98.52%) does not meet global threshold (100%) for packages/client/ui-primitives/src/useModalLayer.ts
+ERROR: Coverage for branches (95.58%) does not meet global threshold (100%) for packages/client/ui-primitives/src/user-text.tsx
+ERROR: Coverage for lines (98.94%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+ERROR: Coverage for functions (98%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+ERROR: Coverage for statements (97.63%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+ERROR: Coverage for branches (95.79%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+ERROR: Coverage for functions (80%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/panel-pins.ts
+ERROR: Coverage for statements (81.81%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/panel-pins.ts
+ERROR: Coverage for branches (66.66%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/panel-pins.ts
+ERROR: Coverage for lines (0%) does not meet global threshold (100%) for packages/session/message-quotes/src/client/locales.ts
+ERROR: Coverage for statements (0%) does not meet global threshold (100%) for packages/session/message-quotes/src/client/locales.ts
+ERROR: Coverage for functions (0%) does not meet global threshold (100%) for packages/session/message-quotes/src/index.ts
+ERROR: Coverage for lines (0%) does not meet global threshold (100%) for packages/session/message-quotes/src/client/index.ts
+ERROR: Coverage for functions (0%) does not meet global threshold (100%) for packages/session/message-quotes/src/client/index.ts
+ERROR: Coverage for statements (0%) does not meet global threshold (100%) for packages/session/message-quotes/src/client/index.ts

@@ -66,6 +66,15 @@ const FORK_BUNDLED_EXPERIMENTAL = new Set([
   '@deepseek-ai/dsh-experimental-agent-team',
   '@deepseek-ai/dsh-experimental-tool-agent-team',
   '@deepseek-ai/dsh-experimental-assistant-registry',
+  '@deepseek-ai/dsh-experimental-client-ui-forge',
+  '@deepseek-ai/dsh-experimental-desktop-operation',
+  '@deepseek-ai/dsh-experimental-session-decisions',
+  '@deepseek-ai/dsh-experimental-tool-worktree',
+  '@deepseek-ai/dsh-experimental-worktree',
+  '@deepseek-ai/dsh-experimental-worktree-review',
+  '@deepseek-ai/dsh-experimental-im-feishu',
+  '@deepseek-ai/dsh-experimental-desktop-im',
+  '@deepseek-ai/dsh-experimental-im-dingtalk',
 ])
 /** Ordinary directories whose packages this repository publishes: one release member each. */
 const standardReleaseMemberDirectory = /^(?:packages\/(?!experimental\/)[^/]+\/[^/]+|apps\/(?!desktop(?:-host)?$)[^/]+|vendor\/[^/]+)$/
@@ -180,10 +189,14 @@ export function readWorkspaceManifests(repositoryRoot: string): WorkspaceManifes
 }
 
 const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
+  '@deepseek-ai/dsh-tools': ['lib/pipeline.js', 'lib/shared-*.js'],
+  '@deepseek-ai/dsh-experimental-desktop-operation': [
+    'lib/supervisor.js', 'preset/**', 'native/LICENSE', 'native/PIN.json',
+  ],
   // Document conversion runs in an independently launched worker bundle.
   '@deepseek-ai/dsh-experimental-desktop-ask-knowledge': ['lib/converter-worker.js'],
   // Isolated process roles and the desktop adapter have explicit inert entry modules.
-  '@deepseek-ai/dsh-experimental-im-feishu': ['lib/runtime-plugin.js', 'lib/ingress-plugin.js', 'lib/desktop.js'],
+  '@deepseek-ai/dsh-experimental-im-feishu': ['lib/runtime-plugin.js', 'lib/ingress-plugin.js', 'lib/desktop.js', 'lib/card-channel.js'],
   // Owned Worker bundles import this public bootstrap before their business entry.
   '@deepseek-ai/dsh-app-boot': ['lib/worker/profile-resolution-bootstrap.js'],
   // Statically linked client libraries keep their stylesheets next to the emitted
@@ -203,7 +216,7 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-experimental-ptc-runtime-python': ['py/**/*.py'],
   '@deepseek-ai/dsh-experimental-speech-to-text-sensevoice': ['runtime/assets.json'],
   // The isolated Node bootstrap is a separately launched bundle.
-  '@deepseek-ai/dsh-ptc-runtime-node': ['lib/process.js'],
+  '@deepseek-ai/dsh-ptc-runtime-node': ['lib/process.js', 'lib/configuration.js', 'lib/persistent-process.js'],
   // The fork's Ask Data overlay ships its sample spreadsheets for the picker.
   '@deepseek-ai/dsh-experimental-desktop-ask-data': ['samples/**'],
   // The desktop shell copies the self-contained installed-runtime CLI alone
@@ -269,6 +282,19 @@ function sameStringList(actual: readonly string[] | undefined, expected: readonl
 // This type-only barrel emits an empty module. Its runtime export needs no
 // unbundled Client tree, whose CSS belongs to the bundled Client artifact.
 const emittedTreeFiles: Readonly<Record<string, readonly string[]>> = {
+  '@deepseek-ai/dsh-experimental-client-ui-forge': ['lib/types/types.js'],
+  '@deepseek-ai/dsh-experimental-session-decisions': [
+    'lib/types/errors.js',
+    'lib/types/feishu/cards.js',
+    'lib/types/feishu/channel.js',
+    'lib/types/feishu/index.js',
+    'lib/types/presentation.js',
+    'lib/types/root-eligibility.js',
+    'lib/types/schema.js',
+    'lib/types/store.js',
+    'lib/types/tools.js',
+    'lib/types/types.js',
+  ],
   '@deepseek-ai/dsh-experimental-desktop-ask-knowledge': ['lib/types/types.js'],
   '@deepseek-ai/dsh-experimental-desktop-im': ['lib/types/types.js'],
 }

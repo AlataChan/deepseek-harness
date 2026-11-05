@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * Model-facing `lsp` tool over `ctx.lsp`. One read-only tool with four operations
  * (`goToDefinition`/`findReferences`/`goToImplementation`/`hover`); it converts one-based UTF-16
@@ -44,7 +45,7 @@ export { sessionCwd } from './session-cwd.ts'
 export const name = 'tool-lsp'
 
 /** Services required by this plugin. */
-export const inject = ['tools', 'lsp', 'systemPrompt']
+export const inject = ['workingDirectory', 'tools', 'lsp', 'systemPrompt']
 
 /** Default tool-call timeout budget (ms), covering the queued open/query/close lifecycle. */
 export const DEFAULT_LSP_TOOL_TIMEOUT_MS = 60_000
@@ -182,7 +183,7 @@ export function apply(ctx: Context, config: Config): void {
     timeoutMs: resolved.timeoutMs,
     async execute(args, exec) {
       const input = parseLspArgs(args)
-      const workspaceRoot = sessionCwd(exec)
+      const workspaceRoot = await sessionCwd(ctx, exec)
       if (workspaceRoot === undefined) {
         throw new LspError('the lsp tool requires a session workspace cwd', 'LSP_WORKSPACE_REQUIRED')
       }

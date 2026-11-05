@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { installProxyFromEnvironment } from '@deepseek-ai/dsh-http-proxy'
@@ -16,6 +17,7 @@ describe('workflow program environment', () => {
       inheritsParentContext: false,
       start: () => Promise.reject(new Error('environment script must not start a child')),
     })
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(PtcWorkflowEngine, { provider: 'stub' })
     const disposeProxy = await installProxyFromEnvironment({
       get: name => name === 'HTTP_PROXY' || name === 'HTTPS_PROXY'
@@ -27,7 +29,7 @@ describe('workflow program environment', () => {
       const run = ctx.workflowEngine.start({
         script: "return { ...globalThis.constructor.constructor('return process')().env }",
         meta: { name: 'environment', description: 'program environment' },
-        parent: fakeParent(ctx),
+        parent: await fakeParent(ctx),
       })
       try {
         const result = await run.result

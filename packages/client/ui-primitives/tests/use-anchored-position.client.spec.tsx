@@ -11,7 +11,7 @@
  */
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { act, cleanup, render } from '@testing-library/react'
 import { useAnchoredPosition } from '../src/useAnchoredPosition.ts'
 
 afterEach(() => {
@@ -146,4 +146,20 @@ describe('useAnchoredPosition', () => {
     expect(add.mock.calls.filter(([type]) => type === 'scroll' || type === 'resize')).toEqual([])
     add.mockRestore()
   })
+})
+
+
+it('clamps menus to a panned visual viewport and repositions on its resize', () => {
+  const viewport = Object.assign(new EventTarget(), { offsetLeft: 40, offsetTop: 160, width: 300, height: 260 })
+  vi.stubGlobal('visualViewport', viewport)
+  vi.spyOn(HTMLButtonElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(320, 400, 30, 20))
+  vi.spyOn(HTMLDivElement.prototype, 'offsetWidth', 'get').mockReturnValue(120)
+  vi.spyOn(HTMLDivElement.prototype, 'offsetHeight', 'get').mockReturnValue(100)
+  onTestFinished(() => { vi.restoreAllMocks() })
+  const view = render(<Host open />)
+  const panel = view.getByTestId('panel')
+  expect(panel.style.left).toBe('208px')
+  expect(panel.style.top).toBe('308px')
+  act(() => { viewport.height = 200; viewport.dispatchEvent(new Event('resize')) })
+  expect(panel.style.top).toBe('248px')
 })

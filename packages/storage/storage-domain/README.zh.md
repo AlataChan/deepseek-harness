@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 当宿主包需要持久、经过 schema 校验的记录——工作区记录、会话伴随元数据——时使用本包。由所属包声明一次领域；消费方打开它，即可获得同步读取与持久、发出变更事件的写入，而无需触碰任何后端。
@@ -75,6 +76,7 @@ domain.table('workspaces').update(id, (r) => ({ ...r, path: newPath }))
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -108,6 +110,7 @@ domain.table('workspaces').update(id, (r) => ({ ...r, path: newPath }))
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当领域层视角不够用时阅读以下页面：子系统参考是权威约定，Agent Note 记录了设计与延期工作。
@@ -120,6 +123,7 @@ domain.table('workspaces').update(id, (r) => ({ ...r, path: newPath }))
 -----
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 持久领域状态
@@ -145,9 +149,10 @@ domain.table('workspaces').update(id, (r) => ({ ...r, path: newPath }))
 
 - **变更只在单进程内可见**——`domain/changed` 是进程内事件；在跨进程修订模式落地前，第二个主机进程或重新连接的 GUI 无法观察变更（[Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.zh.md)）。
 - **没有跨表事务、二级索引或多段键**——每次写入只触碰一条记录；这些扩展列在 Agent Note 的范围外清单中。
-- **没有数据迁移**——JSON `single` 在已存版本不是 spec 版本时拒绝打开（`version-mismatch`）。SQLite 单元戳若列在 `compatibleVersions` 中，则打开并保持该戳及其记录行。`per-record` 读取列出的文档版本，并丢弃未列出的文档。修改 schema 仍需手工迁移；没有任何路径把戳或记录行改写成当前版本。
+- **没有数据迁移**——JSON `single` 接受 spec 版本和列出的 `compatibleVersions`；打开时保持文件字节不变，下一次变更才写入当前版本。SQLite 单元戳若列在 `compatibleVersions` 中，则打开并保持该戳及其记录行。`per-record` 读取列出的文档版本，并丢弃未列出的文档。修改 schema 仍需手工迁移；兼容读取不会在打开时改写记录。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

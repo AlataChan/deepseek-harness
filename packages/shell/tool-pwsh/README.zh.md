@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在 agent 需要运行 PowerShell 命令的任何组合中加载本插件——通常是 `ctx.shell` 由 PowerShell 执行器支撑的 Windows 组合。一旦挂载执行器提供方与 `dsh-shell-env` 注册表，它就注册 `pwsh` 工具。
@@ -69,6 +70,7 @@ kind: "package-reference"
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -100,6 +102,7 @@ kind: "package-reference"
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当包级约定不够用时阅读以下页面。它们从 shell 家族逐步进入执行器 seam，以及 Windows 行为背后的设计笔记。
@@ -115,7 +118,10 @@ kind: "package-reference"
 
 -----
 
+新命令从已校验的会话执行目录解析工作目录。相对 workdir 以该目录为基准；沙箱 workspaceRoot 保持原项目根目录。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 系统提示词
@@ -207,6 +213,7 @@ Non-zero exits are reported as `[exit code: N]` markers; investigate failures be
 - **会话 cwd 身份未规范化**——workdir 基准就是会话头部 cwd 原样，不像 bash 工具那样以沙箱根规范化身份为准。在约束执行器下，策略的 workspace root 确实被规范化（由共享策略服务完成），因此当原始会话 cwd 与其规范形式不同时，workdir 与约束根可能分叉——这是推迟到共享 shell 工具基座抽取的对齐差距。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

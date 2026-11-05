@@ -23,6 +23,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Load this plugin in any composition where the agent should run bash commands: it registers the `bash` tool once an executor provider and the `dsh-shell-env` registry are mounted, and stays pending until the `tools`, `shell`, `systemPrompt`, and `shellEnv` services exist.
@@ -55,6 +56,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 The tool executes `bash -c <command>` and returns the combined output. Commands run in a fresh shell every call, so state never persists — pass `workdir` instead of `cd`. A non-zero exit is reported as `[exit code: N]` for the agent to interpret, not surfaced as a tool error. A `description` in active voice (5–10 words) labels the call in the UI; the schema lists it before `command` and asks the model to emit it first, without enforcing JSON member order. `timeoutMs` overrides the executor's default and cap. Output beyond the executor's stream caps is truncated to its tail, with the full output saved to a spill file whose path is reported. The description tells the agent to verify the resolved absolute target path before any delete or move and to guard variables in such paths with `${VAR:?}`.
 
 <a id="running-long-commands-in-the-background"></a>
+
 ### Running long commands in the background
 
 Passing `run_in_background: true` admits a job and returns its id immediately; confinement preparation may still be pending, and no background execution timeout applies. Output is empty until the process is available. Job cancellation aborts preparation and stops any process that arrives afterward; startup failure settles the admitted job as failed. The agent reads its output with `job_output` (non-blocking unless `wait: true`), lists jobs with `job_list`, and stops it with `job_kill`; a finished job notifies the owning agent in-session. Background support needs the generic job runtime (`dsh-jobs-local`) and its control tools (`dsh-tool-jobs`) mounted. The background job hands the run's non-consuming `observed` readers to the job registry as pull sources; the registry pumps them into the job's output ring at its own cadence (`pumpPollMs` on `dsh-jobs-local`), so the Web client streams live output and the model's `job_output` reads consume the same bytes through a separate cursor. A reader that throws is logged once and its stream stops; the job runs on to its own settlement. The ring is a best-effort live preview: stdout and stderr are copied per poll round, so writes the two streams made inside one poll window appear stdout first rather than in write order.
@@ -74,6 +76,7 @@ A composition with no executor provider never activates the tool. Background cal
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -109,6 +112,7 @@ The result text is stdout, then a marked `[stderr]` section, then conditional ma
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the shell family to the executor seam, the job runtime, and the decision notes behind the behavior.
@@ -123,7 +127,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+New commands resolve their working directory from the validated Session execution directory. A relative workdir is relative to that directory; sandbox workspaceRoot remains the original project. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### System prompt
@@ -215,6 +222,7 @@ These limits define when the tool is a poor fit or needs special care. They are 
 - **The job list shows every foreground command while it runs** — a settled one leaves with its result, but the Web task list does not yet mark which running rows a tool call is still waiting on.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

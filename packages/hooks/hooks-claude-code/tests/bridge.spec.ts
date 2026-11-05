@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -61,6 +62,7 @@ async function harnessWithFiber(
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
   beforeHooks?.(ctx)
+  await mountDirectoryFixture(ctx, process.cwd())
   const hooks = await ctx.plugin(HooksClaude, { configPath: join(configDir, 'hooks.json') })
   ctx.llm.registerAdapter(['mock'], adapter)
   return { ctx, hooks }
@@ -128,7 +130,7 @@ describe('hooks-claude-code bridge — UserPromptSubmit', () => {
 
     // The injected context reached the model and is recorded with the plugin source.
     expect(JSON.stringify(adapter.requests[0]!.messages)).toContain('remember: be brief')
-    const ctxMsg = events(agent).find(e => e.type === 'user/message' && e.data.source.kind !== 'user')
+    const ctxMsg = events(agent).find(e => e.type === 'user/message' && e.data.source.kind === 'hooks-claude-code')
     expect(ctxMsg?.type === 'user/message' && ctxMsg.data.source).toEqual({ kind: 'hooks-claude-code' })
   })
 })
@@ -219,7 +221,7 @@ describe('hooks-claude-code bridge — PostToolUse', () => {
 
     const log = events(agent)
     const resultIdx = log.findIndex(e => e.type === 'tool/result')
-    const ctxIdx = log.findIndex(e => e.type === 'user/message' && e.data.source.kind !== 'user')
+    const ctxIdx = log.findIndex(e => e.type === 'user/message' && e.data.source.kind === 'hooks-claude-code')
     expect(ctxIdx).toBeGreaterThan(resultIdx) // context appended AFTER the tool result
     const ctxMsg = log[ctxIdx]
     expect(ctxMsg?.type === 'user/message' && ctxMsg.data.content.some(b => b.type === 'text' && b.text.includes('tool was slow'))).toBe(true)
@@ -357,6 +359,7 @@ describe('hooks-claude-code bridge — load resilience', () => {
     await ctx.plugin(AgentLoop, { agents: [] })
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(HooksClaude, { configPath: '/nonexistent/hooks.json' })
     ctx.llm.registerAdapter(['mock'], adapter)
     const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
@@ -417,6 +420,7 @@ describe('hooks-claude-code bridge — load resilience', () => {
     await ctx.plugin(AgentLoop, { agents: [] })
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(HooksClaude, { configPath: join(dir, 'hooks.json') })
     await fiber.dispose()
     ctx.llm.registerAdapter(['mock'], adapter)
@@ -434,12 +438,12 @@ describe('hooks-claude-code bridge — load resilience', () => {
     // "cannot get property … without inject". Guard the shape directly.
     expect('default' in HooksClaude).toBe(false)
     expect(HooksClaude.name).toBe('hooks-claude-code')
-    expect(HooksClaude.inject).toEqual(['shell', 'sessionProjections', 'agents'])
+    expect(HooksClaude.inject).toEqual(['workingDirectory', 'shell', 'sessionProjections', 'agents'])
     const loader = Object.create(Loader.prototype) as Loader
     const unwrapped = loader.unwrapExports(HooksClaude) as Record<string, unknown>
     expect(unwrapped).toBe(HooksClaude)
     expect(unwrapped.name).toBe('hooks-claude-code')
-    expect(unwrapped.inject).toEqual(['shell', 'sessionProjections', 'agents'])
+    expect(unwrapped.inject).toEqual(['workingDirectory', 'shell', 'sessionProjections', 'agents'])
     expect(typeof unwrapped.apply).toBe('function')
   })
 })

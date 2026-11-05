@@ -1894,3 +1894,34 @@ export function renderRecurringReminderBatchFraming(
     `reminders_json: ${JSON.stringify(payload)}`,
   ].join('\n')
 }
+
+/**
+ * Build one of the six supported rules from its explicit timing selector.
+ * @param id - Host-generated task identity.
+ * @param title - Required task name.
+ * @param prompt - Instruction delivered at each occurrence.
+ * @param timing - Exactly one supported rule.
+ * @param now - Request-time clock sample.
+ * @returns Validated durable timing record.
+ */
+export function createScheduleRecord(
+  id: ScheduleRecord['id'], title: string, prompt: string, timing: import('./types.ts').ScheduleTiming, now: number,
+): ScheduleRecord {
+  const value: unknown = timing
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new ScheduleInputError('invalid_selector', 'Exactly one reminder selector is required.')
+  }
+  const selector = { after: 'after_seconds', at: 'at', every: 'every_seconds', daily: 'daily', weekly: 'weekly', cron: 'cron' }[timing.kind]
+  if (Object.keys(timing).length !== 2 || !Object.hasOwn(timing, 'kind') || !Object.hasOwn(timing, selector)) {
+    throw new ScheduleInputError('invalid_selector', 'Exactly one reminder selector is required.')
+  }
+  switch (timing.kind) {
+    case 'after': return createAfterScheduleRecord(id, prompt, timing.after_seconds, now, title)
+    case 'at': return createAtScheduleRecord(id, prompt, timing.at, now, title)
+    case 'every': return createEveryScheduleRecord(id, prompt, timing.every_seconds, now, title)
+    case 'daily': return createDailyScheduleRecord(id, prompt, timing.daily, now, title)
+    case 'weekly': return createWeeklyScheduleRecord(id, prompt, timing.weekly, now, title)
+    case 'cron': return createCronScheduleRecord(id, prompt, timing.cron, now, title)
+    default: throw new ScheduleInputError('invalid_selector', 'Unsupported schedule timing.')
+  }
+}

@@ -1,0 +1,23 @@
+--- f10cfa2ca1:packages/client/ui-primitives/src/focus.ts
++++ packages/client/ui-primitives/src/focus.ts
+@@ -1,6 +1,20 @@
+ /** Focus presentation for automatic entry and restoration. */
+ const releases = new WeakMap<HTMLElement, () => void>()
+ const navigationKeys = new Set(['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'])
++
++let mobileDevice: boolean | undefined
++
++/**
++ * Detect a phone or tablet from the browser's device metadata, cached until reload.
++ * @returns whether the current browser is on a recognized phone or tablet.
++ */
++export function isMobileDevice(): boolean {
++  if (mobileDevice !== undefined) return mobileDevice
++  const { userAgent, platform, maxTouchPoints } = navigator
++  mobileDevice = /Android|iPhone|iPad|iPod/i.test(userAgent)
++    || (platform === 'MacIntel' && maxTouchPoints > 1)
++  return mobileDevice
++}
+
+ /**
+  * Focus an automatic destination without a focus outline until keyboard navigation or blur.

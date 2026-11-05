@@ -525,3 +525,47 @@ describe('per-record layout', () => {
     await backend6.close()
   })
 })
+
+describe('whole-unit compatible reads', () => {
+  it.each(['put', 'delete', 'global'] as const)('keeps compatible bytes on open and stamps current on the next %s', async (operation) => {
+    const root = await freshRoot()
+    const path = join(root, 'compatible.json')
+    const bytes = JSON.stringify({ unit: { name: 'compatible', version: 1 }, global: null, tables: { t: { retained: 'old' } } })
+    await writeFile(path, bytes)
+    const backend = new JsonStorageBackend(root)
+    try {
+      await expect(backend.kv.open({ name: 'compatible', version: 3, tables: ['t'], hasGlobal: true }))
+        .rejects.toMatchObject({ code: 'version-mismatch' })
+      const unit = await backend.kv.open({ name: 'compatible', version: 2, compatibleVersions: [1], tables: ['t'], hasGlobal: true })
+      expect(await unit.loadAll()).toEqual({ tables: { t: { retained: 'old' } }, global: null })
+      expect(await readFile(path, 'utf8')).toBe(bytes)
+      if (operation === 'put') await unit.putRecord('t', 'added', 'new')
+      else if (operation === 'delete') await unit.deleteRecord('t', 'retained')
+      else await unit.setGlobal('new-global')
+      const written: unknown = JSON.parse(await readFile(path, 'utf8'))
+      expect(written).toHaveProperty('unit', { name: 'compatible', version: 2 })
+    } finally { await backend.close() }
+  })
+  it('restores memory after a failed publish without rewriting compatible source bytes on open', async () => {
+    const root = await freshRoot()
+    const path = join(root, 'compatible.json')
+    const parked = join(root, 'parked.json')
+    const bytes = JSON.stringify({ unit: { name: 'compatible', version: 1 }, global: null, tables: { t: { retained: 'old' } } })
+    await writeFile(path, bytes)
+    const backend = new JsonStorageBackend(root)
+    try {
+      const unit = await backend.kv.open({ name: 'compatible', version: 2, compatibleVersions: [1], tables: ['t'], hasGlobal: false })
+      expect(await readFile(path, 'utf8')).toBe(bytes)
+      await rename(path, parked)
+      await mkdir(path)
+      await expect(unit.putRecord('t', 'failed', 'must roll back')).rejects.toThrow()
+      expect(await unit.loadAll()).toEqual({ tables: { t: { retained: 'old' } }, global: null })
+      expect(await readFile(parked, 'utf8')).toBe(bytes)
+      await rm(path, { recursive: true })
+      await unit.putRecord('t', 'successful', 'new')
+      const written: unknown = JSON.parse(await readFile(path, 'utf8'))
+      expect(written).toHaveProperty('unit.version', 2)
+      expect(written).toHaveProperty('tables.t', { retained: 'old', successful: 'new' })
+    } finally { await backend.close() }
+  })
+})

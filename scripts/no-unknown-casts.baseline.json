@@ -1350,7 +1350,6 @@
   },
   "packages/hooks/hooks-claude-code/tests/coverage-cases.ts": {
     "38a7cf3dfd5da2f739390f5b233b97731f3bfa1ac3a51fdb8e1594735764bb80": 1,
-    "54f541ed10b92b1386306754b4a96741f6d9e40058ddac191f5aed03af30c32a": 1,
     "593ac2fabae51a87153bf285d326f2de6ddb84bf2581f2ac280083b9bc130188": 1
   },
   "packages/hooks/hooks-codex/tests/bridge.spec.ts": {
@@ -1823,19 +1822,8 @@
   "packages/shell/tool-bash-persistent/tests/loader-composition.spec.ts": {
     "59c63f734e8bba862325f776e3fcbebd78a84cfb4161f8df41c216950d9bf351": 1
   },
-  "packages/shell/tool-bash/tests/tools.spec.ts": {
-    "41338a90589ac4c3f04beabf90e520ebf5ea48cd02afd96ccf8ad48dccce120f": 1,
-    "48ae3a6867271a1591bfb51f2707502c2eb515e998a557be49030db67ba41cd4": 1,
-    "5c0beb58563a1b35284f952551e508b73d1644ce50c23e270e6a0bbec398cf07": 1,
-    "ccb0925e3e1d693b0cf9be6216198f915310da30548609cb81aa7e4246c1246a": 1
-  },
   "packages/shell/tool-pwsh-persistent/tests/loader-composition.spec.ts": {
     "59c63f734e8bba862325f776e3fcbebd78a84cfb4161f8df41c216950d9bf351": 1
-  },
-  "packages/shell/tool-pwsh/tests/tools.spec.ts": {
-    "3923b6d0f0da525911b77d50d8cf81fc8d5ea805090cb6e46876f27216dd6a65": 1,
-    "5cedcf47f5df159bc794dc2adf05d8b8eeccc56b14993d2fb505b127627c5742": 1,
-    "73c54fafe9b5e31d842b420a12bc4188fae6e222bfb64d6e204172f324c34356": 1
   },
   "packages/skill/skill-office/tests/skill-office.spec.ts": {
     "154da39139a0074bad3d13a624e5fa62d1f7ce19dc8b9c28a73af3263cd7f10e": 1
@@ -2221,9 +2209,6 @@
   },
   "packages/workflow/tool-workflow/tests/tool-workflow.spec.ts": {
     "061944ebda38f8da144d88cfa668e6336efc68c33441a9fe3215d8c001124526": 2
-  },
-  "packages/workflow/workflow-ptc/tests/setup.ts": {
-    "eedb5ebd5377314cae568128ab901b78a063216d34f322aa8ad8a33d9e14df54": 1
   },
   "packages/workflow/workflow-ptc/tests/workflow-ptc.spec.ts": {
     "3ddf655a4c4522404be3c2758f0511c7605887c72d9d91cb4ad521433cbdb0b4": 1,

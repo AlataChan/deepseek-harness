@@ -23,7 +23,7 @@ const sessionId = SessionId('history-owner')
 const id = ScheduleId('history-task')
 const metadata = { earlierRecordsPruned: false, retention: { days: 30, records: 200 } }
 function receipt(index: number): ScheduleDeliveryRecord {
-  return {
+  return { targetSessionId: sessionId,
     messageId: MessageId(`message-${index}`), prompt: `Sent prompt ${index}`,
     scheduledAt: '2026-09-15T00:00:00.000Z',
     deliveredAt: index % 2 === 0 ? '2026-09-15T00:00:01.000Z' : '2026-09-14T00:00:01.000Z',
@@ -32,8 +32,8 @@ function receipt(index: number): ScheduleDeliveryRecord {
 function stored(records: ScheduleDeliveryRecord[]): ScheduleTask {
   const latest = records.at(-1)
   return {
-    sessionId, status: 'inactive', record: createAfterScheduleRecord(id, 'Current task prompt', 1, Date.now(), 'Current task prompt'),
-    ...(latest === undefined ? {} : { lastDelivery: {
+    target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'ended', record: createAfterScheduleRecord(id, 'Current task prompt', 1, Date.now(), 'Current task prompt'),
+    ...(latest === undefined ? {} : { lastDelivery: { targetSessionId: sessionId,
       scheduledAt: latest.scheduledAt, deliveredAt: latest.deliveredAt, messageId: latest.messageId,
     } }),
     deliveryHistory: { records, earlierRecordsUnavailable: false },
@@ -51,31 +51,31 @@ it('paginates more than one full page by identity across appended arrivals and c
   const create = vi.spyOn(test.ctx.sessions, 'create')
   const changed = vi.fn()
   test.ctx.on('schedule/changed', changed)
-  const first = await test.service.history({ sessionId, id, limit: 100 })
+  const first = await test.service.history({  id, limit: 100 })
   expect(first).toEqual({ id, records: records.slice(3).reverse(), ...metadata, earlierRecordsUnavailable: false, nextBefore: MessageId('message-3') })
   if ('code' in first || first.nextBefore === undefined) throw new Error('Expected delivery page with an older cursor')
   const table = test.ctx.storageDomain.get('schedule')!.table('tasks')
   const arrival = receipt(103)
   await table.put(id, stored([...records, arrival]))
-  const second = await test.service.history({ sessionId, id, limit: 100, before: first.nextBefore })
+  const second = await test.service.history({  id, limit: 100, before: first.nextBefore })
   expect(second).toEqual({ id, records: records.slice(0, 3).reverse(), ...metadata, earlierRecordsUnavailable: false })
   if ('code' in second) throw new Error('Expected delivery page')
   expect(new Set([...first.records, ...second.records].map(record => record.messageId)).size).toBe(103)
-  expect(await test.service.history({ sessionId, id, limit: 1 })).toEqual({
+  expect(await test.service.history({  id, limit: 1 })).toEqual({
     id, records: [arrival], ...metadata, earlierRecordsUnavailable: false, nextBefore: arrival.messageId,
   })
-  expect(await test.service.history({ sessionId, id, limit: 1, before: records[0]!.messageId })).toEqual({
+  expect(await test.service.history({  id, limit: 1, before: records[0]!.messageId })).toEqual({
     id, records: [], ...metadata, earlierRecordsUnavailable: false,
   })
   Object.assign(first.records[0]!, { prompt: 'Mutated response copy' })
   first.records.splice(0)
-  expect(await test.service.history({ sessionId, id, limit: 100 })).toMatchObject({ records: [...records, arrival].slice(4).reverse() })
+  expect(await test.service.history({  id, limit: 100 })).toMatchObject({ records: [...records, arrival].slice(4).reverse() })
   expect(await test.service.catalog()).toEqual([{
-    ...stored(records).record, sessionId, status: 'inactive', lastDelivery: {
+    ...stored(records).record, target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'ended', lastDelivery: { targetSessionId: sessionId,
       scheduledAt: arrival.scheduledAt, deliveredAt: arrival.deliveredAt, messageId: arrival.messageId,
     },
   }])
-  expect(await test.service.list({ sessionId })).toEqual([])
+  expect((await test.service.list({ active: true })).items).toEqual([])
   expect(read).not.toHaveBeenCalled()
   expect(create).not.toHaveBeenCalled()
   expect(test.resolve).not.toHaveBeenCalled()
@@ -83,17 +83,17 @@ it('paginates more than one full page by identity across appended arrivals and c
   expect(changed).not.toHaveBeenCalled()
 })
 
-it('returns explicit missing task, wrong binding, and unknown cursor results', async () => {
+it('returns explicit missing task, Host-wide history, and unknown cursor results', async () => {
   const test = await setup()
-  const record = await test.service.create(sessionId, { prompt: 'Pending', after_seconds: 60, title: 'Pending' })
-  expect(await test.service.history({ sessionId, id: record.id, limit: 1 })).toEqual({
+  const record = await test.service.create({ prompt: 'Pending', title: 'Pending', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
+  expect(await test.service.history({  id: record.id, limit: 1 })).toEqual({
     id: record.id, records: [], ...metadata, earlierRecordsUnavailable: false,
   })
-  expect(await test.service.history({ sessionId, id, limit: 1 })).toEqual({ id, code: 'schedule_not_found' })
-  expect(await test.service.history({ sessionId: SessionId('wrong'), id: record.id, limit: 1 })).toEqual({
-    id: record.id, code: 'schedule_not_found',
+  expect(await test.service.history({  id, limit: 1 })).toEqual({ id, code: 'schedule_not_found' })
+  expect(await test.service.history({ id: record.id, limit: 1 })).toEqual({
+    id: record.id, records: [], ...metadata, earlierRecordsUnavailable: false,
   })
-  expect(await test.service.history({ sessionId, id: record.id, limit: 1, before: MessageId('unknown') })).toEqual({
+  expect(await test.service.history({  id: record.id, limit: 1, before: MessageId('unknown') })).toEqual({
     id: record.id, code: 'delivery_cursor_not_found',
   })
   expect(test.resolve).not.toHaveBeenCalled()
@@ -110,7 +110,7 @@ it.each([0, -1, 101, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])('rejects 
 it.each<[unknown]>([[undefined], [null], ['1']])('does not default or coerce an invalid remote limit %s', async (limit) => {
   const test = await setup()
   // Remote JSON can omit the required limit or supply a value outside its declared number type.
-  await expect(test.service.history({ sessionId, id, limit: limit as number }))
+  await expect(test.service.history({  id, limit: limit as number }))
     .rejects.toMatchObject({ code: 'invalid_rule' })
 })
 
@@ -119,12 +119,9 @@ it.each(['every', 'daily'] as const)('retains real %s receipts and immutable pro
   const agent = agentFor(first.ctx, sessionId)
   const followup = vi.spyOn(agent, 'followup')
   first.resolve.mockResolvedValue({ agent })
-  const record = await first.service.create(sessionId, {
-    prompt: 'Original prompt', title: 'Original prompt',
-    ...(kind === 'every' ? { every_seconds: 300 } : { daily: { time: '00:05:00', time_zone: 'UTC' } }),
-  })
+  const record = await first.service.create({ prompt: 'Original prompt', title: 'Original prompt', timing: kind === 'every' ? { kind, every_seconds: 300 } : { kind, daily: { time: '00:05:00', time_zone: 'UTC' } }, target: { kind: 'session', sessionId: sessionId } })
   await vi.advanceTimersByTimeAsync(300_000)
-  const firstReceipt = {
+  const firstReceipt = { targetSessionId: sessionId,
     scheduledAt: '2026-09-16T00:05:00.000Z', deliveredAt: '2026-09-16T00:05:00.000Z',
     messageId: followup.mock.calls[0]![0].id, prompt: 'Original prompt',
   }
@@ -144,13 +141,13 @@ it.each(['every', 'daily'] as const)('retains real %s receipts and immutable pro
   if (restartedAgent === undefined) throw new Error('Expected restored Agent')
   const deliveries = vi.mocked(restartedAgent.followup)
   expect(deliveries).toHaveBeenCalledTimes(1)
-  const secondReceipt = {
+  const secondReceipt = { targetSessionId: sessionId,
     scheduledAt: '2026-09-19T00:05:00.000Z', deliveredAt: '2026-09-19T00:06:00.000Z',
     messageId: deliveries.mock.calls[0]![0].id, prompt: 'Next prompt',
   }
   expect(secondReceipt.messageId).not.toBe(firstReceipt.messageId)
   expect(JSON.stringify(deliveries.mock.calls[0]![0].content)).toContain(secondReceipt.prompt)
-  expect(await second.service.history({ sessionId, id: record.id, limit: 100 })).toEqual({
+  expect(await second.service.history({  id: record.id, limit: 100 })).toEqual({
     id: record.id, records: [secondReceipt, firstReceipt], ...metadata, earlierRecordsUnavailable: false,
   })
   expect(second.pool.media.get('schedule')!.tables.get('tasks')!.get(record.id)).toMatchObject({
@@ -158,7 +155,7 @@ it.each(['every', 'daily'] as const)('retains real %s receipts and immutable pro
   })
   await second.ctx.fiber.dispose()
   const third = await setup({ pool: first.pool })
-  expect(await third.service.history({ sessionId, id: record.id, limit: 100 })).toEqual({
+  expect(await third.service.history({  id: record.id, limit: 100 })).toEqual({
     id: record.id, records: [secondReceipt, firstReceipt], ...metadata, earlierRecordsUnavailable: false,
   })
 })
@@ -168,9 +165,9 @@ it.each(['flush-false', 'flush-reject', 'put'] as const)('publishes no additiona
   const agent = agentFor(test.ctx, sessionId)
   const followup = vi.spyOn(agent, 'followup')
   test.resolve.mockResolvedValue({ agent })
-  const record = await test.service.create(sessionId, { prompt: 'Keep first receipt', every_seconds: 300, title: 'Keep first receipt' })
+  const record = await test.service.create({ prompt: 'Keep first receipt', title: 'Keep first receipt', timing: { kind: 'every', every_seconds: 300 }, target: { kind: 'session', sessionId: sessionId } })
   await vi.advanceTimersByTimeAsync(300_000)
-  const before = await test.service.history({ sessionId, id: record.id, limit: 100 })
+  const before = await test.service.history({  id: record.id, limit: 100 })
   const catalog = await test.service.catalog()
   const disk = structuredClone(test.pool.media.get('schedule')!.tables.get('tasks')!.get(record.id))
   const changed = vi.fn()
@@ -180,7 +177,7 @@ it.each(['flush-false', 'flush-reject', 'put'] as const)('publishes no additiona
   else test.pool.failNextWrites = 1
   await vi.advanceTimersByTimeAsync(300_000)
   expect(followup).toHaveBeenCalledTimes(2)
-  expect(await test.service.history({ sessionId, id: record.id, limit: 100 })).toEqual(before)
+  expect(await test.service.history({  id: record.id, limit: 100 })).toEqual(before)
   expect(await test.service.catalog()).toEqual(catalog)
   expect(test.pool.media.get('schedule')!.tables.get('tasks')!.get(record.id)).toEqual(disk)
   expect(changed).not.toHaveBeenCalled()
@@ -190,23 +187,23 @@ it('deletes an ended task together with its complete history', async () => {
   const test = await setup()
   const agent = agentFor(test.ctx, sessionId)
   test.resolve.mockResolvedValue({ agent })
-  const record = await test.service.create(sessionId, { prompt: 'Only once', after_seconds: 1, title: 'Only once' })
+  const record = await test.service.create({ prompt: 'Only once', title: 'Only once', timing: { kind: 'after', after_seconds: 1 }, target: { kind: 'session', sessionId: sessionId } })
   await vi.advanceTimersByTimeAsync(1000)
-  const history = await test.service.history({ sessionId, id: record.id, limit: 100 })
+  const history = await test.service.history({  id: record.id, limit: 100 })
   expect(history).toMatchObject({ records: [{ prompt: 'Only once' }], earlierRecordsUnavailable: false })
   await vi.advanceTimersByTimeAsync(86_400_000)
   expect(agent.followup).toHaveBeenCalledTimes(1)
-  expect(await test.service.history({ sessionId, id: record.id, limit: 100 })).toEqual(history)
+  expect(await test.service.history({  id: record.id, limit: 100 })).toEqual(history)
   const events = agent.session.snapshotEvents()
-  expect(await test.service.delete({ sessionId, id: record.id })).toEqual({ id: record.id, deleted: true })
+  expect(await test.service.edit({ id: record.id, action: 'delete' })).toEqual({ id: record.id, deleted: true })
   // The row is gone, so the saved records go with it and the listing is empty.
-  expect(await test.service.history({ sessionId, id: record.id, limit: 100 }))
+  expect(await test.service.history({  id: record.id, limit: 100 }))
     .toEqual({ id: record.id, code: 'schedule_not_found' })
-  expect(await test.service.list({ sessionId })).toEqual([])
+  expect((await test.service.list({ active: true })).items).toEqual([])
   expect(await test.service.catalog()).toEqual([])
   expect(test.pool.media.get('schedule')!.tables.get('tasks')!.get(record.id)).toBeUndefined()
-  expect(await test.service.delete({ sessionId, id: record.id }))
-    .toEqual({ id: record.id, deleted: false, code: 'schedule_not_found' })
+  expect(await test.service.edit({ id: record.id, action: 'delete' }))
+    .toEqual({ id: record.id, code: 'schedule_not_found' })
   expect(test.ctx.sessions.get(sessionId)).toBe(agent.session)
   expect(agent.session.snapshotEvents()).toEqual(events)
 })
@@ -216,27 +213,27 @@ it('removes the row across restart while the task stops running and leaves both 
   const agent = agentFor(first.ctx, sessionId)
   const followup = vi.spyOn(agent, 'followup')
   first.resolve.mockResolvedValue({ agent })
-  const record = await first.service.create(sessionId, { prompt: 'Keep records', every_seconds: 300, title: 'Keep records' })
+  const record = await first.service.create({ prompt: 'Keep records', title: 'Keep records', timing: { kind: 'every', every_seconds: 300 }, target: { kind: 'session', sessionId: sessionId } })
   await vi.advanceTimersByTimeAsync(300_000)
   expect(followup).toHaveBeenCalledTimes(1)
-  const retained = await first.service.history({ sessionId, id: record.id, limit: 100 })
+  const retained = await first.service.history({  id: record.id, limit: 100 })
   expect(retained).toMatchObject({ records: [{ prompt: 'Keep records' }] })
-  expect(await first.service.delete({ sessionId, id: record.id })).toEqual({ id: record.id, deleted: true })
+  expect(await first.service.edit({ id: record.id, action: 'delete' })).toEqual({ id: record.id, deleted: true })
   // The removed row leaves the timer and both listings, and its records are gone.
   await vi.advanceTimersByTimeAsync(3_600_000)
   expect(followup).toHaveBeenCalledTimes(1)
-  expect(await first.service.list({ sessionId })).toEqual([])
+  expect((await first.service.list({ active: true })).items).toEqual([])
   expect(await first.service.catalog()).toEqual([])
-  expect(await first.service.history({ sessionId, id: record.id, limit: 100 }))
+  expect(await first.service.history({  id: record.id, limit: 100 }))
     .toEqual({ id: record.id, code: 'schedule_not_found' })
   await first.ctx.fiber.dispose()
   const second = await setup({ pool: first.pool })
   await vi.advanceTimersByTimeAsync(3_600_000)
   expect(second.resolve).not.toHaveBeenCalled()
-  expect(await second.service.list({ sessionId })).toEqual([])
+  expect((await second.service.list({ active: true })).items).toEqual([])
   expect(await second.service.catalog()).toEqual([])
   expect(await second.pool.media.get('schedule')!.tables.get('tasks')!.get(record.id)).toBeUndefined()
-  expect(await second.service.history({ sessionId, id: record.id, limit: 100 }))
+  expect(await second.service.history({  id: record.id, limit: 100 }))
     .toEqual({ id: record.id, code: 'schedule_not_found' })
 })
 
@@ -261,19 +258,19 @@ it('publishes confirmed pruning and the configured policy across restart', async
   const first = await setup({ config: { deliveryHistoryDays: 7, deliveryHistoryRecords: 2 } })
   const agent = agentFor(first.ctx, sessionId)
   first.resolve.mockResolvedValue({ agent })
-  const record = await first.service.create(sessionId, { prompt: 'Retained history', title: 'Retained history', every_seconds: 300 })
+  const record = await first.service.create({ prompt: 'Retained history', title: 'Retained history', timing: { kind: 'every', every_seconds: 300 }, target: { kind: 'session', sessionId: sessionId } })
   await vi.advanceTimersByTimeAsync(600_000)
-  expect(await first.service.history({ sessionId, id: record.id, limit: 20 })).toMatchObject({
+  expect(await first.service.history({  id: record.id, limit: 20 })).toMatchObject({
     earlierRecordsPruned: false, retention: { days: 7, records: 2 },
   })
   await vi.advanceTimersByTimeAsync(300_000)
-  const page = await first.service.history({ sessionId, id: record.id, limit: 20 })
+  const page = await first.service.history({  id: record.id, limit: 20 })
   expect(page).toMatchObject({ earlierRecordsPruned: true, retention: { days: 7, records: 2 } })
   if ('code' in page) throw new Error('Expected retained records')
   expect(page.records).toHaveLength(2)
   await first.ctx.fiber.dispose()
   const second = await setup({ pool: first.pool, config: { deliveryHistoryDays: 14, deliveryHistoryRecords: 10 } })
-  expect(await second.service.history({ sessionId, id: record.id, limit: 20 })).toEqual({
+  expect(await second.service.history({  id: record.id, limit: 20 })).toEqual({
     ...page, retention: { days: 14, records: 10 },
   })
 })

@@ -1,0 +1,16 @@
+{
+  "unchangedCommittedHistoricalGenerations": [
+    "scripts/snapshots/python-sdk-single-exe/advanced/session.v3.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/advanced/session.2.v3.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/advanced/session.2.v2.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/advanced/session.v2.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/advanced/session.1.v3.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/advanced/session.1.v2.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/scheduler-recovery/session.v3.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/restart/session.2.v3.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/restart/session.2.v2.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/restart/session.1.v3.jsonl",
+    "scripts/snapshots/python-sdk-single-exe/restart/session.1.v2.jsonl"
+  ],
+  "count": 11
+}

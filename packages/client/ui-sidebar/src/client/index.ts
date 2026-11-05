@@ -10,6 +10,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the Session root standard-props merge.
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
+import { createPanelPins } from './panel-pins.ts'
 import type { SidebarPanelMetadata, SidebarRootInjected } from './contract/slots.ts'
 import { HeaderLeadingControls } from './HeaderLeadingControls.tsx'
 import { SidebarRoot } from './SidebarRoot.tsx'
@@ -67,13 +68,15 @@ export function apply(ctx: ClientContext): void {
     getSnapshot: () => ctx.slots.entries('sidebar.files').length > 0,
     subscribe: listener => ctx.slots.subscribe('sidebar.files', listener),
   }
+  const panelPins = createPanelPins()
   const injectProps = (): SidebarRootInjected => ({
     // The shell's New Session button rides the Workspace UI's shared action
     // (current Session Workspace, then recent Workspace).
     startSession: (workspaceId) => { workspaceNavigation.startSession(workspaceId) },
     toggleSidebar: () => { ctx.layout.toggleSidebar() },
     selectPanel: (id) => { ctx.layout.selectPanel(id) },
-    hooks: { filesOccupied, panels, shortcuts: ctx.shortcuts.catalog },
+    setPinned: panelPins.setPinned,
+    hooks: { filesOccupied, panels, entryPins: panelPins.unpinned, shortcuts: ctx.shortcuts.catalog },
   })
   ctx.slots.inject('sidebar', () => ctx.slots.register({
     name: 'sidebar',
@@ -82,6 +85,7 @@ export function apply(ctx: ClientContext): void {
       'sidebar.brand.mark': { kind: 'single', scope: 'root' },
       'sidebar.brand.name': { kind: 'single', scope: 'root' },
       'sidebar.toggle.badge': { kind: 'single', scope: 'root' },
+      'sidebar.panellist.actions': { kind: 'single', scope: 'root' },
       'sidebar.panellist': { kind: 'list', scope: 'root' },
       'sidebar.workspaces': { kind: 'single', scope: 'root' },
       // `sidebar.files` is an optional overlay occupant — occupancy, not

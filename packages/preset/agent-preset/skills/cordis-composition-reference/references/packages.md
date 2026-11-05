@@ -192,6 +192,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-client-ui-agent-team` | no | Web Agent Teams roster, task board, and teammate navigation |
 | `@deepseek-ai/dsh-experimental-client-ui-assistants` | no | Persistent assistants directory, conversation header, drawer, and example chips |
 | `@deepseek-ai/dsh-experimental-client-ui-claude-code-mods` | no | Web band above the prompt for Claude Code mods: draws each session's mod tree and sends button presses back to the bridge |
+| `@deepseek-ai/dsh-experimental-client-ui-forge` | yes | Local worktree controls and Changes sidebar |
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | no | Record speech and insert editable text into the conversation draft |
 | `@deepseek-ai/dsh-experimental-commerce-mode` | no | Experimental file-backed commerce source provider, commerce tools, and preset-scoped tool mount |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp` | yes | Experimental computer use through an installed Cua Driver MCP executable |
@@ -211,6 +212,9 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-speech-to-text` | yes | Experimental speech recognition with independently selectable providers |
 | `@deepseek-ai/dsh-experimental-speech-to-text-sensevoice` | yes | Local SenseVoice ONNX transcription with a managed sherpa-onnx process |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | yes | Scoped model-facing Agent Teams tools over ctx.agentTeams |
+| `@deepseek-ai/dsh-experimental-tool-worktree` | no | Model tool that creates and enters a new Git worktree |
+| `@deepseek-ai/dsh-experimental-worktree` | yes | Creates a named Git worktree and changes the calling Session working directory |
+| `@deepseek-ai/dsh-experimental-worktree-review` | no | Opt-in local worktree review desktop composition |
 
 ## extensions
 
@@ -365,6 +369,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 
 | Package | Config | Description |
 |---|---|---|
+| `@deepseek-ai/dsh-message-quotes` | no | Selected-text quotation and Markdown blockquote presentation |
 | `@deepseek-ai/dsh-session-checkpoint-policy` | no | Semantic session durability checkpoints before model requests and tool side effects |
 | `@deepseek-ai/dsh-session-log-deepseek` | yes | Incremental lossless session-log request extension for the official DeepSeek LLM API |
 | `@deepseek-ai/dsh-session-persistence-jsonl` | yes | JSONL durable session persistence backend for the DeepSeek Harness |
@@ -376,6 +381,8 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-session-title-all-prompts-llm` | yes | All-user-messages LLM provider plugin for DeepSeek Harness session titles |
 | `@deepseek-ai/dsh-session-title-first-prompt-llm` | yes | First-message LLM provider plugin for DeepSeek Harness session titles |
 | `@deepseek-ai/dsh-session-turn-outline` | no | Whole-log turn outline projection (turnOutline) for the DeepSeek Harness |
+| `@deepseek-ai/dsh-tool-working-directory` | no | Read and change the active Session working directory |
+| `@deepseek-ai/dsh-working-directory` | yes | Session working directories with durable changes and model context |
 
 ## session-query
 

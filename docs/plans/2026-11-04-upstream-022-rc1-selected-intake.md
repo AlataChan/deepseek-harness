@@ -136,7 +136,7 @@ Each implemented RC1 item and migration/Forge/Schedule sub-item needs its own Ba
 
 All pnpm commands use the workspace's verified dependency configuration. Run owner tests and meaningful negative controls first, then changed-surface snapshots/browser/SDK checks. Run full source/native builds and every required installer gate against the integrated checkpoint, with a fresh copied artifact and signature/bundle correspondence. Record paid/platform and repository-wide limits separately. Do not reuse an earlier artifact's pass count as a new result.
 
-Current acceptance: the P0 qualification record owns baseline acceptance. Adapter proofs, migration and selected-upgrade shipping checks remain unexecuted. This checkpoint changes no Node floor, plugin default or intake pin; generated catalogs reflect only the selected baseline source.
+Current acceptance: P0 and M2 are complete. Root accepts the selected Client, local worktree and scheduling implementation, integrated builds, strict SDK/browser checks and fresh copied internal macOS installer. The final DMG passes 122 installer checks; copied Worktree/Schedule, questions/native Team and teamwork-skill checks also pass. `.plans/rc1-execution/root-final-acceptance.md` records exact evidence and retained repository/platform limits; this is not a whole-repository green claim or public notarization. `.plans/rc1-execution/current-progress.json` records the accepted checkpoint and `.plans/rc1-execution/final-review-prompt.md` defines independent review. Commit, fast-forward integration and fork/mirror publication follow this checkpoint; verify their live Git refs separately. UPSTREAM_PIN and product version remain unchanged.
 
 <a id="dev-note"></a>
 ## Dev Note

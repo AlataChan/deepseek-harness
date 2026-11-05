@@ -1,0 +1,6 @@
+{ "diagnostics": [{"message": "Forbidden non-null assertion.","code": "typescript(no-non-null-assertion)","severity": "error","causes": [],"url": "https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-non-null-assertion.html","note": "The non-null assertion operator (`!`) removes `null` and `undefined` from the type. For example, it changes `number | undefined` to `number`.","filename": "packages/client/ui-sidebar/src/client/SidebarRoot.tsx","labels": [{"span": {"offset": 6834,"length": 15,"line": 153,"column": 21}}],"related": []}],
+              "number_of_files": 26,
+              "number_of_rules": 90,
+              "threads_count": 8,
+              "start_time": 5.817036042
+            }

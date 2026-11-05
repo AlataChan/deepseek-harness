@@ -1,9 +1,10 @@
+import { createDirectoryFixtureAgent, mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import SessionStore from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjections from '@deepseek-ai/dsh-session-projection'
 import FileSystem from '@deepseek-ai/dsh-fs-local'
 import Subprocess from '@deepseek-ai/dsh-subprocess-local'
@@ -41,12 +42,12 @@ export async function mountWorkflowRuntime(
     mode: options.mode ?? 'danger-full-access',
     ...options.cwd === undefined ? {} : { workspaceRoot: options.cwd },
   })
+  await mountDirectoryFixture(ctx, options.cwd ?? process.cwd())
   if (!ctx.get('ptcRuntime')) await ctx.plugin(NodePtcRuntime, options.runtimeConfig ?? {})
   return ctx.ptcRuntime as NodePtcRuntime
 }
 
-/** Give a stub subagent provider a parent with a real Session and immutable cwd. */
-export function fakeParent(ctx: Context): Agent {
-  const session = ctx.sessions.create(undefined, { meta: { cwd: ctx.sandboxPolicy.workspaceRoot } })
-  return { id: session.id, session, options: {} } as unknown as Agent
+/** Give the stub provider a real idle parent using the immutable original project. */
+export async function fakeParent(ctx: Context): Promise<Agent> {
+  return await createDirectoryFixtureAgent(ctx, SessionId('workflow-parent'), ctx.sandboxPolicy.workspaceRoot)
 }

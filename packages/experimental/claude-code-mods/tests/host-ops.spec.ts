@@ -1,3 +1,5 @@
+import { createDirectoryFixtureAgent } from '@deepseek-ai/dsh-working-directory-testkit'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -46,8 +48,13 @@ function setup(ctx = new Context()) {
   })
   const engine = new ModsEngine<AgentBinding>({ ops: op => ops[op], stateKey: () => 's', budgetMs: 1000, catchBudgetMs: 100, report: () => {} })
   const context = (agent?: Agent): OpContext<AgentBinding> => ({ mod, binding: { agent }, signal: new AbortController().signal, engine })
-  const call = (op: string, input: unknown, agent?: Agent): Promise<unknown> =>
-    Promise.resolve().then(() => ops[op]?.(input, context(agent)))
+  let execution = 0
+  const call = async (op: string, input: unknown, agent?: Agent): Promise<unknown> => {
+    const owner = agent !== undefined && (op === 'session.cwd' || op.startsWith('fs.') || op === 'process.run')
+      ? await createDirectoryFixtureAgent(ctx, SessionId(`mods-execution-${++execution}`), agent.session.header.cwd ?? process.cwd())
+      : agent
+    return await ops[op]?.(input, context(owner))
+  }
   return { ctx, ops, engine, context, call, registrations }
 }
 
@@ -140,7 +147,9 @@ describe('session facts from the agent', () => {
     expect(await call('session.model', {}, fakeAgent(ctx, { model: 'opt' }))).toBe('opt')
     expect(await call('session.model', {}, fakeAgent(ctx))).toBe('')
     expect(await call('session.cwd', {}, fakeAgent(ctx))).toBe(process.cwd())
-    expect(await call('session.cwd', {}, fakeAgent(ctx, { cwd: '/work' }))).toBe('/work')
+    const cwd = mkdtempSync(join(tmpdir(), 'mods-session-'))
+    dirs.push(cwd)
+    expect(await call('session.cwd', {}, fakeAgent(ctx, { cwd }))).toBe(cwd)
     expect(await call('session.root', {}, fakeAgent(ctx))).toBe(process.cwd())
     expect(await call('session.root', {}, fakeAgent(ctx, { cwd: '/work' }))).toBe('/work')
     expect(await call('session.id', {}, fakeAgent(ctx))).toBe('fake')

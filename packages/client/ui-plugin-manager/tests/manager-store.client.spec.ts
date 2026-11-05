@@ -15,6 +15,7 @@ const ROW_ENTRY = 'include:sidebar' as PluginEntryId
 
 const BUNDLE: BundleInfo = {
   name: 'dsh-better-sidebar',
+  updatable: true,
   version: '0.16.0',
   description: 'A sidebar.',
   enabled: false,
@@ -115,7 +116,7 @@ describe('packageView', () => {
   it('joins a bundle with the entries its rows run as', () => {
     expect(packageView(BUNDLE, PLUGINS)).toEqual({
       name: 'dsh-better-sidebar', version: '0.16.0', description: 'A sidebar.', source: 'dsh-better-sidebar@^0.16.0',
-      installed: true, optional: false, removable: true, enabled: false,
+      installed: true, updatable: true, optional: false, removable: true, enabled: false,
       rows: [
         { rowId: 'sidebar', moduleName: 'dsh-better-sidebar', entryId: ROW_ENTRY, enabled: true, phase: 'active' },
         { rowId: 'theme', moduleName: 'dsh-better-sidebar/theme', enabled: false, phase: null },
@@ -123,13 +124,13 @@ describe('packageView', () => {
     })
     // A row the inventory no longer lists, a protected row, and a bundle the Host cannot read.
     const protectedBundle: BundleInfo = {
-      name: '@deepseek-ai/dsh-base', enabled: true, installed: false, optional: false, removable: false, readOnlyReason: 'management-required',
+      name: '@deepseek-ai/dsh-base', updatable: false, enabled: true, installed: false, optional: false, removable: false, readOnlyReason: 'management-required',
       error: { code: 'operation-error', diagnostic: 'broken' },
       rows: [{ rowId: 'core', moduleName: '@deepseek-ai/dsh-base', entryId: 'include:core' as PluginEntryId }, { rowId: 'gone', moduleName: 'x', entryId: 'include:gone' as PluginEntryId }],
       overrides: [],
     }
     expect(packageView(protectedBundle, PLUGINS)).toEqual({
-      name: '@deepseek-ai/dsh-base', installed: false, optional: false, removable: false, enabled: true, readOnlyReason: 'management-required',
+      name: '@deepseek-ai/dsh-base', updatable: false, installed: false, optional: false, removable: false, enabled: true, readOnlyReason: 'management-required',
       error: { code: 'operation-error', diagnostic: 'broken' },
       rows: [
         { rowId: 'core', moduleName: '@deepseek-ai/dsh-base', entryId: 'include:core', enabled: true, phase: 'active', readOnlyReason: 'management-required' },
@@ -141,7 +142,7 @@ describe('packageView', () => {
 
 describe('sortPackages', () => {
   it('orders packages by the short name a person reads, not by the Host order or enablement', async () => {
-    const plain = { enabled: true, installed: true, optional: false, removable: true, rows: [], overrides: [] }
+    const plain = { updatable: true, enabled: true, installed: true, optional: false, removable: true, rows: [], overrides: [] }
     const zeta: BundleInfo = { ...plain, name: 'dsh-zeta' }
     const alpha: BundleInfo = { ...plain, name: '@acme/dsh-alpha', enabled: false }
     const views = [zeta, BUNDLE, alpha].map(bundle => packageView(bundle, PLUGINS))
@@ -1698,4 +1699,141 @@ it('tolerates a vanished inventory entry after a restart-required row toggle', a
   b.face.setRowEnabled(ROW_ENTRY, true)
   b.face.setEnabled('vanished-package', true)
   await vi.waitFor(() => { expect(b.state().busy).toEqual([]) })
+})
+
+const VERSION_LIST = { status: 'listed' as const, installed: BUNDLE.version!, registry: null, attempts: [{ registry: null }], omitted: 0,
+  versions: [{ version: '1.0.0', tags: ['latest'], prerelease: false, bundle: true }] }
+
+it('RC1-09 checks only on user request and confirms the selected update', async () => {
+  const listVersions = vi.fn().mockResolvedValue(ok(VERSION_LIST))
+  const updateBundle = vi.fn<() => Promise<ReturnType<typeof ok<import('@deepseek-ai/dsh-plugin-manager/types').PluginUpdateResult>>>>().mockResolvedValue(ok({ from: BUNDLE.version!, to: '1.0.0', step: 'install', result: { ...APPLIED, application: 'restart-required' } }))
+  const { controller, face, state } = bench({ listVersions, updateBundle,
+    listBundles: vi.fn().mockResolvedValue(ok([{ ...BUNDLE, updatable: true }])) })
+  await controller.load()
+  face.refresh()
+  await vi.waitFor(() => { expect(state().refreshStatus).toBe('idle') })
+  expect(listVersions).not.toHaveBeenCalled()
+  face.checkVersions(BUNDLE.name)
+  await vi.waitFor(() => { expect(state().versions[BUNDLE.name]?.phase).toBe('done') })
+  face.openUpdate(BUNDLE.name, '1.0.0')
+  expect(updateBundle).not.toHaveBeenCalled()
+  face.runUpdate()
+  await vi.waitFor(() => { expect(state().update?.phase).toBe('done') })
+  expect(updateBundle).toHaveBeenCalledWith(BUNDLE.name, '1.0.0', { registry: null, requestId: state().update?.requestId })
+  expect(state().update?.result?.result.application).toBe('restart-required')
+  expect(listVersions).toHaveBeenCalledTimes(1)
+})
+
+it('RC1-09 ignores disposed check answers and never confirms a locked row', async () => {
+  const pending = deferred<ReturnType<typeof ok<typeof VERSION_LIST>>>()
+  const listVersions = vi.fn().mockReturnValue(pending.promise)
+  const updateBundle = vi.fn()
+  const { controller, face, state } = bench({ listVersions, updateBundle,
+    listBundles: vi.fn().mockResolvedValue(ok([{ ...BUNDLE, updatable: true }])) })
+  await controller.load()
+  face.checkVersions(BUNDLE.name)
+  controller.dispose()
+  pending.resolve(ok(VERSION_LIST))
+  await pending.promise
+  face.openUpdate(BUNDLE.name, '1.0.0'); face.runUpdate()
+  expect(updateBundle).not.toHaveBeenCalled()
+  expect(state().update).toBeNull()
+})
+
+it('RC1-09 tracks restoring progress and keeps failed restore visible without retry', async () => {
+  const pending = deferred<ReturnType<typeof ok<import('@deepseek-ai/dsh-plugin-manager/types').PluginUpdateResult>>>()
+  const updateBundle = vi.fn().mockReturnValue(pending.promise)
+  const { controller, face, state } = bench({ listVersions: vi.fn().mockResolvedValue(ok(VERSION_LIST)), updateBundle,
+    listBundles: vi.fn().mockResolvedValue(ok([{ ...BUNDLE, updatable: true }])) })
+  await controller.load(); face.checkVersions(BUNDLE.name)
+  await vi.waitFor(() => { expect(state().versions[BUNDLE.name]?.phase).toBe('done') })
+  face.openUpdate(BUNDLE.name, '1.0.0'); face.runUpdate()
+  const id = state().update!.requestId!
+  for (const step of ['checking', 'installing', 'restoring'] as const) controller.updateProgress({ requestId: id, step })
+  expect(state().update?.steps).toEqual(['checking', 'installing', 'restoring'])
+  pending.resolve(ok({ from: BUNDLE.version!, to: '1.0.0', step: 'install', result: failed(), restore: failed() }))
+  await vi.waitFor(() => { expect(state().update?.phase).toBe('done') })
+  face.runUpdate()
+  expect(updateBundle).toHaveBeenCalledTimes(1)
+  expect(state().update?.result?.restore?.application).toBe('failed')
+})
+
+it('RC1-09 locked inventory ignores both check and update actions', async () => {
+  const listVersions = vi.fn()
+  const updateBundle = vi.fn()
+  const { controller, face, state } = bench({ listVersions, updateBundle,
+    listBundles: vi.fn().mockResolvedValue(ok([{ ...BUNDLE, updatable: false }])) })
+  await controller.load()
+  face.checkVersions(BUNDLE.name); face.openUpdate(BUNDLE.name, '1.0.0'); face.runUpdate()
+  expect(listVersions).not.toHaveBeenCalled(); expect(updateBundle).not.toHaveBeenCalled()
+  expect(state().update).toBeNull()
+})
+
+it('RC1-09 a lost update answer remains unknown and cannot start another install', async () => {
+  const updateBundle = vi.fn().mockResolvedValue(refused('gateway/internal', 'disconnected'))
+  const { controller, face, state } = bench({ listVersions: vi.fn().mockResolvedValue(ok(VERSION_LIST)), updateBundle,
+    listBundles: vi.fn().mockResolvedValue(ok([{ ...BUNDLE, updatable: true }])) })
+  await controller.load(); face.checkVersions(BUNDLE.name)
+  await vi.waitFor(() => { expect(state().versions[BUNDLE.name]?.phase).toBe('done') })
+  face.openUpdate(BUNDLE.name, '1.0.0'); face.runUpdate()
+  await vi.waitFor(() => { expect(state().update?.phase).toBe('done') })
+  expect(state().update?.lost).toBe('disconnected')
+  face.runUpdate()
+  expect(updateBundle).toHaveBeenCalledTimes(1)
+})
+
+it('selects a stable compatible update candidate and refuses unlisted versions', async () => {
+  const { updateCandidate } = await import('../src/client/manager-store.ts')
+  expect(updateCandidate({ status: 'refused', problem: 'unknown', reason: 'offline', attempts: [] })).toBeUndefined()
+  const stable = VERSION_LIST.versions[0]!
+  expect(updateCandidate({ ...VERSION_LIST, versions: [
+    { ...stable, bundle: false }, { ...stable, deprecated: 'old' }, { ...stable, prerelease: true }, stable,
+  ] })).toEqual(stable)
+  expect(updateCandidate({ ...VERSION_LIST, versions: [] })).toBeUndefined()
+})
+
+it('refuses stale selections and reports failed version lookups without permitting an update', async () => {
+  const listVersions = vi.fn().mockResolvedValueOnce(refused('gateway/internal', 'offline')).mockResolvedValue(ok(VERSION_LIST))
+  const b = bench({ listVersions })
+  await b.controller.load()
+  b.face.openUpdate(BUNDLE.name, '1.0.0')
+  expect(b.state().update).toBeNull()
+  b.face.checkVersions(BUNDLE.name)
+  await vi.waitFor(() => { expect(b.state().versions[BUNDLE.name]?.phase).toBe('done') })
+  b.face.openUpdate(BUNDLE.name, '1.0.0')
+  expect(b.state().update).toBeNull()
+  expect(b.state().versions[BUNDLE.name]).toMatchObject({ list: { status: 'refused', reason: 'offline' } })
+  b.face.checkVersions(BUNDLE.name)
+  await vi.waitFor(() => { expect(b.state().versions[BUNDLE.name]).toMatchObject({ list: { status: 'listed' } }) })
+  b.face.openUpdate(BUNDLE.name, 'missing-version')
+  expect(b.state().update).toBeNull()
+  b.face.openUpdate(BUNDLE.name, '1.0.0')
+  expect(b.state().update?.phase).toBe('confirm')
+  b.face.closeUpdate()
+  expect(b.state().update).toBeNull()
+})
+
+it('suppresses duplicate progress, rechecks and modal dismissal while an update runs', async () => {
+  const pending = deferred<ReturnType<typeof ok<import('@deepseek-ai/dsh-plugin-manager/types').PluginUpdateResult>>>()
+  const listVersions = vi.fn().mockResolvedValue(ok(VERSION_LIST))
+  const updateBundle = vi.fn().mockReturnValue(pending.promise)
+  const b = bench({ listVersions, updateBundle })
+  await b.controller.load()
+  b.controller.updateProgress({ requestId: 'unrelated' as PluginInstallRequestId, step: 'checking' })
+  b.face.checkVersions(BUNDLE.name)
+  await vi.waitFor(() => { expect(b.state().versions[BUNDLE.name]?.phase).toBe('done') })
+  b.face.openUpdate(BUNDLE.name, '1.0.0'); b.face.runUpdate()
+  const requestId = b.state().update!.requestId!
+  b.controller.updateProgress({ requestId: 'unrelated' as PluginInstallRequestId, step: 'removing' })
+  b.controller.updateProgress({ requestId, step: 'checking' })
+  b.controller.updateProgress({ requestId, step: 'checking' })
+  b.face.checkVersions(BUNDLE.name); b.face.closeUpdate(); b.face.openUpdate(BUNDLE.name, '1.0.0')
+  expect(b.state().update).toMatchObject({ phase: 'running', steps: ['checking'] })
+  expect(listVersions).toHaveBeenCalledTimes(1)
+  b.controller.dispose()
+  const before = b.state()
+  pending.resolve(ok({ from: BUNDLE.version!, to: '1.0.0', step: 'install', result: APPLIED }))
+  await pending.promise
+  await Promise.resolve()
+  expect(b.state()).toBe(before)
 })

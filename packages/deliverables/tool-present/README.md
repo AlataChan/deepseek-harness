@@ -23,6 +23,7 @@ Use `present` to declare final files accessible through the Session filesystem, 
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 The `standard`, `ptc`, and `cordis` agent presets mount this plugin. Call `present` with `files: [{ path, description? }]` after creating the files. Files must be regular files accessible through the Session filesystem. Relative paths resolve against the Session working directory; absolute paths may name files outside it, including `/tmp` or Downloads. Missing files, directories, final symbolic links, and provider-denied paths fail the call. Files in a shell sandbox’s private `/tmp` must first be written somewhere the Session filesystem can access.
@@ -44,6 +45,7 @@ The file-count limit is validated at mount. The tool requires an agent Session w
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -58,13 +60,17 @@ The pure `./types` entry declares `PresentedFile` and the Session event without 
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 - [Filesystem subsystem](../../../docs/subsystems/filesystem.md) — provider paths and errors.
 - [Web deliverables](../../client/ui-deliverables/README.md) — source-file opening and cards.
 - [Delivery decision](../../../.agents/notes/implemented/feature/2026-09-08-present-workspace-source-files.md) — Session ownership and required-on-read events.
 
+Relative deliveries resolve from the validated execution directory. Declaring a delivery neither moves the original project identity nor changes sandbox permissions. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### present
@@ -90,6 +96,7 @@ The tool schema is static for the mount lifetime. Delivery result text extends t
 - Session ZIP exports contain declarations, not file contents. Persistent delivery versions and copy-on-write storage are deferred.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

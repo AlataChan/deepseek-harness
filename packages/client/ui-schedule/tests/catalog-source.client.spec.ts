@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
-import type { ScheduleDeleteResult, ScheduleId, ScheduleRecord } from '@deepseek-ai/dsh-schedule/client'
+import type { ScheduleEditResult, ScheduleId, ScheduleRecord } from '@deepseek-ai/dsh-schedule/client'
 import { createCatalogSource } from '../src/client/catalog-source.ts'
 
 const id = 'reminder' as ScheduleId
@@ -17,7 +17,7 @@ function harness() {
   const changedDisposed = vi.fn()
   const resetDisposed = vi.fn()
   const list = vi.fn<() => Promise<RemoteResult<ScheduleRecord[]>>>().mockResolvedValue(ready([row]))
-  const remove = vi.fn<(value: ScheduleId) => Promise<RemoteResult<ScheduleDeleteResult>>>()
+  const remove = vi.fn<(value: ScheduleId) => Promise<RemoteResult<ScheduleEditResult>>>()
     .mockResolvedValue({ ok: true, value: { id, deleted: true } })
   const entry = createCatalogSource({
     list, remove,
@@ -200,7 +200,7 @@ describe('Schedule catalog Remote source', () => {
     const h = harness()
     const dispose = h.source.subscribe(vi.fn())
     await flushed()
-    const deleted = Promise.withResolvers<RemoteResult<ScheduleDeleteResult>>()
+    const deleted = Promise.withResolvers<RemoteResult<ScheduleEditResult>>()
     h.remove.mockReturnValueOnce(deleted.promise)
     const removing = h.entry.onDelete(id)
     // A second request for the same row joins nothing: it reports the deletion
@@ -301,7 +301,7 @@ describe('Schedule catalog Remote source', () => {
     await flushed()
     expect(h.source.getSnapshot()).toMatchObject({ status: 'ready', records: [row] })
 
-    const removed = Promise.withResolvers<RemoteResult<ScheduleDeleteResult>>()
+    const removed = Promise.withResolvers<RemoteResult<ScheduleEditResult>>()
     h.remove.mockReturnValueOnce(removed.promise)
     const deleting = h.entry.onDelete(id)
 
@@ -341,7 +341,7 @@ describe('Schedule catalog Remote source', () => {
     expect(h.source.getSnapshot()).toMatchObject({ records: [row], deleting: [] })
     // An already-deleted id is an acknowledged deletion: the outcome is settled
     // even when the refresh it triggers fails, which the status reports.
-    h.remove.mockResolvedValueOnce({ ok: true, value: { id, deleted: false, code: 'schedule_not_found' } })
+    h.remove.mockResolvedValueOnce({ ok: true, value: { id, code: 'schedule_not_found' } })
     h.list.mockResolvedValueOnce(failure)
     await expect(h.entry.onDelete(id)).resolves.toBe('deleted')
     expect(h.source.getSnapshot()).toMatchObject({ records: [row], status: 'error' })
@@ -381,8 +381,8 @@ describe('Schedule catalog Remote source', () => {
         const h = harness()
         const otherId = 'other-reminder' as ScheduleId
         const otherRow = { ...row, id: otherId }
-        const failed = Promise.withResolvers<RemoteResult<ScheduleDeleteResult>>()
-        const succeeded = Promise.withResolvers<RemoteResult<ScheduleDeleteResult>>()
+        const failed = Promise.withResolvers<RemoteResult<ScheduleEditResult>>()
+        const succeeded = Promise.withResolvers<RemoteResult<ScheduleEditResult>>()
         const refreshed = Promise.withResolvers<RemoteResult<ScheduleRecord[]>>()
         const refreshStarted = Promise.withResolvers<undefined>()
         h.list.mockResolvedValueOnce(ready([row, otherRow]))
@@ -460,7 +460,7 @@ describe('Schedule catalog Remote source', () => {
     const h = harness()
     const dispose = h.source.subscribe(vi.fn())
     await flushed()
-    const pending = Promise.withResolvers<RemoteResult<ScheduleDeleteResult>>()
+    const pending = Promise.withResolvers<RemoteResult<ScheduleEditResult>>()
     h.remove.mockReturnValueOnce(pending.promise)
     const deleting = h.entry.onDelete(id)
     dispose()
@@ -474,7 +474,7 @@ describe('Schedule catalog Remote source', () => {
     const h = harness()
     const dispose = h.source.subscribe(vi.fn())
     await flushed()
-    const pending = Promise.withResolvers<RemoteResult<ScheduleDeleteResult>>()
+    const pending = Promise.withResolvers<RemoteResult<ScheduleEditResult>>()
     h.remove.mockReturnValueOnce(pending.promise)
     const deleting = h.entry.onDelete(id)
     dispose()
@@ -504,7 +504,7 @@ describe('Schedule catalog Remote source', () => {
     const h = harness()
     const dispose = h.source.subscribe(vi.fn())
     await flushed()
-    const pending = Promise.withResolvers<RemoteResult<ScheduleDeleteResult>>()
+    const pending = Promise.withResolvers<RemoteResult<ScheduleEditResult>>()
     h.remove.mockReturnValueOnce(pending.promise)
     const deleting = h.entry.onDelete(id)
     dispose()
@@ -541,4 +541,17 @@ describe('Schedule catalog Remote source', () => {
     expect(h.changedDisposed).toHaveBeenCalledOnce()
     expect(h.resetDisposed).toHaveBeenCalledOnce()
   })
+})
+
+it('keeps a concurrently edited task after delete conflicts and refreshes its authoritative row', async () => {
+  const h = harness()
+  const dispose = h.source.subscribe(vi.fn())
+  await flushed()
+  const renamed = { ...row, title: 'Concurrent edit' }
+  h.remove.mockResolvedValueOnce({ ok: true, value: { id, code: 'schedule_conflict' } })
+  h.list.mockResolvedValueOnce(ready([renamed]))
+  await expect(h.entry.onDelete(id)).resolves.toBe('failed')
+  await flushed()
+  expect(h.source.getSnapshot()).toMatchObject({ records: [renamed], deleting: [] })
+  dispose()
 })

@@ -22,7 +22,7 @@ it('acknowledges the real synchronous inbox splice after flush without claiming 
       const resolve = vi.fn(async () => ({ agent }))
       ctx.provide('sessionController', { resolveAgent: resolve } as never)
       const record = createAfterScheduleRecord(ScheduleId('receipt'), 'Inbox only', 1, Date.now() - 2000, 'Inbox only')
-      const tasks: ScheduleTask[] = [{ sessionId: agent.session.id, record, status: 'active' }]
+      const tasks: ScheduleTask[] = [{ target: { kind: 'session', sessionId: agent.session.id }, involvedSessionIds: [agent.session.id], record, status: 'active' }]
       const flushStarted = Promise.withResolvers<undefined>()
       const releaseFlush = Promise.withResolvers<undefined>()
       let eventsAtFlush: readonly SessionEvent[] = []
@@ -42,18 +42,18 @@ it('acknowledges the real synchronous inbox splice after flush without claiming 
         expect(inserted[0]?.source).toEqual({ kind: 'schedule' })
         expect(agent.inbox.nextTurn).toEqual(inserted)
         expect(commit).not.toHaveBeenCalled()
-        expect(tasks).toEqual([{ sessionId: agent.session.id, record, status: 'active' }])
+        expect(tasks).toEqual([{ target: { kind: 'session', sessionId: agent.session.id }, involvedSessionIds: [agent.session.id], record, status: 'active' }])
         vi.setSystemTime(new Date('2026-09-16T00:00:03.000Z'))
         releaseFlush.resolve(undefined)
         await runtime.dispose()
         expect(commit).toHaveBeenCalledTimes(1)
         expect(tasks).toEqual([{
-          sessionId: agent.session.id, record, status: 'inactive',
-          deliveryHistory: { records: [{
+          target: { kind: 'session', sessionId: agent.session.id }, involvedSessionIds: [agent.session.id], record, status: 'ended', updatedAt: new Date(Date.now()).toISOString(),
+          deliveryHistory: { records: [{ targetSessionId: agent.session.id,
             scheduledAt: record.scheduledAt, deliveredAt: '2026-09-16T00:00:03.000Z', messageId: inserted[0]!.id,
             prompt: 'Inbox only',
           }], earlierRecordsUnavailable: true, earlierRecordsPruned: false },
-          lastDelivery: {
+          lastDelivery: { targetSessionId: agent.session.id,
             scheduledAt: record.scheduledAt, deliveredAt: '2026-09-16T00:00:03.000Z', messageId: inserted[0]!.id,
           },
         }])

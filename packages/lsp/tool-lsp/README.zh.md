@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 当文本匹配有歧义，或修改前需要精确的定义、实现或引用时，agent（智能体）使用 `lsp`；该工具的提示词指引会告诉它，普通导航应优先使用 `search`／`read`。
@@ -52,6 +53,7 @@ kind: "package-reference"
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -81,6 +83,7 @@ kind: "package-reference"
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当包级约定不够用时阅读以下页面。它们从面向模型的表层逐步进入 seam 与提供方。
@@ -92,7 +95,10 @@ kind: "package-reference"
 
 -----
 
+每次查询以已校验的执行目录请求语言服务器工作区；结果路径仍以提供方解析后的工作区身份为准。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 系统提示词
@@ -168,6 +174,7 @@ Use search/read for ordinary navigation. Use lsp when textual matches are ambigu
 - **不承诺跨服务器完整性**——受支持的服务器仍可能根据索引就绪情况返回空或部分结果；该工具不承诺跨语言或服务器的完整性。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

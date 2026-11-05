@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
@@ -19,6 +20,7 @@ export async function fsHarness(fsCwd: string, persona = ''): Promise<Context> {
   await ctx.plugin(LlmDeepSeek)
   await ctx.plugin(LocalFileSystem, { cwd: fsCwd })
   await ctx.plugin(FsPolicy)
+  await mountDirectoryFixture(ctx, fsCwd)
   await ctx.plugin(ToolFs)
   return ctx
 }

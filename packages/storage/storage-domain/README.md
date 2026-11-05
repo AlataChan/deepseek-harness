@@ -23,6 +23,7 @@ Use this package to declare schema-validated key-value domains and open them thr
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Use this package when a host package keeps durable, schema-validated records — workspace records, session sidecar metadata. The owning package declares the domain once; consumers open it and get synchronous reads and durable, change-emitting writes without ever touching a backend.
@@ -75,6 +76,7 @@ Every write resolves only after the backend acknowledges durability, and each em
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -108,6 +110,7 @@ The domain layer is a single implementation, not an abstracted seam: consumers d
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the domain layer's view is not enough: the subsystem reference is the authoritative contract, and the Agent Note records the design and deferred work.
@@ -120,6 +123,7 @@ Read these pages when the domain layer's view is not enough: the subsystem refer
 -----
 
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Durable domain state
@@ -145,9 +149,10 @@ These limits define when the domain layer is a poor fit or needs special operati
 
 - **Single-process change visibility** — `domain/changed` is an in-process event; a second host process or a reconnecting GUI observes no changes until the cross-process revision pattern lands ([Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md)).
 - **No cross-table transactions, secondary indexes, or multi-segment keys** — each write touches one record; these extensions are deferred in the Agent Note's out-of-scope list.
-- **No data migration** — JSON `single` rejects a stored version other than the spec (`version-mismatch`). A SQLite unit stamp listed in `compatibleVersions` opens and keeps that stamp and its rows. `per-record` reads a listed document version and discards an unlisted one. Schema changes still need a hand migration; nothing rewrites a stamp or a row to the current version.
+- **No data migration** — JSON `single` accepts the spec version and listed `compatibleVersions`, preserving bytes on open and stamping the current version on the next mutation. A SQLite unit stamp listed in `compatibleVersions` opens and keeps that stamp and its rows. `per-record` reads a listed document version and discards an unlisted one. Schema changes still need a hand migration; compatible reads do not rewrite rows on open.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

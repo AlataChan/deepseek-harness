@@ -99,12 +99,25 @@ function weekdayText(days: unknown, t: Translate): string | undefined {
 }
 
 function scheduleItem(value: unknown, t: Translate, locale: string): DetailItem | null {
-  if (!detailRecord(value) || !nonempty(value.id) || !nonempty(value.prompt)
-    || typeof value.scheduledAt !== 'string'
-    // `host` is the current Host-delivered view; `session-local` stays readable
-    // for results recorded before the Host storage domain owned delivery.
-    || (value.deliveryMode !== 'host' && value.deliveryMode !== 'session-local')
-    || (value.state !== 'scheduled' && value.state !== 'overdue')) return null
+  if (!detailRecord(value) || !nonempty(value.id) || !nonempty(value.prompt) || typeof value.scheduledAt !== 'string') return null
+  const current = value.status === 'active' || value.status === 'paused' || value.status === 'ended'
+  let state: 'active' | 'paused' | 'ended' | 'scheduled' | 'overdue'
+  let destination: string | undefined
+  if (current) {
+    if (!detailRecord(value.target)) return null
+    const target = value.target
+    if (target.kind === 'session' && nonempty(target.sessionId)) destination = target.sessionId
+    else if ((target.kind === 'new_once' || target.kind === 'new') && detailRecord(target.create)) {
+      if (target.kind === 'new_once' && !nonempty(target.sessionId)) return null
+      destination = t(`detail.schedule.${target.kind}`)
+    } else return null
+    state = value.status as 'active' | 'paused' | 'ended'
+  } else {
+    // Historical tool results retain their original delivery mode and timing state.
+    if ((value.deliveryMode !== 'host' && value.deliveryMode !== 'session-local')
+      || (value.state !== 'scheduled' && value.state !== 'overdue')) return null
+    state = value.state
+  }
   const date = new Date(value.scheduledAt)
   if (!Number.isFinite(date.getTime()) || date.toISOString() !== value.scheduledAt) return null
   let frequency: string
@@ -141,7 +154,8 @@ function scheduleItem(value: unknown, t: Translate, locale: string): DetailItem 
     fields: [
       { label: t('detail.schedule.when'), value: dateText },
       { label: t('detail.schedule.frequency'), value: frequency },
-      { label: t('detail.state'), value: t(`detail.schedule.${value.state}`) },
+      { label: t('detail.state'), value: t(`detail.schedule.${state}`) },
+      ...(destination === undefined ? [] : [{ label: t('detail.schedule.destination'), value: destination }]),
     ],
   }
 }
@@ -168,14 +182,21 @@ export function detailsCardModel(block: ToolCallBlock, t: Translate, locale: str
     case 'get_goal':
     case 'update_goal': return goalDetail(value, t)
     case 'schedule_create':
-    case 'schedule_update': {
+    case 'schedule_update':
+    case 'schedule_view':
+    case 'schedule_edit': {
+      if (call.name === 'schedule_edit' && detailRecord(value) && nonempty(value.id) && value.deleted === true) {
+        return { items: [{ title: value.id, fields: [{ label: t('detail.state'), value: t('detail.schedule.deleted') }] }] }
+      }
       const item = scheduleItem(value, t, locale)
       return item === null ? null : { items: [item] }
     }
     case 'schedule_list': {
-      if (!Array.isArray(value)) return null
+      const entries = Array.isArray(value) ? value : detailRecord(value) && Array.isArray(value.items)
+        && count(value.total) && count(value.shown) && count(value.limit) && count(value.offset) ? value.items : undefined
+      if (entries === undefined) return null
       const items: DetailItem[] = []
-      for (const entry of value) {
+      for (const entry of entries) {
         const item = scheduleItem(entry, t, locale)
         if (item === null) return null
         items.push(item)

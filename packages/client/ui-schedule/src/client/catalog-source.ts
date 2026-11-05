@@ -2,7 +2,7 @@
 
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ScheduleDeleteResult, ScheduleId, ScheduleRecord } from '@deepseek-ai/dsh-schedule/client'
+import type { ScheduleEditResult, ScheduleId, ScheduleRecord } from '@deepseek-ai/dsh-schedule/client'
 
 /** How one deletion settled; the wiring reports it as a transient notice. */
 export type CatalogDeleteOutcome = 'deleted' | 'failed' | 'pending'
@@ -45,7 +45,7 @@ export interface CatalogSnapshot<Item extends { readonly id: ScheduleId } = Sche
 /** Remote operations and invalidations scoped by the registering entry. */
 export interface CatalogDependencies<Item extends { readonly id: ScheduleId } = ScheduleRecord> {
   readonly list: () => Promise<RemoteResult<Item[]>>
-  readonly remove: (id: ScheduleId) => Promise<RemoteResult<ScheduleDeleteResult>>
+  readonly remove: (id: ScheduleId) => Promise<RemoteResult<ScheduleEditResult>>
   readonly subscribeChanged: (listener: () => void) => () => void
   readonly subscribeReset: (listener: () => void) => () => void
 }
@@ -145,7 +145,7 @@ export function createCatalogSource<Item extends { readonly id: ScheduleId } = S
     if (snapshot.deleting.includes(id)) return 'pending'
     const started = lifecycle
     publish({ ...snapshot, deleting: [...snapshot.deleting, id] })
-    let result: RemoteResult<ScheduleDeleteResult>
+    let result: RemoteResult<ScheduleEditResult>
     try {
       result = await deps.remove(id)
     } catch (_error: unknown) {
@@ -155,12 +155,13 @@ export function createCatalogSource<Item extends { readonly id: ScheduleId } = S
       }
       return 'failed'
     }
-    if (started !== lifecycle) return result.ok ? 'deleted' : 'failed'
+    const deleted = result.ok && ('deleted' in result.value || ('code' in result.value && result.value.code === 'schedule_not_found'))
+    if (started !== lifecycle) return deleted ? 'deleted' : 'failed'
     publish({ ...snapshot, deleting: snapshot.deleting.filter(value => value !== id) })
     // The deletion changed the authoritative state, so the acknowledgement reads
     // again rather than joining a read that may have been sent before it.
     if (result.ok) await refresh(true)
-    return result.ok ? 'deleted' : 'failed'
+    return deleted ? 'deleted' : 'failed'
   }
   return {
     hooks: {

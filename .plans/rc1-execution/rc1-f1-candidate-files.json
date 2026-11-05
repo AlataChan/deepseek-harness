@@ -1,0 +1,988 @@
+{
+  "item": "RC1-F1",
+  "status": "bounded implementation authorized after M2 acceptance",
+  "implementationAuthorized": true,
+  "shaKind": "git blob. currentBlob is git hash-object of the working tree file. tagBlob is git rev-parse of dsh-v0.2.2-rc.1. Absent paths are null.",
+  "worktreeCommit": "3f528c60a419f1c71c097d44f5c6a78f131256c2",
+  "inspectedWorktree": "Working tree on feature/upstream-022-selected-intake at that commit, with the in-progress M1 runtime migration uncommitted. Hashes below are that tree, not a clean checkout of the commit.",
+  "sourceCeiling": {
+    "tag": "dsh-v0.2.2-rc.1",
+    "commit": "66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db",
+    "rule": "Behavior is taken from the tag. Do not follow origin/master past 66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db. Do not import the Forge tree as a unit."
+  },
+  "pins": {
+    "upstreamPin": "dsh-v0.2.1-alpha.1",
+    "productVersion": "0.2.1-alpha.1",
+    "newPackageVersion": "0.2.1-alpha.1",
+    "backport": "One BackportEntry later, after M2 and this manifest are accepted. sourceTag dsh-v0.2.2-rc.1, basePin dsh-v0.2.1-alpha.1. This candidate does not edit scripts/upstream-intake-registry.ts."
+  },
+  "oneEntry": {
+    "surface": "sidebar.right.pane.tab",
+    "id": "worktree-review",
+    "en": "Changes",
+    "zh": "\u53d8\u66f4",
+    "rule": "One local review tab. It shows the session worktree state, a local diff, and the actions request, cancel, restore, and return to the original project. It does not create a worktree by itself. It is not a second task board."
+  },
+  "identityRule": "Session header.cwd stays the original project. WorkingDirectoryService.get is the execution directory. A worktree-backed Lead Session may use the existing Team on that session. Teammate headers still copy the Lead header.cwd through childSessionMeta. Spawn does not create a checkout. Sandbox workspaceRoot, file listing, data and knowledge bindings, Feishu authorization, commerce export, speech recordings, and the Team HTML preview fence stay on header.cwd.",
+  "executionConsumers": [
+    {
+      "path": "packages/fs/tool-fs/src/session-cwd.ts",
+      "currentBlob": "dc462ccb59d37166ff1f756441c9f109be1e6f94",
+      "tagBlob": "9e61c7d5369986910883386739c7915b2d562049",
+      "change": "Resolve relative filesystem paths with workingDirectory.ensure. Keep an explicit signal. Do not use sandbox workspaceRoot as that cwd. Do not copy the tag file: the fork still threads the tool signal and must not drop cancellation."
+    },
+    {
+      "path": "packages/fs/tool-fs/src/read-target.ts",
+      "currentBlob": "7fc26ca5e7daf3780d9d2154ee79524a3dd75566",
+      "tagBlob": "6fc61e7f5a968ab1d948807af8bf34b0e64fc657",
+      "change": "Await the async resolver. Do not copy the tag file."
+    },
+    {
+      "path": "packages/fs/tool-fs/src/write.ts",
+      "currentBlob": "3fa6d483995d7c267acc601a5ffb802edbd3c024",
+      "tagBlob": "0745ffc98d499277af440ed126432c79a801a24e",
+      "change": "Await the async resolver. Sandbox denial still uses the original project root."
+    },
+    {
+      "path": "packages/fs/tool-fs/src/edit.ts",
+      "currentBlob": "ec1f1b9c95c7674d192258662cc365698b914dd2",
+      "tagBlob": "f927ccb1cb9a521f4db759c1cd0d256f09798f33",
+      "change": "Await the async resolver. Sandbox denial still uses the original project root."
+    },
+    {
+      "path": "packages/fs/tool-fs/src/patch/preflight.ts",
+      "currentBlob": "94bd9a0e4baad3e974ac525df0a83d9265316c98",
+      "tagBlob": "532b60d7ad53ab91f297998589b5323a497ca056",
+      "change": "apply_patch relative paths use the execution directory. The sandbox root passed in stays the original project."
+    },
+    {
+      "path": "packages/fs/tool-fs/src/patch/plan.ts",
+      "currentBlob": "7ccccfbf95d52ba56de94d4db257838779148f34",
+      "tagBlob": "baab3634aa8564480278359d5aa7dc88607c8b8e",
+      "change": "Same split as preflight. Do not copy the tag plan."
+    },
+    {
+      "path": "packages/fs/tool-fs-search/src/search-core.ts",
+      "currentBlob": "f50343952708f4dbe993f9d9648de8b67ffa9e78",
+      "tagBlob": "794a5d43fe6026c34cb61d65133ee715ed08b2f0",
+      "change": "Search starts at the execution directory. Do not copy the tag file."
+    },
+    {
+      "path": "packages/shell/tool-bash/src/index.ts",
+      "currentBlob": "619514bfff173e3722e6a9dbaa147a297ba41bde",
+      "tagBlob": "39a2a20369b40a0a93be67dc767ca823fe7197ad",
+      "change": "New bash commands use workingDirectory.ensure. Add workingDirectory to inject. A shell that has already started keeps its directory."
+    },
+    {
+      "path": "packages/shell/tool-bash-persistent/src/index.ts",
+      "currentBlob": "ff6aa0f5bedd7ef3627a6fefa5b07166d860ba32",
+      "tagBlob": "94de7ccf09e40870b89d8889082dd768c427d6fa",
+      "change": "A new persistent bash session starts at the execution directory. An existing terminal is not moved when the directory changes."
+    },
+    {
+      "path": "packages/shell/tool-pwsh/src/index.ts",
+      "currentBlob": "fe823dcd5178ad9f785614ffdcdbcc9976d79b80",
+      "tagBlob": "a3472b4357f1defcd37cf80e03281caf964fe6c4",
+      "change": "Same new-command rule as bash."
+    },
+    {
+      "path": "packages/shell/tool-pwsh-persistent/src/index.ts",
+      "currentBlob": "84c6833a73132622fd8f1c2d7f6b16248b6b0e84",
+      "tagBlob": "132ca51d2c695c12a3100d4964669cc4e8e682f3",
+      "change": "Same new-session rule as persistent bash."
+    },
+    {
+      "path": "packages/lsp/tool-lsp/src/index.ts",
+      "currentBlob": "6ffc059a671b3318ca7fbde644de65426f73cf72",
+      "tagBlob": "3a3314a44e97ff08bcecce405d6020c4f11c2048",
+      "change": "The language-server workspace for a call is the execution directory."
+    },
+    {
+      "path": "packages/lsp/tool-lsp/src/session-cwd.ts",
+      "currentBlob": "00453843e28815f23c05b1c9281c4e2b83bff493",
+      "tagBlob": null,
+      "change": "Fork-only helper. Point it at ensure, or delete it if index.ts no longer needs it. The tag has no this path."
+    },
+    {
+      "path": "packages/skill/tool-skill/src/index.ts",
+      "currentBlob": "351d3c471cbd87849c5852a5300c270ba41e4579",
+      "tagBlob": "f08fb8206433bb40ec415c65e9a50382386a3bd0",
+      "change": "Skill lookup cwd is the execution directory so a worktree AGENTS or skill root is visible. Do not copy the tag file over the fork skill tool."
+    },
+    {
+      "path": "packages/context/agent-instructions/src/index.ts",
+      "currentBlob": "3b18c57668e5d60bf020022d9a92e3deafd63a12",
+      "tagBlob": "ec752e07150ff3da38e7d7264cee825f7d3f881b",
+      "change": "This file is already dirty from RC1-01. After M2, change only the project-root lookup to ensure. Do not replace the file with the tag copy."
+    },
+    {
+      "path": "packages/context/file-reference-local/src/index.ts",
+      "currentBlob": "0eca490ef8554fbe586237376836716d4f649e2a",
+      "tagBlob": "a179cebafbad2e3b05741571d84c5475de3d1cdf",
+      "change": "File-reference search uses the execution directory."
+    },
+    {
+      "path": "packages/deliverables/tool-present/src/index.ts",
+      "currentBlob": "69eab7ee56ae808f6395f85f4ce68a4fa35a0033",
+      "tagBlob": "393a95d8c8a5817a4710fc6fbff64ad11328b4b4",
+      "change": "present resolves files from the execution directory."
+    },
+    {
+      "path": "packages/core/tools/src/ptc.ts",
+      "currentBlob": "95a4efcdda8e0d2bbcb460852f1d595ad101e170",
+      "tagBlob": null,
+      "change": "The tag has no this path. run_code cwd becomes ensure. sandboxPolicy stays the policy object whose workspaceRoot is still header.cwd."
+    },
+    {
+      "path": "packages/workflow/workflow-ptc/src/host.ts",
+      "currentBlob": "843d48f21945675121715a4e4840d98b68890c1d",
+      "tagBlob": "71b5a442b627e8494c554033f58fa812fdb1b7d9",
+      "change": "The program cwd becomes ensure. Do not assign policy.workspaceRoot to that cwd. Do not copy the tag host."
+    },
+    {
+      "path": "packages/hooks/hooks-claude-code/src/index.ts",
+      "currentBlob": "fecbec05e29886f13a679d0e336bf29722f04399",
+      "tagBlob": null,
+      "change": "Command cwd for a hook run uses ensure when an agent is present. The tag has no this path."
+    },
+    {
+      "path": "packages/hooks/hooks-codex/src/index.ts",
+      "currentBlob": "94aa2d56bb5ef5a53b5333aae6d5c30a843e35c5",
+      "tagBlob": null,
+      "change": "Same command-cwd rule as the Claude hook runner."
+    },
+    {
+      "path": "packages/experimental/claude-code-mods/src/host-ops.ts",
+      "currentBlob": "1dfe0c369af18387c949bc5ec8005f3805eb8bae",
+      "tagBlob": "47bf900671d4534d0dfaf8df2fe18ed737a60237",
+      "change": "session.cwd used to launch a command follows ensure. session.root stays header.cwd. Do not copy the tag file."
+    },
+    {
+      "path": "packages/bundle/base/cordis.patch.yml",
+      "currentBlob": "75e58fd46894fe11ce46eae2ec0080c494c31521",
+      "tagBlob": "fc83f8160c548e364cd8357f5da8d7acc0c58c78",
+      "change": "Insert working-directory and tool-working-directory beside session-projection. Do not copy the tag patch."
+    },
+    {
+      "path": "packages/bundle/base/package.json",
+      "currentBlob": "9f9387e15713ea137df096abf6b8802bec75cad4",
+      "tagBlob": "9a68dad06761c74cbda45994f37c89e227117236",
+      "change": "Add the two release workspace dependencies. Do not copy the tag manifest."
+    },
+    {
+      "path": "apps/cli/package.json",
+      "currentBlob": "dcf82e8107112462ecec50d751ca3c74c087f38a",
+      "tagBlob": "82f5ca2aec938a218e2a6eb057236a7cfefe2b35",
+      "change": "Declare the two release packages and the experimental host packages worktree, tool-worktree, client-ui-forge, and worktree-review so the companion closure can resolve them. Do not copy the tag manifest."
+    },
+    {
+      "path": "tsconfig.base.json",
+      "currentBlob": "e56924126e28c4e50922251d73f0d1100d3dd1fb",
+      "tagBlob": "f513971edc7f89e4ec718d98bc0149001a7479be",
+      "change": "Add source paths for the new release and experimental packages. Do not copy the tag config."
+    },
+    {
+      "path": "scripts/desktop-profile-plugins.json",
+      "currentBlob": "d9e014f2b3c6586552ac0b1a313b2776b26ada19",
+      "tagBlob": null,
+      "change": "Pin @deepseek-ai/dsh-experimental-worktree-review at 0.2.1-alpha.1, source workspace, dual face. The tag has no this path."
+    }
+  ],
+  "retainUnchanged": [
+    {
+      "path": "packages/core/session/src/types.ts",
+      "currentBlob": "84581376591eedb6ba9b3961b3c1f584c14bb9ba",
+      "tagBlob": "7787dd9bd073217825356b9c6b419d2e153d2537",
+      "reason": "The new events are declaration merges in the owning packages. Do not import the tag SessionEventMap or PluginRecordMap."
+    },
+    {
+      "path": "packages/llm/llm/src/message.ts",
+      "currentBlob": "d96a63edb6d78d64508875ebc1cc6a1cc5a824b6",
+      "tagBlob": "d96a63edb6d78d64508875ebc1cc6a1cc5a824b6",
+      "reason": "Blob matches the tag. The working-directory source kind is declared by the new package."
+    },
+    {
+      "path": "packages/session/session-projection/src/index.ts",
+      "currentBlob": "a3e9bc0f3bd8126346c12eba8d27ffd489e7fa06",
+      "tagBlob": null,
+      "reason": "M1 already returns ProjectionHandle from register. F1 calls that API. Do not replace this package."
+    },
+    {
+      "path": "packages/session/session-projection-cache/src/spec.ts",
+      "currentBlob": "8da5b250bf60829b74694d8c7b49f846f4e36b61",
+      "tagBlob": "8da5b250bf60829b74694d8c7b49f846f4e36b61",
+      "reason": "Domain session_projcache stays version 7. New projection keys are extra rows. identity.cwd stays header.cwd."
+    },
+    {
+      "path": "packages/sandbox/sandbox-policy/src/index.ts",
+      "currentBlob": "42a63dd9c4f0b09e85d0764b20dec8fa7eef7990",
+      "tagBlob": "36fdc1f2e85b031bee52712bffe8f79e9500ecf7",
+      "reason": "workspaceRoot stays header.cwd, matching the tag. A worktree under the project remains inside the fence. Do not point the fence at the execution directory."
+    },
+    {
+      "path": "packages/core/agent-loop/src/index.ts",
+      "currentBlob": "7ddf48e9bf014bb0d90e5787836142a6f898befe",
+      "tagBlob": "381ef6e93a01eb06a7379f62a47b367f3e26dd0b",
+      "reason": "The prompt variable cwd stays header.cwd. The working-directory package adds its own context line for the execution directory. Do not retarget the loop variable and do not copy the tag loop."
+    },
+    {
+      "path": "packages/api/session-controller/src/index.ts",
+      "currentBlob": "f56f1559764af8e28734164f541cea4b5318e5a0",
+      "tagBlob": "8e81986f0bc9f4990003c0f07d065e6b0b77543a",
+      "reason": "sessionEntriesRoot stays header.cwd. That is the file-navigation fence."
+    },
+    {
+      "path": "packages/api/session-controller/src/agent.ts",
+      "currentBlob": "7016157bfd52d7d74cbc804ec47c7ec71d11cb03",
+      "tagBlob": "d16e0417734a7ea2413596808b451f72e709c247",
+      "reason": "Open and resume still reject a cwd that differs from header.cwd. Entering a worktree must not rewrite the header."
+    },
+    {
+      "path": "packages/api/session-controller/src/list.ts",
+      "currentBlob": "83bcd5f0ca21bcdeaa740d793393002bd4a9ce9a",
+      "tagBlob": "830ebe21a9f8371648f137a9ba621ab58b73dd50",
+      "reason": "Session list rows keep header.cwd."
+    },
+    {
+      "path": "packages/api/session-controller/src/types.ts",
+      "currentBlob": "7ffa39d27c0990922e64f22be0d6fdebd5fcc460",
+      "tagBlob": null,
+      "reason": "The listing fence type stays header.cwd."
+    },
+    {
+      "path": "packages/api/session-controller/src/ask-data.ts",
+      "currentBlob": "36d2466381686de4884693ea88befb30a1ee93a2",
+      "tagBlob": null,
+      "reason": "Bind and create keep the requested workspace. A working-directory/change does not rebind."
+    },
+    {
+      "path": "packages/api/session-controller/src/ask-knowledge.ts",
+      "currentBlob": "e2091ac30599eaf0bb868c1c84b51dd861b0adc9",
+      "tagBlob": null,
+      "reason": "Attach keeps libraryId and header.cwd. A worktree does not move the library shortcut."
+    },
+    {
+      "path": "packages/experimental/desktop-files/src/index.ts",
+      "currentBlob": "92863225c5f877bf6a667cac9463c450ad2187dc",
+      "tagBlob": null,
+      "reason": "The file tree lists the Host root it is given. That root remains header.cwd."
+    },
+    {
+      "path": "packages/experimental/desktop-files/src/list-entries.ts",
+      "currentBlob": "d79039fe913100948c6951b1c9cd99f289ea593d",
+      "tagBlob": null,
+      "reason": "Listing stays fenced to the supplied root."
+    },
+    {
+      "path": "packages/experimental/desktop-ask-data/src/index.ts",
+      "currentBlob": "6de02cb8178d741be3c5baeaa700e9c97d821db2",
+      "tagBlob": null,
+      "reason": "The ask-data projection is the source binding, not the execution directory."
+    },
+    {
+      "path": "packages/experimental/desktop-ask-data/src/bind.ts",
+      "currentBlob": "498dc5a9a6511d100c13ec553cddfa1a65fe3b0c",
+      "tagBlob": null,
+      "reason": "Do not rebind a table when the agent enters a worktree."
+    },
+    {
+      "path": "packages/experimental/desktop-ask-knowledge/src/index.ts",
+      "currentBlob": "03d3e02e086100a23b677b9415937ed6f052f780",
+      "tagBlob": null,
+      "reason": "Library home and workspace shortcut stay on the original workspace id."
+    },
+    {
+      "path": "packages/experimental/session-decisions/src/feishu/channel.ts",
+      "currentBlob": "605ab5b1becde665f6bc6aee01172e9c652f07e7",
+      "tagBlob": null,
+      "reason": "Publish and answer compare header.cwd with binding.workspace. Do not compare WorkingDirectoryService.get and do not rewrite the binding."
+    },
+    {
+      "path": "packages/experimental/agent-team/src/index.ts",
+      "currentBlob": "902d6ccd50d389695d048e933c308cdda4c68e44",
+      "tagBlob": "c0da4c9a2424ff85a819477d9b1637c2c226a20b",
+      "reason": "readHtmlPreview stays under the Lead header.cwd. Do not copy the tag Team package. The tag Team does not isolate checkouts."
+    },
+    {
+      "path": "packages/experimental/agent-team/src/roster.ts",
+      "currentBlob": "98a723ce75659c84ca030c5bebdb30b967981916",
+      "tagBlob": null,
+      "reason": "startContinuable keeps parent: root and does not pass a worktree cwd. Standing seats stay on the shared header workspace."
+    },
+    {
+      "path": "packages/subagent/subagent/src/child-agent.ts",
+      "currentBlob": "d73b8cc39e47f5805b2ead7f17af177efb877429",
+      "tagBlob": null,
+      "reason": "childSessionMeta copies parent header.cwd. Do not switch this to the parent execution directory in F1."
+    },
+    {
+      "path": "packages/experimental/commerce-mode/src/tools/index.ts",
+      "currentBlob": "1ce8f4da7b5b82fd903787b958225e41f91d9fa7",
+      "tagBlob": null,
+      "reason": "Commerce workspace paths stay on header.cwd."
+    },
+    {
+      "path": "packages/experimental/desktop-speech-transcribe/src/tool.ts",
+      "currentBlob": "633fce8d6c1b20801c6264565f6b31b7bdbff673",
+      "tagBlob": null,
+      "reason": "Recordings stay under the original workspace root."
+    },
+    {
+      "path": "packages/session/session-persistence-jsonl/src/index.ts",
+      "currentBlob": "fc32753d2339f501275b91d8a57b20d1cf6a3631",
+      "tagBlob": "f8351fa9ee75db9790859de9672d1602c0c05664",
+      "reason": "Log paths stay derived from header.cwd. A worktree must not move the session log."
+    },
+    {
+      "path": "packages/workspace/workspace/src/index.ts",
+      "currentBlob": "4b4176c573c0eaae5b3331d3df6cb02787a2be2b",
+      "tagBlob": "0f630500cb6eb5bc2b1b5492d8258d13f1c8404a",
+      "reason": "Workspace membership stays on header.cwd."
+    },
+    {
+      "path": "packages/session-query/tool-session-query/src/workspace-access.ts",
+      "currentBlob": "a161235b5f1b0c64a75f3fc9366bf0ab1fdb5e62",
+      "tagBlob": null,
+      "reason": "Same-workspace access stays header.cwd equality."
+    },
+    {
+      "path": "packages/bundle/desktop-app/cordis.patch.yml",
+      "currentBlob": "c2368f664c4f148e727450d5205daf0dd321aa32",
+      "tagBlob": null,
+      "reason": "Official desktop-app product logic stays unchanged. The review UI arrives through the profile pin."
+    },
+    {
+      "path": "packages/bundle/web-app/cordis.patch.yml",
+      "currentBlob": "15f79204a674ede2efa7dced2d00fdab5b5515d5",
+      "tagBlob": "d751fcc46286ce101da2a26d782bbff7d7de6aa8",
+      "reason": "Do not add the experimental panel to the release web bundle. That would make a release package depend on an experimental package."
+    },
+    {
+      "path": "packages/bundle/web-app/package.json",
+      "currentBlob": "690bf50f92d6396332e03d54a7b5d4b7e798f654",
+      "tagBlob": "303a57137cd4ad7906243d3756460c7e4f39d502",
+      "reason": "No experimental Forge dependency on the release web bundle."
+    },
+    {
+      "path": "scripts/upstream-intake-registry.ts",
+      "currentBlob": "372b61a06984acb2937e41266fec62917d7f1d66",
+      "tagBlob": null,
+      "reason": "No registry edit in this candidate. UPSTREAM_PIN stays dsh-v0.2.1-alpha.1."
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "currentBlob": "d21878f5377329e640916d6d3f45eed5a0101b10",
+      "tagBlob": "59b31eb46b90e35251cbf3c26b20556892c4aa52",
+      "reason": "packages/*/* already includes the new directories. Do not edit the workspace globs."
+    }
+  ],
+  "proposedFilenames": [
+    {
+      "path": "packages/session/working-directory/package.json",
+      "tagBlob": "57d1666fcd82704f51655237d291fab4a508bb3f",
+      "role": "Release package @deepseek-ai/dsh-working-directory at 0.2.1-alpha.1. Peers are the current cordis, agent, fs, llm, session, session-projection, and system-prompt. Do not copy the tag version 0.2.2-rc.1."
+    },
+    {
+      "path": "packages/session/working-directory/tsconfig.json",
+      "tagBlob": null,
+      "role": "Host face extending tsconfig.base.json. The tag file is not the fork compiler layout."
+    },
+    {
+      "path": "packages/session/working-directory/README.md",
+      "tagBlob": null,
+      "role": "Contract: header.cwd is the original project, get is the execution directory, ensure recovers a missing directory back to the header, set commits working-directory/change."
+    },
+    {
+      "path": "packages/session/working-directory/README.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair of the README."
+    },
+    {
+      "path": "packages/session/working-directory/README.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "packages/session/working-directory/src/index.ts",
+      "tagBlob": "8664a8aca1f8379f03e6b9b12021a8cf9fdfe145",
+      "role": "Adapt the tag service onto the fork ProjectionHandle. get, ensure, set, and the context line. Cancel before append. Do not copy the file blindly if the prompt order constants differ."
+    },
+    {
+      "path": "packages/session/working-directory/tests/working-directory.spec.ts",
+      "tagBlob": "22fb99af471a0da502320a2bca58c3f414270925",
+      "role": "Lead for set, ensure, and the context line. Rewrite against the fork service."
+    },
+    {
+      "path": "packages/session/working-directory/tests/admission.spec.ts",
+      "tagBlob": "ea09e87ed0a79008d096538cd0b3f46d93e68c81",
+      "role": "Lead for model-visible admission. The notice source kind is working-directory."
+    },
+    {
+      "path": "packages/session/working-directory/tests/host-controllers.spec.ts",
+      "tagBlob": null,
+      "role": "Real session append, cancel before the event, missing directory recovery to header.cwd, and cold reopen of the projection."
+    },
+    {
+      "path": "packages/session/tool-working-directory/package.json",
+      "tagBlob": "d3186bbd73888ff526fe54b7dbdf38849d68c0a7",
+      "role": "Release package @deepseek-ai/dsh-tool-working-directory at 0.2.1-alpha.1."
+    },
+    {
+      "path": "packages/session/tool-working-directory/tsconfig.json",
+      "tagBlob": null,
+      "role": "Host face."
+    },
+    {
+      "path": "packages/session/tool-working-directory/README.md",
+      "tagBlob": null,
+      "role": "Tool working_directory reads or changes the execution directory and does not move existing shells."
+    },
+    {
+      "path": "packages/session/tool-working-directory/README.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "packages/session/tool-working-directory/README.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "packages/session/tool-working-directory/src/index.ts",
+      "tagBlob": "f0aa8bc4f0854c6dff38feeb9475b303e5108cb6",
+      "role": "Adapt the tag tool. Name stays working_directory. Omit cd to read. cd calls set."
+    },
+    {
+      "path": "packages/experimental/worktree/package.json",
+      "tagBlob": "007130c184d10abcd32d0506fd597b4f0b0f5a59",
+      "role": "Experimental package @deepseek-ai/dsh-experimental-worktree at 0.2.1-alpha.1. Peers include working-directory, fs, sandbox, sandbox-policy, and subprocess."
+    },
+    {
+      "path": "packages/experimental/worktree/tsconfig.json",
+      "tagBlob": null,
+      "role": "Host face."
+    },
+    {
+      "path": "packages/experimental/worktree/README.md",
+      "tagBlob": null,
+      "role": "create enters the checkout only after Git succeeds. restore does not change the execution directory. Uncommitted source files are not copied. No automatic branch delete."
+    },
+    {
+      "path": "packages/experimental/worktree/README.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "packages/experimental/worktree/README.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "packages/experimental/worktree/src/index.ts",
+      "tagBlob": "2529ae48e84032f41cb52e1fe78ed125983b0a45",
+      "role": "Adapt create and restore. create calls workingDirectory.set only after checkout. Cancel aborts before that set."
+    },
+    {
+      "path": "packages/experimental/worktree/src/types.ts",
+      "tagBlob": "a4af7fb8a192f6b3aa774e60aaca96cc37846009",
+      "role": "CreateWorktreeRequest, CreatedWorktree, RestoreWorktreeRequest, RestoredWorktree."
+    },
+    {
+      "path": "packages/experimental/worktree/src/directory.ts",
+      "tagBlob": "6783f55b8dc0b1f82b2e9f49232d4fbe7b775a38",
+      "role": "Sandboxed directory allocation. Lead, adapted to the fork sandbox API."
+    },
+    {
+      "path": "packages/experimental/worktree/src/name.ts",
+      "tagBlob": "d29f04159678f4c03dc67a2cfa7edaa27ede9e05",
+      "role": "Generated branch name. Do not import the tag upgrade guide as the implementation."
+    },
+    {
+      "path": "packages/experimental/worktree/src/process.ts",
+      "tagBlob": "74c8fa1c1bdc0d4e7c1f4c12e81a4722b03fc822",
+      "role": "Confined git runner. No network fetch."
+    },
+    {
+      "path": "packages/experimental/worktree/tests/harness.ts",
+      "tagBlob": null,
+      "role": "Local git fixture. No network."
+    },
+    {
+      "path": "packages/experimental/worktree/tests/worktree.spec.ts",
+      "tagBlob": "7db475246224887b5fb17c909ed6c6c4a3f4e934",
+      "role": "Lead. Rewrite for the fork service."
+    },
+    {
+      "path": "packages/experimental/worktree/tests/sandbox.spec.ts",
+      "tagBlob": "90bdd7594bb53098095e2bc109e5e5d64186ac9b",
+      "role": "Sandbox denial of the git runner."
+    },
+    {
+      "path": "packages/experimental/worktree/tests/checkout-safety.spec.ts",
+      "tagBlob": "0ac4bd6a4dfce86b387a10485bd514ca3c25e5ce",
+      "role": "Path and branch refusal."
+    },
+    {
+      "path": "packages/experimental/worktree/tests/host-controllers.spec.ts",
+      "tagBlob": null,
+      "role": "Real Host session: create, cancel before set, missing checkout, restore without a cwd change, cold reopen."
+    },
+    {
+      "path": "packages/experimental/tool-worktree/package.json",
+      "tagBlob": "8966c0f98f138bc52ef9efa672cc6673a9c53841",
+      "role": "Experimental package @deepseek-ai/dsh-experimental-tool-worktree at 0.2.1-alpha.1."
+    },
+    {
+      "path": "packages/experimental/tool-worktree/tsconfig.json",
+      "tagBlob": null,
+      "role": "Host face."
+    },
+    {
+      "path": "packages/experimental/tool-worktree/README.md",
+      "tagBlob": null,
+      "role": "Tool create_worktree. It does not merge, push, or open a pull request."
+    },
+    {
+      "path": "packages/experimental/tool-worktree/README.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "packages/experimental/tool-worktree/README.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "packages/experimental/tool-worktree/src/index.ts",
+      "tagBlob": "53f035f7d77af8dca17c921676225821c807fe24",
+      "role": "Adapt the tag tool. It calls worktrees.create only."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/package.json",
+      "tagBlob": "898e0fa5e352d0a82706319fc22ceb000f22edd8",
+      "role": "Experimental package @deepseek-ai/dsh-experimental-client-ui-forge at 0.2.1-alpha.1. Production dependency diff ^9.0.0. No dependency on forge, forge-github, or forge-session. Host and client exports."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tsconfig.json",
+      "tagBlob": null,
+      "role": "Solution root. Leaves are tsconfig.host.json and tsconfig.client.json."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tsconfig.host.json",
+      "tagBlob": null,
+      "role": "Host face."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tsconfig.client.json",
+      "tagBlob": null,
+      "role": "Client face."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tsdown.config.ts",
+      "tagBlob": null,
+      "role": "Client bundle. Root runs it later. This candidate does not emit."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/css-modules.d.ts",
+      "tagBlob": null,
+      "role": "CSS module types for the client face."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/README.md",
+      "tagBlob": null,
+      "role": "Local review and worktree controls. No GitHub review, merge, or publish."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/README.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/README.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/index.ts",
+      "tagBlob": "7fa9010b81383f938c45bddbf9fed43de625c002",
+      "role": "Host remote with follow, localDiff, localText, requestWorktree, cancelWorktree, stopCreation, retryWorktree, restoreWorktree, and continueInProject. Omit track, dismiss, refresh, change-request, submitReview, markReady, and merge."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/types.ts",
+      "tagBlob": "c96b0a7bb643af9e12c4aba872d00be3f583352f",
+      "role": "Keep checkout, local diff, and worktree state types. Drop change-request and review request types."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/worktree.ts",
+      "tagBlob": "a6b7ee2cd6274e089c6213f097ef2c55cf0559b7",
+      "role": "Projection forgeWorktree at stateVersion 1, not the tag's 4. Records are worktree/record events, not plugin: records."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/local-diff.ts",
+      "tagBlob": "cbe09afbd54197392169d82c2b90abc1f46852d5",
+      "role": "Local branch and unstaged diff through the session git runner and ctx.fs. No code host."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/git.ts",
+      "tagBlob": "c8db71c7a9350ae5057495dc63a508d7a25bddf8",
+      "role": "Confined git inspection. No gh and no network."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/diff.ts",
+      "tagBlob": "aa6cc8515aab7e9f2b083ef8144331c028d10e29",
+      "role": "Patch parse for the local review."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/parse.ts",
+      "tagBlob": "05cf03613c3f543d043e39790e3122782489bf0d",
+      "role": "Local branch name parse. Drop remote code-host URL recognition if a symbol exists only for GitHub."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/panel.ts",
+      "tagBlob": "0c21c934c455efc759301986ec24c67242eee590",
+      "role": "Checkout inspection and missing-worktree detection. Remove the sign-in probe and change-request list."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/index.ts",
+      "tagBlob": "4e8c0e6fad9b2432737be895358904abde32df7d",
+      "role": "Client apply. One tab. en and zh only."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/mount.ts",
+      "tagBlob": "cd3aaa4c3da591ac7b9f9d3664688f4c4f233b92",
+      "role": "Register sidebar.right.pane.tab id worktree-review. Do not copy the tag mount: it opens change-request URLs and queues GitHub reviews."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/locales.ts",
+      "tagBlob": "8fe3515633dfb0911964a7263419e70fa773ebef",
+      "role": "en Changes and zh \u53d8\u66f4, plus worktree and local diff strings. No de, es, fr, ja, pt, or ru."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/source.ts",
+      "tagBlob": null,
+      "role": "One panel stream. A connection reset supersedes the read in flight."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/LocalReviewTab.tsx",
+      "tagBlob": null,
+      "role": "The one tab. Tag ChangesTab blob bd39ea3d2774baf87365a82eaa44c01053690c3c is a lead only. It imports Forge review types and is not copied."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/LocalReviewTab.module.css",
+      "tagBlob": null,
+      "role": "Tab layout. Do not copy the tag ChangesTab stylesheet."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/LocalChangesCard.tsx",
+      "tagBlob": "d377b43db56fd261f1988172355593e82ad06f71",
+      "role": "Local change summary. Drop any control that submits a review."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/DiffFile.tsx",
+      "tagBlob": "a3c8d9a2ba209eb46b1d6fce2b25f20218503e49",
+      "role": "One file diff. No review comment composer."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/FileTreePane.tsx",
+      "tagBlob": null,
+      "role": "Diff file tree inside the tab. Adapt from the tag file of the same name. It is not the desktop project file tree."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/FileTreePane.module.css",
+      "tagBlob": null,
+      "role": "Styles for that pane."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/file-tree.ts",
+      "tagBlob": null,
+      "role": "Order changed paths for the pane."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/diff-rows.ts",
+      "tagBlob": null,
+      "role": "Hunk line rows."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/WorktreeProgress.tsx",
+      "tagBlob": "bc3cc19c7196bc3c0fb8a1050f4a63c5232f64ac",
+      "role": "Create and restore progress, including failure text."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/WorktreeProgress.module.css",
+      "tagBlob": null,
+      "role": "Progress styles."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/local-diff.host.spec.ts",
+      "tagBlob": null,
+      "role": "Keyless git fixture for the local diff. Tag local-diff.host.spec.ts is a lead, not a copy."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/controller.host.spec.ts",
+      "tagBlob": null,
+      "role": "Host remote: request, cancel, missing checkout, restore, continueInProject. No merge remote exists."
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/local-review.client.spec.tsx",
+      "tagBlob": null,
+      "role": "One tab, en and zh, no review submit control."
+    },
+    {
+      "path": "packages/experimental/worktree-review/package.json",
+      "tagBlob": null,
+      "role": "Experimental bundle @deepseek-ai/dsh-experimental-worktree-review. Depends on worktree, tool-worktree, and client-ui-forge. dsh.bundle.patch and dsh.client."
+    },
+    {
+      "path": "packages/experimental/worktree-review/tsconfig.json",
+      "tagBlob": null,
+      "role": "Host face for the bundle entry."
+    },
+    {
+      "path": "packages/experimental/worktree-review/README.md",
+      "tagBlob": null,
+      "role": "Desktop profile pin. It is not the upstream forge-bundle."
+    },
+    {
+      "path": "packages/experimental/worktree-review/README.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "packages/experimental/worktree-review/README.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "packages/experimental/worktree-review/src/index.ts",
+      "tagBlob": null,
+      "role": "Empty host entry so the patch package resolves. The plugins it inserts own the behavior."
+    },
+    {
+      "path": "packages/experimental/worktree-review/cordis.patch.yml",
+      "tagBlob": null,
+      "role": "Insert worktree, tool-worktree, the forge panel host, and one dsh.client row. No forge-github row. Tag forge-bundle patch blob 112caefaa4d85aeefedaa851e96ea41a8a26e60c is the rejected composition."
+    },
+    {
+      "path": "packages/experimental/worktree-review/tests/desktop-mount.spec.ts",
+      "tagBlob": null,
+      "role": "Keyless fixture. The pin is dual-face, the patch names no electron and no forge-github, and desktop-app/cordis.patch.yml still hashes to c2368f664c4f148e727450d5205daf0dd321aa32."
+    },
+    {
+      "path": "packages/experimental/agent-team/tests/shared-workspace-worktree.spec.ts",
+      "tagBlob": null,
+      "role": "A Lead with a working-directory/change still spawns teammates on header.cwd. The HTML preview fence stays the header. An existing standing squad is not given a checkout."
+    },
+    {
+      "path": "packages/experimental/session-decisions/tests/feishu-cwd-identity.spec.ts",
+      "tagBlob": null,
+      "role": "A working-directory/change does not publish or accept a Feishu answer when header.cwd still matches, and does not start matching when only the execution directory matches."
+    },
+    {
+      "path": "packages/experimental/desktop-files/tests/worktree-fence.spec.ts",
+      "tagBlob": null,
+      "role": "listEntries stays on header.cwd after a working-directory/change."
+    },
+    {
+      "path": "packages/api/session-controller/tests/entries-root-identity.host.spec.ts",
+      "tagBlob": null,
+      "role": "The entries root and ask-data and ask-knowledge binds stay on the original workspace after the execution directory changes."
+    },
+    {
+      "path": "docs/persistence-changes/2026-11-05-working-directory.md",
+      "tagBlob": null,
+      "role": "Acknowledgement for event working-directory/change. Tag page 0c3de3fd7eaf558faa226b7ca2a2732ce7a96993 is a lead. Decision same-version. Session format stays 4."
+    },
+    {
+      "path": "docs/persistence-changes/2026-11-05-working-directory.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "docs/persistence-changes/2026-11-05-working-directory.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "docs/persistence-changes/2026-11-05-working-directory.schema.json",
+      "tagBlob": null,
+      "role": "Generated after schema. Implementation runs the generator. This candidate does not."
+    },
+    {
+      "path": "docs/persistence-changes/2026-11-05-worktree-record.md",
+      "tagBlob": null,
+      "role": "Acknowledgement for event worktree/record. Required on read. Not an ignorable plugin record."
+    },
+    {
+      "path": "docs/persistence-changes/2026-11-05-worktree-record.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "docs/persistence-changes/2026-11-05-worktree-record.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "docs/persistence-changes/2026-11-05-worktree-record.schema.json",
+      "tagBlob": null,
+      "role": "Generated after schema."
+    },
+    {
+      "path": "docs/upgrade-guide/v0.2.1-alpha.1/working-directory/guide.md",
+      "tagBlob": null,
+      "role": "Guide for the new execution directory and the working_directory tool. Product version stays 0.2.1-alpha.1. Do not copy the tag guide."
+    },
+    {
+      "path": "docs/upgrade-guide/v0.2.1-alpha.1/working-directory/guide.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "docs/upgrade-guide/v0.2.1-alpha.1/working-directory/guide.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "docs/subsystems/working-directory.md",
+      "tagBlob": "4e9ae74c57ed1b4ee10355d51a08c35235009018",
+      "role": "Subsystem page for the new service. Adapt. Do not copy the tag page."
+    },
+    {
+      "path": "docs/subsystems/working-directory.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "docs/subsystems/working-directory.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    },
+    {
+      "path": "docs/subsystems/worktrees.md",
+      "tagBlob": "aefa3e4a3c6957f47aa623507977f2295c18397c",
+      "role": "Local worktree and the one review tab. State that teammates are not given checkouts."
+    },
+    {
+      "path": "docs/subsystems/worktrees.zh.md",
+      "tagBlob": null,
+      "role": "Chinese pair."
+    },
+    {
+      "path": "docs/subsystems/worktrees.i18n.yaml",
+      "tagBlob": null,
+      "role": "Pairing record."
+    }
+  ],
+  "filenameFreeze": "Implementation may add only the paths in proposedFilenames. It may edit only the paths in executionConsumers. It may regenerate packages/core/session/src/known-event-types.ts, current blob aaf628ae5061183f8d6bceac133c567b3a69cfd1, from the integrated tree. No other new source, locale, CSS, or workflow file is in this candidate.",
+  "excluded": [
+    "packages/experimental/forge package.json tag blob 66b2f3784c72ff2ce15a245a7aa72572041db5c0. The change-request registry is the GitHub review seam.",
+    "packages/experimental/forge-github package.json tag blob 1b71b94c36052a88fdbb95fe549a64b3c84cd269. gh and GraphQL review, merge, and publish.",
+    "packages/experimental/forge-session package.json tag blob f8182a86f89b35fa0523fb14b497fe08b28cf278. Binds pull requests to sessions.",
+    "packages/experimental/forge-bundle package.json tag blob 99ce7f42612843376c53730e3e71dc7e7f14bf2c and cordis.patch.yml blob 112caefaa4d85aeefedaa851e96ea41a8a26e60c. Mounts forge-github.",
+    "packages/experimental/client-ui-forge/src/states.ts tag blob 4ea03c6349601d286a9714c66ef728413701a673. Storage domain forge_panel_change_requests for pull-request cards.",
+    "PluginRecordMap and appendPluginRecord. The fork session core does not have them. Worktree state uses worktree/record.",
+    "Tag locales de, es, fr, ja, pt, ru.",
+    "Tag client files ReviewComposer, ReviewThread, SubmitReview, ChangeRequestCard, SessionRowForge, and the changes-address GitHub routes.",
+    "Automatic teammate checkouts, merge, and send. Task completion does not grant them.",
+    "Upstream Team profile that disables ordinary subagent tools.",
+    "OAR, upstream CUA, Electron, account binding, policy gates, release feed, analytics defaults, and a second task board or Stage C runtime.",
+    "Job events job/registered and job/settled. They are not this item.",
+    "Origin master commits after 66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db.",
+    "Intake registry edits, dependency installs, generator writes, and source emits in this candidate pass."
+  ],
+  "dependencies": {
+    "newReleasePackages": [
+      "@deepseek-ai/dsh-working-directory",
+      "@deepseek-ai/dsh-tool-working-directory"
+    ],
+    "newExperimentalPackages": [
+      "@deepseek-ai/dsh-experimental-worktree",
+      "@deepseek-ai/dsh-experimental-tool-worktree",
+      "@deepseek-ai/dsh-experimental-client-ui-forge",
+      "@deepseek-ai/dsh-experimental-worktree-review"
+    ],
+    "newNpm": [
+      "diff ^9.0.0 on client-ui-forge only"
+    ],
+    "newExports": [
+      "ctx.workingDirectory get, ensure, set",
+      "ctx.worktrees create, restore",
+      "tool working_directory",
+      "tool create_worktree",
+      "remote forgePanel follow, localDiff, localText, requestWorktree, cancelWorktree, stopCreation, retryWorktree, restoreWorktree, continueInProject"
+    ],
+    "manifest": [
+      "Base cordis patch mounts the two release plugins.",
+      "apps/cli lists the release plugins and the four experimental packages.",
+      "desktop-profile-plugins.json pins worktree-review.",
+      "desktop-app and web-app manifests stay free of those experimental names.",
+      "tsconfig.base.json gains paths. The root solution references are added with the packages.",
+      "Lockfile update is root-owned at install. This candidate does not install.",
+      "Typert regeneration for the new remote is root-owned with the later code change."
+    ]
+  },
+  "persistence": {
+    "sessionFormat": "unchanged at 4",
+    "sqliteSchema": "unchanged",
+    "events": [
+      {
+        "type": "working-directory/change",
+        "payload": "{ cwd: string }",
+        "requiredOnRead": true,
+        "ignorable": false,
+        "owner": "packages/session/working-directory"
+      },
+      {
+        "type": "worktree/record",
+        "payload": "action request | cancel | created | restoring | restored",
+        "requiredOnRead": true,
+        "ignorable": false,
+        "owner": "packages/experimental/client-ui-forge"
+      }
+    ],
+    "messageSource": "working-directory on the user notice injected after a committed directory change",
+    "projections": [
+      {
+        "key": "workingDirectory",
+        "stateVersion": 1,
+        "init": "header.cwd or null",
+        "apply": "working-directory/change"
+      },
+      {
+        "key": "forgeWorktree",
+        "stateVersion": 1,
+        "init": "empty request and created, cwd from header.cwd",
+        "apply": "working-directory/change and worktree/record"
+      }
+    ],
+    "cache": "session_projcache stays version 7 with compatibleVersions 3 through 6. A new key is absent on old rows and folds from the log. identity.cwd is header.cwd and is not the execution directory.",
+    "notMigrated": [
+      "No startup rewrite of released logs.",
+      "No move of the jsonl directory.",
+      "No forge_panel_change_requests domain.",
+      "The nine required fork events stay required.",
+      "known-event-types.ts is regenerated from the integrated tree, not patched by hand."
+    ],
+    "knownEventTypesCurrentBlob": "aaf628ae5061183f8d6bceac133c567b3a69cfd1"
+  },
+  "tests": {
+    "unit": "PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false pnpm --config.enable-global-virtual-store=false --config.verify-deps-before-run=error exec vitest run packages/session/working-directory/tests packages/session/tool-working-directory/tests packages/experimental/worktree/tests packages/experimental/tool-worktree/tests packages/experimental/client-ui-forge/tests packages/experimental/worktree-review/tests packages/experimental/agent-team/tests/shared-workspace-worktree.spec.ts packages/experimental/session-decisions/tests/feishu-cwd-identity.spec.ts packages/experimental/desktop-files/tests/worktree-fence.spec.ts packages/api/session-controller/tests/entries-root-identity.host.spec.ts",
+    "keylessHost": "PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false pnpm --config.enable-global-virtual-store=false --config.verify-deps-before-run=error exec vitest run packages/session/working-directory/tests/host-controllers.spec.ts packages/experimental/worktree/tests/host-controllers.spec.ts packages/experimental/client-ui-forge/tests/controller.host.spec.ts",
+    "covers": [
+      "Host create, cancel before the durable directory event, missing worktree recovery to header.cwd, restore that does not change cwd, and cold reopen",
+      "Feishu authorization, file listing, ask-data, ask-knowledge, and Team preview still use header.cwd",
+      "Standing team spawn does not create a checkout",
+      "Desktop pin fixture with no Electron import and an unchanged desktop-app patch hash"
+    ],
+    "browser": "Root-owned after the integrated client build. This candidate does not launch a browser, a server, or Tauri.",
+    "installed": "Root-owned copied DMG check. This candidate does not build or package."
+  },
+  "prerequisites": [
+    "M2 remains closed until migration and Host, Client, SDK, native, and strict Session gates pass.",
+    "Root accepts M2 and this manifest before any F1 product edit.",
+    "Root owns install, emit, Typert, the persistence catalog, the full candidate build, and installed Tauri acceptance.",
+    "This pass edited only the two candidate files."
+  ],
+  "m2Accepted": true,
+  "m2ExitFreeze": "m2-exit-source-freeze.json"
+}

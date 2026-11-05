@@ -199,7 +199,7 @@ class BrowserZoneAtAdapter extends LlmAdapter {
       const target = Math.ceil((Date.now() + 5_000) / 1_000) * 1_000
       this.selectedAt = localAt(target, AT_BROWSER_ZONE)
       this.scheduledAt = new Date(target).toISOString()
-      const argumentsJson = JSON.stringify({ prompt: AT_PROMPT, title: AT_PROMPT, at: this.selectedAt })
+      const argumentsJson = JSON.stringify({ prompt: AT_PROMPT, title: AT_PROMPT, timing: { kind: 'at', at: this.selectedAt }, target: { kind: 'session', sessionId: 'schedule-at-web-e2e' } })
       const callId = ToolCallId('schedule-at-browser-zone')
       yield { type: 'block-start', index: 0, blockType: 'tool-call' }
       yield {
@@ -358,7 +358,7 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
       signal: AbortSignal.timeout(10_000),
       callId: ToolCallId('schedule-after-create'),
       name: 'schedule_create',
-      arguments: { prompt: AFTER_PROMPT, title: AFTER_PROMPT, after_seconds: 1 },
+      arguments: { prompt: AFTER_PROMPT, title: AFTER_PROMPT, timing: { kind: 'after', after_seconds: 1 }, target: { kind: 'session', sessionId: afterHandle.agent.id } },
       agent: afterHandle.agent,
     })
     if (afterCreated.isError) {
@@ -373,8 +373,9 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
       kind: 'after',
       prompt: AFTER_PROMPT,
       afterSeconds: 1,
-      state: 'scheduled',
-      deliveryMode: 'host',
+      status: 'active',
+      target: { kind: 'session', sessionId: afterHandle.agent.id },
+      involvedSessionIds: [afterHandle.agent.id],
     })
     afterAssistantReply = await waitForReply(afterHandle, AFTER_REPLY, 15_000)
     await afterHandle.agent.whenIdle()
@@ -413,12 +414,10 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
     const domain = scaffold.ctx.storageDomain.get('schedule')
     if (domain === undefined) throw new Error('Schedule domain was not opened')
     for (const record of everyRecords) {
-      await domain.table('tasks').put(record.id, { sessionId: everyHandle.agent.id, record, status: 'active' })
+      await domain.table('tasks').put(record.id, { target: { kind: 'session', sessionId: everyHandle.agent.id }, involvedSessionIds: [everyHandle.agent.id], record, status: 'active' })
     }
-    const wake = await scaffold.ctx.schedule.create(everyHandle.agent.id, {
-      prompt: 'Unused future scheduling wake', title: 'Future wake', after_seconds: 86_400,
-    })
-    await scaffold.ctx.schedule.delete({ sessionId: everyHandle.agent.id, id: wake.id })
+    const wake = await scaffold.ctx.schedule.create({ prompt: 'Unused future scheduling wake', title: 'Future wake', timing: { kind: 'after', after_seconds: 86_400 }, target: { kind: 'session', sessionId: everyHandle.agent.id } })
+    await scaffold.ctx.schedule.edit({ id: wake.id, action: 'delete' })
     await workspace.attachSession(everyHandle.agent.id)
     const everyListed = await scaffold.ctx.tools.execute({
       signal: AbortSignal.timeout(10_000),
@@ -516,18 +515,18 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
     )
     await expectNoReminderEntry(page)
     await expect.poll(async () => (await scaffold.ctx.schedule.catalog()).some(task => (
-      task.sessionId === afterHandle.agent.id && task.status === 'inactive' && task.lastDelivery !== undefined
+      task.target.kind !== 'new' && task.target.sessionId === afterHandle.agent.id && task.status === 'ended' && task.lastDelivery !== undefined
     ))).toBe(true)
-    const delivered = (await scaffold.ctx.schedule.catalog()).find(task => task.sessionId === afterHandle.agent.id)
+    const delivered = (await scaffold.ctx.schedule.catalog()).find(task => task.target.kind !== 'new' && task.target.sessionId === afterHandle.agent.id)
     if (delivered?.lastDelivery === undefined) throw new Error('delivered one-shot receipt was not retained')
-    expect(await scaffold.ctx.schedule.list({ sessionId: afterHandle.agent.id })).toEqual([])
+    expect((await scaffold.ctx.schedule.list({ active: true, limit: 500 })).items.filter(task => task.target.kind !== 'new' && task.target.sessionId === afterHandle.agent.id)).toEqual([])
     // Archiving the Session shown in the main pane returns the app to its
     // workspace-selection view and unmounts the Tasks page with it, so the
     // linked-Session assertions run with another Session in the main pane.
     await page.getByRole('treeitem', { name: /Explicit local-time reminder/ }).click()
     await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
     const manager = page.getByTestId('task-manager-page')
-    await manager.getByRole('button', { name: 'Inactive', exact: true }).click()
+    await manager.getByRole('button', { name: 'Ended', exact: true }).click()
     await manager.getByRole('list', { name: 'Task catalog' })
       .getByRole('button', { name: AFTER_PROMPT, exact: true }).click()
     const detail = manager.getByRole('complementary', { name: 'Task details' })
@@ -587,7 +586,7 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
     }
     expect(everyAdapter.requests).toHaveLength(1)
     for (const request of everyAdapter.requests) expectReminderFraming(request)
-    const active = await scaffold.ctx.schedule.list({ sessionId: everyHandle.agent.id })
+    const active = (await scaffold.ctx.schedule.list({ active: true, limit: 500 })).items.filter(task => task.target.kind !== 'new' && task.target.sessionId === everyHandle.agent.id)
     expect(active).toHaveLength(2)
     for (const record of active) {
       const original = everyRecords.find(candidate => candidate.id === record.id)
@@ -613,7 +612,7 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
     expect(await page.getByRole('list', { name: 'Active reminders' }).count()).toBe(0)
 
     const original = everyRecords[0]
-    const first = await scaffold.ctx.schedule.history({ sessionId: everyHandle.agent.id, id: original.id, limit: 20 })
+    const first = await scaffold.ctx.schedule.history({  id: original.id, limit: 20 })
     if ('code' in first || first.records.length !== 1) throw new Error('expected one actual recurring receipt')
     await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
     const manager = page.getByTestId('task-manager-page')
@@ -630,16 +629,16 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
     const latest = first.records[0]!
     // Make the next occurrence due through the fixture's existing stored-time input.
     await domain.table('tasks').put(original.id, {
-      sessionId: everyHandle.agent.id,
+      target: { kind: 'session', sessionId: everyHandle.agent.id }, involvedSessionIds: [everyHandle.agent.id],
       record: { ...original, scheduledAt: new Date(Date.now() - 1_000).toISOString() },
       status: 'active',
       lastDelivery: { scheduledAt: latest.scheduledAt, deliveredAt: latest.deliveredAt, messageId: latest.messageId },
       deliveryHistory: { records: [...first.records].reverse(), earlierRecordsUnavailable: first.earlierRecordsUnavailable },
     })
-    const wake = await scaffold.ctx.schedule.create(everyHandle.agent.id, { prompt: 'Future history refresh wake', title: 'History refresh wake', after_seconds: 86_400 })
-    await scaffold.ctx.schedule.delete({ sessionId: everyHandle.agent.id, id: wake.id })
+    const wake = await scaffold.ctx.schedule.create({ prompt: 'Future history refresh wake', title: 'History refresh wake', timing: { kind: 'after', after_seconds: 86_400 }, target: { kind: 'session', sessionId: everyHandle.agent.id } })
+    await scaffold.ctx.schedule.edit({ id: wake.id, action: 'delete' })
     await expect.poll(() => receipts.count(), { timeout: 15_000 }).toBe(2)
-    const saved = await scaffold.ctx.schedule.history({ sessionId: everyHandle.agent.id, id: original.id, limit: 20 })
+    const saved = await scaffold.ctx.schedule.history({  id: original.id, limit: 20 })
     if ('code' in saved) throw new Error('recurring delivery history was unavailable')
     expect(saved.records).toHaveLength(2)
     expect(saved.records[1]).toEqual(latest)
@@ -661,10 +660,10 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
     await detail.getByRole('button', { name: 'Save changes', exact: true }).click()
     await expect.poll(async () => (await scaffold.ctx.schedule.catalog()).find(task => task.id === original.id), { timeout: 15_000 })
       .toMatchObject({
-        id: original.id, sessionId: everyHandle.agent.id, prompt: original.prompt,
+        id: original.id, target: { kind: 'session', sessionId: everyHandle.agent.id }, involvedSessionIds: [everyHandle.agent.id], prompt: original.prompt,
         kind: 'every', everySeconds: EVERY_INTERVAL_SECONDS * 2, status: 'active',
       })
-    expect(await scaffold.ctx.schedule.history({ sessionId: everyHandle.agent.id, id: original.id, limit: 20 })).toEqual(saved)
+    expect(await scaffold.ctx.schedule.history({  id: original.id, limit: 20 })).toEqual(saved)
     await detail.getByRole('tab', { name: 'Records', exact: true }).click()
     await expect.poll(() => receipts.count()).toBe(2)
     // The linked-session row renders on the Rules view only.
@@ -704,7 +703,9 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
       event.type === 'tool/call' && event.data.name === 'schedule_create'
     ))
     if (toolCall?.type !== 'tool/call') throw new Error('missing schedule_create tool call')
-    expect(JSON.parse(toolCall.data.arguments)).toEqual({ prompt: AT_PROMPT, title: AT_PROMPT, at: selectedAt })
+    expect(JSON.parse(toolCall.data.arguments)).toEqual({ prompt: AT_PROMPT, title: AT_PROMPT,
+      timing: { kind: 'at', at: selectedAt }, target: { kind: 'session', sessionId: atHandle.agent.id },
+    })
     const result = atHandle.agent.session.snapshotEvents().find(event => (
       event.type === 'tool/result' && event.data.message.toolCallId === toolCall.data.callId
     ))
@@ -718,7 +719,7 @@ describe.skipIf(MODE === 'record')('web e2e: conversational reminders', () => {
       && event.data.source.kind === 'schedule'
     ))
     expect(reminders).toHaveLength(1)
-    expect(await scaffold.ctx.schedule.list({ sessionId: atHandle.agent.id })).toEqual([])
+    expect((await scaffold.ctx.schedule.list({ active: true, limit: 500 })).items.filter(task => task.target.kind !== 'new' && task.target.sessionId === atHandle.agent.id)).toEqual([])
     expect(atAdapter.requests).toHaveLength(4)
     const reminderRequest = atAdapter.requests[3]
     if (reminderRequest === undefined) throw new Error('model did not receive the At reminder')
@@ -773,9 +774,13 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
     // each recorded task is seeded under the name this catalog lane asserts.
     const seeded = records.map(record => ({ ...record, title: CATALOG_TITLES[record.id] }))
     for (const record of seeded) {
-      await domain.table('tasks').put(record.id, { sessionId: CATALOG_SESSION_ID, record, status: 'active' })
+      await domain.table('tasks').put(record.id, { target: { kind: 'session', sessionId: CATALOG_SESSION_ID }, involvedSessionIds: [CATALOG_SESSION_ID], record, status: 'active' })
     }
-    expect(await scaffold.ctx.schedule.list({ sessionId: CATALOG_SESSION_ID })).toEqual(seeded)
+    const expectedSeeded = seeded.map(record => ({ ...record,
+      target: { kind: 'session', sessionId: CATALOG_SESSION_ID }, involvedSessionIds: [CATALOG_SESSION_ID], status: 'active',
+    })).sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt) || a.id.localeCompare(b.id))
+    expect((await scaffold.ctx.schedule.list({ active: true, limit: 500 })).items
+      .filter(task => task.target.kind !== 'new' && task.target.sessionId === CATALOG_SESSION_ID)).toEqual(expectedSeeded)
     expect(scaffold.ctx.agents.get(CATALOG_SESSION_ID)).toBeUndefined()
 
     const workspace = await scaffold.ctx.workspaceRegistry.create(scaffold.workspaceCwd)
@@ -814,9 +819,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
   it('manages cross-Session tasks from the sidebar without activating their Sessions', async () => {
     const otherSessionId = SessionId('schedule-manager-other-session')
     await seedSession(scaffold, await readFile(CATALOG_FIXTURE, 'utf8'), otherSessionId, 'standard')
-    const other = await scaffold.ctx.schedule.create(otherSessionId, {
-      prompt: 'Inspect the second workspace deployment', title: 'Second workspace deployment', at: '2099-08-25T12:08:00.000Z',
-    })
+    const other = await scaffold.ctx.schedule.create({ prompt: 'Inspect the second workspace deployment', title: 'Second workspace deployment', timing: { kind: 'at', at: '2099-08-25T12:08:00.000Z' }, target: { kind: 'session', sessionId: otherSessionId } })
     await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
     const manager = page.getByTestId('task-manager-page')
     await manager.getByRole('heading', { name: 'Automation tasks', exact: true }).waitFor()
@@ -829,7 +832,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
     // unrestricted state; the repeating task is reached by name instead of a
     // retired type chip.
     const statuses = manager.getByRole('group', { name: 'Task status' })
-    expect(await statuses.getByRole('button').count()).toBe(3)
+    expect(await statuses.getByRole('button').count()).toBe(4)
     await manager.getByRole('button', { name: 'All', exact: true }).click()
     await expect.poll(() => tasks.getByRole('listitem').count()).toBe(4)
     expect(await tasks.textContent()).toContain('Check exact cadence')
@@ -1075,7 +1078,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
         .toBe(remaining - 1)
     }
     await expectNoReminderEntry(page)
-    expect(await scaffold.ctx.schedule.list({ sessionId: CATALOG_SESSION_ID })).toEqual([])
+    expect((await scaffold.ctx.schedule.list({ active: true, limit: 500 })).items.filter(task => task.target.kind !== 'new' && task.target.sessionId === CATALOG_SESSION_ID)).toEqual([])
     await page.reload({ waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     await expectNoReminderEntry(page)
@@ -1097,9 +1100,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
 
   it('shows the pruning footer only for confirmed cleanup after the final saved page', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-schedule-retention'))
-    const record = await scaffold.ctx.schedule.create(CATALOG_SESSION_ID, {
-      prompt: 'Review retained records', title: 'History retention review', at: '2099-09-01T12:00:00.000Z',
-    })
+    const record = await scaffold.ctx.schedule.create({ prompt: 'Review retained records', title: 'History retention review', timing: { kind: 'at', at: '2099-09-01T12:00:00.000Z' }, target: { kind: 'session', sessionId: CATALOG_SESSION_ID } })
     try {
       await page.getByRole('button', { name: 'Automation tasks', exact: true }).click()
       const manager = page.getByTestId('task-manager-page')
@@ -1119,7 +1120,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
       const receipt = { scheduledAt: instant, deliveredAt: instant, messageId: MessageId('retention-legacy') }
       await rulesTab.click()
       await domain.table('tasks').put(record.id, {
-        sessionId: CATALOG_SESSION_ID, record, status: 'inactive', lastDelivery: receipt,
+        target: { kind: 'session', sessionId: CATALOG_SESSION_ID }, involvedSessionIds: [CATALOG_SESSION_ID], record, status: 'ended', lastDelivery: receipt,
         deliveryHistory: { records: [receipt], earlierRecordsUnavailable: true },
       })
       await recordsTab.click()
@@ -1128,13 +1129,13 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
       expect(await notice.count()).toBe(0)
       await rulesTab.click()
       let task: ScheduleTask = {
-        sessionId: CATALOG_SESSION_ID, record, status: 'inactive',
+        target: { kind: 'session', sessionId: CATALOG_SESSION_ID }, involvedSessionIds: [CATALOG_SESSION_ID], record, status: 'ended',
         deliveryHistory: { records: [], earlierRecordsUnavailable: false },
       }
       for (let index = 0; index < 23; index++) {
         const time = new Date(Date.now() - (index === 0 ? 40 * 86_400_000 : (23 - index) * 3_600_000)).toISOString()
         task = { ...task, ...appendDelivery(task, {
-          scheduledAt: time, deliveredAt: time, messageId: MessageId(`retention-${index}`),
+          targetSessionId: CATALOG_SESSION_ID, scheduledAt: time, deliveredAt: time, messageId: MessageId(`retention-${index}`),
         }, { days: 30, records: 200 }) }
       }
       expect(task.deliveryHistory?.records).toHaveLength(22)
@@ -1168,7 +1169,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
       expect(await detail.locator('footer').evaluate(element => getComputedStyle(element).borderTopWidth)).toBe('0px')
       expect(tripwire.pageErrors).toEqual([])
     } finally {
-      await scaffold.ctx.schedule.delete({ sessionId: CATALOG_SESSION_ID, id: record.id })
+      await scaffold.ctx.schedule.edit({ id: record.id, action: 'delete' })
     }
   }, 60_000)
 
@@ -1183,10 +1184,10 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
     const prompt = 'Inspect the daily calendar rule'
     const result = await scaffold.ctx.tools.execute({
       signal: AbortSignal.timeout(10_000), callId: ToolCallId('schedule-daily-catalog-create'),
-      name: 'schedule_create', arguments: { prompt, title: prompt, daily: { time, time_zone: timeZone } }, agent,
+      name: 'schedule_create', arguments: { prompt, title: prompt, timing: { kind: 'daily', daily: { time, time_zone: timeZone } }, target: { kind: 'session', sessionId: CATALOG_SESSION_ID } }, agent,
     })
     const created = (await scaffold.ctx.schedule.catalog()).find(task => (
-      task.sessionId === CATALOG_SESSION_ID && task.prompt === prompt
+      task.target.kind !== 'new' && task.target.sessionId === CATALOG_SESSION_ID && task.prompt === prompt
     ))
     if (created === undefined) throw new Error('daily tool did not create a stored task')
     try {
@@ -1240,21 +1241,21 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
         .toMatchObject({ time: '12:34:56.000', timeZone: 'Asia/Shanghai' })
       const saved = (await scaffold.ctx.schedule.catalog()).find(task => task.id === created.id)
       expect(saved).toMatchObject({
-        id: created.id, sessionId: CATALOG_SESSION_ID, prompt, status: 'active',
+        id: created.id, target: { kind: 'session', sessionId: CATALOG_SESSION_ID }, involvedSessionIds: [CATALOG_SESSION_ID], prompt, status: 'active',
         kind: 'daily', time: '12:34:56.000', timeZone: 'Asia/Shanghai',
       })
       // A stored zone equal to the browser zone is omitted from the frequency line.
       await expect.poll(() => detail.getByText('Daily at 12:34:56', { exact: true }).count(), { timeout: 15_000 }).toBe(1)
-      expect(await scaffold.ctx.schedule.history({ sessionId: CATALOG_SESSION_ID, id: created.id, limit: 20 }))
+      expect(await scaffold.ctx.schedule.history({  id: created.id, limit: 20 }))
         .toEqual({ id: created.id, records: [], earlierRecordsUnavailable: false,
           earlierRecordsPruned: false, retention: { days: 30, records: 200 } })
       // The created rule stays active, so the ended-status filter hides every
       // row; the retired type chips no longer exist.
-      await manager.getByRole('button', { name: 'Inactive', exact: true }).click()
+      await manager.getByRole('button', { name: 'Ended', exact: true }).click()
       await expect.poll(() => tasks.getByRole('listitem').count()).toBe(0)
       expect(tripwire.pageErrors).toEqual([])
     } finally {
-      await scaffold.ctx.schedule.delete({ sessionId: CATALOG_SESSION_ID, id: created.id })
+      await scaffold.ctx.schedule.edit({ id: created.id, action: 'delete' })
       await page.clock.setFixedTime(new Date(CATALOG_NOW))
     }
   }, 60_000)

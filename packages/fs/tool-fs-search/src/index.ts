@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * The model-facing filesystem discovery tool suite (`glob`, `grep`) over the
  * packaged ripgrep binary (`@vscode/ripgrep`). This single plugin registers
@@ -67,7 +68,7 @@ export type { GrepMatch, RipgrepRun, SearchErrorCode } from './search-core.ts'
 export const name = 'tool-fs-search'
 
 /** Services required by the search tool suite (`spillStore` is optional, read via `ctx.get()`). */
-export const inject = ['tools', 'systemPrompt', 'subprocess']
+export const inject = ['workingDirectory', 'tools', 'systemPrompt', 'subprocess']
 
 /** Plugin config; over-cap glob sampling is an explicit deployment choice and the remaining fields have defaults. */
 export interface Config {

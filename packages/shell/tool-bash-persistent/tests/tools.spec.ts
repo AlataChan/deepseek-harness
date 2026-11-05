@@ -1,7 +1,8 @@
+import { createDirectoryFixtureAgent, mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import { SESSION_FORMAT_VERSION, Session, SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -19,10 +20,10 @@ import type {
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as ToolBashPersistent from '@deepseek-ai/dsh-tool-bash-persistent'
-import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
 
 const contexts: Context[] = []
 let callNumber = 0
+let ownerNumber = 0
 
 afterEach(async () => {
   for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
@@ -30,32 +31,9 @@ afterEach(async () => {
 })
 
 async function agent(ctx: Context, cwd: string | undefined): Promise<Agent> {
-  const id = SessionId(`persistent-bash-owner-${callNumber}`)
-  const scope = ctx.plugin(() => {})
-  const session = Session.create(id, [], {
-    version: SESSION_FORMAT_VERSION,
-    id,
-    createdAt: 0,
-    isSeeded: false,
-    ...cwd === undefined ? {} : { cwd },
-  })
-  const value: Agent = {
-    id,
-    options: {},
-    session,
-    inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
-    status: 'idle',
-    ctx: scope.ctx,
-    send: () => {},
-    followup: () => {},
-    steer: () => ({ outcome: Promise.resolve({ status: 'rejected' as const }) }),
-    inject: () => {},
-    cancel() {},
-    runMaintenance: task => task(new AbortController().signal),
-    whenIdle: () => Promise.resolve(),
-  }
-  await ctx.agents.register(value)
-  return value
+  const id = SessionId(`persistent-bash-owner-${++ownerNumber}`)
+  if (cwd === undefined) return await ctx.agentLoop.create(id)
+  return await createDirectoryFixtureAgent(ctx, id, cwd)
 }
 
 function text(result: { content: { type: string; text?: string }[] }): string {
@@ -312,8 +290,9 @@ async function setup(
   await ctx.plugin(TerminalSessionService)
   const stub = stubBackend(initialMode)
   ctx.terminals.registerBackend(stub.backend)
+  await mountDirectoryFixture(ctx, process.cwd())
   const fiber = await ctx.plugin(ToolBashPersistent, config)
-  return { ctx, stub, fiber, owner: await agent(ctx, '/workspace') }
+  return { ctx, stub, fiber, owner: await agent(ctx, process.cwd()) }
 }
 
 describe('tool-bash-persistent', () => {
@@ -509,14 +488,33 @@ describe('tool-bash-persistent', () => {
 
   it('closes a timed-out shell and reports bounded partial output', async () => {
     const { ctx, owner, stub } = await setup({ backendType: 'stub', timeoutMs: 10 })
-    await call(ctx, owner, 'warm up')
-    stub.sessions[0]!.mode = 'wait-for-abort'
-    const result = await call(ctx, owner, 'hang')
-    expect(text(result)).toContain('timed out after 0 seconds or experienced an OOM error')
-    expect(text(result)).toContain('partial output')
-    expect(text(result)).toContain('[Command timed out or OOM]')
-    expect(text(result)).toContain('next bash call starts from the workspace')
-    expect(stub.sessions[0]?.closed).toContain('persistent bash command timed out')
+    vi.useFakeTimers()
+    const controller = new AbortController()
+    try {
+      await call(ctx, owner, 'warm up')
+      stub.sessions[0]!.mode = 'wait-for-abort'
+      const entered = Promise.withResolvers<undefined>()
+      const session = stub.sessions[0]
+      if (session === undefined) throw new Error('Warm-up did not create a shell')
+      const startSend = session.startSend.bind(session)
+      vi.spyOn(session, 'startSend').mockImplementation((request) => {
+        const operation = startSend(request)
+        entered.resolve(undefined)
+        return operation
+      })
+      const pending = call(ctx, owner, 'hang', controller.signal)
+      await entered.promise
+      await vi.advanceTimersByTimeAsync(10)
+      const result = await pending
+      expect(text(result)).toContain('timed out after 0 seconds or experienced an OOM error')
+      expect(text(result)).toContain('partial output')
+      expect(text(result)).toContain('[Command timed out or OOM]')
+      expect(text(result)).toContain('next bash call starts from the workspace')
+      expect(stub.sessions[0]?.closed).toContain('persistent bash command timed out')
+    } finally {
+      controller.abort()
+      vi.useRealTimers()
+    }
   })
 
   it.each(['wait-for-abort', 'end-on-abort'] as const)(
@@ -733,8 +731,9 @@ describe('tool-bash-persistent', () => {
         }, { once: true })
       }),
     })
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(ToolBashPersistent, { backendType: 'slow' })
-    const owner = await agent(ctx, '/workspace')
+    const owner = await agent(ctx, process.cwd())
     const running = call(ctx, owner, 'pwd')
     await spawnStarted.promise
     await fiber.dispose()

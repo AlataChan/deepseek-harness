@@ -22,6 +22,13 @@ export interface ReferenceInsert {
 /** Persisted reference data without the current editor's occurrence identity. */
 export type DraftReference = Omit<Occurrence, 'occurrenceId'>
 
+/** One literal quote in clipboard UTF-16 coordinates. */
+export interface DraftQuote {
+  readonly offset: number
+  readonly length: number
+  readonly text: string
+}
+
 /**
  * Editor-independent content. Reference spans are ordered, non-overlapping UTF-16
  * ranges whose text equals clipboardText; runtime node identities are excluded.
@@ -29,6 +36,7 @@ export type DraftReference = Omit<Occurrence, 'occurrenceId'>
 export interface DraftSnapshot {
   readonly text: string
   readonly references: readonly DraftReference[]
+  readonly quotes?: readonly DraftQuote[]
 }
 
 /** Plain initial text or an existing document with explicit reference identities. */

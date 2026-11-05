@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { useState } from 'react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { useRef, useState } from 'react'
+import { afterEach, expect, it, onTestFinished, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Modal } from '../src/Modal.tsx'
-import { closeTopModal, isBehindModal } from '../src/useModalLayer.ts'
+import { closeTopModal, isBehindModal, useModalLayer } from '../src/useModalLayer.ts'
 import { Menu } from '../src/Menu.tsx'
+import * as focus from '../src/focus.ts'
 
 afterEach(cleanup)
 function Nested({ withSearch = true }: { withSearch?: boolean }) {
@@ -24,6 +25,44 @@ function Nested({ withSearch = true }: { withSearch?: boolean }) {
   </>
 }
 const escape = (init = {}) => fireEvent.keyDown(document.activeElement ?? document, { key: 'Escape', code: 'Escape', ...init })
+
+it.each([
+  { mobile: true, wasEditable: false, unlockAtClose: false, restores: false },
+  { mobile: true, wasEditable: false, unlockAtClose: true, restores: false },
+  { mobile: true, wasEditable: true, unlockAtClose: false, restores: true },
+  { mobile: false, wasEditable: false, unlockAtClose: false, restores: true },
+])('restores=$restores when mobile=$mobile, previously editable=$wasEditable, unlock at close=$unlockAtClose', ({ mobile, wasEditable, unlockAtClose, restores }) => {
+  const device = vi.spyOn(focus, 'isMobileDevice').mockReturnValue(mobile)
+  onTestFinished(() => { device.mockRestore() })
+  const tree = (open: boolean, editable: boolean) => <>
+    <div tabIndex={0} contentEditable={editable} aria-label="Resident control" />
+    <Modal open={open} title="Choose" closeLabel="Close" onClose={() => {}}>
+      <input data-modal-autofocus aria-label="Search" />
+    </Modal>
+  </>
+  const view = render(tree(false, wasEditable))
+  const opener = screen.getByLabelText('Resident control')
+  opener.focus()
+  view.rerender(tree(true, wasEditable))
+  expect(document.activeElement).toBe(screen.getByRole('textbox'))
+  if (!unlockAtClose) view.rerender(tree(true, true))
+  expect(screen.getByLabelText('Resident control')).toBe(opener)
+  view.rerender(tree(false, true))
+  expect(document.activeElement === opener).toBe(restores)
+})
+
+it.each(['button', 'input', 'textarea'] as const)('restores a mobile %s opener after keyboard dismissal', (tag) => {
+  const device = vi.spyOn(focus, 'isMobileDevice').mockReturnValue(true)
+  onTestFinished(() => { device.mockRestore() })
+  const opener = document.createElement(tag)
+  document.body.append(opener)
+  onTestFinished(() => { opener.remove() })
+  opener.focus()
+  const view = render(<Modal open title="Choose" closeLabel="Close" onClose={() => { view.unmount() }} />)
+  escape()
+  expect(document.activeElement).toBe(opener)
+})
+
 it('closes only the top modal through application commands and restores each opener', () => {
   render(<Nested />)
   const settings = screen.getByRole('button', { name: 'Settings' }); settings.focus(); fireEvent.click(settings)
@@ -179,4 +218,59 @@ it('gives a new modal Escape ahead of an older menu', () => {
   escape()
   expect(menuClosed).toBe(false)
   expect(childClosed).toBe(true)
+})
+
+
+it('handles a modal document without an active element and releases its Escape listener', () => {
+  const frame = document.createElement('iframe')
+  document.body.append(frame)
+  onTestFinished(() => { frame.remove() })
+  const owner = frame.contentDocument
+  if (owner === null) throw new Error('iframe document unavailable')
+  owner.body.remove()
+  const container = owner.createElement('div')
+  owner.documentElement.append(container)
+  const close = vi.fn()
+  function DetachedModal() {
+    const ref = useRef<HTMLDivElement>(null)
+    useModalLayer(ref, true, close)
+    return <div role="dialog" aria-modal="true" ref={ref} tabIndex={-1}>Detached dialog</div>
+  }
+  expect(owner.activeElement).toBeNull()
+  const view = render(<DetachedModal />, { container })
+  try {
+    owner.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }))
+    expect(close).toHaveBeenCalledOnce()
+    expect(owner.activeElement).toBe(container.querySelector('[role="dialog"]'))
+  } finally { view.unmount() }
+  owner.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }))
+  expect(close).toHaveBeenCalledOnce()
+})
+
+
+it.each(['contenteditable', 'input', 'textarea', 'textbox'] as const)('leaves a mobile readonly %s opener unfocused when it unlocks after the Modal closes', (kind) => {
+  const device = vi.spyOn(focus, 'isMobileDevice').mockReturnValue(true)
+  onTestFinished(() => { device.mockRestore() })
+  const tree = (open: boolean, editable: boolean) => <>
+    {kind === 'input' ? <input readOnly={!editable} aria-label="Resident entry" />
+      : kind === 'textarea' ? <textarea readOnly={!editable} aria-label="Resident entry" />
+        : kind === 'textbox' ? <div role="textbox" aria-readonly={!editable} tabIndex={0}
+          {...editable ? { contentEditable: true } : {}} aria-label="Resident entry" />
+          : <div tabIndex={0} contentEditable={editable} aria-label="Resident entry" />}
+    <Modal open={open} title="Choose" closeLabel="Close" onClose={() => {}}>
+      <input data-modal-autofocus aria-label="Search" />
+    </Modal>
+  </>
+  const view = render(tree(false, false))
+  const opener = screen.getByLabelText('Resident entry')
+  opener.focus()
+  view.rerender(tree(true, false))
+  expect(document.activeElement).toBe(screen.getByLabelText('Search'))
+  view.rerender(tree(false, false))
+  expect(document.activeElement).not.toBe(opener)
+  view.rerender(tree(false, true))
+  expect(screen.getByLabelText('Resident entry')).toBe(opener)
+  expect(document.activeElement).not.toBe(opener)
+  opener.focus()
+  expect(document.activeElement).toBe(opener)
 })

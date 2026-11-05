@@ -70,8 +70,8 @@ export interface KvUnitDescriptor {
    * a `per-record` unit accept documents stamped with any listed version, and
    * the legacy whole-unit bootstrap accepts a legacy file stamped with one.
    * A SQLite row store admits a listed unit stamp on open and does not
-   * rewrite that stamp or the stored rows. JSON `single`-layout reads stay
-   * exact-version. Writes that stamp a version use {@link version}.
+   * rewrite that stamp or the stored rows. JSON `single` also accepts listed versions without an open-time write; its
+   * next mutation stamps the current version. Writes that stamp a version use {@link version}.
    */
   readonly compatibleVersions?: readonly number[]
 }

@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/tool-worktree/README.md
+/:
+  en: 7781563a89f5162c
+  zh: 7f20a82e2d276f9e
+/dsh-experimental-tool-worktree:
+  en: 5ef88f247617fba3
+  zh: ba78e773b5fd714c
+/dsh-experimental-tool-worktree/summary:
+  en: e8409737d83987a2
+  zh: 3e9c7c5bef4c0e02
+/dsh-experimental-tool-worktree/table-of-contents:
+  en: 638dd73bc5b9dc7a
+  zh: e21f8f10127ba8c4
+/dsh-experimental-tool-worktree/use-this-package:
+  en: 5c2cd3281c510b95
+  zh: fa70be8051c6aa9e
+/dsh-experimental-tool-worktree/model-experience:
+  en: 215e7ba838619b7b
+  zh: 215e7ba838619b7b
+/dsh-experimental-tool-worktree/model-experience/execution-directory-and-local-state:
+  en: 882de286324f2dae
+  zh: 7e6b7bab87501369
+/dsh-experimental-tool-worktree/model-experience/execution-directory-and-local-state/what-the-model-sees:
+  en: e651f703de0994bd
+  zh: c861a7b95330061b
+/dsh-experimental-tool-worktree/model-experience/execution-directory-and-local-state/token-effect:
+  en: e110d63cb4953721
+  zh: f89ef788d52a8305
+/dsh-experimental-tool-worktree/model-experience/execution-directory-and-local-state/kv-cache-effect:
+  en: eec692b38ee8536f
+  zh: 5a389d640216fe12
+/dsh-experimental-tool-worktree/known-limitations-and-deferred-work:
+  en: d4690cd97840983a
+  zh: 942b4a2f25db9c2f
+/dsh-experimental-tool-worktree/known-limitations-and-deferred-work/dev-note:
+  en: 7972e4b2005ec9a4
+  zh: 754c49ec538c164c

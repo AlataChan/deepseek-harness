@@ -1,16 +1,18 @@
 /** Optimistic name, instruction, and timing updates of retained Host tasks, without Session mutations. */
 import { isDeepStrictEqual } from 'node:util'
 import {
-  canonicalizeCronExpression, canonicalizeTimeZone, createAtScheduleRecord, createCronScheduleRecord,
-  createDailyScheduleRecord, createEveryScheduleRecord, createWeeklyScheduleRecord, decodeScheduleRecord,
+  canonicalizeCronExpression, canonicalizeTimeZone, createAfterScheduleRecord, createAtScheduleRecord, createCronScheduleRecord,
+  createDailyScheduleRecord, createEveryScheduleRecord, createWeeklyScheduleRecord,
   decodeStoredTitle, parseAtInput, parseCronInput, parseDailyInput, parseWeeklyInput,
-  ScheduleInputError, ScheduleLogError, scheduleTitle,
+  ScheduleInputError, scheduleTitle, resolveRecurringOccurrence, isRecurringScheduleRecord,
 } from './domain.ts'
-import type { ScheduleRecord, ScheduleTimingChange, ScheduleUpdateContent, ScheduleUpdateResult } from './types.ts'
+import type { ScheduleRecord, ScheduleTiming, SchedulePatch, ScheduleTarget } from './types.ts'
+import type { ScheduleTask } from './storage.ts'
 
 /** Name the exact selector property each timing kind must carry, or undefined for an unknown discriminant. */
 function timingSelector(kind: string): string | undefined {
   switch (kind) {
+    case 'after': return 'after_seconds'
     case 'at': return 'at'
     case 'every': return 'every_seconds'
     case 'daily': return 'daily'
@@ -25,11 +27,11 @@ function timingSelector(kind: string): string | undefined {
  * @param value - Untrusted timing change; the wire can carry a null, array, or foreign discriminant.
  * @returns The same value narrowed to the closed timing-change union.
  */
-function validateChange(value: unknown): ScheduleTimingChange {
+function validateChange(value: unknown): ScheduleTiming {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new ScheduleInputError('invalid_rule', 'Timing change must be an object with exactly one supported timing selector.')
   }
-  const change = value as ScheduleTimingChange
+  const change = value as ScheduleTiming
   const selector = timingSelector(change.kind)
   const keys = Object.keys(change)
   if (selector === undefined || keys.length !== 2 || !keys.includes('kind') || !keys.includes(selector)) {
@@ -87,12 +89,15 @@ function changedRecord(
   current: ScheduleRecord,
   title: string,
   prompt: string,
-  value: ScheduleTimingChange | undefined,
+  value: ScheduleTiming | undefined,
   now: number,
 ): ScheduleRecord {
   if (value === undefined) return withContent(current, title, prompt)
   const change = validateChange(value)
   switch (change.kind) {
+    case 'after':
+      if (current.kind === 'after' && current.afterSeconds === change.after_seconds) return withContent(current, title, prompt)
+      return createAfterScheduleRecord(current.id, prompt, change.after_seconds, now, title)
     case 'at':
       if ((current.kind === 'after' || current.kind === 'at')
         && parseAtInput(change.at) === Date.parse(current.scheduledAt)) return withContent(current, title, prompt)
@@ -136,44 +141,35 @@ function changedRecord(
 }
 
 /**
- * Compare the complete observed record and resolve one name, instruction, and timing update
- * using a single queue-time sample.
- *
- * An omitted change, name, or instruction keeps the stored value. A supplied name or
- * instruction never re-anchors the schedule on its own; an equivalent normalized timing
- * change keeps the committed target too.
- * @param current - Current active Host record.
- * @param expected - Untrusted complete record observed by the caller.
- * @param change - Strict timing selector, whose kind may differ from the current record's kind, or undefined to keep timing.
- * @param now - Single wall-clock sample from the accepted FIFO slot.
- * @param content - Untrusted replacement name and instruction; each omitted field keeps its stored value.
- * @returns Current/new record or a bounded input/conflict result; unrelated failures throw.
+ * Revise one task after the caller checked its revision inside the shared FIFO.
+ * Equivalent timing keeps its committed occurrence; resuming advances a missed recurrence.
+ * @param current - Stored task.
+ * @param patch - Replacement content, timing, target, and activity fields.
+ * @param target - Validated replacement destination, when supplied.
+ * @param now - Queue-time clock sample.
+ * @returns Replacement task retaining its delivery history.
  */
 export function resolveScheduleUpdate(
-  current: ScheduleRecord,
-  expected: ScheduleRecord,
-  change: ScheduleTimingChange | undefined,
-  now: number,
-  content: ScheduleUpdateContent = {},
-): ScheduleUpdateResult {
-  let decoded: ScheduleRecord
-  try {
-    decoded = decodeScheduleRecord(expected)
-  } catch (error) {
-    if (!(error instanceof ScheduleLogError)) throw error
-    return { code: 'invalid_rule', message: 'expected must be a complete valid Schedule record.' }
-  }
-  if (!isDeepStrictEqual(current, decoded)) {
-    return { id: current.id, updated: false, code: 'schedule_conflict' }
-  }
-  try {
-    const retained = retainedTitle(current)
-    const title = content.title === undefined ? retained : scheduleTitle(content.title)
-    const prompt = content.prompt === undefined ? current.prompt : schedulePrompt(content.prompt)
-    const record = changedRecord(current, title, prompt, change, now)
-    return { id: current.id, updated: record !== current, record }
-  } catch (error) {
-    if (!(error instanceof ScheduleInputError)) throw error
-    return { code: error.code, message: error.message }
+  current: ScheduleTask, patch: SchedulePatch, target: ScheduleTarget | undefined, now: number,
+): ScheduleTask {
+  const title = patch.title === undefined ? retainedTitle(current.record) : scheduleTitle(patch.title)
+  const prompt = patch.prompt === undefined ? current.record.prompt : schedulePrompt(patch.prompt)
+  let record = changedRecord(current.record, title, prompt, patch.timing, now)
+  let status = patch.active === false ? 'paused' as const : current.status
+  if (patch.active === true) {
+    if (Date.parse(record.scheduledAt) <= now) {
+      if (!isRecurringScheduleRecord(record)) throw new ScheduleInputError('not_future', 'Choose a future timing before resuming this task.')
+      const next = resolveRecurringOccurrence(record, now).nextScheduledAt
+      if (next === undefined) throw new ScheduleInputError('time_out_of_range', 'No future occurrence is available.')
+      record = { ...record, scheduledAt: next }
+    }
+    status = 'active'
+  } else if (patch.timing !== undefined && current.status === 'ended') status = 'active'
+  const changedTiming = record.scheduledAt !== current.record.scheduledAt || record.kind !== current.record.kind
+  const { pendingDelivery, ...kept } = current
+  return {
+    ...kept, record, target: target ?? current.target, status,
+    updatedAt: new Date(Math.max(now, Date.parse(current.updatedAt ?? '') + 1 || now)).toISOString(),
+    ...(pendingDelivery === undefined || changedTiming || target !== undefined ? {} : { pendingDelivery }),
   }
 }

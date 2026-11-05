@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -47,6 +48,7 @@ async function harness(configPath: string, adapter: MockAdapter, opts: HarnessOp
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(HooksCodex, { configPath, model: 'm', ...opts })
   ctx.llm.registerAdapter(['mock'], adapter)
   return ctx
@@ -153,6 +155,9 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       expect(contexts.map(event => event.type === 'user/message' && event.data.source)).toEqual([
         { kind: 'policy' },
         { kind: 'hooks-codex' },
+        { kind: 'runtime-context', form: 'snapshot', sections: [{
+          name: 'working-directory:current', text: `Current working directory: ${JSON.stringify(process.cwd())}.`,
+        }] },
       ])
     })
   })
@@ -190,6 +195,9 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
 
       const contexts = events(agent).filter(event => event.type === 'user/message' && event.data.source.kind !== 'user')
       expect(contexts.map(event => event.type === 'user/message' && event.data.source)).toEqual([
+        { kind: 'runtime-context', form: 'snapshot', sections: [{
+          name: 'working-directory:current', text: `Current working directory: ${JSON.stringify(process.cwd())}.`,
+        }] },
         { kind: 'hooks-codex' },
         { kind: 'policy' },
       ])
@@ -324,6 +332,7 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
       ctx.logger.warn = warn as never
       // Direct apply (schema bypass) → the `model ?? ''` fallback is exercised.
+      await mountDirectoryFixture(ctx, process.cwd())
       HooksCodex.apply(ctx, { configPath: join(d, 'hooks.json') })
       ctx.llm.registerAdapter(['mock'], adapter)
       const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
@@ -356,7 +365,7 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
       await waitFor(() => existsSync(marker)) // the clean no-output hook has finished
       agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } })); await waitForIdle(ctx, agent)
-      expect(events(agent).some(e => e.type === 'user/message' && e.data.source.kind !== 'user')).toBe(false)
+      expect(events(agent).filter(e => e.type === 'user/message' && e.data.source.kind !== 'user').map(e => e.type === 'user/message' && e.data.source)).toEqual([{ kind: 'runtime-context', form: 'snapshot', sections: [{ name: 'working-directory:current', text: `Current working directory: ${JSON.stringify(process.cwd())}.` }] }])
     })
 
     it('a throwing SessionStart inject is contained (logged)', async () => {
@@ -640,6 +649,7 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       await ctx.plugin(AgentLoop, { agents: [] })
       await ctx.plugin(LocalSubprocessRuntime)
       await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000, cwd: serverDir })
+      await mountDirectoryFixture(ctx, process.cwd())
       await ctx.plugin(HooksCodex, { configPath: join(serverDir, 'hooks.json'), model: 'm' })
       ctx.llm.registerAdapter(['mock'], adapter)
       ctx.tools.register(defineContentToolFixture({ name: 'Bash', description: 'b', parameters: { command: { type: 'string' } }, async execute() { return [{ type: 'text', text: 'ok' }] } }))

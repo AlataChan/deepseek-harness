@@ -23,6 +23,7 @@ agent 可以在会话期间发现并加载 skill。在首次请求前，如果�
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 与 skill 注册表一起挂载该插件，即可让 agent 拥有会话 skill 目录和 `skill` 加载工具。它需要 `ctx.agents`、`ctx.tools` 与 `ctx.skills`。
@@ -61,6 +62,7 @@ agent 可以在会话期间发现并加载 skill。在首次请求前，如果�
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -91,6 +93,7 @@ agent 可以在会话期间发现并加载 skill。在首次请求前，如果�
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当包级约定不够用时阅读以下页面。它们从目录背后的注册表词汇逐步进入精确工具 schema 与设计依据。
@@ -102,7 +105,10 @@ agent 可以在会话期间发现并加载 skill。在首次请求前，如果�
 
 -----
 
+技能执行和持久目录发现使用已校验的执行目录，因此切换目录可以选择项目本地技能，而不会修改会话头。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 会话目录
@@ -247,6 +253,7 @@ Load referenced resources only as needed.
 - **正文不做版本化**——仅修改正文不会改变目录 digest，也不会通知模型；后续工具调用会读取提供方的当前内容，而先前工具结果仍是历史事实。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

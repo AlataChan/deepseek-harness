@@ -149,6 +149,7 @@
     "@deepseek-ai/dsh-tool-todo": "workspace:*",
     "@deepseek-ai/dsh-tool-web": "workspace:*",
     "@deepseek-ai/dsh-tool-workflow": "workspace:*",
+    "@deepseek-ai/dsh-tool-working-directory": "workspace:*",
     "@deepseek-ai/dsh-tool-workspace-dependencies": "workspace:*",
     "@deepseek-ai/dsh-tools": "workspace:*",
     "@deepseek-ai/dsh-typert-protocol": "workspace:*",
@@ -165,6 +166,7 @@
     "@deepseek-ai/dsh-web-search-perplexity": "workspace:*",
     "@deepseek-ai/dsh-workflow": "workspace:*",
     "@deepseek-ai/dsh-workflow-ptc": "workspace:*",
+    "@deepseek-ai/dsh-working-directory": "workspace:*",
     "@deepseek-ai/dsh-workspace": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~"
   }

@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 `standard`、`ptc` 与 `cordis` Agent preset 挂载本插件。创建文件后，以 `files: [{ path, description? }]` 调用 `present`。文件必须是 Session 文件系统可访问的普通文件。相对路径按 Session 工作目录解析；绝对路径可以指向工作区外的文件，包括 `/tmp` 或 Downloads。文件缺失、为目录、最终路径为符号链接或提供方拒绝访问时，调用失败。Shell 沙箱私有 `/tmp` 中的文件需要先写入 Session 文件系统可访问的位置。
@@ -44,6 +45,7 @@ kind: "package-reference"
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -58,13 +60,17 @@ kind: "package-reference"
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 - [文件系统子系统](../../../docs/subsystems/filesystem.zh.md)——提供方路径与错误。
 - [Web 交付](../../client/ui-deliverables/README.zh.md)——源文件打开与卡片。
 - [交付决策](../../../.agents/notes/implemented/feature/2026-09-08-present-workspace-source-files.zh.md)——Session 归属与读取端必须识别的事件。
 
+相对路径交付物从已校验的执行目录解析。声明交付物不会迁移原项目身份，也不会改变沙箱权限。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### present
@@ -90,6 +96,7 @@ kind: "package-reference"
 - Session ZIP 导出包含声明，不包含文件内容。交付版本持久化和写时复制存储延期实现。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

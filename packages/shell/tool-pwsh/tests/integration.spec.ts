@@ -1,3 +1,4 @@
+import { createDirectoryFixtureAgent, mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 /**
  * Integration tests: the REAL `@deepseek-ai/dsh-pwsh-local` executor plus the
  * `pwsh` tool, exercised through `ctx.tools.execute()` with a real PowerShell
@@ -15,6 +16,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
@@ -38,13 +41,13 @@ let dir: string
 let ctx: Context
 
 let callCounter = 0
-function call(name: string, args: unknown, agentObj?: object, signal?: AbortSignal) {
+function call(name: string, args: unknown, agentObj?: Agent, signal?: AbortSignal) {
   return ctx.tools.execute({
     signal: signal ?? testToolSignal,
     callId: ToolCallId(`it-${++callCounter}`),
     name,
     arguments: args,
-    ...agentObj ? { agent: agentObj as never } : {},
+    ...agentObj ? { agent: agentObj } : {},
   })
 }
 
@@ -67,17 +70,19 @@ describe.skipIf(!hasPwsh)('pwsh tool over the real pwsh executor', () => {
     await ctx.plugin(PwshLocalExecutor, { timeoutMs: 20_000, graceMs: 200 })
     // This suite pins the executor's own deadline behaviour; the job-backed
     // foreground path is pinned by background.spec.
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolPwsh, { promoteOnTimeout: false })
   })
 
   afterEach(async () => {
+    await ctx.fiber.dispose()
     await rm(dir, { recursive: true, force: true })
   })
 
-  const agent = () => ({ session: { header: { id: 'session-int', cwd: dir } } })
+  const agent = async () => await createDirectoryFixtureAgent(ctx, SessionId('session-int'), dir)
 
   it('runs a command and returns stdout with no marker on a clean exit', async () => {
-    const result = await call('pwsh', { command: 'Write-Output hi', description: 'say hi' }, agent())
+    const result = await call('pwsh', { command: 'Write-Output hi', description: 'say hi' }, await agent())
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected pwsh success')
     expect(result.value).toMatchObject({ kind: 'foreground', exitCode: 0 })
@@ -88,7 +93,7 @@ describe.skipIf(!hasPwsh)('pwsh tool over the real pwsh executor', () => {
     const result = await call('pwsh', {
       command: '[Console]::Error.WriteLine("boom"); exit 3',
       description: 'fail loudly',
-    }, agent())
+    }, await agent())
     expect(result.isError).toBe(false)
     expect(lf(text(result))).toBe('[stderr]\nboom\n[exit code: 3]')
   })
@@ -97,7 +102,7 @@ describe.skipIf(!hasPwsh)('pwsh tool over the real pwsh executor', () => {
     const result = await call('pwsh', {
       command: 'Get-Content greeting.txt',
       description: 'read greeting',
-    }, agent())
+    }, await agent())
     expect(result.isError).toBe(false)
     expect(lf(text(result))).toBe('hello pwsh\n')
   })
@@ -107,7 +112,7 @@ describe.skipIf(!hasPwsh)('pwsh tool over the real pwsh executor', () => {
       command: 'Start-Sleep -Seconds 60',
       description: 'sleep forever',
       timeoutMs: 100,
-    }, agent())
+    }, await agent())
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected a timed-out foreground result')
     expect(result.value).toMatchObject({ kind: 'foreground', timedOut: true, aborted: false })
@@ -121,7 +126,7 @@ describe.skipIf(!hasPwsh)('pwsh tool over the real pwsh executor', () => {
     const pending = call('pwsh', {
       command: 'Start-Sleep -Seconds 60',
       description: 'sleep forever',
-    }, agent(), controller.signal)
+    }, await agent(), controller.signal)
     setTimeout(() => { controller.abort() }, 50)
     const result = await pending
     expect(result.isError).toBe(true)

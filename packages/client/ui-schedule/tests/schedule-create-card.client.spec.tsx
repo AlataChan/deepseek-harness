@@ -72,7 +72,7 @@ function settled(value: unknown, options: {
 function catalogEntry(fixture: unknown, status: ScheduleCatalogEntry['status'] = 'active'): ScheduleCatalogEntry {
   const task = narrowScheduleRecord(fixture)
   if (task === undefined) throw new Error('fixture must narrow to a rule')
-  return { ...task, sessionId: 'session-alpha' as SessionId, status }
+  return { ...task, target: { kind: 'session' as const, sessionId: 'session-alpha' as SessionId }, involvedSessionIds: ['session-alpha' as SessionId], status }
 }
 
 /** Component props with an injected open action; the framework fills the rest. */

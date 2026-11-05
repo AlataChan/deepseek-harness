@@ -252,6 +252,11 @@ interface ToolArgsMap {
     /** Run as a background job: return a job id immediately instead of waiting; the return value arrives with the completion notice. */
     run_in_background?: boolean;
   } & Record<string, JsonValue>;
+  /** Read the current working directory, or change it with cd. Relative paths use the current directory. Existing shells and running processes keep their own directories. */
+  working_directory: {
+    /** Existing directory to enter. Omit to read the current directory. */
+    cd?: string;
+  } & Record<string, JsonValue>;
   /** Create or fully replace a UTF-8 text file. */
   write: {
     /** Path to write, resolved by the filesystem backend. Provide `file_path` before `content` in the arguments. */
@@ -526,6 +531,10 @@ interface ToolOutputMap {
     runId: string;
     agentsStarted: number;
     result: JsonValue;
+  };
+  working_directory: {
+    /** Current absolute working directory. */
+    cwd: string;
   };
   write: {
     path: string;

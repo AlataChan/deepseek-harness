@@ -97,6 +97,7 @@ export class InputHub implements SessionInputResolver {
     const { session, ctx: actx } = binding
     const shell = new SessionInputShell({
       actx,
+      quoteLabels: () => ({ remove: this.t('quote.remove') }),
       submissionState: () => {
         const state = session.getSnapshot()
         const model = session.projections.faceOf('modelSelection').getSnapshot() as ModelSelectionProjection | undefined
@@ -225,7 +226,7 @@ export class InputHub implements SessionInputResolver {
    * Default sink: optimistic clear + prompt. The session is always a real
    * host entity (materialized when its workspace was picked), so there is
    * exactly one path; a failed first prompt is an ordinary prompt failure
-   * (banner via promptError, draft restored only while untouched).
+   * (banner via promptError; the frozen draft remains intact).
    */
   private sink(
     session: SessionFace,

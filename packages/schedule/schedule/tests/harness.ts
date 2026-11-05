@@ -13,6 +13,8 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { vi } from 'vitest'
 import type { Mock } from 'vitest'
 import { MemoryMediaPool, MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
+import { resolveScheduleUpdate } from '../src/update.ts'
+import { ScheduleInputError } from '../src/domain.ts'
 import ScheduleService, { type Config } from '../src/index.ts'
 
 /**
@@ -89,11 +91,20 @@ export async function harness(options: {
     return async () => { await facility.closeAll(); unmount() }
   })
   const resolve = vi.fn<Context['sessionController']['resolveAgent']>(async () => { throw new Error('missing Session') })
-  ctx.provide('sessionController', { resolveAgent: resolve } as never)
+  const create = vi.fn<Context['sessionController']['create']>(async (request) => {
+    if (request.sessionId === undefined) throw new Error('Fixture requires a reserved Session identity')
+    const agent = agentFor(ctx, request.sessionId)
+    ctx.effect(() => ctx.agents.enter(agent, undefined))
+    return { sessionId: agent.session.id }
+  })
+  ctx.provide('sessionController', { resolveAgent: resolve, create } as never)
   const flush = vi.fn(async () => {})
   ctx.on('session/flush', flush)
   // This fixture supplies flush behavior above; Schedule does not invoke persistence methods directly.
-  ctx.provide('sessionPersistence', {} as never)
+  ctx.provide('sessionPersistence', { stat: async (id: SessionId) => {
+    const session = ctx.sessions.get(id)
+    return { header: session?.header ?? { id, cwd: '/fixture', delegationDepth: 0 } }
+  } } as never)
   await options.beforeService?.(ctx, facility)
   let fiber: Context['fiber']
   if (options.direct) {
@@ -103,7 +114,7 @@ export async function harness(options: {
   } else {
     fiber = await ctx.plugin(ScheduleService, options.config)
   }
-  return { ctx, service: ctx.schedule, pool, resolve, flush, fiber }
+  return { ctx, service: ctx.schedule, pool, resolve, create, flush, fiber }
 }
 
 /**
@@ -132,4 +143,40 @@ export function agentFor(ctx: Context, id = 'original', meta?: CreateSessionOpti
     send() {}, followup: vi.fn<(message: UserMessage) => void>(), steer() {}, inject() {}, cancel() {},
     whenIdle: async () => {}, runMaintenance: operation => operation(new AbortController().signal),
   }
+}
+
+/**
+ * Exercise the task editor while exposing only timing/content results to arithmetic cases.
+ * @param current - Existing pure timing record.
+ * @param timing - Replacement timing.
+ * @param now - Explicit acceptance clock.
+ * @param content - Replacement name/instruction, when supplied.
+ * @returns Record identity, changed flag and rule, or the thrown input error's stable fields.
+ */
+export function editRuleForTest(
+  current: import('../src/types.ts').ScheduleRecord,
+  timing: import('../src/types.ts').ScheduleTiming | undefined,
+  now: number,
+  content: Pick<import('../src/types.ts').SchedulePatch, 'title' | 'prompt'> = {},
+) {
+  const sessionId = SessionId('timing-fixture')
+  try {
+    const result = resolveScheduleUpdate({ record: current, target: { kind: 'session', sessionId },
+      involvedSessionIds: [sessionId], status: 'active',
+    }, { ...content, ...(timing === undefined ? {} : { timing }) }, undefined, now)
+    return { id: current.id, updated: result.record !== current, record: result.record }
+  } catch (error) {
+    if (!(error instanceof ScheduleInputError)) throw error
+    return { code: error.code, message: error.message }
+  }
+}
+
+/** Exact timing/content fields of a task entry, excluding Host catalog metadata.
+ * @param entry - Current API task entry.
+ * @returns Its pure ScheduleRecord for retained rule assertions.
+ */
+export function recordOf(entry: import('../src/types.ts').ScheduleCatalogEntry): import('../src/types.ts').ScheduleRecord {
+  const { target: _target, status: _status, involvedSessionIds: _involved, createdAt: _created, updatedAt: _updated,
+    executionActive: _execution, deliveryFloorEndsAt: _floor, lastDelivery: _last, ...record } = entry
+  return record
 }

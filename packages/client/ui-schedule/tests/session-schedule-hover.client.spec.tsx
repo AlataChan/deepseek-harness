@@ -49,12 +49,12 @@ function record(
   prompt: string,
   scheduledAt: number,
   sessionId: SessionId = SESSION,
-  status: 'active' | 'inactive' = 'active',
+  status: 'active' | 'ended' = 'active',
   title?: string,
 ): ScheduleCatalogEntry {
   return {
     id: ScheduleId(id),
-    sessionId,
+    target: { kind: 'session' as const, sessionId: sessionId }, involvedSessionIds: [sessionId],
     status,
     kind: 'every',
     title: title ?? prompt,
@@ -220,7 +220,7 @@ describe('Session hover-card task section', () => {
 
     const ended = renderHover(sourceFor(async () => ({
       ok: true,
-      value: [record('ended', 'Finished task', START + 120_000, SESSION, 'inactive')],
+      value: [record('ended', 'Finished task', START + 120_000, SESSION, 'ended')],
     })))
     await settle()
     expect(ended.container.querySelector('[data-session-schedule-tasks]')).toBeNull()

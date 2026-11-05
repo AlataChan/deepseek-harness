@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * PTC mode `run_code` transport. Programs call the registry's agent-visible
  * tools through nested executions scheduled under the native concurrency
@@ -700,6 +701,12 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
       try {
         let result: PtcRunResult
         try {
+          let cwd: string | undefined
+          if (exec.agent !== undefined) {
+            const directories = exec.agent.ctx.get('workingDirectory')
+            if (directories === undefined) throw new Error('run_code requires workingDirectory for an Agent')
+            cwd = await directories.ensure(exec.agent, runController.signal)
+          }
           result = await runtime.run(runtime.resolve({
             program: args.code,
             bindings: [{
@@ -708,7 +715,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
               errorClass: { name: 'ToolCallError', memberNameProperty: 'toolName' },
             }],
             signal: runController.signal,
-            ...exec.agent?.session.header.cwd !== undefined ? { cwd: exec.agent.session.header.cwd } : {},
+            ...cwd === undefined ? {} : { cwd },
             ...policy !== undefined ? { sandboxPolicy: policy } : {},
             ...args.timeoutMs !== undefined ? { timeoutMs: args.timeoutMs } : {},
           }))

@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在任何应运行 agent 的组合中挂载 `dsh-agent-loop`。它提供 `ctx.agents` 背后的驱动器，并启动你在配置中声明的 agent；[`dsh-base`](../../bundle/base/README.zh.md) 与 [`dsh-sdk-minimal`](../../bundle/sdk-minimal/README.zh.md) 都将它作为显式配置行挂载。
@@ -77,6 +78,7 @@ const handle = await ctx.agents.create({
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 核心投影句柄就绪时，若所属 fiber 已销毁或正在卸载，则停止激活工厂。工厂移除与 Agent 事务排空仍由该 fiber 管理。
@@ -134,6 +136,7 @@ const handle = await ctx.agents.create({
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 包级约定对大多数消费方已经足够；需要周边领域与设计原理时再阅读以下页面。
@@ -147,6 +150,7 @@ const handle = await ctx.agents.create({
 -----
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 完整对话请求
@@ -219,6 +223,7 @@ const handle = await ctx.agents.create({
 - **没有内置轮次预算**：工具调用或 steering 会让当前轮次继续；限制失控轮次的策略必须从既有生命周期扩展点（如 `agent/turn-stopping`）执行取消。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>
@@ -227,3 +232,5 @@ const handle = await ctx.agents.create({
 无。
 
 </details>
+
+请求接纳在路由准备后、投影持久上下文快照前刷新已接受的注册运行事实。必需运行事实在可选上下文抑制状态下仍保留；每个已发送请求仍可从会话日志重建。

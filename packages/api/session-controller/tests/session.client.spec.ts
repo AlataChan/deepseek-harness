@@ -600,16 +600,20 @@ describe('prompt and cancel errors', () => {
     ])
   })
 
-  it('publishes the first-prompt lifecycle synchronously before the Remote settles', async ({ mock, start }) => {
+  it('publishes the first-prompt lifecycle only after Host acceptance', async ({ mock, start }) => {
     const session = await sessionBench(mock, start, SID)
     session.handleBlank(true)
     expect(session.getSnapshot()).toMatchObject({
       blank: true, promptAttempted: false, awaitingFirstTurn: false,
     })
+    const admission = Promise.withResolvers<RemoteResult<{ accepted: true }>>()
+    mock.remote.session.prompt.mockReturnValueOnce(admission.promise)
     const inFlight = session.prompt([{ type: 'text', text: '要发的' }], 'queue')
+    await vi.waitFor(() => { expect(mock.remote.session.prompt).toHaveBeenCalledOnce() })
     expect(session.getSnapshot()).toMatchObject({
-      blank: true, promptAttempted: true, awaitingFirstTurn: true,
+      blank: true, promptAttempted: false, awaitingFirstTurn: false, pendingSubmissions: [],
     })
+    admission.resolve(ok({ accepted: true }))
     const result = await inFlight
     expect(result.ok).toBe(true)
     expect(session.getSnapshot()).toMatchObject({
@@ -629,9 +633,9 @@ describe('prompt and cancel errors', () => {
     const session = await sessionBench(mock, start, SID)
     session.handleBlank(false)
     const inFlight = session.prompt([{ type: 'text', text: '继续' }], 'queue')
-    expect(session.getSnapshot()).toMatchObject({ blank: false, promptAttempted: true, awaitingFirstTurn: false })
+    expect(session.getSnapshot()).toMatchObject({ blank: false, promptAttempted: false, awaitingFirstTurn: false })
     expect((await inFlight).ok).toBe(true)
-    expect(session.getSnapshot()).toMatchObject({ blank: false, awaitingFirstTurn: false })
+    expect(session.getSnapshot()).toMatchObject({ blank: false, promptAttempted: true, awaitingFirstTurn: false })
   })
 
   it('keeps an accepted first prompt converted when a later prompt is rejected', async ({ mock, start }) => {
@@ -649,7 +653,7 @@ describe('prompt and cancel errors', () => {
     })
   })
 
-  it('keeps the attempted-first-prompt state when the Host rejects the prompt', async ({ mock, start }) => {
+  it('keeps a rejected first prompt blank and permits a later accepted retry', async ({ mock, start }) => {
     const session = await sessionBench(mock, start, SID)
     session.handleBlank(true)
     mock.remote.session.prompt.mockResolvedValue(err(new RemoteError('session/agent-busy', 'busy', { reason: 'x' })))
@@ -657,8 +661,17 @@ describe('prompt and cancel errors', () => {
     expect(result.ok).toBe(false)
     expect(session.getSnapshot().promptError).toMatchObject({ op: 'send', error: { code: 'session/agent-busy' } })
     expect(session.getSnapshot()).toMatchObject({
-      blank: true, promptAttempted: true, awaitingFirstTurn: true,
+      blank: true, promptAttempted: false, awaitingFirstTurn: false, pendingSubmissions: [],
     })
+    mock.remote.session.prompt.mockResolvedValue(ok({ accepted: true }))
+    expect((await session.prompt([{ type: 'text', text: '失败的' }], 'queue')).ok).toBe(true)
+    expect(session.getSnapshot()).toMatchObject({
+      blank: false, promptAttempted: true, awaitingFirstTurn: true, promptError: null,
+    })
+    expect(mock.log.requests('session/prompt')).toMatchObject([
+      { content: [{ type: 'text', text: '失败的' }] },
+      { content: [{ type: 'text', text: '失败的' }] },
+    ])
   })
 
   it('receives a carrier throw while cancelling as the client\'s gateway/internal fold, landing op=stop', async ({ mock, start }) => {

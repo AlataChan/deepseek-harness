@@ -3,12 +3,13 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { DailyScheduleRecord, ScheduleCatalogEntry } from '@deepseek-ai/dsh-schedule'
+import { SessionId } from '@deepseek-ai/dsh-session'
+import type { DailyScheduleRecord } from '@deepseek-ai/dsh-schedule'
 import { expect, it } from 'vitest'
 import { withDefaultWeb, webGet, webRequest } from './default-web-process.ts'
 
 const id = 'retained-remote-task' as DailyScheduleRecord['id']
-const sessionId = 'unloaded-owner' as ScheduleCatalogEntry['sessionId']
+const sessionId = SessionId('unloaded-owner')
 const record: DailyScheduleRecord = {
   id, kind: 'daily', title: 'Retained instruction', prompt: 'Retained instruction\nwith a second line',
   time: '09:00:00.125', timeZone: 'Asia/Shanghai', scheduledAt: '2099-01-01T01:00:00.125Z',
@@ -48,71 +49,74 @@ async function connect(url: string, signal: AbortSignal) {
   }
 }
 
-it('edits a retained task through built Remote bindings and preserves its identity and seeded history after cold startup', async (test) => {
+it('edits a retained task through built remotes and preserves its identity and receipts after cold startup', async (test) => {
   let persisted = encoded(task)
   let updated = record
-  const historyRequest = { request: { sessionId, id, limit: 20 } }
-  const expectedHistory = {
-    ok: true,
-    value: {
-      id, records: task.deliveryHistory.records, earlierRecordsUnavailable: false,
-      earlierRecordsPruned: false, retention: { days: 30, records: 200 },
-    },
-  }
+  let revision: string | undefined
+  const target = { kind: 'session', sessionId }
+  const receipt = { ...lastDelivery, targetSessionId: sessionId }
+  const expectedHistory = { ok: true, value: { id, records: [{ ...receipt, prompt: record.prompt }],
+    earlierRecordsUnavailable: false, earlierRecordsPruned: false, retention: { days: 30, records: 200 },
+  } }
   await withDefaultWeb(test, async ({ root, url }) => {
     const rpc = await connect(url, test.signal)
-    expect(await rpc('schedule/catalog', {})).toEqual({ ok: true, value: [{ ...record, sessionId, status: 'active', lastDelivery }] })
-    expect(await rpc('schedule/history', historyRequest)).toEqual(expectedHistory)
-    const target = new Date(Date.now() + 12 * 60 * 60 * 1_000)
-    target.setUTCMilliseconds(125)
-    updated = { ...record, time: target.toISOString().slice(11, 23), timeZone: 'UTC', scheduledAt: target.toISOString() }
-    const change = { kind: 'daily', daily: { time: updated.time, time_zone: 'UTC' } }
-    expect(await rpc('schedule/update', { request: { sessionId, id, expected: record, change } }))
-      .toEqual({ ok: true, value: { id, updated: true, record: updated } })
+    expect(await rpc('schedule/catalog', {})).toEqual({ ok: true, value: [{ ...record, target,
+      involvedSessionIds: [sessionId], status: 'active', lastDelivery: receipt,
+    }] })
+    expect(await readFile(taskPath(root), 'utf8')).toBe(persisted)
+    expect(await rpc('schedule/history', { request: { id, limit: 20 } })).toEqual(expectedHistory)
+    await rpc('session/create', { request: { sessionId, cwd: root } })
+    const instant = new Date(Date.now() + 12 * 60 * 60 * 1000); instant.setUTCMilliseconds(125)
+    updated = { ...record, time: instant.toISOString().slice(11, 23), timeZone: 'UTC', scheduledAt: instant.toISOString() }
+    const timing = { kind: 'daily', daily: { time: updated.time, time_zone: 'UTC' } }
+    const result = await rpc('schedule/edit', { request: { id, action: 'update', expectedUpdatedAt: null, patch: { timing } } })
+    expect(result).toMatchObject({ ok: true, value: { ...updated, target, status: 'active', lastDelivery: receipt } })
     persisted = await readFile(taskPath(root), 'utf8')
-    expect(JSON.parse(persisted)).toEqual({
-      unit: { name: 'schedule', version: 1 },
-      global: null,
-      tables: { tasks: { [id]: { ...task, record: updated } } },
+    const written = JSON.parse(persisted) as { tables: { tasks: Record<string, { updatedAt: string }> } }
+    revision = written.tables.tasks[id]?.updatedAt
+    expect(revision).toEqual(expect.any(String))
+    expect(JSON.parse(persisted)).toEqual({ unit: { name: 'schedule', version: 2 }, global: null,
+      tables: { tasks: { [id]: { target, involvedSessionIds: [sessionId], record: updated, status: 'active',
+        updatedAt: revision, lastDelivery: receipt,
+        deliveryHistory: { earlierRecordsUnavailable: false, records: [{ ...receipt, prompt: record.prompt }] },
+      } } },
     })
-    expect(await rpc('schedule/history', historyRequest)).toEqual(expectedHistory)
-
-    expect(await rpc('schedule/update', { request: { sessionId, id, expected: record, change } }))
-      .toEqual({ ok: true, value: { id, updated: false, code: 'schedule_conflict' } })
-    expect(await rpc('schedule/update', { request: { sessionId: 'other-owner', id, expected: updated, change } }))
-      .toEqual({ ok: true, value: { id, updated: false, code: 'schedule_not_found' } })
+    expect(await rpc('schedule/history', { request: { id, limit: 20 } })).toEqual(expectedHistory)
+    expect(await rpc('schedule/edit', { request: { id, action: 'update', expectedUpdatedAt: null, patch: { timing } } }))
+      .toEqual({ ok: true, value: { id, code: 'schedule_conflict' } })
     expect(await readFile(taskPath(root), 'utf8')).toBe(persisted)
   }, { prepare: root => seed(root, persisted) })
-
   await withDefaultWeb(test, async ({ root, url }) => {
     const rpc = await connect(url, test.signal)
-    expect(await rpc('schedule/catalog', {})).toEqual({ ok: true, value: [{ ...updated, sessionId, status: 'active', lastDelivery }] })
-    expect(await rpc('schedule/history', historyRequest)).toEqual(expectedHistory)
-    expect(await rpc('schedule/update', { request: {
-      sessionId, id, expected: updated, change: { kind: 'daily', daily: { time: updated.time, time_zone: 'Etc/UTC' } },
-    } })).toEqual({ ok: true, value: { id, updated: false, record: updated } })
+    expect(await rpc('schedule/catalog', {})).toEqual({ ok: true, value: [{ ...updated, target,
+      involvedSessionIds: [sessionId], status: 'active', lastDelivery: receipt, updatedAt: revision,
+    }] })
+    expect(await rpc('schedule/history', { request: { id, limit: 20 } })).toEqual(expectedHistory)
     expect(await readFile(taskPath(root), 'utf8')).toBe(persisted)
+    expect(await rpc('schedule/edit', { request: { id, action: 'update', expectedUpdatedAt: revision,
+      patch: { title: 'Retained after restart' },
+    } })).toMatchObject({ ok: true, value: { ...updated, title: 'Retained after restart', target } })
   }, { prepare: root => seed(root, persisted) })
 })
 
-it('creates and idempotently adopts the explicit Session id bound to seeded task data without touching its task file', async (test) => {
+it('creates and idempotently adopts a seeded target without modifying the task file', async (test) => {
   const persisted = encoded(task)
-  const expectedList = { ok: true, value: [record] }
-  const expectedHistory = {
-    ok: true,
-    value: {
-      id, records: task.deliveryHistory.records, earlierRecordsUnavailable: false,
-      earlierRecordsPruned: false, retention: { days: 30, records: 200 },
-    },
-  }
+  const target = { kind: 'session', sessionId }
+  const receipt = { ...lastDelivery, targetSessionId: sessionId }
+  const entry = { ...record, target, involvedSessionIds: [sessionId], status: 'active', lastDelivery: receipt }
   await withDefaultWeb(test, async ({ root, url }) => {
     const rpc = await connect(url, test.signal)
     const create = { request: { sessionId, cwd: root } }
     const expectedCreate = { ok: true, value: { sessionId, agentPreset: 'standard' } }
     expect(await rpc('session/create', create)).toEqual(expectedCreate)
     expect(await rpc('session/create', create)).toEqual(expectedCreate)
-    expect(await rpc('schedule/list', { request: { sessionId } })).toEqual(expectedList)
-    expect(await rpc('schedule/history', { request: { sessionId, id, limit: 20 } })).toEqual(expectedHistory)
+    expect(await rpc('schedule/list', { request: { active: true } })).toEqual({ ok: true,
+      value: { items: [entry], shown: 1, total: 1, limit: 100, offset: 0 },
+    })
+    expect(await rpc('schedule/history', { request: { id, limit: 20 } })).toEqual({ ok: true, value: { id,
+      records: [{ ...receipt, prompt: record.prompt }], earlierRecordsUnavailable: false, earlierRecordsPruned: false,
+      retention: { days: 30, records: 200 },
+    } })
     expect(await readFile(taskPath(root), 'utf8')).toBe(persisted)
   }, { prepare: root => seed(root, persisted) })
 })

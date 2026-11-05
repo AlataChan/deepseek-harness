@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /* jscpd:ignore-start -- deliberate mirror of tool-bash-persistent (persistent-pty note 2026-08-11-pwsh-persistent-pty):
    the PowerShell counterpart shares the session registry, polling loop, and reset contract by design. */
 /**
@@ -276,10 +277,10 @@ function persistentShells(ctx: Context, config: ResolvedConfig): PersistentShell
     const combinedSignal = AbortSignal.any([signal, lifecycle.signal])
     const creation = (async () => {
       try {
-        const cwd = owner.session.header.cwd
+        const cwd = await ctx.workingDirectory.ensure(owner, combinedSignal)
         const spawned = await ctx.terminals.spawn(owner, {
           type: config.backendType,
-          ...cwd === undefined ? {} : { cwd },
+          cwd,
         }, combinedSignal)
         live.set(owner, spawned.sessionId)
         if (!ownerCleanupInstalled.has(owner)) {
@@ -451,7 +452,7 @@ function registerPersistentPwsh(ctx: Context, config: ResolvedConfig): void {
 }
 
 export const name = 'tool-pwsh-persistent'
-export const inject = ['tools', 'terminals']
+export const inject = ['workingDirectory', 'tools', 'terminals']
 
 /** Configuration for the persistent pwsh tool. */
 export interface Config {

@@ -23,6 +23,7 @@ Use `dsh-tool-fs` to let a model read UTF-8 files with line numbers, read suppor
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Mount the tools after a `ctx.fs` backend and, for read-before-write/edit behavior, the policy plugin. The model then gets line-numbered reads, atomic writes and edits, and — with an attachment store mounted — image reads; every result is capped, and failures carry stable codes with recovery instructions.
@@ -78,6 +79,7 @@ Failures are normalized as `Error: <message>` with a structured code preserved f
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -117,6 +119,7 @@ All four tools share one flow shape: resolve the path with the calling session's
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the tools to the contract, backends, and policy they compose with.
@@ -130,7 +133,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+Relative reads and mutations use the validated Session execution directory. Observations remain keyed by the resolved file; observing a same-named file in the original project grants no write permission in another directory. Cancellation and the original sandbox root remain in force. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### System prompt
@@ -259,6 +265,7 @@ These limits define when the tool suite is a poor fit or needs special operation
 - **An aborted `apply_patch` call keeps finished writes** — the registry reports `tool call aborted` when `exec.signal` aborts, including after an earlier operation in the same patch has already been published. Those files stay, and the call is not replayed.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

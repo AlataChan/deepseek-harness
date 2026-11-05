@@ -1,0 +1,525 @@
+[
+  {
+    "path": "packages/api/session-controller/src/commands.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/api/session-controller/src/client/contract/session.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/api/session-controller/src/client/contract/snapshot.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/chat-settings.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/apply.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/locale.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/presentation-policy.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/stores.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/transcript-view.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/contract/slots.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/contract/store.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/settings/TranscriptViewRow.tsx",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-primitives/src/QuotePreview.tsx",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-primitives/src/focus.ts",
+    "statements": [],
+    "functions": [],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 14,
+            "column": 17
+          },
+          "end": {
+            "line": 15,
+            "column": null
+          }
+        },
+        "type": "binary-expr",
+        "locations": [
+          {
+            "start": {
+              "line": 14,
+              "column": 17
+            },
+            "end": {
+              "line": 14,
+              "column": null
+            }
+          },
+          {
+            "start": {
+              "line": 15,
+              "column": 8
+            },
+            "end": {
+              "line": 15,
+              "column": 35
+            }
+          },
+          {
+            "start": {
+              "line": 15,
+              "column": 35
+            },
+            "end": {
+              "line": 15,
+              "column": null
+            }
+          }
+        ],
+        "line": 14,
+        "uncoveredLocation": {
+          "start": {
+            "line": 15,
+            "column": 35
+          },
+          "end": {
+            "line": 15,
+            "column": null
+          }
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/client/ui-primitives/src/index.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-primitives/src/useAnchoredPosition.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-primitives/src/useModalLayer.ts",
+    "statements": [],
+    "functions": [],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 56,
+            "column": 31
+          },
+          "end": {
+            "line": 56,
+            "column": null
+          }
+        },
+        "type": "binary-expr",
+        "locations": [
+          {
+            "start": {
+              "line": 56,
+              "column": 31
+            },
+            "end": {
+              "line": 56,
+              "column": 67
+            }
+          },
+          {
+            "start": {
+              "line": 56,
+              "column": 67
+            },
+            "end": {
+              "line": 56,
+              "column": null
+            }
+          }
+        ],
+        "line": 56,
+        "uncoveredLocation": {
+          "start": {
+            "line": 56,
+            "column": 67
+          },
+          "end": {
+            "line": 56,
+            "column": null
+          }
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/client/ui-primitives/src/user-text.tsx",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-primitives/src/markdown/quote-text.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-sidebar/src/client/SidebarRoot.tsx",
+    "statements": [
+      {
+        "start": {
+          "line": 152,
+          "column": 26
+        },
+        "end": {
+          "line": 152,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 154,
+          "column": 36
+        },
+        "end": {
+          "line": 154,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 360,
+          "column": 29
+        },
+        "end": {
+          "line": 360,
+          "column": 51
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "(anonymous_45)",
+        "decl": {
+          "start": {
+            "line": 360,
+            "column": 12
+          },
+          "end": {
+            "line": 360,
+            "column": 27
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 360,
+            "column": 27
+          },
+          "end": {
+            "line": 360,
+            "column": null
+          }
+        },
+        "line": 360
+      }
+    ],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 152,
+            "column": 4
+          },
+          "end": {
+            "line": 152,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 152,
+              "column": 4
+            },
+            "end": {
+              "line": 152,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 152,
+        "uncoveredLocation": {
+          "start": {
+            "line": 152,
+            "column": 4
+          },
+          "end": {
+            "line": 152,
+            "column": null
+          }
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 154,
+            "column": 6
+          },
+          "end": {
+            "line": 154,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 154,
+              "column": 6
+            },
+            "end": {
+              "line": 154,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 154,
+        "uncoveredLocation": {
+          "start": {
+            "line": 154,
+            "column": 6
+          },
+          "end": {
+            "line": 154,
+            "column": null
+          }
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 157,
+            "column": 21
+          },
+          "end": {
+            "line": 157,
+            "column": null
+          }
+        },
+        "type": "cond-expr",
+        "locations": [
+          {
+            "start": {
+              "line": 157,
+              "column": 61
+            },
+            "end": {
+              "line": 157,
+              "column": 73
+            }
+          },
+          {
+            "start": {
+              "line": 157,
+              "column": 73
+            },
+            "end": {
+              "line": 157,
+              "column": null
+            }
+          }
+        ],
+        "line": 157,
+        "uncoveredLocation": {
+          "start": {
+            "line": 157,
+            "column": 61
+          },
+          "end": {
+            "line": 157,
+            "column": 73
+          }
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 170,
+            "column": 4
+          },
+          "end": {
+            "line": 170,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 170,
+              "column": 4
+            },
+            "end": {
+              "line": 170,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 170,
+        "uncoveredLocation": {
+          "start": {},
+          "end": {}
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 385,
+            "column": 35
+          },
+          "end": {
+            "line": 385,
+            "column": 66
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 385,
+              "column": 35
+            },
+            "end": {
+              "line": 385,
+              "column": 66
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 385,
+        "uncoveredLocation": {
+          "start": {},
+          "end": {}
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/client/ui-sidebar/src/client/locales.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-sidebar/src/client/panel-pins.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-sidebar/src/client/contract/slots.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/index.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/client/QuoteSelection.tsx",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/client/index.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/client/locales.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/client/quote-text.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  }
+]

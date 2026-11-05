@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/session/message-quotes/README.md
+/:
+  en: 3db9277f1b15e610
+  zh: baddf46998292b68
+/deepseek-ai-dsh-message-quotes:
+  en: a98d2b6bfee45c56
+  zh: 853c079ed4cdae27
+/deepseek-ai-dsh-message-quotes/summary:
+  en: 5a1bc12a481e9eb7
+  zh: e0c69f79223918ff
+/deepseek-ai-dsh-message-quotes/table-of-contents:
+  en: af856ba79fe31b8e
+  zh: 15b7d1a5d1856de2
+/deepseek-ai-dsh-message-quotes/use-this-package:
+  en: ea19d857fa9dd75b
+  zh: 3d430f9931eeea02
+/deepseek-ai-dsh-message-quotes/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-message-quotes/model-experience/submitted-quote-text:
+  en: 3c2ded5e7ef3f6c5
+  zh: 0b1bec60d7c7c18a
+/deepseek-ai-dsh-message-quotes/model-experience/submitted-quote-text/what-the-model-sees:
+  en: 02bb0d019016359c
+  zh: 8e2566ebdbffee66
+/deepseek-ai-dsh-message-quotes/model-experience/submitted-quote-text/token-effect:
+  en: cc4cf54e71a8bd19
+  zh: 100d5f88a22045f4
+/deepseek-ai-dsh-message-quotes/model-experience/submitted-quote-text/kv-cache-effect:
+  en: 8fd48fe282f11bab
+  zh: 8b79754508584ca1
+/deepseek-ai-dsh-message-quotes/known-limitations-and-deferred-work:
+  en: 7daa797ee2996f7a
+  zh: e515bd60a966d753
+/deepseek-ai-dsh-message-quotes/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

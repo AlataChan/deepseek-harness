@@ -149,6 +149,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 
 pnpm applies local patches to the following packages at install time, so shipped artifacts carry modified copies; each patch file is the complete record of the modification:
 
+- `lexical@0.49.0` — [`patches/lexical@0.49.0.patch`](patches/lexical@0.49.0.patch)
 - `@earendil-works/pi-ai@1.3.0` — [`patches/@earendil-works__pi-ai@1.3.0.patch`](patches/@earendil-works__pi-ai@1.3.0.patch)
 - `@fortune-sheet/core@1.0.4` — [`patches/@fortune-sheet__core@1.0.4.patch`](patches/@fortune-sheet__core@1.0.4.patch)
 - `@fortune-sheet/react@1.0.4` — [`patches/@fortune-sheet__react@1.0.4.patch`](patches/@fortune-sheet__react@1.0.4.patch)

@@ -1,0 +1,49 @@
+{
+  "updated_utc": "2026-11-05T19:26:47.224853+00:00",
+  "implementationAuthorized": true,
+  "gate": "M2 accepted by root; bounded implementations authorized against m2-exit-source-freeze.json. Final shipping acceptance remains closed.",
+  "items": {
+    "RC1-05-08": {
+      "manifest": ".plans/rc1-execution/rc1-client-candidate-files.json",
+      "manifest_sha256": "a59e918f073a02a840faac7745f76eee30a0358d24162ce1e66fc47737f82d61",
+      "required": [
+        "Reservation before async admission; preserve admitted human answers",
+        "Pointer controls and real mobile focus/viewport tests, no keyboard-only bypass",
+        "Preserve actual Team pod and existing data/knowledge/files entries"
+      ],
+      "m2ExitFreeze": "m2-exit-source-freeze.json"
+    },
+    "RC1-09": {
+      "manifest": ".plans/rc1-execution/rc1-09-candidate-files.json",
+      "manifest_sha256": "52f56e92a7fcb6671b0b60ec08335ab11eef4710c5669ade1c50d7dea85f6bbd",
+      "required": [
+        "Full user-invoked version/list/select/update/rollback plus diagnostics, no diagnostics-only reduction",
+        "Locked installer/file/native pins; configured npm registries are not desktop binary release feeds",
+        "Capture diagnostics before Loader disposal; keep peers types and first-install semantics"
+      ],
+      "m2ExitFreeze": "m2-exit-source-freeze.json"
+    },
+    "RC1-F1": {
+      "manifest": ".plans/rc1-execution/rc1-f1-candidate-files.json",
+      "manifest_sha256": "17ca90da124c662d4cccf37f2b8f49032df4b39446a6ffeea6b3f9fb1934e5f8",
+      "required": [
+        "Execution cwd separate from immutable original workspace identity",
+        "No automatic teammate isolation/merge/send",
+        "Keep sandbox original root; refuse outside scope without silently widening grants",
+        "New required events receive separate persistence acknowledgement without editing frozen generations"
+      ],
+      "m2ExitFreeze": "m2-exit-source-freeze.json"
+    },
+    "RC1-S1": {
+      "manifest": ".plans/rc1-execution/rc1-s1-candidate-files.json",
+      "manifest_sha256": "8f2cc12c1df47933244af97f32a550aea4c8bf4028a87692ef7ced581ae7c91b",
+      "required": [
+        "One scheduler and one Automation tasks entry",
+        "Actual resolveAgent(sessionId), create({sessionId,cwd,agentPreset}) signatures",
+        "One-record pendingDelivery; no exactly-once or cross-record transaction promise",
+        "Schedule source stays schedule, never human authority"
+      ],
+      "m2ExitFreeze": "m2-exit-source-freeze.json"
+    }
+  }
+}

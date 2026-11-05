@@ -1,0 +1,80 @@
+--- f10cfa2ca1:packages/client/ui-primitives/src/user-text.tsx
++++ packages/client/ui-primitives/src/user-text.tsx
+@@ -16,6 +16,7 @@
+  */
+ import type { ReactNode } from 'react'
+ import clsx from 'clsx'
++import { QuotePreview } from './QuotePreview.tsx'
+ import { ReferenceIconRegular } from './ReferenceIcon.tsx'
+ import css from './user-text.module.css'
+ import markdownCss from './markdown/MarkdownText.module.css'
+@@ -26,15 +27,17 @@
+ /** Sentence punctuation a bare `@name` token may carry without being part of the reference. */
+ const TRAILING_PUNCTUATION_RE = /[.,;:!?，。；：！？]+$/u
+
+-interface DecorationRange {
++type DecorationRange = {
+   readonly start: number
+   readonly end: number
+   /** Matched source text (hover title). */
+   readonly label: string
+-  readonly kind: 'session' | 'plain'
+-  /** Pre-resolved display text (wire folds); derived from label when absent. */
+-  readonly display?: string
+-}
++} & ({
++  readonly kind: 'session' | 'quote'
++  readonly display: string
++} | {
++  readonly kind: 'plain'
++})
+
+ /** Optional navigation supplied by consumers that can preview references. */
+ export interface UserTextReferences {
+@@ -63,6 +66,11 @@
+   references?: UserTextReferences,
+ ): ReactNode {
+   const ranges: DecorationRange[] = []
++  for (const match of text.matchAll(/^ {0,3}>[^\r\n]*(?:\r?\n {0,3}>[^\r\n]*)*/gmu)) {
++    const excerpt = match[0].replace(/^ {0,3}>[ \t]?/gmu, '')
++    if (excerpt.trim() !== '') ranges.push({ start: match.index, end: match.index + match[0].length,
++      label: match[0], display: excerpt, kind: 'quote' })
++  }
+   SESSION_WIRE_RE.lastIndex = 0
+   let wire: RegExpExecArray | null
+   while ((wire = SESSION_WIRE_RE.exec(text)) !== null) {
+@@ -78,7 +86,7 @@
+     const label = `@${rawLabel}`
+     let start = text.indexOf(label)
+     while (start >= 0) {
+-      ranges.push({ start, end: start + label.length, label, kind: 'session' })
++      ranges.push({ start, end: start + label.length, label, display: rawLabel, kind: 'session' })
+       start = text.indexOf(label, start + label.length)
+     }
+   }
+@@ -107,17 +115,19 @@
+     if (range.start < cursor) continue
+     const { start: tokenStart, end, label, kind } = range
+     if (tokenStart > cursor) pushPlain(cursor, tokenStart)
++    if (kind === 'quote') {
++      parts.push(<QuotePreview key={`q${tokenStart}`} text={range.display} />)
++      cursor = end
++      continue
++    }
+     const referenceKind = kind === 'session'
+       ? 'session'
+       : label.startsWith('@')
+         ? label.replace(/^@"|"$/gu, '').endsWith('/') ? 'folder' : 'file'
+         : undefined
+-    const displayLabel = range.display
+-      ?? (referenceKind === undefined
+-        ? label
+-        : referenceKind === 'session'
+-          ? label.slice(1)
+-          : label.slice(1).replace(/^"|"$/gu, '').split(/[\\/]/u).filter(Boolean).at(-1) ?? label.slice(1))
++    const displayLabel = range.kind === 'session' ? range.display
++      : referenceKind === undefined ? label
++        : label.slice(1).replace(/^"|"$/gu, '').split(/[\\/]/u).filter(Boolean).at(-1) ?? label.slice(1)
+     const contents = <>
+       {referenceKind !== undefined && (
+         <ReferenceIconRegular kind={referenceKind} size={16} className={css.refIcon} />

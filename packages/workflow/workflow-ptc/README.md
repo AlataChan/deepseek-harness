@@ -23,6 +23,7 @@ Run JavaScript workflows in fresh Node processes under the calling Session's fil
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Mount this engine in a composition that provides subagents, sandbox policy and the [Node PTC runtime](../../ptc-runtime/ptc-runtime-node/README.md). It supplies workflow execution for `dsh-tool-workflow` and for `dsh-tool-ralph` when explicitly enabled. Ralph remains disabled in shipped defaults. The engine rejects non-TypeScript PTC providers when it loads. Python PTC compositions must disable the `workflow-ptc`, `tool-workflow` and any enabled `tool-ralph` rows.
@@ -63,6 +64,7 @@ The workflow requests `timeoutMs: null` from PTC. Its initial VM slice still has
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -101,6 +103,7 @@ The first accepted terminal outcome owns the run result. Cancellation stops the 
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Use these references for the shared execution guarantees and workflow contracts.
@@ -114,7 +117,10 @@ Use these references for the shared execution guarantees and workflow contracts.
 
 -----
 
+Workflow programs run in the calling Agent’s validated execution directory while their sandbox policy retains the original project root. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Child-agent requests
@@ -159,6 +165,7 @@ These limits qualify workflow execution and cleanup.
 - **Cross-realm errors fail `instanceof Error` inside scripts** — branch on stable fields such as `name` and `code`.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

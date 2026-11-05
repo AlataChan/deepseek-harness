@@ -51,7 +51,7 @@ export function normalizeRegistry(url: string): string {
  * @param configured - the configured first registry, the fallbacks after it, and what pnpm's own configuration names.
  * @returns the registries to ask, in order; never empty.
  */
-export function registryPlan(requested: Registry | undefined, configured: PluginRegistries): Registry[] {
+export function registryPlan(requested: Registry | undefined, configured: PluginRegistries): [Registry, ...Registry[]] {
   const own = configured.resolved === null ? null : normalizeRegistry(configured.resolved)
   const fallbacks = configured.fallbackRegistries.map(normalizeRegistry)
   const ownIsPublic = own !== null && (own === OFFICIAL_NPM_REGISTRY || fallbacks.includes(own))

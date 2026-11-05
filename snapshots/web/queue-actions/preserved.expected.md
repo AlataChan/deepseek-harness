@@ -6,10 +6,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+    - button "More conversation views"
 - text: Reply with a one-sentence description of event sourcing, then stop. {{clock}}
 - button "Copy"
 - status: Stopped
-- button "Stopped" [disabled]
+- button "Stopped" [disabled] [expanded]
 - paragraph: partial
 - text: Stopped
 - button "Copy"

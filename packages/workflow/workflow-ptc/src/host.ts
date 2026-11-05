@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /** Workflow child ownership and progress over the shared sandboxed PTC executor. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -273,10 +274,13 @@ export class PtcWorkflowRun implements WorkflowRun {
   private async drive(): Promise<WorkflowResult> {
     let result: WorkflowResult
     try {
+      const directories = this.ctx.get('workingDirectory')
+      if (directories === undefined) throw new Error('workflow-ptc requires workingDirectory')
+      const cwd = await directories.ensure(this.parent, this.controller.signal)
       const outcome = await this.runtime.run(this.runtime.resolve({
         program: PROGRAM,
         bindings: [{ global: 'workflowHost', functions: this.bindings() }],
-        cwd: this.policy.workspaceRoot,
+        cwd,
         sandboxPolicy: this.policy,
         timeoutMs: null,
         signal: this.controller.signal,

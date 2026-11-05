@@ -216,6 +216,7 @@ function standaloneProps(
     draft: '', attachmentIds: [], draftRev: 0, phase: 'plain', occurrences: [], queue: [],
   })
   const inputActions: InputActions = {
+    insertQuote: () => false,
     captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
     insertText: () => false,
     setDraft: () => {},
@@ -345,6 +346,7 @@ function mount(fixture: Awaited<ReturnType<typeof bench>>) {
     draft: '', attachmentIds: [], draftRev: 0, phase: 'plain', occurrences: [], queue: [],
   }))
   const inputActions: InputActions = {
+    insertQuote: () => false,
     captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
     insertText: () => false,
     setDraft: vi.fn(),
@@ -405,6 +407,8 @@ function mount(fixture: Awaited<ReturnType<typeof bench>>) {
   return render(
     <>
       <ConversationSessionHeader
+        useEntryPins={select => select([])}
+        setPinned={() => {}}
         hideChrome={false}
         {...standardProps}
         SessionProvider={({ children }) => children}
@@ -1541,4 +1545,23 @@ describe('node half', () => {
   it('node apply is an intentional no-op (loader-managed lifecycle only)', () => {
     expect(() => { nodeApply() }).not.toThrow()
   })
+})
+
+
+it('folds nested subcalls independently while preserving the parent tool row', () => {
+  const nodes: LegacyConversationSlice['nodes'] = [{
+    kind: 'tool-result', seq: 3, time: 3000, callId: 'root-call', name: 'run_code',
+    args: PartialArguments.fromText('{}'), call: { name: 'run_code', argsRaw: '{}' }, callTime: 2000,
+    content: [], isError: false,
+    subCalls: [{ phase: 'start', callId: 'nested-call', parentCallId: 'root-call', name: 'bash',
+      args: PartialArguments.fromText('{}'), argsRaw: '{}', turn: 1, step: 1, time: 3000, subCalls: [] }],
+  }]
+  const view = render(<TrajectoryView {...standaloneProps(nodes)}
+    {...standaloneHistory(historySnapshot(nodes))} {...standaloneDuration()} />)
+  expect(view.container.querySelectorAll('tr[data-kind="subtool"]')).toHaveLength(1)
+  fireEvent.click(view.getByRole('button', { name: '收起所有子调用' }))
+  expect(view.container.querySelectorAll('tr[data-kind="subtool"]:not([data-collapsed-summary])')).toHaveLength(0)
+  expect(view.container.querySelectorAll('tr[data-kind="tool"]:not([data-collapsed-summary])')).toHaveLength(1)
+  fireEvent.click(view.getByRole('button', { name: '展开所有子调用' }))
+  expect(view.container.querySelectorAll('tr[data-kind="subtool"]')).toHaveLength(1)
 })

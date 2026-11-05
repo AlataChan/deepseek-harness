@@ -324,21 +324,6 @@
     },
     {
       "doc": "docs/subsystems/schedule.md",
-      "symbol": "ScheduleTimingChange",
-      "source": "packages/schedule/schedule/src/types.ts"
-    },
-    {
-      "doc": "docs/subsystems/schedule.md",
-      "symbol": "ScheduleUpdateRequest",
-      "source": "packages/schedule/schedule/src/types.ts"
-    },
-    {
-      "doc": "docs/subsystems/schedule.md",
-      "symbol": "ScheduleUpdateResult",
-      "source": "packages/schedule/schedule/src/types.ts"
-    },
-    {
-      "doc": "docs/subsystems/schedule.md",
       "symbol": "ScheduleDeliveryHistoryRequest",
       "source": "packages/schedule/schedule/src/types.ts"
     },
@@ -410,11 +395,6 @@
     {
       "doc": "docs/subsystems/schedule.md",
       "symbol": "ScheduleListRequest",
-      "source": "packages/schedule/schedule/src/types.ts"
-    },
-    {
-      "doc": "docs/subsystems/schedule.md",
-      "symbol": "ScheduleDeleteRequest",
       "source": "packages/schedule/schedule/src/types.ts"
     },
     {
@@ -2456,6 +2436,96 @@
       "doc": "docs/subsystems/tools.md",
       "symbol": "ToolActivationContext",
       "source": "packages/core/tools/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleTiming",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleSessionCreateSpec",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleTarget",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleTargetRequest",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleDeliveryHistoryPage",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleDeliveryHistoryMiss",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleListResult",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleViewRequest",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleNotFoundResult",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleViewResult",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "SchedulePatch",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleEditRequest",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleConflictResult",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleEditResult",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleRunRequest",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleExecutionPendingResult",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleRunResult",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "ScheduleDeleteInactiveResult",
+      "source": "packages/schedule/schedule/src/types.ts"
     }
   ]
 }

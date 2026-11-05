@@ -1,0 +1,78 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, expect, it, vi } from 'vitest'
+import { VersionSection, UpdateDialog } from '../src/client/versions.tsx'
+import type { PackageView, UpdateState, VersionCheck } from '../src/client/manager-store.ts'
+import { en, type PluginManagerLocaleKey } from '../src/client/locales.ts'
+import type { Translate } from '../src/client/presentation.ts'
+
+afterEach(cleanup)
+const t: Translate = (key: PluginManagerLocaleKey, params?: Record<string, string>): string => Object.entries(params ?? {}).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, value), en[key])
+const pkg: PackageView = { name: 'extra', version: '1.0.0', installed: true, updatable: true, optional: false, removable: true, enabled: true, rows: [] }
+const selected: UpdateState = { packageName: 'extra', from: '1.0.0', to: '2.0.0', registry: null, phase: 'confirm', steps: [], result: null, outputOpen: false }
+
+it('shows checking, refused and current registry states only when explicitly supplied', () => {
+  const onCheck = vi.fn()
+  const onUpdate = vi.fn()
+  const view = (check: VersionCheck | undefined) => (
+    <VersionSection pkg={pkg} check={check} t={t} busy={false} onCheck={onCheck} onUpdate={onUpdate} />
+  )
+  const page = render(view(undefined))
+  expect(onCheck).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: en.versionsCheck }))
+  expect(onCheck).toHaveBeenCalledOnce()
+  page.rerender(view({ phase: 'checking' }))
+  expect(screen.getByRole('button').hasAttribute('disabled')).toBe(true)
+  page.rerender(view({ phase: 'done', checkedAt: 1, list: { status: 'refused', problem: 'network', reason: 'offline', attempts: [] } }))
+  expect(screen.getByRole('status').textContent).toContain('offline')
+  page.rerender(view({ phase: 'done', checkedAt: 2, list: { status: 'listed', installed: '1.0.0', registry: null, attempts: [], versions: [], omitted: 0 } }))
+  expect(screen.getByText(en.versionsLatest)).toBeTruthy()
+  expect(onUpdate).not.toHaveBeenCalled()
+})
+
+it('shows publication, prerelease, deprecation, compatibility and omitted versions while refusing unusable targets', () => {
+  const onUpdate = vi.fn()
+  render(<VersionSection pkg={pkg} t={t} busy={false} onCheck={vi.fn()} onUpdate={onUpdate} check={{ phase: 'done', checkedAt: 1,
+    list: { status: 'listed', installed: '1.0.0', registry: null, attempts: [], omitted: 3, versions: [
+      { version: '2.0.0-rc.1', tags: ['next'], prerelease: true, bundle: true, publishedAt: '2026-11-01', deprecated: 'use stable' },
+      { version: '3.0.0', tags: [], prerelease: false, bundle: false },
+      { version: '4.0.0', tags: [], prerelease: false, bundle: true, incompatible: { name: 'extra', version: '4.0.0', runtimeVersion: '1.0.0', peers: { '@deepseek-ai/dsh': '^4' } } },
+    ] } }} />)
+  expect(screen.getByText('2026-11-01')).toBeTruthy()
+  expect(screen.getByText('use stable')).toBeTruthy()
+  expect(screen.getByText(en.versionsPrerelease)).toBeTruthy()
+  expect(screen.getByText(en.versionsNotBundle)).toBeTruthy()
+  expect(screen.getByText(en.versionsOmitted.replace('{count}', '3'))).toBeTruthy()
+  const buttons = screen.getAllByRole('button')
+  fireEvent.click(buttons[1]!)
+  fireEvent.click(buttons[2]!)
+  fireEvent.click(buttons[3]!)
+  expect(onUpdate).toHaveBeenCalledExactlyOnceWith('2.0.0-rc.1')
+})
+
+it('allows closing confirmation but keeps a running update modal open on Escape', () => {
+  const onClose = vi.fn()
+  const onConfirm = vi.fn()
+  const page = render(<UpdateDialog update={selected} t={t} onClose={onClose} onConfirm={onConfirm} />)
+  fireEvent.click(screen.getByRole('button', { name: en.versionsConfirm }))
+  expect(onConfirm).toHaveBeenCalledOnce()
+  fireEvent.keyDown(document, { key: 'Escape' })
+  expect(onClose).toHaveBeenCalledOnce()
+  page.rerender(<UpdateDialog update={{ ...selected, phase: 'running', steps: ['checking', 'removing', 'installing', 'restoring'] }} t={t} onClose={onClose} onConfirm={onConfirm} />)
+  fireEvent.keyDown(document, { key: 'Escape' })
+  expect(onClose).toHaveBeenCalledOnce()
+  expect(screen.queryByRole('button', { name: en.versionsConfirm })).toBeNull()
+  expect(screen.getByText(en.versionsRestoring)).toBeTruthy()
+})
+
+it.each(['applied', 'cancelled', 'failed', 'restart-required'] as const)('retains independent %s update and restore outcomes', (application) => {
+  const error = { code: 'operation-error' as const, diagnostic: 'registry unavailable' }
+  render(<UpdateDialog update={{ ...selected, phase: 'done', lost: 'response interrupted', result: { from: '1.0.0', to: '2.0.0', step: 'install',
+    result: { changed: false, stage: 'install', target: 'extra', application, error },
+    restore: { changed: true, stage: 'install', target: 'extra', application, error },
+  } }} t={t} onClose={vi.fn()} onConfirm={vi.fn()} />)
+  expect(screen.getByText(`${en.versionsUnknown} response interrupted`)).toBeTruthy()
+  expect(screen.getAllByText(/registry unavailable/)).toHaveLength(2)
+  const expected = application === 'applied' ? en.versionsRestored : application === 'restart-required' ? en.restartNotice : en.versionsRestoreFailed
+  expect(screen.getAllByText(expected).length).toBeGreaterThan(0)
+})

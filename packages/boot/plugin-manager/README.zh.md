@@ -9,6 +9,7 @@ kind: "package-reference"
 
 应用拥有的 profile 通过启动器信息提供内置包管理器调用方式。它在包操作和 registry 检查中优先于 `pnpmCommand`；其环境仅应用于这些子进程。
 
+
 ## 概述
 
 管理当前 profile 的插件，无需手动编辑配置。启停单个插件条目、选择已安装的组合包，以及安装或删除外部组合包。在 YAML 中启用 HMR 时，配置变化立即生效；未启用 HMR 时，运行中的组合保留到重启。改动影响使用该 profile 的全部会话。
@@ -26,7 +27,16 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
+
+`listVersions(name, options?, signal?)` 仅在显式调用时检查注册表中的新版本，返回发布时间、标签、弃用信息、插件包声明，以及通过 `peers` 表达的兼容性。`versionListLimit` 默认 20，范围为 1–100；`versionLookupConcurrency` 默认 4，范围为 1–16。查询和更新都沿用配置的注册表顺序；启动过程和智能体工具不会检查版本。
+
+`BundleInfo.updatable` 排除安装程序提供的包、`lockedBundles` 中的发行版固定包、管理组件、非 semver 版本，以及 file、link、workspace、Git、压缩包和别名来源。发行版组合提供 `lockedBundles`；两个版本远程方法都在写入 profile 前执行限制。
+
+`updateBundle(name, version, options?, signal?)` 先重新确认目标是更新且兼容的插件包。启用 HMR 时，管理器移除旧版本，按原启用状态安装选定的精确版本；目标安装或激活失败后，从原注册表恢复旧精确版本。恢复不受请求取消影响，恢复失败单独报告。未启用 HMR 时直接覆盖安装，不先移除，并返回 `restart-required`。首次安装在后续激活失败时仍保留已安装的有效包；更新回滚不改变该策略。
+
+更新进度使用 `plugin-manager/update-state`。`plugin-manager/operation` 只记录不含配置的 started、settled 和 unknown 观察，不包含原始安装参数、输出或配置。`diagnostic.ts` 验证持久诊断字段和整个记录的 64 KiB 上限；被拒绝的记录不表示成功。
 
 基于 base 的 profile 提供管理服务。在 Web 中，侧边栏的**插件**页（[ui-plugin-manager](../../client/ui-plugin-manager/README.zh.md)）管理 profile 的组合包及其能唯一定位的行；设置页的插件列表保持只读。Agent 预设条目保持只读。`plugin_manager` 工具提供相同操作，在 Creator 模式中启用。其他预设仍默认禁用。 每个工具操作都要求 `danger-full-access` 或本次调用的批准。在较低沙箱模式下，`ask` 会请求审批；`never`、拒绝、取消或审批渠道不可用时均不执行。批准不改变会话的权限模式。profile 变更跨会话持久化，已安装的 Host 代码在宿主进程内运行，不受工作区沙箱限制。依赖构建脚本仍需单独批准。
 
@@ -58,6 +68,7 @@ kind: "package-reference"
 pnpm 11 拦下依赖脚本时，失败的安装在 `pendingBuilds` 里报告 profile 中所有待决定的包名，包括先前尝试留下的；失败的运行会恢复 `package.json` 与 `pnpm-lock.yaml`，但有意不恢复 pnpm 记录这些名字的 `pnpm-workspace.yaml`。Web 插件页提供**允许这些脚本并重试**；工具可以在用户于对话中批准这些脚本后，通过 `install_bundle` 的 `approvedBuilds` 代为授权。服务只校验待决定的名字，不核实对话中的批准。授权按包名保存在当前 profile，允许以宿主用户的权限执行命令，并在再次安装失败后保留。只能批准当前未决定的名字；已有的拒绝与通配规则不能通过此操作覆盖。`allowBuilds` 里出现 YAML 锚点或别名时拒绝授权。重试保留原来的启用选择。
 
 <a id="version-compatibility-and-exemptions"></a>
+
 ### 版本兼容性与豁免
 
 点名软件包的安装命令（`add`，或带 spec 的 `install`）会在 pnpm 运行前完成检查：本地路径直接读取其 `package.json`，registry spec 通过 pnpm 的 registry 查询得到该范围选中的版本及其声明的 peer。不兼容的 DSH peer 会在 pnpm 运行前使操作失败，因此不会下载任何内容、不会运行构建脚本；调用方随请求提交的构建批准在此检查之前记录，会保留下来。git 或 tarball spec 必须先抓取，因此在安装后才判定：此时操作会恢复 profile 清单与锁文件，并按恢复后的锁文件重新安装（profile 原本没有锁文件时，按恢复后的清单重新安装且不创建锁文件），同时报告该恢复是否成功；已获准构建脚本的副作用可能保留。本次运行未改动的依赖不会阻塞无关操作：它保持已安装状态，运行会输出点名它的警告，由 profile 启动拒绝加载。请求 `enabled: false` 的安装同样受检。启动检查独立执行；版本范围语义见 [App boot](../app-boot/README.zh.md#profiles)。版本豁免不授权依赖脚本。
@@ -84,6 +95,7 @@ CLI 提供 `dsh plugin --profile <profile> version-exemptions`、`allow-version 
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -102,6 +114,7 @@ service 运行若在 `idleTimeoutMs` 内没有任何捕获输出即被终止，�
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 - [App boot](../app-boot/README.zh.md)——profile 配置层与启动策略。
@@ -110,6 +123,7 @@ service 运行若在 `idleTimeoutMs` 内没有任何捕获输出即被终止，�
 - [Plugin settings](../../client/ui-settings-plugin-inventory/README.zh.md)——只读的 Web 清单。
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 管理工具
@@ -139,6 +153,7 @@ service 运行若在 `idleTimeoutMs` 内没有任何捕获输出即被终止，�
 - Desktop 包管理操作仍由 Desktop shell 负责。
 
 <a id="failure-behavior"></a>
+
 ### 失败行为
 
 失败保留已完成步骤，并报告实际残留状态。没有有效组合包声明的 profile 依赖仍可见、可删除，但不能启用。
@@ -155,6 +170,7 @@ pnpm 执行和组合包校验成功即完成安装，后续发布或启用失败
 恢复只重写这两份快照文件；用户编写的 patch 配置、应用数据、诊断日志以及 pnpm 已下载的文件保持原样，没有 manifest 引用的包由下一次包操作清理。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

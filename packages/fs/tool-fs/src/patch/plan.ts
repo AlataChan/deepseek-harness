@@ -14,8 +14,7 @@ import { unexpectedOperation } from './types.ts'
 
 /**
  * Resolve every operation without dropping repeated aliases or splitting moves.
- * Relative paths use the current session cwd, or the per-call sandbox workspace
- * root when a mutation policy carries one.
+ * Relative paths use the effective execution directory; sandbox authority retains the original project root.
  * @param ctx - filesystem service owner.
  * @param sandbox - filesystem diagnostic mapper.
  * @param exec - session cwd and execution signal.
@@ -27,7 +26,7 @@ export async function planPatch(
 ): Promise<PatchPlan> {
   const parsed = parsePatch(request.patch)
   const targets = new Map<FsTargetKey, FsTarget>()
-  const resolveOptions = sessionResolveOptions(exec, request.sandboxPolicy?.workspaceRoot)
+  const resolveOptions = await sessionResolveOptions(ctx, exec)
   const resolve = async (path: string): Promise<FsTarget> => {
     const target = await ctx.fs.resolve(path, resolveOptions)
     const prior = targets.get(target.targetKey)

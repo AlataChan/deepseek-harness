@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在 agent 需要运行 bash 命令的任何组合中加载本插件：一旦挂载执行器提供方与 `dsh-shell-env` 注册表，它就注册 `bash` 工具，并在 `tools`、`shell`、`systemPrompt` 与 `shellEnv` 服务就绪之前保持等待。
@@ -55,6 +56,7 @@ kind: "package-reference"
 工具执行 `bash -c <command>` 并返回合并后的输出。命令每次调用都运行在全新 shell 中，因此状态从不保留——请传 `workdir` 而不是 `cd`。非零退出以 `[exit code: N]` 报告给 agent 解读，而不是作为工具错误抛出。主动语态的 `description`（5–10 个词）在 UI 中标注该调用；schema 将它列在 `command` 前并要求模型先输出它，但不强制 JSON 成员顺序。`timeoutMs` 覆盖执行器的默认值与上限。超出执行器流上限的输出会被截断为尾部，完整输出保存到 spill 文件并报告其路径。工具描述要求 agent 在任何删除或移动前校验解析后的绝对目标路径，并用 `${VAR:?}` 保护此类路径中的变量。
 
 <a id="running-long-commands-in-the-background"></a>
+
 ### 后台运行长时间命令
 
 传入 `run_in_background: true` 会准入任务并立即返回 job id；限制准备可能仍在进行，且不设后台执行超时。进程可用前输出为空。任务取消会中止准备并停止随后返回的进程；启动失败使已准入任务以失败状态结算。agent 用 `job_output` 读取输出（除非 `wait: true`，否则非阻塞）、用 `job_list` 列出任务、用 `job_kill` 停止任务；完成的任务会在会话内通知拥有它的 agent。后台支持需要挂载通用任务运行时（`dsh-jobs-local`）及其控制工具（`dsh-tool-jobs`）。后台 job 把运行的非消费 `observed` 读取器交给 job 注册表作为拉式源；注册表按自己的节奏（`dsh-jobs-local` 的 `pumpPollMs`）把它们泵入 job 的输出环，Web 客户端由此流式看到实时输出，模型的 `job_output` 读取则经另一个游标消费同一份字节。读取器抛错只记录一次，该流就此停止，job 继续跑到自己的结算。输出环是尽力而为的实时预览：stdout 与 stderr 按轮询轮次复制，同一个轮询窗口内两条流的写入会先 stdout 后 stderr 出现，而不是按写入顺序。
@@ -74,6 +76,7 @@ kind: "package-reference"
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -109,6 +112,7 @@ kind: "package-reference"
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当包级约定不够用时阅读以下页面。它们从 shell 家族逐步进入执行器 seam、任务运行时，以及行为背后的决策笔记。
@@ -123,7 +127,10 @@ kind: "package-reference"
 
 -----
 
+新命令从已校验的会话执行目录解析工作目录。相对 workdir 以该目录为基准；沙箱 workspaceRoot 保持原项目根目录。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 系统提示词
@@ -215,6 +222,7 @@ renderer 输出依数据而定的 stdout 尾部，再输出可选的 `[stderr]` 
 - **任务列表会显示每条运行中的前台命令**——完成的命令随结果离开，但 Web 任务列表尚未标出哪些运行中的行仍有工具调用在等待。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

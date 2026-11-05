@@ -190,9 +190,13 @@ describe('ui-plugin-manager browser plugin', () => {
     face.editInstallSpec('pkg')
     b.remote.emit('plugin-manager/install-log', [{ jobId: 'j', argv: ['pnpm', 'add', 'pkg'], cwd: '/p', stream: 'stdout', text: 'early' }])
     b.remote.emit('plugin-manager/install-state', [{ requestId: 'foreign', phase: 'installing' }])
+    b.remote.emit('plugin-manager/update-state', [{ requestId: 'foreign', step: 'restoring' }])
+    expect(face.hooks.pluginManager.getSnapshot().update).toBeNull()
     expect(face.hooks.pluginManager.getSnapshot().install.runs).toEqual([])
 
     await fiber.dispose()
+    b.remote.emit('plugin-manager/update-state', [{ requestId: 'foreign', step: 'installing' }])
+    expect(face.hooks.pluginManager.getSnapshot().update).toBeNull()
     expect(b.ctx.get('pluginNavigation')).toBeUndefined()
     expect(b.slots.entries('main')).toHaveLength(0)
     expect(b.slots.entries('shell.overlay')).toHaveLength(0)

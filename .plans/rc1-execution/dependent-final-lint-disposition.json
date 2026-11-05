@@ -1,0 +1,9 @@
+{
+  "baseline": "m2-lint-current-2.json",
+  "current": "dependent-full-lint-final.json",
+  "priorDiagnosticCount": 566,
+  "currentDiagnosticCount": 564,
+  "newDiagnosticInstances": 0,
+  "newDiagnostics": [],
+  "wholeLintPassing": false
+}

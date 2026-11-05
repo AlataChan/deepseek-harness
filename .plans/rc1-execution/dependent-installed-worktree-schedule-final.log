@@ -1,0 +1,10 @@
+PASS Optional installed Changes API accepts and cancels a local request
+PASS Bundled Git service reads actual original-checkout changes
+PASS Actual model request receives the isolated working directory
+PASS Original checkout remains unchanged by isolated execution
+PASS Human task creation reserves the default new-once target
+PASS Delivery adopts exactly the reserved target Session
+PASS Task manager exposes the actual persisted delivery receipt
+PASS Cold companion restart retains the adopted destination
+PASS Public task manager removes the retained task with its revision token
+{"checks":9,"paidCalls":0,"externalSends":0,"optionalReviewExplicitlyEnabled":true}

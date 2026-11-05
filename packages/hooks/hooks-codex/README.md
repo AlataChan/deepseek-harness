@@ -23,6 +23,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Mount this package, point `configPath` at your `hooks.json`, and the hooks you already have start firing at the corresponding moments in agent runs. There is nothing else to set up before the first hook works.
@@ -71,6 +72,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -116,6 +118,7 @@ The [hook-bridges Agent Note](../../../.agents/notes/archived/feature/2026-06-30
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the shared protocol to the bridge design and the extension points it programs against.
@@ -128,7 +131,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+Agent-bound hook commands use the validated execution directory while hook payloads retain original Session identity. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Hook-provided context
@@ -176,6 +182,7 @@ These limits describe what your Codex hooks cannot do through this bridge yet, a
 - **Config loading and execution are partial** — one process-level `configPath` is parsed at load; Codex's active user, project, session, system/managed, and plugin layers, trust controls, and inline `config.toml` hook form are not implemented. Only synchronous `command` handlers run, current metadata such as `statusMessage` and `commandWindows` is ignored, and matching handlers run serially rather than with Codex's concurrent launch semantics.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

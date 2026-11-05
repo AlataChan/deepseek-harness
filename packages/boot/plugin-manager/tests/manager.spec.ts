@@ -8,6 +8,7 @@ import { join, resolve } from 'node:path'
 import { homedir, tmpdir } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { execa } from 'execa'
+import { z } from 'zod'
 import type { Context } from '@deepseek-ai/cordis'
 import { afterAll, beforeAll, expect, it, onTestFinished, vi } from 'vitest'
 import {
@@ -300,12 +301,12 @@ it('lists bundle versions and current-profile plugin targets', async () => {
   expect(plugins.find(row => row.entryId === 'include:manager')?.readOnlyReason).toBe('management-required')
   expect(await manager.listBundles()).toEqual([
     {
-      name: 'core', version: '1.0.0', enabled: true, installed: false, optional: false, removable: false, readOnlyReason: 'management-required',
+      name: 'core', version: '1.0.0', enabled: true, installed: false, optional: false, removable: false, updatable: false, readOnlyReason: 'management-required',
       meta: { title: 'core' },
       rows: [{ rowId: 'manager', moduleName: 'cordis:manager', entryId: 'include:manager' }], overrides: [],
     },
     {
-      name: 'extra', version: '1.0.0', source: 'extra@1.0.0', enabled: true, installed: true, optional: false, removable: true,
+      name: 'extra', version: '1.0.0', source: 'extra@1.0.0', enabled: true, installed: true, optional: false, removable: true, updatable: true,
       meta: { title: 'extra' },
       rows: [{ rowId: 'managed', moduleName: pathToFileURL(join(dir, 'node_modules', 'extra', 'plugin.mjs')).href, entryId: 'include:managed' }], overrides: [],
     },
@@ -327,7 +328,8 @@ it('describes a bundle by its manifest and patch: one-liner, rows without a live
   writeFileSync(join(dir, 'package.json'), JSON.stringify(manifest))
   const moduleName = pathToFileURL(join(dir, 'node_modules', 'described', 'plugin.mjs')).href
   expect((await manager.listBundles()).find(row => row.name === 'described')).toEqual({
-    name: 'described', version: '2.0.0', description: 'Describes itself.', source: 'described@2.0.0', enabled: false, installed: true, optional: false, removable: true,
+    name: 'described', version: '2.0.0', description: 'Describes itself.', source: 'described@2.0.0',
+    enabled: false, installed: true, optional: false, removable: true, updatable: true,
     meta: { title: 'described', description: 'Describes itself.' },
     rows: [{ rowId: 'described-row', moduleName }], overrides: ['managed'],
   })
@@ -450,7 +452,7 @@ it.each([
   writeFileSync(join(dir, 'package.json'), JSON.stringify(manifest))
 
   expect((await manager.listBundles()).find(row => row.name === 'unnamed')).toEqual({
-    name: 'unnamed', version: '1.0.0', source: 'unnamed@1.0.0', enabled: false, installed: true, optional: false, removable: true,
+    name: 'unnamed', version: '1.0.0', source: 'unnamed@1.0.0', enabled: false, installed: true, optional: false, removable: true, updatable: true,
     rows: [], overrides: [], ...expected,
   })
 })
@@ -1092,7 +1094,7 @@ it.each(OPTIONAL_BUNDLES)('offers %s switched off and never removable', async (o
   expect((await manager.listBundles()).find(row => row.name === offered)).toEqual({
     name: offered, version: '3.0.0', description: 'Package one-liner.',
     meta: { title: offered, description: 'Package one-liner.' },
-    enabled: false, installed: false, optional: true, removable: false,
+    enabled: false, installed: false, optional: true, removable: false, updatable: false,
     rows: [{ rowId: 'offered-row', moduleName: pathToFileURL(join(supplied, 'plugin.mjs')).href }], overrides: [],
   })
   expect(await manager.setBundleEnabled(offered, true)).toMatchObject({ application: 'applied' })
@@ -1458,4 +1460,402 @@ it.each([false, true])('rechecks installed bundle peers before accepting a disab
     expect(readFileSync(join(dir, 'package.json'), 'utf8')).toBe(before)
   }
   expect(readProfileManifest('test', dir).dsh?.profile?.bundles).toEqual(['core', 'extra'])
+})
+
+/** Registry answers used by the explicit update cases; no registry subprocess runs. */
+function versionAnswer(value: object): operations.PackageViewResult {
+  return { exitCode: 0, stdout: JSON.stringify(value), stderr: '', timedOut: false }
+}
+
+it('RC1-09 lists newer versions with bounded lookups and compatibility peers', async () => {
+  const { manager } = await fixture('live', false, undefined, { versionListLimit: 2, versionLookupConcurrency: 1 })
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockImplementation(async (_dir, spec) => spec === 'extra'
+    ? versionAnswer({ versions: ['1.0.0', '1.1.0', '2.0.0', '3.0.0'], time: { '3.0.0': '2026-10-01T00:00:00Z' }, 'dist-tags': { latest: '3.0.0' } })
+    : versionAnswer({ dsh: { bundle: {} }, ...(spec.endsWith('3.0.0') ? { deprecated: 'old', peerDependencies: { '@deepseek-ai/dsh': '<0.0.1' } } : {}) }))
+  onTestFinished(() => { view.mockRestore() })
+  expect(await manager.listVersions('extra')).toMatchObject({ status: 'listed', installed: '1.0.0', omitted: 1,
+    versions: [{ version: '3.0.0', tags: ['latest'], deprecated: 'old', bundle: true, incompatible: { peers: { '@deepseek-ai/dsh': '<0.0.1' } } }, { version: '2.0.0' }] })
+  expect(view).toHaveBeenCalledTimes(3)
+})
+
+it('RC1-09 falls through unreachable registries and reports exhausted lookups', async () => {
+  const { manager } = await fixture('live', false, undefined, { registry: 'https://first.example/', fallbackRegistries: ['https://second.example/'] })
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockImplementation(async (_dir, _spec, options) => options.registry === 'https://first.example/'
+    ? { exitCode: 1, stdout: '', stderr: 'ECONNRESET', timedOut: false } : versionAnswer({ versions: ['1.0.0'] }))
+  onTestFinished(() => { view.mockRestore() })
+  expect(await manager.listVersions('extra')).toMatchObject({ status: 'listed', registry: 'https://second.example/', attempts: [{ problem: 'network' }, { registry: 'https://second.example/' }] })
+  view.mockResolvedValue({ exitCode: 1, stdout: '', stderr: 'ECONNRESET', timedOut: false })
+  expect(await manager.listVersions('extra')).toMatchObject({ status: 'refused', problem: 'network' })
+})
+
+it.each(['file:../extra', 'workspace:*', 'npm:other@1', 'git+https://example.org/a.git'])('RC1-09 locks source %s before lookup or write', async (source) => {
+  const { manager, dir } = await fixture('live', false, undefined, {}, undefined, (dir) => {
+    const saved = readProfileManifest('test', dir); saved.dependencies = { extra: source }; writeFileSync(join(dir, 'package.json'), JSON.stringify(saved))
+  })
+  const view = vi.spyOn(operations, 'viewProfilePackage')
+  const run = vi.spyOn(operations, 'runProfilePnpm')
+  onTestFinished(() => { view.mockRestore(); run.mockRestore() })
+  const before = readFileSync(join(dir, 'package.json'), 'utf8')
+  expect((await manager.listBundles()).find(b => b.name === 'extra')?.updatable).toBe(false)
+  expect(await manager.listVersions('extra')).toMatchObject({ status: 'refused', problem: 'not-updatable' })
+  expect(await manager.updateBundle('extra', '2.0.0')).toMatchObject({ step: 'check', result: { application: 'failed', changed: false } })
+  expect(view).not.toHaveBeenCalled(); expect(run).not.toHaveBeenCalled()
+  expect(readFileSync(join(dir, 'package.json'), 'utf8')).toBe(before)
+})
+
+it('RC1-09 refuses locked, shipped, management, missing and non-semver rows', async () => {
+  const { manager, dir, profile } = await fixture('live', false, undefined, { lockedBundles: ['extra'] })
+  const view = vi.spyOn(operations, 'viewProfilePackage')
+  const run = vi.spyOn(operations, 'runProfilePnpm')
+  onTestFinished(() => { view.mockRestore(); run.mockRestore() })
+  for (const name of ['extra', 'core', 'missing']) expect(await manager.listVersions(name)).toMatchObject({ status: 'refused', problem: 'not-updatable' })
+  writeFileSync(profile.installAnchor, JSON.stringify({ name: 'installation', dependencies: { extra: '1.0.0' } }))
+  expect(await manager.updateBundle('extra', '2.0.0')).toMatchObject({ step: 'check', result: { changed: false, application: 'failed' } })
+  const file = join(dir, 'node_modules', 'extra', 'package.json')
+  const info = JSON.parse(readFileSync(file, 'utf8')) as { version: string }; info.version = 'dev'; writeFileSync(file, JSON.stringify(info))
+  expect((await manager.listBundles()).find(b => b.name === 'extra')?.updatable).toBe(false)
+  expect(view).not.toHaveBeenCalled(); expect(run).not.toHaveBeenCalled()
+})
+
+it.each(['1.0.0', 'garbage', '2.0.0'])('RC1-09 refuses unchecked or incompatible target %s without a write', async (version) => {
+  const { manager } = await fixture()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(versionAnswer({ dsh: { bundle: {} }, peerDependencies: { '@deepseek-ai/dsh': '<0.0.1' } }))
+  const run = vi.spyOn(operations, 'runProfilePnpm')
+  onTestFinished(() => { view.mockRestore(); run.mockRestore() })
+  expect(await manager.updateBundle('extra', version)).toMatchObject({ step: 'check', result: { changed: false, application: 'failed' } })
+  expect(run).not.toHaveBeenCalled()
+})
+
+it.each(['success', 'install-failure', 'activation-failure', 'restore-failure', 'cancelled', 'remembered-registry'] as const)('RC1-09 update %s retains exact rollback policy', async (outcome) => {
+  const { ctx, manager, dir, bundle } = await fixture()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(versionAnswer({ dsh: { bundle: {} } }))
+  const calls: string[][] = []
+  const run = vi.spyOn(operations, 'runProfilePnpm').mockImplementation(async (_dir, args) => {
+    calls.push([...args])
+    const saved = readProfileManifest('test', dir)
+    if (args[0] === 'remove') { delete saved.dependencies?.extra; saved.dsh!.profile!.bundles = (saved.dsh!.profile!.bundles ?? []).filter(n => n !== 'extra') }
+    else {
+      const target = args[1] === 'extra@2.0.0'
+      if (target && (outcome === 'install-failure' || outcome === 'restore-failure' || outcome === 'remembered-registry')) return { exitCode: 1, output: 'target failed', truncated: false, logPath: '/test.log', kind: 'unknown' }
+      if (!target && outcome === 'restore-failure') return { exitCode: 1, output: 'restore failed', truncated: false, logPath: '/test.log', kind: 'unknown' }
+      bundle('extra', [{ id: 'managed', name: './plugin.mjs', config: { fail: target && outcome === 'activation-failure' } }])
+      const path = join(dir, 'node_modules', 'extra', 'package.json')
+      const manifest = JSON.parse(readFileSync(path, 'utf8')) as { version: string }; manifest.version = target ? '2.0.0' : '1.0.0'; writeFileSync(path, JSON.stringify(manifest))
+      saved.dependencies = { ...saved.dependencies, extra: target ? '2.0.0' : '1.0.0' }
+    }
+    writeFileSync(join(dir, 'package.json'), JSON.stringify(saved))
+    return { exitCode: 0, output: '', truncated: false, logPath: '/test.log' }
+  })
+  onTestFinished(() => { view.mockRestore(); run.mockRestore() })
+  if (outcome === 'remembered-registry') {
+    await manager.installBundle('extra@1.0.0', { registry: 'https://private.example/' })
+    calls.length = 0
+  }
+  const signal = new AbortController()
+  ctx.on('plugin-manager/update-state', (progress) => { if (outcome === 'cancelled' && progress.step === 'installing') signal.abort() })
+  const result = await manager.updateBundle('extra', '2.0.0', { requestId: '824103ec-bc45-489d-bb85-5b4fe0aefc78' as PluginInstallRequestId }, signal.signal)
+  expect(calls[0]).toEqual(['remove', 'extra'])
+  if (outcome === 'success') {
+    expect(result).toMatchObject({ from: '1.0.0', to: '2.0.0', result: { application: 'applied' } })
+    expect(readProfileManifest('test', dir).dependencies?.extra).toBe('2.0.0')
+  } else {
+    expect(result.result.application).toBe(outcome === 'cancelled' ? 'cancelled' : 'failed')
+    expect(result.restore?.application).toBe(outcome === 'restore-failure' ? 'failed' : 'applied')
+    expect(calls.at(-1)).toContain('extra@1.0.0')
+    if (outcome !== 'restore-failure') expect(readProfileManifest('test', dir).dependencies?.extra).toBe('1.0.0')
+    if (outcome === 'activation-failure') expect(calls.filter(c => c[0] === 'remove')).toHaveLength(2)
+  }
+  expect(calls.filter(c => c[0] === 'add').every(c => c.includes('--save-exact'))).toBe(true)
+  if (outcome === 'remembered-registry') {
+    expect(run.mock.calls.at(-1)?.[1]).toContain('--registry=https://private.example/')
+  }
+})
+
+it('RC1-09 startup-only updates install over the existing version and require restart', async () => {
+  const { manager } = await fixture('startup')
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(versionAnswer({ dsh: { bundle: {} } }))
+  const install = vi.spyOn(manager, 'installBundle').mockResolvedValue({ target: 'extra', stage: 'enable', changed: true, application: 'restart-required' })
+  const remove = vi.spyOn(manager, 'removeBundle')
+  onTestFinished(() => { view.mockRestore(); install.mockRestore(); remove.mockRestore() })
+  expect(await manager.updateBundle('extra', '2.0.0')).toMatchObject({ result: { application: 'restart-required' } })
+  expect(remove).not.toHaveBeenCalled()
+})
+
+it('RC1-09 cancellation before lookup and removal changes nothing', async () => {
+  const { manager } = await fixture()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(versionAnswer({ dsh: { bundle: {} } }))
+  const remove = vi.spyOn(manager, 'removeBundle')
+  onTestFinished(() => { view.mockRestore(); remove.mockRestore() })
+  expect(await manager.updateBundle('extra', '2.0.0', {}, AbortSignal.abort())).toMatchObject({ result: { application: 'cancelled', changed: false } })
+  expect(view).not.toHaveBeenCalled()
+  const control = new AbortController()
+  view.mockImplementation(async () => { control.abort(); return versionAnswer({ dsh: { bundle: {} } }) })
+  expect(await manager.updateBundle('extra', '2.0.0', {}, control.signal)).toMatchObject({ result: { application: 'cancelled', changed: false } })
+  expect(remove).not.toHaveBeenCalled()
+})
+
+it('RC1-09 validates lookup config bounds and honours cancellation while resolving the registry plan', async () => {
+  const invalid = [{ versionListLimit: 0 }, { versionLookupConcurrency: 0 }, { versionLookupConcurrency: 1.5 },
+    { versionListLimit: 101 }, { versionLookupConcurrency: 17 }]
+  for (const config of invalid) {
+    expect(() => PluginManager.Config(config)).toThrow()
+  }
+  const { manager } = await fixture()
+  const control = new AbortController()
+  const read = vi.spyOn(manager, 'registries').mockImplementation(async () => { control.abort(); return { registry: null, fallbackRegistries: [], resolved: null } })
+  const view = vi.spyOn(operations, 'viewProfilePackage')
+  onTestFinished(() => { read.mockRestore(); view.mockRestore() })
+  expect(await manager.updateBundle('extra', '2.0.0', {}, control.signal)).toMatchObject({ result: { application: 'cancelled', changed: false } })
+  expect(view).not.toHaveBeenCalled()
+})
+
+it('RC1-09 emits bounded operation facts without local specs or diagnostics', async () => {
+  const { ctx, manager } = await fixture()
+  const records: import('../src/types.ts').PluginOperation[] = []
+  ctx.on('plugin-manager/operation', (operation) => { records.push(operation) })
+  const result = await manager.installBundle('--invalid-local-secret')
+  expect(result.application).toBe('failed')
+  expect(records).toMatchObject([{ phase: 'started', target: null }, { phase: 'settled', target: null, application: 'failed' }])
+  expect(records[0]?.id).toBe(records[1]?.id)
+  expect(JSON.stringify(records)).not.toContain('invalid-local-secret')
+})
+
+it('RC1-09 startup-only refuses a package changed during the target registry check', async () => {
+  const { manager, dir } = await fixture('startup')
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockImplementation(async () => {
+    const file = join(dir, 'node_modules', 'extra', 'package.json')
+    const info = JSON.parse(readFileSync(file, 'utf8')) as { version: string }
+    info.version = '3.0.0'; writeFileSync(file, JSON.stringify(info))
+    return versionAnswer({ dsh: { bundle: {} } })
+  })
+  const install = vi.spyOn(manager, 'installBundle').mockResolvedValue({ changed: true, application: 'restart-required', stage: 'enable', target: 'extra' })
+  const remove = vi.spyOn(manager, 'removeBundle')
+  onTestFinished(() => { view.mockRestore(); install.mockRestore(); remove.mockRestore() })
+  expect(await manager.updateBundle('extra', '2.0.0')).toMatchObject({ step: 'check', result: { application: 'failed', changed: false } })
+  expect(install).not.toHaveBeenCalled(); expect(remove).not.toHaveBeenCalled()
+})
+
+it('RC1-09 real management tool exposes the Host update eligibility without version actions', async () => {
+  const { manager, ctx } = await fixture()
+  const [systemPrompt, tools, projections, policy, tool, { ToolCallId }] = await Promise.all([
+    import('@deepseek-ai/dsh-system-prompt'), import('@deepseek-ai/dsh-tools'), import('@deepseek-ai/dsh-session-projection'),
+    import('@deepseek-ai/dsh-sandbox-policy'), import('../src/tools.ts'), import('@deepseek-ai/dsh-llm'),
+  ])
+  await ctx.plugin(systemPrompt.default)
+  await ctx.plugin(tools.default)
+  await ctx.plugin(projections.default)
+  await ctx.plugin(policy.default, { mode: 'danger-full-access' })
+  const owner = await ctx.plugin(tool)
+  const result = await ctx.tools.execute({ name: 'plugin_manager', arguments: { action: 'list_bundles' },
+    callId: ToolCallId('rc1-09-list'), signal: new AbortController().signal })
+  expect(result.isError).toBe(false)
+  if (typeof result.value !== 'string') throw new Error('Expected serialized management output')
+  const output = z.object({ entries: z.array(z.object({ name: z.string(), updatable: z.boolean() })) }).parse(JSON.parse(result.value))
+  expect(output.entries.map(({ name, updatable }) => ({ name, updatable }))).toEqual([
+    { name: 'core', updatable: false }, { name: 'extra', updatable: true },
+  ])
+  expect(output.entries).toHaveLength((await manager.listBundles()).length)
+  const rejected = await ctx.tools.execute({ name: 'plugin_manager', arguments: { action: 'update_bundle', target: 'extra' },
+    callId: ToolCallId('rc1-09-invalid-update'), signal: new AbortController().signal })
+  expect(rejected.isError).toBe(true)
+  await owner.dispose()
+  expect(ctx.tools.get('plugin_manager')).toBeUndefined()
+})
+
+it.each(['malformed-json', 'no-versions', 'invalid-peers', 'detail-refused'] as const)('RC1-09 refuses %s version metadata without changing the profile', async (answer) => {
+  const { manager, dir } = await fixture('live', false, undefined, { versionLookupConcurrency: 1 })
+  const before = readFileSync(join(dir, 'package.json'), 'utf8')
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockImplementation(async (_dir, spec) => {
+    if (answer === 'malformed-json') return { exitCode: 0, stdout: '{bad', stderr: '', timedOut: false }
+    if (answer === 'no-versions') return versionAnswer({})
+    if (spec === 'extra') return versionAnswer({ versions: ['2.0.0', '3.0.0'] })
+    if (answer === 'invalid-peers') return versionAnswer({ dsh: { bundle: {} }, peerDependencies: [] })
+    return { exitCode: 1, stdout: '', stderr: 'ERR_PNPM_NO_MATCHING_VERSION', timedOut: false }
+  })
+  onTestFinished(() => { view.mockRestore() })
+  expect(await manager.listVersions('extra')).toMatchObject({ status: 'refused' })
+  expect(readFileSync(join(dir, 'package.json'), 'utf8')).toBe(before)
+  if (answer === 'detail-refused' || answer === 'invalid-peers') expect(view).toHaveBeenCalledTimes(2)
+})
+
+it.each(['identity', 'not-bundle', 'invalid-peers', 'refused', 'exception'] as const)('RC1-09 rejects target %s before removal', async (failure) => {
+  const { manager } = await fixture()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockImplementation(async () => {
+    if (failure === 'exception') throw new Error('registry transport closed')
+    if (failure === 'refused') return { exitCode: 1, stdout: '', stderr: 'unclassified failure', timedOut: false }
+    return versionAnswer({ name: failure === 'identity' ? 'impostor' : 'extra', version: '2.0.0',
+      ...(failure === 'not-bundle' ? {} : { dsh: { bundle: {} } }), ...(failure === 'invalid-peers' ? { peerDependencies: [] } : {}) })
+  })
+  const run = vi.spyOn(operations, 'runProfilePnpm')
+  onTestFinished(() => { view.mockRestore(); run.mockRestore() })
+  const result = await manager.updateBundle('extra', '2.0.0')
+  expect(result).toMatchObject({ step: 'check', result: { application: 'failed', changed: false } })
+  expect(result.restore).toBeUndefined()
+  expect(run).not.toHaveBeenCalled()
+})
+
+it('RC1-09 serializes duplicate updates while checking and releases the reservation on failure', async () => {
+  const { manager } = await fixture()
+  let release!: (value: operations.PackageViewResult) => void
+  const pending = new Promise<operations.PackageViewResult>((resolve) => { release = resolve })
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockReturnValue(pending)
+  onTestFinished(() => { view.mockRestore() })
+  const first = manager.updateBundle('extra', '2.0.0')
+  await vi.waitFor(() => { expect(view).toHaveBeenCalledOnce() })
+  expect(await manager.updateBundle('extra', '2.0.0')).toMatchObject({ result: { changed: false, application: 'failed', error: { diagnostic: 'An update is already running for this package' } } })
+  release(versionAnswer({}))
+  expect(await first).toMatchObject({ result: { error: { code: 'not-bundle' } } })
+  expect(await manager.updateBundle('extra', '2.0.0')).toMatchObject({ result: { error: { code: 'not-bundle' } } })
+  expect(view).toHaveBeenCalledTimes(2)
+})
+
+it('RC1-09 stops before removal when the requester cancels after the target check', async () => {
+  const { manager, ctx } = await fixture()
+  const signal = new AbortController()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(versionAnswer({ dsh: { bundle: {} } }))
+  const run = vi.spyOn(operations, 'runProfilePnpm')
+  ctx.on('plugin-manager/update-state', (progress) => { if (progress.step === 'removing') signal.abort() })
+  onTestFinished(() => { view.mockRestore(); run.mockRestore() })
+  expect(await manager.updateBundle('extra', '2.0.0', { requestId: '824103ec-bc45-489d-bb85-5b4fe0aefc78' as PluginInstallRequestId }, signal.signal))
+    .toMatchObject({ step: 'check', result: { changed: false, application: 'cancelled' } })
+  expect(run).not.toHaveBeenCalled()
+})
+
+it('RC1-09 does not install or restore after a failed removal', async () => {
+  const { manager } = await fixture()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(versionAnswer({ dsh: { bundle: {} } }))
+  const run = vi.spyOn(operations, 'runProfilePnpm').mockResolvedValue({ exitCode: 1, output: 'remove failed', truncated: false, logPath: '/test.log', kind: 'unknown' })
+  onTestFinished(() => { view.mockRestore(); run.mockRestore() })
+  const result = await manager.updateBundle('extra', '2.0.0')
+  expect(result).toMatchObject({ step: 'remove', result: { application: 'failed' } })
+  expect(result.restore).toBeUndefined()
+  expect(run.mock.calls.map(([, args]) => args)).toEqual([['remove', 'extra']])
+})
+
+it.each([
+  { exitCode: 1, stdout: '', stderr: '', timedOut: true },
+  { exitCode: 1, stdout: 'ERR_PNPM_FETCH_404', stderr: '', timedOut: false },
+  { exitCode: 1, stdout: '', stderr: '', timedOut: false },
+  { exitCode: 1, stdout: '', stderr: '', timedOut: false, cause: new Error('transport failed') },
+  { exitCode: 0, stdout: '', stderr: '', timedOut: false },
+])('RC1-09 retains lookup failure facts %j', async (response) => {
+  const { manager } = await fixture()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(response)
+  onTestFinished(() => { view.mockRestore() })
+  const result = await manager.listVersions('extra')
+  expect(result.status).toBe('refused')
+  if (result.status === 'refused') expect(result.reason.length).toBeGreaterThan(0)
+})
+
+it('contains a diagnostic subscriber rejection without changing the operation result', async () => {
+  const { manager, ctx, dir } = await fixture()
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+  onTestFinished(() => { logged.mockRestore() })
+  ctx.on('plugin-manager/operation', async () => { throw new Error('diagnostic sink offline') })
+  expect(await manager.setBundleEnabled('extra', false)).toMatchObject({ application: 'applied' })
+  await vi.waitFor(() => { expect(logged).toHaveBeenCalledWith('dsh plugin-manager: operation diagnostic delivery failed') })
+  expect(readProfileManifest('test', dir).dsh?.profile?.bundles).not.toContain('extra')
+})
+
+it('RC1-09 cancels an active target install and restores the previous version independently', async () => {
+  const { manager, dir, bundle } = await fixture()
+  const control = new AbortController()
+  const started = Promise.withResolvers<undefined>()
+  const release = Promise.withResolvers<undefined>()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(versionAnswer({ dsh: { bundle: {} } }))
+  const run = vi.spyOn(operations, 'runProfilePnpm').mockImplementation(async (_profile, args, options) => {
+    const saved = readProfileManifest('test', dir)
+    if (args[0] === 'remove') {
+      delete saved.dependencies?.extra
+      saved.dsh!.profile!.bundles = (saved.dsh!.profile!.bundles ?? []).filter(name => name !== 'extra')
+    } else if (args[1] === 'extra@2.0.0') {
+      started.resolve(undefined)
+      await release.promise
+      expect(options.signal?.aborted).toBe(true)
+      return { exitCode: 1, output: 'cancelled', truncated: false, logPath: '/test.log', kind: 'unknown' }
+    } else {
+      expect(options.signal?.aborted).toBe(false)
+      bundle('extra', [{ id: 'managed', name: './plugin.mjs' }])
+      saved.dependencies = { ...saved.dependencies, extra: '1.0.0' }
+    }
+    writeFileSync(join(dir, 'package.json'), JSON.stringify(saved))
+    return { exitCode: 0, output: '', truncated: false, logPath: '/test.log' }
+  })
+  const pending = manager.updateBundle('extra', '2.0.0', {}, control.signal)
+  onTestFinished(async () => { release.resolve(undefined); await pending; view.mockRestore(); run.mockRestore() })
+  await started.promise
+  control.abort()
+  release.resolve(undefined)
+  expect(await pending).toMatchObject({ result: { application: 'cancelled' }, restore: { application: 'applied' } })
+  expect(readProfileManifest('test', dir).dependencies?.extra).toBe('1.0.0')
+})
+
+it('RC1-09 refuses a stale update after disposal changes the loaded composition', async () => {
+  const { manager, ctx } = await fixture()
+  const entered = Promise.withResolvers<undefined>()
+  const release = Promise.withResolvers<undefined>()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockImplementation(async () => {
+    entered.resolve(undefined)
+    await release.promise
+    return versionAnswer({ dsh: { bundle: {} } })
+  })
+  const run = vi.spyOn(operations, 'runProfilePnpm')
+  const updating = manager.updateBundle('extra', '2.0.0')
+  onTestFinished(async () => { release.resolve(undefined); await updating; view.mockRestore(); run.mockRestore() })
+  await entered.promise
+  await ctx.fiber.dispose()
+  release.resolve(undefined)
+  expect(await updating).toMatchObject({ step: 'check', result: { application: 'failed', changed: false } })
+  expect(run).not.toHaveBeenCalled()
+})
+
+it('RC1-09 reports an interrupted removal without starting a target install', async () => {
+  const { manager, ctx } = await fixture()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(versionAnswer({ dsh: { bundle: {} } }))
+  const run = vi.spyOn(operations, 'runProfilePnpm')
+  let disposing: Promise<void> | undefined
+  ctx.on('plugin-manager/update-state', (progress) => {
+    if (progress.step === 'removing') disposing = ctx.fiber.dispose()
+  })
+  onTestFinished(async () => { await disposing; view.mockRestore(); run.mockRestore() })
+  expect(await manager.updateBundle('extra', '2.0.0', { requestId: '824103ec-bc45-489d-bb85-5b4fe0aefc78' as PluginInstallRequestId }))
+    .toMatchObject({ step: 'remove', result: { application: 'failed', changed: false } })
+  await disposing
+  expect(run).not.toHaveBeenCalled()
+})
+
+it('RC1-09 honors cancellation requested by an install-start observer before the signal listener attaches', async () => {
+  const { manager, ctx, dir } = await fixture()
+  const control = new AbortController()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockResolvedValue(versionAnswer({ dsh: { bundle: {} } }))
+  const run = vi.spyOn(operations, 'runProfilePnpm').mockImplementation(async (_profile, args) => {
+    if (args[0] === 'remove') {
+      const saved = readProfileManifest('test', dir)
+      delete saved.dependencies?.extra
+      saved.dsh!.profile!.bundles = (saved.dsh!.profile!.bundles ?? []).filter(name => name !== 'extra')
+      writeFileSync(join(dir, 'package.json'), JSON.stringify(saved))
+      return { exitCode: 0, output: '', truncated: false, logPath: '/test.log' }
+    }
+    return { exitCode: 1, output: 'not installed', truncated: false, logPath: '/test.log', kind: 'unknown' }
+  })
+  ctx.on('plugin-manager/operation', (operation) => {
+    if (operation.phase === 'started' && operation.reason === 'install') control.abort()
+  })
+  onTestFinished(() => { view.mockRestore(); run.mockRestore() })
+  const result = await manager.updateBundle('extra', '2.0.0', {}, control.signal)
+  expect(control.signal.aborted).toBe(true)
+  expect(result.result.application).toBe('cancelled')
+  expect(result.restore).toBeDefined()
+})
+
+it('RC1-09 checks an explicitly requested private registry without trying public registries', async () => {
+  const { manager } = await fixture()
+  const view = vi.spyOn(operations, 'viewProfilePackage').mockImplementation(async (_dir, spec) => versionAnswer(
+    spec === 'extra' ? { versions: ['2.0.0'] } : { dsh: { bundle: {} } },
+  ))
+  onTestFinished(() => { view.mockRestore() })
+  expect(await manager.listVersions('extra', { registry: 'https://private.example/' })).toMatchObject({
+    status: 'listed', registry: 'https://private.example/', versions: [{ version: '2.0.0' }],
+  })
+  expect(view.mock.calls.map(([, , options]) => options.registry)).toEqual(['https://private.example/', 'https://private.example/'])
 })

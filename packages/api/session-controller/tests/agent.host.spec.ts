@@ -431,7 +431,9 @@ describe('ApiSession create or adoption', () => {
       list: () => Promise.resolve([meta]),
       inspect: () => Promise.resolve({ meta, events }),
     })
+    const presetProjection = await ctx.sessionProjections.register(agentPresetProjectionDefinition)
     ctx.provide('agentPresets', {
+      presetOf: (session: Parameters<typeof presetProjection.stateOf>[0]) => presetProjection.stateOf(session),
       resolve: (id?: string) => Promise.resolve({ id: id ?? 'minimal' }),
       mount: () => Promise.resolve(),
     } as never)

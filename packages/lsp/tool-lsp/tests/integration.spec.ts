@@ -1,3 +1,5 @@
+import { SessionId } from '@deepseek-ai/dsh-session'
+import { mountDirectoryFixture, createDirectoryFixtureAgent } from '@deepseek-ai/dsh-working-directory-testkit'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdtemp, mkdir, rm, writeFile, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -65,19 +67,20 @@ async function mount(hang: boolean, timeoutMs?: number): Promise<Context> {
     },
   })
   await ctx.plugin(TimeoutPolicy)
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolLsp, timeoutMs !== undefined ? { timeoutMs } : {})
   return ctx
 }
 
 let seq = 0
 const testToolSignal = new AbortController().signal
-function call(ctx: Context, args: unknown) {
+async function call(ctx: Context, args: unknown) {
   return ctx.tools.execute({
     signal: testToolSignal,
     callId: `int-${++seq}` as never,
     name: 'lsp',
     arguments: args,
-    agent: { session: { header: { cwd: ws } } } as never,
+    agent: await createDirectoryFixtureAgent(ctx, SessionId(`lsp-int-${seq}`), ws),
   })
 }
 

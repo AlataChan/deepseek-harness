@@ -53,10 +53,15 @@ export function useAnchoredPosition(options: AnchoredPositionOptions): CSSProper
       const panel = panelRef.current
       const width = panel?.offsetWidth ?? 0
       const height = panel?.offsetHeight ?? 0
+      const viewport = window.visualViewport
+      const x = viewport?.offsetLeft ?? 0
+      const y = viewport?.offsetTop ?? 0
+      const viewportWidth = viewport?.width ?? window.innerWidth
+      const viewportHeight = viewport?.height ?? window.innerHeight
       let left = align === 'end' ? rect.right - width : rect.left
       let top = side === 'top' ? rect.top - gap - height : rect.bottom + gap
-      if (width > 0) left = Math.min(Math.max(left, margin), window.innerWidth - width - margin)
-      if (height > 0) top = Math.min(Math.max(top, overlayTopMargin(margin)), window.innerHeight - height - margin)
+      if (width > 0) left = Math.max(x + margin, Math.min(left, x + viewportWidth - width - margin))
+      if (height > 0) top = Math.max(y + overlayTopMargin(margin), Math.min(top, y + viewportHeight - height - margin))
       /* v8 ignore stop */
       setPosition({ left, top })
     }
@@ -65,6 +70,8 @@ export function useAnchoredPosition(options: AnchoredPositionOptions): CSSProper
     place()
     window.addEventListener('scroll', place, true)
     window.addEventListener('resize', place)
+    window.visualViewport?.addEventListener('resize', place)
+    window.visualViewport?.addEventListener('scroll', place)
     // The panel's own height changes without either event — a status line
     // appearing inside it, or a `resize: vertical` textarea dragged taller —
     // and a stale clamp would let a panel near the bottom edge cross the
@@ -80,6 +87,8 @@ export function useAnchoredPosition(options: AnchoredPositionOptions): CSSProper
       observer?.disconnect()
       window.removeEventListener('scroll', place, true)
       window.removeEventListener('resize', place)
+      window.visualViewport?.removeEventListener('resize', place)
+      window.visualViewport?.removeEventListener('scroll', place)
     }
   }, [open, anchorRef, panelRef, side, align, gap, margin])
   return position

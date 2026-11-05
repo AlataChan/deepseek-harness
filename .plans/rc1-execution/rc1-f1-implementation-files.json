@@ -1,0 +1,1485 @@
+{
+  "sourceTag": {
+    "tag": "dsh-v0.2.2-rc.1",
+    "commit": "66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db",
+    "rule": "Behavior is taken from the tag. Do not follow origin/master past 66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db. Do not import the Forge tree as a unit."
+  },
+  "basePin": "dsh-v0.2.1-alpha.1",
+  "productVersion": "0.2.1-alpha.1",
+  "excludes": "Root-generated files, bilingual pair records, existing manifests/compiler aggregates/profile pins/catalog tests/registry and root-reserved shell/hooks/workflow tests are not worker-owned. docs/architecture.md is co-owned: worker changed only execution flow sentence; root translated and corrected desktop architecture.",
+  "files": [
+    {
+      "path": "apps/web/tests/worktree-review.e2e.ts",
+      "sha256": "ee46be3bb261c02343e7cb11533691caf9b4c87e8de4d7bc07e5c7d1a7a65f48",
+      "bytes": 3174,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "docs/subsystems/working-directory.md",
+      "sha256": "ad734f77e55bce72976d12ff01dcbcd0d1c12eeb3ae40154447cd448fa32850b",
+      "bytes": 2905,
+      "m2Sha256": null,
+      "tagBlob": "4e9ae74c57ed1b4ee10355d51a08c35235009018",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "docs/subsystems/working-directory.zh.md",
+      "sha256": "3768fbccb8dc42b2adcd944f9a1be95d3a647ed8774eb4090c187203bf78e82e",
+      "bytes": 2816,
+      "m2Sha256": null,
+      "tagBlob": "bb239ddc434132462d37bbabed7001c3ae489d28",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "docs/subsystems/worktrees.md",
+      "sha256": "ba4862dff7829f0a6a4f3ba325f78ed0156246bc01de496e06995e8d5ff59a0a",
+      "bytes": 7143,
+      "m2Sha256": null,
+      "tagBlob": "aefa3e4a3c6957f47aa623507977f2295c18397c",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "docs/subsystems/worktrees.zh.md",
+      "sha256": "1bb3fe9492690a423116b8d39c52f03fc692bff82817243955938d97316fe37e",
+      "bytes": 7075,
+      "m2Sha256": null,
+      "tagBlob": "0f7c7b1b021254a8750e3e4f6c438ac50a6bc4a0",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "docs/upgrade-guide/v0.2.1-alpha.1/required-working-directory-context/guide.md",
+      "sha256": "e0255f23eed8466904ef6854e6cc9cb991dbdecff23ad004c34b0be5e07d1d3d",
+      "bytes": 1103,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "docs/upgrade-guide/v0.2.1-alpha.1/required-working-directory-context/guide.zh.md",
+      "sha256": "56f5f0c9b30b2390563638ca623003a0e6782efffd63bffc3c5edf62bc1dba44",
+      "bytes": 987,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "docs/upgrade-guide/v0.2.1-alpha.1/working-directory/guide.md",
+      "sha256": "9e1f8ad6eb40395b93886ee74ddaf079e4e08089af3b2b2b5df5599e217e22e8",
+      "bytes": 1334,
+      "m2Sha256": null,
+      "tagBlob": "d51f48713c613c34a3a62604d66345e9871b64a3",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "docs/upgrade-guide/v0.2.1-alpha.1/working-directory/guide.zh.md",
+      "sha256": "41b0565fba4963a23a54a9bbf9069fe30f1addb311f388af6fa8e75583deec58",
+      "bytes": 1155,
+      "m2Sha256": null,
+      "tagBlob": "d8a985a9bd327619a5bfd20db15c62969756e220",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/api/session-controller/tests/entries-root-identity.host.spec.ts",
+      "sha256": "f68bf9681383f3015486acda0f523a55b563db8b8e511cd9ad24de2df00f1593",
+      "bytes": 1838,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/context/agent-instructions/README.md",
+      "sha256": "50a587c4427c6c5336243b61efb3bcff3ed17148dd0cd141817e78b502b2068d",
+      "bytes": 15535,
+      "m2Sha256": "d1edade247063681262c00c097c2fd2adbee46d84d43f1fc68bafc76392712bf",
+      "tagBlob": "49a66930d69cc8b67492d00e320d2f3d3aa17d90",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/context/agent-instructions/README.zh.md",
+      "sha256": "341a7fb0d7a11d42d1626c19db44b8121bd678b225b41ef68000cf8bf5b21a47",
+      "bytes": 14265,
+      "m2Sha256": "1389919681d60432e43479cbe775ba8b730e6602b8e5f73daad0f456c99b4889",
+      "tagBlob": "b584ccac1fe2e9bd5a53b92345ec9844122ec6ba",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/context/agent-instructions/src/index.ts",
+      "sha256": "42982654196db33b371506c76d0de2dee71ca71bb6b87cc3fb77767faf3c07b6",
+      "bytes": 15337,
+      "m2Sha256": "cf16ba83e461bf0c3bf85c642306706924cc89fc79a7dd4d3c8c4b18b8735275",
+      "tagBlob": "ec752e07150ff3da38e7d7264cee825f7d3f881b",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/context/agent-instructions/tests/agent-instructions.spec.ts",
+      "sha256": "7e85740b0c8ea25a8b689c405529fe9ac1effb5541db4cbd76613130971b6fd5",
+      "bytes": 228673,
+      "m2Sha256": "c46e3d0d177cec5ed590ff489aa8c3bfb33d1237535cf9be029b3a0c8d882e52",
+      "tagBlob": "5393fda5d1f3d85f88799b100bd06b8206c04fb5",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/context/file-reference-local/README.md",
+      "sha256": "dfa6e6348e6890174fdd1dd40d3903bb3f6c34c92790c28a15e97f40659ccc38",
+      "bytes": 7886,
+      "m2Sha256": null,
+      "tagBlob": "04669af8afec7b264e74e4cca97d0b55b5d582b6",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/context/file-reference-local/README.zh.md",
+      "sha256": "8e5e561621b09ccab7f3e245398cd55dc5605c70f206bf5a0022e981551900bb",
+      "bytes": 7425,
+      "m2Sha256": null,
+      "tagBlob": "319dbab044615dd5945fe6f5d821037e84243d46",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/context/file-reference-local/src/index.ts",
+      "sha256": "e6bd37331cdcc88f34c3bfb91b2bc77455a79cad9621df19fcb94a3cb9733fec",
+      "bytes": 5894,
+      "m2Sha256": null,
+      "tagBlob": "a179cebafbad2e3b05741571d84c5475de3d1cdf",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/context/file-reference-local/tests/service.spec.ts",
+      "sha256": "88aa558dd4a8be356f6acbe2e5859aa0b2bc914612061977a442d23e903dff9d",
+      "bytes": 8603,
+      "m2Sha256": "f7e41b9ecf1f8952d8b47939a3793024b5e27a250d71d6ba07658d713d74f265",
+      "tagBlob": "df94c8ab647498c091b5ebfb396aa41268fa2d56",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/agent-loop/README.md",
+      "sha256": "67e1b72751b8abe2fec31f370e6b773154f3beea3756fe517956d5288a9d30f5",
+      "bytes": 22910,
+      "m2Sha256": "1472e46915ca4ab1c1678eb58e7c911497599b558d8a259955ec424b94b8a30d",
+      "tagBlob": "6db520d9b55945a06a15cd784cf2cbb6c519e7bd",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/agent-loop/README.zh.md",
+      "sha256": "51c6dfb164a884c0823160b97f488d6c1c9d9266a11d06341b815120e586bed5",
+      "bytes": 21710,
+      "m2Sha256": "9db8c05571fbb1d3966056c27c2d7c85649bdf2a7bc1483de16a495ea153cb99",
+      "tagBlob": "d44f26a8670ff12411e5deb677125c758885ec5e",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/agent-loop/src/agent.ts",
+      "sha256": "d86fd9392fdc1084a5b311c0d85424bb4514841494029586d53b7e03dcbe3ede",
+      "bytes": 30330,
+      "m2Sha256": "95495fa8a0acd9f6faad04c01860176292177856235c45f25cb9661a406709f9",
+      "tagBlob": "c4daa50c47c13fb86b94466774dfcac32b214076",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/system-prompt/README.md",
+      "sha256": "31199ea91773e813a81f318a9ddf3a564a2983f95ae5fd5e3e59a30f3514828a",
+      "bytes": 12884,
+      "m2Sha256": null,
+      "tagBlob": "48b43666ee0180ea5b96bec80c915aaa429e97bc",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/system-prompt/README.zh.md",
+      "sha256": "c51648ed5d14faad08e9800a8f3840086a987ba4b4232d7d8d1c33deebab5199",
+      "bytes": 12176,
+      "m2Sha256": null,
+      "tagBlob": "3964b4af1704d7ed1ac552bac252923848380fc4",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/system-prompt/src/index.ts",
+      "sha256": "45a54b9a70335c5d09e4cc81214c03c4e55818c0f0a5e01c7ee51f454bbfcd03",
+      "bytes": 29277,
+      "m2Sha256": null,
+      "tagBlob": "0b19d2463f30c267acd94e35e521b5d4310e7573",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/system-prompt/tests/scoped.spec.ts",
+      "sha256": "6ab3801e4577721f28f8bab21acf2fe113b72d2067fcd005aef15f86a155aefb",
+      "bytes": 11609,
+      "m2Sha256": null,
+      "tagBlob": "b9ffa1a09207fde225fb8e3b1e7d8e299a4c4e05",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/system-prompt/tests/system-prompt.spec.ts",
+      "sha256": "e16124e94f1f7fba837e857168fbf019ffd0d4257757de24d46e70909ff7cb49",
+      "bytes": 35575,
+      "m2Sha256": null,
+      "tagBlob": "92211e23dc79821fa66ab003e0d10dc57a4998e4",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/tools/README.md",
+      "sha256": "c1f2e22795c461cb1c1f4c3e42bfd8a55561bcf7f19c262ff32fcf3685df1f54",
+      "bytes": 20238,
+      "m2Sha256": "78a137cb9e383e09e9ddc178ca03ddf3049fe8dd38899f1e7b4078438832cde0",
+      "tagBlob": "a0ce67537190251d71d2bc71df518229fb620fd4",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/tools/README.zh.md",
+      "sha256": "cfabada6f31911aba2c17eef9fafcb3233466e12f57c7ba48ef2e7e67727f48e",
+      "bytes": 19270,
+      "m2Sha256": "4f0ca3ecab3b17e95465512671b489c1bd6130ab18ac010ff5f83d8be49e8281",
+      "tagBlob": "55e9c50020d2bedd5e2d13ba8c15fc583cd9d9f3",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/tools/src/ptc.ts",
+      "sha256": "cf69beef55a82f351b45fc09217c360ca35e0ae6d6906f88d08560458671501a",
+      "bytes": 39500,
+      "m2Sha256": "4a8a47c0042319527366c51a2da0972ded61fbb675e100b4113d27db848c442b",
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/core/tools/tests/ptc.spec.ts",
+      "sha256": "6374a5eb27edad381dc70cf0709621d327a8b7234204a0521bcb7b77bf588ac6",
+      "bytes": 113854,
+      "m2Sha256": "661cf1009bb5c0663e9141ccc13cf3c7529b9f99a62fd7602bada0d27d29815f",
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/deliverables/tool-present/README.md",
+      "sha256": "083b7390e887660069caa79396d14a89167cc598e6d85e6d459bba30d248205d",
+      "bytes": 5165,
+      "m2Sha256": null,
+      "tagBlob": "7439bda57096769c7364ba47f3a64f066f8fa29a",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/deliverables/tool-present/README.zh.md",
+      "sha256": "d3bb00e9bd69c0c1fd30442a683d671eb9747ac5481ec07916c92655e8e2a8fd",
+      "bytes": 4752,
+      "m2Sha256": null,
+      "tagBlob": "40b81571aa29f66ad31af2348b93965fd175784a",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/deliverables/tool-present/src/index.ts",
+      "sha256": "50a08cd90df7900ba2a89ebfad1800e3662a41e4753a2f09228c3e66832ca772",
+      "bytes": 5114,
+      "m2Sha256": "c069f52d175757db2d33b98b76807e61b438743a47f2eeee5c3c59abaed8555f",
+      "tagBlob": "393a95d8c8a5817a4710fc6fbff64ad11328b4b4",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/deliverables/tool-present/tests/present.spec.ts",
+      "sha256": "48e8a767d222a71e5062d8e56cf9e8244f493103e2fe1541016bb21a3edcc6e1",
+      "bytes": 9487,
+      "m2Sha256": "cb0aa0ee58098e3480e1633bb534ae3d3bef5fec3a2cb1d569679bd531ebcd43",
+      "tagBlob": "18da272027bc262df383042d1b7ae5ddbc4c2255",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/agent-team/tests/shared-workspace-worktree.spec.ts",
+      "sha256": "9c6627518724044d534dbcf54e2a210b542ce7affe80f0f38bda8034458bafb5",
+      "bytes": 2918,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/claude-code-mods/README.md",
+      "sha256": "e29610cde5ac3c6f415c29ccb1ecc3b49e044bd4b52a422c688d8862644d6475",
+      "bytes": 20855,
+      "m2Sha256": "82ec4c87ab97bc3af878015d5deb960481e58acb550c47e4cb00fc2f58f14de4",
+      "tagBlob": "7fe0e75f2858894fcebe264d4a497b2627ca5cd1",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/claude-code-mods/README.zh.md",
+      "sha256": "2645f8c980a1a8067c0c353f1b3821620ba7bc2df549abcc332c4cade5e87845",
+      "bytes": 20151,
+      "m2Sha256": "6e098e70b055f2bbd053bf17c615abdb9d87427488757ed87e37ab87aa2fd36b",
+      "tagBlob": "d8c51ea02d7a111c048b980dc0c8c22d6d535a89",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/claude-code-mods/src/host-ops.ts",
+      "sha256": "f3ef79ac455bebcdd762445c6b7856d99759c4f8e40d32226df34bfc8588d8b6",
+      "bytes": 29668,
+      "m2Sha256": "98d43495427f74718acae8a144e4767fcb4da72503b993dadaf44c65bd7e5e51",
+      "tagBlob": "47bf900671d4534d0dfaf8df2fe18ed737a60237",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/claude-code-mods/tests/bridge.spec.ts",
+      "sha256": "368cce42f522060fbe9d67aab6f61a315a4c80983eedab1e243a2a5e2090ee18",
+      "bytes": 63943,
+      "m2Sha256": "7e02747eab06e94eb602218b34c2a11da7a7827c1b0f146098ea8ab49b8c4546",
+      "tagBlob": "03e455700d99f2d4e0ef306acf97b17a6750f7d0",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/claude-code-mods/tests/define-mod.spec.ts",
+      "sha256": "6fe7186974881d4282bd8c1e0c7579be5c79e5b8d2e18bf0d2e21f70dff27681",
+      "bytes": 3647,
+      "m2Sha256": null,
+      "tagBlob": "af4b86f1d00592e9d2b65e64dd6efb7e3e2cd811",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/claude-code-mods/tests/host-ops.spec.ts",
+      "sha256": "30477553fb2fe52a0953dd4f46396f721ffbeafc294c7e3821777aeaabd05d39",
+      "bytes": 15915,
+      "m2Sha256": "203d39b1c7d90710e84f62251464a37f5f904c347e76dc732dc3dc0938a3a760",
+      "tagBlob": "2a86de5e61d56902046927d888551c3ebff68cb1",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/README.md",
+      "sha256": "72b8fe83552af82ef85176927d4809368b87030d2d6c634b1bab88fdc603091c",
+      "bytes": 1585,
+      "m2Sha256": null,
+      "tagBlob": "813c110216f285c66ec5cd7ba78c05af2d8015e9",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/README.zh.md",
+      "sha256": "96d4c488056b52cbfabda4d6d248cef2f6978af383968cec91872f7150cf46ad",
+      "bytes": 1421,
+      "m2Sha256": null,
+      "tagBlob": "cc6d281d7fcc2707617cdda5716b3f0ac95e81b5",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/package.json",
+      "sha256": "1a6d63daf0fba00d164f74a6ac47b981273cf0bc09fdb0093146fbe1388127e6",
+      "bytes": 4845,
+      "m2Sha256": null,
+      "tagBlob": "898e0fa5e352d0a82706319fc22ceb000f22edd8",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/DiffFile.tsx",
+      "sha256": "e4fefec3b321805e0907542c4c795ba9e9ac06d7ab7e52e1cd9cf46b254e954a",
+      "bytes": 1076,
+      "m2Sha256": null,
+      "tagBlob": "a3c8d9a2ba209eb46b1d6fce2b25f20218503e49",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/FileTreePane.module.css",
+      "sha256": "447e57d2b135d7da54d0dd32bfba42ef117d3f64b39f56ed12d2c9cf84da7521",
+      "bytes": 207,
+      "m2Sha256": null,
+      "tagBlob": "fb8692efc96373b77792a9a2ba8cb20410a6593b",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/FileTreePane.tsx",
+      "sha256": "1f5255ff2650840c5f354d2b9aa2699bc54d16ef7379f703490c00e5b6612116",
+      "bytes": 802,
+      "m2Sha256": null,
+      "tagBlob": "b05565581410a74ad8e50e0d02ae8b087738ebba",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/LocalChangesCard.tsx",
+      "sha256": "18edacb081c8b5a978935010b020d1b7efb7f80a4c7f8a269a9ad9c2d93faee6",
+      "bytes": 616,
+      "m2Sha256": null,
+      "tagBlob": "d377b43db56fd261f1988172355593e82ad06f71",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/LocalReviewTab.module.css",
+      "sha256": "dd8245e3ee6e3c7ed05affc38c9731e5ac137b757c580beca2697cfbde8e6cd9",
+      "bytes": 1333,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/LocalReviewTab.tsx",
+      "sha256": "75ca2bc5850ad329a3bdb385872303ada58b1257918a40d19907bd207a1f8a23",
+      "bytes": 7245,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/WorktreeProgress.module.css",
+      "sha256": "e98c6da69a9b2ea52134a5e1a5e168ae10b34e918d2910ddbb871d7616989800",
+      "bytes": 128,
+      "m2Sha256": null,
+      "tagBlob": "eb700d6aff871bd82b23977dcdea88ccc72bf0b2",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/WorktreeProgress.tsx",
+      "sha256": "80670da8a774d49cb71ef6e2f3e887f8f705cbf1f754bd5f72884499cb378578",
+      "bytes": 1765,
+      "m2Sha256": null,
+      "tagBlob": "bc3cc19c7196bc3c0fb8a1050f4a63c5232f64ac",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/diff-rows.ts",
+      "sha256": "7e1d98b3a8eb378fcb65b426700117f41c4ead5b8fbc38acdc4d28c50159432a",
+      "bytes": 962,
+      "m2Sha256": null,
+      "tagBlob": "3269793b54c85098992bca022cc0e64ff454f818",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/file-tree.ts",
+      "sha256": "d6d1fbabf4dc91d5787fb6aab5e569ad5b2c96e3996db4a48e24201ded3b1123",
+      "bytes": 403,
+      "m2Sha256": null,
+      "tagBlob": "b55c2900d91b203010e798e2cf96c6a0dced8c38",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/index.ts",
+      "sha256": "176c97bc520154b5d9fa37532f119d54b9513361cf32a10949d072020b31b7f7",
+      "bytes": 582,
+      "m2Sha256": null,
+      "tagBlob": "4e8c0e6fad9b2432737be895358904abde32df7d",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/locales.ts",
+      "sha256": "114296ea1ae0c99039d6aedfd03a3eaf27a9bfefe6da7ac48c8473569d1a773a",
+      "bytes": 2584,
+      "m2Sha256": null,
+      "tagBlob": "8fe3515633dfb0911964a7263419e70fa773ebef",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/mount.ts",
+      "sha256": "ceb80bccdcb1cd05796879e1e75386855346ce25559254f96d678f1f674f8c99",
+      "bytes": 5723,
+      "m2Sha256": null,
+      "tagBlob": "cd3aaa4c3da591ac7b9f9d3664688f4c4f233b92",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/source.ts",
+      "sha256": "7eec7ee8af649f6df91fa3de40f12fe1e9164d08f6d9d6075b76308e9e212aac",
+      "bytes": 5537,
+      "m2Sha256": null,
+      "tagBlob": "5f64fb83cb8888490678e69031fffa96f67abe11",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/css-modules.d.ts",
+      "sha256": "1b119eae282e4981c7ee24bbcf0ceafe34d57f6d5e6b148b2b7cc7c09cd89513",
+      "bytes": 109,
+      "m2Sha256": null,
+      "tagBlob": "b63bfbe015c01061680ad71495e7cc549a19f1c0",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/diff.ts",
+      "sha256": "6e8364b8f4599410515b9f0f2d03d56c03489ab050dba03eb9a7dfebb8a90a16",
+      "bytes": 4759,
+      "m2Sha256": null,
+      "tagBlob": "aa6cc8515aab7e9f2b083ef8144331c028d10e29",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/git.ts",
+      "sha256": "d6989162a3014e5015521d9609b9f8ed96f42872d52104160de9b6c75ded959d",
+      "bytes": 12081,
+      "m2Sha256": null,
+      "tagBlob": "c8db71c7a9350ae5057495dc63a508d7a25bddf8",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/index.ts",
+      "sha256": "7d604438fece01c0ea201d475d1afcbb0e276b9504ad490943560096176b4b70",
+      "bytes": 16005,
+      "m2Sha256": null,
+      "tagBlob": "7fa9010b81383f938c45bddbf9fed43de625c002",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/local-diff.ts",
+      "sha256": "bb172defc883ba1574693983ab61c620d6c84c828ea00f62d404b2069008eb56",
+      "bytes": 13344,
+      "m2Sha256": null,
+      "tagBlob": "cbe09afbd54197392169d82c2b90abc1f46852d5",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/panel.ts",
+      "sha256": "814bc73a99889dd7f441e9cc58006a13edb105cf84b75b14c23e60922dee9a0c",
+      "bytes": 9020,
+      "m2Sha256": null,
+      "tagBlob": "0c21c934c455efc759301986ec24c67242eee590",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/parse.ts",
+      "sha256": "43307d69b05dae0e81f40e16f6659afdbd421935dd0598df5e4dfa1566471f30",
+      "bytes": 1480,
+      "m2Sha256": null,
+      "tagBlob": "05cf03613c3f543d043e39790e3122782489bf0d",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/types.ts",
+      "sha256": "5ff3408b4ed157114765642b0accbb8f79a5f079baf52b4d5bfbce8a9742ed94",
+      "bytes": 13437,
+      "m2Sha256": null,
+      "tagBlob": "c96b0a7bb643af9e12c4aba872d00be3f583352f",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/worktree.ts",
+      "sha256": "0ead82774c49007fb1da2134c626d1ecfa5c7ad8f2a68c69500f555259bfd64f",
+      "bytes": 24123,
+      "m2Sha256": null,
+      "tagBlob": "a6b7ee2cd6274e089c6213f097ef2c55cf0559b7",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/controller.host.spec.ts",
+      "sha256": "f854c5b1020cf4e509cc4f5cda16fac755566725ec43dc5ceb60491a37ee07e1",
+      "bytes": 44008,
+      "m2Sha256": null,
+      "tagBlob": "e379ac3126fcc95feaad0554865e519336adb853",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/harness.ts",
+      "sha256": "1e90b958f0f151ef5aa9cc1380cc9a27fa55d7b6eb66a3c061e1aafac925ac60",
+      "bytes": 2384,
+      "m2Sha256": null,
+      "tagBlob": "eeb93017d199bf58f76d7f3b49e26dc60018ceca",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/local-diff.host.spec.ts",
+      "sha256": "8270299ffae81a1fda7f5569fa47c809b15754024dfd82feec6541113324d72b",
+      "bytes": 19903,
+      "m2Sha256": null,
+      "tagBlob": "fb22b0781389582055279e7505822b9e43799d32",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/local-review.client.spec.tsx",
+      "sha256": "797eb7869f14aec90bba2fbbce11013a679d88ed8a636acd30cf3b11cb9f9e5c",
+      "bytes": 21788,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tsconfig.client.json",
+      "sha256": "3fdaca8a0c2bffb6ba33b03388222bdfba460e0b86f7930d21c609640b2f07dd",
+      "bytes": 1005,
+      "m2Sha256": null,
+      "tagBlob": "de4d3dddf5cf9a1ffd2bcf9ccf362c698a1efbf6",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tsconfig.host.json",
+      "sha256": "935fbc5651d87eac98f921c7123e9ea36cd0c514bd6fd970ddfb6d5f78fa5db4",
+      "bytes": 1090,
+      "m2Sha256": null,
+      "tagBlob": "13474f63533b5c589dec044b5f64aec05515afc1",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tsconfig.json",
+      "sha256": "ad1b25d36ea100440140e543e2a2af188178934da74eadce1b27ef14e91b335e",
+      "bytes": 142,
+      "m2Sha256": null,
+      "tagBlob": "2eca820546db1a73f650b99283668efc0a0be684",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tsdown.config.ts",
+      "sha256": "44b36999f5bdd3c1cc7044be7c8208a79b73fd48111c1ce14b89d181d68528f3",
+      "bytes": 163,
+      "m2Sha256": null,
+      "tagBlob": "e0c1efd7dcd635578a8a39dfb094377937d3c230",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/desktop-files/tests/worktree-fence.spec.ts",
+      "sha256": "ccd4485b4486058ada27bd76b6aeaa27536d785d958931ce53d0a178d621c7a0",
+      "bytes": 1418,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/session-decisions/tests/feishu-cwd-identity.spec.ts",
+      "sha256": "7c89b10f728364954cfdc624926242c09fc622209dff8223519cb1ce382b0dd2",
+      "bytes": 2625,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/experimental/tool-worktree/README.md",
+      "sha256": "ecff2a207ffc9c5e21c894c0c03caf349c1e636726dd2e93b10d78398a77efa2",
+      "bytes": 1488,
+      "m2Sha256": null,
+      "tagBlob": "2f1b2938085f07f32c8f21871adffe45b65786d7",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/tool-worktree/README.zh.md",
+      "sha256": "6604297aa7fdfedc9c7be74526011bfea7777f756acc4ec160d6f1f6bf489289",
+      "bytes": 1299,
+      "m2Sha256": null,
+      "tagBlob": "8b37299687e892f5bed2f31efdbb9e152001079f",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/tool-worktree/package.json",
+      "sha256": "30aa67bb776849ef04a04e7da97a3eca0ee044787075fcaa22fba1f58c7d5702",
+      "bytes": 2006,
+      "m2Sha256": null,
+      "tagBlob": "8966c0f98f138bc52ef9efa672cc6673a9c53841",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/tool-worktree/src/index.ts",
+      "sha256": "b7aec8a8f4df9202dd86628e55b82d5a12faf1ea09cebaee962b9a59e821f83e",
+      "bytes": 2069,
+      "m2Sha256": null,
+      "tagBlob": "53f035f7d77af8dca17c921676225821c807fe24",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/tool-worktree/tests/tool-worktree.spec.ts",
+      "sha256": "5d91b9af3858269785c0b01272d51919a2bbdb22c8bb8d40c1326b1d4726c8be",
+      "bytes": 3893,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/tool-worktree/tsconfig.json",
+      "sha256": "773f76115be77b8b2e6c0036a6b39ebca573b9fc1c73508240020ff1bf6941ff",
+      "bytes": 314,
+      "m2Sha256": null,
+      "tagBlob": "08e8436de6acdd661cf887746073f7c47dc1195e",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/README.md",
+      "sha256": "b8dde4009e6bc45b964a0af030d0e3eab705846c458971c15b1bd1d8d9276b8c",
+      "bytes": 1767,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/README.zh.md",
+      "sha256": "327ac557884f90337ce808bdc5bef520a238829547d54aef2ed74c0696050c08",
+      "bytes": 1545,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/cordis.patch.yml",
+      "sha256": "a8c3e840d68e4dea462cc815b696da04342c102b8e4fb0ad218f00c14d5e7a5a",
+      "bytes": 348,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/package.json",
+      "sha256": "b47dbc8a4d7db80ee9322484f73c9fc84bdd9be9ca9fe87d9f192f758daf40b8",
+      "bytes": 2295,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/src/client/index.ts",
+      "sha256": "8ad1681ec78490bd58e9de2ad61403dade58bc61c5ddef174b0ae127722f024d",
+      "bytes": 258,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/src/index.ts",
+      "sha256": "014cb34126fd508277f59ff80c6318104651bff86fb1dc4044af1a732794b115",
+      "bytes": 250,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/tests/desktop-mount.client.spec.ts",
+      "sha256": "9a47a6167e5849ceb76d74933c4349d9856c58beeda94540799577247cb56b49",
+      "bytes": 10960,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/tests/desktop-mount.spec.ts",
+      "sha256": "2133494a6159fa84336f7676bdc0c597ad2941c227a9777419cf0f5056cefd7b",
+      "bytes": 565,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/tsconfig.client.json",
+      "sha256": "571e4e301dbda273403b18a158227a7c3d7dc4813f9a6e496814c1baf71412d3",
+      "bytes": 187,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/tsconfig.host.json",
+      "sha256": "c964c02d0930529decc37a84d57b59d4254c6cf6e57d1db07d732ea90d6ddeda",
+      "bytes": 182,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/tsconfig.json",
+      "sha256": "ad1b25d36ea100440140e543e2a2af188178934da74eadce1b27ef14e91b335e",
+      "bytes": 142,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree-review/tsdown.config.ts",
+      "sha256": "0cdf12c308efc9d6dc4c8b95553959df5b1c095deac43922f33620151fd5dc23",
+      "bytes": 163,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/README.md",
+      "sha256": "be6b253dd8c78b91431e2b23f946f705e6047802539df3b812fc89c55649d1a2",
+      "bytes": 1595,
+      "m2Sha256": null,
+      "tagBlob": "550aa2c5a3fb5b5757008601ae564990a0ef837d",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/README.zh.md",
+      "sha256": "e94d0b8ab119e0f8713978249f4035a3916ebfc6c6fa7df25b61447ff92b74fb",
+      "bytes": 1406,
+      "m2Sha256": null,
+      "tagBlob": "937b057975238e30b0e4d9ca5c850e24754ee198",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/package.json",
+      "sha256": "3453fbc0d379834261f6b3492530ef4173af78861168c083bc1c8885664e7d48",
+      "bytes": 2138,
+      "m2Sha256": null,
+      "tagBlob": "007130c184d10abcd32d0506fd597b4f0b0f5a59",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/src/directory.ts",
+      "sha256": "00faa8d5155e1b3feab63c1b91dab08d14a2665d89f4ce53841decf43756af7d",
+      "bytes": 990,
+      "m2Sha256": null,
+      "tagBlob": "6783f55b8dc0b1f82b2e9f49232d4fbe7b775a38",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/src/index.ts",
+      "sha256": "a96bf788525299481db710520ebf4645ba83e70e8fc6d0ee609b29c28b8a9bfe",
+      "bytes": 16197,
+      "m2Sha256": null,
+      "tagBlob": "2529ae48e84032f41cb52e1fe78ed125983b0a45",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/src/name.ts",
+      "sha256": "32d318a8a6b4a98e9d64c2c52e2fad5e878186429206fcf62928ad4efb2ae45e",
+      "bytes": 1066,
+      "m2Sha256": null,
+      "tagBlob": "d29f04159678f4c03dc67a2cfa7edaa27ede9e05",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/src/process.ts",
+      "sha256": "b1ec38113870e7879ba8ffefbffbdf4604b13ec978f3914beb2dd7eb5150a48a",
+      "bytes": 3731,
+      "m2Sha256": null,
+      "tagBlob": "74c8fa1c1bdc0d4e7c1f4c12e81a4722b03fc822",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/src/types.ts",
+      "sha256": "c41512e4bdc8b22730360c9725b138c4a2c46c9ca06d79fe415afdb1f82cf202",
+      "bytes": 2007,
+      "m2Sha256": null,
+      "tagBlob": "a4af7fb8a192f6b3aa774e60aaca96cc37846009",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/tests/checkout-safety.spec.ts",
+      "sha256": "b993ba53d5dfa0ae9be0b50616ae66d020bc1156d98356d30a9031725a872f48",
+      "bytes": 12469,
+      "m2Sha256": null,
+      "tagBlob": "0ac4bd6a4dfce86b387a10485bd514ca3c25e5ce",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/tests/harness.ts",
+      "sha256": "20cdeee4c0a3f8310ec61cb5762c84392e6b5e91d405a46664b924e790111631",
+      "bytes": 4419,
+      "m2Sha256": null,
+      "tagBlob": "e1cb3ee4465549687898201b65333de46f3bb23e",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/tests/host-controllers.spec.ts",
+      "sha256": "e61ec601112edcd939c80d0fb1faa16a7f98ab279f39f1e3ff12b081eab78a94",
+      "bytes": 1770,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/tests/sandbox.spec.ts",
+      "sha256": "1f82da8a393d2bbdde104c42961be1d24de8c141c70db5b27925e6a901992e40",
+      "bytes": 4702,
+      "m2Sha256": null,
+      "tagBlob": "90bdd7594bb53098095e2bc109e5e5d64186ac9b",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/tests/worktree.spec.ts",
+      "sha256": "3aa11c75fded1fef9c743041f31c7cbc74c245c9072e8e3f085e18d517be00f9",
+      "bytes": 29090,
+      "m2Sha256": null,
+      "tagBlob": "7db475246224887b5fb17c909ed6c6c4a3f4e934",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/experimental/worktree/tsconfig.json",
+      "sha256": "a6ec8f5f57af4a4b443c5ddf6ec3a20c037b6f1a34af536bd0124ab8e3b58c32",
+      "bytes": 646,
+      "m2Sha256": null,
+      "tagBlob": "121a25a98e103af4611b7504d15f1492bd620b5c",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/fs/tool-fs-search/README.md",
+      "sha256": "64be3c2c4241456842be02fbf7aa111632e4cb2f9ee17e43f26e5868fe7f9a65",
+      "bytes": 13964,
+      "m2Sha256": null,
+      "tagBlob": "4c26ffa018329661476cc27f9d302f99eaeb1019",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs-search/README.zh.md",
+      "sha256": "61b12cfbd07c8a3fc6afa2e869d150feb0b15ecd1ee68e8fed289d8cbad44412",
+      "bytes": 13094,
+      "m2Sha256": null,
+      "tagBlob": "10cae423086ad6700edda4c89edbd8fcf68e4d26",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs-search/src/index.ts",
+      "sha256": "42b066bc5db94bf071bcfcd19b3dfd0b52983dd0feaa60856b9f139660d7544b",
+      "bytes": 7604,
+      "m2Sha256": null,
+      "tagBlob": "9b81eb458493f7e3ba21f066599a896592f27f03",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs-search/src/search-core.ts",
+      "sha256": "eed18c70cfe73a48d70c6cfce24f17774fc090ab1dfc298bf3fe330c570b8ff8",
+      "bytes": 19469,
+      "m2Sha256": null,
+      "tagBlob": "794a5d43fe6026c34cb61d65133ee715ed08b2f0",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs-search/tests/integration.spec.ts",
+      "sha256": "a354bdc0017a796941c851248be4756f48d48c04d877c65ad1935dd00c2efbb2",
+      "bytes": 9958,
+      "m2Sha256": null,
+      "tagBlob": "5b5845c279e8d928b1b1cf408a3a9da202151e68",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs-search/tests/load-path.spec.ts",
+      "sha256": "476e1145bb102f514d00e6d0db09599b7be71e67efb02c07e5da427ad594e593",
+      "bytes": 2759,
+      "m2Sha256": null,
+      "tagBlob": "1ff4876b84cd6be706772313e1b61cab28c46d67",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs-search/tests/tools.spec.ts",
+      "sha256": "e0e9ec39a1ef441ae7ca1d0056f733acdb39df13fd130aed92477f3f85b0ff34",
+      "bytes": 63662,
+      "m2Sha256": null,
+      "tagBlob": "5763aacc15405d8bcd8065b447f6506fde25aa2a",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/README.md",
+      "sha256": "6aa8792d4b7ffb9596ff1042f41e03d23ed50ca58e50fee076a761f6f2c379fc",
+      "bytes": 22215,
+      "m2Sha256": "0c76786eeed481dbd08bd98794621d8962e48e9d4a7e6884c903adcf58a7503f",
+      "tagBlob": "47a2026ae3c11ec2fdc9df1d1d4a17efe9d2c668",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/README.zh.md",
+      "sha256": "e28f4690fa57fa70373cc886ddba5df40e3122a2fe0becd2657427926606418e",
+      "bytes": 20869,
+      "m2Sha256": "ce5fe81a0a42c6067c5ec08743ede20cbe57027617858748c2fadf7a89b7f257",
+      "tagBlob": "40928656283db8da087c8d782eec215d24a51466",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/src/edit.ts",
+      "sha256": "c71d352a8af0f5f06a172e8d9938ea1457c3e885d0059ab4f692e793c6f225a4",
+      "bytes": 7853,
+      "m2Sha256": null,
+      "tagBlob": "f927ccb1cb9a521f4db759c1cd0d256f09798f33",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/src/index.ts",
+      "sha256": "5e9ebefff3a20815cfef611f29720a8c058d3b5c01cae6405da1d999952f66c3",
+      "bytes": 4070,
+      "m2Sha256": "8196d3feebc4009058aea6040ef8e0320166f6c3a83654d862f205cb475c8330",
+      "tagBlob": "41e3be251cf9e55ad5b4bc1a81f0717a795fe04f",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/src/patch/plan.ts",
+      "sha256": "082c685f5287e86a0c683989c6d8ee195ff6cd6627d1f82af67b64f4525a0113",
+      "bytes": 7135,
+      "m2Sha256": "5df43c62080dcf6dc9824f8c3d0c01c8604c06084cb30a951135a11b98e650d1",
+      "tagBlob": "baab3634aa8564480278359d5aa7dc88607c8b8e",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/src/patch/preflight.ts",
+      "sha256": "51edc2e47ec05586294ab321d121ee8f8667b1c719f0f66625e2e616b720966e",
+      "bytes": 8209,
+      "m2Sha256": "327b720bdafb1f0c77583ae5fcfa12eb401952e58ad3354b5399902e60411d1c",
+      "tagBlob": "532b60d7ad53ab91f297998589b5323a497ca056",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/src/read-target.ts",
+      "sha256": "c99f3360e95cf9a2560e0f80f27eab6e0a5acb5cc084aa11ac6a6d271a165536",
+      "bytes": 1467,
+      "m2Sha256": null,
+      "tagBlob": "6fc61e7f5a968ab1d948807af8bf34b0e64fc657",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/src/session-cwd.ts",
+      "sha256": "fbddf55e78543f936789e3b3935f2838513ad5a6fda3afa26c771b1ac11c96c6",
+      "bytes": 1242,
+      "m2Sha256": null,
+      "tagBlob": "9e61c7d5369986910883386739c7915b2d562049",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/src/write.ts",
+      "sha256": "bf6e202e645e572a5d422cc5c00eeb0140ba04ac135cd476e9b45b32f072d31d",
+      "bytes": 7041,
+      "m2Sha256": null,
+      "tagBlob": "0745ffc98d499277af440ed126432c79a801a24e",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/tests/apply-patch.spec.ts",
+      "sha256": "17f58703b9f41c1998131fe011e57284a946086565a29f34453dd7c85265114d",
+      "bytes": 42112,
+      "m2Sha256": "180f5a84f84b82740dc2ad6f516a3fd40d12eb3c854e339a6991d84865e4eb05",
+      "tagBlob": "18e84ee5f3c3b451b9b6f4f440b8cc8c984eea2e",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/tests/harness.ts",
+      "sha256": "0bf3d60c666e515c7ab82275f53339a4a6c8001cb4a4a27a256578b7a33c2da0",
+      "bytes": 1547,
+      "m2Sha256": null,
+      "tagBlob": "d525a5dbdbc9a31e35cf7fb8a5bcaca7806c4050",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/tests/integration.spec.ts",
+      "sha256": "5ccadb7fbb20cb479b0c18c851e1c707f9d9ed5474521d47e1c86b785a17dbb6",
+      "bytes": 28287,
+      "m2Sha256": null,
+      "tagBlob": "25d428c8e620f591236b358c3c7492fb1d1a0091",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/tests/read-image.spec.ts",
+      "sha256": "19e77370dd9a6faa2399b115128316a2daa97b20ae4479b614893c4fbeada04e",
+      "bytes": 38886,
+      "m2Sha256": "35ff70de00c2681f3628d125e130d788b7856d6bc7f671b618954020b02572a6",
+      "tagBlob": "97087edf7e326730b79ca39159c00ec4ad8d53fc",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/tests/tools.spec.ts",
+      "sha256": "431459f8bc4daf77f1cff4fc29de4cb4b4196ad227ec935678f76655815109a1",
+      "bytes": 52365,
+      "m2Sha256": "12d79e744c6475aece657d6a42a668105f0cc10002c7b3f2414c7ba60eb19454",
+      "tagBlob": "08e480028577c737fdcd3f31c19b99ee40a5de8e",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/fs/tool-fs/tests/working-directory.spec.ts",
+      "sha256": "8eb79feb306cb8ce9f98f212e4be80b0b58d43ba4107acdf40ce1b592815dac0",
+      "bytes": 3244,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/hooks/hooks-claude-code/README.md",
+      "sha256": "e4982443449352430cd2311dca376be79357748adf50b5c3d2824478783cbc1b",
+      "bytes": 16272,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/hooks/hooks-claude-code/README.zh.md",
+      "sha256": "694b2c4d2bed773c35fd368907369ab87c7e22116111307d0504aee0b29ca6c4",
+      "bytes": 15599,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/hooks/hooks-claude-code/src/index.ts",
+      "sha256": "02382f3c7686e095f682187b71f54f518bbc2fb4dca1360d1f3d5199b6f02c03",
+      "bytes": 17955,
+      "m2Sha256": "82cca76b140d97d6baef9efaa7f44882405e8a9154f68def87a1d74ee736e2eb",
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/hooks/hooks-codex/README.md",
+      "sha256": "1fe55fb4d15c9a494639b3b3394a432a95f2b936d5f42e7a247ccb8cbb2eb72b",
+      "bytes": 13820,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/hooks/hooks-codex/README.zh.md",
+      "sha256": "4b995ece448ad7ed9519eb66f8e431e0f383f034a8c98fad21d164198329c618",
+      "bytes": 13208,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/hooks/hooks-codex/src/index.ts",
+      "sha256": "02aca36d841fdc500db1bea7641cd4270ccd1b8bb3181d93f9fd9778540d6823",
+      "bytes": 15363,
+      "m2Sha256": "e8a79e7cdf080e5476c29a7e7ecd94613e9fdc6d5e96bdd8024ce2ea0889d27f",
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/lsp/tool-lsp/README.md",
+      "sha256": "f0e2b58cd0731077ce3502562f5c8ced4a84cf13646ebcd622774f0ca17d4ed2",
+      "bytes": 9618,
+      "m2Sha256": null,
+      "tagBlob": "baa4804ace507a60dc0641b2a2df42b14cfd664f",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/lsp/tool-lsp/README.zh.md",
+      "sha256": "9f07d03e1b4a13aad44f73860cf57a7c06d26d79bfc1296a01531b5dafc3e2ff",
+      "bytes": 8979,
+      "m2Sha256": null,
+      "tagBlob": "db825eb415434320f36dc8b5115a14a147e8a3e4",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/lsp/tool-lsp/src/index.ts",
+      "sha256": "51d233686ca5f4c55ada6fbe523b206549e6e3da515c31c2bf44775d5c9572d8",
+      "bytes": 9411,
+      "m2Sha256": null,
+      "tagBlob": "3a3314a44e97ff08bcecce405d6020c4f11c2048",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/lsp/tool-lsp/src/session-cwd.ts",
+      "sha256": "fe89037eab5e71377c81d4c6dd7692c4be9fd335120023926bb470e005e87785",
+      "bytes": 673,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/lsp/tool-lsp/tests/integration.spec.ts",
+      "sha256": "c14ce20e99852fdb32029db761804cadd38190fbf0568066364341703c7be646",
+      "bytes": 4564,
+      "m2Sha256": null,
+      "tagBlob": "a0ea788eff019c88b33256052a6095173f75b337",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/lsp/tool-lsp/tests/tool-lsp.spec.ts",
+      "sha256": "58c548a563fc90922d78615f967a62033e1ed4087f7c22ecc460f46c21bd9616",
+      "bytes": 11782,
+      "m2Sha256": null,
+      "tagBlob": "4947c4037905197e1f7492f333ebd71f9442458e",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/session/tool-working-directory/README.md",
+      "sha256": "d08431d79f4249acb528c90765d1fe0fba35cfbfa9f441ec0098a99ac84a51bc",
+      "bytes": 1522,
+      "m2Sha256": null,
+      "tagBlob": "8eadd039a324500ce8b304a361b8fd2fde3411fe",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/tool-working-directory/README.zh.md",
+      "sha256": "fe74ef1548fcbdde021a42601423bd7dd903f39bb2df0ccd2e4a3e2213a7da61",
+      "bytes": 1313,
+      "m2Sha256": null,
+      "tagBlob": "50c4b638fbc01487308af6a63e3175d9bfdb9536",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/tool-working-directory/package.json",
+      "sha256": "59dbb6d36297a53983dbeec7be173301e018b45320f631d118e067e98a9a2cd9",
+      "bytes": 1487,
+      "m2Sha256": null,
+      "tagBlob": "d3186bbd73888ff526fe54b7dbdf38849d68c0a7",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/tool-working-directory/src/index.ts",
+      "sha256": "c318bea6a4ab0f8f5c1482334471fc217315111ee579dc9581635a1a608c23eb",
+      "bytes": 1656,
+      "m2Sha256": null,
+      "tagBlob": "f0aa8bc4f0854c6dff38feeb9475b303e5108cb6",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/tool-working-directory/tests/tool-working-directory.spec.ts",
+      "sha256": "4a9a4b158060864c3302cb8d99bed8603acc4e92cbdb6a72364b1a1a635417b1",
+      "bytes": 2893,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/tool-working-directory/tsconfig.json",
+      "sha256": "d3ec3f8a78ce663f8590f72046abb0fb45fc6b4cc7854bec7150b6ca2f412eef",
+      "bytes": 323,
+      "m2Sha256": null,
+      "tagBlob": "fd834e85e4298178d9f33e1f22fe9dfbb51306c8",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/README.md",
+      "sha256": "22485f386a32b3bddcc6c5af3bdc30f253b8d54a0ddae079ff738e80e33d6525",
+      "bytes": 1876,
+      "m2Sha256": null,
+      "tagBlob": "1f54ad8c9263f7b4fd9b821eb19748d8cb8991e2",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/README.zh.md",
+      "sha256": "98ece748b139031c1dd58e9772cac03d96c6d14c2f7843c43fb68ee6e55a947d",
+      "bytes": 1630,
+      "m2Sha256": null,
+      "tagBlob": "ad92f21b59282453ae32c22f50e10a7b39cacd94",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/package.json",
+      "sha256": "009c7f257e23f3c969f421ac35f6fa2f6c2b75f059c2a3a90707ed263fcfd892",
+      "bytes": 2096,
+      "m2Sha256": null,
+      "tagBlob": "57d1666fcd82704f51655237d291fab4a508bb3f",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/src/index.ts",
+      "sha256": "b44c79f8993e5586b0f6d84054fe473abf6bb74b39b339aa00a9a7411577887c",
+      "bytes": 9187,
+      "m2Sha256": null,
+      "tagBlob": "8664a8aca1f8379f03e6b9b12021a8cf9fdfe145",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/tests/admission.spec.ts",
+      "sha256": "4e59d4671acc3f6e95650ae3af2756f4098ffc69ae098218877b8b40bb6cc934",
+      "bytes": 4784,
+      "m2Sha256": null,
+      "tagBlob": "ea09e87ed0a79008d096538cd0b3f46d93e68c81",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/tests/fixtures/cordis.yml",
+      "sha256": "6755185fbe1c486a0ded06ce67a5852572e589cc788ef790be4f2e4719a3faaf",
+      "bytes": 298,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/tests/fixtures/recorded.ts",
+      "sha256": "35d36544f0afc914fc6ec4ff135da9da28fc55ce97865bad7b3b3a41768701f1",
+      "bytes": 414,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/tests/host-controllers.spec.ts",
+      "sha256": "c71592a3fceb23eb550f5d7347ad04e68004a661881260181fe61addbcedb52a",
+      "bytes": 3727,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/tests/working-directory.spec.ts",
+      "sha256": "7ad082885ea4d9fb1bf026d727705dde7984816cb7915d4b97b036b6735bdbe4",
+      "bytes": 17919,
+      "m2Sha256": null,
+      "tagBlob": "22fb99af471a0da502320a2bca58c3f414270925",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/session/working-directory/tsconfig.json",
+      "sha256": "09989b6705dbae208f8e5dffd9844c5e027c8da7f34792eb95a68245cc9af8c7",
+      "bytes": 567,
+      "m2Sha256": null,
+      "tagBlob": "6d24c1126a31788973363d07c64fc774d5655ec8",
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/shell/tool-bash-persistent/README.md",
+      "sha256": "307a994d8d1fd664e1e071c9fad3c5f7a855722508f7ff4e149b677407da635b",
+      "bytes": 10963,
+      "m2Sha256": null,
+      "tagBlob": "4bbea6bf1ada280a8d7275be88b48f7a0e181401",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-bash-persistent/README.zh.md",
+      "sha256": "4532309205f63f4faa0e18fec0e348fa0cbf46c92a3ed319b7d3643bd3072dd8",
+      "bytes": 9985,
+      "m2Sha256": null,
+      "tagBlob": "6b4877e177b7a1cff008ebaeb9b1f1000d9705db",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-bash-persistent/src/index.ts",
+      "sha256": "e0735b3c85ebdad5fb1ac598033edf4b6abb52ce94c75b79d2a845e5c1fd680c",
+      "bytes": 18756,
+      "m2Sha256": null,
+      "tagBlob": "94de7ccf09e40870b89d8889082dd768c427d6fa",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-bash/README.md",
+      "sha256": "767a933f7066292a9e3f36531bca275dd0cc19ff743ac17f306040f7ee8ce00a",
+      "bytes": 17850,
+      "m2Sha256": null,
+      "tagBlob": "045344c881810cc87b08ed547f85e5c9f4eac2f4",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-bash/README.zh.md",
+      "sha256": "72810f61c75e2791964f8f1f8469cde285c67c24f78e6eb7ec14d3fe52d72216",
+      "bytes": 16480,
+      "m2Sha256": null,
+      "tagBlob": "53d2b1984e34b9aeebc110ef00e7d269182f6299",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-bash/src/index.ts",
+      "sha256": "a4998c64c9b405953164b5f62715441049d8694bf0ac0fc65c86f1c3909d14d4",
+      "bytes": 26310,
+      "m2Sha256": null,
+      "tagBlob": "39a2a20369b40a0a93be67dc767ca823fe7197ad",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-pwsh-persistent/README.md",
+      "sha256": "ad46a9e7dd102968f783eae8a857512f5c342b8405254c391755e59021dd13ad",
+      "bytes": 13543,
+      "m2Sha256": null,
+      "tagBlob": "0bd03285be267661f2e918c75d75e7c740961589",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-pwsh-persistent/README.zh.md",
+      "sha256": "d33e15857d35135a0c233f92264853e887a91cb8f003f8088fa040953a19fe84",
+      "bytes": 12263,
+      "m2Sha256": null,
+      "tagBlob": "7f05af221f3179db397272fee7f53b599d827c56",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-pwsh-persistent/src/index.ts",
+      "sha256": "9fc973e447e3a36f02dbbcf38097986cbc7d42fdd30e76fab9d2ac71767519fc",
+      "bytes": 19650,
+      "m2Sha256": null,
+      "tagBlob": "132ca51d2c695c12a3100d4964669cc4e8e682f3",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-pwsh/README.md",
+      "sha256": "0972c9563e48742667fc93e8c4927ce5888861f6926d45e8e3e0badc15bb344b",
+      "bytes": 16291,
+      "m2Sha256": null,
+      "tagBlob": "051f3cd4a2418713a6eae64536a243bf6bde166d",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-pwsh/README.zh.md",
+      "sha256": "a2770dea28d902bc5b8a15057c203198034b98f15f28dc16be0c386c5675feef",
+      "bytes": 15246,
+      "m2Sha256": null,
+      "tagBlob": "90e2b726c1ee5661f115bcaf0bfe67571d278993",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/shell/tool-pwsh/src/index.ts",
+      "sha256": "61fedf6e0c85a8bb3fd0fd226cc7c1e17e8c16b153c87d21a11c2cae9c0a58d3",
+      "bytes": 30716,
+      "m2Sha256": null,
+      "tagBlob": "a3472b4357f1defcd37cf80e03281caf964fe6c4",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/skill/tool-skill/README.md",
+      "sha256": "31d95bffb292f25854ce0598fea3ebb7353e0fed4793d2ea50f0decf5212e048",
+      "bytes": 15053,
+      "m2Sha256": null,
+      "tagBlob": "ddf4072758313697ce0f2c897b28c2c49213f159",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/skill/tool-skill/README.zh.md",
+      "sha256": "a107658ef193eda818c62511bacd3ce671dfd59b03de2eb283cab8a100cc38c0",
+      "bytes": 14144,
+      "m2Sha256": null,
+      "tagBlob": "f2719189447256d1d8846a3e203d9c8e07d86a79",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/skill/tool-skill/src/index.ts",
+      "sha256": "5f2bbf72baabdd0fa95ac89181e08310e162f4757010118c7e9d0c1f1cfa9a46",
+      "bytes": 18563,
+      "m2Sha256": null,
+      "tagBlob": "f08fb8206433bb40ec415c65e9a50382386a3bd0",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/skill/tool-skill/tests/tool-skill.spec.ts",
+      "sha256": "834c679562f5886e78b8899e3bb69cd7069ac5c3b9bd6afaaf12dea46827fcef",
+      "bytes": 49684,
+      "m2Sha256": "29322908020c2f2d4d79e76933f6ba23aca61fe7682de6ec9a5a157e4ff5bff7",
+      "tagBlob": "498253eeab27ba104f14b67c708fc31a26e8195f",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/test-support/working-directory-testkit/README.md",
+      "sha256": "01153ff63dab3743fc733301cff539e9671ab55deb909d9417adba4e3205767a",
+      "bytes": 927,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/test-support/working-directory-testkit/README.zh.md",
+      "sha256": "19e1a2c9d9b48a099acd4962e54817cb0473a301cfce0b601429b072c97419e9",
+      "bytes": 917,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/test-support/working-directory-testkit/package.json",
+      "sha256": "05d78d11b4639f4bd531bcd669082759e3c643a2ffeec436d17645c53f7977ee",
+      "bytes": 1918,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/test-support/working-directory-testkit/src/index.ts",
+      "sha256": "53a615ee212a77fc5d437d5bcb2d384f0df2645984ac55c55bbd4ee0bfc19970",
+      "bytes": 2554,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/test-support/working-directory-testkit/tsconfig.json",
+      "sha256": "e6be5162944cabf0e1ec1a99bc5a8f312d5422d109d98a15ea844e9453d8968b",
+      "bytes": 726,
+      "m2Sha256": null,
+      "tagBlob": null,
+      "ownership": "worker source; new manifests/configs include root-approved wiring"
+    },
+    {
+      "path": "packages/workflow/workflow-ptc/README.md",
+      "sha256": "5469bebcf1b2cf3bbfaf8f1b044c0c976c6589e10cb94810b062ef9394e91439",
+      "bytes": 10194,
+      "m2Sha256": null,
+      "tagBlob": "62f347031e5e3c8ee26f52f7c2a3a69e791193d6",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/workflow/workflow-ptc/README.zh.md",
+      "sha256": "f980b552ae55a2ae2e7ceb36cff88d8d6090e12e14ffcf24f8c80d7c0d67fabe",
+      "bytes": 9473,
+      "m2Sha256": null,
+      "tagBlob": "97db20b6d03c7a184f1681f3023224ab31730aa7",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/workflow/workflow-ptc/src/host.ts",
+      "sha256": "c7f3d11aad6eca9a2068d6efcbc5880a644fef3f2b7b9d7039e1a88460e91d86",
+      "bytes": 13262,
+      "m2Sha256": null,
+      "tagBlob": "71b5a442b627e8494c554033f58fa812fdb1b7d9",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    },
+    {
+      "path": "packages/workflow/workflow-ptc/src/index.ts",
+      "sha256": "6d565989190e11598c2450ae267900c976d2f9534e2d698b75cce5eae1409101",
+      "bytes": 7907,
+      "m2Sha256": null,
+      "tagBlob": "9bd421697a125c87492d6b36c76257874955c630",
+      "ownership": "worker adapted existing file; preserve pre-existing M2 edits"
+    }
+  ],
+  "inventoryPurpose": "Exact current worker implementation inputs and owner test adaptations, excluding unrelated tests whose bytes also changed since the shared M2 freeze. Root-generated and root-owned follow-up changes are separately described in the report."
+}

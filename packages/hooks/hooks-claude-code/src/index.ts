@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * Bridge for unmodified Claude Code command hooks on harness interception
  * extension points. It supports SessionStart, prompt/tool pre/post, Stop, and subagent
@@ -45,7 +46,7 @@ import { parseClaudeCodeConfig, type ClaudeCodeHookConfig } from './config.ts'
 export const name = 'hooks-claude-code'
 // `shell` runs hooks and `sessionProjections` supplies turn numbers; the rest
 // are read opportunistically via ctx.get so a deployment can omit them.
-export const inject = ['shell', 'sessionProjections', 'agents']
+export const inject = ['workingDirectory', 'shell', 'sessionProjections', 'agents']
 
 /** Plugin config: where the CC hook config lives + substitution roots. */
 export interface Config {
@@ -148,12 +149,12 @@ export function apply(ctx: Context, config: Config): void {
   ): Promise<MergedHookOutcome> {
     const groups: MatcherGroup[] = parsed[point] ?? []
     const outputs: HookOutput[] = []
-    // Run the hook in the agent's session workspace (the `session/new` cwd on the session
-    // header), not the executor or entry-point process's launch dir.
-    const workdir = opts.agent?.session.header.cwd
-    // CLAUDE_PROJECT_DIR: an explicit config value wins; otherwise default it to the session
-    // workspace (the same dir the hook runs in).
-    const projectDir = config.projectDir ?? workdir
+    // SubagentStop observes a settled child whose scoped fiber may already be disposed.
+    const workdir = opts.agent === undefined ? undefined : point === 'SubagentStop'
+      ? ctx.workingDirectory.get(opts.agent.session)
+      : await ctx.workingDirectory.ensure(opts.agent, opts.signal)
+    // Project identity remains the original workspace even when execution moves.
+    const projectDir = config.projectDir ?? opts.agent?.session.header.cwd
     const hookEnv = projectDir !== undefined ? { CLAUDE_PROJECT_DIR: projectDir } : undefined
     for (const group of groups) {
       if (!matchesMatcher(group.matcher, matchQuery, 'claude-code')) continue

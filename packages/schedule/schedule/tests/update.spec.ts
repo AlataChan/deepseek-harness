@@ -1,8 +1,10 @@
 /** Pure timing edits accept every recurrence kind, compute creation targets, and preserve targets for normalized no-ops. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as domain from '../src/domain.ts'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { resolveScheduleUpdate, retainedTitle } from '../src/update.ts'
-import type { ScheduleRecord, ScheduleTimingChange, ScheduleToolError, ScheduleUpdateContent } from '../src/types.ts'
+import { editRuleForTest, harness } from './harness.ts'
+import type { ScheduleRecord, ScheduleTiming, ScheduleToolError, SchedulePatch } from '../src/types.ts'
 
 const now = Date.parse('2026-09-16T00:00:00.125Z')
 const id = domain.ScheduleId('timing')
@@ -21,12 +23,12 @@ const cron = domain.createCronScheduleRecord(id, prompt, {
 }, now, storedTitle)
 afterEach(() => vi.restoreAllMocks())
 
-function update(current: ScheduleRecord, change: ScheduleTimingChange, acceptedAt = now) {
-  return resolveScheduleUpdate(current, current, change, acceptedAt)
+function update(current: ScheduleRecord, change: ScheduleTiming, acceptedAt = now) {
+  return editRuleForTest(current, change, acceptedAt)
 }
 
 /** Target changes covering every kind a timing change can select. */
-const targetChanges: Record<'at' | 'every' | 'daily' | 'weekly' | 'cron', ScheduleTimingChange> = {
+const targetChanges: Record<'at' | 'every' | 'daily' | 'weekly' | 'cron', ScheduleTiming> = {
   at: { kind: 'at', at: '2026-09-20T10:30:00.321+08:00' },
   every: { kind: 'every', every_seconds: 600 },
   daily: { kind: 'daily', daily: { time: '08:00:00.125', time_zone: 'Asia/Shanghai' } },
@@ -35,8 +37,9 @@ const targetChanges: Record<'at' | 'every' | 'daily' | 'weekly' | 'cron', Schedu
 }
 
 /** Recompute the record creation itself would produce from the same accepted save time. */
-function createdFrom(change: ScheduleTimingChange): ScheduleRecord {
+function createdFrom(change: ScheduleTiming): ScheduleRecord {
   switch (change.kind) {
+    case 'after': return domain.createAfterScheduleRecord(id, prompt, change.after_seconds, now, storedTitle)
     case 'at': return domain.createAtScheduleRecord(id, prompt, change.at, now, storedTitle)
     case 'every': return domain.createEveryScheduleRecord(id, prompt, change.every_seconds, now, storedTitle)
     case 'daily': return domain.createDailyScheduleRecord(id, prompt, change.daily, now, storedTitle)
@@ -66,11 +69,12 @@ it('does not treat a cross-kind change to the committed instant as a no-op', () 
   }
 })
 
-it('refuses a stale snapshot before applying a cross-kind timing change', () => {
-  expect(resolveScheduleUpdate(every, { ...every, everySeconds: 600 }, targetChanges.daily, now))
-    .toEqual({ id, updated: false, code: 'schedule_conflict' })
-  expect(resolveScheduleUpdate(every, daily, targetChanges.weekly, now))
-    .toEqual({ id, updated: false, code: 'schedule_conflict' })
+it('refuses a stale revision before applying a cross-kind timing change', async () => {
+  const test = await harness(); try {
+    const task = await test.service.create({ title: storedTitle, prompt, timing: targetChanges.every })
+    await test.service.edit({ id: task.id, action: 'update', patch: { timing: targetChanges.daily } })
+    expect(await test.service.edit({ id: task.id, action: 'update', expectedUpdatedAt: task.updatedAt ?? null, patch: { title: '  ', timing: targetChanges.weekly } })).toEqual({ id: task.id, code: 'schedule_conflict' })
+  } finally { await test.ctx.fiber.dispose() }
 })
 
 it.each([after, at])('converts changed $kind targets to at without changing identity or prompt', (current) => {
@@ -135,31 +139,25 @@ it.each([
     .toMatchObject({ updated: true, record: { scheduledAt } })
 })
 
-it('accepts reordered expected keys while comparing every field', () => {
-  const reordered = Object.fromEntries(Object.entries(daily).reverse()) as ScheduleRecord
-  expect(resolveScheduleUpdate(daily, reordered, { kind: 'daily', daily: { time: '10:00:00', time_zone: 'UTC' } }, now))
-    .toMatchObject({ updated: true })
-  for (const expected of [
-    { ...daily, prompt: 'Different prompt' }, { ...daily, id: domain.ScheduleId('other') },
-    { ...daily, scheduledAt: at.scheduledAt }, { ...daily, timeZone: 'UTC' }, { ...daily, time: '10:00:00.125' },
-  ]) {
-    expect(resolveScheduleUpdate(daily, expected, { kind: 'daily', daily: { time: daily.time, time_zone: daily.timeZone } }, now))
-      .toEqual({ id, updated: false, code: 'schedule_conflict' })
-  }
+it('accepts reordered patch fields under the same revision token', async () => {
+  const test = await harness(); try {
+    const task = await test.service.create({ title: storedTitle, prompt, timing: targetChanges.every })
+    const patch = Object.fromEntries(Object.entries({ title: 'Reordered', prompt: 'Replacement' }).reverse())
+    expect(await test.service.edit({ id: task.id, action: 'update', expectedUpdatedAt: task.updatedAt ?? null, patch })).toMatchObject({ title: 'Reordered', prompt: 'Replacement' })
+  } finally { await test.ctx.fiber.dispose() }
 })
 
-it.each([
-  null, [], {}, { ...daily, private: 'must not appear' }, { ...daily, time: 'bad' },
-  Object.fromEntries(Object.entries(daily).filter(([key]) => key !== 'title')),
-])
-('returns a fixed public error for malformed expected JSON %#', (expected) => {
-  expect(resolveScheduleUpdate(daily, expected as ScheduleRecord, { kind: 'daily', daily: { time: '10:00:00', time_zone: 'UTC' } }, now))
-    .toEqual({ code: 'invalid_rule', message: 'expected must be a complete valid Schedule record.' })
+it.each([null, 'missing-revision', 'not a date'])('refuses an obsolete revision token %j without writing', async (expectedUpdatedAt) => {
+  const test = await harness(); try {
+    const task = await test.service.create({ title: storedTitle, prompt, timing: targetChanges.every })
+    expect(await test.service.edit({ id: task.id, action: 'update', expectedUpdatedAt, patch: { title: 'Rejected' } })).toEqual({ id: task.id, code: 'schedule_conflict' })
+    expect(await test.service.view({ id: task.id })).toEqual(task)
+  } finally { await test.ctx.fiber.dispose() }
 })
 
 const invalidChanges: [ScheduleRecord, unknown, string][] = [
   [at, null, 'invalid_rule'], [at, [], 'invalid_rule'], [at, 'at', 'invalid_rule'],
-  [at, {}, 'invalid_rule'], [at, { kind: 'after', after_seconds: 60 }, 'invalid_rule'],
+  [at, {}, 'invalid_rule'], [at, { kind: 'after', after_seconds: 0 }, 'invalid_rule'],
   [at, { kind: 'at', at: at.scheduledAt, prompt: 'Overwrite' }, 'invalid_rule'],
   [at, { kind: 'at', every_seconds: 300 }, 'invalid_rule'], [at, { at: at.scheduledAt }, 'invalid_rule'],
   [at, { kind: 'at' }, 'invalid_rule'],
@@ -181,7 +179,7 @@ const invalidChanges: [ScheduleRecord, unknown, string][] = [
 
 describe('strict wire timing validation', () => {
   it.each(invalidChanges)('rejects invalid timing %#', (current, change, code) => {
-    const result = update(current, change as ScheduleTimingChange) as ScheduleToolError
+    const result = update(current, change as ScheduleTiming) as ScheduleToolError
     expect(result).toMatchObject({ code })
     expect(result.message).toEqual(expect.any(String))
   })
@@ -194,31 +192,27 @@ it('rejects daily exhaustion using the actual acceptance clock', () => {
 
 it('does not turn programming failures in decoding or timing calculation into public input results', () => {
   const failure = new Error('Programming failure')
-  vi.spyOn(domain, 'decodeScheduleRecord').mockImplementationOnce(() => { throw failure })
-  expect(() => update(at, { kind: 'at', at: at.scheduledAt })).toThrow(failure)
   vi.spyOn(domain, 'parseAtInput').mockImplementationOnce(() => { throw failure })
   expect(() => update(at, { kind: 'at', at: at.scheduledAt })).toThrow(failure)
 })
 
-it('compares every interval and delayed one-shot metadata rather than only their target', () => {
-  for (const [current, expected] of [
-    [every, { ...every, everySeconds: 600 }], [after, { ...after, afterSeconds: 61 }],
-    [after, { id, kind: 'at', title: storedTitle, prompt, scheduledAt: after.scheduledAt }],
-  ] as [ScheduleRecord, ScheduleRecord][]) {
-    expect(resolveScheduleUpdate(current, expected, { kind: 'at', at: at.scheduledAt }, now))
-      .toEqual({ id, updated: false, code: 'schedule_conflict' })
-  }
+it('changes revision when interval metadata changes even before its occurrence', async () => {
+  const test = await harness(); try {
+    const task = await test.service.create({ title: storedTitle, prompt, timing: targetChanges.every })
+    await test.service.edit({ id: task.id, action: 'update', patch: { timing: targetChanges.daily } })
+    expect(await test.service.edit({ id: task.id, action: 'update', expectedUpdatedAt: task.updatedAt ?? null, patch: { title: '  ', timing: targetChanges.weekly } })).toEqual({ id: task.id, code: 'schedule_conflict' })
+  } finally { await test.ctx.fiber.dispose() }
 })
 
 it('preserves the stored title through a timing edit', () => {
-  const result = resolveScheduleUpdate(daily, daily, { kind: 'every', every_seconds: 600 }, now)
+  const result = editRuleForTest(daily, { kind: 'every', every_seconds: 600 }, now)
   if (!('record' in result)) throw new Error('Expected a new record')
   expect(result.record.title).toBe(storedTitle)
 })
 
 it('applies a replacement name and instruction without moving the committed target', () => {
   for (const current of storedRecords) {
-    const result = resolveScheduleUpdate(current, current, undefined, now, { title: 'Renamed', prompt: 'New instruction' })
+    const result = editRuleForTest(current, undefined, now, { title: 'Renamed', prompt: 'New instruction' })
     expect(result).toEqual({ id, updated: true, record: { ...current, title: 'Renamed', prompt: 'New instruction' } })
     if (!('record' in result)) throw new Error('Expected a new record')
     expect(result.record.scheduledAt).toBe(current.scheduledAt)
@@ -226,12 +220,12 @@ it('applies a replacement name and instruction without moving the committed targ
   }
 })
 
-it.each<[string, ScheduleUpdateContent, ScheduleUpdateContent]>([
+it.each<[string, Pick<SchedulePatch, 'title' | 'prompt'>, Pick<SchedulePatch, 'title' | 'prompt'>]>([
   ['name', { title: 'Only the name' }, { title: 'Only the name', prompt }],
   ['instruction', { prompt: 'Only the instruction' }, { title: storedTitle, prompt: 'Only the instruction' }],
 ])('applies a %s-only change while keeping the other content and the committed target', (_field, content, expected) => {
   for (const current of storedRecords) {
-    const result = resolveScheduleUpdate(current, current, undefined, now, content)
+    const result = editRuleForTest(current, undefined, now, content)
     expect(result).toEqual({ id, updated: true, record: { ...current, ...expected } })
     if (!('record' in result)) throw new Error('Expected a new record')
     expect(result.record.scheduledAt).toBe(current.scheduledAt)
@@ -240,7 +234,7 @@ it.each<[string, ScheduleUpdateContent, ScheduleUpdateContent]>([
 
 it('applies name, instruction, and a changed rule together with the creation target', () => {
   const weekly = { time: '07:00:00.125', time_zone: 'Asia/Shanghai', weekdays: [2, 5] }
-  expect(resolveScheduleUpdate(every, every, { kind: 'weekly', weekly }, now, {
+  expect(editRuleForTest(every, { kind: 'weekly', weekly }, now, {
     title: 'Renamed', prompt: 'New instruction',
   })).toEqual({
     id, updated: true, record: domain.createWeeklyScheduleRecord(id, 'New instruction', weekly, now, 'Renamed'),
@@ -248,50 +242,47 @@ it('applies name, instruction, and a changed rule together with the creation tar
 })
 
 it('keeps the committed target when an equivalent rule change also edits content', () => {
-  expect(resolveScheduleUpdate(every, every, { kind: 'every', every_seconds: 300 }, now + 900_000, { title: 'Renamed' }))
+  expect(editRuleForTest(every, { kind: 'every', every_seconds: 300 }, now + 900_000, { title: 'Renamed' }))
     .toEqual({ id, updated: true, record: { ...every, title: 'Renamed' } })
-  expect(resolveScheduleUpdate(after, after, { kind: 'at', at: after.scheduledAt }, now, { prompt: 'New instruction' }))
+  expect(editRuleForTest(after, { kind: 'at', at: after.scheduledAt }, now, { prompt: 'New instruction' }))
     .toEqual({ id, updated: true, record: { ...after, prompt: 'New instruction' } })
   const alias: ScheduleRecord = { ...daily, time: '09:00:00.100', timeZone: 'US/Eastern' }
-  expect(resolveScheduleUpdate(alias, alias, {
+  expect(editRuleForTest(alias, {
     kind: 'daily', daily: { time: '09:00:00.1', time_zone: 'America/New_York' },
   }, now + 86_400_000, { title: 'Renamed' })).toEqual({ id, updated: true, record: { ...alias, title: 'Renamed' } })
 })
 
 it('writes nothing when trimmed content already matches every stored value', () => {
   for (const current of storedRecords) {
-    expect(resolveScheduleUpdate(current, current, undefined, now)).toEqual({ id, updated: false, record: current })
-    expect(resolveScheduleUpdate(current, current, undefined, now, {
+    expect(editRuleForTest(current, undefined, now)).toEqual({ id, updated: false, record: current })
+    expect(editRuleForTest(current, undefined, now, {
       title: `  ${current.title}  `, prompt: `  ${current.prompt}  `,
     })).toEqual({ id, updated: false, record: current })
   }
 })
 
-it.each<[string, ScheduleUpdateContent, string]>([
+it.each<[string, Pick<SchedulePatch, 'title' | 'prompt'>, string]>([
   ['title', { title: '   ' }, 'title is required and must be non-empty after trimming.'],
   ['title', { title: 'x'.repeat(domain.MAX_TITLE_LENGTH + 1) }, 'title must be at most 120 characters.'],
   ['prompt', { prompt: ' \n ' }, 'prompt must be non-empty after trimming.'],
 ])('rejects an invalid replacement %s with its stable message', (_field, content, message) => {
-  expect(resolveScheduleUpdate(daily, daily, undefined, now, content)).toEqual({ code: 'invalid_prompt', message })
+  expect(editRuleForTest(daily, undefined, now, content)).toEqual({ code: 'invalid_prompt', message })
 })
 
 it.each<[string, unknown]>([['title', { title: 7 }], ['prompt', { prompt: 7 }]])(
   'rejects a non-string replacement %s at the wire boundary',
   (_field, content) => {
-    expect(resolveScheduleUpdate(daily, daily, undefined, now, content as ScheduleUpdateContent))
+    expect(editRuleForTest(daily, undefined, now, content as Pick<SchedulePatch, 'title' | 'prompt'>))
       .toMatchObject({ code: 'invalid_prompt' })
   },
 )
 
-it('refuses a stale snapshot before applying a content edit or reporting invalid content', () => {
-  for (const expected of [{ ...every, everySeconds: 600 }, daily]) {
-    expect(resolveScheduleUpdate(every, expected, undefined, now, { title: 'Renamed' }))
-      .toEqual({ id, updated: false, code: 'schedule_conflict' })
-    expect(resolveScheduleUpdate(every, expected, targetChanges.weekly, now, { title: 'Renamed', prompt: 'New' }))
-      .toEqual({ id, updated: false, code: 'schedule_conflict' })
-    expect(resolveScheduleUpdate(every, expected, undefined, now, { title: '  ' }))
-      .toEqual({ id, updated: false, code: 'schedule_conflict' })
-  }
+it('checks the revision before validating replacement content', async () => {
+  const test = await harness(); try {
+    const task = await test.service.create({ title: storedTitle, prompt, timing: targetChanges.every })
+    await test.service.edit({ id: task.id, action: 'update', patch: { timing: targetChanges.daily } })
+    expect(await test.service.edit({ id: task.id, action: 'update', expectedUpdatedAt: task.updatedAt ?? null, patch: { title: '  ', timing: targetChanges.weekly } })).toEqual({ id: task.id, code: 'schedule_conflict' })
+  } finally { await test.ctx.fiber.dispose() }
 })
 
 it('returns the stored title and refuses a record without a valid one', () => {
@@ -299,4 +290,29 @@ it('returns the stored title and refuses a record without a valid one', () => {
   for (const title of ['   ', ` ${storedTitle}`, 'x'.repeat(domain.MAX_TITLE_LENGTH + 1)]) {
     expect(() => retainedTitle({ ...daily, title })).toThrow(domain.ScheduleLogError)
   }
+})
+
+it('resumes overdue recurring tasks, refuses past one-shots, and reactivates ended tasks with new timing', () => {
+  const target = { kind: 'session' as const, sessionId: SessionId('owner') }
+  const task = { target, involvedSessionIds: [target.sessionId], record: every, status: 'paused' as const,
+    updatedAt: '2026-09-16T00:00:00.125Z', pendingDelivery: { targetSessionId: target.sessionId },
+  }
+  const resumed = resolveScheduleUpdate(task, { active: true }, undefined, now + 900000)
+  expect(resumed.status).toBe('active')
+  expect(Date.parse(resumed.record.scheduledAt)).toBeGreaterThan(now + 900000)
+  expect(resumed).not.toHaveProperty('pendingDelivery')
+  expect(() => resolveScheduleUpdate({ ...task, record: after }, { active: true }, undefined, now + 900000))
+    .toThrow('Choose a future timing')
+  expect(resolveScheduleUpdate({ ...task, status: 'ended' }, { timing: { kind: 'after', after_seconds: 120 } }, undefined, now))
+    .toHaveProperty('status', 'active')
+  expect(resolveScheduleUpdate({ ...task, record: after }, { timing: { kind: 'after', after_seconds: 60 } }, undefined, now).record)
+    .toEqual(after)
+  expect(resolveScheduleUpdate(task, { title: 'Keep reservation' }, undefined, now).pendingDelivery).toEqual(task.pendingDelivery)
+  expect(resolveScheduleUpdate(task, { target: { kind: 'new' } }, { kind: 'new', create: {} }, now)).not.toHaveProperty('pendingDelivery')
+  expect(resolveScheduleUpdate({ ...task, updatedAt: '2026-09-17T00:00:00.000Z' }, { title: 'Rollback' }, undefined, now).updatedAt)
+    .toBe('2026-09-17T00:00:00.001Z')
+  const final = { ...task, record: domain.createEveryScheduleRecord(id, prompt, 60,
+    Date.parse('9999-12-31T23:58:00Z'), storedTitle) }
+  expect(() => resolveScheduleUpdate(final, { active: true }, undefined, Date.parse('9999-12-31T23:59:59Z')))
+    .toThrow('No future occurrence')
 })

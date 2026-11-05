@@ -1,0 +1,2 @@
+.progress { color: var(--dsw-alias-label-secondary); font-size: 13px; overflow-wrap: anywhere; }
+.progress p { margin: 8px 0; }

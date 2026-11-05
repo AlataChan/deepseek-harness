@@ -1,6 +1,6 @@
 /** Saved delivery interpretation and identity-based pagination without Session reads. */
 import type { ScheduleTask } from './storage.ts'
-import type { DeliveryRetentionBounds, ScheduleDeliveryHistoryRequest, ScheduleDeliveryHistoryResult, ScheduleDeliveryReceipt } from './types.ts'
+import type { DeliveryRetentionBounds, ScheduleDeliveryHistoryRequest, ScheduleDeliveryHistoryResult, ScheduleDeliveryReceipt, ScheduleDeliveryRecord } from './types.ts'
 
 /** Milliseconds in one day, the unit the retention window is stated in. */
 const DAY_MS = 86_400_000
@@ -10,11 +10,22 @@ const DAY_MS = 86_400_000
  * @param task - Immutable stored task.
  * @returns Oldest-first retained deliveries without changing storage.
  */
-function deliveryHistoryOf(task: ScheduleTask): NonNullable<ScheduleTask['deliveryHistory']> {
-  return task.deliveryHistory ?? {
+function deliveryHistoryOf(task: ScheduleTask): {
+  records: ScheduleDeliveryRecord[]
+  earlierRecordsUnavailable: boolean
+  earlierRecordsPruned?: boolean | undefined
+} {
+  const history = task.deliveryHistory ?? {
     records: task.lastDelivery === undefined ? [] : [task.lastDelivery],
     earlierRecordsUnavailable: true,
   }
+  return { ...history, records: history.records.map((record) => {
+    const prompt = 'prompt' in record ? record.prompt : undefined
+    const targetSessionId = record.targetSessionId
+    return { scheduledAt: record.scheduledAt, deliveredAt: record.deliveredAt, messageId: record.messageId,
+      targetSessionId, ...(prompt === undefined ? {} : { prompt }),
+    }
+  }) }
 }
 
 /**

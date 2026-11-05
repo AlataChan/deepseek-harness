@@ -94,6 +94,50 @@ describe('web e2e: plugin manager', () => {
     return readFile(join(scaffold.harnessHome, ...segments), 'utf8').catch(() => '')
   }
 
+  it('RC1-09 explicitly checks, confirms and reports restart while locked pins stay unavailable', async () => {
+    const manager = scaffold.ctx.pluginManager
+    const rows = await manager.listBundles()
+    const eligible = { name: '@fixture/versioned', version: '1.0.0', source: '@fixture/versioned@1.0.0', enabled: false,
+      installed: true, optional: false, removable: true, updatable: true, rows: [], overrides: [] }
+    const locked = { ...eligible, name: '@fixture/locked-pin', source: 'file:/fixture/locked-pin', updatable: false }
+    const bundles = vi.spyOn(manager, 'listBundles').mockResolvedValue([eligible, locked])
+    // The real Host refuses the file pin before the scripted registry/version remotes are installed.
+    expect(await manager.listVersions(locked.name)).toMatchObject({ status: 'refused', problem: 'not-updatable', attempts: [] })
+    expect(await manager.updateBundle(locked.name, '2.0.0')).toMatchObject({ step: 'check', result: { changed: false, application: 'failed' } })
+    const list = vi.spyOn(manager, 'listVersions').mockResolvedValue({ status: 'listed', installed: '1.0.0', registry: null,
+      attempts: [{ registry: null }], omitted: 0, versions: [{ version: '2.0.0', tags: ['latest'], prerelease: false, bundle: true }] })
+    const update = vi.spyOn(manager, 'updateBundle').mockImplementation(async (name, version, options) => {
+      if (options?.requestId !== undefined) {
+        scaffold.ctx.emit('plugin-manager/update-state', { requestId: options.requestId, step: 'checking' })
+        scaffold.ctx.emit('plugin-manager/update-state', { requestId: options.requestId, step: 'installing' })
+      }
+      return { from: '1.0.0', to: version, step: 'install', result: { application: 'restart-required', changed: true, stage: 'enable', target: name } }
+    })
+    const probe = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: ZH_BROWSER_LOCALE })
+    try {
+      await probe.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
+      await probe.getByRole('navigation', { name: '全局面板' }).getByRole('button', { name: '插件', exact: true }).click()
+      const panel = probe.locator('[data-plugin-panel]')
+      await panel.getByRole('button', { name: '查看 @fixture/locked-pin', exact: true }).click()
+      expect(await panel.locator('[data-plugin-versions]').count()).toBe(0)
+      await panel.getByRole('button', { name: '返回插件列表', exact: true }).click()
+      await panel.getByRole('button', { name: '查看 @fixture/versioned', exact: true }).click()
+      expect(list).not.toHaveBeenCalled()
+      await panel.getByRole('button', { name: '检查新版本', exact: true }).click()
+      await panel.getByRole('button', { name: '选择 2.0.0', exact: true }).click()
+      expect(update).not.toHaveBeenCalled()
+      const dialog = probe.getByRole('dialog', { name: '更新 @fixture/versioned' })
+      await dialog.getByRole('button', { name: '确认更新', exact: true }).click()
+      await dialog.getByText('更改将在下次启动生效', { exact: true }).waitFor()
+      expect(update).toHaveBeenCalledTimes(1)
+      expect(list).toHaveBeenCalledTimes(1)
+      expect(rows.length).toBeGreaterThan(0)
+    } finally {
+      await probe.close()
+      update.mockRestore(); list.mockRestore(); bundles.mockRestore()
+    }
+  })
+
   it('aligns the first-read skeleton with the loaded plugin cards', async () => {
     const facts: string[] = []
     let aria = ''
@@ -615,6 +659,10 @@ describe('web e2e: plugin manager', () => {
   }, 60_000)
 
   it('enables the Team tools and browser plugin with one bundle switch', async () => {
+    const before = JSON.parse(await homeFile('profiles', 'scaffold', 'package.json')) as {
+      dsh: { profile: { bundles: string[] } }
+    }
+    const bundlesBefore = [...before.dsh.profile.bundles]
     onTestFailed(() => saveFailureShot(page, 'web-e2e-plugin-manager-team'))
     const panel = await openPluginsPanel()
     const toggle = panel.getByRole('switch', { name: '启用 智能体团队', exact: true })
@@ -644,17 +692,18 @@ describe('web e2e: plugin manager', () => {
         await expect.poll(() => teamRows().filter(entry => entry.fiber?.state === FiberState.ACTIVE).length, { timeout: 20_000 }).toBe(3)
         await expect.poll(() => toggle.getAttribute('aria-checked')).toBe('true')
         await action.waitFor({ timeout: 20_000 })
-        await action.getByRole('button', { name: '智能体团队', exact: true }).click()
-        const teamPanel = teamPage.getByRole('dialog', { name: '智能体团队', exact: true })
-        await teamPanel.getByText('Team 暂不可用', { exact: true }).waitFor()
+        await action.getByRole('button', { name: '团队协作', exact: true }).click()
+        const teamPanel = teamPage.getByRole('dialog', { name: '团队协作', exact: true })
+        await teamPanel.getByText('还没有共享任务', { exact: true }).waitFor()
+        await teamPanel.getByRole('button').filter({ hasText: 'lead' }).filter({ hasText: '协调员会话' }).waitFor()
         await teamPage.reload({ waitUntil: 'load' })
-        await action.getByRole('button', { name: '智能体团队', exact: true }).click()
-        await teamPanel.getByText('暂无共享任务，可以通过对话创建').waitFor()
-        await teamPanel.getByText('lead', { exact: true }).waitFor()
+        await action.getByRole('button', { name: '团队协作', exact: true }).click()
+        await teamPanel.getByText('还没有共享任务', { exact: true }).waitFor()
+        await teamPanel.getByRole('button').filter({ hasText: 'lead' }).filter({ hasText: '协调员会话' }).waitFor()
         const manifest = JSON.parse(await homeFile('profiles', 'scaffold', 'package.json')) as {
           dsh: { profile: { bundles: string[] } }
         }
-        expect(manifest.dsh.profile.bundles).toEqual([...SCAFFOLD_BUNDLES, '@deepseek-ai/dsh-experimental-agent-team-profile'])
+        expect(manifest.dsh.profile.bundles).toEqual([...bundlesBefore, '@deepseek-ai/dsh-experimental-agent-team-profile'])
         await panel.getByRole('button', { name: '查看 智能体团队', exact: true }).click()
         for (const id of ['agent-team', 'tool-agent-team', 'ui-agent-team']) {
           await panel.locator('[data-plugin-row]', { hasText: id }).first().waitFor()

@@ -16,9 +16,9 @@ const id = 'mark-task' as ScheduleId
 
 afterEach(cleanup)
 
-function entry(taskId: string, sessionId: SessionId, status: 'active' | 'inactive' = 'active'): ScheduleCatalogEntry {
+function entry(taskId: string, sessionId: SessionId, status: 'active' | 'ended' = 'active'): ScheduleCatalogEntry {
   return {
-    id: taskId as ScheduleId, sessionId, status, kind: 'at',
+    id: taskId as ScheduleId, target: { kind: 'session' as const, sessionId: sessionId }, involvedSessionIds: [sessionId], status, kind: 'at',
     title: 'Read status', prompt: 'Read status', scheduledAt: '2026-10-01T00:00:00.000Z',
   }
 }
@@ -62,7 +62,7 @@ describe('Session schedule sidebar mark', () => {
     await settle()
     expect(empty.container.querySelector('[data-session-schedule-mark]')).toBeNull()
 
-    const ended = renderMark(sourceFor(async () => ({ ok: true, value: [entry('ended', SESSION, 'inactive')] })))
+    const ended = renderMark(sourceFor(async () => ({ ok: true, value: [entry('ended', SESSION, 'ended')] })))
     await settle()
     expect(ended.container.querySelector('[data-session-schedule-mark]')).toBeNull()
 

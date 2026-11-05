@@ -23,9 +23,12 @@ kind: "package-library"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 `Toast` 在浅色和深色模式下均使用主题的系统提示背景与文字颜色。`Menu` 数据条目与 `MenuItemButton` 组件条目接收功能 owner 提供的有效快捷键，并在末端以无背景的浅灰色文字对齐显示，子菜单也采用同一呈现。`ShortcutKeys` 默认以无方块的按键文字显示菜单和行内提示。`tooltip` 变体在深色气泡上使用稍浅的键帽，以加号连接的组合则共用一个填充色块。`Tooltip.shortcutKeys` 将键帽与可选的本地化操作文本垂直居中排列，标签为空时只显示按键。可选的 `className` 供调用方设置交互状态样式。`Modal` 使用框架共享的浮层起点，视口边距至少为 24px。其遮罩不绘制 Windows 顶栏区域，覆盖整个视口的模态层仍阻挡背景点击。`Modal` 与设置外壳通过 `useModalLayer` 共用顶层 Esc 和 Tab 处理，关闭时恢复先前焦点。`closeTopModal(document)` 请求前台弹窗当前的关闭操作；上层菜单或未注册的对话框会阻止关闭其后方弹窗。组件通过 `isBehindModal` 避免将焦点移到嵌套弹窗后方。菜单先消费自己的 Esc，再由模态层处理关闭。 `observeComposition` 为局部弹层和录键处理提供相同的 composition-end 与旧版 IME 保护；调用方随交互生命周期释放其 document 监听。
+
+在手机和平板上，如果 input、textarea、contenteditable 元素或 textbox 在弹窗打开前不可编辑，关闭弹窗不会自动将焦点移回该文本输入控件。即使该控件在弹窗关闭时仍为只读、之后才变为可编辑，也遵循此规则。原先可编辑的控件和普通按钮仍会恢复焦点；桌面回焦行为保持不变。
 
 弹窗自动进入及弹窗、菜单回焦，包括通过 Esc 和应用关闭快捷键触发的回焦，均使用 `focusWithoutRing(element, options?)`，在 Tab 或方向键导航恢复正常焦点样式前抑制外轮廓线。弹窗容器仍不绘制焦点外框。原有边框、阴影和错误状态保持不变。用 `data-modal-autofocus` 标记弹窗的初始控件，让模态层先保存触发控件，再移动焦点。随弹窗挂载的控件不得使用 React `autoFocus`，因为它会在保存触发控件前执行。弹窗容器获得焦点时，Tab 和 Shift+Tab 分别进入第一个和最后一个可聚焦控件。
 
@@ -34,6 +37,7 @@ kind: "package-library"
 只要 Web 客户端需要标准控件或 agent 输出渲染器，就用这些原子组件拼装功能 UI。它们只经 React 渲染，并从主题取得 `--dsw-*` 设计 token，因此无需导入主题或 slot 系统即可适配任意插件。
 
 <a id="component-catalog"></a>
+
 ### 组件目录
 
 在功能包里写控件之前，先查这张表。插件无法导入另一个插件的组件，因此本包是控件唯一可以共享的地方：合适的就复用，有意的视觉差异提升成 prop，而不是另起一份拷贝。
@@ -113,7 +117,10 @@ kind: "package-library"
 
 -----
 
+`formatQuoteText` 输出普通多行 Markdown 引用。`QuotePreview` 显示原文摘要；`projectUserText` 装饰引用并保留引用之外的会话、文件和已载入技能标签。`isMobileDevice` 的手机和平板识别结果缓存到页面重新加载。
+
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 `Button` 的 `md` 使用 H36/R12，`sm` 使用 H28/R8，包含描边控件。菜单与卡片遵循[共享圆角规则](../../../docs/web-styling.zh.md#corner-radii-and-settings-cards)；功能样式保留控件几何。
@@ -150,6 +157,7 @@ kind: "package-library"
 | [`src/settings-form/`](src/settings-form/) | 设置页套件：基于设置 scope 的暂存表单模型、值字段与密文字段、表单框架 |
 
 <a id="input-modality"></a>
+
 ### 输入模态
 
 [`input-modality.ts`](src/input-modality.ts) 为 tooltip 跟踪输入，并在 `<html>` 上发布 `data-input-modality`，供[主题焦点样式](../ui-theme/README.zh.md#understand-the-implementation)使用。`pointerModality()` 在指针输入后为 true，在任意按键后为 false，包括 IME（输入法）组合输入按键；`Tooltip` 据此决定聚焦时是否可以显示气泡。发布的属性保持 `pointer`，直到非组合输入的导航键（Tab、方向键、Home/End、PageUp/PageDown）到达，或非组合输入按键之后焦点移到不同控件。重新聚焦同一控件不会恢复键盘模态。指针输入、IME 组合输入按键和 window blur 都会清除待处理按键；没有待处理按键的焦点变化不改变模态。监听器与文档同寿命；从 Node 导入时不安装监听器。 焦点变化规则只观察传到 window 的事件；shadow root 内部不向外暴露这些事件的额外导航由组件负责。
@@ -167,6 +175,7 @@ kind: "package-library"
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 以下页面说明这些原子组件在客户端技术栈与设计系统中的位置。
@@ -180,6 +189,7 @@ kind: "package-library"
 -----
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 无。该包是浏览器端 UI 插件层，不注册任何面向模型的内容。
@@ -206,6 +216,7 @@ kind: "package-library"
 - **`TerminalBlock` 不是终端模拟器**：它渲染已结束或仍在运行的命令输出，而不是交互式会话：SGR 颜色、回车、退格、行内擦除、制表位与字符宽度会被遵循；绝对光标定位、清屏与备用屏幕序列会被剥离。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

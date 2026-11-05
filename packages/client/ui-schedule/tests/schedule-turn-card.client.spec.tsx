@@ -193,7 +193,7 @@ function cardProps(
     return {
       ...task,
       title: task.title ?? task.prompt?.split('\n', 1)[0] ?? '',
-      sessionId: 'session',
+      target: { kind: 'session' as const, sessionId: 'session' }, involvedSessionIds: ['session'],
       status: 'active',
     } as ScheduleCatalogEntry
   }),
@@ -383,7 +383,7 @@ describe('ScheduleTurnCard', () => {
       ...weeklyTask,
       id: dailyTask.id,
       title: 'Updated deployment check',
-      sessionId: 'session',
+      target: { kind: 'session' as const, sessionId: 'session' }, involvedSessionIds: ['session'],
       status: 'active',
     } as ScheduleCatalogEntry
     const { view, snapshot } = mountTurnCard([settledBlock(dailyTask)], [current])

@@ -1,0 +1,7 @@
+{ "diagnostics": [{"message": "Returning a void expression from a function is forbidden. Please remove the `return` statement.","code": "typescript(no-confusing-void-expression)","severity": "error","causes": [],"url": "https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-confusing-void-expression.html","filename": "packages/api/session-controller/tests/session-ask-data.host.spec.ts","labels": [{"span": {"offset": 23247,"length": 23,"line": 600,"column": 14}}],"related": []},
+{"message": "Unsafe return of a value of type `any`.","code": "typescript(no-unsafe-return)","severity": "error","causes": [],"url": "https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-unsafe-return.html","filename": "packages/client/ui-chat/tests/chat-apply.client.spec.tsx","labels": [{"span": {"offset": 15712,"length": 3,"line": 336,"column": 55}}],"related": []}],
+              "number_of_files": 13,
+              "number_of_rules": 90,
+              "threads_count": 8,
+              "start_time": 2.582680459
+            }

@@ -1,7 +1,8 @@
+import { createDirectoryFixtureAgent, mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { ShellExecutor } from '@deepseek-ai/dsh-shell'
@@ -11,7 +12,8 @@ import ToolRuntime, { TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH } from '@deepse
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { turnBoundaryProjectionDefinition } from '@deepseek-ai/dsh-agent-loop'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
+import { parseSessionLog } from '@deepseek-ai/dsh-llm-replay'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
 import * as ToolJobs from '@deepseek-ai/dsh-tool-jobs'
 import ApprovalService from '@deepseek-ai/dsh-user-approval'
@@ -29,6 +31,12 @@ import { renderJobRead, renderResult } from '../src/render.ts'
 /** Empty offset readers for fakes that never produce output. */
 const silentReader = { readFrom: (fromByte: number) => ({ text: '', nextOffset: fromByte, lossy: false }) }
 
+const contexts: Context[] = []
+afterEach(async () => {
+  for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
+  vi.restoreAllMocks()
+})
+
 const testToolSignal = new AbortController().signal
 
 const spillDir = mkdtempSync(join(tmpdir(), 'dsh-tool-bash-spec-'))
@@ -40,6 +48,7 @@ afterAll(() => {
 /** Foreground-only harness: no job runtime (backgrounding fails loud here). */
 async function setup() {
   const ctx = new Context()
+  contexts.push(ctx)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(SessionProjectionRegistry)
@@ -48,6 +57,7 @@ async function setup() {
   ;(ctx.subprocess as LocalSubprocessRuntime).internals = { spillDir }
   await ctx.plugin(BashEnvPlugin)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000, graceMs: 200 })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolBash)
   return ctx
 }
@@ -55,6 +65,7 @@ async function setup() {
 /** Full harness: the generic job runtime + its controller, then the bash tool. */
 async function setupWithJobs() {
   const ctx = new Context()
+  contexts.push(ctx)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(SessionProjectionRegistry)
@@ -65,26 +76,33 @@ async function setupWithJobs() {
   ;(ctx.subprocess as LocalSubprocessRuntime).internals = { spillDir }
   await ctx.plugin(BashEnvPlugin)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000, graceMs: 200 })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolBash)
   return ctx
 }
 
-/**
- * Build a fake {@link Agent} with the shared agent/session identity, give it a
- * dedicated lifecycle fiber for `Agent.ctx`, and register it in `ctx.agents`.
- */
-async function registerFakeAgent(ctx: Context, sessionId: string, inject: (...args: unknown[]) => void = () => {}): Promise<Agent> {
-  const scopeFiber = ctx.plugin(() => {})
-  const id = SessionId(sessionId)
-  const agent = {
-    id,
-    ctx: scopeFiber.ctx,
-    inject,
-    session: { id, header: { version: 0, id, createdAt: 0 } },
-  } as unknown as Agent
-  await ctx.agents.register(agent)
+/** Real idle agents retain session projections and lifecycle ownership. */
+async function registerFixtureAgent(ctx: Context, sessionId: string): Promise<Agent> {
+  return await createDirectoryFixtureAgent(ctx, SessionId(sessionId), process.cwd())
+}
+
+let sandboxAgentNumber = 0
+
+/** Record real sandbox events and observe committed approval decisions synchronously. */
+async function sandboxAgent(
+  ctx: Context,
+  mode?: 'read-only' | 'workspace-write' | 'danger-full-access',
+  onAppend?: (type: string) => void,
+): Promise<Agent> {
+  const agent = await createDirectoryFixtureAgent(ctx, SessionId(`sandbox-session-${++sandboxAgentNumber}`), process.cwd())
+  agent.session.append('turn/start', { turn: 1 })
+  if (mode !== undefined) agent.session.append('sandbox/mode', { mode })
+  if (onAppend !== undefined) ctx.on('session/event', (session, event) => {
+    if (session === agent.session) onAppend(event.type)
+  })
   return agent
 }
+
 let callCounter = 0
 function call(ctx: Context, name: string, args: unknown, agent?: Agent) {
   return ctx.tools.execute({ signal: testToolSignal, callId: ToolCallId(`call-${++callCounter}`), name, arguments: args, ...agent ? { agent } : {} })
@@ -203,6 +221,7 @@ class CountingStartExecutor extends ShellExecutor {
 
 async function setupSandboxed(withApproval = false) {
   const ctx = new Context()
+  contexts.push(ctx)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(SessionProjectionRegistry)
@@ -214,36 +233,11 @@ async function setupSandboxed(withApproval = false) {
   await ctx.plugin(RecordingSandboxExecutor)
   if (withApproval) await ctx.plugin(ApprovalService)
   await ctx.plugin(BashEnvPlugin)
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolBash)
   return { ctx, bash: ctx.shell as RecordingSandboxExecutor }
 }
 
-function sandboxAgent(
-  mode?: 'read-only' | 'workspace-write' | 'danger-full-access',
-  ctx?: Context,
-  onAppend?: (type: string) => void,
-): Agent {
-  const events: Array<{ type: string; data?: Record<string, unknown>; seq: number }> = [{ type: 'turn/start', seq: 0, data: { turn: 1 } }]
-  if (mode !== undefined) events.push({ type: 'sandbox/mode', seq: events.length, data: { mode } })
-  const id = SessionId('sandbox-session')
-  return {
-    id,
-    ...ctx === undefined ? {} : { ctx: ctx.plugin(() => {}).ctx },
-    session: {
-      id,
-      header: { version: 0, id, createdAt: 0 },
-      get seq() { return events.length },
-      eventAt: (seq: number) => events[seq],
-      snapshotEvents: () => events,
-      append: (type: string, data: Record<string, unknown>) => {
-        const event = { type, data, seq: events.length }
-        events.push(event)
-        onAppend?.(type)
-        return event
-      },
-    },
-  } as unknown as Agent
-}
 
 describe('bash tool', () => {
   it('returns stdout for a successful command', async () => {
@@ -304,12 +298,14 @@ describe('bash tool', () => {
 
   it('reports truncation with the spill path', async () => {
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalSubprocessRuntime)
     ;(ctx.subprocess as LocalSubprocessRuntime).internals = { spillDir }
     await ctx.plugin(LocalBashExecutor, { maxOutputBytes: 100, graceMs: 200 })
     await ctx.plugin(BashEnvPlugin)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolBash)
     const result = await call(ctx, 'bash', { command: 'for i in $(seq 1 100); do printf "line-%04d\\n" $i; done', description: 'test command' })
     expect(text(result)).toContain('[output truncated; full output: ')
@@ -460,11 +456,13 @@ describe('bash tool', () => {
 
   it('unregisters everything when the plugin fiber is disposed (HMR safety)', async () => {
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(LocalBashExecutor, {})
     await ctx.plugin(BashEnvPlugin)
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(ToolBash)
     expect(ctx.tools.schemas()).toHaveLength(1)
     expect((await ctx.systemPrompt.assemble()).sections.map(s => s.name)).toEqual(['harness:identity', 'deployment:persona-prefix', 'tool:bash', 'deployment:persona-suffix'])
@@ -476,22 +474,24 @@ describe('bash tool', () => {
 
   it('tools depend on the executor: no registration without ctx.shell', async () => {
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     // inject: ['tools', 'bash'] keeps the plugin pending until bash exists.
     await ctx.plugin(BashEnvPlugin)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolBash)
     expect(ctx.tools.schemas()).toHaveLength(0)
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(LocalBashExecutor, {})
-    await new Promise(resolve => setTimeout(resolve, 0))
-    expect(ctx.tools.schemas()).toHaveLength(1)
+    await expect.poll(() => ctx.tools.schemas()).toHaveLength(1)
   })
 
   it('applies the built-in background default when apply() receives a bare config', async () => {
     // Bypasses the schemastery defaults on purpose: apply() must stand on its
     // own `?? true` fallback when embedded programmatically without the schema.
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(SessionProjectionRegistry)
@@ -500,8 +500,7 @@ describe('bash tool', () => {
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(LocalBashExecutor, {})
     ToolBash.apply(ctx, {})
-    // The job-backed variant registers from the registry fork, one turn later.
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await expect.poll(() => ctx.tools.get('bash')?.parameters).toHaveProperty('properties.run_in_background')
     const schema = ctx.tools.schemas()[0]!
     expect(Object.keys(schema.parameters.properties as Record<string, unknown>))
       .toContain('run_in_background')
@@ -511,6 +510,7 @@ describe('bash tool', () => {
 describe('the background surface follows the job registry', () => {
   async function bare() {
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(SessionProjectionRegistry)
@@ -526,13 +526,13 @@ describe('the background surface follows the job registry', () => {
 
   it('switches to the job-backed variant when a registry loads later, and back when it unloads', async () => {
     const ctx = await bare()
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolBash)
     expect(backgroundAdvertised(ctx)).toBe(false)
 
     const registry = await ctx.plugin(LocalJobRegistry)
     await ctx.plugin(ToolJobs)
-    await new Promise(resolve => setTimeout(resolve, 0))
-    expect(backgroundAdvertised(ctx)).toBe(true)
+    await expect.poll(() => backgroundAdvertised(ctx)).toBe(true)
     const started = await call(ctx, 'bash', { command: 'echo swapped', description: 'test command', run_in_background: true })
     expect(text(started)).toBe('started background job bash-1')
     await callUntilText(ctx, 'job_output', { job_id: 'bash-1' }, '[status: completed')
@@ -540,9 +540,8 @@ describe('the background surface follows the job registry', () => {
     // The registry leaves; the foreground-only variant returns in its place,
     // and the tool never disappears in between.
     await registry.dispose()
-    await new Promise(resolve => setTimeout(resolve, 0))
-    expect(ctx.tools.get('bash')).toBeDefined()
-    expect(backgroundAdvertised(ctx)).toBe(false)
+    await expect.poll(() => ctx.tools.get('bash')).toBeDefined()
+    await expect.poll(() => backgroundAdvertised(ctx)).toBe(false)
     const foreground = await call(ctx, 'bash', { command: 'echo plain', description: 'test command' })
     expect(text(foreground)).toBe('plain\n')
   })
@@ -552,10 +551,10 @@ describe('the background surface follows the job registry', () => {
     await ctx.plugin(LocalJobRegistry)
     await ctx.plugin(ToolJobs)
     const errors = vi.spyOn(ctx.logger, 'error').mockImplementation(() => {})
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(ToolBash)
     expect(backgroundAdvertised(ctx)).toBe(true)
     await fiber.dispose()
-    await new Promise(resolve => setTimeout(resolve, 0))
     expect(ctx.tools.get('bash')).toBeUndefined()
     expect(errors).not.toHaveBeenCalled()
   })
@@ -600,7 +599,7 @@ describe('background execution through the job runtime', () => {
   it('a background job started by an agent is registered with that agent as owner', async () => {
     // The producer must forward exec.agent as the job owner.
     const ctx = await setupWithJobs()
-    const agent = await registerFakeAgent(ctx, 'sess-owner')
+    const agent = await registerFixtureAgent(ctx, 'sess-owner')
     const started = await call(ctx, 'bash', { command: 'sleep 60', description: 'test command', run_in_background: true }, agent)
     expect(text(started)).toBe('started background job bash-1')
 
@@ -622,6 +621,7 @@ describe('background execution through the job runtime', () => {
 
   it('a pre-aborted call is skipped before the process starts', async () => {
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(SessionProjectionRegistry)
@@ -630,6 +630,7 @@ describe('background execution through the job runtime', () => {
     await ctx.plugin(ToolJobs)
     await ctx.plugin(CountingStartExecutor)
     await ctx.plugin(BashEnvPlugin)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolBash)
 
     const controller = new AbortController()
@@ -652,6 +653,7 @@ describe('background execution through the job runtime', () => {
   it('never spawns the process when tasks.start preflight throws (no orphan, by construction)', async () => {
     // With no job controller, preflight fails before the executor can spawn.
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(SessionProjectionRegistry)
@@ -659,6 +661,7 @@ describe('background execution through the job runtime', () => {
     await ctx.plugin(LocalJobRegistry)
     await ctx.plugin(CountingStartExecutor)
     await ctx.plugin(BashEnvPlugin)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolBash)
 
     const result = await call(ctx, 'bash', { command: 'sleep 60', description: 'test command', run_in_background: true })
@@ -670,11 +673,13 @@ describe('background execution through the job runtime', () => {
 
   it('enableRunInBackground: false removes the parameter and rejects the call', async () => {
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(BashEnvPlugin)
     await ctx.plugin(LocalBashExecutor, {})
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolBash, { enableRunInBackground: false })
 
     const schema = ctx.tools.schemas().find(s => s.name === 'bash')!
@@ -704,10 +709,12 @@ describe('sandbox escalation through the generic task producer', () => {
 
   it('fails load when a confining executor has no shared sandbox-policy resolver', async () => {
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(RecordingSandboxExecutor)
     await ctx.plugin(BashEnvPlugin)
+    await mountDirectoryFixture(ctx, process.cwd())
     await expect(ctx.plugin(ToolBash)).rejects.toThrow('tool-bash: the mounted bash executor confines but ctx.sandboxPolicy is missing')
   })
 
@@ -734,7 +741,7 @@ describe('sandbox escalation through the generic task producer', () => {
       ctx.on('approval/request', () => { prompted(); return Promise.resolve<ApprovalOutcome>('allowed-once') })
       const result = await call(ctx, 'bash', {
         command: 'true', description: 'ordinary', ...justification === undefined ? {} : { justification },
-      }, sandboxAgent('workspace-write'))
+      }, await sandboxAgent(ctx, 'workspace-write'))
       expect(result.isError, text(result)).toBe(false)
       expect(text(result)).toBe('ok')
       expect(bash.modes).toEqual(['workspace-write'])
@@ -749,7 +756,7 @@ describe('sandbox escalation through the generic task producer', () => {
     try {
       const prompted = vi.fn()
       ctx.on('approval/request', () => { prompted(); return Promise.resolve<ApprovalOutcome>('allowed-once') })
-      const result = await call(ctx, 'bash', { ...escalate, justification }, sandboxAgent())
+      const result = await call(ctx, 'bash', { ...escalate, justification }, await sandboxAgent(ctx))
       expect(text(result)).toContain('invalid justification: expected a non-empty sentence')
       expect(result.isError).toBe(true)
       expect(bash.modes).toEqual([])
@@ -766,22 +773,29 @@ describe('sandbox escalation through the generic task producer', () => {
     const { ctx } = await setupSandboxed(true)
     const prompted = vi.fn()
     ctx.on('approval/request', () => { prompted(); return Promise.resolve<ApprovalOutcome>('allowed-once') })
-    const result = await call(ctx, 'bash', { ...escalate, sandbox_permissions: 'workspace-write' }, sandboxAgent('danger-full-access'))
+    const result = await call(ctx, 'bash', { ...escalate, sandbox_permissions: 'workspace-write' }, await sandboxAgent(ctx, 'danger-full-access'))
     expect(text(result)).toContain('not strictly wider')
     expect(prompted).not.toHaveBeenCalled()
 
-    const malformed = sandboxAgent()
-    ;(malformed.session.snapshotEvents() as unknown as Array<{ type: string; data: { mode: string }; seq: number }>).push({
-      type: 'sandbox/mode',
-      data: { mode: 'unknown-mode' },
-      seq: malformed.session.seq,
-    })
+    const malformedSeed = parseSessionLog([
+      JSON.stringify({
+        type: 'session', version: SESSION_FORMAT_VERSION, id: 'malformed-sandbox',
+        createdAt: 0, isSeeded: false, delegationDepth: 0, cwd: process.cwd(),
+      }),
+      JSON.stringify({ type: 'turn/start', seq: 0, time: 0, data: { turn: 1 } }),
+      JSON.stringify({ type: 'sandbox/mode', seq: 1, time: 1, data: { mode: 'unknown-mode' } }),
+    ].join('\n'))
+    const malformed = (await ctx.agentLoop.createAgent(ctx, {
+      sessionId: SessionId('malformed-sandbox'),
+      meta: { cwd: process.cwd() },
+      seed: malformedSeed,
+    })).agent
     expect(text(await call(ctx, 'bash', escalate, malformed))).toContain('not strictly wider')
   })
 
   it.each(['workspace-write', 'danger-full-access'] as const)('runs a repeated %s request without approval', async (mode) => {
     const { ctx, bash } = await setupSandboxed()
-    const result = await call(ctx, 'bash', { ...escalate, sandbox_permissions: mode }, sandboxAgent(mode))
+    const result = await call(ctx, 'bash', { ...escalate, sandbox_permissions: mode }, await sandboxAgent(ctx, mode))
     expect(result.isError).toBe(false)
     expect(bash.modes).toEqual([mode])
   })
@@ -795,7 +809,7 @@ describe('sandbox escalation through the generic task producer', () => {
         const result = await call(ctx, 'bash', {
           command: 'true', description: 'repeat current mode', sandbox_permissions: mode,
           ...justification === undefined ? {} : { justification },
-        }, sandboxAgent(mode))
+        }, await sandboxAgent(ctx, mode))
         expect(result.isError, text(result)).toBe(false)
       }
       expect(bash.modes).toEqual([mode, mode, mode])
@@ -807,11 +821,11 @@ describe('sandbox escalation through the generic task producer', () => {
 
   it('fails closed when approval cannot be routed', async () => {
     const withoutService = await setupSandboxed()
-    expect(text(await call(withoutService.ctx, 'bash', escalate, sandboxAgent()))).toContain('no approval service')
+    expect(text(await call(withoutService.ctx, 'bash', escalate, await sandboxAgent(withoutService.ctx)))).toContain('no approval service')
 
     const withService = await setupSandboxed(true)
     expect(text(await call(withService.ctx, 'bash', escalate))).toContain('no agent to route')
-    expect(text(await call(withService.ctx, 'bash', escalate, sandboxAgent()))).toContain('no approval channel')
+    expect(text(await call(withService.ctx, 'bash', escalate, await sandboxAgent(withService.ctx)))).toContain('no approval channel')
   })
 
   it.each([
@@ -820,7 +834,7 @@ describe('sandbox escalation through the generic task producer', () => {
   ] as const)('maps an approval %s to its distinct failure', async (outcome, message) => {
     const { ctx, bash } = await setupSandboxed(true)
     ctx.on('approval/request', () => Promise.resolve<ApprovalOutcome>(outcome))
-    const result = await call(ctx, 'bash', escalate, sandboxAgent())
+    const result = await call(ctx, 'bash', escalate, await sandboxAgent(ctx))
     expect(text(result)).toContain(message)
     expect(bash.modes).toEqual([])
   })
@@ -828,8 +842,7 @@ describe('sandbox escalation through the generic task producer', () => {
   it('runs a granted foreground or background call under the approved mode', async () => {
     const { ctx, bash } = await setupSandboxed(true)
     ctx.on('approval/request', () => Promise.resolve<ApprovalOutcome>('allowed-once'))
-    const agent = sandboxAgent(undefined, ctx)
-    await ctx.agents.register(agent)
+    const agent = await sandboxAgent(ctx)
     const foreground = await ctx.tools.execute({
       callId: ToolCallId('sandbox-signal'),
       name: 'bash',
@@ -849,10 +862,9 @@ describe('sandbox escalation through the generic task producer', () => {
   it('does not publish detached work when cancellation follows the escalation grant', async () => {
     const { ctx, bash } = await setupSandboxed(true)
     const controller = new AbortController()
-    const agent = sandboxAgent(undefined, ctx, (type) => {
+    const agent = await sandboxAgent(ctx, undefined, (type) => {
       if (type === 'approval/decided') controller.abort()
     })
-    await ctx.agents.register(agent)
     ctx.on('approval/request', () => Promise.resolve<ApprovalOutcome>('allowed-once'))
     const started = vi.spyOn(bash, 'execute')
 
@@ -874,7 +886,7 @@ describe('sandbox escalation through the generic task producer', () => {
 
   it('uses the session override for ordinary calls and evaluates widening against it', async () => {
     const { ctx, bash } = await setupSandboxed(true)
-    const agent = sandboxAgent('workspace-write')
+    const agent = await sandboxAgent(ctx, 'workspace-write')
     await call(ctx, 'bash', { command: 'true', description: 'ordinary' }, agent)
     ctx.on('approval/request', () => Promise.resolve<ApprovalOutcome>('allowed-once'))
     await call(ctx, 'bash', { ...escalate, sandbox_permissions: 'danger-full-access' }, agent)
@@ -915,7 +927,7 @@ describe('sandbox escalation through the generic task producer', () => {
   it('keeps the exhaustiveness backstop for a rogue approval implementation', async () => {
     const { ctx } = await setupSandboxed(true)
     ctx.approval.request = () => Promise.resolve('rogue' as ApprovalOutcome)
-    const result = await call(ctx, 'bash', escalate, sandboxAgent())
+    const result = await call(ctx, 'bash', escalate, await sandboxAgent(ctx))
     expect(text(result)).toContain('unreachable variant in EscalationOutcome')
   })
 })
@@ -1013,33 +1025,32 @@ describe('processOutcome', () => {
 })
 
 describe('session-cwd routing (per-session workdir)', () => {
-  // An agent whose session header carries a cwd (what session/new records).
-  const agentInCwd = (cwd: string) =>
-    ({ inject: () => undefined, session: { header: { version: 0, id: 'c', createdAt: 0, cwd } } }) as unknown as Agent
+  const agentInCwd = async (ctx: Context, cwd: string) =>
+    await createDirectoryFixtureAgent(ctx, SessionId(`cwd-${++callCounter}`), cwd)
 
   it('defaults bash to the agent\'s session cwd (not the server launch dir)', async () => {
     const ctx = await setup()
-    const result = await call(ctx, 'bash', { command: 'pwd', description: 'pwd' }, agentInCwd('/tmp'))
+    const result = await call(ctx, 'bash', { command: 'pwd', description: 'pwd' }, await agentInCwd(ctx, '/tmp'))
     expect(text(result).trim()).toMatch(/\/tmp$/)
   })
 
   it('an explicit absolute workdir overrides the session cwd', async () => {
     const ctx = await setup()
-    const result = await call(ctx, 'bash', { command: 'pwd', description: 'pwd', workdir: '/tmp' }, agentInCwd('/'))
+    const result = await call(ctx, 'bash', { command: 'pwd', description: 'pwd', workdir: '/tmp' }, await agentInCwd(ctx, '/'))
     expect(text(result).trim()).toMatch(/\/tmp$/)
   })
 
   it('a relative workdir is resolved against the session cwd', async () => {
     const ctx = await setup()
     // session cwd /usr + relative 'bin' → /usr/bin
-    const result = await call(ctx, 'bash', { command: 'pwd', description: 'pwd', workdir: 'bin' }, agentInCwd('/usr'))
+    const result = await call(ctx, 'bash', { command: 'pwd', description: 'pwd', workdir: 'bin' }, await agentInCwd(ctx, '/usr'))
     expect(text(result).trim()).toMatch(/\/usr\/bin$/)
   })
 
   it('two sessions with different cwds each run bash in their own dir', async () => {
     const ctx = await setup()
-    const inUsr = await call(ctx, 'bash', { command: 'pwd', description: 'pwd' }, agentInCwd('/usr'))
-    const inTmp = await call(ctx, 'bash', { command: 'pwd', description: 'pwd' }, agentInCwd('/tmp'))
+    const inUsr = await call(ctx, 'bash', { command: 'pwd', description: 'pwd' }, await agentInCwd(ctx, '/usr'))
+    const inTmp = await call(ctx, 'bash', { command: 'pwd', description: 'pwd' }, await agentInCwd(ctx, '/tmp'))
     expect(text(inUsr).trim()).toMatch(/\/usr$/)
     expect(text(inTmp).trim()).toMatch(/\/tmp$/)
   })
@@ -1320,6 +1331,7 @@ describe('the model-facing bash tool builds its request from named args only (no
 
   async function setupRecording() {
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(SessionProjectionRegistry)
@@ -1328,6 +1340,7 @@ describe('the model-facing bash tool builds its request from named args only (no
     await ctx.plugin(ToolJobs)
     await ctx.plugin(BashEnvPlugin, { dshHome: recordingDshHome })
     await ctx.plugin(RecordingBashExecutor)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolBash)
     return { ctx, bash: ctx.shell as RecordingBashExecutor }
   }
@@ -1340,7 +1353,7 @@ describe('the model-facing bash tool builds its request from named args only (no
 
   it('injects built-ins and the stable session id into a foreground request', async () => {
     const { ctx, bash } = await setupRecording()
-    const agent = await registerFakeAgent(ctx, 'request-fg', () => undefined)
+    const agent = await registerFixtureAgent(ctx, 'request-fg')
     const ambient = process.env.DSH_SESSION_ID
 
     await ctx.tools.execute({
@@ -1361,7 +1374,7 @@ describe('the model-facing bash tool builds its request from named args only (no
 
   it('injects the same trusted variables into a background request without forwarding model env', async () => {
     const { ctx, bash } = await setupRecording()
-    const agent = await registerFakeAgent(ctx, 'request-bg', () => undefined)
+    const agent = await registerFixtureAgent(ctx, 'request-bg')
 
     await ctx.tools.execute({
       signal: testToolSignal,
@@ -1386,8 +1399,8 @@ describe('the model-facing bash tool builds its request from named args only (no
 
   it('keeps parent and child agent session environments isolated', async () => {
     const { ctx, bash } = await setupRecording()
-    const parent = await registerFakeAgent(ctx, 'request-parent', () => undefined)
-    const child = await registerFakeAgent(ctx, 'request-child', () => undefined)
+    const parent = await registerFixtureAgent(ctx, 'request-parent')
+    const child = await registerFixtureAgent(ctx, 'request-child')
 
     for (const [callId, agent] of [['parent', parent], ['child', child]] as const) {
       await ctx.tools.execute({

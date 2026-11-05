@@ -2,7 +2,8 @@
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 /** Global panel rows and DOM focus through the production slot renderer. */
 import type { Context } from '@deepseek-ai/cordis'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import { useState } from 'react'
 import { act, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
 import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
@@ -130,7 +131,7 @@ describe('sidebar global panels', () => {
 
     const { alpha, beta } = await mountPanels(runtime, locale)
     const navigation = await view.findByRole('navigation', { name: 'Global panels' })
-    expect(within(navigation).getAllByRole('button')).toHaveLength(2)
+    expect(within(navigation).getAllByRole('button')).toHaveLength(3)
     fireEvent.click(within(navigation).getByRole('button', { name: 'Alpha panel' }))
     expect(view.getByRole('heading', { name: 'Alpha content' })).toBeTruthy()
 
@@ -156,7 +157,7 @@ describe('sidebar global panels', () => {
     await mountPanels(runtime, locale)
     const navigation = await view.findByRole('navigation', { name: 'Global panels' })
     const rows = within(navigation).getAllByRole('button')
-    expect(rows.map(row => row.getAttribute('aria-label'))).toEqual(['Beta panel', 'Alpha panel'])
+    expect(rows.map(row => row.getAttribute('aria-label'))).toEqual(['Beta panel', 'Alpha panel', 'More panels'])
     for (const [id, label] of [[BETA, 'Beta panel'], [ALPHA, 'Alpha panel']] as const) {
       const row = within(navigation).getByRole('button', { name: label })
       expect(row.getAttribute('aria-current')).toBeNull()
@@ -180,7 +181,7 @@ describe('sidebar global panels', () => {
     const { runtime, locale, view } = await bench()
     await mountPanels(runtime, locale, 20)
     const navigation = await view.findByRole('navigation', { name: 'Global panels' })
-    expect(within(navigation).getAllByRole('button').map(row => row.textContent)).toEqual(['Alpha panel', 'Beta panel'])
+    expect(within(navigation).getAllByRole('button').map(row => row.textContent)).toEqual(['Alpha panel', 'Beta panel', 'More panels'])
   })
 
   it('selects registered main content and keeps a repeated selection active', async () => {
@@ -232,7 +233,7 @@ describe('sidebar global panels', () => {
     await mountPanel(runtime, { id: ALPHA, heading: 'Alpha content', label: 'Alpha panel', order: 20 })
     await mountPanel(runtime, { id: BETA, heading: 'Beta content' })
     const navigation = await view.findByRole('navigation', { name: 'Global panels' })
-    expect(within(navigation).getAllByRole('button').map(row => row.textContent)).toEqual([BETA, 'Alpha panel'])
+    expect(within(navigation).getAllByRole('button').map(row => row.textContent)).toEqual([BETA, 'Alpha panel', 'More panels'])
     fireEvent.click(within(navigation).getByRole('button', { name: BETA }))
     expect(view.getByRole('heading', { name: 'Beta content' })).toBeTruthy()
   })
@@ -276,4 +277,77 @@ describe('sidebar global panels', () => {
     act(() => { locale.setLocale('zh') })
     expect(view.queryByRole('navigation')).toBeNull()
   })
+})
+
+
+describe('panel More menu', () => {
+  it('keeps overflow entries reachable and supports root-lifetime unpinning', async () => {
+    const { runtime, view, layout } = await bench()
+    for (let index = 0; index < 9; index++) {
+      await mountPanel(runtime, { id: `panel-${index}` as MainPanelId, label: `Panel ${index}`, heading: `Body ${index}` })
+    }
+    const navigation = await view.findByRole('navigation', { name: 'Global panels' })
+    expect(within(navigation).queryByRole('button', { name: 'Panel 8' })).toBeNull()
+    fireEvent.click(within(navigation).getByRole('button', { name: 'More panels' }))
+    fireEvent.click(view.getByRole('menuitem', { name: 'Panel 8' }))
+    expect(layout.selectPanel).toHaveBeenLastCalledWith('panel-8')
+    expect(view.getByRole('heading', { name: 'Body 8' })).toBeTruthy()
+    fireEvent.click(within(navigation).getByRole('button', { name: 'More panels' }))
+    fireEvent.click(view.getByRole('button', { name: 'Unpin Panel 0' }))
+    expect(within(navigation).queryByRole('button', { name: 'Panel 0' })).toBeNull()
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+    fireEvent.click(within(navigation).getByRole('button', { name: 'More panels' }))
+    fireEvent.click(view.getByRole('button', { name: 'Pin Panel 0' }))
+    expect(within(navigation).getByRole('button', { name: 'Panel 0' })).toBeTruthy()
+  })
+
+  it('allows a plugin to own More rows and disposes that contribution', async () => {
+    const { runtime, locale, view, layout } = await bench()
+    await mountPanels(runtime, locale)
+    const plugin = await runtime.mount({ inject: ['slots'], apply(ctx: Context) {
+      ctx.slots.inject('sidebar.panellist.actions', () => ctx.slots.register({ name: 'sidebar.panellist.actions' },
+        ({ entries, onOpen, onDismiss }: PropsRuntime<'sidebar.panellist.actions'>) =>
+          <button type="button" role="menuitem" onClick={() => { onOpen(entries[0]!.id); onDismiss() }}>Custom panel</button>))
+    } })
+    fireEvent.click(view.getByRole('button', { name: 'More panels' }))
+    fireEvent.click(view.getByRole('menuitem', { name: 'Custom panel' }))
+    expect(layout.selectPanel).toHaveBeenCalled()
+    await act(async () => { await plugin.dispose() })
+    fireEvent.click(view.getByRole('button', { name: 'More panels' }))
+    expect(view.queryByRole('menuitem', { name: 'Custom panel' })).toBeNull()
+    expect(view.getByRole('menuitem', { name: 'Alpha panel' })).toBeTruthy()
+  })
+})
+
+
+it('dismisses a stale More selection after the contributing panel unloads', async () => {
+  const { runtime, view, layout } = await bench()
+  const first = await mountPanel(runtime, { id: ALPHA, label: 'Alpha panel', heading: 'Alpha content' })
+  await mountPanel(runtime, { id: BETA, label: 'Beta panel', heading: 'Beta content' })
+  await runtime.mount({ inject: ['slots'], apply(ctx: Context) {
+    ctx.slots.inject('sidebar.panellist.actions', () => ctx.slots.register({ name: 'sidebar.panellist.actions' },
+      function PendingSelection({ entries, onOpen }: PropsRuntime<'sidebar.panellist.actions'>) {
+        const [selected] = useState(entries[0]!.id)
+        return <button type="button" role="menuitem" onClick={() => { onOpen(selected) }}>Open retained choice</button>
+      }))
+  } })
+  fireEvent.click(view.getByRole('button', { name: 'More panels' }))
+  await first.dispose()
+  expect(view.getByRole('menuitem', { name: 'Open retained choice' })).toBeTruthy()
+  fireEvent.click(view.getByRole('menuitem', { name: 'Open retained choice' }))
+  expect(layout.selectPanel).not.toHaveBeenCalled()
+  expect(view.queryByRole('menu')).toBeNull()
+  expect(view.getByRole('button', { name: 'Beta panel' })).toBeTruthy()
+})
+
+it('keeps panel navigation and pin choices usable without ResizeObserver', async () => {
+  vi.stubGlobal('ResizeObserver', undefined)
+  onTestFinished(() => { vi.unstubAllGlobals() })
+  const { runtime, locale, view, layout } = await bench()
+  await mountPanels(runtime, locale)
+  fireEvent.click(view.getByRole('button', { name: 'More panels' }))
+  fireEvent.click(view.getByRole('button', { name: 'Unpin Alpha panel' }))
+  fireEvent.click(view.getByRole('menuitem', { name: 'Alpha panel' }))
+  expect(layout.selectPanel).toHaveBeenCalledExactlyOnceWith(ALPHA)
+  expect(view.getByRole('heading', { name: 'Alpha content' })).toBeTruthy()
 })

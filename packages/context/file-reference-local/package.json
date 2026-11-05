@@ -35,17 +35,20 @@
     "@deepseek-ai/schemastery": "workspace:~"
   },
   "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-file-reference": "workspace:*",
     "@deepseek-ai/dsh-system-prompt": "workspace:*",
     "@deepseek-ai/dsh-tools": "workspace:*",
-    "@deepseek-ai/cordis": "workspace:~"
+    "@deepseek-ai/dsh-working-directory": "workspace:*"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-file-reference": "workspace:*",
     "@deepseek-ai/dsh-system-prompt": "workspace:*",
     "@deepseek-ai/dsh-tools": "workspace:*",
-    "@deepseek-ai/cordis": "workspace:~"
+    "@deepseek-ai/dsh-working-directory": "workspace:*",
+    "@deepseek-ai/dsh-working-directory-testkit": "workspace:*"
   }
 }

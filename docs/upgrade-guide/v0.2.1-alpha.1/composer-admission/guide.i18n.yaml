@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-alpha.1/composer-admission/guide.md
+/:
+  en: 5a26f49370e923ac
+  zh: d670cd6d024ece99
+/composer-admission-and-local-echoes:
+  en: fc7d7b136b4873be
+  zh: 31df6bbb4ce31a21
+/composer-admission-and-local-echoes/change:
+  en: 6e59ec814950222f
+  zh: fac3ea9c9830ee1e
+/composer-admission-and-local-echoes/migration:
+  en: 4082cd2a162025b0
+  zh: 8c19145df268b9ef

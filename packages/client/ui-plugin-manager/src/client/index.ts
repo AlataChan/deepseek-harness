@@ -87,6 +87,7 @@ export function apply(ctx: ClientContext): void {
     const disposers = [
       ctx.remote.$on('plugin-manager/changed', refresh),
       ctx.remote.$on('plugin-manager/install-log', (chunk) => { controller.appendLog(chunk) }),
+      ctx.remote.$on('plugin-manager/update-state', (progress) => { controller.updateProgress(progress) }),
       ctx.remote.$on('plugin-manager/install-state', (progress) => { controller.installProgress(progress) }),
       ctx.on('connection/reset', refresh),
     ]

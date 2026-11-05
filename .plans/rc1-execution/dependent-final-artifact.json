@@ -1,0 +1,9 @@
+{
+  "dmg": "/Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04/dist/octopus_DSH.dmg",
+  "dmgBytes": 338615198,
+  "sha256": "3678d77120793906d64938bce7cee58419e941aadb909476fee66ff87b3cd01e",
+  "freshCopiedApp": "/tmp/octopus-rc1-final-20261105/octopus_DSH.app",
+  "readOnlyMountAndCopy": true,
+  "internalSignatureVerified": true,
+  "publicNotarization": false
+}

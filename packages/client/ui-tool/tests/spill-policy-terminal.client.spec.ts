@@ -11,6 +11,9 @@ import { SpillLocator, SpillStore, type SaveTextSpill, type SpillRef } from '@de
 import * as SpillPolicy from '@deepseek-ai/dsh-spill-policy'
 import { formatSpillNotice } from '@deepseek-ai/dsh-spill-policy/notice'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
+import SessionProjections from '@deepseek-ai/dsh-session-projection'
+import WorkingDirectory from '@deepseek-ai/dsh-working-directory'
 import ToolRuntime, { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
 import { PartialArguments } from '@deepseek-ai/dsh-util-values'
 import { describe, expect, it } from 'vitest'
@@ -40,6 +43,9 @@ async function executeShell(text: string, nested: boolean, name = 'bash', maxInl
   const ctx = new Context()
   try {
     await ctx.plugin(SystemPrompt)
+    await ctx.plugin(LocalFileSystem)
+    await ctx.plugin(SessionProjections)
+    await ctx.plugin(WorkingDirectory)
     await ctx.plugin(ToolRuntime, { mode: 'both' })
     await ctx.plugin(MemorySpillStore)
     await ctx.plugin(SpillPolicy, { maxInlineTokens })

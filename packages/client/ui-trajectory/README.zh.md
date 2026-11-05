@@ -23,6 +23,7 @@ Trajectory 标签页让你以按轮次组织的事件记录表和交互式时间
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在对话视图环中打开 Trajectory 标签页，把 agent 活动作为事件记录表与时间线查看。初始尾部完成定位前，记录表会用明确的加载行遮住真实记录；更早的前缀仍未加载时，首行控件会在点击时加载一页更早的历史，并在该页加载期间显示共享 ongoing loading。
@@ -45,7 +46,10 @@ Trajectory 标签页让你以按轮次组织的事件记录表和交互式时间
 
 -----
 
+轮次、助手工具调用与嵌套子调用分别使用独立的内存收起状态。收起子调用会保留父工具行；工具栏可展开或收起全部子调用。重新打开视图会重置这些状态。
+
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -72,6 +76,7 @@ Trajectory 要求会话壳把 composer 作为浮层置于全高记录表上方�
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 以下页面覆盖对话宿主与本视图所投影的会话数据。
@@ -84,6 +89,7 @@ Trajectory 要求会话壳把 composer 作为浮层置于全高记录表上方�
 -----
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 无。该包是浏览器端 UI 插件层，不注册任何面向模型的内容。
@@ -104,6 +110,7 @@ Trajectory 要求会话壳把 composer 作为浮层置于全高记录表上方�
 - **进行中时 Time 保持空白**：`partial` 与 `runningCalls` 行会显示运行状态，但不会虚构耗时，因此 Overview 区域只渲染开始标记，而不会杜撰实时跨度。记录选择与时间线选择位于 Trajectory 内部，不提供锚点深链接。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

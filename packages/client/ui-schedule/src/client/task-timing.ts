@@ -4,7 +4,7 @@
  */
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type {
-  ScheduleRecord, ScheduleUpdateRequest, ScheduleUpdateResult,
+  ScheduleRecord, ScheduleEditRequest, ScheduleEditResult, ScheduleToolError,
 } from '@deepseek-ai/dsh-schedule/client'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import type { TaskManagerKey } from './task-manager-locales.ts'
@@ -18,7 +18,7 @@ export interface TaskTimingInjected {
    * replacement name, instruction, and timing change; an omitted `change` keeps the committed target.
    * @returns Original Remote mutation result; transport or storage exceptions may reject.
    */
-  readonly onUpdateTiming: (request: ScheduleUpdateRequest) => Promise<RemoteResult<ScheduleUpdateResult>>
+  readonly onEditTask: (request: ScheduleEditRequest) => Promise<RemoteResult<ScheduleEditResult>>
 }
 
 /** Native input values retained for one edit session. */
@@ -184,10 +184,9 @@ export function secondPrecision(time: string): string {
  * @param code - Error code returned by the timing update.
  * @returns Dictionary key describing the recovery action.
  */
-export function timingError(code: Extract<ScheduleUpdateResult, { code: string }>['code']): TaskManagerKey {
+export function timingError(code: (Extract<ScheduleEditResult, { code: string }> | ScheduleToolError)['code']): TaskManagerKey {
   switch (code) {
     case 'schedule_conflict': return 'timing.conflict'
-    case 'schedule_ended': return 'timing.inactive'
     case 'schedule_not_found': return 'timing.notFound'
     case 'subagent_session': return 'timing.subagentSession'
     case 'invalid_time_zone': return 'timing.invalidZone'
@@ -199,6 +198,6 @@ export function timingError(code: Extract<ScheduleUpdateResult, { code: string }
     case 'time_out_of_range': return 'timing.invalid'
     case 'internal_error': return 'timing.error'
   }
-  /* v8 ignore next -- Exhaustiveness guard for the closed ScheduleUpdateResult error-code union. */
+  /* v8 ignore next -- Exhaustiveness guard for the closed ScheduleEditResult error-code union. */
   return assertNever(code)
 }

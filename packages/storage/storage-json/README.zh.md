@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 当组合需要可读、可编辑的 JSON 存储时使用本包。把相关领域路由到 `json` 后端；每个领域规范选择 `single` 或 `per-record` 布局。
@@ -53,13 +54,14 @@ kind: "package-reference"
 
 ### 可观察行为
 
-缺失的 `single` 文件或 `per-record` 目录会作为空单元打开，并在第一次写入时物化。在 `single` 中，畸形内容以 `malformed-medium` 拒绝，不同的已存版本以 `version-mismatch` 拒绝。在 `per-record` 中，每份畸形或不可读的文档，以及版本不在描述符的当前版本和兼容版本内的文档，都读作记录不存在，因此单个坏文档不会使单元被拒绝。记录键必须匹配 `[a-zA-Z0-9_-]+`；不安全的键在任何文件操作前被拒绝。每次已完成的写入都已持久化，关闭后的操作以 `closed` 拒绝。
+缺失的 `single` 文件或 `per-record` 目录会作为空单元打开，并在第一次写入时物化。在 `single` 中，畸形内容以 `malformed-medium` 拒绝，已存版本不属于当前版本或声明的 `compatibleVersions` 时以 `version-mismatch` 拒绝。打开兼容旧文件保持其字节不变；下一次成功变更才写入描述符的当前版本。在 `per-record` 中，每份畸形或不可读的文档，以及版本不在描述符的当前版本和兼容版本内的文档，都读作记录不存在，因此单个坏文档不会使单元被拒绝。记录键必须匹配 `[a-zA-Z0-9_-]+`；不安全的键在任何文件操作前被拒绝。每次已完成的写入都已持久化，关闭后的操作以 `closed` 拒绝。
 
 只有当源单元名称匹配，且源版本为当前版本或已声明的兼容版本时，空的 `per-record` 目录树才可以从有效的 `<root>/<unit>.json` 整单元文档初始化其已声明表。后端保持该源文件不变，并为迁移的记录写入当前版本戳。接受集合之外的源版本会使新目录树保持为空。已声明表中只要存在任意文档路径，或存在已声明的 `global.json`，就会对整个单元禁止该初始化，即使该文档不可读或版本陈旧。
 
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -102,6 +104,7 @@ kind: "package-reference"
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当本后端视角不够用时阅读以下页面：子系统参考是权威约定，兄弟后端展示了另一种介质。
@@ -114,6 +117,7 @@ kind: "package-reference"
 -----
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 已存领域记录
@@ -142,6 +146,7 @@ kind: "package-reference"
 - **Windows rename 没有显式 write-through**——持久性依赖 libuv 的 `rename()`（`MoveFileExW` 并启用替换）；`log` 分面落地时，计划把会话日志后端更严格的 Win32 write-through 发布辅助函数下移到此处。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

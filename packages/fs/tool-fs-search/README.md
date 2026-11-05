@@ -23,6 +23,7 @@ Use `dsh-tool-fs-search` to give models `glob` file discovery and `grep` content
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Mount the tools after a `ctx.subprocess` backend; no host `rg` install is needed, and no filesystem provider is required. The model then gets modification-time-ordered file discovery and line-oriented content search, each bounded and timeout-guarded.
@@ -79,6 +80,7 @@ Search failures carry the package-owned codes `SEARCH_INVALID_PATTERN` (ripgrep 
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -114,6 +116,7 @@ Raw stdout and stderr are internal transport details; the tools always collect t
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the tools to the subprocess seam, the spill store, and the filesystem family.
@@ -127,7 +130,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+Search starts in the validated execution directory; an explicit relative search root is resolved there. The Session header and sandbox project identity remain unchanged. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### System prompt
@@ -211,6 +217,7 @@ These limits define when the search tools are a poor fit or need special operati
 - **Sampling, when enabled, groups by first path segment beneath the search root only** — an over-cap `glob` page balances across those top-level entries, so a result concentrated deeper is still shown unevenly below that level; recursive balancing is deferred.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

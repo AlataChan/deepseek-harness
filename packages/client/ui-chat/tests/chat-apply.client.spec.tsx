@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
-import { act, fireEvent, render } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import {
   SlotTestRuntime, stubConfigForm, usePinnedBrowserLanguages,
 } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
+import { resolveSlotLabel, type PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { SessionBinding } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -38,7 +38,7 @@ usePinnedBrowserLanguages('zh-CN')
 
 const SID = 'session-1' as SessionId
 
-async function bench() {
+async function bench(renderSettings = false) {
   const runtime = await SlotTestRuntime.create()
   const chatSettings = stubConfigForm<ChatSettings>()
   runtime.ctx.provide('configForms', {
@@ -74,7 +74,8 @@ async function bench() {
     'shell.overlay': { kind: 'list', scope: 'root' },
     'conversation.approval.detail': { kind: 'single', scope: 'session' },
     'settings.general.item': { kind: 'list', scope: 'root' },
-  }, (_props: { renderSlot?: unknown }) => null)
+  }, ({ renderSlot }: PropsRenderSlots<'settings.general.item'>) => renderSettings
+    ? renderSlot('settings.general.item', {}, { only: 'transcript-view' }) : null)
   const conversation = await runtime.mount({
     inject: [...injectConversation],
     apply: applyConversation,
@@ -317,4 +318,20 @@ describe('Chat apply wiring', () => {
       await b.runtime.dispose()
     }
   })
+})
+
+
+it('persists independent folding choices through the assembled settings controls', async () => {
+  const b = await bench(true)
+  onTestFinished(() => b.runtime.dispose())
+  b.runtime.renderRoot()
+  fireEvent.click(screen.getByRole('button', { name: '回答结束后' }))
+  fireEvent.click(screen.getByRole('menuitem', { name: '下次有新消息时' }))
+  expect(b.chatSettings.set).toHaveBeenCalledWith('collapseTiming', 'next-input')
+  expect(screen.getByRole('button', { name: '下次有新消息时' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: '全部回复' }))
+  fireEvent.click(screen.getByRole('menuitem', { name: '仅最终回答' }))
+  expect(b.chatSettings.set).toHaveBeenCalledWith('foldedReplies', 'final')
+  expect(screen.getByRole('button', { name: '仅最终回答' })).toBeTruthy()
+  expect(b.chatSettings.set.mock.calls).toEqual([['collapseTiming', 'next-input'], ['foldedReplies', 'final']])
 })

@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 模组就是插件。`defineMod` 接收模组的 `register` 函数以及 `plugin.json` 本应承载的身份，返回一个 Cordis 插件：其配置就是 `register` 收到的 `options` 对象，覆盖在你给出的 `userConfig` 默认值之上。先挂载桥接，再按链顺序挂载各模组。
@@ -72,6 +73,7 @@ export default defineMod({ name: 'token-weather', version: '0.1.0', root: import
 `e.tool` 与 `tool` 匹配器在 harness 工具有对应名时使用 Claude Code 的名字（`Bash` ↔ `bash`、`Read` ↔ `read`、`Edit` ↔ `edit`、`Write` ↔ `write`、`Glob` ↔ `glob`、`Grep` ↔ `grep`、`WebFetch` ↔ `web_fetch`、`WebSearch` ↔ `web_search`、`Task` ↔ `subagent`、`TodoWrite` ↔ `todo_write`、`AskUserQuestion` ↔ `ask_user_question`、`ExitPlanMode` ↔ `exit_plan_mode`、`Skill` ↔ `skill`）；其余工具保留 harness 名。子智能体事件带 `e.agentId`。其他所有 Claude Code 事件名都能注册而不报错，但永不触发，并在模组加载时以警告点名。
 
 <a id="the-band-above-the-prompt"></a>
+
 ### 提示框上方的横幅
 
 横幅每个会话一个实例，由加载顺序中第一个 `ui.render` 钩子返回树的模组绘制；调用 `next(e)` 的钩子把横幅让给下一个模组，因此把只在持有事项时才绘制的模组（Blast Radius、Replay Theater）放在只要有读数就绘制的模组（Token Weather）之前。横幅在 `session.start` 之后、上次绘制读取过的 `$.state` 值被写入时、在 `$.ui.open`、`$.ui.close`、`$.ui.invalidate` 之后、在每条 `tool.call` 链与 `turn.complete` 结束之后以及按钮按下之后重绘。`Button` 的 `onPress` 留在宿主中；Web 横幅把点击连同它看到的代数发回，针对更早绘制的点击会被报告并忽略。`$.ui.open` 回答 `{ isPlaced: false }`：没有面板被放置，降级到横幅的模组就在横幅中绘制。[测试工具包](#test-a-mod)的 `$.ui.mount` 不需要 Client 就能渲染同样的钩子。
@@ -97,6 +99,7 @@ export default defineMod({ name: 'token-weather', version: '0.1.0', root: import
 所需服务未组合的调用以缺失服务的包名拒绝；表外的命名空间或方法以 `no implementation for <namespace>.<method>` 拒绝。模组以本进程的全部权限运行：`$.env` 读写 harness 的环境变量，`$.http.fetch` 可访问任意 URL，`$.fs` 与 `$.tool.call` 以会话的身份行动。
 
 <a id="test-a-mod"></a>
+
 ### 测试模组
 
 来自 `@deepseek-ai/dsh-experimental-claude-code-mods/testing` 的 `createModTestKit` 加载 `defineMod` 插件或裸定义，并以桩在底层回答的方式让事件穿过它们，形态与 `claude-code/testing` 相同：`kit.on('tool.call', () => ({ result: 'ok' }))` 代替引擎作答，`kit.$.tool.call({ tool: 'Bash', command: 'ls' })` 触发事件，`kit.$.ui.mount({ component: 'AbovePrompt' })` 渲染横幅并查找或按下其元素，`mock.store(kit.on)` 从内存回答 `$.store`。在本仓库内，`claude-code/testing` 解析为该工具包加上 Vitest 的 `describe`、`test`、`expect`，因此[示例模组的测试](examples/token-weather/tests/token-weather.test.ts)按为 `claude plugin test` 编写的原样运行。
@@ -104,6 +107,7 @@ export default defineMod({ name: 'token-weather', version: '0.1.0', root: import
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -140,6 +144,7 @@ export default defineMod({ name: 'token-weather', version: '0.1.0', root: import
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 - [与 Claude Code 模组的兼容性](../../../docs/subsystems/claude-code-mods.zh.md) — 本桥接与 Claude Code 模组的每一处差异，以及修复或原因。
@@ -152,7 +157,10 @@ export default defineMod({ name: 'token-weather', version: '0.1.0', root: import
 
 -----
 
+Mod 文件操作、进程启动和 session.cwd 使用已校验的执行目录；session.root 保留原项目身份。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 提示词上下文与提交的提示词
@@ -208,6 +216,7 @@ Message from the "<plugin>" mod:
 - **`plugin.json` 与 `hooks.json`** — 不读取；`defineMod` 承载身份，插件的设置钩子需要 `@deepseek-ai/dsh-hooks-claude-code`。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

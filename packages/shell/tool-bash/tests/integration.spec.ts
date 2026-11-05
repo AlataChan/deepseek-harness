@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -25,6 +26,7 @@ import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent
  */
 async function harness(adapter: MockAdapter, sessionRoot?: string, dshHome?: string) {
   const ctx = new Context()
+  contexts.push(ctx)
   await mountAgentLoopTestDependencies(ctx)
   if (sessionRoot !== undefined) {
     await ctx.plugin(JsonlSessionPersistence, { root: sessionRoot, compression: 'none' })
@@ -35,13 +37,16 @@ async function harness(adapter: MockAdapter, sessionRoot?: string, dshHome?: str
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(BashEnvPlugin, dshHome === undefined ? {} : { dshHome })
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolBash)
   ctx.llm.registerAdapter(['mock'], adapter)
   return ctx
 }
 
+const contexts: Context[] = []
 const dirs: string[] = []
-afterEach(() => {
+afterEach(async () => {
+  for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
   vi.unstubAllEnvs()
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
 })
@@ -199,7 +204,7 @@ describe('bash tool through the agent loop', () => {
     expect(resultText(firstResult)).toBe('started background job bash-1')
     // The turn closed with the task still running, so the notice cannot exist yet.
     const isNotice = (e: SessionEvent): e is SessionEvent<'user/message'> =>
-      e.type === 'user/message' && e.data.source.kind !== 'user'
+      e.type === 'user/message' && e.data.source.kind === 'tool-jobs'
     expect(events(agent).some(isNotice)).toBe(false)
 
     // Releasing the command now settles it against a provably idle owner. No

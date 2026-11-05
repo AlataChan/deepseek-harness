@@ -82,3 +82,37 @@ it('releases its subscription when the consuming plugin unloads', () => {
   policy.dispose()
   expect(host.listenerCount()).toBe(0)
 })
+
+
+it('defaults independent folding preferences without writing missing settings', () => {
+  const host = stubConfigForm<ChatSettings>()
+  const policy = new TranscriptViewPolicy(host.scope)
+  host.publish({ value: { linkOpening: 'sidebar', performanceUsage: 'detailed' } })
+  expect(policy.collapseTiming.getSnapshot()).toBe('completion')
+  expect(policy.foldedReplies.getSnapshot()).toBe('all')
+  expect(host.set).not.toHaveBeenCalled()
+  policy.setCollapseTiming('next-input')
+  policy.setFoldedReplies('final')
+  expect(host.set).toHaveBeenCalledWith('collapseTiming', 'next-input')
+  expect(host.set).toHaveBeenCalledWith('foldedReplies', 'final')
+  policy.dispose()
+})
+
+
+it('does not persist repeated folding choices or overwrite the independent preference', () => {
+  const host = stubConfigForm<ChatSettings>()
+  const policy = new TranscriptViewPolicy(host.scope)
+  try {
+    policy.setCollapseTiming('completion')
+    policy.setFoldedReplies('all')
+    expect(host.set).not.toHaveBeenCalled()
+    policy.setCollapseTiming('next-input')
+    policy.setCollapseTiming('next-input')
+    policy.setFoldedReplies('final')
+    policy.setFoldedReplies('final')
+    expect(host.set.mock.calls).toEqual([['collapseTiming', 'next-input'], ['foldedReplies', 'final']])
+    expect(policy.mode.getSnapshot()).toBe('detailed')
+    expect(policy.collapseTiming.getSnapshot()).toBe('next-input')
+    expect(policy.foldedReplies.getSnapshot()).toBe('final')
+  } finally { policy.dispose() }
+})

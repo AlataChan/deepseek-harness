@@ -106,9 +106,9 @@
                   toolFilter:
                     deny:
                       - schedule_create
-                      - schedule_delete
+                      - schedule_view
                       - schedule_list
-                      - schedule_update
+                      - schedule_edit
               - id: tool-subagent-fork
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
@@ -118,9 +118,9 @@
                   toolFilter:
                     deny:
                       - schedule_create
-                      - schedule_delete
+                      - schedule_view
                       - schedule_list
-                      - schedule_update
+                      - schedule_edit
               - id: tool-subagent-codex
                 name: '@deepseek-ai/dsh-tool-subagent'
                 disabled: true

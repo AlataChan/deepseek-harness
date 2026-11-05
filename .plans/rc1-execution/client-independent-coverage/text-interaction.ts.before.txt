@@ -1,0 +1,64 @@
+/** Selection lifetime and viewport placement for the Chat quote action. */
+import { useCallback, useEffect, useState } from 'react'
+import type { RefObject } from 'react'
+import { readTextSelection, selectedText } from './text-selection.ts'
+
+/** @param rootRef - Transcript root. @returns Valid current selection and dismissal actions. */
+export function useTextInteraction(rootRef: RefObject<HTMLElement>) {
+  const [selection, setSelection] = useState<{ text: string; range: Range; left: number; top: number } | null>(null)
+  const dismiss = useCallback(() => { setSelection(null) }, [])
+  const clearSelection = useCallback(() => { rootRef.current?.ownerDocument.getSelection()?.removeAllRanges() }, [rootRef])
+  useEffect(() => {
+    const root = rootRef.current
+    if (root === null) return
+    const document = root.ownerDocument
+    const view = document.defaultView
+    if (view === null) return
+    const update = (): void => {
+      const picked = readTextSelection(root, document.getSelection())
+      const text = picked === null ? null : selectedText(picked)
+      if (picked === null || text === null) { dismiss(); return }
+      const rect = picked.range.getBoundingClientRect()
+      const viewport = view.visualViewport
+      const x = viewport?.offsetLeft ?? 0
+      const y = viewport?.offsetTop ?? 0
+      const width = viewport?.width ?? view.innerWidth
+      const height = viewport?.height ?? view.innerHeight
+      setSelection({ text, range: picked.range.cloneRange(),
+        left: Math.max(x + 8, Math.min(rect.left, x + width - 160)),
+        top: Math.max(y + 8, Math.min(rect.top - 40, y + height - 40)) })
+    }
+    const pointerDown = (event: PointerEvent): void => {
+      if (event.target instanceof Element && event.target.closest('[data-quote-action]')) return
+      dismiss()
+    }
+    const keyDown = (event: KeyboardEvent): void => { if (event.key === 'Escape') dismiss() }
+    document.addEventListener('selectionchange', update)
+    document.addEventListener('pointerup', update)
+    document.addEventListener('pointerdown', pointerDown)
+    document.addEventListener('keydown', keyDown)
+    document.addEventListener('scroll', update, true)
+    view.addEventListener('resize', update)
+    viewportSubscribe(view.visualViewport, update, true)
+    return () => {
+      document.removeEventListener('selectionchange', update)
+      document.removeEventListener('pointerup', update)
+      document.removeEventListener('pointerdown', pointerDown)
+      document.removeEventListener('keydown', keyDown)
+      document.removeEventListener('scroll', update, true)
+      view.removeEventListener('resize', update)
+      viewportSubscribe(view.visualViewport, update, false)
+    }
+  }, [rootRef, dismiss])
+  const readText = useCallback(() => {
+    const root = rootRef.current
+    if (selection === null || root === null || !root.isConnected || selection.range.collapsed
+      || !root.contains(selection.range.commonAncestorContainer)) return null
+    return selectedText({ source: root, range: selection.range }) === selection.text ? selection.text : null
+  }, [rootRef, selection])
+  return { selection, dismiss, clearSelection, readText }
+}
+function viewportSubscribe(viewport: VisualViewport | null, update: () => void, add: boolean): void {
+  if (add) { viewport?.addEventListener('resize', update); viewport?.addEventListener('scroll', update) }
+  else { viewport?.removeEventListener('resize', update); viewport?.removeEventListener('scroll', update) }
+}

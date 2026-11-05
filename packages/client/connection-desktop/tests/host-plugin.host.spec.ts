@@ -49,6 +49,7 @@ const FixtureServices = {
         batches: [],
       }),
       clientPath: () => undefined,
+      onGraphChanged: () => () => {},
     })
   },
 }

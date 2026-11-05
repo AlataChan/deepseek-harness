@@ -18,6 +18,12 @@ The [boot package group](../../packages/boot/README.md) owns launcher-provided p
 
 `ChangeResult.changed` reports a disk edit independently of `application`: `applied`, `restart-required`, `overridden` or `failed`. Optional `error` carries a localizable code and external diagnostic. `packageResult` records the pnpm exit code, bounded output, truncation flag and complete diagnostic log path, plus `timedOut` when the manager terminated a run that stopped printing. A terminated run is classified `timeout` whatever exit status the signal left behind, so installation and removal report failure instead of success and no further registry is asked. `pendingBuilds` lists undecided packages across the profile; `approvedBuilds` records the names granted permission by this operation; `registries` lists the registries an installation asked, in order; `bundle` and `version` name the package a finished installation added and its manifest version; `failedAt` says whether the last failed run could not reach the registry it asked or the host a git or tarball spec is fetched from.
 
+## Explicit version updates
+
+`ListVersionsOptions.registry` selects the registry used by an explicit version check. `PluginVersionList` reports listed candidates or a refusal, the installed version, queried registries and omitted count; candidates carry version tags and compatibility information. A check does not install anything. `UpdateBundleOptions` carries the selected registry and correlated request identity. `PluginUpdateResult` separates target check/removal/install results from an optional independent restoration of the previous version.
+
+`PluginUpdateProgress` carries the request identity and one of checking, removing, installing or restoring. `PluginOperation` carries a branded invocation id, timestamp, reason, sanitized target, stage and optional version/enablement; its phase is started, settled or unknown. Only a settled phase carries application and changed results. These are process-local observations, not Session events or a durable recovery journal.
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -128,6 +134,30 @@ Manage profile files and apply their declared reload lifecycle.
  * @returns The package the spec names, or why it is refused.
  */
 @Remote async inspect(spec: string, options?: InspectOptions, signal?: AbortSignal): Promise<PluginSpecInspection>
+
+/** Read the published versions newer than an installed registry package's version, from the first registry that answers.
+ * @param name Installed profile dependency name.
+ * @param options The registry asked first; absent, the one the package was installed from in this process, else the configured one.
+ * @param signal Ends the lookups early.
+ * @returns At most `versionListLimit` newer versions, newest first, with their tags, deprecation, bundle declaration,
+ * and DSH compatibility, and the registry that answered; or why no list could be read, with every registry asked.
+ */
+@Remote async listVersions(name: string, options?: ListVersionsOptions, signal?: AbortSignal): Promise<PluginVersionList>
+
+/**
+ * Replace an installed registry bundle with a newer published version. The target is checked on the registry first:
+ * it must exist, declare a bundle, and accept the running DSH version, or nothing changes. With HMR the installed
+ * version is removed, so its plugins stop, and the target is installed with the same selection; when that
+ * installation fails or is cancelled, the removed version is installed again from the registry it came from.
+ * Without HMR the target is installed over the running version and the result reports the restart.
+ * @param name Installed profile dependency name.
+ * @param version Exact published version newer than the installed one.
+ * @param options The registry asked first, as for `listVersions`, and the request id naming the progress and the
+ * target installation's logs and cancellation.
+ * @param signal Stops checking or target installation; a removed version is restored independently.
+ * @returns The versions, the last step that ran with its result, and the reinstallation when one ran.
+ */
+@Remote async updateBundle(name: string, version: string, options?: UpdateBundleOptions, signal?: AbortSignal): Promise<PluginUpdateResult>
 
 /** Persist a plugin entry's desired enablement and apply it on live profiles.
  * @param id Loader entry identity returned by listPlugins.
@@ -317,6 +347,38 @@ An installation moved between its Host phases. `installing` is announced once pe
  * @param progress - the installation's request id and phase, with the attempt while installing.
  */
 'plugin-manager/install-state'(progress: PluginInstallProgress): void
+```
+
+Source: [`packages/boot/plugin-manager/src/types.ts`](../../packages/boot/plugin-manager/src/types.ts)
+
+<a id="plugin-manageroperation--parallel"></a>
+
+#### `plugin-manager/operation` — parallel
+
+Correlated management facts without raw specs, configs or output.
+
+```ts cordis-catalog
+/** Correlated management facts without raw specs, configs or output.
+ * @mode parallel
+ * @param operation - A start, settlement, or unknown outcome.
+ */
+'plugin-manager/operation'(operation: PluginOperation): void | Promise<void>
+```
+
+Source: [`packages/boot/plugin-manager/src/types.ts`](../../packages/boot/plugin-manager/src/types.ts)
+
+<a id="plugin-managerupdate-state--emit"></a>
+
+#### `plugin-manager/update-state` — emit
+
+Progress for an explicitly requested update.
+
+```ts cordis-catalog
+/** Progress for an explicitly requested update.
+ * @mode emit
+ * @param progress - Request identity and current step.
+ */
+'plugin-manager/update-state'(progress: PluginUpdateProgress): void
 ```
 
 Source: [`packages/boot/plugin-manager/src/types.ts`](../../packages/boot/plugin-manager/src/types.ts)

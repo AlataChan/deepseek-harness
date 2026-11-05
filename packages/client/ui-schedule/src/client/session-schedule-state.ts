@@ -33,8 +33,12 @@ export function createSessionScheduleSource(
   sessionId: SessionId,
 ): CatalogInjected {
   return createCatalogSource({
-    list: () => ctx.remote.schedule.list({ sessionId }),
-    remove: id => ctx.remote.schedule.delete({ sessionId, id }),
+    list: async () => {
+      const result = await ctx.remote.schedule.catalog()
+      return result.ok ? { ok: true, value: result.value.filter(record => record.target.kind !== 'new'
+        && record.target.sessionId === sessionId && record.status === 'active') } : result
+    },
+    remove: id => ctx.remote.schedule.edit({ id, action: 'delete' }),
     subscribeChanged: listener => ctx.remote.$on('schedule/changed', listener),
     subscribeReset: listener => ctx.on('connection/reset', listener),
   })
@@ -76,7 +80,7 @@ export function selectSessionScheduleFacts(
 ): SessionScheduleFacts {
   if (!snapshot.settled) return { hasActive: false, records: NO_RECORDS }
   const records = snapshot.records.filter(
-    record => record.sessionId === sessionId && record.status === 'active',
+    record => record.target.kind !== 'new' && record.target.sessionId === sessionId && record.status === 'active',
   )
   return { hasActive: records.length > 0, records }
 }

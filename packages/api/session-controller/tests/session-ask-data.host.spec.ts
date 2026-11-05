@@ -94,7 +94,7 @@ async function harness(options: {
 
   const selects: string[] = []
   const hooks = new Set<(agent: Agent, next: string) => void | Promise<void>>()
-  ctx.provide('agentPresets', {
+  const removeAgentPresets = ctx.provide('agentPresets', {
     defaultId: 'standard',
     presetOf: (session: Session) => presetProjection.stateOf(session),
     resolve: (id?: string) => Promise.resolve({
@@ -149,7 +149,7 @@ async function harness(options: {
     defaultModelSelection: () => ({ provider: 'test', model: 'test-model' }),
     cwd,
   })
-  return { remote, ctx, selects }
+  return { remote, ctx, selects, removeAgentPresets }
 }
 
 describe('session ask-data remotes', () => {
@@ -592,13 +592,9 @@ describe('session ask-data remotes', () => {
   })
 
   it('fails commit when agent-presets is missing on a non-data-agent session', async () => {
-    const { remote, ctx } = await harness()
+    const { remote, removeAgentPresets } = await harness()
     await remote.create({ sessionId: SessionId('s-nopreset'), agentPreset: 'standard' })
-    const original = ctx.get.bind(ctx)
-    vi.spyOn(ctx, 'get').mockImplementation(((name: string) => {
-      if (name === 'agentPresets') return undefined
-      original(name as never)
-    }) as typeof ctx.get)
+    removeAgentPresets()
     await expect(remote.commitAskData({
       sourceId: 'src-sample',
       sessionId: SessionId('s-nopreset'),

@@ -23,6 +23,7 @@ The Trajectory tab lets you inspect agent activity as a turn-aware ledger and in
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Open the Trajectory tab in the conversation's view ring to inspect agent activity as an event ledger and timeline. The ledger covers records with an explicit loading row until the initial tail is positioned; while an older prefix remains unloaded, a first-row control loads one earlier page on click and shows the shared ongoing loader while that page is pending.
@@ -45,7 +46,10 @@ A fixed Overview above the ledger projects real record start/duration timing fro
 
 -----
 
+Turns, Assistant tool calls, and nested subcalls have independent in-memory fold choices. Folding subcalls preserves their parent tool row; the toolbar expands or collapses all nested calls. Reopening the view resets these fold choices.
+
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -72,6 +76,7 @@ Trajectory asks the conversation shell to float the composer over the full-heigh
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 These pages cover the conversation host and the session data this view projects.
@@ -84,6 +89,7 @@ These pages cover the conversation host and the session data this view projects.
 -----
 
 <a id="model-experience"></a>
+
 ## Model Experience
 
 None, as the package is a browser-side UI plugin layer that registers nothing model-facing.
@@ -104,6 +110,7 @@ These limits define what the view can show while work is in flight; they are cur
 - **In-flight Time stays blank** — `partial` and `runningCalls` rows show their running state without a fabricated duration, so the Overview renders a start marker rather than inventing a live span. Record and timeline selection are local to Trajectory, with no anchor deep links.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

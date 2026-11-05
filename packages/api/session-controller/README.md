@@ -22,6 +22,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 History pages and follow opening snapshots carry one `{ type: 'event', event: SessionWireEvent }` record per durable Session event. The Client retains each accepted record as one durable `SessionEventLikeEntry`; Assistant token boundaries remain inside the compact stream on `assistant/message` or `assistant/attempt`. Tool arguments, result content, failures, and `tool/result.data.meta` pass through unchanged; the controller does not resolve a Tool definition, run a presenter, or attach UI data.
@@ -36,10 +37,13 @@ Four commerce remotes follow the same pattern over `ctx.commerce`: `listCommerce
 
 Media remotes duck-type `ctx.desktopMedia` so this official package never imports the experimental overlay: `listMediaWorks`, `listMediaVoices`, `mediaRuntimeStatus`, `openMediaWork`, `revealMediaWork`, `copyMediaWorkPath`, `importMediaBytes`, and `saveMediaWorkAs` never activate an Agent. A Host without the overlay answers `session/media-unavailable`.
 
-The Session object also carries local submission echoes: `session.beginSubmission` inserts one into `SessionSnapshot.pendingSubmissions` synchronously, before the caller serializes and prompts, so a conversation UI can show the message on the submit click's own frame. The echo stores ordered image previews and durable file references. Session derives its `transcript`, `queued`, or `steering` placement from the current running state and requested delivery mode, then retains that placement while serialization is in flight. The prompt's `requestId` is the correlation identity: the Host echoes it as the durable user source's `rpcId`, and queue occurrences project it as `SessionQueuedItem.rpcId`. An echo retires one animation frame after its durable event or queue occurrence is observed, immediately when its identified prompt fails or is abandoned, and as failed on disposal. Each retirement fires `onRetire` exactly once; an observed retirement includes the ordered durable attachment references so the composer can release successful cards while preserving failed drafts. Echoes are Client memory only; reload and reconnect rebuild the conversation from durable events alone.
+The Session object reserves local submission identities privately through `session.beginSubmission`. Host acceptance publishes at most one matching echo in `SessionSnapshot.pendingSubmissions`; concurrent accepted receipts never duplicate it. The echo stores ordered image previews and durable file references. Session derives its `transcript`, `queued`, or `steering` placement from the current running state and requested delivery mode, then retains that placement while serialization is in flight. The prompt's `requestId` is the correlation identity: the Host echoes it as the durable user source's `rpcId`, and queue occurrences project it as `SessionQueuedItem.rpcId`. An echo retires one animation frame after its durable event or queue occurrence is observed, immediately when its identified prompt fails or is abandoned, and as failed on disposal. Each retirement fires `onRetire` exactly once; an observed retirement includes the ordered durable attachment references so the composer can release successful cards while preserving failed drafts. Echoes are Client memory only; reload and reconnect rebuild the conversation from durable events alone.
 
+
+Prompt request ids are reserved before Agent resolution and attachment admission. Concurrent retries share one admission result; failed attempts can retry. An accepted user message remains in its inbox or log when a duplicate receipt arrives.
 
 <a id="session-media-references"></a>
+
 ## Session media references
 
 `SessionMediaReferences` mounts `GET|HEAD /api/file?path=<absolute path>` on the authenticated `connection.fetch` channel when `connection`, `fs`, and `attachments` are composed. It reads ordinary files through `ctx.fs`, including temporary paths outside registered workspaces and files in remote providers. Neither directory containment nor MIME categories restrict access; `mime-types` supplies the response type, with `application/octet-stream` for unknown extensions. GET reuses `readBytes` for preflight and ongoing byte limits; HEAD reads metadata only. All files use `ctx.attachments.imageLimits.maxImageBytes` (normally 20 MiB); exceeding this limit returns 413. Responses contain the complete file, ignore Range, and carry `private, no-store`, `nosniff`, and a sandbox CSP so directly opened HTML/SVG cannot execute with the API origin. The Client rewrite lives in `ui-chat` (`AssistantMarkdown`); audio/video responses are available, while Markdown audio/video player nodes remain separate work.
@@ -47,6 +51,7 @@ The Session object also carries local submission echoes: `session.beginSubmissio
 -----
 
 <a id="configuration"></a>
+
 ## Configuration
 
 | Field | Default | Meaning |
@@ -58,6 +63,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 -----
 
 <a id="model-experience"></a>
+
 ## Model Experience
 
 None, as invoked Agent commands own any model-visible effect.
@@ -78,6 +84,7 @@ No direct effect; model requests remain owned by the Agent and LLM packages.
 
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

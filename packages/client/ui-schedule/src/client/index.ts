@@ -41,7 +41,7 @@ import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-connection/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { ScheduleCatalogEntry, ScheduleDeliveryHistoryRequest, ScheduleId, ScheduleUpdateRequest } from '@deepseek-ai/dsh-schedule/client'
+import type { ScheduleCatalogEntry, ScheduleDeliveryHistoryRequest, ScheduleId, ScheduleEditRequest } from '@deepseek-ai/dsh-schedule/client'
 import { createCatalogSource, type CatalogDeleteOutcome, type CatalogInjected } from './catalog-source.ts'
 import { createDeleteToastSource, ScheduleDeleteToast } from './DeleteToast.tsx'
 import { SCHEDULE_TASK_ID, SCHEDULE_TASK_KIND, scheduleTaskDefinition } from './definition.ts'
@@ -55,6 +55,7 @@ import { SessionScheduleMark } from './SessionScheduleMark.tsx'
 import { createSessionScheduleSource, type SessionScheduleSourceFactory } from './session-schedule-state.ts'
 import { TaskTabBindings } from './task-tab-bindings.ts'
 import { TaskManagerPage, type TaskManagerInjected } from './TaskManagerPage.tsx'
+import { clearEnded } from './clear-ended.ts'
 import type { TaskDetailInjected } from './TaskDetail.tsx'
 import { TaskManagerIcon } from './TaskManagerIcon.tsx'
 import { sessionLinkState } from './session-link.ts'
@@ -93,8 +94,8 @@ export function apply(ctx: ClientContext): void {
     list: () => ctx.remote.schedule.catalog(),
     remove: async (id) => {
       const record = manager.hooks.catalog.getSnapshot().records.find(item => item.id === id)
-      if (record === undefined) return { ok: true, value: { id, deleted: false, code: 'schedule_not_found' } }
-      return ctx.remote.schedule.delete({ sessionId: record.sessionId, id })
+      if (record === undefined) return { ok: true, value: { id, code: 'schedule_not_found' } }
+      return ctx.remote.schedule.edit({ id, action: 'delete', expectedUpdatedAt: record.updatedAt ?? null })
     },
     subscribeChanged: listener => ctx.remote.$on('schedule/changed', listener),
     subscribeReset: listener => ctx.on('connection/reset', listener),
@@ -120,10 +121,9 @@ export function apply(ctx: ClientContext): void {
    * @param request - complete expected record with the optional content and timing change.
    * @returns the original Remote mutation result.
    */
-  const updateTask = async (request: ScheduleUpdateRequest) => {
-    const result = await ctx.remote.schedule.update(request)
-    if (result.ok && ('record' in result.value || result.value.code === 'schedule_conflict'
-      || result.value.code === 'schedule_ended' || result.value.code === 'schedule_not_found')) {
+  const updateTask = async (request: ScheduleEditRequest) => {
+    const result = await ctx.remote.schedule.edit(request)
+    if (result.ok) {
       // The write is in, so this readback must not join a read that was sent
       // before it: naming every request seen so far makes the source issue a new
       // one, the way the post-deletion readback supersedes.
@@ -141,7 +141,12 @@ export function apply(ctx: ClientContext): void {
     hooks: manager.hooks,
     onDelete: reportedDelete(manager.onDelete),
     onRetry: manager.onRetry,
-    onUpdateTiming: updateTask,
+    onEditTask: updateTask,
+    onRun: async (request) => {
+      const result = await ctx.remote.schedule.run(request)
+      await manager.onRetry(manager.hooks.catalog.getSnapshot().readRequest)
+      return result
+    },
     loadHistory,
     onOpenSession: openSession,
   }
@@ -171,7 +176,13 @@ export function apply(ctx: ClientContext): void {
     locale: MANAGER_NS,
     inject: (): TaskManagerInjected => ({
       ...detail,
-      // The page has no creation form: a new reminder starts in a Session.
+      onCreate: async (request) => {
+        const result = await ctx.remote.schedule.create(request)
+        await manager.onRetry(manager.hooks.catalog.getSnapshot().readRequest)
+        return result
+      },
+      onClearEnded: () => clearEnded(() => ctx.remote.schedule.deleteInactive(),
+        () => manager.onRetry(manager.hooks.catalog.getSnapshot().readRequest)),
       onNewTask: () => { ctx.uiWorkspace.startSession() },
     }),
   }, TaskManagerPage))

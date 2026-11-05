@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在 `ctx.subprocess` 后端之后挂载工具；无需宿主 `rg` 安装，也无需文件系统提供方。模型随后获得按修改时间排序的文件发现与按行组织的内容搜索，两者都有界并受超时防护。
@@ -79,6 +80,7 @@ Node 部署在受支持的 macOS、Linux 与 Windows 目标上获得 `@vscode/ri
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -114,6 +116,7 @@ Node 部署在受支持的 macOS、Linux 与 Windows 目标上获得 `@vscode/ri
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当包级约定不够用时阅读以下页面。它们从工具逐步进入 subprocess seam、spill 存储与文件系统家族。
@@ -127,7 +130,10 @@ Node 部署在受支持的 macOS、Linux 与 Windows 目标上获得 `@vscode/ri
 
 -----
 
+搜索从已校验的执行目录开始，显式指定的相对搜索根目录也在此解析。会话头和沙箱的项目身份保持不变。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 系统提示词
@@ -211,6 +217,7 @@ glob 描述声明了配置的超过上限排序方式。生成的 [`glob` 和 `g
 - **启用采样时仅按搜索根正下方的第一段路径分组**——超过上限的 `glob` 页面在这些顶层条目之间平衡，因此集中在更深处的结果在该层级之下仍会呈现不均；递归平衡被延期。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

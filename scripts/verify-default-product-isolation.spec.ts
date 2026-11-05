@@ -52,6 +52,15 @@ afterEach(() => {
 })
 
 describe('default product isolation', () => {
+  it('ignores generated Python runtime payloads while checking authored runtime sources', () => {
+    const root = fixture()
+    const baseline = verifyDefaultProductIsolation(root)
+    write(root, 'python/sdk-runtime/src/deepseek_harness_runtime/runtime/node/carrier.js', `import '${experimental}'\n`)
+    expect(verifyDefaultProductIsolation(root)).toEqual(baseline)
+    write(root, 'python/sdk-runtime/src/authored.js', `import '${experimental}'\n`)
+    expect(verifyDefaultProductIsolation(root).failures.join('\n')).toContain(experimental)
+  })
+
   it.each(['@deepseek-ai/libreoffice-kit'])(
     'accepts independently published %s but rejects unknown workspace packages', (name) => {
       const root = fixture()

@@ -23,6 +23,7 @@ Agents and host UIs can complete `@file` mentions with ranked paths from each ag
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Mount this provider when `@file` completion should discover the Harness host's own filesystem — the namespace the shipped `read` tool operates on. Each agent's workspace is indexed from its session working directory, falling back to the host process directory when the session has none.
@@ -54,6 +55,7 @@ Every numeric value must be a positive safe integer, and every excluded name mus
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -81,6 +83,7 @@ A `list(agent, query, signal)` call either lists one directory's entries or read
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the seam this provider implements to the tools its candidates point at.
@@ -92,7 +95,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+File-reference lookup uses the validated execution directory. A committed directory change invalidates the old search cache so later completions cannot return results for the previous directory. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### File-reference guidance when read is available
@@ -128,6 +134,7 @@ These limits define when the provider is a poor fit. They are current package co
 - **No ignore-file semantics** — `.gitignore` and other project ignore files do not influence discovery; only configured directory basenames are excluded.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

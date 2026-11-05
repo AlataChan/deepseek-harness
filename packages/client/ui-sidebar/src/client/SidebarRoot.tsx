@@ -16,15 +16,18 @@
  * scrollbar indirection away while it is elsewhere, so a list the user is not
  * pointing at carries no bar.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
-  FishLogo, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconPanelLeftOutlineRegular, isDarwinDesktop, ShortcutKeys, Tooltip,
+  Menu, MenuItemButton, IconPinOutlineRegular, IconEllipsisOutlineRegular, FishLogo, IconNewChatOutlineMedium, IconNewChatOutlineRegular,
+  IconPanelLeftOutlineRegular, isDarwinDesktop, ShortcutKeys, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps,
 } from './contract/slots.ts'
+import { FIXED_PANEL_ID } from './panel-pins.ts'
+import { panelCapacity } from './panel-capacity.ts'
 import css from './SidebarRoot.module.css'
 
 /** Wide-content unmount delay; matches the 150ms wide-content fade-out. */
@@ -92,13 +95,19 @@ export function SidebarRoot({
   toggleSidebar,
   selectPanel,
   usePanels,
+  useEntryPins,
+  setPinned,
   useShortcuts,
   usePanelInfo,
-  useFilesOccupied = select => select(false),
+  useFilesOccupied,
   t,
   renderSlot,
 }: SidebarRootComponentProps) {
   const panels = usePanels(snapshot => snapshot)
+  const unpinned = useEntryPins(ids => ids)
+  const activePanelId = usePanelInfo(info => info.activePanelId)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [panelLimit, setPanelLimit] = useState(6)
   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'sidebar.left.toggle'))
   const newShortcut = useShortcuts(rows => rows.find(row => row.id === 'session.new'))
   const toggleLabel = collapsed ? t('toggle.open') : t('toggle.collapse')
@@ -138,7 +147,31 @@ export function SidebarRoot({
   // away): drawn while it is inside, and for SCROLLBAR_LINGER_MS after it
   // leaves. A pointer that returns within that window cancels the pending
   // hide rather than restarting from a hidden bar.
-  const column = useRef<HTMLDivElement>(null)
+  const [column, setColumn] = useState<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    const element = column
+    if (element === null) return
+    const measure = (): void => {
+      const height = element.clientHeight
+      setPanelLimit(previous => panelCapacity(height, previous))
+    }
+    measure()
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
+    observer?.observe(element)
+    return () => { observer?.disconnect() }
+  }, [column])
+  const preferredPanels = [...panels.filter(panel => panel.id === FIXED_PANEL_ID),
+    ...panels.filter(panel => panel.id !== FIXED_PANEL_ID && !unpinned.includes(panel.id))]
+  const visiblePanels = preferredPanels.slice(0, panelLimit)
+  const panelEntries = panels.filter(panel => panel.id !== FIXED_PANEL_ID).map(panel => ({
+    id: panel.id, label: panel.label, active: panel.id === activePanelId, pinned: !unpinned.includes(panel.id),
+  }))
+  const dismissMore = (): void => { setMoreOpen(false) }
+  const openMorePanel = (id: string): void => {
+    const panel = panels.find(candidate => candidate.id === id)
+    if (panel !== undefined) selectPanel(panel.id)
+    dismissMore()
+  }
   const [pointerInside, setPointerInside] = useState(false)
   const lingerTimer = useRef<number | undefined>(undefined)
   const armLinger = (): void => {
@@ -162,7 +195,7 @@ export function SidebarRoot({
   useEffect(() => {
     if (!pointerInside) return
     const onMove = (event: PointerEvent): void => {
-      const rect = column.current?.getBoundingClientRect()
+      const rect = column?.getBoundingClientRect()
       /* v8 ignore next -- the listener only exists while the column is mounted and revealed. */
       if (rect === undefined) return
       const inside = event.clientX >= rect.left && event.clientX < rect.right
@@ -175,7 +208,7 @@ export function SidebarRoot({
       document.removeEventListener('pointermove', onMove)
       cancelLinger()
     }
-  }, [pointerInside])
+  }, [column, pointerInside])
 
   const buildVersion = localBuildVersion()
 
@@ -206,7 +239,7 @@ export function SidebarRoot({
 
   return (
     <div
-      ref={column}
+      ref={setColumn}
       className={clsx(
         css.root, !wide && css.collapsed, !wide && everWide.current && css.railIn,
         collapsed && wide && css.fading, !pointerInside && css.quietBars,
@@ -286,7 +319,7 @@ export function SidebarRoot({
 
       {panels.length > 0 && (
         <nav className={css.panelList} aria-label={t('panels.label')}>
-          {panels.map(({ id, label }) => (
+          {visiblePanels.map(({ id, label }) => (
             <PanelRow
               key={id}
               id={id}
@@ -297,6 +330,22 @@ export function SidebarRoot({
               renderSlot={renderSlot}
             />
           ))}
+          {panelEntries.length > 0 && <Menu open={moreOpen} onClose={dismissMore} portal autoFocus
+            anchor={<Tooltip label={t('panels.more')} disabled={wide}><button type="button" className={css.panelRow}
+              aria-label={t('panels.more')} aria-haspopup="menu" aria-expanded={moreOpen}
+              onClick={() => { setMoreOpen(value => !value) }}><IconEllipsisOutlineRegular size={18} />
+              {wide && <span className={css.panelTitle}>{t('panels.more')}</span>}
+            </button></Tooltip>}>
+            {renderSlot('sidebar.panellist.actions', {
+              entries: panelEntries, onOpen: openMorePanel, onPinnedChange: setPinned, onDismiss: dismissMore,
+            }, { fallback: <>{panelEntries.map(entry => <div key={entry.id} className={css.moreRow}>
+              <MenuItemButton onSelect={() => { openMorePanel(entry.id) }}>{entry.label}</MenuItemButton>
+              <button type="button" className={css.pinToggle} aria-label={t(entry.pinned ? 'panels.unpin' : 'panels.pin', { name: entry.label })}
+                aria-pressed={entry.pinned} onClick={() => { setPinned(entry.id, !entry.pinned) }}>
+                <IconPinOutlineRegular size={16} />
+              </button>
+            </div>)}</> })}
+          </Menu>}
         </nav>
       )}
 

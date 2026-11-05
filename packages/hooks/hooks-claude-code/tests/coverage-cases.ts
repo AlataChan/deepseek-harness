@@ -1,3 +1,4 @@
+import { createDirectoryFixtureAgent, mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -57,6 +58,7 @@ async function harness(configPath: string, adapter: MockAdapter, opts: HarnessOp
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(HooksClaude, { configPath, ...opts })
   ctx.llm.registerAdapter(['mock'], adapter)
   return ctx
@@ -146,9 +148,11 @@ export function defineCoverageCases(group: CoverageGroup): void {
       const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
       agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
       await waitForIdle(ctx, agent)
-      // The prompt proceeded unchanged; no injected context.
+      // Only the required directory context is added; the no-op hook adds none.
       expect(adapter.requests).toHaveLength(1)
-      expect(events(agent).some(e => e.type === 'user/message' && e.data.source.kind !== 'user')).toBe(false)
+      expect(events(agent).filter(e => e.type === 'user/message' && e.data.source.kind !== 'user').map(e => e.type === 'user/message' && e.data.source)).toEqual([{ kind: 'runtime-context', form: 'snapshot', sections: [{
+        name: 'working-directory:current', text: `Current working directory: ${JSON.stringify(process.cwd())}.`,
+      }] }])
     })
 
     it('a PreToolUse hook fires for a no-agent direct tool call (no session/turn to record into)', async () => {
@@ -242,18 +246,11 @@ export function defineCoverageCases(group: CoverageGroup): void {
       const s = sh(d, 'sa.sh', '#!/usr/bin/env bash\necho \'{"hookSpecificOutput":{"hookEventName":"SubagentStart","additionalContext":"child guidance"}}\'\n')
       const path = hooks(d, { SubagentStart: [{ hooks: [{ type: 'command', command: s }] }] })
       const ctx = await harness(path, new MockAdapter([]))
-      const injected: string[] = []
-      const child = {
-        id: SessionId('child-x'),
-        inject: (input: { content: Array<{ type: string; text?: string }> }) => {
-          injected.push(input.content.map(block => block.text ?? '').join(''))
-        },
-        session: { id: SessionId('child-x'), header: { id: 'child-x' } },
-      } as unknown as Parameters<typeof ctx.agents.register>[0]
-      await ctx.agents.register(child)
+      const child = await createDirectoryFixtureAgent(ctx, SessionId('child-x'), process.cwd())
+      const inject = vi.spyOn(child, 'inject')
       ctx.emit(subagentCarrier(ctx), 'subagent/start', { runId: SubagentRunId('run-x'), provider: 'p', id: SessionId('child-x'), local: true })
-      await waitFor(() => injected.includes('child guidance'))
-      expect(injected).toContain('child guidance')
+      await waitFor(() => inject.mock.calls.some(([message]) => JSON.stringify(message).includes('child guidance')))
+      expect(inject.mock.calls[0]?.[0].source).toMatchObject({ kind: 'hooks-claude-code' })
     })
 
     it('a throwing SubagentStart/SubagentStop hook run is contained (logged)', async () => {
@@ -379,6 +376,7 @@ export function defineCoverageCases(group: CoverageGroup): void {
       // Direct apply with only configPath — bypasses schemastery's defaults, so
       // the bridge must run on the raw minimal config (the per-hook timeout is
       // the protocol lib's reference default, not a config knob).
+      await mountDirectoryFixture(ctx, process.cwd())
       HooksClaude.apply(ctx, { configPath: join(d, 'hooks.json') })
       ctx.llm.registerAdapter(['mock'], adapter)
       const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
@@ -511,7 +509,7 @@ export function defineCoverageCases(group: CoverageGroup): void {
       // the downstream block won: the model was never called, no user/message was
       // recorded, and the (sole, fully-blocked) prompt closed the turn `rejected`
       expect(adapter.requests).toHaveLength(0)
-      expect(events(agent).some(e => e.type === 'user/message' && e.data.source.kind !== 'user')).toBe(false)
+      expect(events(agent).some(e => e.type === 'user/message')).toBe(false)
       expect(events(agent).filter(e => e.type === 'turn/start' || e.type === 'hook/invoked'
         || e.type === 'hook/result' || e.type === 'turn/end').map(e => e.type))
         .toEqual(['turn/start', 'hook/invoked', 'hook/result', 'turn/end'])
@@ -549,6 +547,9 @@ export function defineCoverageCases(group: CoverageGroup): void {
       expect(contexts.map(event => event.type === 'user/message' && event.data.source)).toEqual([
         { kind: 'policy' },
         { kind: 'hooks-claude-code' },
+        { kind: 'runtime-context', form: 'snapshot', sections: [{
+          name: 'working-directory:current', text: `Current working directory: ${JSON.stringify(process.cwd())}.`,
+        }] },
       ])
     })
 
@@ -590,6 +591,9 @@ export function defineCoverageCases(group: CoverageGroup): void {
 
       const contexts = events(agent).filter(event => event.type === 'user/message' && event.data.source.kind !== 'user')
       expect(contexts.map(event => event.type === 'user/message' && event.data.source)).toEqual([
+        { kind: 'runtime-context', form: 'snapshot', sections: [{
+          name: 'working-directory:current', text: `Current working directory: ${JSON.stringify(process.cwd())}.`,
+        }] },
         { kind: 'hooks-claude-code' },
         { kind: 'policy' },
       ])
@@ -681,6 +685,7 @@ export function defineCoverageCases(group: CoverageGroup): void {
       // Executor default cwd = serverDir (deliberately NOT the session cwd).
       await ctx.plugin(LocalSubprocessRuntime)
       await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000, cwd: serverDir })
+      await mountDirectoryFixture(ctx, process.cwd())
       await ctx.plugin(HooksClaude, { configPath: join(serverDir, 'hooks.json') })
       ctx.llm.registerAdapter(['mock'], adapter)
       ctx.tools.register(defineContentToolFixture({ name: 'echo', description: 'e', parameters: {}, async execute() { return [{ type: 'text', text: 'ok' }] } }))
@@ -710,6 +715,7 @@ export function defineCoverageCases(group: CoverageGroup): void {
       // Executor default cwd = serverDir (deliberately NOT the child session cwd).
       await ctx.plugin(LocalSubprocessRuntime)
       await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000, cwd: serverDir })
+      await mountDirectoryFixture(ctx, process.cwd())
       await ctx.plugin(HooksClaude, { configPath: join(serverDir, 'hooks.json') })
       ctx.llm.registerAdapter(['mock'], new MockAdapter([]))
 

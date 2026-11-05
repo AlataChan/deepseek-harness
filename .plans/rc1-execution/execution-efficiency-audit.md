@@ -1,0 +1,5 @@
+# Execution efficiency correction
+
+The broad selected intake includes a runtime migration and dependent Client, worktree, Schedule and SDK changes. This scope accounts for substantial integration work, but not all elapsed time or token use. Root allowed too many source lanes to remain open before integrated acceptance, built while inputs could still change, repeatedly repaired fixture/configuration omissions, and spent excessive time closing local coverage details ahead of the full delivery path. Large logs/inventories and repeated context recovery increased token use. Total account token use is unavailable in current telemetry.
+
+Three remaining Orca workers reported the Codex weekly quota error. Root closed their exact supervised terminals and starts no replacements. Saved SDK results are accepted only as scoped replay evidence; F1 and browser tasks were interrupted and root owns their unfinished acceptance. No final merge or push has occurred. Remaining work is tracked in current-progress.json. Root will freeze source, run one integrated build per necessary source change, and distinguish inherited baseline failures and platform limits from passing gates.

@@ -1,0 +1,10 @@
+version: 1
+scenario: plugin-manager-inventory
+profile: headless
+composition: plugin-manager
+recording: authored
+header:
+  class: plugin-manager
+replay:
+  override: true
+permission: danger-full-access

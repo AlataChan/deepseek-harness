@@ -82,6 +82,7 @@ const PACKAGE_LIBRARIES: Readonly<Record<string, string>> = {
   'packages/subagent/subagent-in-process-driver': 'Shared one-shot child-agent driver used by provider plugins.',
   'packages/subprocess/win32-process': 'Low-level Win32 process and Job Object primitives.',
   'packages/test-support/session-snapshot': 'Test infrastructure; mounts nothing into a product composition.',
+  'packages/test-support/working-directory-testkit': 'Test helper library; explicitly mounts real directory services for opted-in fixtures.',
   'packages/test-support/agent-loop-testkit': 'Test helper library; mounts nothing into a product composition.',
   'packages/test-support/client-runtime': 'Browser-side test infrastructure.',
   'packages/test-support/llm-mock-server': 'Test server library; substitutes provider wire behavior.',

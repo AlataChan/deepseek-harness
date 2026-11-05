@@ -1,3 +1,4 @@
+import { mountDirectoryFixture, createDirectoryFixtureAgent } from '@deepseek-ai/dsh-working-directory-testkit'
 /**
  * Consumer API tests over a fake provider and the real policy collaborator: schemas,
  * validation, formatting, typed errors, intent dispatch, and observation-driven authorization.
@@ -7,9 +8,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { PtcRuntime } from '@deepseek-ai/dsh-ptc-runtime'
 import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, sep } from 'node:path'
 import { turnBoundaryProjectionDefinition } from '@deepseek-ai/dsh-agent-loop'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
@@ -34,7 +32,7 @@ import { sessionCwd } from '../src/session-cwd.ts'
 import ApprovalService from '@deepseek-ai/dsh-user-approval'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
-import { SessionId, SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
+import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 
 const testToolSignal = new AbortController().signal
@@ -60,6 +58,9 @@ class FakeFs extends FileSystem {
     return child.targetKey === parent.targetKey || String(child.targetKey).startsWith(`${parent.targetKey}/`)
   }
   override async stat(target: FsTarget): Promise<FsInfo | undefined> {
+    if (target.targetKey === `key:${process.cwd()}` || target.targetKey === 'key:/session-project') {
+      return { version: FsVersion('directory'), type: 'directory', size: 0 }
+    }
     this.throwIfArmed()
     const content = this.files.get(target.targetKey)
     if (content === undefined) return undefined
@@ -115,19 +116,35 @@ async function setup() {
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(FakeFs)
   await ctx.plugin(FsPolicy)
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolFs)
   const fs = ctx.fs as FakeFs
   return { ctx, fs }
 }
 
 let callCounter = 0
-function call(ctx: Context, name: string, args: unknown, agent?: object) {
+const actors = new WeakMap<object, ReturnType<typeof createDirectoryFixtureAgent>>()
+async function call(ctx: Context, name: string, args: unknown, agent?: object) {
+  let caller
+  if (agent !== undefined) {
+    const value = agent as { session?: { header?: { cwd?: string } } }
+    if (value.session === undefined || value.session instanceof Session) caller = agent
+    else {
+      const identity = value.session ?? agent
+      let pending = actors.get(identity)
+      if (pending === undefined) {
+        pending = createDirectoryFixtureAgent(ctx, SessionId(`fs-actor-${++callCounter}`), value.session?.header?.cwd ?? process.cwd())
+        actors.set(identity, pending)
+      }
+      caller = await pending
+    }
+  }
   return ctx.tools.execute({
     signal: testToolSignal,
     callId: ToolCallId(`call-${++callCounter}`),
     name,
     arguments: args,
-    ...agent ? { agent: agent as never } : {},
+    ...caller === undefined ? {} : { agent: caller as never },
   })
 }
 
@@ -136,27 +153,14 @@ function text(result: { content: { type: string; text?: string }[] }): string {
 }
 
 describe('session cwd resolution', () => {
-  const execution = (cwd?: string) => cwd === undefined
-    ? {}
-    : { agent: { session: { header: { cwd } } } }
-
-  it('preserves cwd spelling so the filesystem provider resolves parent traversal', () => {
-    const cwd = process.cwd()
-    const throughParent = `${cwd}${sep}..`
-    expect(sessionCwd(execution() as never)).toBeUndefined()
-    expect(sessionCwd(execution(cwd) as never)).toBe(cwd)
-    expect(sessionCwd(execution(throughParent) as never)).toBe(throughParent)
-
-    const root = mkdtempSync(join(tmpdir(), 'dsh-tool-fs-session-cwd-'))
-    const physical = join(root, 'physical')
-    const link = join(root, 'link')
+  it('reads the real directory owner and retains explicit tool cancellation', async () => {
+    const ctx = new Context()
     try {
-      mkdirSync(physical)
-      symlinkSync(physical, link, process.platform === 'win32' ? 'junction' : 'dir')
-      expect(sessionCwd(execution(link) as never)).toBe(link)
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
+      await mountDirectoryFixture(ctx, process.cwd())
+      const agent = await createDirectoryFixtureAgent(ctx, SessionId('cwd-owner'), process.cwd())
+      await expect(sessionCwd(ctx, { agent, signal: testToolSignal } as never)).resolves.toBe(process.cwd())
+      await expect(sessionCwd(ctx, { signal: testToolSignal } as never)).resolves.toBeUndefined()
+    } finally { await ctx.fiber.dispose() }
   })
 })
 
@@ -214,6 +218,7 @@ describe('registration', () => {
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FakeFs)
     await ctx.plugin(FsPolicy)
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(ToolFs)
     // Each tool contributes BOTH a schema and a prompt section; disposal must
     // withdraw both, not just the schemas.
@@ -722,6 +727,7 @@ describe('read caps are plugin config', () => {
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FakeFs)
     await ctx.plugin(FsPolicy)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolFs, config)
     return { ctx, fs: ctx.fs as FakeFs }
   }
@@ -778,6 +784,7 @@ describe('read caps are plugin config', () => {
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FakeFs)
+    await mountDirectoryFixture(ctx, process.cwd())
     await expect(ctx.plugin(ToolFs, config)).rejects.toThrow(new RegExp(`tool-fs: ${name} must be a positive integer`))
   })
 
@@ -825,52 +832,22 @@ describe('sandbox escalation API (write/edit)', () => {
     await ctx.plugin(SandboxingFakeFs)
     await ctx.plugin(FsPolicy)
     if (opts.approval === true) await ctx.plugin(ApprovalService)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolFs)
     return { ctx, fs: ctx.fs as SandboxingFakeFs }
   }
 
   /** A fake agent whose session records appends (the approval audit trail), mid-turn, carrying the given events for the fold. */
-  function escalationAgent(records: Array<{ type: string; data?: Record<string, unknown> }> = []): object {
-    const id = SessionId('sess-fs-esc')
-    const events: Array<{
-      type: string
-      seq: ReturnType<typeof SessionSeq>
-      time: number
-      data: Record<string, unknown>
-    }> = [
-      { type: 'turn/start', seq: SessionSeq(0), time: 0, data: { turn: 1 } },
-      ...records.map((record, index) => ({
-        type: record.type,
-        seq: SessionSeq(index + 1),
-        time: index + 1,
-        data: record.data ?? {},
-      })),
-    ]
-    return {
-      id,
-      session: {
-        id,
-        header: { version: 0, id, createdAt: 0, cwd: '/session-project', isSeeded: false },
-        inheritedEventCount: SessionLogOffset(0),
-        firstLiveSeq: SessionLogOffset(0),
-        get seq() { return SessionLogOffset(events.length) },
-        eventAt: (seq: ReturnType<typeof SessionSeq>) => events[seq],
-        snapshotEvents: (
-          fromSeq = SessionLogOffset(0),
-          toSeqExclusive = SessionLogOffset(events.length),
-        ) => events.slice(fromSeq, toSeqExclusive),
-        append: (type: string, data: Record<string, unknown>) => {
-          const event = {
-            type,
-            seq: SessionSeq(events.length),
-            time: events.length,
-            data,
-          }
-          events.push(event)
-          return event
-        },
-      },
+  async function escalationAgent(ctx: Context, records: Array<{ type: string; data?: Record<string, unknown> }> = []) {
+    const agent = await createDirectoryFixtureAgent(ctx, SessionId('sess-fs-esc'), '/session-project')
+    agent.session.append('turn/start', { turn: 1 })
+    for (const record of records) {
+      const mode = record.data?.mode
+      if (record.type === 'sandbox/mode' && (mode === 'read-only' || mode === 'workspace-write' || mode === 'danger-full-access')) {
+        agent.session.append('sandbox/mode', { mode })
+      }
     }
+    return agent
   }
 
   function fsSchema(ctx: Context, name: 'write' | 'edit') {
@@ -884,6 +861,7 @@ describe('sandbox escalation API (write/edit)', () => {
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(SandboxingFakeFs)
+    await mountDirectoryFixture(ctx, process.cwd())
     await expect(ctx.plugin(ToolFs)).rejects.toThrow('tool-fs: the mounted filesystem confines but ctx.sandboxPolicy is missing')
   })
 
@@ -908,7 +886,7 @@ describe('sandbox escalation API (write/edit)', () => {
 
   it('a plain write stamps the default mode with the calling session root', async () => {
     const { ctx, fs } = await setupConfining()
-    await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, escalationAgent())
+    await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, await escalationAgent(ctx))
     expect(fs.stamped).toEqual([{
       mode: 'workspace-write',
       workspaceRoot: '/session-project',
@@ -918,7 +896,7 @@ describe('sandbox escalation API (write/edit)', () => {
 
   it('a standing session override folds onto the stamp', async () => {
     const { ctx, fs } = await setupConfining()
-    await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, escalationAgent([{ type: 'sandbox/mode', data: { mode: 'read-only' } }]))
+    await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, await escalationAgent(ctx, [{ type: 'sandbox/mode', data: { mode: 'read-only' } }]))
     expect(fs.stamped).toEqual([{
       mode: 'read-only',
       workspaceRoot: '/session-project',
@@ -929,7 +907,7 @@ describe('sandbox escalation API (write/edit)', () => {
   it('a denied write maps to the shared marker plus the escalation hint (isError)', async () => {
     const { ctx, fs } = await setupConfining()
     fs.rejectWith = new FsError('denied', 'FS_SANDBOX_DENIED')
-    const result = await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, escalationAgent())
+    const result = await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, await escalationAgent(ctx))
     expect(result.isError).toBe(true)
     expect(text(result)).toContain('[sandbox: file access denied under workspace-write mode]')
     expect(text(result)).toContain('retry this exact operation once with sandbox_permissions')
@@ -938,7 +916,7 @@ describe('sandbox escalation API (write/edit)', () => {
   it('a non-FS_SANDBOX_DENIED provider error passes through unchanged', async () => {
     const { ctx, fs } = await setupConfining()
     fs.rejectWith = new FsError('boom', 'FS_IO_ERROR')
-    const result = await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, escalationAgent())
+    const result = await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, await escalationAgent(ctx))
     expect(result.isError).toBe(true)
     expect(text(result)).toContain('boom')
     expect(text(result)).not.toContain('[sandbox:')
@@ -953,7 +931,7 @@ describe('sandbox escalation API (write/edit)', () => {
       callId: ToolCallId('call-fs-esc-grant'),
       name: 'write',
       arguments: { file_path: 'a.txt', content: 'x', sandbox_permissions: 'danger-full-access', justification: 'the test needs it' },
-      agent: escalationAgent() as never,
+      agent: await escalationAgent(ctx),
       signal: new AbortController().signal,
     })
     expect(fs.stamped).toEqual([{
@@ -967,7 +945,7 @@ describe('sandbox escalation API (write/edit)', () => {
     const { ctx, fs } = await setupConfining()
     const result = await call(ctx, 'write', {
       file_path: 'a.txt', content: 'x', sandbox_permissions: mode, justification: 'use the current permissions',
-    }, escalationAgent([{ type: 'sandbox/mode', data: { mode } }]))
+    }, await escalationAgent(ctx, [{ type: 'sandbox/mode', data: { mode } }]))
     expect(result.isError).toBe(false)
     expect(fs.stamped).toEqual([{
       mode, workspaceRoot: '/session-project', sessionId: SessionId('sess-fs-esc'),
@@ -977,7 +955,7 @@ describe('sandbox escalation API (write/edit)', () => {
   it('a rejected escalation fails closed with its own text and never mutates', async () => {
     const { ctx, fs } = await setupConfining({ approval: true })
     ctx.on('approval/request', () => Promise.resolve('rejected' as const))
-    const result = await call(ctx, 'edit', { file_path: 'a.txt', old_string: 'x', new_string: 'y', sandbox_permissions: 'danger-full-access', justification: 'the test needs it' }, escalationAgent())
+    const result = await call(ctx, 'edit', { file_path: 'a.txt', old_string: 'x', new_string: 'y', sandbox_permissions: 'danger-full-access', justification: 'the test needs it' }, await escalationAgent(ctx))
     expect(result.isError).toBe(true)
     expect(text(result)).toContain('the user rejected escalating this operation to "danger-full-access"')
     expect(fs.stamped).toEqual([])
@@ -985,7 +963,7 @@ describe('sandbox escalation API (write/edit)', () => {
 
   it('escalation without an approval service fails closed', async () => {
     const { ctx } = await setupConfining()
-    const result = await call(ctx, 'write', { file_path: 'a.txt', content: 'x', sandbox_permissions: 'danger-full-access', justification: 'why' }, escalationAgent())
+    const result = await call(ctx, 'write', { file_path: 'a.txt', content: 'x', sandbox_permissions: 'danger-full-access', justification: 'why' }, await escalationAgent(ctx))
     expect(result.isError).toBe(true)
     expect(text(result)).toContain('no approval service is composed')
   })
@@ -999,14 +977,14 @@ describe('sandbox escalation API (write/edit)', () => {
 
   it('rejects the escalation argument pairing (one field without the other)', async () => {
     const { ctx } = await setupConfining()
-    const missing = await call(ctx, 'write', { file_path: 'a.txt', content: 'x', sandbox_permissions: 'workspace-write' }, escalationAgent())
+    const missing = await call(ctx, 'write', { file_path: 'a.txt', content: 'x', sandbox_permissions: 'workspace-write' }, await escalationAgent(ctx))
     expect(missing.isError).toBe(true)
     expect(text(missing)).toContain('sandbox_permissions requires a justification')
   })
 
   it('sandbox_permissions under a non-confining backend fails closed (unadvertised field still reaches execute)', async () => {
     const { ctx } = await setup()
-    const result = await call(ctx, 'write', { file_path: 'a.txt', content: 'x', sandbox_permissions: 'workspace-write', justification: 'why' }, escalationAgent())
+    const result = await call(ctx, 'write', { file_path: 'a.txt', content: 'x', sandbox_permissions: 'workspace-write', justification: 'why' }, await escalationAgent(ctx))
     expect(result.isError).toBe(true)
     expect(text(result)).toContain('not available in this composition')
   })
@@ -1093,6 +1071,7 @@ describe('scope-aware PTC guidance', () => {
     await ctx.plugin(GuidancePtcRuntime)
     await ctx.plugin(ToolRuntime, { mode })
     await ctx.plugin(FakeFs)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolFs)
     const { key, scope } = await guidanceScope(ctx)
     try {

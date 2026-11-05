@@ -86,6 +86,8 @@ function latestCompletedPrefixBoundary(events: readonly SessionEvent[]): Session
 
 /** Implements Session business commands delegated by the Session Controller Remote service. */
 export class SessionCommandController {
+  private readonly promptAdmissions = new Map<SessionId, Map<SessionRequestId, Promise<SessionPromptValue>>>()
+
   /**
    * @param ctx - Host context carrying Agent, model, attachment, title, and Workspace services.
    * @param agents - sole owner of create, resume, and Session-local model selection.
@@ -308,7 +310,26 @@ export class SessionCommandController {
    * @param request - Session identity, prompt content, source metadata, and delivery mode.
    * @returns acknowledgement that the Agent accepted the prompt.
    */
-  async prompt(request: SessionPromptRequest): Promise<SessionPromptValue> {
+  prompt(request: SessionPromptRequest): Promise<SessionPromptValue> {
+    let admissions = this.promptAdmissions.get(request.sessionId)
+    if (admissions === undefined) {
+      admissions = new Map()
+      this.promptAdmissions.set(request.sessionId, admissions)
+    }
+    const existing = admissions.get(request.requestId)
+    if (existing !== undefined) return existing
+    // Reserve before resolving the Agent or admitting attachments can yield.
+    const pending = Promise.resolve().then(() => this.admitPrompt(request))
+    admissions.set(request.requestId, pending)
+    const reserved = admissions
+    void pending.finally(() => {
+      reserved.delete(request.requestId)
+      if (reserved.size === 0) this.promptAdmissions.delete(request.sessionId)
+    }).catch(() => { /* The caller receives admission failure through pending. */ })
+    return pending
+  }
+
+  private async admitPrompt(request: SessionPromptRequest): Promise<SessionPromptValue> {
     if (!hasPromptContent(request.content)) {
       throw new RemoteError(
         'gateway/bad-request',

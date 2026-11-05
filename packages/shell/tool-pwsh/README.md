@@ -23,6 +23,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Load this plugin in any composition where the agent should run PowerShell commands — typically a Windows composition whose `ctx.shell` is backed by a PowerShell executor. It registers the `pwsh` tool once the executor provider and the `dsh-shell-env` registry are mounted.
@@ -69,6 +70,7 @@ A composition with no PowerShell executor never activates the tool, and the inje
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -100,6 +102,7 @@ The renderer shares the bash tool's structure and the `parseExitStatus` marker c
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the shell family to the executor seam and the design notes behind the Windows behavior.
@@ -115,7 +118,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+New commands resolve their working directory from the validated Session execution directory. A relative workdir is relative to that directory; sandbox workspaceRoot remains the original project. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### System prompt
@@ -207,6 +213,7 @@ These limits define when the tool is a poor fit or needs special care. They are 
 - **Session-cwd identity is not canonicalized** — the workdir base is the session header cwd as-is, unlike the bash tool's sandbox-root-canonicalized identity. Under a confining executor the policy's workspace root IS canonicalized (by the shared policy service), so the workdir and the confinement root can diverge when the raw session cwd differs from its canonical form — a parity gap deferred to the shared shell-tool base extraction.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

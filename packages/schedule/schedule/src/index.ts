@@ -2,25 +2,26 @@
 import { randomUUID } from 'node:crypto'
 import z from '@deepseek-ai/schemastery'
 import { Context, Service } from '@deepseek-ai/cordis'
-import { TypertRemoteService, Remote } from '@deepseek-ai/dsh-typert-protocol'
+import { TypertRemoteService, Remote, RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type { Domain } from '@deepseek-ai/dsh-storage-domain'
 import { delegationDepthOf } from '@deepseek-ai/dsh-subagent'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId, type Session } from '@deepseek-ai/dsh-session'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { ScheduleRuntime } from './runtime.ts'
-import { scheduleDomain } from './storage.ts'
+import { scheduleDomain, scheduleTaskSchema, type ScheduleTask } from './storage.ts'
 import { deliveryHistoryPage } from './delivery-history.ts'
 import { resolveScheduleUpdate } from './update.ts'
 import {
-  foldScheduleEvents, ScheduleInputError, ScheduleLogError, ScheduleId, createAfterScheduleRecord, createAtScheduleRecord,
-  createEveryScheduleRecord, createDailyScheduleRecord, createWeeklyScheduleRecord, createCronScheduleRecord,
-  scheduleTitle,
+  foldScheduleEvents, ScheduleInputError, ScheduleLogError, ScheduleId,
+  createScheduleRecord,
 } from './domain.ts'
 import type {
-  DeliveryRetentionBounds, ScheduleCatalogEntry, ScheduleCreateRequest, ScheduleDeleteRequest, ScheduleDeleteResult,
-  ScheduleDeliveryHistoryRequest, ScheduleDeliveryHistoryResult, ScheduleListRequest, ScheduleRecord,
-  ScheduleUpdateRequest, ScheduleUpdateResult, SubagentSessionError,
+  DeliveryRetentionBounds, ScheduleCatalogEntry, ScheduleCreateRequest, ScheduleDeliveryHistoryRequest,
+  ScheduleDeliveryHistoryResult, ScheduleListRequest, ScheduleListResult, ScheduleTargetRequest, ScheduleTarget,
+  ScheduleViewRequest, ScheduleViewResult, ScheduleEditRequest, ScheduleEditResult, ScheduleRunRequest,
+  ScheduleRunResult, ScheduleDeleteInactiveResult,
 } from './types.ts'
+
 
 export type * from './types.ts'
 export { scheduleDomain } from './storage.ts'
@@ -55,7 +56,7 @@ export {
   resolveWeeklyOccurrence,
   resolveCronOccurrence,
   resolveRecurringOccurrence,
-  scheduleTitle,
+  createScheduleRecord,
   scheduleView,
   weeklyTime,
 } from './domain.ts'
@@ -66,6 +67,12 @@ declare module '@deepseek-ai/cordis' {
     /** Durable Host-wide reminder management. */
     schedule: ScheduleService
   }
+}
+
+/** Preserve input diagnostics on the human Remote error channel. */
+function remoteInputError(error: unknown): never {
+  if (error instanceof ScheduleInputError) throw new RemoteError('schedule/input-invalid', error.message, { code: error.code })
+  throw error
 }
 
 /** Configuration for the Host Schedule domain. */
@@ -109,7 +116,7 @@ export class ScheduleService extends TypertRemoteService {
   private readonly ready: Promise<Domain<typeof scheduleDomain>>
   private readonly initialized: PromiseLike<unknown>
   private chain: Promise<unknown> = Promise.resolve()
-  private runtime: ScheduleRuntime | undefined
+  private runtime!: ScheduleRuntime
   private stopping = false
 
   /**
@@ -138,11 +145,12 @@ export class ScheduleService extends TypertRemoteService {
     })
     this.initialized = ctx.effect(async () => {
       const domain = await this.ready
+      let runtime: ScheduleRuntime | undefined = undefined
       let cleanup: () => Promise<void>
       try {
         cleanup = ctx.effect(() => async () => {
           this.stopping = true
-          await this.runtime?.dispose()
+          await runtime?.dispose()
           await this.chain // The chain contains failures after returning them to their callers.
           await domain.close()
         })
@@ -152,15 +160,16 @@ export class ScheduleService extends TypertRemoteService {
         throw error
       }
       const tasks = domain.table('tasks')
-      this.runtime = new ScheduleRuntime(ctx,
+      runtime = new ScheduleRuntime(ctx,
         () => [...tasks.entries()].map(([, task]) => task),
         work => this.serialize(work),
         async (task) => {
           await tasks.put(task.record.id, task)
           this.emitChanged()
         },
-        this.retention)
-      this.runtime.requestDrive()
+        this.retention, () => { this.emitChanged() })
+      this.runtime = runtime
+      runtime.requestDrive()
       return cleanup
     })
     ctx.on('session/created', (session) => {
@@ -187,12 +196,12 @@ export class ScheduleService extends TypertRemoteService {
     // rows instead of letting them deliver into a closed Session.
     ctx.effect(() => {
       const activity = ctx.on('workspace/session-activity', async ({ sessionId }, next) => {
-        const active = await this.list({ sessionId })
+        const active = { items: (await this.catalog()).filter(entry => entry.target.kind !== 'new' && entry.target.sessionId === sessionId && entry.status === 'active') }
         const rest = await next()
-        if (active.length === 0) return rest
+        if (active.items.length === 0) return rest
         const own: SessionActivity = {
           kind: 'schedule',
-          items: active.map(record => ({ id: record.id, label: record.title })),
+          items: active.items.map(record => ({ id: record.id, label: record.title })),
         }
         return [own, ...rest]
       })
@@ -210,94 +219,96 @@ export class ScheduleService extends TypertRemoteService {
     await this.initialized
   }
 
-  /**
-   * Create a reminder bound to the caller-selected Session without activating it.
-   *
-   * The request must supply a title; a missing, blank-after-trim, or over-long
-   * title rejects with `invalid_prompt` instead of deriving one from the prompt.
-   * A Session a delegated child owns rejects with `subagent_session`, because delivery
-   * can never reach it: the child is one whose delegation depth is above zero.
-   * The record is built from the clock reading taken before the request joins the
-   * serialized queue, so a create that waits behind a longer operation keeps its
-   * request-time anchor and may already be due when the queue reaches it.
-   * @param sessionId - Original Session receiving the reminder.
-   * @param request - Validated tool selector, required title, and reminder content.
-   * @param signal - Optional cancellation checked before persistence begins, including after FIFO waits.
-   * @returns The durably stored schedule. Cancellation does not roll back an in-flight write.
+  /** Create a task for a human caller without manufacturing an acting Session.
+   * @param request - Content, timing, and optional destination.
+   * @param signal - Cancellation before persistence.
+   * @returns The committed task.
    */
-  async create(sessionId: SessionId, request: ScheduleCreateRequest, signal?: AbortSignal): Promise<ScheduleRecord> {
-    if (Number(request.at !== undefined) + Number(request.after_seconds !== undefined)
-      + Number(request.every_seconds !== undefined) + Number(request.daily !== undefined)
-      + Number(request.weekly !== undefined) + Number(request.cron !== undefined) > 1) {
-      throw new ScheduleInputError('invalid_selector', 'Exactly one reminder selector is required.')
+  @Remote('create')
+  async remoteCreate(request: ScheduleCreateRequest, signal?: AbortSignal): Promise<ScheduleCatalogEntry> {
+    try { return await this.create(request, undefined, signal) }
+    catch (error) { remoteInputError(error) }
+  }
+
+  /** Create one task; the actual acting Session is recorded only as involved.
+   * @param request - Content, timing, and optional destination (defaults to new_once).
+   * @param actor - Actual model caller; omitted for human remotes.
+   * @param signal - Cancellation checked before the durable write, including FIFO waits.
+   * @returns Persisted task; an accepted write is not rolled back by cancellation.
+   */
+  async create(request: ScheduleCreateRequest, actor?: Session, signal?: AbortSignal): Promise<ScheduleCatalogEntry> {
+    this.validateActor(actor)
+    if (Object.keys(request).some(key => !['title', 'prompt', 'timing', 'target'].includes(key))) {
+      throw new ScheduleInputError('invalid_selector', 'Exactly one typed timing is required; create accepts title, prompt, timing and target only.')
     }
-    const title = scheduleTitle(request.title)
-    const id = ScheduleId(`schedule-${randomUUID()}`)
+    signal?.throwIfAborted()
     const now = Date.now()
-    let record: ScheduleRecord
-    if (request.at !== undefined) {
-      record = createAtScheduleRecord(id, request.prompt, request.at, now, title)
-    }
-    else if (request.after_seconds !== undefined) {
-      record = createAfterScheduleRecord(id, request.prompt, request.after_seconds, now, title)
-    }
-    else if (request.every_seconds !== undefined) {
-      record = createEveryScheduleRecord(id, request.prompt, request.every_seconds, now, title)
-    }
-    else if (request.daily !== undefined) record = createDailyScheduleRecord(id, request.prompt, request.daily, now, title)
-    else if (request.weekly !== undefined) record = createWeeklyScheduleRecord(id, request.prompt, request.weekly, now, title)
-    else if (request.cron !== undefined) record = createCronScheduleRecord(id, request.prompt, request.cron, now, title)
-    else throw new ScheduleInputError('invalid_selector', 'Exactly one reminder selector is required.')
+    const id = ScheduleId(`schedule-${randomUUID()}`)
+    const record = createScheduleRecord(id, request.title, request.prompt, request.timing, now)
+    const target = this.resolveTarget(request.target ?? { kind: 'new_once' }, actor)
     return this.serialize(async () => {
-      const refusal = this.reminderTargetRefusal(sessionId)
-      if (refusal !== undefined) throw new ScheduleInputError('subagent_session', refusal.message)
-      const domain = await this.getDomain()
+      const tasks = (await this.getDomain()).table('tasks')
       signal?.throwIfAborted()
-      await domain.table('tasks').put(id, {
-        sessionId, record, status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false },
+      await this.validateTarget(target, signal)
+      signal?.throwIfAborted()
+      const createdAt = new Date(now).toISOString()
+      const task = scheduleTaskSchema.parse({ record, target, status: 'active', createdAt, updatedAt: createdAt,
+        involvedSessionIds: this.involved(actor, target),
+        deliveryHistory: { records: [], earlierRecordsUnavailable: false },
       })
-      this.emitChanged()
-      this.runtime?.requestDrive()
-      return record
+      await tasks.put(id, task)
+      this.emitChanged(); this.runtime.requestDrive()
+      return this.entry(task)
     })
   }
 
-  /**
-   * Read the selected Session's active tasks without resuming its Agent.
-   * @param request - Session whose task list is requested.
-   * @returns Persisted reminders in storage order.
+  /** Read one Host-wide page without activating a Session.
+   * @param request - Activity filter and pagination.
+   * @returns Sorted page with total and applied bounds.
    */
-  @Remote('list')
-  async list(request: ScheduleListRequest): Promise<ScheduleRecord[]> {
-    const domain = await this.getDomain()
-    return [...domain.table('tasks').entries()]
-      .filter(([, task]) => task.sessionId === request.sessionId && task.status === 'active')
-      .map(([, task]) => task.record)
+  async list(request: ScheduleListRequest = {}): Promise<ScheduleListResult> {
+    const limit = request.limit ?? 100, offset = request.offset ?? 0
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500 || !Number.isSafeInteger(offset) || offset < 0) {
+      throw new ScheduleInputError('invalid_rule', 'limit must be 1 through 500 and offset must be a non-negative safe integer.')
+    }
+    const entries = (await this.catalog()).filter(entry => request.active === undefined || (entry.status === 'active') === request.active)
+    const items = entries.slice(offset, offset + limit)
+    return { items, shown: items.length, total: entries.length, limit, offset }
   }
 
-  /**
-   * Read all active and inactive Host reminders with their original Session bindings.
-   * A deleted reminder has no row, so it is absent here.
-   * Does not activate Sessions or read Session history.
-   * @returns Reminders ordered by scheduledAt ascending, then lexicographically by id.
+  /** Read one task page for a human Remote caller.
+   * @param request - Activity filter and page bounds.
+   * @returns The requested page without Session activation.
+   */
+  @Remote('list')
+  async remoteList(request: ScheduleListRequest): Promise<ScheduleListResult> {
+    try { return await this.list(request) }
+    catch (error) { remoteInputError(error) }
+  }
+
+  /** Read all retained Host tasks.
+   * @returns Active tasks first, then occurrence and identity order.
    */
   @Remote('catalog')
   async catalog(): Promise<ScheduleCatalogEntry[]> {
-    const domain = await this.getDomain()
-    return [...domain.table('tasks').entries()]
-      .map(([, task]) => ({
-        ...task.record, sessionId: task.sessionId, status: task.status,
-        ...(task.lastDelivery === undefined ? {} : { lastDelivery: task.lastDelivery }),
-      }))
-      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt) || a.id.localeCompare(b.id))
+    return [...(await this.getDomain()).table('tasks').entries()].map(([, task]) => this.entry(task))
+      .sort((a, b) => Number(b.status === 'active') - Number(a.status === 'active')
+        || a.scheduledAt.localeCompare(b.scheduledAt) || a.id.localeCompare(b.id))
   }
 
-  /**
-   * Read saved inbox deliveries without activating or reading the original Session.
-   * The task's own row supplies its binding, so its records stay readable through this lookup.
-   * @param request - Session binding, task identity, explicit limit, and optional exclusive message cursor.
-   * @returns Newest-first deliveries in append order, or a task/cursor lookup failure.
-   * @throws ScheduleInputError when limit is not a safe integer from 1 through 100.
+  /** Read one retained task.
+   * @param request - Task identity.
+   * @returns Current task or lookup miss.
+   */
+  @Remote('view')
+  async view(request: ScheduleViewRequest): Promise<ScheduleViewResult> {
+    const task = (await this.getDomain()).table('tasks').get(request.id)
+    return task === undefined ? { id: request.id, code: 'schedule_not_found' } : this.entry(task)
+  }
+
+  /** Read saved receipts without activating a Session.
+   * @param request - Task identity, page size, and exclusive message cursor.
+   * @returns Newest-first saved deliveries or lookup miss.
    */
   @Remote('history')
   async history(request: ScheduleDeliveryHistoryRequest): Promise<ScheduleDeliveryHistoryResult> {
@@ -305,78 +316,145 @@ export class ScheduleService extends TypertRemoteService {
       throw new ScheduleInputError('invalid_rule', 'Delivery history limit must be a safe integer from 1 through 100.')
     }
     const task = (await this.getDomain()).table('tasks').get(request.id)
-    if (task === undefined || task.sessionId !== request.sessionId) {
-      return { id: request.id, code: 'schedule_not_found' }
+    return task === undefined ? { id: request.id, code: 'schedule_not_found' } : deliveryHistoryPage(task, request, this.retention)
+  }
+
+  /** Human edit entry point, with no acting Session.
+   * @param request - Closed update/delete operation.
+   * @param signal - Cancellation before the durable write.
+   * @returns Committed entry, deletion, or conflict/miss.
+   */
+  @Remote('edit')
+  async remoteEdit(request: ScheduleEditRequest, signal?: AbortSignal): Promise<ScheduleEditResult> {
+    try { return await this.edit(request, undefined, signal) }
+    catch (error) { remoteInputError(error) }
+  }
+
+  /** Apply a complete task patch or delete through one revision check and FIFO slot.
+   * @param request - Operation and optional expectedUpdatedAt compare token.
+   * @param actor - Actual acting Agent Session, never human authority.
+   * @param signal - Cancellation before persistence, including readiness and FIFO waits.
+   * @returns Committed entry, deletion, or a non-mutating conflict/miss.
+   */
+  async edit(request: ScheduleEditRequest, actor?: Session, signal?: AbortSignal): Promise<ScheduleEditResult> {
+    this.validateActor(actor)
+    if (request.action === 'update' && Object.keys(request.patch).length === 0) {
+      throw new ScheduleInputError('invalid_rule', 'An update patch requires at least one field.')
     }
-    return deliveryHistoryPage(task, request, this.retention)
-  }
-
-  /**
-   * Delete one task belonging to the selected Session, leaving queued messages intact.
-   *
-   * The row is removed: the task no longer schedules, leaves `list` and `catalog`, and its
-   * saved delivery records go with it. A task bound to a Session a delegated child owns
-   * stays deletable even though creation and timing edits refuse that binding, so a task
-   * stored before that rule existed remains removable.
-   * @param request - Session and exact task identity.
-   * @param signal - Optional cancellation checked before persistence begins, including after FIFO waits.
-   * @returns Whether that Session owned a deleted task. Cancellation does not roll back an in-flight write.
-   */
-  @Remote('delete')
-  async delete(request: ScheduleDeleteRequest, signal?: AbortSignal): Promise<ScheduleDeleteResult> {
-    return this.serialize<ScheduleDeleteResult>(async () => {
+    const target = request.action === 'update' && request.patch.target !== undefined
+      ? this.resolveTarget(request.patch.target, actor) : undefined
+    return this.serialize(async () => {
       const tasks = (await this.getDomain()).table('tasks')
       signal?.throwIfAborted()
       const current = tasks.get(request.id)
-      if (current === undefined || current.sessionId !== request.sessionId) {
-        return { id: request.id, deleted: false, code: 'schedule_not_found' }
+      if (current === undefined) return { id: request.id, code: 'schedule_not_found' }
+      if (request.expectedUpdatedAt !== undefined && request.expectedUpdatedAt !== (current.updatedAt ?? null)) {
+        return { id: request.id, code: 'schedule_conflict' }
       }
-      await tasks.delete(request.id)
-      this.emitChanged()
-      this.runtime?.requestDrive()
-      return { id: request.id, deleted: true }
+      if (request.action === 'delete') {
+        await tasks.delete(request.id)
+        this.emitChanged(); this.runtime.requestDrive()
+        return { id: request.id, deleted: true }
+      }
+      const effectiveTarget = target ?? current.target
+      if (target !== undefined || request.patch.timing !== undefined || request.patch.active === true) {
+        await this.validateTarget(effectiveTarget, signal)
+        signal?.throwIfAborted()
+      }
+      const revised = resolveScheduleUpdate(current, request.patch, target, Date.now())
+      const task = scheduleTaskSchema.parse({ ...revised,
+        involvedSessionIds: this.involved(actor, effectiveTarget, revised.involvedSessionIds),
+      })
+      await tasks.put(request.id, task)
+      this.emitChanged(); this.runtime.requestDrive()
+      return this.entry(task)
     })
   }
 
-  /**
-   * Update the name, instruction, and timing of an active task within the original Session
-   * binding without activating the Session or changing saved deliveries.
-   *
-   * Each supplied field replaces its stored value; an omitted field keeps it. A name or
-   * instruction change alone does not reset the committed target. A Session a delegated
-   * child owns returns the non-mutating `subagent_session` result, so an edit cannot
-   * re-arm a task bound to a Session delivery can never reach, and the Web editor can
-   * explain the refusal through the ordinary result it already renders.
-   * @param request - Task binding, complete observed record, and any combination of timing, name, and instruction.
-   * @param signal - Cancellation checked after domain readiness and FIFO waits, before persistence begins.
-   * @returns The committed record, unchanged record for a no-op, or a non-mutating input/lookup/conflict/refusal result.
-   * Storage and lifecycle failures reject; cancellation after a write starts does not roll it back.
+  /** Deliver immediately without consuming the scheduled occurrence.
+   * @param request - Task identity.
+   * @param signal - Cancellation checked before delivery admission.
+   * @returns Updated task, lookup miss, or an already-running refusal.
    */
-  @Remote('update')
-  async update(request: ScheduleUpdateRequest, signal?: AbortSignal): Promise<ScheduleUpdateResult> {
-    return this.serialize<ScheduleUpdateResult>(async () => {
-      const refusal = this.reminderTargetRefusal(request.sessionId)
-      if (refusal !== undefined) return refusal
+  @Remote('run')
+  async run(request: ScheduleRunRequest, signal?: AbortSignal): Promise<ScheduleRunResult> {
+    await this.getDomain()
+    const task = await this.runtime.runNow(request.id, signal)
+    return task === undefined ? { id: request.id, code: 'schedule_not_found' }
+      : 'code' in task ? task : this.entry(task)
+  }
+
+  /** Delete ended rows, retaining paused and active tasks. Each deletion is independently durable.
+   * @param signal - Cancellation before the first durable deletion.
+   * @returns Number removed; a partial failure rejects and announces completed deletions.
+   */
+  @Remote('deleteInactive')
+  async deleteInactive(signal?: AbortSignal): Promise<ScheduleDeleteInactiveResult> {
+    return this.serialize(async () => {
       const tasks = (await this.getDomain()).table('tasks')
+      const ids = [...tasks.entries()].filter(([, task]) => task.status === 'ended').map(([id]) => id)
       signal?.throwIfAborted()
-      const current = tasks.get(request.id)
-      if (current === undefined || current.sessionId !== request.sessionId) {
-        return { id: request.id, updated: false, code: 'schedule_not_found' }
+      let deleted = 0
+      try {
+        for (const id of ids) { await tasks.delete(id); deleted++ }
+      } finally {
+        if (deleted > 0) this.emitChanged()
       }
-      if (current.status === 'inactive') return { id: request.id, updated: false, code: 'schedule_ended' }
-      const result = resolveScheduleUpdate(current.record, request.expected, request.change, Date.now(), request)
-      if (!('record' in result) || !result.updated) return result
-      await tasks.put(request.id, { ...current, record: result.record })
-      this.emitChanged()
-      this.runtime?.requestDrive()
-      return result
+      return { deleted }
     })
   }
 
+  private entry(task: ScheduleTask): ScheduleCatalogEntry {
+    return { ...task.record, target: task.target, status: task.status, involvedSessionIds: [...task.involvedSessionIds],
+      ...(task.createdAt === undefined ? {} : { createdAt: task.createdAt }),
+      ...(task.updatedAt === undefined ? {} : { updatedAt: task.updatedAt }),
+      ...(task.lastDelivery === undefined ? {} : { lastDelivery: task.lastDelivery }),
+      ...(this.runtime.isExecutionActive(task) ? { executionActive: true } : {}),
+    }
+  }
+
+  private validateActor(actor: Session | undefined): void {
+    if ((actor?.header.delegationDepth ?? 0) > 0) throw new ScheduleInputError('subagent_session', 'A delegated subagent cannot use reminders.')
+  }
+
+  private involved(actor: Session | undefined, target: ScheduleTarget, previous: SessionId[] = []): SessionId[] {
+    return [...new Set([...previous, ...(actor === undefined ? [] : [actor.id]), ...(target.kind === 'new' ? [] : [target.sessionId])])]
+  }
+
+  private resolveTarget(request: ScheduleTargetRequest, actor?: Session): ScheduleTarget {
+    if (!['session', 'new_once', 'new'].includes(request.kind)) {
+      throw new ScheduleInputError('invalid_rule', 'Unsupported task target.')
+    }
+    if (request.kind === 'session') return request
+    const create = { ...request.create }
+    // Original workspace identity is independent of any effective execution directory.
+    if (create.cwd === undefined && actor?.header.cwd !== undefined) create.cwd = actor.header.cwd
+    if (request.kind === 'new_once') return { kind: 'new_once', sessionId: SessionId(`session-${randomUUID()}`), create }
+    return { kind: 'new', create }
+  }
+
+  private async validateTarget(target: ScheduleTarget, signal?: AbortSignal): Promise<void> {
+    if (target.kind === 'new') return
+    if (this.ctx.get('workspaceRegistry')?.archivedSessionIds.includes(target.sessionId)) {
+      throw new ScheduleInputError('invalid_rule', 'The target Session is archived.')
+    }
+    const agent = this.ctx.agents.get(target.sessionId)
+    const session = agent?.session ?? this.ctx.sessions.get(target.sessionId)
+    if (session !== undefined) {
+      if ((session.header.delegationDepth ?? 0) > 0 || (agent !== undefined && delegationDepthOf(agent) > 0)) {
+        throw new ScheduleInputError('subagent_session', 'This Session belongs to subagent routing, which never receives reminder delivery.')
+      }
+      return
+    }
+    if (target.kind === 'new_once') return
+    const stored = await this.ctx.sessionPersistence.stat(target.sessionId, signal === undefined ? undefined : { signal })
+    if (stored === undefined) throw new ScheduleInputError('invalid_rule', 'The target Session does not exist.')
+    if ((stored.header.delegationDepth ?? 0) > 0) throw new ScheduleInputError('subagent_session', 'The target Session belongs to subagent routing.')
+  }
+
   /**
-   * Dispatch one post-commit `schedule/changed` notification, containing
-   * synchronous listener failures: every call site emits only after its durable
-   * task write landed, so a throwing listener must not reject the caller or
+   * Dispatch a durable-task or execution-status notification, containing
+   * synchronous listener failures so a throwing listener cannot reject the caller or
    * skip the following `requestDrive()`.
    */
   private emitChanged(): void {
@@ -396,27 +474,6 @@ export class ScheduleService extends TypertRemoteService {
   }
 
   /**
-   * Refuse a Session no delivery can reach because a delegated child owns it.
-   *
-   * Delivery resolves the bound Session through `ctx.sessionController.resolveAgent`,
-   * which rejects the live Agent of a delegated child; a stored task for such a Session
-   * would stay permanently overdue and retry on every drive. Both operations that can
-   * arm a delivery read that same fact here instead of restating it: a delegated child
-   * is one whose {@link delegationDepthOf} is above zero, the accounting the delegation
-   * cap itself enforces, which survives a cold resume through the persisted header.
-   * @param sessionId - Session the task would be bound to.
-   * @returns The stable refusal for a delegated child's Session, or undefined when the Session is eligible.
-   */
-  private reminderTargetRefusal(sessionId: SessionId): SubagentSessionError | undefined {
-    const agent = this.ctx.agents.get(sessionId)
-    if (agent === undefined || delegationDepthOf(agent) === 0) return undefined
-    return {
-      code: 'subagent_session',
-      message: 'This Session belongs to subagent routing, which never receives reminder delivery.',
-    }
-  }
-
-  /**
    * Remove every active task stored for one Session, inside the queue the tools
    * use.
    *
@@ -431,7 +488,7 @@ export class ScheduleService extends TypertRemoteService {
     await this.serialize(async () => {
       const tasks = (await this.getDomain()).table('tasks')
       const active = [...tasks.entries()]
-        .filter(([, task]) => task.sessionId === sessionId && task.status === 'active')
+        .filter(([, task]) => task.target.kind !== 'new' && task.target.sessionId === sessionId && task.status === 'active')
         .map(([, task]) => task.record.id)
       if (active.length === 0) return
       // One row per write: the domain table has no batch delete, and each row is
@@ -454,7 +511,7 @@ export class ScheduleService extends TypertRemoteService {
       }
       if (removed) {
         this.emitChanged()
-        this.runtime?.requestDrive()
+        this.runtime.requestDrive()
       }
       if (failure !== undefined) throw failure
     })

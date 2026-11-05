@@ -1,3 +1,4 @@
+import { createDirectoryFixtureAgent } from '@deepseek-ai/dsh-working-directory-testkit'
 import { spawnSync } from 'node:child_process'
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { release, tmpdir, version } from 'node:os'
@@ -8,7 +9,7 @@ import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import { SESSION_FORMAT_VERSION, Session, SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -23,7 +24,6 @@ import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local/src/resolve.ts'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRegistry from '@deepseek-ai/dsh-tools'
 import * as ToolPwshPersistent from '@deepseek-ai/dsh-tool-pwsh-persistent'
-import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { ReadinessTimeline, TIMELINE_HEADER } from './readiness-timeline.ts'
 
 const pwshPath = resolvePwshPath()
@@ -75,28 +75,7 @@ class PassthroughSandbox extends SandboxProvider {
 }
 
 async function agent(ctx: Context, cwd: string): Promise<Agent> {
-  const id = SessionId('persistent-pwsh-loader-agent')
-  const scope = ctx.plugin(() => {})
-  const session = Session.create(id, [], {
-    version: SESSION_FORMAT_VERSION, id, createdAt: 0, cwd, isSeeded: false,
-  })
-  const value: Agent = {
-    id,
-    options: {},
-    session,
-    inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
-    status: 'idle',
-    ctx: scope.ctx,
-    send: () => {},
-    followup: () => {},
-    steer: () => ({ outcome: Promise.resolve({ status: 'rejected' as const }) }),
-    inject: () => {},
-    cancel() {},
-    runMaintenance: task => task(new AbortController().signal),
-    whenIdle: () => Promise.resolve(),
-  }
-  await ctx.agents.register(value)
-  return value
+  return await createDirectoryFixtureAgent(ctx, SessionId('persistent-pwsh-loader-agent'), cwd)
 }
 
 function text(result: { content: { type: string; text?: string }[] }): string {

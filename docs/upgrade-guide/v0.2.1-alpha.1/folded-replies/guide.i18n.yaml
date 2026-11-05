@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-alpha.1/folded-replies/guide.md
+/:
+  en: ed203c00bffb6f0b
+  zh: 8654eb65beedb764
+/replies-in-folded-chat-turns:
+  en: ec1692fd2c7a93c6
+  zh: 64919a1fa5ce5622
+/replies-in-folded-chat-turns/change:
+  en: 429555327ca0cfbc
+  zh: 59b1bba3af234bf5
+/replies-in-folded-chat-turns/migration:
+  en: f0c003477724ee83
+  zh: 11561635bd73b465

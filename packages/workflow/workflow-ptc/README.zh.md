@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在提供 subagent、沙箱策略和 [Node PTC 运行时](../../ptc-runtime/ptc-runtime-node/README.zh.md)的组合中挂载本引擎。它为 `dsh-tool-workflow` 及显式启用时的 `dsh-tool-ralph` 提供工作流执行。Ralph 在已发布默认组合中保持禁用。引擎在加载时拒绝非 TypeScript 的 PTC 提供方。Python PTC 组合必须禁用 `workflow-ptc`、`tool-workflow` 以及任何已启用的 `tool-ralph` 条目。
@@ -63,6 +64,7 @@ Node PTC 提供方的 `maxPendingCalls` 也限制工作流并发：子 agent 启
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -101,6 +103,7 @@ Host 分别跟踪待完成的提供方启动与已发布子 agent。共享中止
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 共享执行保证与工作流约定见以下参考。
@@ -114,7 +117,10 @@ Host 分别跟踪待完成的提供方启动与已发布子 agent。共享中止
 
 -----
 
+工作流程序在调用 Agent 已校验的执行目录中运行，沙箱策略保留原项目根目录。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 子 agent 请求
@@ -159,6 +165,7 @@ Host 分别跟踪待完成的提供方启动与已发布子 agent。共享中止
 - **跨 realm 错误在脚本内无法通过 `instanceof Error`**——根据 `name` 与 `code` 等稳定字段分支。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

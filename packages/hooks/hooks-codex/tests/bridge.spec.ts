@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -51,6 +52,7 @@ async function harness(dir: string, adapter: MockAdapter, beforeHooks?: (ctx: Co
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
   beforeHooks?.(ctx)
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(HooksCodex, { configPath: join(dir, 'hooks.json'), model: 'test-model' })
   ctx.llm.registerAdapter(['mock'], adapter)
   return ctx
@@ -207,6 +209,7 @@ describe('hooks-codex bridge', () => {
     await ctx.plugin(AgentLoop, { agents: [] })
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(HooksCodex, { configPath: join(dir, 'hooks.json'), model: 'm' })
     await fiber.dispose()
     ctx.llm.registerAdapter(['mock'], adapter)
@@ -230,6 +233,7 @@ describe('hooks-codex bridge', () => {
     await ctx.plugin(AgentLoop, { agents: [] })
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
+    await mountDirectoryFixture(ctx, process.cwd())
     const fiber = await ctx.plugin(HooksCodex, { configPath: join(dir, 'hooks.json'), model: 'm' })
     ctx.llm.registerAdapter(['mock'], new MockAdapter([]))
     const warn = vi.fn()
@@ -253,12 +257,12 @@ describe('hooks-codex bridge', () => {
   it('has the namespace-plugin export shape (no stray default) so the Loader keeps name/inject/apply', () => {
     expect('default' in HooksCodex).toBe(false)
     expect(HooksCodex.name).toBe('hooks-codex')
-    expect(HooksCodex.inject).toEqual(['shell', 'sessionProjections'])
+    expect(HooksCodex.inject).toEqual(['workingDirectory', 'shell', 'sessionProjections', 'agents'])
     const loader = Object.create(Loader.prototype) as Loader
     const unwrapped = loader.unwrapExports(HooksCodex) as Record<string, unknown>
     expect(unwrapped).toBe(HooksCodex)
     expect(unwrapped.name).toBe('hooks-codex')
-    expect(unwrapped.inject).toEqual(['shell', 'sessionProjections'])
+    expect(unwrapped.inject).toEqual(['workingDirectory', 'shell', 'sessionProjections', 'agents'])
     expect(typeof unwrapped.apply).toBe('function')
   })
 })

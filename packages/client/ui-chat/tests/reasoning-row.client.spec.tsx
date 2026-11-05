@@ -46,7 +46,7 @@ describe('ReasoningRow', () => {
     const reset = createSnapshotStore(0)
     const useDisclosure = bindDisclosure(reset)
     const mode = createSnapshotStore<TranscriptViewMode>('standard')
-    const usePresentation = bindSnapshotSelector(derivePresentationPolicy(mode))
+    const usePresentation = bindSnapshotSelector(derivePresentationPolicy(mode, createSnapshotStore<'completion'>('completion'), createSnapshotStore<'all'>('all')))
     const view = render(<ReasoningRow useDisclosure={useDisclosure}
       text={'First line\n\nDetailed body'} running={false} usePresentation={usePresentation} t={t} />)
     const root = view.container.querySelector('[data-variant="think"]')!
@@ -74,7 +74,7 @@ describe('ReasoningRow', () => {
 
   it('keeps a running preview enabled in Compact and hides it on settlement without removing it', () => {
     const mode = createSnapshotStore<TranscriptViewMode>('compact')
-    const usePresentation = bindSnapshotSelector(derivePresentationPolicy(mode))
+    const usePresentation = bindSnapshotSelector(derivePresentationPolicy(mode, createSnapshotStore<'completion'>('completion'), createSnapshotStore<'all'>('all')))
     const props = { text: 'First line\n', usePresentation, t }
     const view = render(<ReasoningRow useDisclosure={useDisclosure} {...props} running />)
     const summary = view.getByText('First line')

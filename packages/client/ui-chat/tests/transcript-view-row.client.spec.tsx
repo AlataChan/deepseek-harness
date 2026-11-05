@@ -46,6 +46,10 @@ function mount(mode: TranscriptViewMode = 'standard', dictionary: typeof en | ty
     useResource,
     useTranscriptView: bindSnapshotSelector(source),
     setTranscriptView,
+    useCollapseTiming: bindSnapshotSelector(createSnapshotStore<'completion' | 'next-input'>('completion')),
+    useFoldedReplies: bindSnapshotSelector(createSnapshotStore<'all' | 'final'>('all')),
+    setCollapseTiming: vi.fn(),
+    setFoldedReplies: vi.fn(),
     t: makeTranslate(dictionary),
   }
   render(<TranscriptViewRow {...props} />)
@@ -182,4 +186,20 @@ describe('PerformanceUsageRow', () => {
     expect(screen.getAllByRole('button', { name: 'Compact' })).toHaveLength(1)
     expect(b.setTranscriptView).not.toHaveBeenCalled()
   })
+})
+
+
+it('changes folding preferences independently and hides reply controls in Verbose mode', () => {
+  const b = mount()
+  fireEvent.click(screen.getByRole('button', { name: 'On completion' }))
+  fireEvent.click(screen.getByRole('menuitem', { name: 'On next message' }))
+  expect(b.props.setCollapseTiming).toHaveBeenCalledExactlyOnceWith('next-input')
+  fireEvent.click(screen.getByRole('button', { name: 'All replies' }))
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Final answer only' }))
+  expect(b.props.setFoldedReplies).toHaveBeenCalledExactlyOnceWith('final')
+  expect(b.setTranscriptView).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Standard' }))
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Verbose' }))
+  expect(screen.queryByRole('button', { name: 'All replies' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'On completion' })).toBeTruthy()
 })

@@ -23,6 +23,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Tool calls appear in the conversation as cards: a root call tree with its nested subcalls, each atomic call rendered by its owning view. Every lifecycle state retains the tool's ordinary business glyph; failure and interruption remain explicit through the frozen call/result state, accessible status text, and failure summary. Users can open files or inspect calls through the Host callbacks. A collapsed `web_fetch` row links its http(s) URL, which opens in a new browser tab.
@@ -60,6 +61,7 @@ Answer-panel buttons belong to the question renderer. It composes `DisclosureRow
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -100,6 +102,7 @@ This package declares the optional `UserQuestionPanels` capability; `ui-user-que
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 These pages cover the conversation host, the view slots, and the card models.
@@ -114,7 +117,10 @@ These pages cover the conversation host, the view slots, and the card models.
 
 -----
 
+Schedule detail cards accept current paged list, view, and edit results with persisted status and destination. Historical `schedule_update` and `schedule_delete` calls retain their original presentation for released logs; they do not register runtime tools.
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 None, as the package renders streamed tool identities and logged calls without changing model context.
@@ -136,6 +142,7 @@ These limits define the dispatch depth and the view ownership; they are current 
 - **Tool copy reuses the `ui-conversation` locale namespace** — tool titles, row chrome, and Cordis-free primitive labels use that dictionary; presenter models retain locale keys or data rather than rendered wording.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

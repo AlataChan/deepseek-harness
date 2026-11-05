@@ -238,6 +238,8 @@ export type DraftInitializationResult = 'applied' | 'preserved' | 'blocked'
  * paste/…) stay InputBar-private and never ride this face.
  */
 export interface InputActions {
+  /** Insert a literal selected-text quote into the current editable draft. */
+  insertQuote(text: string): boolean
   /** @returns a revision-guarded copy of the current editor selection. */
   captureInsertion(): TokenSpan
   /**
@@ -279,7 +281,7 @@ export interface InputState {
   readonly attachmentIds: readonly DraftAttachmentId[]
   /** Monotonic editor revision (span CAS compares against this). */
   readonly draftRev: number
-  readonly phase: 'plain' | 'adjudicating' | 'claimed' | 'submitting'
+  readonly phase: 'plain' | 'adjudicating' | 'claimed' | 'submitting' | 'sending'
   /** Present exactly while claimed/submitting (claim snapshot during flight; submit closure withheld). */
   readonly claim?: { readonly name: string; readonly token: string; readonly hint?: string; readonly attachments?: boolean }
   /** Reference occurrence view of the editor's chips, sorted by offset. */
@@ -318,7 +320,7 @@ export type InputEvent =
   /** The editor applied a claim-token replacement: enter claimed. */
   | { readonly type: 'claim'; readonly claim: CommandClaim }
   /** Enter submission with the current clipboard projection. */
-  | { readonly type: 'enter'; readonly mode: InputSubmitMode; readonly draft: string; readonly submission?: MessageSubmission }
+  | { readonly type: 'enter'; readonly hasAttachments?: boolean; readonly mode: InputSubmitMode; readonly draft: string; readonly submission?: MessageSubmission }
   | { readonly type: 'adjudicated'; readonly attempt: SubmitAttempt; readonly outcome: PickOutcome }
   | { readonly type: 'adjudication-failed'; readonly attempt: SubmitAttempt; readonly message: string }
   /** Settlement carries the live clipboard projection for suffix-retention and claim re-entry decisions. */

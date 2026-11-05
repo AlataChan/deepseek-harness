@@ -1,0 +1,39 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04
+      Coverage enabled with v8
+
+
+ Test Files  224 passed (224)
+      Tests  3928 passed (3928)
+   Start at  12:40:52
+   Duration  72.68s (transform 21.14s, setup 5.45s, import 137.82s, tests 62.01s, environment 55.39s)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.65 |    98.47 |   99.55 |   99.86 |
+ ...primitives/src |     100 |     97.5 |     100 |     100 |
+  focus.ts         |     100 |    92.85 |     100 |     100 | 11
+  useModalLayer.ts |     100 |    98.52 |     100 |     100 | 56
+  user-text.tsx    |     100 |    97.05 |     100 |     100 | 105,117
+ ...bar/src/client |   97.85 |       96 |   98.18 |   99.04 |
+  SidebarRoot.tsx  |   97.63 |    95.79 |      98 |   98.94 | 360
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.65% ( 876/879 )
+Branches     : 98.47% ( 581/590 )
+Functions    : 99.55% ( 225/226 )
+Lines        : 99.86% ( 734/735 )
+================================================================================
+ERROR: Coverage for branches (92.85%) does not meet global threshold (100%) for packages/client/ui-primitives/src/focus.ts
+ERROR: Coverage for branches (98.52%) does not meet global threshold (100%) for packages/client/ui-primitives/src/useModalLayer.ts
+ERROR: Coverage for branches (97.05%) does not meet global threshold (100%) for packages/client/ui-primitives/src/user-text.tsx
+ERROR: Coverage for lines (98.94%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+ERROR: Coverage for functions (98%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+ERROR: Coverage for statements (97.63%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+ERROR: Coverage for branches (95.79%) does not meet global threshold (100%) for packages/client/ui-sidebar/src/client/SidebarRoot.tsx

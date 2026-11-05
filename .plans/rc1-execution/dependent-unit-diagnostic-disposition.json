@@ -1,0 +1,8 @@
+{
+  "status": "diagnostic-interrupted",
+  "signal": "SIGINT",
+  "pid": 98042,
+  "reason": "The exhaustive repository run includes large unchanged matrices already qualified in M2. Stop repeating that scope; retain observed failures, run each exact failure and all affected owner paths. This interrupted diagnostic is not a passing suite.",
+  "completedMatrix": "linked-resolution-matrix:4800 passed",
+  "newSkipOrThresholdChange": false
+}

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MockInstance } from 'vitest'
 import { SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import { gatedScheduleBackend, harness, agentFor } from './harness.ts'
+import { gatedScheduleBackend, harness, agentFor, recordOf } from './harness.ts'
 import { MemoryMediaPool } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
 import { scheduleDomain } from '../src/storage.ts'
 import { createAfterScheduleRecord, createAtScheduleRecord, createEveryScheduleRecord, ScheduleId } from '../src/domain.ts'
@@ -23,9 +23,9 @@ describe('shared Schedule management', () => {
   it('initializes a new task with empty known delivery history', async () => {
     const { service, pool } = await setup()
     const sessionId = SessionId('new-history')
-    const record = await service.create(sessionId, { prompt: 'Later', after_seconds: 60, title: 'Later' })
+    const record = await service.create({ prompt: 'Later', title: 'Later', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
     expect(pool.media.get('schedule')!.tables.get('tasks')!.get(record.id)).toEqual({
-      record, sessionId, status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false },
+      record: recordOf(record), createdAt: record.createdAt, updatedAt: record.updatedAt, target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false },
     })
   })
 
@@ -45,9 +45,7 @@ describe('shared Schedule management', () => {
     // A Session without a Host task reports nothing of its own and still delegates.
     expect(await ask(delegated)).toEqual([{ kind: 'turn' }])
     expect(delegated).toHaveBeenCalledTimes(1)
-    const created = await service.create(sessionId, {
-      prompt: 'check the build', after_seconds: 3_600, title: 'Check the build',
-    })
+    const created = await service.create({ prompt: 'check the build', title: 'Check the build', timing: { kind: 'after', after_seconds: 3_600 }, target: { kind: 'session', sessionId: sessionId } })
     // The armed row is the reason to refuse the archive, and it names what must stop.
     expect(await ask()).toEqual([{ kind: 'schedule', items: [{ id: created.id, label: 'Check the build' }] }])
     expect(await ctx.waterfall(
@@ -89,9 +87,7 @@ describe('shared Schedule management', () => {
     tests.push(test)
     const { ctx, service } = test
     const sessionId = SessionId('stop-while-creating')
-    const creating = service.create(sessionId, {
-      prompt: 'check the build', after_seconds: 60, title: 'Check the build',
-    })
+    const creating = service.create({ prompt: 'check the build', title: 'Check the build', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
     await entered.promise
     const stopping = ctx.parallel('workspace/session-stop', { sessionId })
     let settled = false
@@ -105,7 +101,7 @@ describe('shared Schedule management', () => {
     await stopping
     // The stop joined the create's queue slot, so it saw the committed row and
     // removed it: nothing stays armed to fire after an unarchive.
-    expect(await service.list({ sessionId })).toEqual([])
+    expect((await service.list({ active: true })).items).toEqual([])
     expect(await service.catalog()).toEqual([])
   })
 
@@ -123,8 +119,8 @@ describe('shared Schedule management', () => {
     tests.push(test)
     const { ctx, service } = test
     const sessionId = SessionId('stop-partial')
-    await service.create(sessionId, { prompt: 'first', after_seconds: 60, title: 'First' })
-    await service.create(sessionId, { prompt: 'second', after_seconds: 60, title: 'Second' })
+    await service.create({ prompt: 'first', title: 'First', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
+    await service.create({ prompt: 'second', title: 'Second', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
     const changed = vi.fn()
     ctx.on('schedule/changed', changed)
     // The first row is durably gone, so observers must hear about it even though
@@ -148,7 +144,7 @@ describe('shared Schedule management', () => {
     tests.push(test)
     const { ctx, service } = test
     const sessionId = SessionId('stop-undefinable')
-    await service.create(sessionId, { prompt: 'first', after_seconds: 60, title: 'First' })
+    await service.create({ prompt: 'first', title: 'First', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
     const changed = vi.fn()
     ctx.on('schedule/changed', changed)
     const failure = await ctx.parallel('workspace/session-stop', { sessionId })
@@ -174,8 +170,8 @@ describe('shared Schedule management', () => {
     tests.push(test)
     const { ctx, service } = test
     const sessionId = SessionId('stop-failed')
-    await service.create(sessionId, { prompt: 'first', after_seconds: 60, title: 'First' })
-    await service.create(sessionId, { prompt: 'second', after_seconds: 60, title: 'Second' })
+    await service.create({ prompt: 'first', title: 'First', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
+    await service.create({ prompt: 'second', title: 'Second', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
     const changed = vi.fn()
     ctx.on('schedule/changed', changed)
     const failure = await ctx.parallel('workspace/session-stop', { sessionId })
@@ -199,9 +195,9 @@ describe('shared Schedule management', () => {
     )
     const test = await harness({ beforeService: async (_ctx, facility) => {
       const domain = await facility.open(scheduleDomain)
-      await domain.table('tasks').put(recurring.id, { sessionId: firstSession, record: recurring, status: 'active' })
-      await domain.table('tasks').put(delayed.id, { sessionId: secondSession, record: delayed, status: 'active' })
-      await domain.table('tasks').put(absolute.id, { sessionId: secondSession, record: absolute, status: 'active' })
+      await domain.table('tasks').put(recurring.id, { target: { kind: 'session', sessionId: firstSession }, involvedSessionIds: [firstSession], record: recurring, status: 'active' })
+      await domain.table('tasks').put(delayed.id, { target: { kind: 'session', sessionId: secondSession }, involvedSessionIds: [secondSession], record: delayed, status: 'active' })
+      await domain.table('tasks').put(absolute.id, { target: { kind: 'session', sessionId: secondSession }, involvedSessionIds: [secondSession], record: absolute, status: 'active' })
       await domain.close()
     } })
     tests.push(test)
@@ -211,9 +207,9 @@ describe('shared Schedule management', () => {
     const readSession = vi.spyOn(ctx.sessions, 'get')
     const createSession = vi.spyOn(ctx.sessions, 'create')
     const expected = [
-      { ...delayed, sessionId: secondSession, status: 'active' },
-      { ...absolute, sessionId: secondSession, status: 'active' },
-      { ...recurring, sessionId: firstSession, status: 'active' },
+      { ...delayed, target: { kind: 'session', sessionId: secondSession }, involvedSessionIds: [secondSession], status: 'active' },
+      { ...absolute, target: { kind: 'session', sessionId: secondSession }, involvedSessionIds: [secondSession], status: 'active' },
+      { ...recurring, target: { kind: 'session', sessionId: firstSession }, involvedSessionIds: [firstSession], status: 'active' },
     ]
     expect(await service.catalog()).toEqual(expected)
     expect(await service.catalog()).toEqual(expected)
@@ -229,37 +225,34 @@ describe('shared Schedule management', () => {
   it('lists and deletes a cold Session task without resolving an Agent', async () => {
     const { service, resolve } = await setup()
     const sessionId = SessionId('cold')
-    const record = await service.create(sessionId, { prompt: 'Later', after_seconds: 60, title: 'Later' })
-    expect(await service.list({ sessionId })).toEqual([record])
-    expect(await service.catalog()).toEqual([{ ...record, sessionId, status: 'active' }])
+    const record = await service.create({ prompt: 'Later', title: 'Later', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
+    expect((await service.list({ active: true })).items).toEqual([record])
+    expect(await service.catalog()).toEqual([{ ...record, target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'active' }])
     expect(resolve).not.toHaveBeenCalled()
-    expect(await service.delete({ sessionId, id: record.id })).toEqual({ id: record.id, deleted: true })
-    expect(await service.list({ sessionId })).toEqual([])
+    expect(await service.edit({ id: record.id, action: 'delete' })).toEqual({ id: record.id, deleted: true })
+    expect((await service.list({ active: true })).items).toEqual([])
     expect(await service.catalog()).toEqual([])
     expect(resolve).not.toHaveBeenCalled()
   })
 
-  it('does not delete a task bound to another Session', async () => {
+  it('deletes a task by Host identity independently of its destination Session', async () => {
     const { service } = await setup()
-    const owner = SessionId('owner')
-    const record = await service.create(owner, { prompt: 'Private', every_seconds: 300, title: 'Private' })
-    expect(await service.delete({ sessionId: SessionId('other'), id: record.id }))
-      .toEqual({ id: record.id, deleted: false, code: 'schedule_not_found' })
-    expect(await service.list({ sessionId: owner })).toEqual([record])
-    expect(await service.catalog()).toEqual([{ ...record, sessionId: owner, status: 'active' }])
+    const record = await service.create({ title: 'Shared', prompt: 'Shared task', timing: { kind: 'every', every_seconds: 300 },
+      target: { kind: 'session', sessionId: SessionId('owner') } })
+    expect(await service.edit({ id: record.id, action: 'delete' })).toEqual({ id: record.id, deleted: true })
+    expect((await service.list()).items).toEqual([])
+    expect(await service.catalog()).toEqual([])
   })
 
   it('allocates different identities across Sessions and rejects conflicting selectors', async () => {
     const { service } = await setup()
-    const a = await service.create(SessionId('a'), { prompt: 'A', after_seconds: 1, title: 'A' })
-    const b = await service.create(SessionId('b'), { prompt: 'B', at: '2026-09-17T00:00:00Z', title: 'B' })
+    const a = await service.create({ prompt: 'A', title: 'A', timing: { kind: 'after', after_seconds: 1 }, target: { kind: 'session', sessionId: SessionId('a') } })
+    const b = await service.create({ prompt: 'B', title: 'B', timing: { kind: 'at', at: '2026-09-17T00:00:00Z' }, target: { kind: 'session', sessionId: SessionId('b') } })
     expect(a.id).not.toBe(b.id)
-    await expect(service.create(SessionId('a'), {
-      prompt: 'invalid', at: '2026-09-17T00:00:00Z', after_seconds: 1, title: 'invalid',
-    }))
+    await expect(service.create({ prompt: 'invalid', title: 'invalid', timing: { kind: 'at', at: '2026-09-17T00:00:00Z', ...{ after_seconds: 1 } }, target: { kind: 'session', sessionId: SessionId('a') } }))
       .rejects.toThrow('Exactly one')
-    expect(await service.delete({ sessionId: SessionId('a'), id: ScheduleId('missing') }))
-      .toMatchObject({ deleted: false })
+    expect(await service.edit({ id: ScheduleId('missing'), action: 'delete' }))
+      .toMatchObject({ code: 'schedule_not_found' })
   })
 
   it.each([
@@ -267,10 +260,7 @@ describe('shared Schedule management', () => {
   ])('rejects daily combined with another selector at the shared service (%j)', async (selector) => {
     const { service, resolve } = await setup()
     const sessionId = SessionId('daily-conflict')
-    await expect(service.create(sessionId, {
-      prompt: 'Conflicting rule', title: 'Conflicting rule',
-      daily: { time: '23:00:00', time_zone: 'Asia/Shanghai' }, ...selector,
-    })).rejects.toThrow('Exactly one')
+    await expect(service.create({ prompt: 'Conflicting rule', title: 'Conflicting rule', ...selector, timing: { kind: 'daily', daily: { time: '23:00:00', time_zone: 'Asia/Shanghai' } }, target: { kind: 'session', sessionId: sessionId } })).rejects.toThrow('Exactly one')
     expect(await service.catalog()).toEqual([])
     expect(resolve).not.toHaveBeenCalled()
   })
@@ -281,11 +271,7 @@ describe('shared Schedule management', () => {
   ])('rejects weekly combined with another selector at the shared service (%j)', async (selector) => {
     const { service, resolve } = await setup()
     const sessionId = SessionId('weekly-conflict')
-    await expect(service.create(sessionId, {
-      prompt: 'Conflicting rule', title: 'Conflicting rule',
-      weekly: { time: '09:00:00', time_zone: 'Asia/Shanghai', weekdays: [1, 3] },
-      ...selector,
-    })).rejects.toThrow('Exactly one')
+    await expect(service.create({ prompt: 'Conflicting rule', title: 'Conflicting rule', ...selector, timing: { kind: 'weekly', weekly: { time: '09:00:00', time_zone: 'Asia/Shanghai', weekdays: [1, 3] } }, target: { kind: 'session', sessionId: sessionId } })).rejects.toThrow('Exactly one')
     expect(await service.catalog()).toEqual([])
     expect(resolve).not.toHaveBeenCalled()
   })
@@ -295,12 +281,12 @@ describe('shared Schedule management', () => {
     const changed = vi.fn()
     ctx.on('schedule/changed', changed)
     const sessionId = SessionId('stored')
-    const record = await service.create(sessionId, { prompt: 'Keep', after_seconds: 60, title: 'Keep' })
+    const record = await service.create({ prompt: 'Keep', title: 'Keep', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
     expect(changed).toHaveBeenCalledTimes(1)
     pool.failNextWrites = 1
-    await expect(service.delete({ sessionId, id: record.id })).rejects.toThrow('injected write failure')
+    await expect(service.edit({ id: record.id, action: 'delete' })).rejects.toThrow('injected write failure')
     expect(changed).toHaveBeenCalledTimes(1)
-    expect(await service.list({ sessionId })).toEqual([record])
+    expect((await service.list({ active: true })).items).toEqual([record])
   })
 
   it('contains a throwing change listener but still persists the task and arms the timer', async () => {
@@ -308,13 +294,11 @@ describe('shared Schedule management', () => {
     const warn = vi.spyOn(ctx.logger, 'warn')
     ctx.on('schedule/changed', () => { throw new Error('observer failed') })
     const sessionId = SessionId('throwing-listener')
-    const record = await service.create(sessionId, {
-      prompt: 'Still stored', after_seconds: 60, title: 'Still stored',
-    })
+    const record = await service.create({ prompt: 'Still stored', title: 'Still stored', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: sessionId } })
     await vi.advanceTimersByTimeAsync(0)
-    expect(await service.list({ sessionId })).toEqual([record])
+    expect((await service.list({ active: true })).items).toEqual([record])
     expect(pool.media.get('schedule')!.tables.get('tasks')!.get(record.id))
-      .toEqual({ record, sessionId, status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false } })
+      .toEqual({ record: recordOf(record), createdAt: record.createdAt, updatedAt: record.updatedAt, target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false } })
     expect(vi.getTimerCount()).toBe(1)
     expect(warn).toHaveBeenCalledWith('schedule: schedule/changed listener failed: Error: observer failed')
   })
@@ -328,38 +312,38 @@ describe('retained Schedule delivery', () => {
     const agent = agentFor(first.ctx, sessionId)
     const followup = vi.spyOn(agent, 'followup')
     first.resolve.mockResolvedValue({ agent })
-    const record = await first.service.create(sessionId, { prompt: 'Retain me', after_seconds: 1, title: 'Retain me' })
+    const record = await first.service.create({ prompt: 'Retain me', title: 'Retain me', timing: { kind: 'after', after_seconds: 1 }, target: { kind: 'session', sessionId: sessionId } })
     await vi.advanceTimersByTimeAsync(1000)
     const catalog = await first.service.catalog()
     expect(catalog).toEqual([{
-      ...record, sessionId, status: 'inactive',
-      lastDelivery: {
+      ...record, target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'ended', updatedAt: '2026-09-16T00:00:01.000Z',
+      lastDelivery: { targetSessionId: sessionId,
         scheduledAt: record.scheduledAt, deliveredAt: '2026-09-16T00:00:01.000Z',
         messageId: followup.mock.calls[0]![0].id,
       },
     }])
-    expect(await first.service.list({ sessionId })).toEqual([])
+    expect((await first.service.list({ active: true })).items).toEqual([])
     await first.ctx.fiber.dispose()
     const second = await harness({ pool: first.pool }); tests.push(second)
     await vi.advanceTimersByTimeAsync(86_400_000)
     expect(await second.service.catalog()).toEqual(catalog)
-    expect(await second.service.list({ sessionId })).toEqual([])
+    expect((await second.service.list({ active: true })).items).toEqual([])
     expect(second.resolve).not.toHaveBeenCalled()
     expect(second.flush).not.toHaveBeenCalled()
-    expect(await second.service.delete({ sessionId: SessionId('other'), id: record.id }))
-      .toEqual({ id: record.id, deleted: false, code: 'schedule_not_found' })
+    expect(await second.service.edit({ id: ScheduleId('missing'), action: 'delete' }))
+      .toEqual({ id: 'missing', code: 'schedule_not_found' })
     expect(await second.service.catalog()).toEqual(catalog)
-    const delivered = await second.service.history({ sessionId, id: record.id, limit: 100 })
+    const delivered = await second.service.history({  id: record.id, limit: 100 })
     expect(delivered).toMatchObject({ records: [{ prompt: 'Retain me' }] })
-    expect(await second.service.delete({ sessionId, id: record.id })).toEqual({ id: record.id, deleted: true })
+    expect(await second.service.edit({ id: record.id, action: 'delete' })).toEqual({ id: record.id, deleted: true })
     expect(await second.service.catalog()).toEqual([])
-    expect(await second.service.history({ sessionId, id: record.id, limit: 100 }))
+    expect(await second.service.history({  id: record.id, limit: 100 }))
       .toEqual({ id: record.id, code: 'schedule_not_found' })
     await second.ctx.fiber.dispose()
     const third = await harness({ pool: first.pool }); tests.push(third)
     expect(await third.service.catalog()).toEqual([])
-    expect(await third.service.list({ sessionId })).toEqual([])
-    expect(await third.service.history({ sessionId, id: record.id, limit: 100 }))
+    expect((await third.service.list({ active: true })).items).toEqual([])
+    expect(await third.service.history({  id: record.id, limit: 100 }))
       .toEqual({ id: record.id, code: 'schedule_not_found' })
     expect(third.resolve).not.toHaveBeenCalled()
   })
@@ -370,7 +354,7 @@ describe('retained Schedule delivery', () => {
     const agent = agentFor(test.ctx, sessionId)
     const followup = vi.spyOn(agent, 'followup')
     test.resolve.mockResolvedValue({ agent })
-    const record = await test.service.create(sessionId, { prompt: 'Keep pending', after_seconds: 1, title: 'Keep pending' })
+    const record = await test.service.create({ prompt: 'Keep pending', title: 'Keep pending', timing: { kind: 'after', after_seconds: 1 }, target: { kind: 'session', sessionId: sessionId } })
     const changed = vi.fn()
     test.ctx.on('schedule/changed', changed)
     if (failure === 'flush') test.flush.mockRejectedValueOnce(new Error('flush failed'))
@@ -379,10 +363,10 @@ describe('retained Schedule delivery', () => {
     expect(followup).toHaveBeenCalledTimes(1)
     expect(test.flush).toHaveBeenCalledTimes(1)
     expect(changed).not.toHaveBeenCalled()
-    expect(await test.service.catalog()).toEqual([{ ...record, sessionId, status: 'active' }])
-    expect(await test.service.list({ sessionId })).toEqual([record])
+    expect(await test.service.catalog()).toEqual([{ ...record, target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'active' }])
+    expect((await test.service.list({ active: true })).items).toEqual([record])
     expect(test.pool.media.get('schedule')!.tables.get('tasks')!.get(record.id))
-      .toEqual({ record, sessionId, status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false } })
+      .toEqual({ record: recordOf(record), createdAt: record.createdAt, updatedAt: record.updatedAt, target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'active', deliveryHistory: { records: [], earlierRecordsUnavailable: false } })
     await vi.advanceTimersByTimeAsync(86_400_000)
     expect(followup).toHaveBeenCalledTimes(1)
   })
@@ -395,32 +379,33 @@ describe('Schedule activation and shutdown', () => {
     const pending = createAfterScheduleRecord(ScheduleId('persisted'), 'Restored', 1, Date.now(), 'Restored')
     const test = await harness({ beforeService: async (_ctx, facility) => {
       const domain = await facility.open(scheduleDomain)
-      await domain.table('tasks').put(pending.id, { sessionId, record: pending, status: 'active' })
+      await domain.table('tasks').put(pending.id, { target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], record: pending, status: 'active' })
       await domain.close()
     } })
     tests.push(test)
     const agent = agentFor(test.ctx, 'restored')
     const followup = vi.spyOn(agent, 'followup')
     test.resolve.mockResolvedValue({ agent })
-    await test.service.create(sessionId, { prompt: 'Recurring', every_seconds: 300, title: 'Recurring' })
+    await test.service.create({ prompt: 'Recurring', title: 'Recurring', timing: { kind: 'every', every_seconds: 300 }, target: { kind: 'session', sessionId: sessionId } })
     const changed = vi.fn()
     test.ctx.on('schedule/changed', changed)
     await vi.advanceTimersByTimeAsync(300_000)
     expect(followup).toHaveBeenCalledTimes(2)
-    const remaining = await test.service.list({ sessionId })
+    const remaining = (await test.service.list({ active: true })).items
     expect(remaining).toHaveLength(1)
     expect(remaining[0]).toMatchObject({ kind: 'every', scheduledAt: '2026-09-16T00:10:00.000Z' })
     expect(await test.service.catalog()).toEqual([
-      { ...pending, sessionId, status: 'inactive', lastDelivery: {
-        scheduledAt: pending.scheduledAt, deliveredAt: '2026-09-16T00:00:01.000Z',
-        messageId: followup.mock.calls[0]![0].id,
-      } },
-      { ...remaining[0], sessionId, status: 'active', lastDelivery: {
+      { ...remaining[0], target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'active', lastDelivery: { targetSessionId: sessionId,
         scheduledAt: '2026-09-16T00:05:00.000Z', deliveredAt: '2026-09-16T00:05:00.000Z',
         messageId: followup.mock.calls[1]![0].id,
       } },
+      { ...pending, target: { kind: 'session', sessionId: sessionId }, involvedSessionIds: [sessionId], status: 'ended', updatedAt: '2026-09-16T00:00:01.000Z', lastDelivery: { targetSessionId: sessionId,
+        scheduledAt: pending.scheduledAt, deliveredAt: '2026-09-16T00:00:01.000Z',
+        messageId: followup.mock.calls[0]![0].id,
+      } },
     ])
-    expect(changed).toHaveBeenCalledTimes(2)
+    // Each receipt write and each whole-agent idle transition publishes catalog status.
+    expect(changed).toHaveBeenCalledTimes(4)
   })
 
   it('rejects a persisted task whose table key disagrees with its record identity', async () => {
@@ -430,7 +415,7 @@ describe('Schedule activation and shutdown', () => {
         cleanup = () => ctx.fiber.dispose()
         const domain = await facility.open(scheduleDomain)
         const record = createAfterScheduleRecord(ScheduleId('actual'), 'Mismatch', 60, Date.now(), 'Mismatch')
-        await domain.table('tasks').put(ScheduleId('different'), { sessionId: SessionId('bound'), record, status: 'active' })
+        await domain.table('tasks').put(ScheduleId('different'), { target: { kind: 'session', sessionId: SessionId('bound') }, involvedSessionIds: [SessionId('bound')], record, status: 'active' })
         await domain.close()
       } }).then(() => 'Schedule activated')).rejects.toThrow('differs from record id')
     } finally {
@@ -446,7 +431,7 @@ describe('Schedule activation and shutdown', () => {
         cleanup = () => ctx.fiber.dispose()
         const domain = await facility.open(scheduleDomain)
         const record = createAfterScheduleRecord(ScheduleId('actual'), 'Mismatch', 60, Date.now(), 'Mismatch')
-        await domain.table('tasks').put(ScheduleId('different'), { sessionId: SessionId('bound'), record, status: 'active' })
+        await domain.table('tasks').put(ScheduleId('different'), { target: { kind: 'session', sessionId: SessionId('bound') }, involvedSessionIds: [SessionId('bound')], record, status: 'active' })
         await domain.close()
         // Installed after seeding: opening the seeded row already warns through the
         // storage-domain change listener, and only the Schedule warning is under test.
@@ -481,7 +466,7 @@ describe('Schedule activation and shutdown', () => {
     const child = agentFor(test.ctx, 'owned-child')
     test.ctx.effect(() => test.ctx.agents.enter(child, parent))
     expect(test.ctx.agents.roots()).toEqual([parent])
-    for (const name of ['schedule_create', 'schedule_list', 'schedule_update', 'schedule_delete']) {
+    for (const name of ['schedule_create', 'schedule_list', 'schedule_view', 'schedule_edit']) {
       expect(test.ctx.tools.get(name, parent)).toBeUndefined()
       expect(test.ctx.tools.get(name, child)).toBeUndefined()
       expect(test.ctx.tools.get(name)).toBeUndefined()
@@ -494,17 +479,17 @@ describe('Schedule activation and shutdown', () => {
     await test.ctx.agents.register(agent)
     expect(test.ctx.tools.get('schedule_create', agent)).toBeUndefined()
     await test.ctx.fiber.dispose()
-    await expect(test.service.delete({ sessionId: agent.session.id, id: ScheduleId('gone') }))
+    await expect(test.service.edit({ id: ScheduleId('gone'), action: 'delete' }))
       .rejects.toThrow('Schedule service is stopping')
   })
 
   it('rejects a missing creation selector at the shared service entry', async () => {
     const test = await setup()
-    await expect(test.service.create(SessionId('caller'), { prompt: 'Missing schedule', title: 'Missing schedule' }))
-      .rejects.toMatchObject({ code: 'invalid_selector', message: 'Exactly one reminder selector is required.' })
-    await expect(test.service.create(SessionId('caller'), {
-      prompt: 'Conflicting selectors', title: 'Conflicting selectors', after_seconds: 60, at: new Date(Date.now() + 60_000).toISOString(),
-    })).rejects.toMatchObject({ code: 'invalid_selector', message: 'Exactly one reminder selector is required.' })
+    await expect(Reflect.apply(test.service.remoteCreate.bind(test.service), undefined, [{
+      prompt: 'Missing schedule', title: 'Missing schedule', target: { kind: 'session', sessionId: 'caller' },
+    }]))
+      .rejects.toMatchObject({ code: 'schedule/input-invalid', details: { code: 'invalid_selector' } })
+    await expect(test.service.create({ prompt: 'Conflicting selectors', title: 'Conflicting selectors', timing: { kind: 'after', after_seconds: 60, ...{ at: new Date(Date.now() + 60_000).toISOString() } }, target: { kind: 'session', sessionId: SessionId('caller') } })).rejects.toMatchObject({ code: 'invalid_selector', message: 'Exactly one reminder selector is required.' })
   })
 
   it('warns for loaded active legacy reminders but not completed history', async () => {
@@ -521,7 +506,7 @@ describe('Schedule activation and shutdown', () => {
       data: { version: 1, operation: 'dispatch', id: record.id },
     }] })
     expect(warning).not.toHaveBeenCalled()
-    expect(await test.service.list({ sessionId: SessionId('legacy-active') })).toEqual([])
+    expect((await test.service.list({ active: true })).items).toEqual([])
   })
 
   it('warns that a readable legacy stream must be recreated', async () => {
@@ -535,6 +520,6 @@ describe('Schedule activation and shutdown', () => {
     expect(warning).toHaveBeenCalledWith(
       `schedule: Session "${sessionId}" contains legacy reminders; recreate active reminders with schedule_create.`,
     )
-    expect(await test.service.list({ sessionId })).toEqual([])
+    expect((await test.service.list({ active: true })).items).toEqual([])
   })
 })

@@ -125,18 +125,17 @@ describe('web e2e: queue row actions', () => {
       await input.press('Enter')
       await received.promise
       const pending = page.locator('[data-queue-dock] [data-submission-echo]')
-      await pending.getByRole('status').waitFor()
-      expect(await pending.getByRole('status').textContent()).toBe('Sending…')
-      expect(await pending.getByRole('button').count()).toBe(3)
-      expect(await pending.getByRole('button').evaluateAll(buttons =>
-        buttons.every(button => (button as HTMLButtonElement).disabled))).toBe(true)
-      expect(await input.textContent()).toBe('')
-      expect(await input.getAttribute('contenteditable')).toBe('true')
+      expect(await pending.count()).toBe(0)
+      expect(await input.textContent()).toBe(REMOVE)
+      expect(await input.getAttribute('contenteditable')).toBe('false')
+      expect(await page.getByRole('button', { name: 'Sending message', exact: true }).getAttribute('aria-busy')).toBe('true')
+      // Root refreshes this changed golden from the real built Client.
       const sending = await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd)
       await compareOrRefreshGolden(SENDING_EXPECTED, sending, MODE)
       await page.setViewportSize({ width: 390, height: 1000 })
       await page.locator('[data-sidebar-collapsed="true"]').waitFor()
-      await expect.poll(() => pending.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+      expect(await input.textContent()).toBe(REMOVE)
+      expect(await pending.count()).toBe(0)
       await page.setViewportSize({ width: 1680, height: 1000 })
       await page.locator('[data-sidebar-collapsed="true"]').waitFor({ state: 'detached' })
     } finally {

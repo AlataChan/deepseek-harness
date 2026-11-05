@@ -1,0 +1,1352 @@
+[
+  {
+    "path": "packages/api/session-controller/src/commands.ts",
+    "statements": [],
+    "functions": [],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 327,
+            "column": 6
+          },
+          "end": {
+            "line": 327,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 327,
+              "column": 6
+            },
+            "end": {
+              "line": 327,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 327,
+        "uncoveredLocation": {
+          "start": {},
+          "end": {}
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/api/session-controller/src/client/contract/session.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/api/session-controller/src/client/contract/snapshot.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/chat-settings.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/apply.ts",
+    "statements": [
+      {
+        "start": {
+          "line": 178,
+          "column": 39
+        },
+        "end": {
+          "line": 178,
+          "column": 80
+        }
+      },
+      {
+        "start": {
+          "line": 179,
+          "column": 39
+        },
+        "end": {
+          "line": 179,
+          "column": 80
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "(anonymous_31)",
+        "decl": {
+          "start": {
+            "line": 178,
+            "column": 6
+          },
+          "end": {
+            "line": 178,
+            "column": 26
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 178,
+            "column": 37
+          },
+          "end": {
+            "line": 178,
+            "column": null
+          }
+        },
+        "line": 178
+      },
+      {
+        "name": "(anonymous_32)",
+        "decl": {
+          "start": {
+            "line": 179,
+            "column": 6
+          },
+          "end": {
+            "line": 179,
+            "column": 25
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 179,
+            "column": 37
+          },
+          "end": {
+            "line": 179,
+            "column": null
+          }
+        },
+        "line": 179
+      }
+    ],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/locale.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/presentation-policy.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/stores.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/transcript-view.ts",
+    "statements": [
+      {
+        "start": {
+          "line": 53,
+          "column": 54
+        },
+        "end": {
+          "line": 53,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 63,
+          "column": 54
+        },
+        "end": {
+          "line": 63,
+          "column": null
+        }
+      }
+    ],
+    "functions": [],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 53,
+            "column": 4
+          },
+          "end": {
+            "line": 53,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 53,
+              "column": 4
+            },
+            "end": {
+              "line": 53,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 53,
+        "uncoveredLocation": {
+          "start": {
+            "line": 53,
+            "column": 4
+          },
+          "end": {
+            "line": 53,
+            "column": null
+          }
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 63,
+            "column": 4
+          },
+          "end": {
+            "line": 63,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 63,
+              "column": 4
+            },
+            "end": {
+              "line": 63,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 63,
+        "uncoveredLocation": {
+          "start": {
+            "line": 63,
+            "column": 4
+          },
+          "end": {
+            "line": 63,
+            "column": null
+          }
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/contract/slots.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/contract/store.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/settings/TranscriptViewRow.tsx",
+    "statements": [
+      {
+        "start": {
+          "line": 77,
+          "column": 31
+        },
+        "end": {
+          "line": 77,
+          "column": 74
+        }
+      },
+      {
+        "start": {
+          "line": 86,
+          "column": 33
+        },
+        "end": {
+          "line": 86,
+          "column": 74
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "(anonymous_7)",
+        "decl": {
+          "start": {
+            "line": 77,
+            "column": 8
+          },
+          "end": {
+            "line": 77,
+            "column": 19
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 77,
+            "column": 29
+          },
+          "end": {
+            "line": 77,
+            "column": null
+          }
+        },
+        "line": 77
+      },
+      {
+        "name": "(anonymous_9)",
+        "decl": {
+          "start": {
+            "line": 86,
+            "column": 10
+          },
+          "end": {
+            "line": 86,
+            "column": 21
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 86,
+            "column": 31
+          },
+          "end": {
+            "line": 86,
+            "column": null
+          }
+        },
+        "line": 86
+      }
+    ],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-primitives/src/QuotePreview.tsx",
+    "statements": [
+      {
+        "start": {
+          "line": 20,
+          "column": 34
+        },
+        "end": {
+          "line": 20,
+          "column": 58
+        }
+      },
+      {
+        "start": {
+          "line": 20,
+          "column": 58
+        },
+        "end": {
+          "line": 20,
+          "column": 82
+        }
+      },
+      {
+        "start": {
+          "line": 21,
+          "column": 28
+        },
+        "end": {
+          "line": 21,
+          "column": 52
+        }
+      },
+      {
+        "start": {
+          "line": 21,
+          "column": 52
+        },
+        "end": {
+          "line": 21,
+          "column": 77
+        }
+      },
+      {
+        "start": {
+          "line": 21,
+          "column": 77
+        },
+        "end": {
+          "line": 21,
+          "column": 96
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "(anonymous_1)",
+        "decl": {
+          "start": {
+            "line": 20,
+            "column": 6
+          },
+          "end": {
+            "line": 20,
+            "column": 22
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 20,
+            "column": 32
+          },
+          "end": {
+            "line": 20,
+            "column": null
+          }
+        },
+        "line": 20
+      },
+      {
+        "name": "(anonymous_2)",
+        "decl": {
+          "start": {
+            "line": 21,
+            "column": 6
+          },
+          "end": {
+            "line": 21,
+            "column": 16
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 21,
+            "column": 26
+          },
+          "end": {
+            "line": 21,
+            "column": null
+          }
+        },
+        "line": 21
+      }
+    ],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-primitives/src/focus.ts",
+    "statements": [],
+    "functions": [],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 11,
+            "column": 17
+          },
+          "end": {
+            "line": 12,
+            "column": null
+          }
+        },
+        "type": "binary-expr",
+        "locations": [
+          {
+            "start": {
+              "line": 11,
+              "column": 17
+            },
+            "end": {
+              "line": 11,
+              "column": null
+            }
+          },
+          {
+            "start": {
+              "line": 12,
+              "column": 8
+            },
+            "end": {
+              "line": 12,
+              "column": 35
+            }
+          },
+          {
+            "start": {
+              "line": 12,
+              "column": 35
+            },
+            "end": {
+              "line": 12,
+              "column": null
+            }
+          }
+        ],
+        "line": 11,
+        "uncoveredLocation": {
+          "start": {
+            "line": 12,
+            "column": 35
+          },
+          "end": {
+            "line": 12,
+            "column": null
+          }
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/client/ui-primitives/src/index.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-primitives/src/useAnchoredPosition.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-primitives/src/useModalLayer.ts",
+    "statements": [],
+    "functions": [],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 56,
+            "column": 31
+          },
+          "end": {
+            "line": 56,
+            "column": null
+          }
+        },
+        "type": "binary-expr",
+        "locations": [
+          {
+            "start": {
+              "line": 56,
+              "column": 31
+            },
+            "end": {
+              "line": 56,
+              "column": 67
+            }
+          },
+          {
+            "start": {
+              "line": 56,
+              "column": 67
+            },
+            "end": {
+              "line": 56,
+              "column": null
+            }
+          }
+        ],
+        "line": 56,
+        "uncoveredLocation": {
+          "start": {
+            "line": 56,
+            "column": 67
+          },
+          "end": {
+            "line": 56,
+            "column": null
+          }
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/client/ui-primitives/src/user-text.tsx",
+    "statements": [],
+    "functions": [],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 69,
+            "column": 4
+          },
+          "end": {
+            "line": 70,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 69,
+              "column": 4
+            },
+            "end": {
+              "line": 70,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 69,
+        "uncoveredLocation": {
+          "start": {},
+          "end": {}
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 105,
+            "column": 53
+          },
+          "end": {
+            "line": 105,
+            "column": null
+          }
+        },
+        "type": "cond-expr",
+        "locations": [
+          {
+            "start": {
+              "line": 105,
+              "column": 78
+            },
+            "end": {
+              "line": 105,
+              "column": 82
+            }
+          },
+          {
+            "start": {
+              "line": 105,
+              "column": 82
+            },
+            "end": {
+              "line": 105,
+              "column": null
+            }
+          }
+        ],
+        "line": 105,
+        "uncoveredLocation": {
+          "start": {
+            "line": 105,
+            "column": 78
+          },
+          "end": {
+            "line": 105,
+            "column": 82
+          }
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 117,
+            "column": 60
+          },
+          "end": {
+            "line": 117,
+            "column": 85
+          }
+        },
+        "type": "binary-expr",
+        "locations": [
+          {
+            "start": {
+              "line": 117,
+              "column": 60
+            },
+            "end": {
+              "line": 117,
+              "column": 77
+            }
+          },
+          {
+            "start": {
+              "line": 117,
+              "column": 77
+            },
+            "end": {
+              "line": 117,
+              "column": 85
+            }
+          }
+        ],
+        "line": 117,
+        "uncoveredLocation": {
+          "start": {
+            "line": 117,
+            "column": 77
+          },
+          "end": {
+            "line": 117,
+            "column": 85
+          }
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/client/ui-primitives/src/markdown/quote-text.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-sidebar/src/client/SidebarRoot.tsx",
+    "statements": [
+      {
+        "start": {
+          "line": 152,
+          "column": 26
+        },
+        "end": {
+          "line": 152,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 154,
+          "column": 36
+        },
+        "end": {
+          "line": 154,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 360,
+          "column": 29
+        },
+        "end": {
+          "line": 360,
+          "column": 51
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "(anonymous_45)",
+        "decl": {
+          "start": {
+            "line": 360,
+            "column": 12
+          },
+          "end": {
+            "line": 360,
+            "column": 27
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 360,
+            "column": 27
+          },
+          "end": {
+            "line": 360,
+            "column": null
+          }
+        },
+        "line": 360
+      }
+    ],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 152,
+            "column": 4
+          },
+          "end": {
+            "line": 152,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 152,
+              "column": 4
+            },
+            "end": {
+              "line": 152,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 152,
+        "uncoveredLocation": {
+          "start": {
+            "line": 152,
+            "column": 4
+          },
+          "end": {
+            "line": 152,
+            "column": null
+          }
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 154,
+            "column": 6
+          },
+          "end": {
+            "line": 154,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 154,
+              "column": 6
+            },
+            "end": {
+              "line": 154,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 154,
+        "uncoveredLocation": {
+          "start": {
+            "line": 154,
+            "column": 6
+          },
+          "end": {
+            "line": 154,
+            "column": null
+          }
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 157,
+            "column": 21
+          },
+          "end": {
+            "line": 157,
+            "column": null
+          }
+        },
+        "type": "cond-expr",
+        "locations": [
+          {
+            "start": {
+              "line": 157,
+              "column": 61
+            },
+            "end": {
+              "line": 157,
+              "column": 73
+            }
+          },
+          {
+            "start": {
+              "line": 157,
+              "column": 73
+            },
+            "end": {
+              "line": 157,
+              "column": null
+            }
+          }
+        ],
+        "line": 157,
+        "uncoveredLocation": {
+          "start": {
+            "line": 157,
+            "column": 61
+          },
+          "end": {
+            "line": 157,
+            "column": 73
+          }
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 170,
+            "column": 4
+          },
+          "end": {
+            "line": 170,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 170,
+              "column": 4
+            },
+            "end": {
+              "line": 170,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 170,
+        "uncoveredLocation": {
+          "start": {},
+          "end": {}
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 385,
+            "column": 35
+          },
+          "end": {
+            "line": 385,
+            "column": 66
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 385,
+              "column": 35
+            },
+            "end": {
+              "line": 385,
+              "column": 66
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 385,
+        "uncoveredLocation": {
+          "start": {},
+          "end": {}
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/client/ui-sidebar/src/client/locales.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/client/ui-sidebar/src/client/panel-pins.ts",
+    "statements": [
+      {
+        "start": {
+          "line": 31,
+          "column": 68
+        },
+        "end": {
+          "line": 31,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 32,
+          "column": 61
+        },
+        "end": {
+          "line": 32,
+          "column": 73
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "(anonymous_4)",
+        "decl": {
+          "start": {
+            "line": 32,
+            "column": 45
+          },
+          "end": {
+            "line": 32,
+            "column": 52
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 32,
+            "column": 61
+          },
+          "end": {
+            "line": 32,
+            "column": 73
+          }
+        },
+        "line": 32
+      }
+    ],
+    "branches": [
+      {
+        "loc": {
+          "start": {
+            "line": 31,
+            "column": 6
+          },
+          "end": {
+            "line": 31,
+            "column": null
+          }
+        },
+        "type": "if",
+        "locations": [
+          {
+            "start": {
+              "line": 31,
+              "column": 6
+            },
+            "end": {
+              "line": 31,
+              "column": null
+            }
+          },
+          {
+            "start": {},
+            "end": {}
+          }
+        ],
+        "line": 31,
+        "uncoveredLocation": {
+          "start": {
+            "line": 31,
+            "column": 6
+          },
+          "end": {
+            "line": 31,
+            "column": null
+          }
+        }
+      },
+      {
+        "loc": {
+          "start": {
+            "line": 32,
+            "column": 28
+          },
+          "end": {
+            "line": 32,
+            "column": 94
+          }
+        },
+        "type": "cond-expr",
+        "locations": [
+          {
+            "start": {
+              "line": 32,
+              "column": 37
+            },
+            "end": {
+              "line": 32,
+              "column": 77
+            }
+          },
+          {
+            "start": {
+              "line": 32,
+              "column": 77
+            },
+            "end": {
+              "line": 32,
+              "column": 94
+            }
+          }
+        ],
+        "line": 32,
+        "uncoveredLocation": {
+          "start": {
+            "line": 32,
+            "column": 37
+          },
+          "end": {
+            "line": 32,
+            "column": 77
+          }
+        }
+      }
+    ]
+  },
+  {
+    "path": "packages/client/ui-sidebar/src/client/contract/slots.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/index.ts",
+    "statements": [],
+    "functions": [
+      {
+        "name": "apply",
+        "decl": {
+          "start": {
+            "line": 4,
+            "column": 16
+          },
+          "end": {
+            "line": 4,
+            "column": 30
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 4,
+            "column": 30
+          },
+          "end": {
+            "line": 4,
+            "column": null
+          }
+        },
+        "line": 4
+      }
+    ],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/client/QuoteSelection.tsx",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/client/index.ts",
+    "statements": [
+      {
+        "start": {
+          "line": 18,
+          "column": 20
+        },
+        "end": {
+          "line": 18,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 20,
+          "column": 22
+        },
+        "end": {
+          "line": 20,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 23,
+          "column": 2
+        },
+        "end": {
+          "line": 23,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 23,
+          "column": 19
+        },
+        "end": {
+          "line": 23,
+          "column": 56
+        }
+      },
+      {
+        "start": {
+          "line": 24,
+          "column": 2
+        },
+        "end": {
+          "line": 26,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 24,
+          "column": 63
+        },
+        "end": {
+          "line": 26,
+          "column": 26
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "apply",
+        "decl": {
+          "start": {
+            "line": 22,
+            "column": 16
+          },
+          "end": {
+            "line": 22,
+            "column": 22
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 22,
+            "column": 42
+          },
+          "end": {
+            "line": 27,
+            "column": null
+          }
+        },
+        "line": 22
+      },
+      {
+        "name": "(anonymous_1)",
+        "decl": {
+          "start": {
+            "line": 23,
+            "column": 6
+          },
+          "end": {
+            "line": 23,
+            "column": 19
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 23,
+            "column": 19
+          },
+          "end": {
+            "line": 23,
+            "column": 56
+          }
+        },
+        "line": 23
+      },
+      {
+        "name": "(anonymous_2)",
+        "decl": {
+          "start": {
+            "line": 24,
+            "column": 19
+          },
+          "end": {
+            "line": 24,
+            "column": 63
+          }
+        },
+        "loc": {
+          "start": {
+            "line": 24,
+            "column": 63
+          },
+          "end": {
+            "line": 26,
+            "column": 26
+          }
+        },
+        "line": 24
+      }
+    ],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/client/locales.ts",
+    "statements": [
+      {
+        "start": {
+          "line": 2,
+          "column": 18
+        },
+        "end": {
+          "line": 2,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 4,
+          "column": 18
+        },
+        "end": {
+          "line": 4,
+          "column": null
+        }
+      },
+      {
+        "start": {
+          "line": 6,
+          "column": 51
+        },
+        "end": {
+          "line": 6,
+          "column": null
+        }
+      }
+    ],
+    "functions": [],
+    "branches": []
+  },
+  {
+    "path": "packages/session/message-quotes/src/client/quote-text.ts",
+    "statements": [],
+    "functions": [],
+    "branches": []
+  }
+]

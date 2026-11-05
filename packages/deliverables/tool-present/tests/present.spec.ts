@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 /** Explicit deliveries commit only after a successful final tool result. */
 import { mkdtemp, rm, writeFile, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -63,6 +64,7 @@ async function setup() {
   await ctx.plugin(LocalFileSystem, { cwd: root })
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
+  await mountDirectoryFixture(ctx, root)
   const fiber = ctx.plugin(Present, { maxFiles: 2 })
   await fiber
   const owner = await agent(ctx, root)
@@ -115,6 +117,7 @@ describe('present', () => {
 
   it('records once when ancestor and agent scopes both mount present', async () => {
     const { owner, root, execute } = await setup()
+    await mountDirectoryFixture(owner.ctx, process.cwd())
     await owner.ctx.plugin(Present, { maxFiles: 2 })
     await writeFile(join(root, 'a'), 'a')
     expect((await execute([{ path: 'a' }])).isError).toBe(false)
@@ -190,7 +193,10 @@ it('refuses a final symlink to an ordinary file', async () => {
 it('refuses a file replaced by a directory after inspecting its final component', async () => {
   const { ctx, root, execute } = await setup()
   await writeFile(join(root, 'source'), 'source')
+  const source = ctx.fs.processPath(await ctx.fs.resolve(join(root, 'source')))
   const directory = await ctx.fs.stat(await ctx.fs.resolve(root))
-  vi.spyOn(ctx.fs, 'stat').mockResolvedValueOnce(directory)
+  const stat = ctx.fs.stat.bind(ctx.fs)
+  vi.spyOn(ctx.fs, 'stat').mockImplementation((target, signal) =>
+    ctx.fs.processPath(target) === source ? Promise.resolve(directory) : stat(target, signal))
   expect((await execute([{ path: 'source' }])).isError).toBe(true)
 })

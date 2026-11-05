@@ -23,9 +23,12 @@ Use `dsh-client-ui-primitives` to build web-client controls and render agent out
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 `Toast` uses the theme’s toast background and label colors in both light and dark modes. `Menu` data rows and `MenuItemButton` component rows accept owner-provided effective shortcuts and align their keys at the trailing edge as muted text without a background, including submenus. `ShortcutKeys` defaults to unboxed keys for menu and inline hints. Its `tooltip` variant uses lighter keycaps over the dark bubble and groups plus-separated combinations into one filled block. `Tooltip.shortcutKeys` vertically centers keycaps beside optional localized action text, or shows only keys when the label is empty. The optional `className` supplies owner interaction styles. `Modal` uses the frame’s shared overlay inset, with a minimum 24px viewport margin. Its mask leaves the Windows caption unpainted while the full-viewport layer blocks background clicks. `Modal` and the settings shell share top-layer Escape and Tab handling through `useModalLayer`, restoring the previous focus on close. `closeTopModal(document)` requests the foreground modal’s current close action; newer menus or unregistered dialogs block dismissal of the modal behind them. Components use `isBehindModal` to avoid moving focus behind a nested dialog. Menus consume their local Escape before modal dismissal. `observeComposition` supplies the same composition-end and legacy IME guard to local modal and recording handlers; callers dispose its document listeners with their interaction lifetime.
+
+On phones and tablets, modal closure does not automatically return focus to an input, textarea, contenteditable element or textbox that was noneditable when the modal opened. This also applies when the text entry stays read-only until after closure and becomes editable later. Previously editable controls and ordinary buttons retain return focus; desktop return focus is unchanged.
 
 Automatic modal entry and modal/menu return focus, including after Escape and application close shortcuts, use `focusWithoutRing(element, options?)` to suppress the outline until Tab or directional navigation resumes normal focus styling. Dialog containers keep their outline-free styling. Existing borders, shadows, and error states remain intact. Mark a dialog's initial control with `data-modal-autofocus` so the modal captures its invoking control before moving focus. Controls mounted with the dialog must not use React `autoFocus`, which runs before that capture. Tab and Shift+Tab from the dialog container enter its first and last focusable controls.
 
@@ -34,6 +37,7 @@ This package is a Web-shell build input. Its static ESM retains third-party impo
 Compose feature UI from these atoms whenever the web client needs a standard control or an agent-output renderer. They render through React only and take `--dsw-*` design tokens from the theme, so they fit any plugin without importing the theme or the slot system.
 
 <a id="component-catalog"></a>
+
 ### Component catalog
 
 Check this table before writing a control in a feature package. A plugin cannot import another plugin's component, so this package is the only place a control can be shared: reuse what fits, and lift a deliberate visual difference into a prop rather than starting a second copy.
@@ -113,7 +117,10 @@ The atoms cannot read the application locale, so every piece of user-facing copy
 
 -----
 
+`formatQuoteText` emits ordinary multiline Markdown blockquotes. `QuotePreview` displays a literal excerpt; `projectUserText` decorates quotes while preserving session, file, and loaded-skill chips outside each quote. `isMobileDevice` caches phone/tablet detection until reload.
+
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 `Button` uses H36/R12 for `md` and H28/R8 for `sm`, including outlined controls. Menus and cards follow the [shared radius rules](../../../docs/web-styling.md#corner-radii-and-settings-cards); feature classes preserve control geometry.
@@ -150,6 +157,7 @@ The package enforces one separation: presentational React atoms with zero Cordis
 | [`src/settings-form/`](src/settings-form/) | The settings page kit: the staged form model over a settings scope, the value and secret fields, and the form frame |
 
 <a id="input-modality"></a>
+
 ### Input modality
 
 [`input-modality.ts`](src/input-modality.ts) tracks input for tooltips and publishes `data-input-modality` on `<html>` for the [theme's focus styles](../ui-theme/README.md#understand-the-implementation). `pointerModality()` is true after pointer input and false after any key, including IME composition keys; `Tooltip` uses it to decide whether focus may show a bubble. The published attribute stays `pointer` until a non-composing navigation key (Tab, arrows, Home/End, PageUp/PageDown), or focus on a different control after a non-composing key. Refocusing the same control does not restore keyboard modality. Pointer input, an IME composition key, and window blur each clear the pending key; focus changes without a pending key leave the modality unchanged. The listeners live for the document lifetime; Node imports install none. The focus-change rule observes events exposed to window; components own additional navigation inside shadow roots that do not expose those events.
@@ -167,6 +175,7 @@ The output cards share one geometry model: `white-space: pre` with horizontal sc
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 These pages place the atoms in the client stack and the design system.
@@ -180,6 +189,7 @@ These pages place the atoms in the client stack and the design system.
 -----
 
 <a id="model-experience"></a>
+
 ## Model Experience
 
 None, as the package is a browser-side UI plugin layer that registers nothing model-facing.
@@ -206,6 +216,7 @@ These limits define how the atoms behave at the edges; they are current package 
 - **`TerminalBlock` is not a terminal emulator** — it renders settled or still-running command output, not an interactive session: SGR colors, carriage return, backspace, erase-in-line, tab stops, and character width are honored; absolute cursor positioning, screen clearing, and alternate-screen sequences are stripped.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/worktree-review/README.md
+/:
+  en: 3134a36365a046c0
+  zh: af2e33136aa97827
+/dsh-experimental-worktree-review:
+  en: 1b9d17fc332cb363
+  zh: 3f6eca872e3cb757
+/dsh-experimental-worktree-review/summary:
+  en: c942b451310e3df2
+  zh: c2d53b4f25013fea
+/dsh-experimental-worktree-review/table-of-contents:
+  en: 638dd73bc5b9dc7a
+  zh: e21f8f10127ba8c4
+/dsh-experimental-worktree-review/use-this-package:
+  en: afb65287d07f4681
+  zh: 950ab289f0c63193
+/dsh-experimental-worktree-review/model-experience:
+  en: f11940d5d17c141e
+  zh: d61d7c8e239c9653
+/dsh-experimental-worktree-review/model-experience/kv-cache-effect:
+  en: 373a426274911b60
+  zh: 2c57135620bf845f
+/dsh-experimental-worktree-review/known-limitations-and-deferred-work:
+  en: d4690cd97840983a
+  zh: 942b4a2f25db9c2f
+/dsh-experimental-worktree-review/known-limitations-and-deferred-work/dev-note:
+  en: 7972e4b2005ec9a4
+  zh: b6120c62c7cd8f08

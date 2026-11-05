@@ -147,3 +147,23 @@ describe('projectUserText', () => {
     expect(host.textContent).toBe('纯文本，无引用')
   })
 })
+
+
+it('keeps empty blockquotes as literal text while decorating the next nonempty excerpt', () => {
+  const text = '> \n>\n\nafter\n\n> actual\n> second'
+  const host = project(text)
+  expect(host.textContent).toBe('> \n>\n\nafter\n\nactual\nsecond')
+  expect(host.querySelectorAll('[data-quote-preview]')).toHaveLength(1)
+  expect(host.querySelector('[data-quote-preview-text]')?.textContent).toBe('actual\nsecond')
+})
+
+
+it('keeps quoted session and skill syntax literal while preserving outside reference precedence', () => {
+  const wire = '@[中文](dsh-session:record)'
+  const host = project(`> ${wire}\n> /skill\n\n${wire} @中文 /skill`, ['中文'], ['skill'])
+  const quote = host.querySelector('[data-quote-preview]')
+  expect(quote?.textContent).toBe(`${wire}\n/skill`)
+  expect(quote?.querySelector('[data-ref-chip]')).toBeNull()
+  expect([...host.querySelectorAll('[data-ref-chip]')].map(chip => [chip.getAttribute('data-ref-chip'), chip.textContent]))
+    .toEqual([['session', '中文'], ['session', '中文'], ['skill', '/skill']])
+})

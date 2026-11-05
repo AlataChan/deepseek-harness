@@ -9,6 +9,7 @@ English | [中文](README.zh.md)
 
 Application-owned profiles supply their bundled package-manager invocation through launcher facts. It takes precedence over `pnpmCommand` for package operations and registry inspection; its environment applies only to those subprocesses.
 
+
 ## Summary
 
 Manage the current profile's plugins without editing configuration by hand. Enable or disable individual plugin entries, select installed bundles, and install or remove external bundles. With HMR enabled in YAML, configuration changes apply immediately; without HMR, the running composition remains until restart. Changes affect every session using the profile.
@@ -26,7 +27,16 @@ Manage the current profile's plugins without editing configuration by hand. Enab
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
+
+`listVersions(name, options?, signal?)` checks newer registry versions only when explicitly called. It returns publication times, tags, deprecation, bundle declaration and compatibility through `peers`. `versionListLimit` defaults to 20 (1–100), and `versionLookupConcurrency` to 4 (1–16). Both lookups and updates follow the configured registry plan; neither boot nor the agent tool checks versions.
+
+`BundleInfo.updatable` excludes installation-supplied bundles, distribution names in `lockedBundles`, management packages, non-semver versions and file, link, workspace, Git, tarball or aliased sources. Distribution composition supplies `lockedBundles`; both version remotes enforce refusal before profile writes.
+
+`updateBundle(name, version, options?, signal?)` rechecks a newer compatible bundle before changing files. With HMR it removes the old version, installs the selected exact version with the saved enablement, and restores the previous exact version after target installation or activation failure. Restoration uses the previous registry and ignores request cancellation; a failed restoration is reported separately. Without HMR it installs over the current version without removal and returns `restart-required`. First installation retains a valid installed package after later activation failure. The update rollback policy does not change that behavior.
+
+Update progress uses `plugin-manager/update-state`. Configuration-free `plugin-manager/operation` observations distinguish started, settled and unknown outcomes; raw specs, output and configs are omitted. `diagnostic.ts` validates durable observations with bounded fields and a 64 KiB complete-record limit; rejected records never imply success.
 
 Base-backed profiles provide the manager. In Web, the sidebar's **Plugins** page ([ui-plugin-manager](../../client/ui-plugin-manager/README.md)) manages the profile's bundles and their uniquely addressable rows; the Settings Plugin list stays read-only. Agent-preset rows remain read-only. The `plugin_manager` tool exposes the same operations and is enabled in Creator mode. Other presets keep it disabled by default. Every tool action requires `danger-full-access` or approval for that call. Under lower sandbox modes, `ask` requests approval; `never`, rejection, cancellation, or an unavailable approval channel prevents execution. An approval leaves the session permission mode unchanged. Profile changes persist across sessions, and installed Host code executes in-process outside the workspace sandbox. Dependency build-script approval remains separate.
 
@@ -58,6 +68,7 @@ The browser-safe `@deepseek-ai/dsh-plugin-manager/registry` entry exports `OFFIC
 When pnpm 11 blocks dependency scripts, the failed installation reports every pending package name in the profile under `pendingBuilds`, including names left by earlier attempts; a failed run restores `package.json` and `pnpm-lock.yaml` but deliberately not `pnpm-workspace.yaml`, where pnpm records them. The Web plugin page offers **Allow these scripts and retry**; the tool can grant permission on the user's behalf through `approvedBuilds` on `install_bundle`, after the user approves those scripts in the conversation. The service validates pending names; it does not verify conversation approval. Approval persists by package name in this profile, permits commands with the host user's permissions, and survives another installation failure. Only currently undecided names can be approved; existing denials and wildcard rules cannot be overridden through this action. Approval rejects YAML anchors or aliases inside `allowBuilds`. Retry preserves the original activation choice.
 
 <a id="version-compatibility-and-exemptions"></a>
+
 ### Version compatibility and exemptions
 
 An install command that names packages (`add`, or `install` with specs) is checked before pnpm runs: a local path is read from its own `package.json`, and a registry spec is resolved through pnpm's registry lookup for the version its range selects and the peers that version declares. An incompatible DSH peer rejects the operation before pnpm runs, so nothing is downloaded and no build script runs; a build approval the caller supplied with the request is recorded before this check and remains. A git or tarball spec needs the fetch itself, so it is judged after installation: the operation then restores the profile manifest and lockfile, reinstalls the restored lockfile (or, when the profile had none, reinstalls from the restored manifest without creating one), and reports whether that recovery succeeded; already permitted build-script effects may remain. A dependency the run did not change never blocks an unrelated operation: it stays installed, the run reports a warning naming it, and profile startup denies it. Installation requests with `enabled: false` are checked the same way. Startup checks run independently; see [App boot](../app-boot/README.md#profiles) for range semantics. Version exemptions do not authorize dependency scripts.
@@ -84,6 +95,7 @@ The CLI exposes `dsh plugin --profile <profile> version-exemptions`, `allow-vers
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -102,6 +114,7 @@ Results contain the last attempted stage, target, saved-state change, applicatio
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 - [App boot](../app-boot/README.md) — profile layers and startup policy.
@@ -110,6 +123,7 @@ Results contain the last attempted stage, target, saved-state change, applicatio
 - [Plugin settings](../../client/ui-settings-plugin-inventory/README.md) — the read-only Web inventory.
 
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Management tool
@@ -139,6 +153,7 @@ Tool results append to the transcript. Enabling or disabling other tools can cha
 - Desktop package operations remain owned by the Desktop shell.
 
 <a id="failure-behavior"></a>
+
 ### Failure behavior
 
 Failures preserve completed steps and report the actual remaining state. Profile dependencies without valid bundle metadata remain visible and removable, with enablement unavailable.
@@ -155,6 +170,7 @@ Installation finishes after pnpm and bundle validation succeed; subsequent publi
 Restoration rewrites only the two snapshotted files; user-authored patch configuration, application data, diagnostic logs and files pnpm downloaded remain untouched, and the next package operation prunes packages no manifest references.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

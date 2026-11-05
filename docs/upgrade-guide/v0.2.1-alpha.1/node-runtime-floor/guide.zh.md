@@ -19,3 +19,5 @@ description: "源码检出与 companion 的 Node 解析现在要求 Node.js >=24
 2. 在本检出中确认根 `package.json` 的 `engines.node` 为 `>=24.9.0`。`dsh` 在选择 profile 之前调用 `assertSupportedNode(process.version)`。更旧的 Node 把诊断写到 stderr 并以退出码 1 结束。只通过 `dsh` profile 启动应用，例如 `pnpm dsh --profile headless`。
 3. 打包桌面应用的用户不必安装 Node。`scripts/build-dmg.sh` 与 `scripts/build-exe.mjs` 将 `NODE_VERSION` 设为 `24.14.0`，应用会准备该运行时。
 4. Companion 发现使用 `@deepseek-ai/dsh-installed-runtime` 的 `resolveInstalledRuntime`。不受支持的 Node 会使 JSON CLI 打印一行含 `>=24.9.0` 的 `{ "error": "..." }` 并以退出码 1 结束。受支持的 Node 执行 `node --version` 时打印 `v24.9.0` 或更高版本。
+
+源码 Host 编译器采用 6 GiB 的 V8 堆上限。扩展诊断显示集成后的 Host 测试程序约使用 4.3 GiB；此前的 4 GiB 上限会导致堆内存耗尽。这项构建设置不改变安装版应用的运行时上限，也不省略测试。

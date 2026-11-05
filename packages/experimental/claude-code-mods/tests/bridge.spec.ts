@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
@@ -108,6 +109,7 @@ async function harness(
   await ctx.plugin(CommandRuntime)
   const workspace = scratch('dsh-cc-mods-ws-')
   await options.services?.(ctx, workspace)
+  await mountDirectoryFixture(ctx, process.cwd())
   const mods = await ctx.plugin(ClaudeCodeMods, { ...options.config })
   await mods.await()
   for (const entry of modsToLoad) {
@@ -246,7 +248,7 @@ describe('ticket-mod: a mod-registered tool, prompt context, and a turn.complete
     const agent = await h.agent()
     await h.turn(agent, 'open a PR for this change')
     expect(JSON.stringify(adapter.requests[0]?.messages)).toContain('Current branch: feature/mods')
-    const prompts = events(agent).filter(e => e.type === 'user/message')
+    const prompts = events(agent).filter(e => e.type === 'user/message' && e.data.source.kind === 'user')
     expect(prompts.map(e => e.type === 'user/message' && e.data.source)).toEqual([{ kind: 'user' }])
     expect(prompts[0]?.type === 'user/message' && prompts[0].data.content).toEqual([
       { type: 'text', text: 'open a PR for this change' },
@@ -535,7 +537,11 @@ describe('the mods API over harness services', () => {
         id: 'a1', cwd: h.workspace, root: h.workspace, model: 'mock', turns: 1,
         version: MODS_API_VERSION,
         usage: { startedAt: agent.session.header.createdAt, context: { window: 0 }, rateLimits: [] },
-        messages: [{ role: 'user', text: 'hello', toolUses: [] }, { role: 'assistant', text: 'ok', toolUses: [] }],
+        messages: [
+          { role: 'user', text: 'hello', toolUses: [] },
+          { role: 'user', text: `Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: ${JSON.stringify(h.workspace)}.`, toolUses: [] },
+          { role: 'assistant', text: 'ok', toolUses: [] },
+        ],
       })
       expect(out.store).toEqual({ count: 7, keys: ['count'] })
       expect(out.env).toBe('yes')

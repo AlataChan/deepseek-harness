@@ -1297,6 +1297,17 @@ describe('headless recorded-session snapshots', () => {
             if (scenario.name === 'skill-root-isolation') {
               assertSkillRootIsolation(actualLogs[0]!.content)
             }
+            if (scenario.name === 'plugin-manager-inventory') {
+              const results = parseSessionLog(actualLogs[0]!.content).flatMap(event => event.type === 'tool/result' ? [event.data.message] : [])
+              expect(results).toHaveLength(1)
+              expect(results[0]!.isError).toBe(false)
+              const body = results[0]!.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
+              const value: unknown = JSON.parse(body)
+              if (typeof value !== 'object' || value === null || !('entries' in value) || !Array.isArray(value.entries)) throw new Error('plugin inventory must contain entries')
+              expect(value.entries.length).toBeGreaterThan(0)
+              for (const item of value.entries) expect(item).toHaveProperty('updatable', false)
+              expect(actualLogs[0]!.content).toContain('INVENTORY_READ')
+            }
             finalWorkspace = await captureWorkspaceSnapshot(cwd, {
               ignoredRootEntries: RUNTIME_WORKSPACE_ENTRIES,
             })

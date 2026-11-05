@@ -1,4 +1,6 @@
 /** Host timer over stored tasks; Session activation is a delivery operation. */
+import { randomUUID } from 'node:crypto'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 declare module '@deepseek-ai/dsh-llm' {
@@ -9,7 +11,7 @@ declare module '@deepseek-ai/dsh-llm' {
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import { isRecurringScheduleRecord, renderReminderFraming, renderRecurringReminderBatchFraming, resolveRecurringOccurrence } from './domain.ts'
-import type { DeliveryRetentionBounds, RecurringScheduleRecord } from './types.ts'
+import type { DeliveryRetentionBounds, RecurringScheduleRecord, ScheduleId, ScheduleExecutionPendingResult } from './types.ts'
 import type { ScheduleTask } from './storage.ts'
 import { appendDelivery } from './delivery-history.ts'
 
@@ -22,6 +24,7 @@ export class ScheduleRuntime {
   private running: Promise<void> | undefined
   private stopping = false
   private requested = false
+  private readonly executing = new Set<ScheduleId>()
 
   /**
    * @param ctx - Host services used to resume and enqueue.
@@ -32,9 +35,10 @@ export class ScheduleRuntime {
   constructor(
     private readonly ctx: Context,
     private readonly tasks: () => readonly ScheduleTask[],
-    private readonly transact: (work: () => Promise<void>) => Promise<void>,
+    private readonly transact: <T>(work: () => Promise<T>) => Promise<T>,
     private readonly commit: (task: ScheduleTask) => Promise<void>,
     private readonly retention: DeliveryRetentionBounds,
+    private readonly changed?: () => void,
   ) {}
 
   /**
@@ -77,6 +81,88 @@ export class ScheduleRuntime {
     await this.running?.catch(() => undefined)
   }
 
+  /** Whether the most recent reused-target delivery is queued or running.
+   * @param task - Retained task.
+   * @returns True while its delivery interval has not reached whole-agent idle.
+   */
+  isExecutionActive(task: ScheduleTask): boolean {
+    return this.executing.has(task.record.id)
+  }
+
+  /** Deliver now in the same FIFO used by timers and edits, retaining the scheduled occurrence.
+   * @param id - Task identity.
+   * @param signal - Cancellation before durable reservation or inbox insertion.
+   * @returns Committed task, missing task, or an already-running refusal.
+   */
+  async runNow(id: ScheduleId, signal?: AbortSignal): Promise<ScheduleTask | ScheduleExecutionPendingResult | undefined> {
+    return this.transact(async () => {
+      signal?.throwIfAborted()
+      const task = this.tasks().find(value => value.record.id === id)
+      if (task === undefined) return undefined
+      if (this.executing.has(id)) return { id, code: 'schedule_execution_pending' }
+      const { task: prepared, agent } = await this.resolveTarget(task, signal)
+      signal?.throwIfAborted()
+      const message = createUserMessage({ content: [{ type: 'text', text: isRecurringScheduleRecord(task.record)
+        ? renderRecurringReminderBatchFraming([{ record: task.record, occurrenceAt: new Date(Date.now()).toISOString() }])
+        : renderReminderFraming(task.record) }], source: { kind: 'schedule' } })
+      agent.followup(message)
+      if (!await this.ctx.sessions.flush(agent.session)) throw new Error('Session persistence did not acknowledge the reminder')
+      const { pendingDelivery: _pending, ...kept } = prepared
+      const deliveredAt = new Date(Date.now()).toISOString()
+      const result: ScheduleTask = { ...kept,
+        target: prepared.target.kind === 'new_once' ? { kind: 'session', sessionId: agent.session.id } : prepared.target,
+        updatedAt: this.revision(prepared),
+        ...appendDelivery(prepared, { scheduledAt: task.record.scheduledAt, deliveredAt,
+          messageId: message.id, targetSessionId: agent.session.id }, this.retention),
+      }
+      await this.commit(result)
+      this.watchExecution(result, agent.whenIdle())
+      this.requestDrive()
+      return result
+    })
+  }
+
+  private deliveredTask(task: ScheduleTask, sessionId: SessionId): ScheduleTask {
+    const { pendingDelivery: _pending, ...kept } = task
+    return { ...kept, target: task.target.kind === 'new_once' ? { kind: 'session', sessionId } : task.target }
+  }
+
+  private revision(task: ScheduleTask): string {
+    return new Date(Math.max(Date.now(), Date.parse(task.updatedAt ?? '') + 1 || Date.now())).toISOString()
+  }
+
+  private watchExecution(task: ScheduleTask, execution: Promise<void>): void {
+    if (task.target.kind === 'new') return
+    this.executing.add(task.record.id)
+    const finish = (): void => {
+      this.executing.delete(task.record.id)
+      if (!this.stopping) this.changed?.()
+    }
+    void execution.then(finish, finish)
+  }
+
+  private async resolveTarget(task: ScheduleTask, signal?: AbortSignal) {
+    let prepared = task
+    let sessionId: SessionId
+    if (task.target.kind === 'session') sessionId = task.target.sessionId
+    else {
+      sessionId = task.pendingDelivery?.targetSessionId
+        ?? (task.target.kind === 'new_once' ? task.target.sessionId : SessionId(`session-${randomUUID()}`))
+      if (task.pendingDelivery === undefined) {
+        signal?.throwIfAborted()
+        prepared = { ...task, pendingDelivery: { targetSessionId: sessionId }, updatedAt: this.revision(task) }
+        await this.commit(prepared)
+      }
+      // create adopts the reserved identity idempotently after a create-before-prompt crash.
+      await this.ctx.sessionController.create({ sessionId, ...task.target.create })
+    }
+    signal?.throwIfAborted()
+    if (this.ctx.get('workspaceRegistry')?.archivedSessionIds.includes(sessionId)) throw new Error('The target Session is archived')
+    const resolved = await this.ctx.sessionController.resolveAgent(sessionId)
+    if ('error' in resolved) throw resolved.error
+    return { task: prepared, agent: resolved.agent }
+  }
+
   private clearTimer(): void {
     if (this.timer !== undefined) clearTimeout(this.timer)
     this.timer = undefined
@@ -91,15 +177,16 @@ export class ScheduleRuntime {
     for (const task of due) {
       if (this.stopping) return
       if (handled.has(task.record.id)) continue
-      const group = isRecurringScheduleRecord(task.record)
-        ? due.filter(candidate => candidate.sessionId === task.sessionId && isRecurringScheduleRecord(candidate.record))
+      const group = isRecurringScheduleRecord(task.record) && task.target.kind === 'session'
+        ? due.filter(candidate => candidate.target.kind === 'session' && task.target.kind === 'session'
+          && candidate.target.sessionId === task.target.sessionId && isRecurringScheduleRecord(candidate.record))
         : [task]
       for (const member of group) handled.add(member.record.id)
       let admitted = group
       const committed = new Set<ScheduleTask['record']['id']>()
       try {
-        const resolved = await this.ctx.sessionController.resolveAgent(task.sessionId)
-        if ('error' in resolved) throw resolved.error
+        const resolved = await this.resolveTarget(task)
+        const prepared = resolved.task
         // oxlint-disable-next-line typescript/no-unnecessary-condition -- Disposal can run while Session restoration is awaited.
         if (this.stopping) return
         const now = Date.now()
@@ -126,18 +213,22 @@ export class ScheduleRuntime {
         const deliveredAt = new Date(Date.now()).toISOString()
         if (!isRecurringScheduleRecord(task.record)) {
           await this.commit({
-            ...task, status: 'inactive',
-            ...appendDelivery(task, { scheduledAt: task.record.scheduledAt, deliveredAt, messageId: message.id }, this.retention),
+            ...this.deliveredTask(prepared, resolved.agent.session.id), status: 'ended', updatedAt: this.revision(prepared),
+            ...appendDelivery(task, { scheduledAt: task.record.scheduledAt, deliveredAt,
+              messageId: message.id, targetSessionId: resolved.agent.session.id }, this.retention),
           })
+          this.watchExecution(prepared, resolved.agent.whenIdle())
           committed.add(task.record.id)
         }
         for (const { task: member, occurrence } of occurrences) {
           await this.commit({
-            ...member,
+            ...this.deliveredTask(member, resolved.agent.session.id), updatedAt: this.revision(member),
             record: { ...member.record, scheduledAt: occurrence.nextScheduledAt ?? occurrence.occurrenceAt },
-            status: occurrence.nextScheduledAt === undefined ? 'inactive' : 'active',
-            ...appendDelivery(member, { scheduledAt: occurrence.occurrenceAt, deliveredAt, messageId: message.id }, this.retention),
+            status: occurrence.nextScheduledAt === undefined ? 'ended' : 'active',
+            ...appendDelivery(member, { scheduledAt: occurrence.occurrenceAt, deliveredAt,
+              messageId: message.id, targetSessionId: resolved.agent.session.id }, this.retention),
           })
+          this.watchExecution(member, resolved.agent.whenIdle())
           committed.add(member.record.id)
         }
       } catch (error: unknown) {

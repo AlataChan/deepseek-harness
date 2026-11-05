@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * Model-facing PowerShell Consumer of the `ctx.shell` capability seam. Intended for
  * Windows compositions where a PowerShell executor (e.g.
@@ -47,7 +48,7 @@ declare module '@deepseek-ai/dsh-jobs' {
 }
 
 export const name = 'tool-pwsh'
-export const inject = ['tools', 'shell', 'systemPrompt', 'shellEnv']
+export const inject = ['workingDirectory', 'tools', 'shell', 'systemPrompt', 'shellEnv']
 
 /* jscpd:ignore-start -- the pwsh Config mirrors tool-bash's by design, like render/background. */
 /** Configuration for the pwsh tool. */
@@ -153,12 +154,18 @@ function pwshDescription(windowsSandbox: boolean): string {
  * Resolve an explicit workdir first, making a relative one session-workspace-relative;
  * otherwise use the session header cwd and leave executor defaulting as the fallback.
  */
-function resolveWorkdir(modelWorkdir: string | undefined, exec: { agent?: Agent }): string | undefined {
-  const headerCwd = exec.agent?.session.header.cwd
-  if (modelWorkdir === undefined) return headerCwd
-  if (headerCwd !== undefined && !isAbsolute(modelWorkdir)) {
-    return resolvePath(headerCwd, modelWorkdir)
+async function resolveWorkdir(
+  ctx: Context, modelWorkdir: string | undefined, exec: { agent?: Agent; signal: AbortSignal },
+): Promise<string | undefined> {
+  let cwd: string | undefined
+  try {
+    cwd = exec.agent === undefined ? undefined : await ctx.workingDirectory.ensure(exec.agent, exec.signal)
+  } catch (error) {
+    if (exec.signal.aborted) throw toolAborted()
+    throw error
   }
+  if (modelWorkdir === undefined) return cwd
+  if (cwd !== undefined && !isAbsolute(modelWorkdir)) return resolvePath(cwd, modelWorkdir)
   return modelWorkdir
 }
 
@@ -506,7 +513,7 @@ export function apply(ctx: Context, config: Config = {}): void {
         const policy = approvedMode === undefined
           ? standingPolicy
           : { ...(standingPolicy as SandboxExecutionPolicy), mode: approvedMode }
-        const workdir = resolveWorkdir(args.workdir, exec)
+        const workdir = await resolveWorkdir(ctx, args.workdir, exec)
         const request: ShellExecRequest = {
           command: args.command,
           ...workdir !== undefined ? { workdir } : {},

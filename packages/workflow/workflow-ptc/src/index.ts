@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * Workflow orchestration through the shared sandboxed Node PTC executor.
  * The VM supplies script helpers; the process applies the calling Session's file policy.
@@ -100,7 +101,7 @@ function resolveMaxTotalAgents(requested: number | undefined, ceiling: number): 
  * the seam contract.
  */
 class PtcWorkflowEngine extends WorkflowEngine {
-  static inject = ['subagents', 'ptcRuntime', 'sandboxPolicy']
+  static inject = ['workingDirectory', 'subagents', 'ptcRuntime', 'sandboxPolicy']
 
   static Config: z<Config> = z.object({
     provider: z.string().default('spawn'),

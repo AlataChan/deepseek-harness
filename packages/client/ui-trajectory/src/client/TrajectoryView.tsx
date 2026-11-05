@@ -143,6 +143,7 @@ export function TrajectoryView({
   )
   const [collapsedAssistants, setCollapsedAssistants] =
     useState<ReadonlySet<string>>(EMPTY_RECORD_IDS)
+  const [collapsedTools, setCollapsedTools] = useState<ReadonlySet<string>>(EMPTY_RECORD_IDS)
   const [timelineSelection, setTimelineSelection] = useState<TrajectoryTimeRange | null>(null)
   const actualDuration = useDuration(value => value)
   const [actualTime, setActualTime] = useState(false)
@@ -459,6 +460,15 @@ export function TrajectoryView({
   const allAssistantsCollapsed = collapsibleAssistantIds.length > 0
     && collapsibleAssistantIds.every(index => collapsedAssistants.has(index))
 
+  const collapsibleToolIds = useMemo(() => timelineTurns.flatMap(turn =>
+    turn.groups.flatMap(group => group.cells.flatMap((cell, index) =>
+      cell.kind === 'tool' && group.cells[index + 1]?.kind === 'subtool'
+        ? [trajectoryRecordId(cell)]
+        : []))),
+  [timelineTurns])
+  const allSubCallsCollapsed = collapsibleToolIds.length > 0
+    && collapsibleToolIds.every(id => collapsedTools.has(id))
+
   const toggleTurn = (turn: number) => {
     setCollapsedTurns((current) => {
       const collapsed = new Set(current)
@@ -501,6 +511,27 @@ export function TrajectoryView({
     })
   }
 
+  const toggleTool = (id: string) => {
+    setCollapsedTools((current) => {
+      const collapsed = new Set(current)
+      if (collapsed.has(id)) collapsed.delete(id)
+      else collapsed.add(id)
+      return collapsed
+    })
+  }
+
+  const toggleAllSubCalls = () => {
+    setCollapsedTools((current) => {
+      const collapsed = new Set(current)
+      if (allSubCallsCollapsed) {
+        for (const id of collapsibleToolIds) collapsed.delete(id)
+      } else {
+        for (const id of collapsibleToolIds) collapsed.add(id)
+      }
+      return collapsed
+    })
+  }
+
   const loadEarlierHistory = useCallback(async () => {
     if (!hasResidentOlderHistory && !await loadOlder()) return false
     setHistoryNodeLimit(limit => limit + HISTORY_PAGE_NODES)
@@ -524,6 +555,8 @@ export function TrajectoryView({
         onToggleAllTurns={toggleAllTurns}
         allAssistantsCollapsed={allAssistantsCollapsed}
         onToggleAllAssistants={toggleAllAssistants}
+        allSubCallsCollapsed={allSubCallsCollapsed}
+        onToggleAllSubCalls={toggleAllSubCalls}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
         t={t}
@@ -568,6 +601,8 @@ export function TrajectoryView({
           onToggleTurn={toggleTurn}
           collapsedAssistants={collapsedAssistants}
           onToggleAssistant={toggleAssistant}
+          collapsedTools={collapsedTools}
+          onToggleTool={toggleTool}
           inspectCallId={inspectCallId}
           onInspectApplied={completeViewRequest}
         />

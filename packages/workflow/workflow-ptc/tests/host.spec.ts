@@ -1,3 +1,4 @@
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { Context } from '@deepseek-ai/cordis'
 import { PtcRuntime } from '@deepseek-ai/dsh-ptc-runtime'
 import type { PtcBindingFunction, PtcRunRequest, PtcRunResult, PtcRunSpec } from '@deepseek-ai/dsh-ptc-runtime'
@@ -47,8 +48,9 @@ async function setup(execute?: (bindings: HostBindings, spec: PtcRunSpec) => Pro
   const runtime = ctx.ptcRuntime as ControlledRuntime
   runtime.language = language
   if (execute !== undefined) runtime.execute = spec => execute(spec.bindings[0]!.functions, spec)
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(PtcWorkflowEngine, { provider: 'stub' })
-  const parent = fakeParent(ctx)
+  const parent = await fakeParent(ctx)
   const start = () => ctx.workflowEngine.start({
     script: 'return null', meta: { name: 'host-test', description: 'workflow callbacks' }, parent,
   })
@@ -166,8 +168,7 @@ describe('workflow runtime outcomes', () => {
     let settled = false
     void handle.result.then(() => { settled = true })
     try {
-      await new Promise(resolve => setImmediate(resolve))
-      expect(settled).toBe(true)
+      await vi.waitFor(() => { expect(settled).toBe(true) })
       expect(disposed).toHaveBeenCalledOnce()
       await expect(outputWait).rejects.toBe('workflow settled')
       expect((await handle.result).stopReason).toBe('completed')

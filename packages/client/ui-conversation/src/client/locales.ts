@@ -9,6 +9,11 @@ const PLAN_NEXT_ACTION_EN = 'describe your task to generate plan'
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
+  'quote.remove': '移除引用',
+  'views.more': '更多会话视图',
+  'views.pin': '固定{name}',
+  'views.unpin': '取消固定{name}',
+  'input.sending': '正在发送消息',
   'shortcut.newline': '换行',
   'shortcut.complementary': '使用互补的 Queue／Steer 方式',
   'shortcut.slash': '打开命令菜单',
@@ -94,6 +99,14 @@ export const zh = {
   'tool.title.listSchedules': '查看定时任务',
   'tool.title.deleteSchedule': '删除定时任务',
   'tool.title.updateSchedule': '修改定时任务',
+  'tool.title.viewSchedule': '查看定时任务',
+  'tool.title.editSchedule': '编辑定时任务',
+  'detail.schedule.active': '已启用',
+  'detail.schedule.paused': '已暂停',
+  'detail.schedule.ended': '已结束',
+  'detail.schedule.destination': '投递目标',
+  'detail.schedule.new_once': '新建一个会话并复用',
+  'detail.schedule.new': '每次运行新建会话',
   'detail.state': '状态',
   'detail.todo.completed': '已完成',
   'detail.todo.in_progress': '进行中',
@@ -385,6 +398,11 @@ export type ConversationKey = keyof typeof zh
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
+  'quote.remove': 'Remove quote',
+  'views.more': 'More conversation views',
+  'views.pin': 'Pin {name}',
+  'views.unpin': 'Unpin {name}',
+  'input.sending': 'Sending message',
   'shortcut.newline': 'New line',
   'shortcut.complementary': 'Use the complementary Queue / Steer action',
   'shortcut.slash': 'Open command menu',
@@ -470,6 +488,14 @@ export const en = {
   'tool.title.listSchedules': 'List reminders',
   'tool.title.deleteSchedule': 'Delete reminder',
   'tool.title.updateSchedule': 'Update reminder',
+  'tool.title.viewSchedule': 'View reminder',
+  'tool.title.editSchedule': 'Edit reminder',
+  'detail.schedule.active': 'Enabled',
+  'detail.schedule.paused': 'Paused',
+  'detail.schedule.ended': 'Ended',
+  'detail.schedule.destination': 'Destination',
+  'detail.schedule.new_once': 'Create one session and reuse it',
+  'detail.schedule.new': 'Create a session for each run',
   'detail.state': 'Status',
   'detail.todo.completed': 'Completed',
   'detail.todo.in_progress': 'In progress',

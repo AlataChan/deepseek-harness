@@ -1,3 +1,5 @@
+import { SessionId } from '@deepseek-ai/dsh-session'
+import { mountDirectoryFixture, createDirectoryFixtureAgent } from '@deepseek-ai/dsh-working-directory-testkit'
 /**
  * Guarded apply_patch over the filesystem seam: observation, sandbox,
  * delete, move, partial commit, and cancellation.
@@ -193,17 +195,29 @@ async function mount(
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(fs, { cwd: dir })
   if (options?.policy !== false) await ctx.plugin(FsPolicy)
+  await mountDirectoryFixture(ctx, dir)
   fiber = await ctx.plugin(ToolFs, { applyPatch: true })
   return { ctx, session }
 }
 
-function call(ctx: Context, session: object, input: string, signal?: AbortSignal) {
+const realActors = new WeakMap<object, ReturnType<typeof createDirectoryFixtureAgent>>()
+let actorSequence = 0
+function fixtureAgent(ctx: Context, session: object): ReturnType<typeof createDirectoryFixtureAgent> {
+  let actor = realActors.get(session)
+  if (actor === undefined) {
+    actor = createDirectoryFixtureAgent(ctx, SessionId(`patch-${++actorSequence}`), dir)
+    realActors.set(session, actor)
+  }
+  return actor
+}
+
+async function call(ctx: Context, session: object, input: string, signal?: AbortSignal) {
   return ctx.tools.execute({
     signal: signal ?? new AbortController().signal,
     callId: ToolCallId(`call-${Math.random().toString(16).slice(2)}`),
     name: 'apply_patch',
     arguments: { input },
-    agent: { session } as never,
+    agent: await fixtureAgent(ctx, session),
   })
 }
 
@@ -218,9 +232,11 @@ describe('apply_patch activation', () => {
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalFileSystem, { cwd: dir })
+    await mountDirectoryFixture(ctx, dir)
     fiber = await ctx.plugin(ToolFs)
     expect(ctx.tools.get('apply_patch')).toBeUndefined()
     await fiber.dispose()
+    await mountDirectoryFixture(ctx, dir)
     fiber = await ctx.plugin(ToolFs, { applyPatch: false })
     expect(ctx.tools.get('apply_patch')).toBeUndefined()
   })
@@ -292,7 +308,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const mismatch = await call(ctx, session, patch('*** Update File: notes.txt', '@@', '-goodbye', '+hi'))
     expect(mismatch.isError).toBe(true)
@@ -314,7 +330,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-notes'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const updated = await call(ctx, session, patch('*** Update File: notes.txt', '@@', '-hello', '+hi'))
     expect(updated.isError).toBe(false)
@@ -372,7 +388,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-real-link'),
       name: 'read',
       arguments: { file_path: 'real.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     await writeFile(join(dir, 'dest.txt'), 'dest\n')
     await symlink('dest.txt', join(dir, 'dest-link'))
@@ -395,7 +411,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-real'),
       name: 'read',
       arguments: { file_path: 'real.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const same = await call(ctx, session, patch(
       '*** Update File: real.txt', '*** Move to: real.txt', '@@', '-hello', '+hi',
@@ -414,14 +430,14 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-crlf'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: ToolCallId('call-read-crlf-move'),
       name: 'read',
       arguments: { file_path: 'move.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const updated = await call(ctx, session, patch('*** Update File: notes.txt', '@@', '-hello', '+hi'))
     expect(updated.isError).toBe(false)
@@ -442,14 +458,14 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-bin'),
       name: 'read',
       arguments: { file_path: 'bin.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: ToolCallId('call-read-notes-mismatch'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const binary = await call(ctx, session, patch('*** Update File: bin.txt', '@@', '-a', '+b'))
     expect(binary.isError).toBe(true)
@@ -484,14 +500,14 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-delete'),
       name: 'read',
       arguments: { file_path: 'real.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: ToolCallId('call-read-move'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const removed = await call(ctx, session, patch('*** Delete File: real.txt'))
     expect(removed.isError).toBe(false)
@@ -517,7 +533,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-conflict'),
       name: 'read',
       arguments: { file_path: 'real.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const conflict = await call(ctx, session, patch(
       '*** Update File: real.txt', '*** Move to: other.txt', '@@', '-hello', '+hi',
@@ -536,7 +552,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-partial'),
       name: 'read',
       arguments: { file_path: 'real.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const local = ctx.fs as LocalFileSystem
     local.internals.removeFile = async () => {
@@ -564,7 +580,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-abort-delete'),
       name: 'read',
       arguments: { file_path: 'real.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const aborted = await call(ctx, session, patch('*** Delete File: real.txt'))
     expect(aborted.isError).toBe(false)
@@ -581,7 +597,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-gone'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     await unlink(join(dir, 'notes.txt'))
     const missing = await call(ctx, session, patch('*** Update File: notes.txt', '@@', '-hello', '+hi'))
@@ -639,6 +655,7 @@ describe('apply_patch commits', () => {
     await ctx.plugin(PatchRuntime)
     await ctx.plugin(AbortingFs, { cwd: dir })
     await ctx.plugin(FsPolicy)
+    await mountDirectoryFixture(ctx, process.cwd())
     fiber = await ctx.plugin(ToolFs, { applyPatch: true })
     const fs = ctx.fs as AbortingFs
     fs.mode = 'abort-after'
@@ -651,23 +668,17 @@ describe('apply_patch commits', () => {
       })
       return { logs: [] }
     }
-    const agent = {
-      ctx: new Context(),
-      model: { current: () => undefined, origin: () => null, select: () => {} },
-      options: {},
-      session: {
-        header: { cwd: dir },
-        append: (type: string, payload: (typeof dispatched)[number]['payload']) => {
-          dispatched.push({ type, payload })
-        },
-      },
-    }
+    const agent = await createDirectoryFixtureAgent(ctx, SessionId('ptc-cancel'), dir)
+    ctx.on('session/event', (session, event) => {
+      if (session !== agent.session || event.type !== 'tool/ptc-dispatch') return
+      dispatched.push({ type: event.type, payload: event.data })
+    })
     const outer = await ctx.tools.execute({
       signal: fs.controller.signal,
       callId: ToolCallId('call-ptc-cancel'),
       name: RUN_CODE_NAME,
       arguments: { code: 'await tools.apply_patch({ input })', description: 'Apply a patch' },
-      agent: agent as never,
+      agent: agent,
     })
     const settled = dispatched.find(event => event.type === 'tool/ptc-dispatch' && event.payload.meta !== undefined)
     expect(settled?.payload.isError).toBe(true)
@@ -703,6 +714,7 @@ describe('apply_patch commits', () => {
     await ctx.plugin(SandboxPolicyService, { mode: 'read-only', workspaceRoot: dir })
     await ctx.plugin(SandboxedFileSystem, { cwd: dir })
     await ctx.plugin(FsPolicy)
+    await mountDirectoryFixture(ctx, process.cwd())
     fiber = await ctx.plugin(ToolFs, { applyPatch: true })
     const denied = await ctx.tools.execute({
       signal: new AbortController().signal,
@@ -735,7 +747,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-move-dest'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const moved = await call(ctx, session, patch(
       '*** Add File: dest.txt', '+one',
@@ -754,7 +766,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-twice'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const updated = await call(ctx, session, patch(
       '*** Update File: notes.txt', '@@', '-hello', '+hi',
@@ -795,7 +807,7 @@ describe('apply_patch commits', () => {
         callId: ToolCallId(`call-read-${file}`),
         name: 'read',
         arguments: { file_path: file },
-        agent: { session } as never,
+        agent: await fixtureAgent(ctx, session),
       })
     }
     await writeFile(join(dir, 'other.txt'), 'changed\n')
@@ -823,7 +835,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-long'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const line = 'a'.repeat(90)
     const mismatch = await call(ctx, session, patch('*** Update File: notes.txt', '@@', `-${line}`, '+b'))
@@ -842,7 +854,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-move-plain'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     const moved = await call(ctx, session, patch(
       '*** Update File: notes.txt', '*** Move to: other.txt', '@@', '-hello', '+hello',
@@ -890,7 +902,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-later-notes'),
       name: 'read',
       arguments: { file_path: 'notes.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     fs.armed = true
     fs.later = 'a\0b'
@@ -913,7 +925,7 @@ describe('apply_patch commits', () => {
       callId: ToolCallId('call-read-later-move'),
       name: 'read',
       arguments: { file_path: 'move.txt' },
-      agent: { session } as never,
+      agent: await fixtureAgent(ctx, session),
     })
     fs.armed = true
     fs.later = 'a\0b'

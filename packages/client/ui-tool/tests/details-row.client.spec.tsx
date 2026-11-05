@@ -7,6 +7,7 @@ import { IconUsersOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { en } from '@deepseek-ai/dsh-client-ui-conversation/src/client/locales.ts'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
+import { toolTitleKey } from '../src/client/tool/models/tool-call-model.ts'
 import { detailsCardModel, todosDetail } from '../src/client/tool/models/details-card-model.ts'
 import { DetailsRow, detailsToolview } from '../src/client/tool/toolviews/details-row.tsx'
 import { useDisclosure } from '@deepseek-ai/dsh-client-ui-chat/src/client/chat/use-disclosure.ts'
@@ -137,8 +138,36 @@ describe('DetailsRow', () => {
       for (const dispose of callback()) dispose()
     })
     detailsToolview.apply({ slots: { inject, register } } as never)
-    expect(register.mock.calls).toHaveLength(37)
+    expect(register.mock.calls).toHaveLength(39)
     expect(register.mock.calls.map(([spec]) => spec)).toContainEqual({ name: 'tool.call.toolview', key: 'cordis_inspect_query', locale: 'conversation' })
     expect(register.mock.calls.map(([spec]) => spec)).toContainEqual({ name: 'tool.call.toolview', key: 'schedule_update', locale: 'conversation' })
   })
+})
+
+it.each(['active', 'paused', 'ended'])('renders current paged schedule tools and %s target state without changing legacy results', (status) => {
+  const task = { ...schedule, status, target: { kind: 'session', sessionId: 'destination' } }
+  const page = { items: [task], shown: 1, total: 1, limit: 100, offset: 0 }
+  const view = detailsCardModel(result('schedule_view', task), t, 'en')
+  expect(view?.items[0]?.fields).toContainEqual({ label: 'Destination', value: 'destination' })
+  expect(view?.items[0]?.fields).toContainEqual({ label: 'Status', value: status === 'active' ? 'Enabled' : status === 'paused' ? 'Paused' : 'Ended' })
+  expect(detailsCardModel(result('schedule_list', page), t, 'en')?.items).toEqual(view?.items)
+  expect(detailsCardModel(result('schedule_edit', task), t, 'en')).toEqual(view)
+  expect(detailsCardModel(result('schedule_edit', { id: task.id, deleted: true }), t, 'en')?.items[0]?.fields)
+    .toContainEqual({ label: 'Status', value: 'Deleted' })
+  expect(detailsCardModel(result('schedule_delete', { id: task.id, deleted: true }), t, 'en')?.items[0]?.fields)
+    .toContainEqual({ label: 'Status', value: 'Deleted' })
+})
+it.each(['new_once', 'new'])('renders the %s destination without assuming an existing Session', (kind) => {
+  const task = { ...schedule, status: 'active', target: { kind, sessionId: 'reserved', create: {} } }
+  expect(detailsCardModel(result('schedule_view', task), t, 'en')?.items[0]?.fields).toContainEqual({
+    label: 'Destination', value: kind === 'new_once' ? 'Create one session and reuse it' : 'Create a session for each run',
+  })
+})
+
+it('names view and edit separately while retaining historical update/delete titles', () => {
+  expect(t(toolTitleKey('schedule_view'))).toBe('View reminder')
+  expect(t(toolTitleKey('schedule_edit'))).toBe('Edit reminder')
+  expect(toolTitleKey('schedule_view')).not.toBe(toolTitleKey('schedule_delete'))
+  expect(toolTitleKey('schedule_update')).toBe('tool.title.updateSchedule')
+  expect(toolTitleKey('schedule_delete')).toBe('tool.title.deleteSchedule')
 })

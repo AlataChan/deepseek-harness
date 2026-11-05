@@ -108,6 +108,30 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'workingDirectory',
+    pkg: 'working-directory',
+    title: 'Session execution directory',
+    mode: 'core',
+    consumers: ['tool-working-directory', 'tool-fs', 'tools', 'experimental-client-ui-forge'],
+    note: 'Keeps execution cwd separate from original workspace identity and logs directory changes and required model context.',
+  },
+  {
+    key: 'worktrees',
+    pkg: 'experimental-worktree',
+    title: 'Local Git checkout allocation and restoration',
+    mode: 'service',
+    consumers: ['experimental-tool-worktree', 'experimental-client-ui-forge'],
+    note: 'Creates and restores local checkouts without merge, publication or expanded sandbox authority.',
+  },
+  {
+    key: 'forgePanel',
+    pkg: 'experimental-client-ui-forge',
+    title: 'Local Changes panel',
+    mode: 'service',
+    consumers: ['experimental-worktree-review'],
+    note: 'Serves checkout requests, bounded local diffs and missing-checkout recovery to the optional Client panel.',
+  },
+  {
     key: 'hmr',
     pkg: 'hmr',
     title: 'Serialized module and configuration reloads',

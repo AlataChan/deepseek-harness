@@ -1,6 +1,9 @@
 /** Strict per-session header/body content inserted into the resident conversation layout. */
 
 import clsx from 'clsx'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { Menu, MenuItemButton, IconPinOutlineRegular, Tooltip, IconEllipsisOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { FIXED_VIEW_ID } from '../view-pins.ts'
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
@@ -15,6 +18,11 @@ export type ConversationSessionProps = ConversationSessionSlotProps
 
 /** Full props composed from the strict session header contract. */
 export type ConversationSessionHeaderProps = ConversationSessionHeaderSlotProps
+
+/** Estimate whether a 13px label exceeds its header cell. */
+function labelNeedsTooltip(label: string): boolean {
+  return Array.from(label).reduce((size, glyph) => size + (/[^\u0000-\u00FF]/u.test(glyph) ? 13 : 7), 0) > 88
+}
 
 interface Breadcrumb {
   readonly id: SessionId
@@ -57,13 +65,36 @@ function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrum
  */
 export function ConversationSessionHeader({
   sessionId, hideChrome, useSessions, useConversationViews, useStore,
-  renderSlot, open, selectView, t,
+  renderSlot, open, selectView, setPinned, useEntryPins, t,
 }: ConversationSessionHeaderProps) {
   const tabs = useConversationViews(value => value)
   const selectedId = useStore(s => s.view)
   const active = resolveActiveView(tabs, selectedId)
   const ancestry = useSessions(s => deriveAncestry(s, sessionId), equalBreadcrumbs)
   const showTabs = !hideChrome && tabs.length > 1
+  const unpinned = useEntryPins(ids => ids)
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [limit, setLimit] = useState(Number.POSITIVE_INFINITY)
+  const [moreOpen, setMoreOpen] = useState(false)
+  useLayoutEffect(() => {
+    const row = rowRef.current
+    if (row === null) return
+    const measure = (): void => {
+      if (row.clientWidth > 0) setLimit(Math.max(1, Math.floor((row.clientWidth - 48) / 120)))
+    }
+    measure()
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
+    observer?.observe(row)
+    return () => { observer?.disconnect() }
+  }, [showTabs])
+  const preferred = [...tabs.filter(tab => tab.id === FIXED_VIEW_ID),
+    ...tabs.filter(tab => tab.id !== FIXED_VIEW_ID && !unpinned.includes(tab.id))]
+  const visible = preferred.slice(0, limit)
+  const closeMore = (): void => { setMoreOpen(false) }
+  const openMoreView = (id: string): void => { selectView(id); closeMore() }
+  const entries = tabs.filter(tab => tab.id !== FIXED_VIEW_ID).map(tab => ({
+    id: tab.id, label: tab.label, active: tab.id === active?.id, pinned: !unpinned.includes(tab.id),
+  }))
   return (
     <>
       <div className={css.titleRow}>
@@ -140,8 +171,8 @@ export function ConversationSessionHeader({
       {showTabs && (
         // data-conversation-tabs: marks the tab strip, which the window-chrome
         // geometry and the browser coverage lane anchor on.
-        <div className={css.tabs} role="tablist" data-conversation-tabs="">
-          {tabs.map(viewTab => (
+        <div ref={rowRef} className={css.tabs} role="tablist" data-conversation-tabs="">
+          {visible.map(viewTab => (
             <button
               key={viewTab.id}
               type="button"
@@ -150,9 +181,24 @@ export function ConversationSessionHeader({
               className={clsx(css.tab, viewTab.id === active?.id && css.tabActive)}
               onClick={() => { selectView(viewTab.id) }}
             >
-              {viewTab.label}
+              <Tooltip label={viewTab.label} portal disabled={!labelNeedsTooltip(viewTab.label)}>
+                <span className={css.tabLabel}>{viewTab.label}</span>
+              </Tooltip>
             </button>
           ))}
+          {(entries.length > 0) && <Menu open={moreOpen} onClose={closeMore} portal autoFocus
+            anchor={<button type="button" className={css.tab} aria-label={t('views.more')} aria-haspopup="menu"
+              aria-expanded={moreOpen} onClick={() => { setMoreOpen(value => !value) }}><IconEllipsisOutlineRegular size={16} /></button>}>
+            {renderSlot('conversation.session.header.views.actions', {
+              entries, onOpen: openMoreView, onPinnedChange: setPinned, onDismiss: closeMore,
+            }, { fallback: <>{entries.map(entry => <div key={entry.id} className={css.moreRow}>
+              <MenuItemButton onSelect={() => { openMoreView(entry.id) }}>{entry.label}</MenuItemButton>
+              <button type="button" className={css.pinToggle} aria-label={t(entry.pinned ? 'views.unpin' : 'views.pin', { name: entry.label })}
+                aria-pressed={entry.pinned} onClick={() => { setPinned(entry.id, !entry.pinned) }}>
+                <IconPinOutlineRegular size={16} />
+              </button>
+            </div>)}</> })}
+          </Menu>}
         </div>
       )}
     </>

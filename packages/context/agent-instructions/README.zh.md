@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 当 agent 需要依据工作区自身的指令文件工作时，挂载此插件。`dsh-base` 已包含它，并为每条指令链给予 65,536 字节预算，因此基于 base 的 profile 仅在需要其他 `maxBytes` 时替换该配置行；没有文件系统提供方的树加载不到任何内容，直到提供方出现。
@@ -76,6 +77,7 @@ export interface Config {
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -111,6 +113,7 @@ export interface Config {
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 包级约定不够用时阅读以下页面。它们从指令文件格式逐步进入设计决策与穷尽式配置。
@@ -123,6 +126,9 @@ export interface Config {
 -----
 
 <a id="model-experience"></a> <a id="prompt-shape"></a>
+
+项目指令发现使用已校验的执行目录。全局指令位置和配置的独立字节预算保持原有含义。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 ## 模型体验
 
 ### 基线上下文
@@ -221,6 +227,7 @@ The previously loaded instructions from this file no longer apply.
 - **预算不在指令链之间共享**：一条链未用完的字节不会让给另一条链，因此即使项目指令链只用了 1 KiB，70 KiB 的用户全局文件也会被截断到 `maxBytes` 以内。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

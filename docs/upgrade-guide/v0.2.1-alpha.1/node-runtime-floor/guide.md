@@ -19,3 +19,5 @@ People who run this repository from source, and people who start the TypeScript 
 2. In this checkout, confirm root `package.json` `engines.node` is `>=24.9.0`. `dsh` calls `assertSupportedNode(process.version)` before it selects a profile. An older Node prints the diagnostic to stderr and exits 1. Start only through a `dsh` profile, for example `pnpm dsh --profile headless`.
 3. Packaged desktop users skip Node installation. `scripts/build-dmg.sh` and `scripts/build-exe.mjs` set `NODE_VERSION` to `24.14.0`, and the app provisions that runtime.
 4. Companion discovery uses `resolveInstalledRuntime` in `@deepseek-ai/dsh-installed-runtime`. An unsupported Node makes the JSON CLI print one `{ "error": "..." }` line that names `>=24.9.0` and exit 1. A supported Node prints `v24.9.0` or newer from `node --version`.
+
+The source Host compiler uses a 6 GiB V8 heap limit. The integrated Host test program measured about 4.3 GiB with extended diagnostics; the previous 4 GiB limit exhausted its heap. This build setting does not change the installed application runtime limit or omit tests.

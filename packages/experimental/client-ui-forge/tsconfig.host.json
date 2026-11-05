@@ -1,0 +1,63 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src/*.ts"
+  ],
+  "exclude": [
+    "src/css-modules.d.ts"
+  ],
+  "references": [
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../api/remotes/tsconfig.host.json"
+    },
+    {
+      "path": "../../api/session-controller/tsconfig.host.json"
+    },
+    {
+      "path": "../worktree"
+    },
+    {
+      "path": "../../fs/fs"
+    },
+    {
+      "path": "../../sandbox/sandbox"
+    },
+    {
+      "path": "../../sandbox/sandbox-policy"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../subprocess/subprocess"
+    },
+    {
+      "path": "../../util/timeout"
+    },
+    {
+      "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../util/values"
+    },
+    {
+      "path": "../../session/working-directory"
+    },
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    }
+  ]
+}

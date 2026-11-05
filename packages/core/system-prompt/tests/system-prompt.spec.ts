@@ -694,3 +694,64 @@ describe('SystemPrompt', () => {
     })
   })
 })
+
+describe('required literal runtime context', () => {
+  it('retains required facts under suppression and refreshes them without rerunning accepted guidance', async () => {
+    const ctx = new Context()
+    try {
+      await ctx.plugin(SystemPrompt, { includeRuntimeContext: false })
+      let current = '/project/{{literal}}'
+      let guidanceCalls = 0
+      let waterfallCalls = 0
+      ctx.systemPrompt.section({ name: 'guidance', order: 1, text: () => { guidanceCalls++; return 'Accepted guidance.' } })
+      ctx.systemPrompt.context({ name: 'directory', order: 100, required: true, interpolate: false, text: () => current })
+      ctx.systemPrompt.context({ name: 'optional', order: 200, text: 'Optional.' })
+      ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
+        waterfallCalls++
+        const accepted = await next()
+        return { ...accepted, contexts: [] }
+      })
+      const accepted = await ctx.systemPrompt.assemble()
+      current = '/project/{{changed}}'
+      const refreshed = ctx.systemPrompt.refreshContext(accepted)
+      expect(refreshed.contexts).toEqual([{ name: 'directory', text: current, interpolate: false }])
+      expect(renderContextSnapshot(refreshed)).toContain('/project/{{changed}}')
+      expect(renderPrompt(refreshed)).toContain('Accepted guidance.')
+      expect(guidanceCalls).toBe(1)
+      expect(waterfallCalls).toBe(1)
+    } finally { await ctx.fiber.dispose() }
+  })
+})
+
+it('refreshes accepted runtime facts while retaining waterfall-only facts and restoring required registry order', async () => {
+  const ctx = new Context()
+  try {
+    await ctx.plugin(SystemPrompt)
+    ctx.systemPrompt.context({ name: 'first', order: 100, required: true, text: 'First.' })
+    const removeOptional = ctx.systemPrompt.context({ name: 'middle', order: 200, text: 'Middle.' })
+    ctx.systemPrompt.context({ name: 'last', order: 300, required: true, text: 'Last.' })
+    ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
+      const accepted = await next()
+      return { ...accepted, contexts: [accepted.contexts.find(entry => entry.name === 'middle')!, { name: 'waterfall', text: 'Accepted.' }] }
+    })
+    const accepted = await ctx.systemPrompt.assemble()
+    const ordered = ctx.systemPrompt.refreshContext(accepted)
+    expect(ordered.contexts.map(entry => entry.name)).toEqual(['first', 'middle', 'waterfall', 'last'])
+    removeOptional()
+    const retained = ctx.systemPrompt.refreshContext(ordered)
+    expect(retained.contexts).toEqual(ordered.contexts)
+    ctx.systemPrompt.suppressRuntimeContext()
+    expect(ctx.systemPrompt.refreshContext(retained).contexts.map(entry => entry.name)).toEqual(['first', 'last'])
+  } finally { await ctx.fiber.dispose() }
+})
+
+it('retains explicit deferred tool guidance in an accepted assembly', async () => {
+  const ctx = new Context()
+  try {
+    await ctx.plugin(SystemPrompt)
+    ctx.systemPrompt.tools(() => ({ schemas: [{ name: 'deferred', description: 'Deferred tool', parameters: {}, deferLoading: true }] }))
+    expect((await ctx.systemPrompt.assemble()).tools).toEqual([
+      { name: 'deferred', description: 'Deferred tool', parameters: {}, deferLoading: true },
+    ])
+  } finally { await ctx.fiber.dispose() }
+})

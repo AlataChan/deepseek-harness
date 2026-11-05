@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/test-support/working-directory-testkit/README.md
+/:
+  en: b27d58ed3cc456ab
+  zh: 080727b58facb634
+/dsh-working-directory-testkit:
+  en: 7cd0e27afef0581e
+  zh: 7dc3f83b61cc1d32
+/dsh-working-directory-testkit/summary:
+  en: 806c0f8479154619
+  zh: 9bdb0c5f3b1b562e
+/dsh-working-directory-testkit/table-of-contents:
+  en: 638dd73bc5b9dc7a
+  zh: e21f8f10127ba8c4
+/dsh-working-directory-testkit/model-experience:
+  en: f11940d5d17c141e
+  zh: d61d7c8e239c9653
+/dsh-working-directory-testkit/model-experience/kv-cache-effect:
+  en: 373a426274911b60
+  zh: 2c57135620bf845f
+/dsh-working-directory-testkit/known-limitations-and-deferred-work:
+  en: 86e90a285ec80ae7
+  zh: a11b928c7cf77d18
+/dsh-working-directory-testkit/known-limitations-and-deferred-work/dev-note:
+  en: 7972e4b2005ec9a4
+  zh: 754c49ec538c164c

@@ -19,6 +19,8 @@
 
 | 工具包 | 模型可见名称 | 依赖 | 写入／影响 | 随产品发布的别名 | 部署说明 |
 | --- | --- | --- | --- | --- | --- |
+| `@deepseek-ai/dsh-tool-working-directory` | `working_directory` | `ctx.tools`, `ctx.workingDirectory` | `tool/call`, `working-directory/change`, `user/message`, `tool/result` | - | - |
+| `@deepseek-ai/dsh-experimental-tool-worktree` | `create_worktree` | `ctx.tools`, `ctx.worktrees`, `ctx.workingDirectory` | `tool/call`, `Git checkout and branch`, `working-directory/change`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-plugin-manager` | `plugin_manager` | `ctx.tools`, `ctx.pluginManager`, `ctx.sandboxPolicy` | `tool/call`, `tool/result`, `user/message` | - | - |
 | `@deepseek-ai/dsh-mcp-resources` | `list_mcp_resource_templates`, `list_mcp_resources`, `read_mcp_resource` | `ctx.tools`, `ctx.mcpResources` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-experimental-browser-use-stagehand-native` | `stagehand_act`、`stagehand_extract`、`stagehand_navigate`、`stagehand_observe`、`stagehand_screenshot`、`stagehand_tabs` | `ctx.browserUse`、`ctx.agents`、`ctx.tools`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | - |
@@ -37,7 +39,7 @@
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`、`grep` | `ctx.tools`、`ctx.subprocess`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | glob 和 grep 是无条件可用的发现工具，通过 ctx.subprocess spawn 随包提供的 ripgrep 二进制文件（`@vscode/ripgrep`），并作为普通前台调用运行，绝不作为后台任务；无需在宿主机安装 `rg`，也不经过 shell 层。本目录使用 `sampleOverCapGlobResults: true`；部署必须显式选择该行为。结果超过上限时，会通过可选的 ctx.spillStore 后端保存完整的格式化列表；在共置部署中，如果后端公开本地路径，返回的定位信息可供后续读取／搜索。 |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`、`terminal_list`、`terminal_open`、`terminal_read`、`terminal_send`、`terminal_signal` | `ctx.tools`、`ctx.terminals`、`ctx.systemPrompt`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | 这 6 个终端工具需要选择启用，用于补充一次性 bash／文件系统工具。`terminal_send(run_in_background: true)` 会注册到 `ctx.jobs`；schema 不包含 TUI、具名按键序列、BEL、调整尺寸、自动启动和跨 agent 共享。 |
 | `@deepseek-ai/dsh-tool-goal` | `create_goal`、`get_goal`、`update_goal` | `ctx.tools`、`ctx.agents`、`ctx.goals`、`ctx.systemPrompt`、`a calling Agent in an authorized open turn` | `tool/call`、`goal/change for mutations`、`tool/result` | - | create、edit、pause 和 resume 要求直接来自人类的根权限；complete 和 blocked 也接受确切的当前 Goal Round。blocked 的默认下限是 3 个获准的 Round。 |
-| `@deepseek-ai/dsh-tool-schedule` | `schedule_create`、`schedule_delete`、`schedule_list`、`schedule_update` | `ctx.tools`、`ctx.schedule` | `tool/call`、Schedule storage domain 创建、更新或删除、`tool/result` | - | preset 或 Agent scope 挂载本包；由 preset 决定哪些 agent 获得这四个管理工具。每次调用都作用于调用方 Agent 的 Session。接受 after_seconds、显式绝对 at、有界固定速率 every_seconds、带显式 IANA 时区的每日与每周本地时间，以及作为五字段表达式的 cron。管理使用宿主 storage domain；到期消息会恢复原 Session。 |
+| `@deepseek-ai/dsh-tool-schedule` | `schedule_create`、`schedule_edit`、`schedule_list`、`schedule_view` | `ctx.tools`、`ctx.schedule` | `tool/call`、`Schedule storage domain create, update, or delete`、`tool/result` | - | 预设决定哪些智能体获得四个管理工具。时间规则保持六种；宿主领域保存任务，目标可为已有会话、首次新建后复用或每次新建。 |
 | `@deepseek-ai/dsh-tool-lsp` | `lsp` | `ctx.tools`、`ctx.lsp`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，因此其模型可见 schema 在更换提供方时保持稳定。运行时要求已注册提供方，例如 `@deepseek-ai/dsh-lsp-stdio`；如果没有提供方，查询会返回结构化 `LSP_UNAVAILABLE` 错误，而不会改变 schema。 |
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents every fresh round)` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 固定的前台工作流会在每个 Round 启动一个全新的结构化子级；模型只能选择不可变目标和可选的 Round 上限。 |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.tools`、`ctx.agents`、`ctx.skills` | `tool/call`、`tool/result`、`user/message replacement catalogs via agent.inject()` | - | - |
@@ -51,6 +53,54 @@
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
+
+<a id="deepseek-aidsh-tool-working-directory"></a>
+
+## `@deepseek-ai/dsh-tool-working-directory`
+
+### `working_directory`
+
+读取当前工作目录，或使用 cd 切换目录。相对路径以当前目录为基准。已有 shell 与正在运行的进程保持各自的目录。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "cd": {
+      "type": "string",
+      "description": "Existing directory to enter. Omit to read the current directory."
+    }
+  }
+}
+```
+
+来源： [`packages/session/tool-working-directory/src/index.ts`](../packages/session/tool-working-directory/src/index.ts)
+
+<a id="deepseek-aidsh-experimental-tool-worktree"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-worktree`
+
+### `create_worktree`
+
+从本地提交、分支或标签创建新的 Git 分支和工作目录，再将本会话的执行目录切换至其中。未提交文件保留在原检出目录。已有名称会被拒绝。使用 working_directory 的 cd 参数离开后，检出目录和分支仍然保留。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "New branch name, also used as the checkout directory: a few lowercase words joined by hyphens that describe the task, such as fix-login-retry. Omit to generate a unique name."
+    },
+    "from": {
+      "type": "string",
+      "description": "Local commit, branch, or tag to start from. Defaults to HEAD; no fetch is performed."
+    }
+  }
+}
+```
+
+来源： [`packages/experimental/tool-worktree/src/index.ts`](../packages/experimental/tool-worktree/src/index.ts)
 
 <a id="deepseek-aidsh-plugin-manager"></a>
 
@@ -1421,281 +1471,635 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
 
 ### `schedule_create`
 
-在当前会话中创建一条提醒，到期时投递 prompt。请恰好提供一个时间参数：after_seconds、at、every_seconds、daily、weekly 或 cron。时区中不存在的本地时间会被跳过；重复出现的本地时间只在较早的时刻触发一次。停机后，重复提醒只投递最近错过的一次。崩溃后可能重复投递。
+创建具有一条时间规则和可选目标的定时任务。默认目标在首次投递时新建一个会话，后续复用该会话。停机后，周期任务仅投递最近一次错过的触发。崩溃可能导致重复投递。仅在用户明确要求时创建或修改任务；正在执行任务此前获得的明确授权仍然有效。
 
 ```json
 {
   "type": "object",
   "properties": {
-    "prompt": {
-      "type": "string",
-      "description": "Reminder content to present when the target becomes due."
-    },
     "title": {
       "type": "string",
-      "description": "Task name of at most 120 characters, shown on the task card and in task lists."
+      "description": "Task name, at most 120 characters."
     },
-    "after_seconds": {
-      "type": "number",
-      "description": "Delay in whole seconds."
+    "prompt": {
+      "type": "string",
+      "description": "Instruction delivered at each occurrence."
     },
-    "every_seconds": {
-      "type": "number",
-      "description": "Fixed-rate interval in whole seconds, at least 60, aligned to the creation time; changing it with schedule_update re-aligns it to the save time."
-    },
-    "daily": {
-      "type": "object",
-      "description": "Every day at a local time.",
-      "additionalProperties": false,
-      "properties": {
-        "time": {
-          "type": "string",
-          "description": "HH:mm:ss with optional 1-3 fractional digits, for example 23:00:00."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        }
-      },
-      "required": [
-        "time",
-        "time_zone"
-      ]
-    },
-    "weekly": {
-      "type": "object",
-      "description": "On the given weekdays at a local time.",
-      "additionalProperties": false,
-      "properties": {
-        "time": {
-          "type": "string",
-          "description": "HH:mm:ss with optional 1-3 fractional digits, for example 09:00:00."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        },
-        "weekdays": {
-          "type": "array",
-          "description": "ISO weekdays, Monday 1 through Sunday 7, without repetitions.",
-          "items": {
-            "type": "integer"
-          }
-        }
-      },
-      "required": [
-        "time",
-        "time_zone",
-        "weekdays"
-      ]
-    },
-    "cron": {
-      "type": "object",
-      "description": "Five-field Vixie cron expression in a time zone.",
-      "additionalProperties": false,
-      "properties": {
-        "expression": {
-          "type": "string",
-          "description": "minute hour day-of-month month day-of-week, for example \"*/15 9-17 * * 1-5\". When both day fields are restricted, a date matches if either one matches."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        }
-      },
-      "required": [
-        "expression",
-        "time_zone"
-      ]
-    },
-    "at": {
+    "timing": {
       "oneOf": [
         {
-          "type": "string"
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "after"
+            },
+            "after_seconds": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "after_seconds"
+          ]
         },
         {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "date": {
-              "type": "string"
+            "kind": {
+              "type": "string",
+              "const": "at"
             },
-            "time": {
-              "type": "string"
+            "at": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "date": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "string"
+                    },
+                    "time_zone": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "date",
+                    "time",
+                    "time_zone"
+                  ]
+                }
+              ],
+              "description": "Absolute target: an RFC 3339 date-time with offset, or a local date, time, and IANA time_zone."
+            }
+          },
+          "required": [
+            "kind",
+            "at"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "every"
             },
-            "time_zone": {
+            "every_seconds": {
+              "type": "number",
+              "description": "Fixed-rate interval in whole seconds, at least 60, aligned to the creation time; changing it with schedule_edit re-aligns it to the save time."
+            }
+          },
+          "required": [
+            "kind",
+            "every_seconds"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "daily"
+            },
+            "daily": {
+              "type": "object",
+              "description": "Every day at a local time.",
+              "additionalProperties": false,
+              "properties": {
+                "time": {
+                  "type": "string",
+                  "description": "HH:mm:ss with optional 1-3 fractional digits, for example 23:00:00."
+                },
+                "time_zone": {
+                  "type": "string",
+                  "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
+                }
+              },
+              "required": [
+                "time",
+                "time_zone"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "daily"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "weekly"
+            },
+            "weekly": {
+              "type": "object",
+              "description": "On the given weekdays at a local time.",
+              "additionalProperties": false,
+              "properties": {
+                "time": {
+                  "type": "string",
+                  "description": "HH:mm:ss with optional 1-3 fractional digits, for example 09:00:00."
+                },
+                "time_zone": {
+                  "type": "string",
+                  "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
+                },
+                "weekdays": {
+                  "type": "array",
+                  "description": "ISO weekdays, Monday 1 through Sunday 7, without repetitions.",
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "required": [
+                "time",
+                "time_zone",
+                "weekdays"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "weekly"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "cron"
+            },
+            "cron": {
+              "type": "object",
+              "description": "Five-field Vixie cron expression in a time zone.",
+              "additionalProperties": false,
+              "properties": {
+                "expression": {
+                  "type": "string",
+                  "description": "minute hour day-of-month month day-of-week, for example \"*/15 9-17 * * 1-5\". When both day fields are restricted, a date matches if either one matches."
+                },
+                "time_zone": {
+                  "type": "string",
+                  "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
+                }
+              },
+              "required": [
+                "expression",
+                "time_zone"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "cron"
+          ]
+        }
+      ]
+    },
+    "target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "session"
+            },
+            "sessionId": {
               "type": "string"
             }
           },
           "required": [
-            "date",
-            "time",
-            "time_zone"
+            "kind",
+            "sessionId"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "new_once"
+            },
+            "create": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "cwd": {
+                  "type": "string"
+                },
+                "agentPreset": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "new"
+            },
+            "create": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "cwd": {
+                  "type": "string"
+                },
+                "agentPreset": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "kind"
           ]
         }
-      ],
-      "description": "Absolute target: an RFC 3339 date-time with offset, or a local date, time, and IANA time_zone."
+      ]
     }
   },
   "required": [
+    "title",
     "prompt",
-    "title"
+    "timing"
   ]
 }
 ```
 
-来源：[`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
+来源： [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
 
-### `schedule_delete`
+### `schedule_edit`
 
-删除当前会话中的一条提醒，活动或已结束的均可。删除不会撤回已经入队的提醒消息。
+更新、暂停、恢复或删除一个任务。省略的补丁字段保留已存值。删除不会撤回已排队的消息。仅在用户明确要求时创建或修改任务；正在执行任务此前获得的明确授权仍然有效。
 
 ```json
 {
   "type": "object",
   "properties": {
     "id": {
+      "type": "string"
+    },
+    "action": {
       "type": "string",
-      "description": "Exact schedule id."
+      "enum": [
+        "update",
+        "delete"
+      ]
+    },
+    "expectedUpdatedAt": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "timing": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "after"
+                },
+                "after_seconds": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "after_seconds"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "at"
+                },
+                "at": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "date": {
+                          "type": "string"
+                        },
+                        "time": {
+                          "type": "string"
+                        },
+                        "time_zone": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "time",
+                        "time_zone"
+                      ]
+                    }
+                  ],
+                  "description": "Absolute target: an RFC 3339 date-time with offset, or a local date, time, and IANA time_zone."
+                }
+              },
+              "required": [
+                "kind",
+                "at"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "every"
+                },
+                "every_seconds": {
+                  "type": "number",
+                  "description": "Fixed-rate interval in whole seconds, at least 60, aligned to the creation time; changing it with schedule_edit re-aligns it to the save time."
+                }
+              },
+              "required": [
+                "kind",
+                "every_seconds"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "daily"
+                },
+                "daily": {
+                  "type": "object",
+                  "description": "Every day at a local time.",
+                  "additionalProperties": false,
+                  "properties": {
+                    "time": {
+                      "type": "string",
+                      "description": "HH:mm:ss with optional 1-3 fractional digits, for example 23:00:00."
+                    },
+                    "time_zone": {
+                      "type": "string",
+                      "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
+                    }
+                  },
+                  "required": [
+                    "time",
+                    "time_zone"
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "daily"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "weekly"
+                },
+                "weekly": {
+                  "type": "object",
+                  "description": "On the given weekdays at a local time.",
+                  "additionalProperties": false,
+                  "properties": {
+                    "time": {
+                      "type": "string",
+                      "description": "HH:mm:ss with optional 1-3 fractional digits, for example 09:00:00."
+                    },
+                    "time_zone": {
+                      "type": "string",
+                      "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
+                    },
+                    "weekdays": {
+                      "type": "array",
+                      "description": "ISO weekdays, Monday 1 through Sunday 7, without repetitions.",
+                      "items": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "required": [
+                    "time",
+                    "time_zone",
+                    "weekdays"
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "weekly"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "cron"
+                },
+                "cron": {
+                  "type": "object",
+                  "description": "Five-field Vixie cron expression in a time zone.",
+                  "additionalProperties": false,
+                  "properties": {
+                    "expression": {
+                      "type": "string",
+                      "description": "minute hour day-of-month month day-of-week, for example \"*/15 9-17 * * 1-5\". When both day fields are restricted, a date matches if either one matches."
+                    },
+                    "time_zone": {
+                      "type": "string",
+                      "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
+                    }
+                  },
+                  "required": [
+                    "expression",
+                    "time_zone"
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "cron"
+              ]
+            }
+          ]
+        },
+        "target": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "session"
+                },
+                "sessionId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "sessionId"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "new_once"
+                },
+                "create": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "cwd": {
+                      "type": "string"
+                    },
+                    "agentPreset": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "new"
+                },
+                "create": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "cwd": {
+                      "type": "string"
+                    },
+                    "agentPreset": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          ]
+        },
+        "active": {
+          "type": "boolean"
+        }
+      }
     }
   },
   "required": [
-    "id"
+    "id",
+    "action"
   ]
 }
 ```
 
-来源：[`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
+来源： [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
 
 ### `schedule_list`
 
-列出当前会话中的活动提醒。
+跨会话分页列出宿主定时任务，启用任务优先。
 
 ```json
 {
   "type": "object",
-  "properties": {}
+  "properties": {
+    "active": {
+      "type": "boolean"
+    },
+    "limit": {
+      "type": "integer"
+    },
+    "offset": {
+      "type": "integer"
+    }
+  }
 }
 ```
 
-来源：[`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
+来源： [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
 
-### `schedule_update`
+### `schedule_view`
 
-原地修改一条提醒并保留其 id。提供新的 title、prompt，或至多一个时间参数；未提供的字段保持原值。需要相对延迟时请新建一条提醒。
+按标识查看一个定时任务。
 
 ```json
 {
   "type": "object",
   "properties": {
     "id": {
-      "type": "string",
-      "description": "Schedule id returned by schedule_list."
-    },
-    "title": {
-      "type": "string",
-      "description": "New task name of at most 120 characters."
-    },
-    "prompt": {
-      "type": "string",
-      "description": "New reminder content."
-    },
-    "every_seconds": {
-      "type": "number",
-      "description": "Fixed-rate interval in whole seconds, at least 60, aligned to the creation time; changing it with schedule_update re-aligns it to the save time."
-    },
-    "daily": {
-      "type": "object",
-      "description": "Every day at a local time.",
-      "additionalProperties": false,
-      "properties": {
-        "time": {
-          "type": "string",
-          "description": "HH:mm:ss with optional 1-3 fractional digits, for example 23:00:00."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        }
-      },
-      "required": [
-        "time",
-        "time_zone"
-      ]
-    },
-    "weekly": {
-      "type": "object",
-      "description": "On the given weekdays at a local time.",
-      "additionalProperties": false,
-      "properties": {
-        "time": {
-          "type": "string",
-          "description": "HH:mm:ss with optional 1-3 fractional digits, for example 09:00:00."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        },
-        "weekdays": {
-          "type": "array",
-          "description": "ISO weekdays, Monday 1 through Sunday 7, without repetitions.",
-          "items": {
-            "type": "integer"
-          }
-        }
-      },
-      "required": [
-        "time",
-        "time_zone",
-        "weekdays"
-      ]
-    },
-    "cron": {
-      "type": "object",
-      "description": "Five-field Vixie cron expression in a time zone.",
-      "additionalProperties": false,
-      "properties": {
-        "expression": {
-          "type": "string",
-          "description": "minute hour day-of-month month day-of-week, for example \"*/15 9-17 * * 1-5\". When both day fields are restricted, a date matches if either one matches."
-        },
-        "time_zone": {
-          "type": "string",
-          "description": "UTC or IANA Area/Location, for example Asia/Shanghai."
-        }
-      },
-      "required": [
-        "expression",
-        "time_zone"
-      ]
-    },
-    "at": {
-      "oneOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "date": {
-              "type": "string"
-            },
-            "time": {
-              "type": "string"
-            },
-            "time_zone": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "date",
-            "time",
-            "time_zone"
-          ]
-        }
-      ],
-      "description": "Absolute target: an RFC 3339 date-time with offset, or a local date, time, and IANA time_zone."
+      "type": "string"
     }
   },
   "required": [
@@ -1704,9 +2108,9 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
 }
 ```
 
-Source: [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
+来源： [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts)
 
-preset 或 Agent scope 挂载本包；由 preset 决定哪些 agent 获得这四个管理工具。每次调用都作用于调用方 Agent 的 Session。接受 after_seconds、显式绝对 at、有界固定速率 every_seconds、带显式 IANA 时区的每日与每周本地时间，以及作为五字段表达式的 cron。管理使用宿主 storage domain；到期消息会恢复原 Session。
+A preset or Agent scope mounts this package; the preset decides which agents receive the four management tools. Each call acts on the calling Agent's Session. Accepts after_seconds, explicit absolute at, bounded fixed-rate every_seconds, daily and weekly local times in an explicit IANA zone, and cron as a five-field expression. Management uses the Host storage domain; due messages resume the original Session.
 
 <a id="deepseek-aidsh-tool-lsp"></a>
 

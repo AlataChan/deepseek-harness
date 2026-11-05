@@ -1,0 +1,39 @@
+--- .plans/rc1-execution/client-independent-coverage/frozen-baseline/useModalLayer.ts	2026-11-05 12:40:23
++++ packages/client/ui-primitives/src/useModalLayer.ts	2026-11-05 12:29:16
+@@ -2,7 +2,7 @@
+ import { useLayoutEffect, useRef } from 'react'
+ import type { RefObject } from 'react'
+ import { observeComposition } from './keyboard-composition.ts'
+-import { focusWithoutRing } from './focus.ts'
++import { focusWithoutRing, isMobileDevice } from './focus.ts'
+
+ /** Dialog and menu elements whose document order determines foreground shortcut ownership. */
+ export const modalSelector = '[role="dialog"][aria-modal="true"], [role="menu"]'
+@@ -36,6 +36,7 @@
+ /**
+  * Give only the top modal Escape and Tab ownership, then restore its previous focus.
+  * Automatic entry and return focus omit outlines; keyboard traversal retains its indicators.
++ * On mobile, a previously read-only control that becomes editable while open does not receive return focus.
+  * Controls mounted with the dialog use data-modal-autofocus for initial focus;
+  * React autoFocus runs before this layer can capture the invoking control.
+  * Local menus handle their Escape during capture before this bubble listener.
+@@ -52,6 +53,7 @@
+     const document = element.ownerDocument
+     const composition = observeComposition(document)
+     const previous = document.activeElement
++    const previouslyEditable = previous?.matches(':read-write') ?? false
+     const stack = layers.get(document) ?? []
+     layers.set(document, stack)
+     const layer = { element, close: () => { close.current() } }
+@@ -90,7 +92,10 @@
+       if (stack.length === 0) layers.delete(document)
+       if (wasTop) {
+         const target = previous instanceof HTMLElement && previous.isConnected ? previous : stack.at(-1)?.element
+-        if (target !== undefined) focusWithoutRing(target)
++        if (target !== undefined
++          && !(isMobileDevice() && target === previous && !previouslyEditable && target.matches(':read-write'))) {
++          focusWithoutRing(target)
++        }
+       }
+     }
+   }, [dialog, open])

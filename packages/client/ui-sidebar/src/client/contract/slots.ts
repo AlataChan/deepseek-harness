@@ -15,6 +15,22 @@ import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
+    /** Custom global panel More menu content, with current registration ids. */
+    'sidebar.panellist.actions': {
+      kind: 'single'
+      scope: 'root'
+      owner: {
+        entries: readonly {
+          id: string
+          label: string
+          pinned: boolean
+          active: boolean
+        }[]
+        onOpen: (id: string) => void
+        onPinnedChange: (id: string, pinned: boolean) => void
+        onDismiss: () => void
+      } }
+
     /** Non-interactive notification inside the collapsed sidebar expand button. */
     'sidebar.toggle.badge': { kind: 'single'; scope: 'root'; owner: Record<never, never> }
     /**
@@ -145,9 +161,13 @@ export type SidebarRootInjected = {
   toggleSidebar: () => void
   /** Select the global panel addressed by a sidebar row. */
   selectPanel: (id: MainPanelId) => void
+  /** Pin or unpin a panel launcher. */
+  setPinned: (id: string, pinned: boolean) => void
   /** Private reactive sources bound to framework selector hooks. */
   hooks: {
     panels: ObservableSnapshot<readonly SidebarPanelMetadata[]>
+    /** Root-lifetime in-memory unpinned panel ids. */
+    entryPins: ObservableSnapshot<readonly string[]>
     /** True while `sidebar.files` has a registrant. */
     filesOccupied: HostObservable<boolean>
     shortcuts: ObservableSnapshot<readonly ShortcutCatalogEntry[]>
@@ -166,6 +186,7 @@ export type SidebarRootComponentProps =
     | 'sidebar.brand.name'
     | 'sidebar.toggle.badge'
     | 'sidebar.panellist'
+    | 'sidebar.panellist.actions'
     | 'sidebar.workspaces'
     | 'sidebar.files'
     | 'sidebar.settings'

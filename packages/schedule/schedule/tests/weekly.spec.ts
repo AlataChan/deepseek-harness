@@ -5,8 +5,8 @@ import {
   normalizeWeekdays, parseWeeklyInput, renderRecurringReminderBatchFraming, resolveRecurringOccurrence,
   resolveWeeklyOccurrence, ScheduleId, ScheduleInputError, ScheduleLogError,
 } from '../src/domain.ts'
-import { resolveScheduleUpdate } from '../src/update.ts'
-import type { ScheduleRecord, ScheduleTimingChange, WeeklyInput, WeeklyScheduleRecord } from '../src/types.ts'
+import { editRuleForTest } from './harness.ts'
+import type { ScheduleRecord, ScheduleTiming, WeeklyInput, WeeklyScheduleRecord } from '../src/types.ts'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 
@@ -316,8 +316,8 @@ describe('weekly timing edits', () => {
     time: '09:00:00.125', time_zone: 'US/Eastern', weekdays: [3, 1],
   }, now, 'Kept name')
 
-  function update(change: ScheduleTimingChange, acceptedAt = now) {
-    return resolveScheduleUpdate(current, current, change, acceptedAt)
+  function update(change: ScheduleTiming, acceptedAt = now) {
+    return editRuleForTest(current, change, acceptedAt)
   }
 
   it('is a no-op for an equivalent normalized weekly rule', () => {
@@ -331,7 +331,7 @@ describe('weekly timing edits', () => {
 
   it('is a no-op for the stored zone alias as well as the canonical name', () => {
     const aliased: ScheduleRecord = { ...current, timeZone: 'US/Eastern' }
-    expect(resolveScheduleUpdate(aliased, aliased, {
+    expect(editRuleForTest(aliased, {
       kind: 'weekly', weekly: { time: '09:00:00.125', time_zone: 'America/New_York', weekdays: [1, 3] },
     }, now + 86_400_000)).toEqual({ id, updated: false, record: aliased })
   })
@@ -363,7 +363,7 @@ describe('weekly timing edits', () => {
     ), 'daily'],
   ])('converts a %s record into weekly with the same identity', (other, kind) => {
     const weekly = { time: '09:00:00', time_zone: 'UTC', weekdays: [1] }
-    expect(resolveScheduleUpdate(other, other, { kind: 'weekly', weekly }, now)).toEqual({
+    expect(editRuleForTest(other, { kind: 'weekly', weekly }, now)).toEqual({
       id, updated: true, record: createWeeklyScheduleRecord(id, 'Keep prompt', weekly, now, 'Keep prompt'),
     })
     expect(kind).not.toBe('weekly')
@@ -374,7 +374,7 @@ describe('weekly timing edits', () => {
       { kind: 'every', every_seconds: 300 },
       { kind: 'daily', daily: { time: '09:00:00', time_zone: 'UTC' } },
       { kind: 'at', at: '2026-09-14T10:00:00Z' },
-    ] as ScheduleTimingChange[]) {
+    ] as ScheduleTiming[]) {
       expect(update(change)).toMatchObject({
         id, updated: true, record: { id, kind: change.kind, prompt: 'Keep prompt' },
       })
@@ -401,7 +401,7 @@ describe('weekly timing edits', () => {
     const change: unknown = {
       kind: 'weekly', weekly: { time: '09:00:00', time_zone: 'UTC', weekdays: [1] }, extra: true,
     }
-    expect(update(change as ScheduleTimingChange)).toMatchObject({ code: 'invalid_rule' })
+    expect(update(change as ScheduleTiming)).toMatchObject({ code: 'invalid_rule' })
   })
 
   it('rejects daily exhaustion using the actual acceptance clock', () => {

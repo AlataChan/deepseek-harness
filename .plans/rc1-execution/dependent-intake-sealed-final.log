@@ -1,0 +1,3 @@
+warning: exhaustive rename detection was skipped due to too many files.
+warning: you may want to set your diff.renameLimit variable to at least 2767 and retry the command.
+verify-upstream-intake: intake complete; 4 recorded change(s) outstanding.

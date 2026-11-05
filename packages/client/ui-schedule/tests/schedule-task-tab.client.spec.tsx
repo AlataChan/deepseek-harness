@@ -19,7 +19,7 @@ const SESSION = 'session-alpha' as SessionId
 /** The persisted layout record of the tab under test: its id, kind, and content identity. */
 const TAB: TaskTabPage = { id: 'tab1', kind: 'scheduleTask', contentId: 'sidebar://scheduleTask' }
 const at: ScheduleCatalogEntry = {
-  id: 'task-detail' as ScheduleId, sessionId: SESSION, kind: 'every', status: 'active',
+  id: 'task-detail' as ScheduleId, target: { kind: 'session' as const, sessionId: SESSION }, involvedSessionIds: [SESSION], kind: 'every', status: 'active',
   title: 'Check metrics', prompt: 'Check metrics\nSecond line of the instruction', everySeconds: 301,
   scheduledAt: '2026-10-01T09:30:00.000Z',
 }
@@ -92,8 +92,8 @@ function mount(
     readRequest: initialStatus === 'ready' ? 1 : 0, readSettled: initialStatus === 'ready' ? 1 : 0,
     ...initial,
   }
-  const updateTiming = vi.fn<NonNullable<ScheduleTaskTabProps['onUpdateTiming']>>(
-    async ({ expected }) => ({ ok: true, value: { id: expected.id, updated: false, record: expected } }),
+  const updateTiming = vi.fn<NonNullable<ScheduleTaskTabProps['onEditTask']>>(
+    async ({ id }) => ({ ok: true, value: snapshot.records.find(record => record.id === id)! }),
   )
   const info = params === RESTORED ? tabInfo(undefined, 0) : tabInfo(params)
   const props = {
@@ -103,7 +103,7 @@ function mount(
     useWorkspaces: <T,>(select: (value: WorkspaceSnapshot) => T): T => select(workspaces),
     onDelete: vi.fn(async () => 'deleted' as const),
     onRetry: vi.fn(async () => {}),
-    onUpdateTiming: updateTiming,
+    onEditTask: updateTiming,
     loadHistory: vi.fn(async ({ id }: { id: ScheduleId }) => ({
       ok: true, value: {
         id, records: [], earlierRecordsUnavailable: false,
@@ -483,7 +483,7 @@ describe('task tab states', () => {
     fireEvent.click(within(detail).getByRole('button', { name: en['detail.more'] }))
     expect(screen.getByRole('menuitem', { name: en['delete.action'] }).hasAttribute('disabled')).toBe(true)
     await act(async () => {
-      pending.resolve({ ok: true, value: { id: at.id, updated: true, record: {
+      pending.resolve({ ok: true, value: { ...at, ...{
         id: at.id, title: at.title, prompt: at.prompt, kind: 'daily', time: '09:30:00.000', timeZone: 'UTC',
         scheduledAt: at.scheduledAt,
       } } })

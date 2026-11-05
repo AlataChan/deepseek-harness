@@ -23,6 +23,7 @@ The dsh web client sidebar lets users recognize the active build, start a new se
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 The sidebar is the navigation shell: users see the brand, start new sessions, collapse the rail, and reach Settings. Feature plugins fill its seats — ui-workspace fills `sidebar.workspaces`, ui-settings registers the trigger row and settings panel at `sidebar.settings`.
@@ -41,7 +42,10 @@ Scrollbars in the column are a pointer affordance: the shell rebinds the scrollb
 
 -----
 
+The Plugins launcher stays fixed. Other registered panels can be unpinned through More; height overflow also moves launchers into More. Pin choices live for the Client root lifetime. The `sidebar.panellist.actions` slot can provide custom More content while receiving the current panel entries and pin/open actions.
+
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -58,6 +62,7 @@ Declaration-aware `slots.inject()` lets a replacing package activate before or a
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 These pages cover the surfaces that fill the shell's seats and the composition model.
@@ -71,6 +76,7 @@ These pages cover the surfaces that fill the shell's seats and the composition m
 -----
 
 <a id="model-experience"></a>
+
 ## Model Experience
 
 None, as the package is a browser-side UI plugin layer that registers nothing model-facing.
@@ -91,6 +97,7 @@ These limits define what the shell owns versus what its occupants own; they are 
 - **"New task completed" unread marking is local viewing state** — completion-time > last-seen never reaches the host.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

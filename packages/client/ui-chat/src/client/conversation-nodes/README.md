@@ -20,9 +20,10 @@ A Turn shows an answer and lets the reader inspect the work behind it. Start wit
 -----
 
 <a id="reading-model"></a>
+
 ## How one Turn becomes a transcript
 
-Grouping, counts, display modes, and whole-Turn folding answer different questions. Grouping decides which process rows belong together. Counts summarize work inside an existing group. Display modes decide how much of each group to show. Without an intervening input, whole-Turn folding can hide the entire process across several groups and intermediate replies.
+Grouping, counts, display modes, and whole-Turn folding answer different questions. Grouping decides which process rows belong together. Counts summarize work inside an existing group. Display modes decide how much of each group to show. Without an intervening input, whole-Turn folding can hide process content across several groups; reply visibility follows the folded-replies setting.
 
 ### A complete example
 
@@ -37,7 +38,7 @@ Suppose the assistant thinks, reads a file, runs a command, posts a progress rep
 - Final response, outside the process fold.
 - Completed-turn footer.
 
-Every reply separates secondary groups; only the final answer is protected from whole-Turn folding. An intermediate reply can be an independent row and still disappear when the Turn is folded. Reasoning attached to the final answer remains process content.
+Every reply separates secondary groups. By default, every Assistant reply remains visible when the Turn folds. With `foldedReplies: final`, intermediate replies participate in folding and only the final answer stays visible. Reasoning remains process content.
 
 | Question | Deciding rule | Result in this example |
 |---|---|---|
@@ -65,7 +66,10 @@ If steering, a User message, or a trigger notice follows process output, the Tur
 -----
 
 <a id="whole-turn-folding"></a>
+
 ## Whole-Turn folding
+
+Folded turns preserve all Assistant replies by default. The independent Host settings `ui-chat.foldedReplies` (`all` or `final`) and `ui-chat.collapseTiming` (`completion` or `next-input`) control visible replies and collapse timing. Missing values are read without writing settings. Explicit reader open and close choices are shared by all rows of an answer generation; Verbose never folds.
 
 Whole-Turn folding controls the loaded process range, independently of secondary groups, in Compact, Standard, and Detailed. Verbose keeps that range visible and retains the duration/status header without a collapse action. A recorded Turn end makes that range eligible even when paging has not loaded the Turn start.
 
@@ -108,6 +112,7 @@ Automatic collapse keeps the process open if hiding it would hide keyboard focus
 -----
 
 <a id="display-modes"></a>
+
 ## Display modes
 
 Settings → General → Work details offers four modes for choosing how much tool-call detail to show: Compact `compact`, Standard `standard`, Detailed `detailed`, and Verbose `verbose`.
@@ -178,6 +183,7 @@ Switching modes retains manually opened groups and inner disclosures. It changes
 -----
 
 <a id="process-grouping"></a>
+
 ## Process grouping
 
 [process-groups.ts](process-groups.ts) groups visible Chat content; [process-activity.ts](process-activity.ts) summarizes the activity inside each group. Both follow the rules below.
@@ -218,6 +224,7 @@ Replies and independent separators close preceding groups immediately, even whil
 -----
 
 <a id="activity-summaries"></a>
+
 ## Activity summaries
 
 [process-activity.ts](process-activity.ts) derives one group's category counts and live detail from its member Nodes. It does not decide membership or presentation text.

@@ -1,3 +1,4 @@
+import { mountDirectoryFixture, createDirectoryFixtureAgent } from '@deepseek-ai/dsh-working-directory-testkit'
 /**
  * Integration tests: the REAL local subprocess service plus the PACKAGED
  * ripgrep binary (`@vscode/ripgrep`), exercised through `ctx.tools.execute()`.
@@ -15,6 +16,8 @@ import { mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
+import { SessionId } from '@deepseek-ai/dsh-session'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
@@ -27,13 +30,13 @@ let dir: string
 let ctx: Context
 
 let callCounter = 0
-function call(name: string, args: unknown, agentObj?: object) {
+function call(name: string, args: unknown, agentObj?: Agent) {
   return ctx.tools.execute({
     signal: testToolSignal,
     callId: ToolCallId(`it-${++callCounter}`),
     name,
     arguments: args,
-    ...agentObj ? { agent: agentObj as never } : {},
+    ...agentObj ? { agent: agentObj } : {},
   })
 }
 
@@ -42,7 +45,8 @@ function text(result: { content: { type: string; text?: string }[] }): string {
 }
 
 /** The fixture workspace as a session cwd, so relative paths resolve inside `dir`. */
-const agent = () => ({ session: { header: { id: 'session-int', cwd: dir } } })
+let owner: Agent
+const agent = () => owner
 
 describe('search tools over the real subprocess service + the packaged rg', () => {
   beforeEach(async () => {
@@ -64,10 +68,13 @@ describe('search tools over the real subprocess service + the packaged rg', () =
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalSubprocessRuntime)
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolFsSearch, { sampleOverCapGlobResults: true })
+    owner = await createDirectoryFixtureAgent(ctx, SessionId('session-int'), dir)
   })
 
   afterEach(async () => {
+    await ctx.fiber.dispose()
     await rm(dir, { recursive: true, force: true })
   })
 
@@ -164,7 +171,7 @@ describe('search tools over the real subprocess service + the packaged rg', () =
       const sessionDir = await mkdtemp(join(tmpdir(), 'dsh-search-session-'))
       try {
         await writeFile(join(sessionDir, 'only-here.ts'), 'const sessionFile = true\n')
-        const agentObj = { session: { header: { id: 'session-int', cwd: sessionDir } } }
+        const agentObj = await createDirectoryFixtureAgent(ctx, SessionId('session-other'), sessionDir)
         const globbed = await call('glob', { pattern: '*.ts' }, agentObj)
         expect(text(globbed)).toBe('only-here.ts')
         const grepped = await call('grep', { pattern: 'sessionFile' }, agentObj)
@@ -189,12 +196,11 @@ describe('search tools over the real subprocess service + the packaged rg', () =
       expect(result.error).toMatchObject({ info: { name: 'AbortError', code: TOOL_ABORTED_BEFORE_DISPATCH } })
     })
 
-    it('an unusable session cwd provider rejection is SEARCH_FAILED', async () => {
+    it('refuses an unavailable original directory before spawning search', async () => {
       const gone = join(dir, 'deleted-session-dir')
-      const result = await call('glob', { pattern: '*' }, { session: { header: { id: 'session-int', cwd: gone } } })
+      const result = await call('glob', { pattern: '*' }, await createDirectoryFixtureAgent(ctx, SessionId('missing-original'), gone))
       expect(result.isError).toBe(true)
-      expect(result.error).toMatchObject({ info: { name: 'SearchError', code: 'SEARCH_FAILED' } })
-      expect(text(result)).toContain('subprocess failed before reporting an outcome')
+      expect(text(result)).toContain('working-directory: directory does not exist')
       expect(text(result)).not.toContain('could not start')
     })
   })

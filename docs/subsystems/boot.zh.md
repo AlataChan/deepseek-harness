@@ -18,6 +18,12 @@
 
 `ChangeResult.changed` 报告磁盘修改，独立于 `application`：`applied`、`restart-required`、`overridden` 或 `failed`。可选的 `error` 包含可本地化的错误码和外部诊断。`packageResult` 记录 pnpm 退出码、有界输出、截断标志及完整诊断日志路径；当管理器终止了一个停止打印的运行，还记录 `timedOut`。被终止的运行不论信号留下什么退出状态都归类为 `timeout`，因此安装与删除都报告失败而非成功，也不会再询问下一个注册表。`pendingBuilds` 列出整个 profile 尚未决定的包；`approvedBuilds` 记录本次操作授予权限的包名；`registries` 按顺序列出一次安装问过的注册表；`bundle` 与 `version` 给出完成的安装新增的包及其清单版本；`failedAt` 说明最后一次失败的运行连不上的是所问的注册表，还是 git 或 tarball spec 自身拉取的主机。
 
+## 显式版本更新
+
+`ListVersionsOptions.registry` 选择显式版本检查所使用的注册表。`PluginVersionList` 报告候选版本或拒绝结果、已安装版本、查询过的注册表及省略数量；候选项包含版本标签与兼容性信息。检查不会安装任何内容。`UpdateBundleOptions` 携带选定注册表及用于关联的请求标识。`PluginUpdateResult` 分别报告目标检查、移除或安装结果，以及可选的独立旧版本恢复结果。
+
+`PluginUpdateProgress` 携带请求标识，以及 checking、removing、installing 或 restoring 阶段。`PluginOperation` 携带带品牌的调用标识、时间、原因、经过清理的目标、阶段及可选版本或启用状态；其 phase 为 started、settled 或 unknown。只有 settled 阶段携带应用情况和 changed 结果。这些是进程内观察，不是 Session 事件或持久恢复日志。
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -128,6 +134,30 @@ Manage profile files and apply their declared reload lifecycle.
  * @returns The package the spec names, or why it is refused.
  */
 @Remote async inspect(spec: string, options?: InspectOptions, signal?: AbortSignal): Promise<PluginSpecInspection>
+
+/** Read the published versions newer than an installed registry package's version, from the first registry that answers.
+ * @param name Installed profile dependency name.
+ * @param options The registry asked first; absent, the one the package was installed from in this process, else the configured one.
+ * @param signal Ends the lookups early.
+ * @returns At most `versionListLimit` newer versions, newest first, with their tags, deprecation, bundle declaration,
+ * and DSH compatibility, and the registry that answered; or why no list could be read, with every registry asked.
+ */
+@Remote async listVersions(name: string, options?: ListVersionsOptions, signal?: AbortSignal): Promise<PluginVersionList>
+
+/**
+ * Replace an installed registry bundle with a newer published version. The target is checked on the registry first:
+ * it must exist, declare a bundle, and accept the running DSH version, or nothing changes. With HMR the installed
+ * version is removed, so its plugins stop, and the target is installed with the same selection; when that
+ * installation fails or is cancelled, the removed version is installed again from the registry it came from.
+ * Without HMR the target is installed over the running version and the result reports the restart.
+ * @param name Installed profile dependency name.
+ * @param version Exact published version newer than the installed one.
+ * @param options The registry asked first, as for `listVersions`, and the request id naming the progress and the
+ * target installation's logs and cancellation.
+ * @param signal Stops checking or target installation; a removed version is restored independently.
+ * @returns The versions, the last step that ran with its result, and the reinstallation when one ran.
+ */
+@Remote async updateBundle(name: string, version: string, options?: UpdateBundleOptions, signal?: AbortSignal): Promise<PluginUpdateResult>
 
 /** Persist a plugin entry's desired enablement and apply it on live profiles.
  * @param id Loader entry identity returned by listPlugins.
@@ -317,6 +347,38 @@ An installation moved between its Host phases. `installing` is announced once pe
  * @param progress - the installation's request id and phase, with the attempt while installing.
  */
 'plugin-manager/install-state'(progress: PluginInstallProgress): void
+```
+
+Source: [`packages/boot/plugin-manager/src/types.ts`](../../packages/boot/plugin-manager/src/types.ts)
+
+<a id="plugin-manageroperation--parallel"></a>
+
+#### `plugin-manager/operation` — parallel
+
+Correlated management facts without raw specs, configs or output.
+
+```ts cordis-catalog
+/** Correlated management facts without raw specs, configs or output.
+ * @mode parallel
+ * @param operation - A start, settlement, or unknown outcome.
+ */
+'plugin-manager/operation'(operation: PluginOperation): void | Promise<void>
+```
+
+Source: [`packages/boot/plugin-manager/src/types.ts`](../../packages/boot/plugin-manager/src/types.ts)
+
+<a id="plugin-managerupdate-state--emit"></a>
+
+#### `plugin-manager/update-state` — emit
+
+Progress for an explicitly requested update.
+
+```ts cordis-catalog
+/** Progress for an explicitly requested update.
+ * @mode emit
+ * @param progress - Request identity and current step.
+ */
+'plugin-manager/update-state'(progress: PluginUpdateProgress): void
 ```
 
 Source: [`packages/boot/plugin-manager/src/types.ts`](../../packages/boot/plugin-manager/src/types.ts)

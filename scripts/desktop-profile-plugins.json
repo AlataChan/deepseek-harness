@@ -92,6 +92,13 @@
       "version": "0.2.1-alpha.1",
       "source": "workspace",
       "path": "packages/experimental/desktop-operation"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-worktree-review",
+      "version": "0.2.1-alpha.1",
+      "source": "workspace",
+      "path": "packages/experimental/worktree-review",
+      "defaultEnabled": false
     }
   ]
 }

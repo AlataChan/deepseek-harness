@@ -8,10 +8,10 @@ import { JsonStorageBackend } from '@deepseek-ai/dsh-storage-json'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { afterEach, beforeEach, expect, it, vi, type MockInstance } from 'vitest'
 import ScheduleService from '../src/index.ts'
-import { scheduleDomain } from '../src/storage.ts'
+import { scheduleDomain, scheduleTaskSchema } from '../src/storage.ts'
 import { ScheduleId } from '../src/domain.ts'
 import { ScheduleRuntime } from '../src/runtime.ts'
-import { agentFor, harness } from './harness.ts'
+import { agentFor, harness, recordOf } from './harness.ts'
 
 const roots: string[] = []
 const contexts: Context[] = []
@@ -60,7 +60,7 @@ const repairedTask = {
 
 it.each([
   ['{broken json', 'malformed-medium'],
-  [encoded({ 'a-good': oldTask, 'z-broken': repairedTask }, 2), 'version-mismatch'],
+  [encoded({ 'a-good': oldTask, 'z-broken': repairedTask }, 3), 'version-mismatch'],
   [encoded({ 'a-good': oldTask, 'z-broken': { invalid: true } }), 'invalid-record'],
 ])('rejects the complete task domain on invalid stored data and recovers after repair', async (broken, code) => {
   const { root, path } = await rootWith({}, broken)
@@ -95,8 +95,8 @@ it.each([
   const repaired = encoded({ 'a-good': oldTask, 'z-broken': repairedTask })
   await writeFile(path, repaired)
   const restored = await facility.open(scheduleDomain)
-  expect(restored.table('tasks').get(ScheduleId('a-good'))).toEqual({ ...oldTask, status: 'active' })
-  expect(restored.table('tasks').get(ScheduleId('z-broken'))).toEqual(repairedTask)
+  expect(restored.table('tasks').get(ScheduleId('a-good'))).toEqual(scheduleTaskSchema.parse(oldTask))
+  expect(restored.table('tasks').get(ScheduleId('z-broken'))).toEqual(scheduleTaskSchema.parse(repairedTask))
   await restored.close()
   await ctx.plugin(ScheduleService)
   expect(await ctx.schedule.catalog()).toHaveLength(2)
@@ -133,8 +133,8 @@ it.each([true, false])('reads legacy history with receipt=%s without rewriting s
   const test = await harness({ backend: new JsonStorageBackend(root), onContext: ctx => contexts.push(ctx) })
   const changed = vi.fn()
   test.ctx.on('schedule/changed', changed)
-  expect(await test.service.history({ sessionId: SessionId(legacy.sessionId), id: taskId, limit: 100 })).toEqual({
-    id: taskId, records: hasReceipt ? [repairedTask.lastDelivery] : [], earlierRecordsUnavailable: true,
+  expect(await test.service.history({  id: taskId, limit: 100 })).toEqual({
+    id: taskId, records: hasReceipt ? [{ ...repairedTask.lastDelivery, targetSessionId: SessionId('original') }] : [], earlierRecordsUnavailable: true,
     earlierRecordsPruned: false, retention: { days: 30, records: 200 },
   })
   expect(changed).not.toHaveBeenCalled()
@@ -159,10 +159,8 @@ it.each(['create', 'delete'] as const)('returns the durable %s result when an an
     cleanupHadStarted = stop.mock.calls.length !== 0
   })
   const mutation = operation === 'create'
-    ? test.service.create(SessionId('original'), {
-      prompt: 'Accepted before unload', after_seconds: 60, title: 'Accepted before unload',
-    })
-    : test.service.delete({ sessionId: SessionId('original'), id: ScheduleId('a-good') })
+    ? test.service.create({ prompt: 'Accepted before unload', title: 'Accepted before unload', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: SessionId('original') } })
+    : test.service.edit({ id: ScheduleId('a-good'), action: 'delete' })
   const outcome = await mutation.then(value => ({ value }), (error: unknown) => ({ error }))
   await unloading
   expect(cleanupHadStarted).toBe(false)
@@ -173,11 +171,11 @@ it.each(['create', 'delete'] as const)('returns the durable %s result when an an
     const created = Object.values(stored.tables.tasks)
     expect(created).toHaveLength(1)
     expect(created[0]).toMatchObject({
-      sessionId: 'original', status: 'active', record: { prompt: 'Accepted before unload', kind: 'after' },
+      target: { kind: 'session', sessionId: 'original' }, status: 'active', record: { prompt: 'Accepted before unload', kind: 'after' },
     })
     expect(outcome).not.toHaveProperty('error')
-    if (!('value' in outcome)) throw new Error('Accepted creation did not return its record')
-    expect(created[0]).toEqual({ sessionId: 'original', record: outcome.value, status: 'active',
+    if (!('value' in outcome) || !('kind' in outcome.value)) throw new Error('Accepted creation did not return its record')
+    expect(created[0]).toEqual({ target: { kind: 'session', sessionId: 'original' }, involvedSessionIds: ['original'], record: recordOf(outcome.value), status: 'active', createdAt: outcome.value.createdAt, updatedAt: outcome.value.updatedAt,
       deliveryHistory: { records: [], earlierRecordsUnavailable: false } })
   } else {
     expect(stored.tables.tasks).toEqual({})
@@ -216,9 +214,7 @@ it('logs startup dispatch admission failure without rejecting initialized storag
   expect(await test.service.catalog()).toEqual([])
   expect(facility?.get('schedule')).toBeDefined()
   expect(vi.getTimerCount()).toBe(0)
-  await test.service.create(SessionId('original'), {
-    prompt: 'Explicit later wake', after_seconds: 60, title: 'Explicit later wake',
-  })
+  await test.service.create({ prompt: 'Explicit later wake', title: 'Explicit later wake', timing: { kind: 'after', after_seconds: 60 }, target: { kind: 'session', sessionId: SessionId('original') } })
   await vi.advanceTimersByTimeAsync(0)
   expect(admission).toHaveBeenCalledTimes(2)
   expect(vi.getTimerCount()).toBe(1)
@@ -272,7 +268,7 @@ it('does not start dispatch when storage opens after its owner begins unloading'
     expect(facility.get('schedule')).toBeUndefined()
     expect(vi.getTimerCount()).toBe(0)
     const reopened = await facility.open(scheduleDomain)
-    expect(reopened.table('tasks').get(ScheduleId('a-good'))).toEqual({ ...oldTask, status: 'active' })
+    expect(reopened.table('tasks').get(ScheduleId('a-good'))).toEqual(scheduleTaskSchema.parse(oldTask))
     await reopened.close()
   } finally {
     release.resolve(undefined)
@@ -295,7 +291,8 @@ it('retains a hand-authored v1 daily alias, pinned target, and receipt without r
   const { root, path } = await rootWith({}, bytes)
   const test = await harness({ backend: new JsonStorageBackend(root), onContext: ctx => contexts.push(ctx) })
   const expected = [{
-    ...daily.record, sessionId: daily.sessionId, status: daily.status, lastDelivery: daily.lastDelivery,
+    ...daily.record, target: { kind: 'session', sessionId: daily.sessionId }, involvedSessionIds: [daily.sessionId],
+    status: daily.status, lastDelivery: { ...daily.lastDelivery, targetSessionId: daily.sessionId },
   }]
   expect(await test.service.catalog()).toEqual(expected)
   expect(test.resolve).not.toHaveBeenCalled()

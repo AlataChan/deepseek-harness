@@ -69,7 +69,7 @@ async function setupScheduleHost(): Promise<{ ctx: Context; parent: Agent; dispa
   ctx.loader.builtins['tool-schedule'] = ToolSchedule
   await ctx.agentPresets.register({ id: 'coding', plugins: [{ name: 'cordis:tool-schedule' }] })
   ctx.llm.registerAdapter(['mock'], new MockAdapter([
-    toolCallResponse('schedule-call', 'schedule_create', { prompt: 'Check', title: 'Check', after_seconds: 60 }),
+    toolCallResponse('schedule-call', 'schedule_create', { prompt: 'Check', title: 'Check', timing: { kind: 'after', after_seconds: 60 } }),
     textResponse('child done'),
   ]))
   const handle = await ctx.agents.create({
@@ -112,7 +112,7 @@ describe('a delegated child under a preset that mounts the Schedule tools', () =
     expect(child.session.header.origin).toBe('subagent')
     expect(ctx.tools.schemas(child).map(schema => schema.name)).toContain('schedule_create')
     expect(toolResultTexts(child).join('')).toContain('"code":"subagent_session"')
-    expect(await ctx.schedule.list({ sessionId: child.session.id })).toEqual([])
+    expect(await ctx.schedule.list()).toEqual({ items: [], shown: 0, total: 0, limit: 100, offset: 0 })
     expect(await ctx.schedule.catalog()).toEqual([])
     expect(dispatched).not.toHaveBeenCalled()
     await run.dispose()

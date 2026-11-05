@@ -59,7 +59,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-agent-instructions`
 
-- `inject`: `sessionProjections` · `agents`
+- `inject`: `workingDirectory` · `sessionProjections` · `agents`
 - `source`: [`packages/context/agent-instructions/src/config.ts:18`](../packages/context/agent-instructions/src/config.ts)
 
 ```ts config-catalog
@@ -1045,6 +1045,40 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-claude-code-mods -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-client-ui-forge -->
+<a id="deepseek-aidsh-experimental-client-ui-forge"></a>
+
+## `@deepseek-ai/dsh-experimental-client-ui-forge`
+
+- `inject`: `sessionProjections` · `workingDirectory` · `fs` · `subprocess` · `sandbox` · `sandboxPolicy` · `agents`
+- `source`: [`packages/experimental/client-ui-forge/src/types.ts:269`](../packages/experimental/client-ui-forge/src/types.ts)
+
+```ts config-catalog
+/** Host settings of the forge panel Remote. */
+export interface Config {
+  /** Git executable name or absolute path in the Session's execution world. */
+  gitCommand?: string
+  /** Deadline in milliseconds for one Git command, including confinement. */
+  gitTimeoutMs?: number
+  /** Termination grace period in milliseconds for each Git process. */
+  graceMs?: number
+  /** Maximum captured bytes per Git output stream. */
+  maxOutputBytes?: number
+  /** Most local branches listed as worktree bases. */
+  maxBranches?: number
+  /**
+   * Prefix of the branch and checkout directory created for a Session worktree; the first eight
+   * hexadecimal digits of the Session id's UUID, a hyphen, and four random hexadecimal digits follow it.
+   */
+  worktreePrefix?: string
+  /** Largest diff, or file read to show unchanged lines, in bytes. */
+  maxDiffBytes?: number
+  /** Most untracked files a local diff or the local changes card includes. */
+  maxUntrackedFiles?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-client-ui-forge -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp -->
 <a id="deepseek-aidsh-experimental-computer-use-cua-driver-mcp"></a>
 
@@ -1545,6 +1579,35 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-agent-team -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-worktree -->
+<a id="deepseek-aidsh-experimental-worktree"></a>
+
+## `@deepseek-ai/dsh-experimental-worktree`
+
+- `inject`: `workingDirectory` · `fs` · `subprocess` · `sandbox` · `sandboxPolicy`
+- `source`: [`packages/experimental/worktree/src/index.ts:21`](../packages/experimental/worktree/src/index.ts)
+
+```ts config-catalog
+/** Worktree location, generated names, executables, and subprocess resource limits. */
+export interface Config {
+  /** Relative checkout pool inside the source repository. */
+  directory?: string
+  /** Prefix for automatically generated branch and checkout names. */
+  namePrefix?: string
+  /** Executable name or absolute execution-world path of a Git release that honors `GIT_NO_LAZY_FETCH`. */
+  gitCommand?: string
+  /** Node executable used for sandboxed directory allocation. */
+  nodeCommand?: string
+  /** Deadline in milliseconds for one command. */
+  timeoutMs?: number
+  /** Subprocess termination grace in milliseconds. */
+  graceMs?: number
+  /** Maximum captured bytes per subprocess output stream. */
+  maxOutputBytes?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-worktree -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-fence-policy -->
 <a id="deepseek-aidsh-fence-policy"></a>
 
@@ -1569,8 +1632,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-file-reference-local`
 
-- `inject`: `agents`
-- `source`: [`packages/context/file-reference-local/src/index.ts:34`](../packages/context/file-reference-local/src/index.ts)
+- `inject`: `workingDirectory` · `agents`
+- `source`: [`packages/context/file-reference-local/src/index.ts:35`](../packages/context/file-reference-local/src/index.ts)
 
 ```ts config-catalog
 /** Local file-reference discovery configuration. */
@@ -1692,8 +1755,8 @@ export interface HmrConfig extends ChokidarOptions {
 
 ## `@deepseek-ai/dsh-hooks-claude-code`
 
-- `inject`: `shell` · `sessionProjections` · `agents`
-- `source`: [`packages/hooks/hooks-claude-code/src/index.ts:51`](../packages/hooks/hooks-claude-code/src/index.ts)
+- `inject`: `workingDirectory` · `shell` · `sessionProjections` · `agents`
+- `source`: [`packages/hooks/hooks-claude-code/src/index.ts:52`](../packages/hooks/hooks-claude-code/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: where the CC hook config lives + substitution roots. */
@@ -1731,8 +1794,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-hooks-codex`
 
-- `inject`: `shell` · `sessionProjections` · `agents`
-- `source`: [`packages/hooks/hooks-codex/src/index.ts:50`](../packages/hooks/hooks-codex/src/index.ts)
+- `inject`: `workingDirectory` · `shell` · `sessionProjections` · `agents`
+- `source`: [`packages/hooks/hooks-codex/src/index.ts:51`](../packages/hooks/hooks-codex/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: where the Codex hooks.json lives + the model name for payloads. */
@@ -2597,13 +2660,19 @@ export interface PlanModeConfig {
 ## `@deepseek-ai/dsh-plugin-manager`
 
 - `inject`: `loader` · `profileContext`
-- `source`: [`packages/boot/plugin-manager/src/index.ts:40`](../packages/boot/plugin-manager/src/index.ts)
+- `source`: [`packages/boot/plugin-manager/src/index.ts:44`](../packages/boot/plugin-manager/src/index.ts)
 
 ```ts config-catalog
 /** The pnpm executable, registries, and limits for diagnostics, lookups and connection checks. */
 export interface Config {
   /** The pnpm executable name or path; resolved through `PATH` like the `dsh plugin` command. */
   pnpmCommand?: string
+  /** Packages pinned by the distribution; version management always refuses them. */
+  lockedBundles?: string[]
+  /** Maximum newer versions returned by an explicit check, from 1 to 100. */
+  versionListLimit?: number
+  /** Maximum simultaneous version manifest lookups, from 1 to 16. */
+  versionLookupConcurrency?: number
   /** Maximum retained package-operation diagnostic bytes. */
   outputBytes?: number
   /** Maximum time to wait for another process's profile package operation. */
@@ -2855,7 +2924,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-schedule`
 
 - `inject`: `agents` · `sessions` · `storageDomain` · `sessionController` · `sessionPersistence`
-- `source`: [`packages/schedule/schedule/src/index.ts:72`](../packages/schedule/schedule/src/index.ts)
+- `source`: [`packages/schedule/schedule/src/index.ts:79`](../packages/schedule/schedule/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the Host Schedule domain. */
@@ -3694,14 +3763,14 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-system-prompt`
 
-- `source`: [`packages/core/system-prompt/src/index.ts:248`](../packages/core/system-prompt/src/index.ts)
+- `source`: [`packages/core/system-prompt/src/index.ts:255`](../packages/core/system-prompt/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.personaPrefix} for its contract). */
 export interface Config {
   /** Include the fixed DeepSeek Harness identity before the deployment persona (default true). */
   includeHarnessIdentity?: boolean
-  /** Include dynamic runtime-context snapshots in model history (default true). */
+  /** Include optional runtime-context snapshots in model history (default true); required context remains. */
   includeRuntimeContext?: boolean
   /**
    * Deployment-wide persona prefix template before first-party guidance. A scoped section named
@@ -3857,8 +3926,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-tool-bash`
 
-- `inject`: `tools` · `shell` · `systemPrompt` · `shellEnv`
-- `source`: [`packages/shell/tool-bash/src/index.ts:37`](../packages/shell/tool-bash/src/index.ts)
+- `inject`: `workingDirectory` · `tools` · `shell` · `systemPrompt` · `shellEnv`
+- `source`: [`packages/shell/tool-bash/src/index.ts:38`](../packages/shell/tool-bash/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the bash tool. */
@@ -3887,8 +3956,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-tool-bash-persistent`
 
-- `inject`: `tools` · `terminals`
-- `source`: [`packages/shell/tool-bash-persistent/src/index.ts:444`](../packages/shell/tool-bash-persistent/src/index.ts)
+- `inject`: `workingDirectory` · `tools` · `terminals`
+- `source`: [`packages/shell/tool-bash-persistent/src/index.ts:445`](../packages/shell/tool-bash-persistent/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the persistent Bash tool. */
@@ -3927,8 +3996,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-tool-fs`
 
-- `inject`: `tools` · `fs` · `systemPrompt`
-- `source`: [`packages/fs/tool-fs/src/index.ts:26`](../packages/fs/tool-fs/src/index.ts)
+- `inject`: `workingDirectory` · `tools` · `fs` · `systemPrompt`
+- `source`: [`packages/fs/tool-fs/src/index.ts:27`](../packages/fs/tool-fs/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config (all optional — `Config` supplies the defaults). */
@@ -3955,8 +4024,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-tool-fs-search`
 
-- `inject`: `tools` · `systemPrompt` · `subprocess`
-- `source`: [`packages/fs/tool-fs-search/src/index.ts:73`](../packages/fs/tool-fs-search/src/index.ts)
+- `inject`: `workingDirectory` · `tools` · `systemPrompt` · `subprocess`
+- `source`: [`packages/fs/tool-fs-search/src/index.ts:74`](../packages/fs/tool-fs-search/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config; over-cap glob sampling is an explicit deployment choice and the remaining fields have defaults. */
@@ -4045,8 +4114,8 @@ export type CompletionDelivery = 'quiet' | 'wakeup'
 
 ## `@deepseek-ai/dsh-tool-lsp`
 
-- `inject`: `tools` · `lsp` · `systemPrompt`
-- `source`: [`packages/lsp/tool-lsp/src/index.ts:57`](../packages/lsp/tool-lsp/src/index.ts)
+- `inject`: `workingDirectory` · `tools` · `lsp` · `systemPrompt`
+- `source`: [`packages/lsp/tool-lsp/src/index.ts:58`](../packages/lsp/tool-lsp/src/index.ts)
 
 ```ts config-catalog
 /** Plugin configuration: result caps and the timeout budget. */
@@ -4066,8 +4135,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-tool-present`
 
-- `inject`: `tools` · `fs` · `sessionProjections` · `agents`
-- `source`: [`packages/deliverables/tool-present/src/index.ts:15`](../packages/deliverables/tool-present/src/index.ts)
+- `inject`: `workingDirectory` · `tools` · `fs` · `sessionProjections` · `agents`
+- `source`: [`packages/deliverables/tool-present/src/index.ts:16`](../packages/deliverables/tool-present/src/index.ts)
 
 ```ts config-catalog
 /** Per-call delivery limit. */
@@ -4083,8 +4152,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-tool-pwsh`
 
-- `inject`: `tools` · `shell` · `systemPrompt` · `shellEnv`
-- `source`: [`packages/shell/tool-pwsh/src/index.ts:54`](../packages/shell/tool-pwsh/src/index.ts)
+- `inject`: `workingDirectory` · `tools` · `shell` · `systemPrompt` · `shellEnv`
+- `source`: [`packages/shell/tool-pwsh/src/index.ts:55`](../packages/shell/tool-pwsh/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the pwsh tool. */
@@ -4113,8 +4182,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-tool-pwsh-persistent`
 
-- `inject`: `tools` · `terminals`
-- `source`: [`packages/shell/tool-pwsh-persistent/src/index.ts:457`](../packages/shell/tool-pwsh-persistent/src/index.ts)
+- `inject`: `workingDirectory` · `tools` · `terminals`
+- `source`: [`packages/shell/tool-pwsh-persistent/src/index.ts:458`](../packages/shell/tool-pwsh-persistent/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the persistent pwsh tool. */
@@ -4178,8 +4247,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-tool-skill`
 
-- `inject`: `agents` · `tools` · `skills`
-- `source`: [`packages/skill/tool-skill/src/index.ts:61`](../packages/skill/tool-skill/src/index.ts)
+- `inject`: `workingDirectory` · `agents` · `tools` · `skills`
+- `source`: [`packages/skill/tool-skill/src/index.ts:62`](../packages/skill/tool-skill/src/index.ts)
 
 ```ts config-catalog
 /** Model-facing skill catalog configuration. */
@@ -4740,8 +4809,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-workflow-ptc`
 
-- `inject`: `subagents` · `ptcRuntime` · `sandboxPolicy`
-- `source`: [`packages/workflow/workflow-ptc/src/index.ts:32`](../packages/workflow/workflow-ptc/src/index.ts)
+- `inject`: `workingDirectory` · `subagents` · `ptcRuntime` · `sandboxPolicy`
+- `source`: [`packages/workflow/workflow-ptc/src/index.ts:33`](../packages/workflow/workflow-ptc/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config (all optional — `static Config` supplies the defaults). */
@@ -4759,6 +4828,23 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-workflow-ptc -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-working-directory -->
+<a id="deepseek-aidsh-working-directory"></a>
+
+## `@deepseek-ai/dsh-working-directory`
+
+- `inject`: `fs` · `sessionProjections` · `systemPrompt`
+- `source`: [`packages/session/working-directory/src/index.ts:51`](../packages/session/working-directory/src/index.ts)
+
+```ts config-catalog
+/** Deployment default for Sessions without an original project directory. */
+export interface Config {
+  /** Absolute execution-world fallback directory; omitted values use the launch directory. */
+  defaultDirectory?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-working-directory -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-workspace-changes -->
 <a id="deepseek-aidsh-workspace-changes"></a>
@@ -4870,6 +4956,8 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-experimental-desktop-hero-atmosphere` | — | [`packages/experimental/desktop-hero-atmosphere/src/index.ts`](../packages/experimental/desktop-hero-atmosphere/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-desktop-ngo` | `agentPresets` | [`packages/experimental/desktop-ngo/src/index.ts`](../packages/experimental/desktop-ngo/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-session-inspector` | — | [`packages/experimental/session-inspector/src/index.ts`](../packages/experimental/session-inspector/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-tool-worktree` | `tools` · `worktrees` | [`packages/experimental/tool-worktree/src/index.ts`](../packages/experimental/tool-worktree/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-worktree-review` | — | [`packages/experimental/worktree-review/src/index.ts`](../packages/experimental/worktree-review/src/index.ts) |
 | `@deepseek-ai/dsh-fs-observation-policy` | — | [`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts) |
 | `@deepseek-ai/dsh-fs-ssh` | `ssh` · `sandboxPolicy` | [`packages/ssh/fs-ssh/src/index.ts`](../packages/ssh/fs-ssh/src/index.ts) |
 | `@deepseek-ai/dsh-goal-round-driver` | `agents` · `goals` · `sessions` | [`packages/goal/goal-round-driver/src/index.ts`](../packages/goal/goal-round-driver/src/index.ts) |
@@ -4879,6 +4967,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-llm` | — | [`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts) |
 | `@deepseek-ai/dsh-lsp` | — | [`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts) |
 | `@deepseek-ai/dsh-mcp-resources` | `tools` | [`packages/mcp/mcp-resources/src/index.ts`](../packages/mcp/mcp-resources/src/index.ts) |
+| `@deepseek-ai/dsh-message-quotes` | — | [`packages/session/message-quotes/src/index.ts`](../packages/session/message-quotes/src/index.ts) |
 | `@deepseek-ai/dsh-otel` | — | [`packages/telemetry/otel/src/index.ts`](../packages/telemetry/otel/src/index.ts) |
 | `@deepseek-ai/dsh-sandbox-ssh` | `ssh` | [`packages/ssh/sandbox-ssh/src/index.ts`](../packages/ssh/sandbox-ssh/src/index.ts) |
 | `@deepseek-ai/dsh-session` | — | [`packages/core/session/src/index.ts`](../packages/core/session/src/index.ts) |
@@ -4896,6 +4985,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-tool-cordis` | `tools` · `cordisInspect` | [`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts) |
 | `@deepseek-ai/dsh-tool-schedule` | `tools` | [`packages/schedule/tool-schedule/src/index.ts`](../packages/schedule/tool-schedule/src/index.ts) |
 | `@deepseek-ai/dsh-tool-subagent-control` | `tools` · `subagents` | [`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts) |
+| `@deepseek-ai/dsh-tool-working-directory` | `tools` · `workingDirectory` | [`packages/session/tool-working-directory/src/index.ts`](../packages/session/tool-working-directory/src/index.ts) |
 | `@deepseek-ai/dsh-tui-bundle` | — | [`packages/bundle/tui/src/index.ts`](../packages/bundle/tui/src/index.ts) |
 | `@deepseek-ai/dsh-user-questions` | — | [`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts) |
 | `@deepseek-ai/dsh-webhook` | `agents` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sessionTitle` · `workspaceRegistry` | [`packages/webhook/webhook/src/index.ts`](../packages/webhook/webhook/src/index.ts) |
@@ -5003,4 +5093,5 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 | `@deepseek-ai/dsh-util-values` | — | [`packages/util/values/src/index.ts`](../packages/util/values/src/index.ts) |
 | `@deepseek-ai/dsh-util-workspace-path` | — | [`packages/util/workspace-path/src/index.ts`](../packages/util/workspace-path/src/index.ts) |
 | `@deepseek-ai/dsh-win32-process` | — | [`packages/subprocess/win32-process/src/index.ts`](../packages/subprocess/win32-process/src/index.ts) |
+| `@deepseek-ai/dsh-working-directory-testkit` | — | [`packages/test-support/working-directory-testkit/src/index.ts`](../packages/test-support/working-directory-testkit/src/index.ts) |
 <!-- END GENERATED config-catalog:library -->

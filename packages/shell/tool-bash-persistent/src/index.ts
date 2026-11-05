@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * Model-facing persistent `bash` tool over the owner-scoped PTY seam.
  * @module @deepseek-ai/dsh-tool-bash-persistent
@@ -253,10 +254,10 @@ function persistentShells(ctx: Context, config: ResolvedConfig): PersistentShell
     const combinedSignal = AbortSignal.any([signal, lifecycle.signal])
     const creation = (async () => {
       try {
-        const cwd = owner.session.header.cwd
+        const cwd = await ctx.workingDirectory.ensure(owner, combinedSignal)
         const spawned = await ctx.terminals.spawn(owner, {
           type: config.backendType,
-          ...cwd === undefined ? {} : { cwd },
+          cwd,
         }, combinedSignal)
         live.set(owner, spawned.sessionId)
         if (!ownerCleanupInstalled.has(owner)) {
@@ -438,7 +439,7 @@ function registerPersistentBash(ctx: Context, config: ResolvedConfig): void {
 }
 
 export const name = 'tool-bash-persistent'
-export const inject = ['tools', 'terminals']
+export const inject = ['workingDirectory', 'tools', 'terminals']
 
 /** Configuration for the persistent Bash tool. */
 export interface Config {

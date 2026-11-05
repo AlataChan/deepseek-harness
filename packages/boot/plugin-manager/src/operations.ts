@@ -570,6 +570,8 @@ export interface PackageViewResult {
 
 /** Bounds of one registry lookup. */
 export interface PackageViewOptions {
+  /** Manifest fields to print; absent, the inspection fields. */
+  fields?: readonly string[]
   /** The pnpm executable name or path. Defaults to `pnpm`. */
   command?: string
   /** Prefix arguments for an application-owned executable. */
@@ -624,7 +626,7 @@ export function registryArguments(registry: Registry): string[] {
  */
 export async function viewProfilePackage(dir: string, spec: string, options: PackageViewOptions): Promise<PackageViewResult> {
   const result = await execa(options.command ?? 'pnpm', [
-    ...options.args ?? [], 'view', spec, 'name', 'version', 'description', 'dsh', '--json',
+    ...options.args ?? [], 'view', spec, ...options.fields ?? ['name', 'version', 'description', 'dsh'], '--json',
     ...registryArguments(options.registry ?? null), '--config.fetch-retries=0',
   ], {
     cwd: dir, env: { ...scrubbedParentEnv(), ...options.env }, extendEnv: false, reject: false, stdin: 'ignore',

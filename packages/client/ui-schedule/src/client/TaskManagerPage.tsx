@@ -9,7 +9,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { ScheduleCatalogEntry, ScheduleId } from '@deepseek-ai/dsh-schedule/client'
 import type { CatalogSnapshot } from './catalog-source.ts'
 import { CatalogFeedback } from './CatalogFeedback.tsx'
-import { TaskDetail, useTaskDetail, type TaskDetailInjected } from './TaskDetail.tsx'
+import { TaskCreate, TaskDetail, useTaskDetail, type TaskDetailInjected } from './TaskDetail.tsx'
 import { useRelativeClock } from './relative-clock.ts'
 import { formatScheduleFrequency, nextRunParts, taskName, zoneLabel } from './schedule-format.ts'
 import type { FrequencyZone } from './schedule-format.ts'
@@ -24,6 +24,10 @@ export interface TaskManagerInjected extends TaskDetailInjected {
    * schedule it. The page deliberately has no creation form of its own.
    */
   readonly onNewTask: () => void
+  /** Create manually inside the existing detail pane. */
+  readonly onCreate: import('./TaskDetail.tsx').TaskCreateProps['onCreate']
+  /** Clear ended rows and supersede the catalog read in flight. */
+  readonly onClearEnded: () => Promise<boolean>
 }
 
 /** Root-scoped task catalog props derived from the framework and injected actions. */
@@ -42,6 +46,9 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
   const { useCatalog, onNewTask, onRetry, t } = props
   const catalog = useCatalog(snapshot => snapshot)
   const { records, status } = catalog
+  const [creating, setCreating] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [clearFailed, setClearFailed] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [selectedId, setSelectedId] = useState<ScheduleId | null>(null)
@@ -59,14 +66,14 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
     return records.filter(record => (
       (statusFilter === 'all' || record.status === statusFilter)
       && (record.prompt.toLowerCase().includes(query)
-        || record.sessionId.toLowerCase().includes(query)
+        || (record.target.kind !== 'new' && record.target.sessionId.toLowerCase().includes(query))
         || taskName(record).toLowerCase().includes(query))
     )).toSorted((left, right) =>
       Date.parse(left.scheduledAt) - Date.parse(right.scheduledAt))
   }, [records, search, statusFilter])
 
   // An inactive-only filter is its own empty state: no task is inactive, rather than no task matched.
-  const emptyTitle = statusFilter === 'inactive' && search.trim() === ''
+  const emptyTitle = statusFilter === 'ended' && search.trim() === ''
     ? 'list.emptyInactive'
     : records.length === 0 ? 'list.empty' : 'list.noMatches'
   // The list's frequency line omits a rule zone equal to the host's and otherwise
@@ -98,7 +105,7 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
 
   return (
     <section
-      className={clsx(css.page, selected !== undefined && css.hasDetails)}
+      className={clsx(css.page, (selected !== undefined || creating) && css.hasDetails)}
       aria-label={t('title')}
       data-testid="task-manager-page"
       onKeyDown={(event) => {
@@ -117,12 +124,18 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
             <div className={css.pageHeading}>
               <h1 ref={headingRef} tabIndex={-1}>{t('title')}</h1>
               <div className={css.creationActions}>
+                <Button onClick={() => { setCreating(true); setSelectedId(null) }}>{t('manual.action')}</Button>
+                <Button disabled={clearing || !records.some(record => record.status === 'ended')} onClick={() => {
+                  setClearing(true); setClearFailed(false)
+                  void props.onClearEnded().then((ok) => { setClearFailed(!ok) }).finally(() => { setClearing(false) })
+                }}>{t('clear.action')}</Button>
                 <Button variant="primary" size="sm" className={css.newButton} icon={<IconPlusOutlineRegular size={13} />} onClick={onNewTask}>{t('new.action')}</Button>
               </div>
             </div>
+            {clearFailed && <p role="alert">{t('clear.error')}</p>}
             <div className={css.filters}>
               <div className={css.filterTabs} role="group" aria-label={t('statusFilter.label')}>
-                {(['all', 'active', 'inactive'] as const).map(value => (
+                {(['all', 'active', 'paused', 'ended'] as const).map(value => (
                   <button
                     key={value}
                     type="button"
@@ -166,13 +179,14 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
                     <li key={record.id}>
                       <Button
                         className={clsx(css.row, selectedId === record.id && css.selectedRow,
-                          record.status === 'inactive' && css.endedRow)}
+                          record.status === 'ended' && css.endedRow)}
                         aria-label={taskName(record)}
                         aria-describedby={`${detailId}-metadata-${record.id}`}
                         aria-expanded={selectedId === record.id}
                         aria-controls={selectedId === record.id ? detailId : undefined}
                         onClick={(event) => {
                           rowRef.current = event.currentTarget
+                          setCreating(false)
                           setSelectedId(record.id)
                           setTab('rule')
                         }}
@@ -181,8 +195,8 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
                         <span className={css.rowContent}>
                           <span className={css.rowTitle}>{taskName(record)}</span>
                           <span className={css.rowSummary} id={`${detailId}-metadata-${record.id}`}>
-                            {record.status === 'inactive'
-                              && <span className={css.metadata}>{t('status.inactive')}</span>}
+                            {record.status === 'ended'
+                              && <span className={css.metadata}>{t('status.ended')}</span>}
                             <span className={css.metadata}>{frequency(record)}</span>
                             {record.status === 'active' && <span className={css.metadata}>
                               {t('list.nextPrefix')}<time dateTime={record.scheduledAt}>
@@ -201,7 +215,9 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
           </div>
         </div>
       </div>
-      {selected !== undefined && <TaskDetail
+      {creating && <TaskCreate onCreate={props.onCreate} t={t} onClose={() => { setCreating(false) }}
+        onCreated={(id) => { setCreating(false); setSelectedId(id) }} />}
+      {!creating && selected !== undefined && <TaskDetail
         {...detail.props}
         task={selected}
         authoritative={catalogRecord !== undefined}

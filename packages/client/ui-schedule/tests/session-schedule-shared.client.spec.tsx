@@ -16,10 +16,10 @@ afterEach(cleanup)
 function entry(
   taskId: string,
   sessionId: SessionId,
-  status: 'active' | 'inactive' = 'active',
+  status: 'active' | 'ended' = 'active',
 ): ScheduleCatalogEntry {
   return {
-    id: taskId as ScheduleId, sessionId, status, kind: 'at',
+    id: taskId as ScheduleId, target: { kind: 'session' as const, sessionId: sessionId }, involvedSessionIds: [sessionId], status, kind: 'at',
     title: 'Read status', prompt: 'Read status', scheduledAt: '2026-10-01T00:00:00.000Z',
   }
 }

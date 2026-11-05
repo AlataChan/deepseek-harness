@@ -1,17 +1,16 @@
-import { mkdtempSync } from 'node:fs'
+import { createDirectoryFixtureAgent, mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session/types'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
 import type { JobId } from '@deepseek-ai/dsh-jobs'
 import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
@@ -29,12 +28,23 @@ const pollingTimeout = setTimeout
 /** Empty offset readers for fakes that never produce output. */
 const silentReader = { readFrom: (fromByte: number) => ({ text: '', nextOffset: fromByte, lossy: false }) }
 
+const contexts: Context[] = []
+afterEach(async () => {
+  for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
+  vi.restoreAllMocks()
+})
+
 const testToolSignal = new AbortController().signal
 const spillDir = mkdtempSync(join(tmpdir(), 'dsh-tool-bash-background-spec-'))
+
+afterAll(() => {
+  rmSync(spillDir, { recursive: true, force: true })
+})
 
 /** Job harness with a fast registry pump for tests. */
 async function setup() {
   const ctx = new Context()
+  contexts.push(ctx)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(SessionProjectionRegistry)
@@ -45,6 +55,7 @@ async function setup() {
   ;(ctx.subprocess as LocalSubprocessRuntime).internals = { spillDir }
   await ctx.plugin(BashEnvPlugin)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000, graceMs: 200 })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolBash)
   return ctx
 }
@@ -352,24 +363,7 @@ describe('foreground commands as jobs', () => {
   it('registers the job under the calling agent so it is fenced to its session', async () => {
     const ctx = await setup()
     const ownerId = SessionId('promote-owner')
-    const owner: Agent = {
-      id: ownerId,
-      options: {},
-      session: Session.create(ownerId, undefined, {
-        version: SESSION_FORMAT_VERSION, id: ownerId, createdAt: 0, cwd: process.cwd(), isSeeded: false,
-      }),
-      inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
-      status: 'idle',
-      ctx,
-      send: () => {},
-      followup: () => {},
-      steer: () => {},
-      inject: () => {},
-      cancel: () => {},
-      runMaintenance: task => task(new AbortController().signal),
-      whenIdle: () => Promise.resolve(),
-    }
-    ctx.agents.register(owner)
+    const owner = await createDirectoryFixtureAgent(ctx, ownerId, process.cwd())
     const result = await ctx.tools.execute({
       signal: testToolSignal,
       callId: ToolCallId('background-promote-owned'),
@@ -420,6 +414,7 @@ describe('foreground commands as jobs', () => {
 
   it('keeps the plain timeout kill when keeping timed-out commands is configured off', async () => {
     const ctx = new Context()
+    contexts.push(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(SessionProjectionRegistry)
@@ -430,6 +425,7 @@ describe('foreground commands as jobs', () => {
     ;(ctx.subprocess as LocalSubprocessRuntime).internals = { spillDir }
     await ctx.plugin(BashEnvPlugin)
     await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000, graceMs: 200 })
+    await mountDirectoryFixture(ctx, process.cwd())
     await ctx.plugin(ToolBash, { promoteOnTimeout: false })
     const seen: string[] = []
     ctx.jobs.events.subscribe({ owners: 'all' }, (event) => { seen.push(event.type) })
@@ -468,24 +464,7 @@ describe('owned background output', () => {
   it('fences an owned background run under the owning session', async () => {
     const ctx = await setup()
     const ownerId = SessionId('background-owner')
-    const owner: Agent = {
-      id: ownerId,
-      options: {},
-      session: Session.create(ownerId, undefined, {
-        version: SESSION_FORMAT_VERSION, id: ownerId, createdAt: 0, cwd: process.cwd(), isSeeded: false,
-      }),
-      inbox: unsupportedInbox(), model: { current: () => undefined, select: () => {}, origin: () => null },
-      status: 'idle',
-      ctx,
-      send: () => {},
-      followup: () => {},
-      steer: () => {},
-      inject: () => {},
-      cancel: () => {},
-      runMaintenance: task => task(new AbortController().signal),
-      whenIdle: () => Promise.resolve(),
-    }
-    ctx.agents.register(owner)
+    const owner = await createDirectoryFixtureAgent(ctx, ownerId, process.cwd())
     await ctx.tools.execute({
       signal: testToolSignal,
       callId: ToolCallId('background-owned-1'),

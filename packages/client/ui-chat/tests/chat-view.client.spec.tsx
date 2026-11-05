@@ -309,6 +309,8 @@ function makeHarness(
   // Rows and the harness must observe the same chat-store instance.
   const chat = createChatStore().create()
   const transcriptView = createSnapshotStore<TranscriptViewMode>('compact')
+  const collapseTiming = createSnapshotStore<'completion' | 'next-input'>('completion')
+  const foldedReplies = createSnapshotStore<'all' | 'final'>('final')
   const performanceUsage = createSnapshotStore<'compact' | 'detailed'>('detailed')
   const t = makeTranslate(zh, commonZh)
   const toolOwners: Array<{
@@ -430,6 +432,7 @@ function makeHarness(
     },
     useInput: (() => { throw new Error('unused') }),
     inputActions: {
+      insertQuote: () => false,
       captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
       insertText: () => false,
       setDraft: () => {},
@@ -441,7 +444,7 @@ function makeHarness(
     },
     useStore: bindSnapshotSelector(chat),
     actions: chat.actions,
-    usePresentation: bindSnapshotSelector(derivePresentationPolicy(transcriptView)),
+    usePresentation: bindSnapshotSelector(derivePresentationPolicy(transcriptView, collapseTiming, foldedReplies)),
     renderSlot,
     SessionProvider: SessionProviderStub,
     inspectCall: (callId: string) => { openView('trajectory', callId) },
@@ -488,6 +491,8 @@ function makeHarness(
       grouped = value
       conversation.set({ ...conversation.getSnapshot() })
     },
+    setCollapseTiming: (value: 'completion' | 'next-input') => { collapseTiming.set(value) },
+    setFoldedReplies: (value: 'all' | 'final') => { foldedReplies.set(value) },
     setTranscriptView: (mode: TranscriptViewMode) => { transcriptView.set(mode) },
     setNodeRenderer: (renderer: React.ComponentProps<typeof ChatNodeSeat>['renderSlot']) => {
       nodeSlotOverride = renderer
@@ -2188,6 +2193,49 @@ describe('ChatView', () => {
     const branchButtons = view.getAllByRole('button', { name: '在新对话中分支' })
     expect(branchButtons).toHaveLength(2)
     expect(branchButtons.map(button => button.getAttribute('aria-disabled'))).toEqual([null, null])
+  })
+
+  it('keeps every reply visible while process rows fold, and supports final-only selection', () => {
+    const h = makeHarness({ nodes: [user(1, 'question'), assistant(2, 'intermediate', 1, 1),
+      toolResult(3, 'call'), assistant(4, 'final', 1, 2)],
+    turnTimings: new Map([[1, { startTime: 1000, endTime: 4000 }]]), turnEnds: new Map([[1, 5]]) })
+    h.setFoldedReplies('all')
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText('intermediate').closest('[hidden]')).toBeNull()
+    expect(view.getByText('final').closest('[hidden]')).toBeNull()
+    expect(view.getByText('bash:call').closest('[hidden]')).not.toBeNull()
+    act(() => { h.setFoldedReplies('final') })
+    expect(view.getByText('intermediate').closest('[hidden]')).not.toBeNull()
+    expect(view.getByText('final').closest('[hidden]')).toBeNull()
+  })
+
+  it('omits folding controls when all content is replies', () => {
+    const h = makeHarness({ nodes: [user(1, 'question'), assistant(2, 'intermediate', 1, 1), assistant(3, 'final', 1, 2)],
+      turnTimings: new Map([[1, { startTime: 1000, endTime: 3000 }]]), turnEnds: new Map([[1, 4]]) })
+    h.setFoldedReplies('all')
+    const view = render(<h.ChatView {...h.props} />)
+    expect(turnProcessControl(view.container)?.disabled).toBe(true)
+    expect(turnProcessControl(view.container)?.hasAttribute('aria-expanded')).toBe(false)
+    expect(view.getByText('intermediate').closest('[hidden]')).toBeNull()
+  })
+
+  it('shares explicit close across deferred rows and folds the prior turn on the next input', () => {
+    const nodes = [user(1, 'question'), assistant(2, 'working', 1, 1), toolResult(3, 'call'), assistant(4, 'final', 1, 2)]
+    const h = makeHarness({ nodes, turnTimings: new Map([[1, { startTime: 1000, endTime: 4000 }]]), turnEnds: new Map([[1, 5]]) })
+    h.setCollapseTiming('next-input')
+    const view = render(<h.ChatView {...h.props} />)
+    const toggle = turnProcessControl(view.container)!
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(view.getByText('working').closest('[hidden]')).toBeNull()
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(view.getByText('working').closest('[hidden]')).not.toBeNull()
+    expect(view.getByText('bash:call').closest('[hidden]')).not.toBeNull()
+    fireEvent.click(toggle)
+    expect(view.getByText('bash:call').closest('[hidden]')).toBeNull()
+    act(() => { h.set({ nodes: [...nodes, userInTurn(6, 'next question', 2)] }) })
+    // The explicit open choice remains effective for its answer generation.
+    expect(view.getByText('bash:call').closest('[hidden]')).toBeNull()
   })
 
   it('folds Think and Tool rows before the final answer without unmounting them', () => {

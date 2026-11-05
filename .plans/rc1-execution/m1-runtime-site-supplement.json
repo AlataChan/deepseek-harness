@@ -21,6 +21,18 @@
       "key": "media",
       "file": "packages/experimental/desktop-media/src/index.ts",
       "role": "reviewed-current"
+    },
+    {
+      "id": "RC1-F1-working-directory",
+      "key": "workingDirectory",
+      "file": "packages/session/working-directory/src/index.ts",
+      "role": "reviewed-current"
+    },
+    {
+      "id": "RC1-F1-local-review",
+      "key": "forgeWorktree",
+      "file": "packages/experimental/client-ui-forge/src/index.ts",
+      "role": "reviewed-current"
     }
   ],
   "readers": [

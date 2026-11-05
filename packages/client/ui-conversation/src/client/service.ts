@@ -268,17 +268,12 @@ export class ConversationController extends Service implements IConversation {
       const result = await session.prompt(content, mode, signal)
       return result.ok ? { kind: 'success' } : { kind: 'error' }
     }
-    let finishRetirement: ((retirement: PendingSubmissionRetirement) => void) | undefined
-    const retirement = attachments.length === 0
-      ? undefined
-      : new Promise<PendingSubmissionRetirement>((resolve) => { finishRetirement = resolve })
     const submission = session.beginSubmission({
       mode,
       text,
       attachments: pendingAttachments,
       onRetire: (settlement) => {
         this.settleSubmittedAttachments(session.sessionId, attachments, settlement)
-        finishRetirement?.(settlement)
       },
     })
     let content: Parameters<SessionFace['prompt']>[0]
@@ -292,7 +287,6 @@ export class ConversationController extends Service implements IConversation {
     }
     const result = await session.prompt(content, mode, signal, submission.requestId)
     if (!result.ok) return { kind: 'error' }
-    if (retirement !== undefined && (await retirement).reason !== 'observed') return { kind: 'error' }
     return { kind: 'success' }
   }
 

@@ -71,6 +71,7 @@
     "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-agent-loop": "workspace:*",
     "@deepseek-ai/dsh-agent-loop-testkit": "workspace:*",
+    "@deepseek-ai/dsh-fs": "workspace:*",
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-session": "workspace:*",
     "@deepseek-ai/dsh-session-persistence": "workspace:*",
@@ -80,6 +81,6 @@
     "@deepseek-ai/dsh-subagent": "workspace:*",
     "@deepseek-ai/dsh-subagent-fork-in-process": "workspace:*",
     "@deepseek-ai/dsh-subagent-spawn-in-process": "workspace:*",
-    "@deepseek-ai/dsh-fs": "workspace:*"
+    "@deepseek-ai/dsh-working-directory-testkit": "workspace:*"
   }
 }

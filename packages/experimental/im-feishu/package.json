@@ -39,8 +39,8 @@
     "lib/runtime-plugin.js",
     "lib/ingress-plugin.js",
     "lib/desktop.js",
-    "lib/types/**/*.d.ts",
-    "lib/card-channel.js"
+    "lib/card-channel.js",
+    "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
   "peerDependencies": {

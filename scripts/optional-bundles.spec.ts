@@ -111,7 +111,7 @@ describe('optional bundles', () => {
     for (const id of ['preset-standard', 'preset-cordis', 'preset-ptc']) {
       for (const rowId of ['tool-subagent', 'tool-subagent-fork']) {
         expect(presetPlugins(id).find(plugin => plugin.id === rowId)?.config).toMatchObject({
-          toolFilter: { deny: ['schedule_create', 'schedule_delete', 'schedule_list', 'schedule_update'] },
+          toolFilter: { deny: ['schedule_create', 'schedule_view', 'schedule_list', 'schedule_edit'] },
         })
       }
     }

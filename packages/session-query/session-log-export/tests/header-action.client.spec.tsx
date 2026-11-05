@@ -49,7 +49,7 @@ function bench(feedbackAvailable = false, copying = false) {
     useChat: () => { throw new Error('Chat is not used by the export Header') },
     inputActions: {
       captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
-      insertText: () => false, persistDraft: () => {}, setDraft: () => {},
+      insertText: () => false, insertQuote: () => false, persistDraft: () => {}, setDraft: () => {},
       addAttachments: () => false, removeAttachment: () => {}, pruneAttachments: () => {}, submit: () => {},
     },
     useSessionLogDownload,

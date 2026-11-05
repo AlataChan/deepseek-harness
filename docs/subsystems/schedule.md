@@ -2,11 +2,11 @@
 
 English | [中文](schedule.zh.md)
 
-Schedule stores reminders independently of Session activation and delivers them to their original Session. This page records the durable and model-facing types from [`types.ts`](../../packages/schedule/schedule/src/types.ts); the [package README](../../packages/schedule/schedule/README.md) owns composition and reminder framing.
+Schedule stores tasks independently of Session activation and delivers them to existing or newly created Sessions. This page records the durable and model-facing types from [`types.ts`](../../packages/schedule/schedule/src/types.ts); the [package README](../../packages/schedule/schedule/README.md) owns composition and reminder framing.
 
 ## Durable records
 
-`ScheduleId` is a globally unique [branded id](core.md#branded-ids). The version-1 `schedule` storage domain owns a `tasks` table whose entries bind a `ScheduleRecord` to its original `sessionId`, with stored `status: 'active' | 'inactive'` and optional `lastDelivery`. Records lacking status normalize to `active` without scanning or recreating historical Sessions. Creation canonicalizes the target into RFC 3339 UTC `scheduledAt`; `after` retains the submitted delay, `every` retains its fixed interval, `daily` and `weekly` retain normalized local `time` and their explicit `timeZone`, and `cron` retains its canonical five-field `expression` and explicit `timeZone`. Daily, weekly, and cron decoding preserve the committed instant and stored zone spelling. The stored task record declares a required `title`, the short name the task surfaces show; creation requires it and never derives it from the instruction. No stored record may omit its title: a record whose `title` is missing, blank after trimming, untrimmed, or longer than 120 characters fails durable decoding with `ScheduleLogError`, and the schedule domain declares no backup-and-skip policy, so one such stored task rejects the whole domain open instead of being dropped. Only explicit deletion removes a task; previously physically deleted tasks are not restored or fabricated.
+`ScheduleId` is a globally unique [branded id](core.md#branded-ids). The version-2 `schedule` domain stores each `ScheduleRecord` with its target, involved Session ids, active/paused/ended status and optional latest receipt, revision and pending delivery reservation. It declares `compatibleVersions: [1]`; a v1 row's `sessionId` becomes a session target and `inactive` becomes ended only in memory. Open performs no rewrite; the next mutation writes current fields and stamps v2. Records lacking status normalize to `active` without scanning or recreating historical Sessions. Creation canonicalizes the target into RFC 3339 UTC `scheduledAt`; `after` retains the submitted delay, `every` retains its fixed interval, `daily` and `weekly` retain normalized local `time` and their explicit `timeZone`, and `cron` retains its canonical five-field `expression` and explicit `timeZone`. Daily, weekly, and cron decoding preserve the committed instant and stored zone spelling. The stored task record declares a required `title`, the short name the task surfaces show; creation requires it and never derives it from the instruction. No stored record may omit its title: a record whose `title` is missing, blank after trimming, untrimmed, or longer than 120 characters fails durable decoding with `ScheduleLogError`, and the schedule domain declares no backup-and-skip policy, so one such stored task rejects the whole domain open instead of being dropped. Only explicit deletion removes a task; previously physically deleted tasks are not restored or fabricated.
 
 ```ts type-equiv
 /** Durable one-shot reminder created from a positive delay. */
@@ -123,7 +123,7 @@ Schedule rejects invalid offsets and zones, offset-free strings, non-future targ
 <a id="daily-wall-clock-input"></a>
 ## Daily wall-clock input
 
-`daily` is one of the mutually exclusive creation selectors, alongside `after_seconds`, `at`, `every_seconds`, the weekly selector, and the cron selector. For example, `daily: { time: '23:00:00', time_zone: 'Asia/Shanghai' }` selects 23:00 in that zone on each eligible local date. The exact object has no date, offset, or interval field:
+`daily` is one of the six timing kinds accepted inside create or edit. Its `daily` selector is mutually exclusive with the other timing selectors. For example, `daily: { time: '23:00:00', time_zone: 'Asia/Shanghai' }` selects 23:00 in that zone on each eligible local date. The exact object has no date, offset, or interval field:
 
 ```ts type-equiv
 /** Daily local-time selector accepted by creation and timing edits. */
@@ -143,7 +143,7 @@ A saved next target is a committed UTC instant. The Host decoder and restart pre
 
 `every_seconds` is a safe-integer interval of at least 60 seconds, aligned to creation time. It measures elapsed time, not daily wall-clock time: `every_seconds: 86400` cannot substitute for `daily` across offset changes. The protocol provides no shared cooldown or cross-record admission rule; the cron selector described below is wall-clock timing, not a fixed-rate interval.
 
-When the Host starts with an overdue Every, Daily, Weekly, or Cron record, it sends only the latest due occurrence. Every advances to the first target aligned to its current interval anchor after the delivery decision; Daily, Weekly, and Cron follow the local-date rules above and below. Missed occurrences do not accumulate. If no next UTC target is representable, delivery retains the record as inactive with its latest receipt.
+When the Host starts with an overdue Every, Daily, Weekly, or Cron record, it sends only the latest due occurrence. Every advances to the first target aligned to its current interval anchor after the delivery decision; Daily, Weekly, and Cron follow the local-date rules above and below. Missed occurrences do not accumulate. If no next UTC target is representable, delivery retains the record as ended with its latest receipt.
 
 One-shots produce individual follow-ups. Recurring records due in the same scan for the same Session share one follow-up rendered by `renderRecurringReminderBatchFraming`, with one latest occurrence per record. The one-minute minimum applies only to fixed-rate intervals; delivery does not wait for the target Agent to become idle.
 
@@ -240,7 +240,11 @@ The historical decoder and fold reject unknown versions, extra fields, reused id
 
 ## Active views and management
 
-Tool values combine the stored record with timing derived from the current wall clock. The Host restores the original Session when delivery requires it; listing and deleting tasks do not activate that Session.
+The [tool catalog](../tool-catalog.md#deepseek-aidsh-tool-schedule) owns the schemas for `schedule_create`, `schedule_list`, `schedule_view` and `schedule_edit`. [`tool-schedule`](../../packages/schedule/tool-schedule/README.md) contributes them to each mounting preset. All four refuse delegated callers; create and edit also refuse an actual acting Session with delegated ownership. Human remotes omit that actor. An existing destination must be present, unarchived and not a delegated child. Listing, viewing, editing and deletion do not activate destination Agents.
+
+Create requires a trimmed, non-empty title of at most 120 characters, a non-empty prompt and one typed timing. The target defaults to `new_once`: reserve one Session id at task creation, create that Session at first delivery and then reuse it. `session` uses an existing Session; `new` creates a fresh Session for each delivery. Omitted creation cwd uses the acting Session's original header cwd, or the Host project directory for a human request. Effective execution cwd does not replace original workspace identity.
+
+Current tool values are catalog entries with stored lifecycle status and destination. The timing-only projection below remains available to reminder formatting; it is not the current task-management response.
 
 ```ts type-equiv
 /** Current delivery timing derived from the durable record and wall clock. */
@@ -253,65 +257,93 @@ type ScheduleDeliveryMode = 'host'
 ```
 
 ```ts type-equiv
-/** Complete model-facing view of one active reminder. */
+/** Timing projection used by reminder formatting. */
 type ScheduleView = ScheduleRecord & {
   /** Whether the target remains in the future. */
   readonly state: ScheduleState
-  /** Reminder delivery never leaves the owning session. */
+  /** Delivery is managed by the Host. */
   readonly deliveryMode: ScheduleDeliveryMode
 }
 ```
 
-The [tool catalog](../tool-catalog.md#deepseek-aidsh-tool-schedule) owns schemas for `schedule_create`, `schedule_list`, `schedule_delete`, and `schedule_update`, which [`@deepseek-ai/dsh-tool-schedule`](../../packages/schedule/tool-schedule/README.md) contributes to each preset that mounts it; the Host service owns storage and delivery. Create, delete, and update acknowledge the storage-domain write. A Host-wide queue serializes these mutations against due delivery; deleting a task does not remove an already queued message. Model tools address the current Session, while the shared Host create, list, update, and delete methods accept an explicit Session binding. `create` and `update` refuse a Session a delegated child owns with `subagent_session` when its delegation depth is above zero, and delivery cannot reach such a Session. The four model tools refuse a delegated caller in the tool layer, while `list`, `catalog`, `history`, and `delete` still serve that Session. Creation requires a `title` that must be non-empty after trimming and at most 120 characters; a missing, blank, or over-long title is rejected with `invalid_prompt`, and creation never derives one from the instruction. Create and list views carry the stored `title` alongside the instruction, and a stored record whose `title` is missing or invalid is rejected at decode.
+## Task requests and results
+
+List returns a page of all matching Host tasks, with active rows first and occurrence/id ordering within each group. `active: false` selects paused and ended tasks. The default limit is 100, the maximum is 500 and offset defaults to zero. Catalog returns the complete sorted set; view returns one entry or a lookup miss. Reads inspect only the Schedule domain and never reconstruct Session history.
+
+Edit applies an update patch or deletion in the delivery FIFO. `expectedUpdatedAt` compares the last observed revision; `null` matches a row without a revision. A mismatch returns `schedule_conflict`, and an absent task returns `schedule_not_found`. A patch may change name, instruction, timing, destination or active status. The Host commits every accepted patch as one task-row write and advances the revision, including normalized timing no-ops and clock rollback. Equivalent rules retain their pinned occurrence and stored zone spelling. An empty patch is invalid.
+
+A changed daily, weekly or cron rule computes its first strictly future occurrence under the existing gap/overlap rules. Every starts a new interval anchor; after starts a new relative delay; at selects a future absolute instant. Resuming a missed recurrence selects a future occurrence. A past one-shot needs replacement timing before resumption. A content-only edit retains the occurrence and saved receipts. Cancellation is checked after readiness/FIFO waits and before the durable write; it cannot roll back an admitted write.
+
+The single [Automation Tasks page](../../packages/client/ui-schedule/README.md) provides manual creation separately from New, which starts a conversation. It filters active, paused and ended tasks and retains rule/history details for ended tasks. Manual edit, pause/resume, Run now and Clear ended tasks use the same Host service. Run now preserves the scheduled occurrence and refuses a reused-target task while its previous delivery is queued or running. Whole-agent idle announces a catalog refresh. Clear ended tasks removes only ended rows; paused rows survive. Each deletion is independently durable, so a partial failure rejects and refreshes completed removals. Deletion never retracts queued input.
 
 ```ts type-equiv
-/** Reminder creation selector, shared by the model consumer and Host service. */
-interface ScheduleCreateRequest {
-  /** Non-empty reminder text. */
-  prompt: string
-  /** Required task name of at most 120 characters, non-empty after trimming; names the card, detail heading, and task lists. */
-  title: string
-  /** Relative one-shot delay in seconds. */
-  after_seconds?: number
-  /** Absolute one-shot target. */
-  at?: AtInput
-  /** Fixed recurrence interval in seconds. */
-  every_seconds?: number
-  /** Daily wall-clock time in an explicit IANA zone. */
-  daily?: DailyInput
-  /** Weekly wall-clock time and explicit ISO weekday set in an IANA zone. */
-  weekly?: WeeklyInput
-  /** Five-field cron expression evaluated in an explicit IANA zone. */
-  cron?: CronInput
+/** Timing accepted by the shared management API. */
+type ScheduleTiming =
+  | { readonly kind: 'after'; readonly after_seconds: number }
+  | { readonly kind: 'at'; readonly at: AtInput }
+  | { readonly kind: 'every'; readonly every_seconds: number }
+  | { readonly kind: 'daily'; readonly daily: DailyInput }
+  | { readonly kind: 'weekly'; readonly weekly: WeeklyInput }
+  | { readonly kind: 'cron'; readonly cron: CronInput }
+```
+
+```ts type-equiv
+/** Values used when a target creates a Session. */
+interface ScheduleSessionCreateSpec {
+  /** Project directory of the created Session, which joins the Workspace registered there; omission uses the Host project directory. */
+  readonly cwd?: string
+  /** Agent preset of the created Session; omission uses the default preset. */
+  readonly agentPreset?: string
 }
 ```
 
 ```ts type-equiv
-/** Session-scoped task list, without Agent activation. */
-interface ScheduleListRequest {
-  /** Original Session binding. */
-  sessionId: SessionId
-}
+/** Stored delivery destination; it is independent of the Session that manages the task. */
+type ScheduleTarget =
+  | {
+    /** Every occurrence goes to one existing Session. */
+    readonly kind: 'session'
+    /** Session that receives each delivery. */
+    readonly sessionId: SessionId
+  }
+  | {
+    /** The first delivery creates one Session; later deliveries go to that Session. */
+    readonly kind: 'new_once'
+    /** Reserved at creation; the first delivery creates it and the target becomes `session`. */
+    readonly sessionId: SessionId
+    /** Values used to create the reserved Session. */
+    readonly create: ScheduleSessionCreateSpec
+  }
+  | {
+    /** Every delivery creates a fresh Session. */
+    readonly kind: 'new'
+    /** Values used to create each Session. */
+    readonly create: ScheduleSessionCreateSpec
+  }
 ```
 
 ```ts type-equiv
-/** Delete request identifying a task within its original Session binding. */
-interface ScheduleDeleteRequest extends ScheduleListRequest {
-  /** Task to remove. */
-  id: ScheduleId
-}
+/** Destination accepted by create and edit; the Host reserves the `new_once` Session id. */
+type ScheduleTargetRequest =
+  | {
+    /** Deliver to one existing Session that is not a delegated child. */
+    readonly kind: 'session'
+    /** Existing Session that receives each delivery. */
+    readonly sessionId: SessionId
+  }
+  | {
+    /** Create one Session at the first delivery. */
+    readonly kind: 'new_once'
+    /** Creation values; omission uses the Host defaults. */
+    readonly create?: ScheduleSessionCreateSpec
+  }
+  | {
+    /** Create a fresh Session at each delivery. */
+    readonly kind: 'new'
+    /** Creation values; omission uses the Host defaults. */
+    readonly create?: ScheduleSessionCreateSpec
+  }
 ```
-
-```ts type-equiv
-/** Successful `schedule_delete` value, including the non-mutating not-found result. */
-type ScheduleDeleteResult =
-  | { readonly id: ScheduleId; readonly deleted: true }
-  | { readonly id: ScheduleId; readonly deleted: false; readonly code: 'schedule_not_found' }
-```
-
-## Web catalog
-
-The Remote `schedule.catalog()` method returns active and inactive Host tasks with their original Session bindings, ordered by `scheduledAt` ascending and then lexicographically by `id`. It reads only the Schedule domain, without activating Sessions or reading their history. Browser consumers receive this browser-safe type:
 
 ```ts type-equiv
 /** Durable Session inbox delivery acknowledgment, not model execution completion. */
@@ -322,64 +354,10 @@ interface ScheduleDeliveryReceipt {
   readonly deliveredAt: string
   /** Identity of the delivered message, shared by tasks in one recurring batch. */
   readonly messageId: MessageId
+  /** Session that durably accepted the delivered message. */
+  readonly targetSessionId: SessionId
 }
 ```
-
-```ts type-equiv
-/** Browser-safe retained reminder with its original Session binding. */
-type ScheduleCatalogEntry = ScheduleRecord & {
-  /** Session receiving this reminder when it becomes due. */
-  readonly sessionId: SessionId
-  /** Inactive reminders remain visible but never schedule another delivery. */
-  readonly status: 'active' | 'inactive'
-  /** Most recent durably acknowledged inbox delivery, when available. */
-  readonly lastDelivery?: ScheduleDeliveryReceipt
-}
-```
-
-The Remote `schedule.list({ sessionId })`, model `schedule_list`, and Session-header catalog return only active tasks. A model view's derived timing `state` remains distinct from stored lifecycle `status`. Deletion uses `schedule.delete({ sessionId, id })` with the entry's original binding; a mismatched binding returns not found. Model tools supply the current Agent's Session, whereas the global user interface supplies the selected task's binding. The binding check alone does not establish caller authorization. The payload-free `schedule/changed` event invalidates client lists; reconnecting clients fetch current state again.
-
-The shipped Web composition mounts `ui-schedule` with the Host capability. The [client package](../../packages/client/ui-schedule/README.md) owns the catalog, empty state, and deletion controls. The page separately filters all, active, and inactive tasks, retains inactive details and an original-Session control in the detail tab strip, and requires explicit confirmed deletion. The Rules and Records tabs separate task settings from lazily paged saved receipts. Neither a receipt nor inactive status confirms model execution.
-
-## Timing edits
-
-`schedule.update({ sessionId, id, expected, change })` edits an active task without activating its Session. `expected` is the complete observed `ScheduleRecord`, not a catalog entry with extra metadata. The Host compares it to the current record inside the same FIFO used by dispatch and deletion. Normal delivery can advance the target during editing; that stale snapshot returns `schedule_conflict` instead of overwriting the current rule. Missing or mismatched bindings return `schedule_not_found`, and inactive tasks return `schedule_ended`.
-
-```ts type-equiv
-/** Timing-only edit; it may select a different recurrence kind than the stored record, and one-shot targets use an absolute `at`. */
-type ScheduleTimingChange =
-  | { readonly kind: 'at'; readonly at: AtInput }
-  | { readonly kind: 'every'; readonly every_seconds: number }
-  | { readonly kind: 'daily'; readonly daily: DailyInput }
-  | { readonly kind: 'weekly'; readonly weekly: WeeklyInput }
-  | { readonly kind: 'cron'; readonly cron: CronInput }
-```
-
-```ts type-equiv
-/** Compare-and-update request within the original Session binding. */
-interface ScheduleUpdateRequest extends ScheduleDeleteRequest, ScheduleUpdateContent {
-  /** Complete record observed when editing began, including the committed target. */
-  readonly expected: ScheduleRecord
-  /** New timing; its kind may differ from the stored record's kind, and an omitted value keeps the committed target. */
-  readonly change?: ScheduleTimingChange
-}
-```
-
-```ts type-equiv
-/** Successful current record, non-mutating lookup/conflict failure, or invalid name/instruction/timing. */
-type ScheduleUpdateResult =
-  | { readonly id: ScheduleId; readonly updated: boolean; readonly record: ScheduleRecord }
-  | ScheduleUpdateMiss
-  | ScheduleToolError
-```
-
-A changed Daily rule computes its first strictly future target using the saved local time and zone semantics. A changed Cron rule canonicalizes its expression and computes its first strictly future target under the same local-date, gap, and earlier-overlap rules. A changed Every interval starts a new anchor at accepted save time plus that interval. An After or At task can receive a different absolute target as an At record with the same id. These operations preserve the stored `title`, the prompt, original Session binding, lifecycle status, and all saved receipts. A change may also select a different recurrence kind, which recomputes the target from the new rule with the same id, title, prompt, Session binding, status, and saved receipts. An equivalent normalized rule returns `updated: false` with its unchanged record; it does not rewrite storage, reset the target, or emit a change event. A differently spelled but equivalent Cron expression is such a no-op, because the comparison uses the canonical expression and the canonical zone.
-
-Input validation uses existing timing errors. A changed absolute target must still be future when its FIFO slot runs. The successful task put precedes the change notification and timer recomputation. Storage and lifecycle failures reject; cancellation is checked after queue and initialization waits but cannot roll back an in-flight write. One-shot records retain a UTC instant rather than the editing form's IANA zone. Timing edits append no historical Session event: the model reaches the same in-place update through `schedule_update`, which compares the record it read with the stored one instead of deleting and recreating the task.
-
-## Saved delivery records
-
-`schedule.history({ sessionId, id, limit })` reads saved receipts without activating a Session. The explicit limit is a safe integer from 1 through 100. Pages follow reverse append order, not wall-clock sorting; the optional message-id cursor excludes the oldest record from the preceding page. New arrivals do not shift that cursor. A missing task or wrong Session binding returns `schedule_not_found`; an unknown cursor returns `delivery_cursor_not_found`, not an empty successful page.
 
 ```ts type-equiv
 /** Saved inbox delivery with its immutable sent prompt when recorded by this Host. */
@@ -390,52 +368,258 @@ interface ScheduleDeliveryRecord extends ScheduleDeliveryReceipt {
 ```
 
 ```ts type-equiv
-/** Explicitly bounded saved-delivery query within one Session binding. */
-interface ScheduleDeliveryHistoryRequest extends ScheduleDeleteRequest {
+/** Bounded newest-first query over the saved deliveries of one task. */
+interface ScheduleDeliveryHistoryRequest {
+  /** Task whose saved deliveries are read. */
+  readonly id: ScheduleId
   /** Required safe-integer page size from 1 through 100. */
-  limit: number
+  readonly limit: number
   /** Message identity of the oldest entry in the previous page; excluded from this page. */
-  before?: MessageId
+  readonly before?: MessageId
 }
 ```
 
 ```ts type-equiv
-/** Configured limits applied when appending one task's delivery receipt. */
+/** One newest-first page of saved deliveries. */
+interface ScheduleDeliveryHistoryPage {
+  /** Task whose saved deliveries this page lists. */
+  readonly id: ScheduleId
+  /** Saved deliveries, newest first. */
+  readonly records: ScheduleDeliveryRecord[]
+  /** Whether deliveries before the saved records may exist; the Host never reconstructs them. */
+  readonly earlierRecordsUnavailable: boolean
+  /** Whether a retention limit removed saved records; legacy history without that fact is false. */
+  readonly earlierRecordsPruned: boolean
+  /** Current Host retention limits; the delivery writer applies the same limits. */
+  readonly retention: DeliveryRetentionBounds
+  /** Cursor for the next page; present only when older saved records remain. */
+  readonly nextBefore?: MessageId
+}
+```
+
+```ts type-equiv
+/** Non-mutating miss: the task or the page cursor does not exist. */
+interface ScheduleDeliveryHistoryMiss {
+  /** Requested task identity. */
+  readonly id: ScheduleId
+  /** `delivery_cursor_not_found` means `before` names no saved record of this task. */
+  readonly code: 'schedule_not_found' | 'delivery_cursor_not_found'
+}
+```
+
+```ts type-equiv
+/** One saved-delivery page, or a non-mutating lookup miss. */
+type ScheduleDeliveryHistoryResult = ScheduleDeliveryHistoryPage | ScheduleDeliveryHistoryMiss
+```
+
+```ts type-equiv
+/** Browser-safe Host task state. */
+type ScheduleCatalogEntry = ScheduleRecord & {
+  /** Destination of the next delivery. */
+  readonly target: ScheduleTarget
+  /** Creating/editing Agent Sessions and existing or reserved destinations; fresh `new` destinations are excluded. */
+  readonly involvedSessionIds: SessionId[]
+  /** Only `active` tasks have a timer obligation; `paused` and `ended` tasks stay visible. */
+  readonly status: 'active' | 'paused' | 'ended'
+  /** Canonical UTC creation time. */
+  readonly createdAt?: string
+  /** Canonical UTC time of the latest stored change; editors send it back as `expectedUpdatedAt`. */
+  readonly updatedAt?: string
+  /**
+   * The latest delivery is queued or running in its reused target Session; a `new` target, whose deliveries run beside one
+   * another, never sets it.
+   */
+  readonly executionActive?: true
+  /** End of the minimum delivery interval, present while it remains in the future. */
+  readonly deliveryFloorEndsAt?: string
+  /** Most recent durably acknowledged inbox delivery, when available. */
+  readonly lastDelivery?: ScheduleDeliveryReceipt
+}
+```
+
+```ts type-equiv
+/** Host task creation request. */
+interface ScheduleCreateRequest {
+  /** Task name of at most 120 characters, non-empty after trimming. */
+  readonly title: string
+  /** Instruction sent at each occurrence; non-empty after trimming. */
+  readonly prompt: string
+  /** Authoritative typed timing with at least one future occurrence. */
+  readonly timing: ScheduleTiming
+  /** Delivery destination; omission creates one Session at first delivery and reuses it. */
+  readonly target?: ScheduleTargetRequest
+}
+```
+
+```ts type-equiv
+/** Host-wide task list request. */
+interface ScheduleListRequest {
+  /** `true` lists only active tasks; `false` lists only paused and ended tasks; omission lists all tasks. */
+  readonly active?: boolean
+  /** Page size from 1 through 500; the default is 100. */
+  readonly limit?: number
+  /** Number of sorted tasks to skip; the default is 0. */
+  readonly offset?: number
+}
+```
+
+```ts type-equiv
+/** One page of the Host-wide task list; active tasks come first, ordered by next occurrence. */
+interface ScheduleListResult {
+  /** Tasks in this page. */
+  readonly items: ScheduleCatalogEntry[]
+  /** Number of tasks in this page. */
+  readonly shown: number
+  /** Number of tasks that match the filter. */
+  readonly total: number
+  /** Applied page size. */
+  readonly limit: number
+  /** Applied offset. */
+  readonly offset: number
+}
+```
+
+```ts type-equiv
+/** Read one task by canonical identity. */
+interface ScheduleViewRequest {
+  /** Task to read. */
+  readonly id: ScheduleId
+}
+```
+
+```ts type-equiv
+/** Non-mutating miss for an unknown task identity. */
+interface ScheduleNotFoundResult {
+  /** Requested task identity. */
+  readonly id: ScheduleId
+  /** Lookup miss discriminator. */
+  readonly code: 'schedule_not_found'
+}
+```
+
+```ts type-equiv
+/** Current task state, or a lookup miss. */
+type ScheduleViewResult = ScheduleCatalogEntry | ScheduleNotFoundResult
+```
+
+```ts type-equiv
+/** Fields changed together by one atomic update; an omitted field keeps its stored value. */
+interface SchedulePatch {
+  /** Replacement task name. */
+  readonly title?: string
+  /** Replacement instruction. */
+  readonly prompt?: string
+  /** Replacement timing; a changed rule recomputes the next occurrence. */
+  readonly timing?: ScheduleTiming
+  /** Replacement destination. */
+  readonly target?: ScheduleTargetRequest
+  /** `false` pauses the task; `true` resumes a recurrence from its first future occurrence. */
+  readonly active?: boolean
+}
+```
+
+```ts type-equiv
+/** One closed edit operation. */
+type ScheduleEditRequest =
+  | {
+    /** Task to change. */
+    readonly id: ScheduleId
+    /** Apply `patch` as one atomic change. */
+    readonly action: 'update'
+    /** Fields to change; at least one member is required. */
+    readonly patch: SchedulePatch
+    /** `updatedAt` value that the editor read; a different stored value returns `schedule_conflict`. */
+    readonly expectedUpdatedAt?: string | null
+  }
+  | {
+    /** Task to remove. */
+    readonly id: ScheduleId
+    /** Remove the task and its saved deliveries. */
+    readonly action: 'delete'
+    /** `updatedAt` value that the editor read; a different stored value returns `schedule_conflict`. */
+    readonly expectedUpdatedAt?: string | null
+  }
+```
+
+```ts type-equiv
+/** Non-mutating refusal: the stored task changed after the editor read it. */
+interface ScheduleConflictResult {
+  /** Requested task identity. */
+  readonly id: ScheduleId
+  /** Optimistic revision mismatch discriminator. */
+  readonly code: 'schedule_conflict'
+}
+```
+
+```ts type-equiv
+/** Updated task state, a completed deletion, or a non-mutating miss or conflict. */
+type ScheduleEditResult =
+  | ScheduleCatalogEntry
+  | Extract<ScheduleDeleteResult, { readonly deleted: true }>
+  | ScheduleNotFoundResult
+  | ScheduleConflictResult
+```
+
+```ts type-equiv
+/** Manual execution request from the human task manager. */
+interface ScheduleRunRequest {
+  /** Task to run now. */
+  readonly id: ScheduleId
+}
+```
+
+```ts type-equiv
+/** Non-mutating refusal: one execution of this task already owns its admission slot. */
+interface ScheduleExecutionPendingResult {
+  /** Requested task identity. */
+  readonly id: ScheduleId
+  /** Consolidated execution discriminator. */
+  readonly code: 'schedule_execution_pending'
+}
+```
+
+```ts type-equiv
+/** Task state after a manual delivery, or a non-mutating miss or refusal. */
+type ScheduleRunResult = ScheduleCatalogEntry | ScheduleNotFoundResult | ScheduleExecutionPendingResult
+```
+
+```ts type-equiv
+/** Successful Host-wide removal of every ended task, whether or not any remained. */
+interface ScheduleDeleteInactiveResult {
+  /** Ended task rows this call removed; zero when the Host held none. */
+  readonly deleted: number
+}
+```
+```ts type-equiv
+/** Removal of one task and its saved deliveries. */
+type ScheduleDeleteResult = { readonly id: ScheduleId; readonly deleted: true }
+```
+
+```ts type-equiv
+/** Retention limits applied only when appending a delivery receipt. */
 interface DeliveryRetentionBounds {
-  /** Retained window in days, measured back from the acknowledgment being appended. */
+  /** Retained window measured back from the appended acknowledgment. */
   readonly days: number
-  /** Maximum retained records per task; the newest survive. */
+  /** Maximum saved receipts per task. */
   readonly records: number
 }
 ```
 
-```ts type-equiv
-/** Newest-first saved deliveries, or a non-mutating task/cursor lookup failure. */
-type ScheduleDeliveryHistoryResult =
-  | {
-    readonly id: ScheduleId
-    readonly records: ScheduleDeliveryRecord[]
-    /** Whether earlier delivery records may be unavailable; missing receipts are never reconstructed. */
-    readonly earlierRecordsUnavailable: boolean
-    /** True only after an append removed saved records; absent legacy evidence is false. */
-    readonly earlierRecordsPruned: boolean
-    /** Current Host retention configuration, also used by the delivery writer. */
-    readonly retention: DeliveryRetentionBounds
-    /** Oldest returned message identity, present only when older saved records remain. */
-    readonly nextBefore?: MessageId
-  }
-  | { readonly id: ScheduleId; readonly code: 'schedule_not_found' | 'delivery_cursor_not_found' }
-```
+## Saved delivery records
 
-New tasks initialize an empty history. Older task rows without history expose only their existing latest receipt, mark earlier records unavailable, and are not rewritten by reads. Future acknowledgments preserve that receipt and append actual new receipts with instruction snapshots. Lost history and missing legacy instruction snapshots are never reconstructed. The same task-row write commits history, latest receipt, status, and next target; explicit task deletion stops future delivery, removes the task row together with its saved receipts, and takes it out of `list` and `catalog`; conversation messages are unaffected. Saved delivery records are pruned on append to the configured `deliveryHistoryDays` window, measured back from each receipt's `deliveredAt`, and to the `deliveryHistoryRecords` cap; the appended latest receipt always survives, and a pruned window marks earlier records unavailable. Pagination bounds returned record count rather than storage size or instruction bytes.
+`schedule.history({id, limit, before?})` reads saved receipts by task id without a Session binding or Agent activation. Limit is a safe integer from 1 through 100. Pages use reverse append order, not wall-clock sorting; the oldest returned message id is the exclusive next-page cursor. A missing task returns `schedule_not_found`, and an unknown cursor returns `delivery_cursor_not_found`.
+
+New tasks initialize empty known history. A row without history exposes only its latest saved receipt and marks earlier records unavailable. The v1 decoder fills a receipt's target Session id only from its existing destination; it never invents receipts or missing prompt snapshots. A successful delivery writes history, latest receipt, status and next occurrence in the same task row. Append prunes by `deliveryHistoryDays` and `deliveryHistoryRecords`, retaining the latest receipt and marking earlier records unavailable when pruned. Explicit deletion removes the row and its receipts; conversation messages remain.
 
 ## Host delivery
 
-The Host reads persisted tasks at startup and sets its timer to the earliest active target. Inactive tasks remain queryable but never schedule another delivery. At delivery it resolves the original Session through the Session controller, including cold Sessions. After restoration it samples the wall clock again and excludes members that are no longer due after a rollback; those tasks retain their timer obligation. Neither a Goal nor a separate Run completion record participates in dispatch.
+The existing runtime arms the earliest active occurrence at startup. Paused and ended tasks remain queryable without timer obligations. Due recurrences still coalesce to their latest missed occurrence and batch only compatible existing-Session destinations. A second wall-clock sample after restoration excludes occurrences made premature by rollback. No Goal or separate Run completion record participates in dispatch.
 
-Plugin-sourced `followup()` synchronously appends the message to the Session inbox. After a successful Session flush, one task-record put appends a saved delivery with its instruction snapshot and stores the latest `ScheduleDeliveryReceipt` together with the one-shot's `inactive` status or the recurring task's next target and status. Recurring tasks in the same batch share the receipt's `messageId`; each receipt retains that task's delivered occurrence time. Delivery never steers or cancels the current turn and does not wait for model completion.
+Before creating any delivery Session, the runtime persists `pendingDelivery` and a stable reserved Session id in the same task row. It calls the existing `sessionController.create({sessionId,cwd,agentPreset})` and `resolveAgent(sessionId)`; cold recovery adopts that reserved id after create-before-prompt interruption. An archived destination is refused before inbox insertion.
 
-A failure to resolve the Session, enqueue the message, or confirm persistence leaves the task stored and reports a Host warning. A later management change or Host restart retries it. Session persistence and the task put are not atomic across stores. A crash after inbox persistence but before the task put can repeat delivery; the receipt does not close this gap. Schedule provides no model-result acknowledgement, execution cancellation, or external notification channel.
+`followup()` synchronously appends input with `source.kind: 'schedule'` and no human RPC id. Successful Session flush precedes the task write containing its destination receipt and one-shot ended status or recurrence advance. This input supersedes an open waiting question through normal inbox handling while preserving an already queued correlated answer. It carries no Goal human authority and never steers or cancels the current turn.
+
+Resolve, enqueue, flush or task-write failure leaves the task available for retry after a management change or restart. Session persistence and task writes are separate: a crash can repeat delivery after inbox persistence. Schedule guarantees at least once, not exactly once or model completion. Task deletion and Agent cancellation do not retract accepted queued input. There is no external notification channel.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -454,78 +638,80 @@ Shared management service; reads, deletion, and timing edits never activate a Se
 `sessionPersistence` is a load-order requirement rather than a directly called service: a delivery commits only when `ctx.sessions.flush()` reports that a `session/flush` listener participated, and the persistence backend providing this service is the plugin that registers that listener.
 
 ```ts cordis-catalog
-/**
- * Create a reminder bound to the caller-selected Session without activating it.
- *
- * The request must supply a title; a missing, blank-after-trim, or over-long
- * title rejects with `invalid_prompt` instead of deriving one from the prompt.
- * A Session a delegated child owns rejects with `subagent_session`, because delivery
- * can never reach it: the child is one whose delegation depth is above zero.
- * The record is built from the clock reading taken before the request joins the
- * serialized queue, so a create that waits behind a longer operation keeps its
- * request-time anchor and may already be due when the queue reaches it.
- * @param sessionId - Original Session receiving the reminder.
- * @param request - Validated tool selector, required title, and reminder content.
- * @param signal - Optional cancellation checked before persistence begins, including after FIFO waits.
- * @returns The durably stored schedule. Cancellation does not roll back an in-flight write.
+/** Create a task for a human caller without manufacturing an acting Session.
+ * @param request - Content, timing, and optional destination.
+ * @param signal - Cancellation before persistence.
+ * @returns The committed task.
  */
-async create(sessionId: SessionId, request: ScheduleCreateRequest, signal?: AbortSignal): Promise<ScheduleRecord>
+@Remote('create') async remoteCreate(request: ScheduleCreateRequest, signal?: AbortSignal): Promise<ScheduleCatalogEntry>
 
-/**
- * Read the selected Session's active tasks without resuming its Agent.
- * @param request - Session whose task list is requested.
- * @returns Persisted reminders in storage order.
+/** Create one task; the actual acting Session is recorded only as involved.
+ * @param request - Content, timing, and optional destination (defaults to new_once).
+ * @param actor - Actual model caller; omitted for human remotes.
+ * @param signal - Cancellation checked before the durable write, including FIFO waits.
+ * @returns Persisted task; an accepted write is not rolled back by cancellation.
  */
-@Remote('list') async list(request: ScheduleListRequest): Promise<ScheduleRecord[]>
+async create(request: ScheduleCreateRequest, actor?: Session, signal?: AbortSignal): Promise<ScheduleCatalogEntry>
 
-/**
- * Read all active and inactive Host reminders with their original Session bindings.
- * A deleted reminder has no row, so it is absent here.
- * Does not activate Sessions or read Session history.
- * @returns Reminders ordered by scheduledAt ascending, then lexicographically by id.
+/** Read one Host-wide page without activating a Session.
+ * @param request - Activity filter and pagination.
+ * @returns Sorted page with total and applied bounds.
+ */
+async list(request: ScheduleListRequest = {}): Promise<ScheduleListResult>
+
+/** Read one task page for a human Remote caller.
+ * @param request - Activity filter and page bounds.
+ * @returns The requested page without Session activation.
+ */
+@Remote('list') async remoteList(request: ScheduleListRequest): Promise<ScheduleListResult>
+
+/** Read all retained Host tasks.
+ * @returns Active tasks first, then occurrence and identity order.
  */
 @Remote('catalog') async catalog(): Promise<ScheduleCatalogEntry[]>
 
-/**
- * Read saved inbox deliveries without activating or reading the original Session.
- * The task's own row supplies its binding, so its records stay readable through this lookup.
- * @param request - Session binding, task identity, explicit limit, and optional exclusive message cursor.
- * @returns Newest-first deliveries in append order, or a task/cursor lookup failure.
- * @throws ScheduleInputError when limit is not a safe integer from 1 through 100.
+/** Read one retained task.
+ * @param request - Task identity.
+ * @returns Current task or lookup miss.
+ */
+@Remote('view') async view(request: ScheduleViewRequest): Promise<ScheduleViewResult>
+
+/** Read saved receipts without activating a Session.
+ * @param request - Task identity, page size, and exclusive message cursor.
+ * @returns Newest-first saved deliveries or lookup miss.
  */
 @Remote('history') async history(request: ScheduleDeliveryHistoryRequest): Promise<ScheduleDeliveryHistoryResult>
 
-/**
- * Delete one task belonging to the selected Session, leaving queued messages intact.
- *
- * The row is removed: the task no longer schedules, leaves `list` and `catalog`, and its
- * saved delivery records go with it. A task bound to a Session a delegated child owns
- * stays deletable even though creation and timing edits refuse that binding, so a task
- * stored before that rule existed remains removable.
- * @param request - Session and exact task identity.
- * @param signal - Optional cancellation checked before persistence begins, including after FIFO waits.
- * @returns Whether that Session owned a deleted task. Cancellation does not roll back an in-flight write.
+/** Human edit entry point, with no acting Session.
+ * @param request - Closed update/delete operation.
+ * @param signal - Cancellation before the durable write.
+ * @returns Committed entry, deletion, or conflict/miss.
  */
-@Remote('delete') async delete(request: ScheduleDeleteRequest, signal?: AbortSignal): Promise<ScheduleDeleteResult>
+@Remote('edit') async remoteEdit(request: ScheduleEditRequest, signal?: AbortSignal): Promise<ScheduleEditResult>
 
-/**
- * Update the name, instruction, and timing of an active task within the original Session
- * binding without activating the Session or changing saved deliveries.
- *
- * Each supplied field replaces its stored value; an omitted field keeps it. A name or
- * instruction change alone does not reset the committed target. A Session a delegated
- * child owns returns the non-mutating `subagent_session` result, so an edit cannot
- * re-arm a task bound to a Session delivery can never reach, and the Web editor can
- * explain the refusal through the ordinary result it already renders.
- * @param request - Task binding, complete observed record, and any combination of timing, name, and instruction.
- * @param signal - Cancellation checked after domain readiness and FIFO waits, before persistence begins.
- * @returns The committed record, unchanged record for a no-op, or a non-mutating input/lookup/conflict/refusal result.
- * Storage and lifecycle failures reject; cancellation after a write starts does not roll it back.
+/** Apply a complete task patch or delete through one revision check and FIFO slot.
+ * @param request - Operation and optional expectedUpdatedAt compare token.
+ * @param actor - Actual acting Agent Session, never human authority.
+ * @param signal - Cancellation before persistence, including readiness and FIFO waits.
+ * @returns Committed entry, deletion, or a non-mutating conflict/miss.
  */
-@Remote('update') async update(request: ScheduleUpdateRequest, signal?: AbortSignal): Promise<ScheduleUpdateResult>
+async edit(request: ScheduleEditRequest, actor?: Session, signal?: AbortSignal): Promise<ScheduleEditResult>
+
+/** Deliver immediately without consuming the scheduled occurrence.
+ * @param request - Task identity.
+ * @param signal - Cancellation checked before delivery admission.
+ * @returns Updated task, lookup miss, or an already-running refusal.
+ */
+@Remote('run') async run(request: ScheduleRunRequest, signal?: AbortSignal): Promise<ScheduleRunResult>
+
+/** Delete ended rows, retaining paused and active tasks. Each deletion is independently durable.
+ * @param signal - Cancellation before the first durable deletion.
+ * @returns Number removed; a partial failure rejects and announces completed deletions.
+ */
+@Remote('deleteInactive') async deleteInactive(signal?: AbortSignal): Promise<ScheduleDeleteInactiveResult>
 ```
 
-Types: [SessionId](core.md)
+Types: [Session](session.md)
 
 Source: [`packages/schedule/schedule/src/index.ts`](../../packages/schedule/schedule/src/index.ts)
 
@@ -537,10 +723,10 @@ Source: [`packages/schedule/schedule/src/index.ts`](../../packages/schedule/sche
 
 #### `schedule/changed` — emit
 
-Durable task set changed; clients refetch global task and Session-active catalogs.
+Task or delivery execution state changed; clients refetch task catalogs.
 
 ```ts cordis-catalog
-/** Durable task set changed; clients refetch global task and Session-active catalogs.
+/** Task or delivery execution state changed; clients refetch task catalogs.
  * @mode emit
  */
 'schedule/changed'(): void

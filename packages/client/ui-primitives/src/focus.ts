@@ -2,6 +2,20 @@
 const releases = new WeakMap<HTMLElement, () => void>()
 const navigationKeys = new Set(['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'])
 
+let mobileDevice: boolean | undefined
+
+/**
+ * Detect a phone or tablet from the browser's device metadata, cached until reload.
+ * @returns whether the current browser is on a recognized phone or tablet.
+ */
+export function isMobileDevice(): boolean {
+  if (mobileDevice !== undefined) return mobileDevice
+  const { userAgent, platform, maxTouchPoints } = navigator
+  mobileDevice = /Android|iPhone|iPad|iPod/i.test(userAgent)
+    || (platform === 'MacIntel' && maxTouchPoints > 1)
+  return mobileDevice
+}
+
 /**
  * Focus an automatic destination without a focus outline until keyboard navigation or blur.
  * The theme suppresses outlines while data-dsh-automatic-focus is present; borders and shadows remain intact.

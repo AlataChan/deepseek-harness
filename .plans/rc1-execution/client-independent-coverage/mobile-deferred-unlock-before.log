@@ -1,0 +1,67 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04
+
+ ❯ |thread-safe| packages/client/ui-primitives/tests/modal-layer.client.spec.tsx (23 tests | 4 failed) 174ms
+   × leaves a mobile readonly contenteditable opener unfocused when it unlocks after the Modal closes 5ms
+   × leaves a mobile readonly input opener unfocused when it unlocks after the Modal closes 2ms
+   × leaves a mobile readonly textarea opener unfocused when it unlocks after the Modal closes 2ms
+   × leaves a mobile readonly textbox opener unfocused when it unlocks after the Modal closes 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |thread-safe| packages/client/ui-primitives/tests/modal-layer.client.spec.tsx > leaves a mobile readonly contenteditable opener unfocused when it unlocks after the Modal closes
+AssertionError: expected <div tabindex="0" …(3)></div> not to be <div tabindex="0" …(3)></div> // Object.is equality
+ ❯ packages/client/ui-primitives/tests/modal-layer.client.spec.tsx:270:38
+    268|   expect(document.activeElement).toBe(screen.getByLabelText('Search'))
+    269|   view.rerender(tree(false, false))
+    270|   expect(document.activeElement).not.toBe(opener)
+       |                                      ^
+    271|   view.rerender(tree(false, true))
+    272|   expect(screen.getByLabelText('Resident entry')).toBe(opener)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |thread-safe| packages/client/ui-primitives/tests/modal-layer.client.spec.tsx > leaves a mobile readonly input opener unfocused when it unlocks after the Modal closes
+AssertionError: expected <input readonly …(2)></input> not to be <input readonly …(2)></input> // Object.is equality
+ ❯ packages/client/ui-primitives/tests/modal-layer.client.spec.tsx:270:38
+    268|   expect(document.activeElement).toBe(screen.getByLabelText('Search'))
+    269|   view.rerender(tree(false, false))
+    270|   expect(document.activeElement).not.toBe(opener)
+       |                                      ^
+    271|   view.rerender(tree(false, true))
+    272|   expect(screen.getByLabelText('Resident entry')).toBe(opener)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |thread-safe| packages/client/ui-primitives/tests/modal-layer.client.spec.tsx > leaves a mobile readonly textarea opener unfocused when it unlocks after the Modal closes
+AssertionError: expected <textarea readonly …(2)></textarea> not to be <textarea readonly …(2)></textarea> // Object.is equality
+ ❯ packages/client/ui-primitives/tests/modal-layer.client.spec.tsx:270:38
+    268|   expect(document.activeElement).toBe(screen.getByLabelText('Search'))
+    269|   view.rerender(tree(false, false))
+    270|   expect(document.activeElement).not.toBe(opener)
+       |                                      ^
+    271|   view.rerender(tree(false, true))
+    272|   expect(screen.getByLabelText('Resident entry')).toBe(opener)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |thread-safe| packages/client/ui-primitives/tests/modal-layer.client.spec.tsx > leaves a mobile readonly textbox opener unfocused when it unlocks after the Modal closes
+AssertionError: expected <div role="textbox" …(4)></div> not to be <div role="textbox" …(4)></div> // Object.is equality
+ ❯ packages/client/ui-primitives/tests/modal-layer.client.spec.tsx:270:38
+    268|   expect(document.activeElement).toBe(screen.getByLabelText('Search'))
+    269|   view.rerender(tree(false, false))
+    270|   expect(document.activeElement).not.toBe(opener)
+       |                                      ^
+    271|   view.rerender(tree(false, true))
+    272|   expect(screen.getByLabelText('Resident entry')).toBe(opener)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 19 passed (23)
+   Start at  12:52:50
+   Duration  721ms (transform 125ms, setup 38ms, import 160ms, tests 174ms, environment 273ms)

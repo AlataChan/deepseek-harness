@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 挂载本包并把 `configPath` 指向你的钩子配置，你已有的钩子就会在 agent 运行中的对应时刻开始触发。在第一个钩子生效之前无需其他设置。
@@ -75,6 +76,7 @@ kind: "package-reference"
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -120,6 +122,7 @@ matcher subject 是工具名称（`PreToolUse`／`PostToolUse`）、会话源（
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当包级约定不够用时阅读以下页面。它们从共享协议进入桥接设计，以及桥接所面向的扩展点。
@@ -132,7 +135,10 @@ matcher subject 是工具名称（`PreToolUse`／`PostToolUse`）、会话源（
 
 -----
 
+绑定 Agent 的钩子命令使用已校验的执行目录，钩子载荷保留原始会话身份。SubagentStop 在子 Agent 释放后仍读取已提交的目录。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### Hook 提供的上下文
@@ -181,6 +187,7 @@ hook 不返回上下文时没有成本。Hook 文本取决于数据，会被记�
 - **Handler 与配置只支持部分功能**——只运行 shell 形态 command handler。会跳过 `http`、`mcp_tool`、`prompt` 与 `agent` handler；`args`、`async`、`asyncRewake`、`shell`、`if`、`once` 与 `statusMessage` 等 command handler 选项不会被遵循。匹配 handler 串行运行且不去重，而 Claude Code 会并行运行并对相同 handler 去重。一个进程级 `configPath` 会在加载时解析一次；尚未实现 Claude Code 的分层项目、用户、插件与策略发现以及实时重新加载。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

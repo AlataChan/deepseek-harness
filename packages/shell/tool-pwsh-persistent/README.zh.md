@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在 agent 需要在命令之间保持 PowerShell 状态的任何组合中加载本插件——它是 `dsh-tool-pwsh` 的持久对应物，用于依赖跨调用状态的工作。它注册 `pwsh` 工具，需要 `ctx.tools` 与 `ctx.terminals` 服务，并在执行时需要拥有者 agent 会话。
@@ -63,6 +64,7 @@ kind: "package-reference"
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -92,6 +94,7 @@ kind: "package-reference"
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当包级约定不够用时阅读以下页面。它们从 terminal 家族逐步进入 seam、后端，以及持久 shell 设计背后的设计笔记。
@@ -106,7 +109,10 @@ kind: "package-reference"
 
 -----
 
+新终端会话从已校验的会话执行目录启动。已有终端保留自身目录，后续目录切换不会移动它们。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 工具 schema
@@ -154,6 +160,7 @@ kind: "package-reference"
 - **BEL 结尾的 OSC 标记目前只是就绪信号**——通向模型的 BEL 事件通道仍被推迟，与当前实现保持一致。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

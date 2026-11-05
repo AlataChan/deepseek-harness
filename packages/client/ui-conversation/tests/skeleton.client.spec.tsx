@@ -201,6 +201,7 @@ function mount(
     if (key === 'conversation.input.model' || key === 'conversation.input.plan') {
       seatOwners.push({ key, owner })
     }
+    if (key === 'conversation.session.header.views.actions') return opts?.fallback ?? null
     if (key === 'conversation.hero.workspace') { pickerOwner = owner; return null }
     if (key === 'conversation.hero.headline') return opts?.fallback ?? null
     if (key === 'conversation.session.header.lineage') {
@@ -219,6 +220,8 @@ function mount(
           useSession={useSession}
           useConversation={useConversation}
           useConversationViews={useConversationViews}
+          useEntryPins={select => select([])}
+          setPinned={() => {}}
           useChat={useChat}
           useTrajectory={useTrajectory}
           useSessions={props.useSessions}

@@ -19,6 +19,8 @@ import {
   COMMAND_PRIORITY_CRITICAL, KEY_ARROW_DOWN_COMMAND, KEY_ARROW_UP_COMMAND, KEY_ENTER_COMMAND,
   KEY_ESCAPE_COMMAND, KEY_SPACE_COMMAND, KEY_TAB_COMMAND, PASTE_COMMAND,
 } from 'lexical'
+import { $getAdjacentNode, $getSelection, $isRangeSelection, KEY_BACKSPACE_COMMAND, KEY_DELETE_COMMAND } from 'lexical'
+import { $isQuoteNode } from './QuoteNode.tsx'
 import { mergeRegister } from '@lexical/utils'
 import type { ArbitrateKey, ArbitrateOutcome } from '../../contract/draft-editor.ts'
 
@@ -89,7 +91,19 @@ export function registerComposerKeymap(editor: LexicalEditor, handlers: Composer
     return false
   }
 
+  const deleteQuote = (backward: boolean) => (event: KeyboardEvent): boolean => {
+    if (!editor.isEditable() || isComposingEvent(event, recentlyComposing)) return false
+    const selection = $getSelection()
+    if (!$isRangeSelection(selection) || !selection.isCollapsed()) return false
+    const node = $getAdjacentNode(selection.focus, backward)
+    if (!$isQuoteNode(node)) return false
+    event.preventDefault()
+    node.remove()
+    return true
+  }
   return mergeRegister(
+    editor.registerCommand(KEY_BACKSPACE_COMMAND, deleteQuote(true), COMMAND_PRIORITY_CRITICAL),
+    editor.registerCommand(KEY_DELETE_COMMAND, deleteQuote(false), COMMAND_PRIORITY_CRITICAL),
     editor.registerRootListener((root, prevRoot) => {
       prevRoot?.removeEventListener('compositionstart', onCompositionStart)
       prevRoot?.removeEventListener('compositionend', onCompositionEnd)

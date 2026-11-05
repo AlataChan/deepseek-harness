@@ -14,6 +14,7 @@ import { SessionCommandController } from '@deepseek-ai/dsh-api-session-controlle
 import type { SessionPromptRequest } from '@deepseek-ai/dsh-api-session-controller'
 import type { AdmittedPromptContentPart, AttachmentAdmissionPart } from '@deepseek-ai/dsh-attachment'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import { mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import {
   mountAgentLoopTestDependencies,
   mountAgentLoopTestHarness,
@@ -318,7 +319,8 @@ export async function openGuardWorld(options: GuardWorldOptions & {
   } else {
     runtime = await options.mountRuntime(ctx, root)
   }
-  const cwd = options.mountRuntime === undefined ? '/workspace' : root
+  await mountDirectoryFixture(ctx, root)
+  const cwd = root
   const probeRuns = { current: 0 }
   ctx.tools.register(defineTool({
     name: PROBE,

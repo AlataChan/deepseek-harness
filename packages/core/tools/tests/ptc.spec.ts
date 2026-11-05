@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { createDirectoryFixtureAgent, mountDirectoryFixture } from '@deepseek-ai/dsh-working-directory-testkit'
 import { createUserMessage, ToolCallId  } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import type { ToolSchema } from '@deepseek-ai/dsh-llm'
@@ -12,12 +13,11 @@ import ToolRuntime, { CodeRunFailedError, RUN_CODE_NAME, TOOL_ABORTED_BEFORE_DIS
 import type { Config, JsonSchemaNode, PostToolDecision, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import { createTestAgent } from '../../../tui/tui/tests/fixtures.ts'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { Session, SessionId, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
+import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import ApprovalService, { type ApprovalOutcome, type ApprovalRequest } from '@deepseek-ai/dsh-user-approval'
 import type { SessionEventMap, SessionEventType, SurfaceEventType, SurfaceIntent } from '@deepseek-ai/dsh-session'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import SandboxPolicy from '@deepseek-ai/dsh-sandbox-policy'
-import SessionProjections from '@deepseek-ai/dsh-session-projection'
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
@@ -66,6 +66,7 @@ interface SetupOptions {
 async function setup(options: SetupOptions = {}) {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt, { ...options.toolOrder ? { toolOrder: options.toolOrder } : {} })
+  await mountDirectoryFixture(ctx, process.cwd())
   await ctx.plugin(ToolRuntime, { mode: options.mode ?? 'ptc', ...options.maxParallelSubCalls !== undefined ? { maxParallelSubCalls: options.maxParallelSubCalls } : {} })
   let runtime: FakeRuntime | undefined
   if (options.runtime !== false) {
@@ -105,13 +106,9 @@ function registerEcho(ctx: Context, name = 'echo'): unknown[] {
 }
 
 /** A typed agent with a real Session that also captures session appends. */
-function fakeAgent(): { agent: Agent; events: { type: string; data: unknown }[] } {
+async function fakeAgent(ctx: Context): Promise<{ agent: Agent; events: { type: string; data: unknown }[] }> {
   const events: { type: string; data: unknown }[] = []
-  const session = Session.create(SessionId('ptc-agent'), undefined, {
-    id: SessionId('ptc-agent'), version: SESSION_FORMAT_VERSION,
-    createdAt: 0, isSeeded: false, cwd: '/workspace',
-  })
-  const agent = createTestAgent({ id: session.id, session })
+  const agent = await createDirectoryFixtureAgent(ctx, SessionId('ptc-agent'), process.cwd())
   const append = agent.session.append.bind(agent.session)
   vi.spyOn(agent.session, 'append').mockImplementation(<T extends SessionEventType>(
     type: T, data: SessionEventMap[T],
@@ -603,7 +600,7 @@ describe('the sub-dispatch scheduler (native concurrency contract)', () => {
   it('overlaps concurrency-safe calls under Promise.all and logs a start event per dispatch', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
     const gated = registerGated(ctx, 'safe_read', true)
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       const tools = request.bindings[0]!.functions
       const all = Promise.all([
@@ -661,7 +658,7 @@ describe('the sub-dispatch scheduler (native concurrency contract)', () => {
   it('holds later dispatches while settled results await log storage', async () => {
     const { ctx, runtime } = await setup({ maxParallelSubCalls: 1 })
     const calls = registerEcho(ctx)
-    const { agent } = fakeAgent()
+    const { agent } = await fakeAgent(ctx)
     const release = Promise.withResolvers<undefined>()
     const blocked = Promise.withResolvers<undefined>()
     let pendingLogs = 0
@@ -818,7 +815,7 @@ describe('the sub-dispatch scheduler (native concurrency contract)', () => {
   it('run settlement drains a commit already in progress: the settle event is appended inside the turn', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
     const gated = registerGated(ctx, 'safe_read', true)
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     let releasePost: (() => void) | undefined
     ctx.on('tools/post-execute', async (postExec, _result, next): Promise<PostToolDecision> => {
       if (postExec.name === 'safe_read') {
@@ -888,7 +885,7 @@ describe('the sub-dispatch scheduler (native concurrency contract)', () => {
   it('a queued-unstarted call abandoned by run settlement logs no start event', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
     const gated = registerGated(ctx, 'writer', false)
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     const abandoned: string[] = []
     runtime.behavior = async (request) => {
       const tools = request.bindings[0]!.functions
@@ -967,7 +964,7 @@ describe('the run_code dispatch bridge', () => {
   it('bridges tool calls, returns only the curated output, and logs one event per dispatch', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
     const calls = registerEcho(ctx)
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       const tools = request.bindings[0]!.functions
       const first = await tools.echo!({ value: 'one' })
@@ -1123,7 +1120,7 @@ describe('the run_code dispatch bridge', () => {
   it('bounds pending log writes without withholding settled values from the program', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc', maxParallelSubCalls: 1 })
     const calls = registerEcho(ctx)
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     const firstLog = Promise.withResolvers<undefined>()
     const secondLog = Promise.withResolvers<undefined>()
     let logs = 0
@@ -1161,7 +1158,7 @@ describe('the run_code dispatch bridge', () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
     registerEcho(ctx)
     ctx.on('tools/ptc-dispatch-log', () => { throw new Error('log-content listener failed') })
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       const value = await request.bindings[0]!.functions.echo!({ value: 'x' })
       return { logs: [], value: value as string }
@@ -1184,7 +1181,7 @@ describe('the run_code dispatch bridge', () => {
       if (exec.name === 'echo') postExecuted.push(exec.name)
       return next()
     })
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       const message = await request.bindings[0]!.functions.echo!({ value: 'x' })
         .then(() => 'resolved', (error: unknown) => error instanceof Error ? error.message : String(error))
@@ -1220,7 +1217,7 @@ describe('the run_code dispatch bridge', () => {
       }
       return next()
     })
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       try {
         await request.bindings[0]!.functions.echo!({ value: 'x' })
@@ -1272,7 +1269,7 @@ describe('the run_code dispatch bridge', () => {
       }
       return next()
     })
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       await request.bindings[0]!.functions.echo!({ value: 'x' })
       return { logs: [], value: 'unreachable' }
@@ -1299,7 +1296,7 @@ describe('the run_code dispatch bridge', () => {
     const calls = registerEcho(ctx)
     ctx.on('tools/pre-execute', (exec, next) =>
       exec.name === 'echo' ? Promise.resolve({ kind: 'cancel' as const }) : next())
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       try {
         await request.bindings[0]!.functions.echo!({ value: 'x' })
@@ -1325,7 +1322,7 @@ describe('the run_code dispatch bridge', () => {
   it('rejects a binding argument that is not lossless JSON, dispatching nothing', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
     const calls = registerEcho(ctx)
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       try {
         await request.bindings[0]!.functions.echo!({ value: 'x', big: 1n })
@@ -1343,7 +1340,7 @@ describe('the run_code dispatch bridge', () => {
   it('dispatches and logs independent snapshots of the same lossless JSON value', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
     const calls = registerEcho(ctx)
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       const args = Object.assign(Object.create(null) as Record<string, unknown>, { value: 'x', nested: ['same'] })
       await request.bindings[0]!.functions.echo!(args)
@@ -1544,7 +1541,7 @@ describe('the run_code dispatch bridge', () => {
 
   it('a runtime that starts a binding call and then REJECTS still reaches quiescence before returning', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     let sawAbort = false
     let started!: () => void
     const inFlight = new Promise<void>((resolve) => { started = resolve })
@@ -1673,7 +1670,7 @@ describe('the run_code dispatch bridge', () => {
 
   it('logs the complete sub-result content verbatim, non-text blocks and long text included', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     const long = 'x'.repeat(300)
     ctx.tools.register(defineTool({
       name: 'mixed',
@@ -1707,7 +1704,7 @@ describe('the run_code dispatch bridge', () => {
   it('rejects undefined, getter-throwing, exotic, and unrepresentable binding arguments before dispatch', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
     const calls = registerEcho(ctx)
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     runtime.behavior = async (request) => {
       const echo = request.bindings[0]!.functions.echo!
       const catchMessage = (promise: Promise<unknown>) => promise.then(() => 'resolved', (error: unknown) => error instanceof Error ? error.message : String(error))
@@ -1760,8 +1757,8 @@ describe('the run_code dispatch bridge', () => {
         return Promise.resolve(observedDepth)
       },
     }))
-    const session = Session.create(SessionId('deep-code-arguments'))
-    const agent = { ctx: new Context(), session } as Agent
+    const agent = await createDirectoryFixtureAgent(ctx, SessionId('deep-code-arguments'), process.cwd())
+    const session = agent.session
     runtime.behavior = async (request) => {
       let nested: JsonValue = 'leaf'
       for (let index = 0; index < depth; index++) nested = [nested]
@@ -1789,7 +1786,7 @@ describe('the run_code dispatch bridge', () => {
 
   it('gives the tool and durable log the same immutable argument value', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     let mutationSucceeded: boolean | undefined
     ctx.tools.register(defineContentToolFixture({
       name: 'mutator',
@@ -1927,7 +1924,7 @@ describe('the run_code dispatch bridge', () => {
 
   it('keeps nested diff metadata on the durable dispatch when the run is cancelled', async () => {
     const { ctx, runtime } = await setup({ mode: 'ptc' })
-    const { agent, events } = fakeAgent()
+    const { agent, events } = await fakeAgent(ctx)
     const diffs = [{ path: 'notes.txt', oldText: null, newText: 'x' }]
     const controller = new AbortController()
     ctx.tools.register(defineTool({
@@ -2226,7 +2223,6 @@ describe('PTC standing file policy and sandbox outcomes', () => {
   it('resolves deployment policy for an agentless program', async () => {
     const { ctx } = await setup({ runtime: false })
     try {
-      await ctx.plugin(SessionProjections)
       await ctx.plugin(SandboxPolicy, { mode: 'read-only', workspaceRoot: process.cwd() })
       await ctx.plugin(ConfinedFakeRuntime)
       const result = await runCode(ctx, 'return 1')
@@ -2265,7 +2261,6 @@ describe('PTC standing file policy and sandbox outcomes', () => {
 describe('per-program execution controls', () => {
   async function controlledSetup(approval = true) {
     const state = await setup()
-    await state.ctx.plugin(SessionProjections)
     await state.ctx.plugin(SandboxPolicy, { mode: 'read-only', workspaceRoot: process.cwd() })
     if (approval) await state.ctx.plugin(ApprovalService, { policy: 'ask' })
     Object.defineProperties(state.runtime, {
@@ -2273,9 +2268,9 @@ describe('per-program execution controls', () => {
       executionInstructions: { get: () => 'Programs start with an empty environment.' },
       timeout: { get: () => ({ defaultMs: 120_000, maxMs: 600_000 }) },
     })
-    const session = Session.create(SessionId('program-controls'))
+    const agent = await createDirectoryFixtureAgent(state.ctx, SessionId('program-controls'), process.cwd())
+    const session = agent.session
     session.append('turn/start', { turn: 1 })
-    const agent = createTestAgent({ id: session.id, session })
     const execute = (args: Record<string, unknown>, signal = testToolSignal) => state.tools.execute({
       callId: ToolCallId('program-controls'), name: RUN_CODE_NAME,
       arguments: { code: 'program', description: 'Test execution controls', ...args }, agent, signal,

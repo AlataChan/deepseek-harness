@@ -34,6 +34,7 @@ function pkg(overrides: Partial<PackageView> = {}): PackageView {
     name: 'dsh-better-sidebar',
     version: '0.16.0',
     installed: true,
+    updatable: false,
     optional: false,
     removable: true,
     enabled: true,
@@ -76,6 +77,7 @@ const READY: PluginManagerState = {
   install: IDLE_INSTALL,
   confirm: null,
   highlight: null,
+  versions: {}, update: null,
 }
 
 /**
@@ -104,6 +106,7 @@ function renderTab(
   const store = createSnapshotStore<PluginManagerState>({ ...READY, ...state })
   const ledger = createSnapshotStore<ConfigLedger>({ ...NO_CONFIG, ...config })
   const actions = {
+    checkVersions: vi.fn(), openUpdate: vi.fn(), runUpdate: vi.fn(), closeUpdate: vi.fn(),
     ensure: vi.fn(),
     refresh: vi.fn(),
     openInstall: vi.fn(),
@@ -289,9 +292,9 @@ describe('PluginManagerPage', () => {
   it('says where a bundle comes from: the spec that installs it, or built in, with its version', () => {
     const b = renderTab({ packages: [
       pkg({ source: 'github:someone/dsh-better-sidebar' }),
-      { name: 'dsh-official', installed: false, optional: true, removable: false, enabled: false, rows: [] },
-      { name: 'dsh-shadowed', installed: true, optional: false, removable: false, enabled: true, rows: [] },
-      { name: 'dsh-missing', installed: false, optional: false, removable: true, enabled: true, error: { code: 'unknown-plugin' }, rows: [] },
+      { name: 'dsh-official', updatable: false, installed: false, optional: true, removable: false, enabled: false, rows: [] },
+      { name: 'dsh-shadowed', updatable: false, installed: true, optional: false, removable: false, enabled: true, rows: [] },
+      { name: 'dsh-missing', updatable: false, installed: false, optional: false, removable: true, enabled: true, error: { code: 'unknown-plugin' }, rows: [] },
     ] })
     const facts = (): string[] => [...document.querySelectorAll('[data-plugin-source] dt, [data-plugin-source] dd')].map(node => node.textContent)
     act(() => { b.navigation.actions.setView({ kind: 'package', name: 'dsh-better-sidebar' }) })
@@ -979,7 +982,7 @@ describe('PluginManagerPage', () => {
     })
 
     it('leaves the version out of a bundle the Host reports none for', () => {
-      const unversioned: PackageView = { name: 'dsh-better-sidebar', installed: true, optional: false, removable: true, enabled: true, rows: [] }
+      const unversioned: PackageView = { name: 'dsh-better-sidebar', updatable: false, installed: true, optional: false, removable: true, enabled: true, rows: [] }
       renderTab({ packages: [unversioned] }, {}, bodies)
       fireEvent.click(screen.getByRole('button', { name: en.openDetail.replace('{name}', 'dsh-better-sidebar') }))
       expect(subjects.at(-1)).toEqual({ kind: 'bundle', pkg: { name: 'dsh-better-sidebar', installed: true, enabled: true, rows: [] } })
@@ -1987,4 +1990,26 @@ it('supplies the accepted entry values and atomic mutation action to a custom pl
   fireEvent.click(screen.getByText('Custom'))
   fireEvent.click(screen.getByText('Save custom'))
   expect(mutate).toHaveBeenCalledWith([{ op: 'set', path: ['count'], value: 3 }], 7)
+})
+
+
+it('RC1-09 shows version checks only for eligible rows and waits for confirmation', () => {
+  const b = renderTab({ packages: [pkg({ updatable: true })] })
+  act(() => { b.navigation.actions.setView({ kind: 'package', name: 'dsh-better-sidebar' }) })
+  expect(b.actions.checkVersions).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: en.versionsCheck }))
+  expect(b.actions.checkVersions).toHaveBeenCalledWith('dsh-better-sidebar')
+  b.set({ versions: { 'dsh-better-sidebar': { phase: 'done', checkedAt: 0, list: { status: 'listed', installed: '0.16.0', registry: null, attempts: [], omitted: 0,
+    versions: [{ version: '1.0.0', tags: ['latest'], prerelease: false, bundle: true }] } } } })
+  fireEvent.click(screen.getByRole('button', { name: en.versionsSelect.replace('{version}', '1.0.0') }))
+  expect(b.actions.openUpdate).toHaveBeenCalledWith('dsh-better-sidebar', '1.0.0')
+  expect(b.actions.runUpdate).not.toHaveBeenCalled()
+  b.set({ update: { packageName: 'dsh-better-sidebar', from: '0.16.0', to: '1.0.0', registry: null, phase: 'confirm', steps: [], result: null, outputOpen: false } })
+  fireEvent.click(screen.getByRole('button', { name: en.versionsConfirm }))
+  expect(b.actions.runUpdate).toHaveBeenCalledOnce()
+  b.set({ update: { packageName: 'dsh-better-sidebar', from: '0.16.0', to: '1.0.0', registry: null, phase: 'done', steps: ['installing'], outputOpen: false,
+    result: { from: '0.16.0', to: '1.0.0', step: 'install', result: { application: 'restart-required', stage: 'enable', changed: true, target: 'dsh-better-sidebar' } } } })
+  expect(screen.getByText(en.restartNotice)).toBeDefined()
+  b.set({ update: null, packages: [pkg({ updatable: false })] })
+  expect(screen.queryByRole('button', { name: en.versionsCheck })).toBeNull()
 })

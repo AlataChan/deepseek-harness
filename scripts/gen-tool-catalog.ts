@@ -27,6 +27,11 @@ import * as BashEnvPlugin from '@deepseek-ai/dsh-shell-env'
 import { PwshLocalExecutor } from '@deepseek-ai/dsh-pwsh-local'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
+import WorkingDirectory from '@deepseek-ai/dsh-working-directory'
+import * as ToolWorkingDirectory from '@deepseek-ai/dsh-tool-working-directory'
+import Worktree from '@deepseek-ai/dsh-experimental-worktree'
+import * as ToolWorktree from '@deepseek-ai/dsh-experimental-tool-worktree'
+import LocalSandbox from '@deepseek-ai/dsh-sandbox-local'
 import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
@@ -228,6 +233,32 @@ class CatalogPtcRuntime extends PtcRuntime {
 }
 
 const TOOL_PACKAGES: ToolPackage[] = [
+  {
+    pkg: '@deepseek-ai/dsh-tool-working-directory',
+    dir: 'tool-working-directory',
+    source: 'packages/session/tool-working-directory/src/index.ts',
+    requires: ['ctx.tools', 'ctx.workingDirectory'],
+    writes: ['tool/call', 'working-directory/change', 'user/message', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolWorkingDirectory)
+    },
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-tool-worktree',
+    dir: 'tool-worktree',
+    source: 'packages/experimental/tool-worktree/src/index.ts',
+    requires: ['ctx.tools', 'ctx.worktrees', 'ctx.workingDirectory'],
+    writes: ['tool/call', 'Git checkout and branch', 'working-directory/change', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(LocalFileSystem)
+      await ctx.plugin(WorkingDirectory)
+      await ctx.plugin(LocalSubprocessRuntime)
+      await ctx.plugin(LocalSandbox)
+      await ctx.plugin(SandboxPolicy)
+      await ctx.plugin(Worktree)
+      await ctx.plugin(ToolWorktree)
+    },
+  },
   {
     pkg: '@deepseek-ai/dsh-plugin-manager',
     dir: 'plugin-manager',
@@ -831,6 +862,8 @@ export async function collectToolCatalog(packages: ToolPackage[] = TOOL_PACKAGES
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime, entry.toolsConfig ?? {})
       await entry.mount(ctx)
+      if (ctx.get('fs') === undefined) await ctx.plugin(LocalFileSystem)
+      if (ctx.get('workingDirectory') === undefined) await ctx.plugin(WorkingDirectory)
       const schemas = ctx.tools.schemas(entry.scope?.(ctx)).sort((a, b) => a.name.localeCompare(b.name))
       assertToolsHarvested(entry, schemas.length)
       catalog.push({

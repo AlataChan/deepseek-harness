@@ -16,13 +16,13 @@ describe('Chat presentation policy', () => {
     ['verbose', false, 'none', true, false],
   ] as const)('maps %s to stable presentation capabilities', (mode, foldCompletedTurns, stepGrouping, settledReasoningPreview, liveProcessDetail) => {
     const policy = presentationPolicyFor(mode)
-    expect(policy).toEqual({ mode, foldCompletedTurns, stepGrouping, settledReasoningPreview, liveProcessDetail })
+    expect(policy).toEqual({ mode, foldCompletedTurns, stepGrouping, settledReasoningPreview, liveProcessDetail, collapseTiming: 'completion', foldedReplies: 'all' })
     expect(presentationPolicyFor(mode)).toBe(policy)
   })
 
   it('forwards mode notifications and removes the subscription on disposal', () => {
     const mode = createSnapshotStore<TranscriptViewMode>('compact')
-    const policy = derivePresentationPolicy(mode)
+    const policy = derivePresentationPolicy(mode, createSnapshotStore<'completion'>('completion'), createSnapshotStore<'all'>('all'))
     const listener = vi.fn()
     const dispose = policy.subscribe(listener)
     expect(policy.getSnapshot()).toBe(presentationPolicyFor('compact'))
@@ -36,7 +36,7 @@ describe('Chat presentation policy', () => {
 
   it('renders only consumers whose selected field changes', () => {
     const mode = createSnapshotStore<TranscriptViewMode>('compact')
-    const usePresentation = bindSnapshotSelector(derivePresentationPolicy(mode))
+    const usePresentation = bindSnapshotSelector(derivePresentationPolicy(mode, createSnapshotStore<'completion'>('completion'), createSnapshotStore<'all'>('all')))
     const foldRender = vi.fn()
     const previewRender = vi.fn()
     function Fold() {

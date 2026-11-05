@@ -1,0 +1,320 @@
+{
+  "item": "RC1-S1",
+  "status": "bounded implementation authorized after M2 acceptance",
+  "implementationAuthorized": true,
+  "shaKind": "git blob",
+  "worktreeCommit": "3f528c60a419f1c71c097d44f5c6a78f131256c2",
+  "sourceCeiling": {
+    "tag": "dsh-v0.2.2-rc.1",
+    "commit": "66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db",
+    "lead": "341ea6eea414c61fbe4c99cd1c3d6fc60bf0a57f",
+    "leadSubject": "feat(schedule): integrate standalone tasks with the existing WebUI (#6189)",
+    "rule": "Behavior is taken from the tag. The lead only identifies the standalone-task integration. Do not follow origin master past the tag."
+  },
+  "pins": {
+    "upstreamPin": "dsh-v0.2.1-alpha.1",
+    "productVersion": "0.2.1-alpha.1",
+    "backport": "One BackportEntry later, after M2 and this manifest are accepted. sourceTag dsh-v0.2.2-rc.1, basePin dsh-v0.2.1-alpha.1. This candidate does not edit scripts/upstream-intake-registry.ts."
+  },
+  "oneEntry": {
+    "slot": "sidebar.panellist",
+    "id": "schedules",
+    "labelKey": "schedule.manager panel",
+    "en": "Automation tasks",
+    "zh": "\u81ea\u52a8\u5316\u4efb\u52a1",
+    "rule": "Keep this one registration. Manual create, edit, catalog, delivery history, and clear-ended stay inside that page. Do not add a second panel, route, or scheduler."
+  },
+  "chosen": [
+    {
+      "path": "packages/schedule/schedule/src/types.ts",
+      "currentBlob": "d072de64b8cc0304be4c3794bab50b783d202d24",
+      "tagBlob": "b4920e92030905e483ee2fd7d3364591f033b890",
+      "change": "Add ScheduleTiming, ScheduleTarget, ScheduleTargetRequest, paged ScheduleListResult, ScheduleViewRequest, SchedulePatch, ScheduleEditRequest, ScheduleRunRequest, and deleteInactive result. Keep after, at, every, daily, weekly, and cron. Do not add an rrule record. Keep schedule/change as the inert version-1 session event. Catalog entries gain target, status active|paused|ended, optional createdAt, updatedAt, executionActive, and deliveryFloorEndsAt. History requests drop the required sessionId."
+    },
+    {
+      "path": "packages/schedule/schedule/src/storage.ts",
+      "currentBlob": "42e70109f78882f81b923ff25273b72423f2cee7",
+      "tagBlob": "9f0534c5e84b49532abcca7bc1bf7bfc24082135",
+      "change": "Raise the schedule domain to version 2 with compatibleVersions [1]. Read a version-1 row as a session target and map inactive to ended. Do not write on open. The next edit or delivery stores the version-2 row."
+    },
+    {
+      "path": "packages/schedule/schedule/src/index.ts",
+      "currentBlob": "b7e4ecb62aeb24b134389e90b95ade6a282dfe48",
+      "tagBlob": "36b6eaaf91ba8a78b7f20276da10e2409213bf31",
+      "change": "One service owns create, paged list, catalog, view, history, run, edit, and deleteInactive. Human remotes pass no actor session. Agent calls pass the acting session as involved only. Replace remote update and delete with edit. Cancellation is the request AbortSignal before the durable write. Do not add a second timer owner."
+    },
+    {
+      "path": "packages/schedule/schedule/src/runtime.ts",
+      "currentBlob": "0fc7f3dd0b9936e00622ea2b1f1eb21502feb278",
+      "tagBlob": "e15aa2d74666a8fea8d1bb044abe796d7a423293",
+      "change": "Deliver session, new_once, and new targets through the existing sessionController.resolveAgent and sessionController.create. Enqueue with source kind schedule. A new target records pendingDelivery before create so a crash resumes that reserved id. Do not add schedule/resolve-agent."
+    },
+    {
+      "path": "packages/schedule/schedule/src/update.ts",
+      "currentBlob": "5b15bbd756e32c428576052bff09489a0e3f9e70",
+      "tagBlob": "39fef6049c09d2dc5dd473ad428e105cbff56838",
+      "change": "Keep one compare-and-swap helper. Conflict key becomes expectedUpdatedAt against the stored updatedAt. A patch may replace title, prompt, the six existing timings, target, or active. Do not copy the tag file."
+    },
+    {
+      "path": "packages/schedule/schedule/src/delivery-history.ts",
+      "currentBlob": "e4610ac398163e1f4ec4471551ce4c5c87e16fb3",
+      "tagBlob": "89048942206af0fd219c19ee391657e55a91bffd",
+      "change": "Page saved receipts without activating a session. Fill targetSessionId at read time when the stored receipt omitted it and the target already names a session. Do not reconstruct missing receipts."
+    },
+    {
+      "path": "packages/schedule/schedule/src/domain.ts",
+      "currentBlob": "28748ace0aa02b61de09987d3543890761f0a47a",
+      "tagBlob": "f90f79514d26332762d456957708cc650b38f113",
+      "change": "Call the existing six record constructors from one ScheduleTiming dispatcher. Do not replace this file with the tag copy and do not add rrule evaluation."
+    },
+    {
+      "path": "packages/schedule/tool-schedule/src/index.ts",
+      "currentBlob": "d67d474c6d5d345bdabf6f9eddabf56e30da36a6",
+      "tagBlob": "ab1ed612dcdd35811cefe842e01dcaec680b5140",
+      "change": "Keep schedule_create and schedule_list. Add schedule_view and schedule_edit. Remove schedule_delete and schedule_update in the same change so the model has one edit tool. Arguments use timing and target. The tool still cannot set source kind user."
+    },
+    {
+      "path": "packages/schedule/AGENTS.md",
+      "currentBlob": "172ce1bd2c58bab5dbbb3bc2ef75c8a107cd136c",
+      "tagBlob": "5f00a7b14cc27e10b1a73a9f3fc415603788ad3d",
+      "change": "State host storage version 2, the three targets, producer kind schedule, and that historical schedule/change events stay inert. Do not copy the tag page."
+    },
+    {
+      "path": "packages/client/ui-schedule/src/client/index.ts",
+      "currentBlob": "084d0edb8d7df415540e3039f12d8c7ddc40717f",
+      "tagBlob": "5df353095f92706bc2bac5e077305d54d16074c1",
+      "change": "Keep the one schedules panel. Wire create, edit, run, history, and deleteInactive to the new remotes. New still starts a session. Manual create is a separate action inside the same page."
+    },
+    {
+      "path": "packages/client/ui-schedule/src/client/TaskManagerPage.tsx",
+      "currentBlob": "8f09c96137034573f04c1cf7de4de4ffa7dd7b72",
+      "tagBlob": "53a53fe9d44df92991248a9050251c3fb9672d29",
+      "change": "Open manual create in the existing detail pane. Catalog reads stay on the current source. Do not add a second page component."
+    },
+    {
+      "path": "packages/client/ui-schedule/src/client/TaskDetail.tsx",
+      "currentBlob": "ea3cd3d9445c6b1f5091adcc11eacef16b3bbdfd",
+      "tagBlob": "cafd8023780f490b531692bdc7a5ea28338d4aa2",
+      "change": "Extend the existing rule form with target session, new_once, and new, plus title and prompt save through edit. Do not import the tag split or RRule controls."
+    },
+    {
+      "path": "packages/client/ui-schedule/src/client/catalog-source.ts",
+      "currentBlob": "363c28dde7bda3f67d961354ecca194962e6faa9",
+      "tagBlob": "575a19d2bc8db9aaedb216545e71825337b20c8c",
+      "change": "Keep one catalog read. A schedule/changed notice or connection reset supersedes the read in flight. Do not start a second poller."
+    },
+    {
+      "path": "packages/client/ui-schedule/src/client/task-manager-locales.ts",
+      "currentBlob": "7439d9733b7737cb6e79d4879f843b94c9f851d4",
+      "tagBlob": "13ef7c905203b4da794cf6eb05bf314ed6915b7f",
+      "change": "Add en and zh strings for manual create, target choice, run, and clear ended. Keep the panel string Automation tasks / \u81ea\u52a8\u5316\u4efb\u52a1. Do not add de, es, fr, ja, pt, or ru."
+    },
+    {
+      "path": "packages/client/ui-schedule/src/client/session-schedule-state.ts",
+      "currentBlob": "3e8fa08f99e642b02941048bb3f7494d69029a01",
+      "tagBlob": "cc27321f00776f6618ba65876cf660759e6b8e82",
+      "change": "Session marks read the catalog target instead of a required sessionId field. Delete goes through edit."
+    },
+    {
+      "path": "apps/web/tests/schedule-after.e2e.ts",
+      "currentBlob": "89318180b1350fa75caf5c6f0ac28cfa8d1f991c",
+      "tagBlob": "34cbaf4155965af1655aa9d2f35e95e59b2848c7",
+      "change": "Update calls to the new create, list, edit, and history signatures. Keep this keyless web host case. Do not replace it with the tag file."
+    },
+    {
+      "path": "packages/subagent/subagent-in-process-driver/tests/schedule-tools.spec.ts",
+      "currentBlob": "bcb34a83ba92656160cb72f1f97aa475d01274dd",
+      "tagBlob": null,
+      "change": "Update the child-session list and catalog expectations to the paged list and target catalog. The tag has no this path. Do not drop the fork subagent case."
+    }
+  ],
+  "retainUnchanged": [
+    {
+      "path": "packages/schedule/schedule/src/client.ts",
+      "currentBlob": "798a3cd14c286c94fc116b91156bc9608b0a6868",
+      "tagBlob": "798a3cd14c286c94fc116b91156bc9608b0a6868",
+      "reason": "Blob matches the tag. Re-export surface stays."
+    },
+    {
+      "path": "packages/experimental/session-decisions/src/observers.ts",
+      "currentBlob": "53caeef85e4f3ca0f46cb050fb3c6184a1ff9ca8",
+      "tagBlob": null,
+      "reason": "Fork-only. A schedule inbox insert has no user rpcId, so it is ordinary input: it bumps the generation and supersedes an open question. A correlated queued answer stays queued. Do not edit this file for S1."
+    },
+    {
+      "path": "packages/api/session-controller/src/commands.ts",
+      "currentBlob": "7e900b92aee6e6862d433ecfe03bc83399f75c0c",
+      "tagBlob": "5309872331989824b0f09b97840f913e96f74b8a",
+      "reason": "create already accepts sessionId, cwd, and agentPreset. S1 calls that method. Do not import the tag controller."
+    },
+    {
+      "path": "packages/api/session-controller/src/types.ts",
+      "currentBlob": "01bb368ba7e4bcbc762099774858e57af7aa062e",
+      "tagBlob": "1d846d4c9a82f2ab5afac3084c6578245260e446",
+      "reason": "SessionCreateRequest already has the fields delivery needs. Do not take the tag type file."
+    },
+    {
+      "path": "packages/bundle/web-app/cordis.patch.yml",
+      "currentBlob": "15f79204a674ede2efa7dced2d00fdab5b5515d5",
+      "tagBlob": "d751fcc46286ce101da2a26d782bbff7d7de6aa8",
+      "reason": "The current patch already mounts one dsh-schedule and one ui-schedule. Do not copy the tag patch."
+    },
+    {
+      "path": "packages/schedule/schedule/src/runtime.ts",
+      "currentBlob": "0fc7f3dd0b9936e00622ea2b1f1eb21502feb278",
+      "tagBlob": "e15aa2d74666a8fea8d1bb044abe796d7a423293",
+      "reason": "Keep kind schedule. Human composer input stays kind user. Do not add a kind and do not put rpcId on a scheduled message.",
+      "scopeNote": "MessageSourceMap"
+    }
+  ],
+  "proposedFilenames": [
+    {
+      "path": "packages/client/ui-schedule/src/client/clear-ended.ts",
+      "tagBlob": "007d2b18d0994238ea4eb074e1dff2ccffcee063",
+      "role": "One clear-ended action and its readback. Adapt the tag function. Do not copy extra UI."
+    },
+    {
+      "path": "packages/client/ui-schedule/src/client/task-record.ts",
+      "tagBlob": "abb6a965f606a75c3a7cbfd8ce57d3a6a4ca481b",
+      "role": "Next-run and destination helpers for the six timings and three targets. Omit the tag RRuleScheduleRecord import."
+    },
+    {
+      "path": "packages/schedule/schedule/tests/management.spec.ts",
+      "tagBlob": "90215582bfa95d92d20b1cb2e12d76d793f7121e",
+      "role": "Create, edit conflict, catalog page, history page, and deleteInactive. Write against the fork service. The tag file is a lead, not a copy."
+    },
+    {
+      "path": "packages/schedule/schedule/tests/targets.spec.ts",
+      "tagBlob": "6b1d431e97b24a438d4943b550d0d1ac8e9f4a1d",
+      "role": "session, new_once, and new delivery, including an archived session refusal."
+    },
+    {
+      "path": "packages/schedule/schedule/tests/storage-evolution.spec.ts",
+      "tagBlob": "d2370ad52622e4c5d3a861c22d9fd955e30d0af7",
+      "role": "Version-1 row reads without a startup write. The following edit or delivery stores version 2."
+    },
+    {
+      "path": "packages/schedule/schedule/tests/target-restart.spec.ts",
+      "tagBlob": "da973e0a84d31c1581946c892e797c6395cd797d",
+      "role": "Reopen the domain and rearm through the same runtime."
+    },
+    {
+      "path": "packages/schedule/schedule/tests/host-controllers.spec.ts",
+      "tagBlob": null,
+      "role": "Frozen name with no tag blob. Real sessionController create, resolve, cancel, and cold reopen. Assert delivered source kind schedule, an open question superseded, and a queued answer left queued."
+    },
+    {
+      "path": "packages/client/ui-schedule/tests/host-task-editor.client.spec.tsx",
+      "tagBlob": "2eb815b6d94634a31c2914d5489da1ca75650669",
+      "role": "One panel. Manual create is separate from New. en and zh only."
+    },
+    {
+      "path": "packages/client/ui-schedule/tests/clear-ended.client.spec.ts",
+      "tagBlob": "ef943688b02063defcfc912086b3a0f09c213cb7",
+      "role": "Clear-ended readback supersedes an older catalog read."
+    },
+    {
+      "path": "apps/web/tests/schedule-manual.e2e.ts",
+      "tagBlob": "cde9828a5db3e97bb39b35e59aeeb8149d0479ca",
+      "role": "Keyless web host case for manual create and edit through the running Host. Root runs it after the integrated build. Do not copy the tag test blindly."
+    }
+  ],
+  "filenameFreeze": "Implementation may add only the ten paths in proposedFilenames. No other new source, test, locale, or CSS file is in this candidate.",
+  "excluded": [
+    "RFC 5545 rrule records and packages/util/time Cron or RRule exports",
+    "Tag locales de, es, fr, ja, pt, ru",
+    "Tag CSS splits, ScheduleEmptyIllustration, NewSessionLimit, editor-store, editor-timing, TaskEditorFields, TaskRuleControls, RuleSelectRow",
+    "A schedule/resolve-agent waterfall or any timer beside ScheduleRuntime",
+    "Stage C task runtime, mailbox admission, and assistant-registry acceptance",
+    "Remote publication and the tag upgrade-guide pages schedule-remote-host-tasks and schedule-agent-tools, until a later accepted code change writes its own guide",
+    "Whole-package replacement of packages/schedule or packages/client/ui-schedule",
+    "Tag session-controller, cordis.patch.yml, and origin master commits after 66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db",
+    "Intake registry edits, dependency installs, generator writes, and source emits"
+  ],
+  "dependencies": {
+    "existingCalls": [
+      "sessionController.create({ sessionId, cwd, agentPreset })",
+      "sessionController.resolveAgent",
+      "workspace attach already performed by sessionController.create when workspaceId is set"
+    ],
+    "newExports": [
+      "ScheduleService.create without a leading sessionId",
+      "ScheduleService.list returning ScheduleListResult",
+      "ScheduleService.view",
+      "ScheduleService.edit",
+      "ScheduleService.run",
+      "ScheduleService.deleteInactive",
+      "Remote names create, view, edit, run, deleteInactive",
+      "Removed remote names update and delete"
+    ],
+    "manifest": [
+      "No new npm dependency",
+      "No new peer on @deepseek-ai/dsh-util-time",
+      "web-app already depends on @deepseek-ai/dsh-schedule and @deepseek-ai/dsh-client-ui-schedule",
+      "Later implementation regenerates the schedule Typert host and remote from the service. This candidate does not run the generator.",
+      "Later implementation adds one upgrade guide because create, list, and edit change the remote. This candidate does not write that guide."
+    ]
+  },
+  "persistence": {
+    "classification": "compatible-read",
+    "domain": "schedule",
+    "currentVersion": 1,
+    "nextVersion": 2,
+    "compatibleVersions": [
+      1
+    ],
+    "sessionFormat": "unchanged",
+    "startupWrite": false,
+    "oldRow": {
+      "sessionId": "required",
+      "record": "after | at | every | daily | weekly | cron",
+      "status": "active | inactive, default active",
+      "lastDelivery": "optional scheduledAt, deliveredAt, messageId",
+      "deliveryHistory": "optional records, earlierRecordsUnavailable, optional earlierRecordsPruned"
+    },
+    "readOfOldRow": {
+      "target": "{ kind: session, sessionId } from the stored sessionId",
+      "status": "inactive becomes ended in memory",
+      "involvedSessionIds": "the bound session",
+      "receipts": "targetSessionId filled from that session at read time"
+    },
+    "newRowWrittenOnMutation": {
+      "record": "same six kinds",
+      "target": "session | new_once | new",
+      "involvedSessionIds": "actor and existing or reserved target sessions",
+      "status": "active | paused | ended",
+      "createdAt": "optional",
+      "updatedAt": "optional, compare-and-swap token",
+      "pendingDelivery": "optional reserved session for an in-flight new target",
+      "lastDelivery": "adds targetSessionId",
+      "sessionId": "omitted after the write"
+    },
+    "notMigrated": [
+      "Historical schedule/change session events stay readable and do not fill host tasks",
+      "No scan of inactive sessions",
+      "No rewrite of released session logs",
+      "Question rows stay in the session-decisions store. Schedule does not write them except through the existing supersede when a schedule message is ordinary input."
+    ]
+  },
+  "tests": {
+    "unit": "PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false pnpm --config.enable-global-virtual-store=false --config.verify-deps-before-run=error exec vitest run packages/schedule/schedule/tests packages/schedule/tool-schedule/tests packages/client/ui-schedule/tests packages/subagent/subagent-in-process-driver/tests/schedule-tools.spec.ts packages/experimental/session-decisions/tests/observers.spec.ts packages/experimental/session-decisions/tests/input-ordering.spec.ts",
+    "keylessHost": "PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false pnpm --config.enable-global-virtual-store=false --config.verify-deps-before-run=error exec vitest run packages/schedule/schedule/tests/host-controllers.spec.ts packages/schedule/schedule/tests/target-restart.spec.ts packages/schedule/schedule/tests/storage-evolution.spec.ts",
+    "browser": "Root-owned after the integrated client build. Case name schedule-manual, plus the existing schedule-after web host case. This candidate does not launch a browser.",
+    "restart": "target-restart.spec.ts reopens the schedule domain. host-controllers.spec.ts cold-starts through sessionController and checks a reserved new target is not created twice."
+  },
+  "prerequisites": [
+    "M2 remains closed until migration and Host, Client, SDK, native, and strict Session gates pass.",
+    "Root owns source emit, the full candidate build, and browser or installed acceptance.",
+    "S1 code starts only after M2 acceptance and review of this manifest."
+  ],
+  "authorizedInterrupt": {
+    "reason": "Coordinator msg_821866099afb. Root candidate build stopped at the first package-source type error.",
+    "path": "packages/fs/tool-fs/src/patch/execute.ts",
+    "beforeBlob": "ca4a44f7ef9c565f1eb5cf8746d63abab294c241",
+    "afterBlob": "382226d00c081c9b7dc5b9e0102be34d489f153d",
+    "change": "Removed the unreachable move guard that threw FsError with FS_PATCH_MISMATCH. parsePatch ensureUpdate already rejects an update with no hunk and an empty hunk. A planned move is that update, so the guard could not run. Hunk mismatch remains a tool diagnostic through hunkMismatch.",
+    "verification": "tsc --noEmit -p packages/fs/tool-fs/tsconfig.json exited 0. vitest apply-patch.spec.ts and parse.spec.ts: 2 files, 91 passed."
+  },
+  "m2Accepted": true,
+  "m2ExitFreeze": "m2-exit-source-freeze.json"
+}

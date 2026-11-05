@@ -1,0 +1,29 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04
+
+ ❯ apps/web/tests/plugin-manager.e2e.ts (16 tests | 1 failed) 52360ms
+     × enables the Team tools and browser plugin with one bundle switch 32426ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/tests/plugin-manager.e2e.ts > web e2e: plugin manager > enables the Team tools and browser plugin with one bundle switch
+TimeoutError: locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('dialog', { name: '团队协作', exact: true }).getByText('Team 暂不可用', { exact: true }) to be visible[22m
+
+ ❯ apps/web/tests/plugin-manager.e2e.ts:693:65
+    691|         await action.getByRole('button', { name: '团队协作', exact: true }…
+    692|         const teamPanel = teamPage.getByRole('dialog', { name: '团队协作',…
+    693|         await teamPanel.getByText('Team 暂不可用', { exact: true }).waitFo…
+       |                                                                 ^
+    694|         await teamPage.reload({ waitUntil: 'load' })
+    695|         await action.getByRole('button', { name: '团队协作', exact: true }…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 34 passed (35)
+   Start at  15:14:27
+   Duration  103.68s (transform 1.13s, setup 0ms, import 3.00s, tests 100.33s, environment 0ms)

@@ -1,0 +1,153 @@
+{
+  "baseline": "M2 committed HEAD",
+  "offenderFiles": [
+    {
+      "path": "packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css",
+      "unchangedFromM2": false,
+      "m2Sha256": "21aa5f533da7261b7e9204a7118236a5b27b76d872a6afde4ffe4f473a03c9ac",
+      "currentSha256": "25a21e9ccbc9aa64fb15e738674ddaf73d7ba0475560fff4cc37606ad573ea51"
+    },
+    {
+      "path": "packages/client/ui-trajectory/src/client/TrajectoryToolbar.module.css",
+      "unchangedFromM2": false,
+      "m2Sha256": "b512e1c52f397ef81775295ae779e95dbf7682d53ce7a9b48e2f1f01dd714c8c",
+      "currentSha256": "179f50eee011feb52b7e50591a9aa5e5b67f75c97a37cf8883fbfd39a8001a15"
+    },
+    {
+      "path": "packages/experimental/client-ui-agent-team/src/client/TeamAction.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "3234679fa2f6c81830bf53c5684005f02bfba8d015d7baa9afa663d07b0aab93",
+      "currentSha256": "3234679fa2f6c81830bf53c5684005f02bfba8d015d7baa9afa663d07b0aab93"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/AssistantComposerSelector.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "d2949574ead746b00f007fa970cf8c352b2dc7532f450cc642ad8a691b37e34e",
+      "currentSha256": "d2949574ead746b00f007fa970cf8c352b2dc7532f450cc642ad8a691b37e34e"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/AssistantConversationHeader.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "a2d49d155081bb9e157e305e6e4ca97da3ebdf2553ad09ce25bbf9969eb03f0f",
+      "currentSha256": "a2d49d155081bb9e157e305e6e4ca97da3ebdf2553ad09ce25bbf9969eb03f0f"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/AssistantDetailDrawer.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "a7ef31735b337d1230122d727a98e1578c27c00b8c3845bc301110af2f575270",
+      "currentSha256": "a7ef31735b337d1230122d727a98e1578c27c00b8c3845bc301110af2f575270"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/AssistantDirectory.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "5d6fa13e631c3be1c43fae6dd18901d082d594d6ec9b13bdd27223563122ad78",
+      "currentSha256": "5d6fa13e631c3be1c43fae6dd18901d082d594d6ec9b13bdd27223563122ad78"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/AssistantExampleChips.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "3cd43bf7725b8224ef9d890000b411df80831a0ff00f5769c2842505d32d82cd",
+      "currentSha256": "3cd43bf7725b8224ef9d890000b411df80831a0ff00f5769c2842505d32d82cd"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/AssistantHeroCard.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "32c2ab062ede470c42ee04c7388d910b2ba37b8047aa14a817d635baa44ca9f8",
+      "currentSha256": "32c2ab062ede470c42ee04c7388d910b2ba37b8047aa14a817d635baa44ca9f8"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/AssistantWorkspaceDialog.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "fa77ec33fd712ba967f08977197f3f9a7398e896974d53b87d75647de4efad69",
+      "currentSha256": "fa77ec33fd712ba967f08977197f3f9a7398e896974d53b87d75647de4efad69"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/EntityAvatar.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "8459a0fe320b6e42566f246d794c17e1dd2c6e37a5f0c682a0ab237ef7258be8",
+      "currentSha256": "8459a0fe320b6e42566f246d794c17e1dd2c6e37a5f0c682a0ab237ef7258be8"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/MemoryPanel.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "cdcfeed3f0f19db2553eacff1385d5c19631f9f24bb3d7ce042c7941158793d3",
+      "currentSha256": "cdcfeed3f0f19db2553eacff1385d5c19631f9f24bb3d7ce042c7941158793d3"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/StandingTeamDock.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "b28acf47ac962030f1bba11591600f450f1b72c3692cde7ea54951115aaa18e3",
+      "currentSha256": "b28acf47ac962030f1bba11591600f450f1b72c3692cde7ea54951115aaa18e3"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/TeamDiscussion.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "a749a4aea8663d363b6ed27269374994296ef2236b672423eeeaacb7b929f446",
+      "currentSha256": "a749a4aea8663d363b6ed27269374994296ef2236b672423eeeaacb7b929f446"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/src/client/TeamView.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "c420f90e57f7ae7ad3db48aa9201fcf391560ff1c69900330a12f8b16e2ac4c8",
+      "currentSha256": "c420f90e57f7ae7ad3db48aa9201fcf391560ff1c69900330a12f8b16e2ac4c8"
+    },
+    {
+      "path": "packages/experimental/client-ui-assistants/tests/fixtures/character-avatars.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "9cb7afb9c4f0daace03e0b21dc30bd9b4bfff9283af30d5ce131650cdfceec37",
+      "currentSha256": "9cb7afb9c4f0daace03e0b21dc30bd9b4bfff9283af30d5ce131650cdfceec37"
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/client/LocalReviewTab.module.css",
+      "unchangedFromM2": false,
+      "m2Sha256": null,
+      "currentSha256": "dd8245e3ee6e3c7ed05affc38c9731e5ac137b757c580beca2697cfbde8e6cd9"
+    },
+    {
+      "path": "packages/experimental/desktop-ask-knowledge/src/client/DocumentStatus.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "82207708a5f30972d7c79dc117db91702dcd06a7cf16faf8e0c0046c323caeab",
+      "currentSha256": "82207708a5f30972d7c79dc117db91702dcd06a7cf16faf8e0c0046c323caeab"
+    },
+    {
+      "path": "packages/experimental/desktop-ask-knowledge/src/client/LibrarySettingsSection.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "69221d39ec787e2100bc1f4242a0343a1f4757833c6c012dab8398f94222cc0b",
+      "currentSha256": "69221d39ec787e2100bc1f4242a0343a1f4757833c6c012dab8398f94222cc0b"
+    },
+    {
+      "path": "packages/experimental/desktop-im/src/client/ImSettings.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "3b53b0b2518fa6d34a679fc4efd01e59f4324297b2ab36f3610bd3540b936031",
+      "currentSha256": "3b53b0b2518fa6d34a679fc4efd01e59f4324297b2ab36f3610bd3540b936031"
+    },
+    {
+      "path": "packages/experimental/session-decisions/src/client/QuestionCard.module.css",
+      "unchangedFromM2": true,
+      "m2Sha256": "9e4ac5d79e12ed92d2ba634e814f878ecf52364a22445b5cad99b093910a29ff",
+      "currentSha256": "9e4ac5d79e12ed92d2ba634e814f878ecf52364a22445b5cad99b093910a29ff"
+    }
+  ],
+  "newFilesToRepair": [
+    "packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css",
+    "packages/client/ui-trajectory/src/client/TrajectoryToolbar.module.css",
+    "packages/experimental/client-ui-forge/src/client/LocalReviewTab.module.css"
+  ],
+  "wholeStylesuiteAccepted": false,
+  "finalScrollbarBaseline": {
+    "path": "packages/experimental/client-ui-assistants/src/client/AssistantDetailDrawer.module.css",
+    "unchangedFromM2": true,
+    "sha256": "a7ef31735b337d1230122d727a98e1578c27c00b8c3845bc301110af2f575270"
+  },
+  "introducedFindingsRepaired": [
+    "PluginManagerPage versionRow hairline",
+    "Forge LocalReviewTab file hairline",
+    "TrajectoryToolbar elevated scrollbar thumb layer"
+  ],
+  "finalRemainingStyleTests": {
+    "passed": 34,
+    "failedInherited": 3,
+    "wholeStylesuiteAccepted": false,
+    "evidence": "dependent-style-final-with-baseline.log"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "mobileFocused": {
+    "files": 2,
+    "tests": 24,
+    "exit": 0,
+    "summary": "mobile-closure/coverage-summary.json"
+  },
+  "combinedPrimitiveSidebar": {
+    "files": 72,
+    "tests": 1430,
+    "exit": 1,
+    "summary": "sidebar-mobile-closure/coverage-summary.json"
+  },
+  "newRemainingBranches": [
+    {
+      "path": "packages/client/ui-sidebar/src/client/SidebarRoot.tsx",
+      "lines": [
+        152,
+        154
+      ]
+    }
+  ],
+  "baselineSourceRemaining": {
+    "path": "packages/client/ui-sidebar/src/client/SidebarRoot.tsx",
+    "lines": [
+      360,
+      385
+    ]
+  }
+}

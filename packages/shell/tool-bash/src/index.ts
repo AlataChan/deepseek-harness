@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
 /**
  * Model-facing Consumer of the `ctx.shell` capability seam. While a job
  * registry is composed, every call registers its process with `ctx.jobs` as
@@ -31,7 +32,7 @@ import { processJob, processOutcome, processSources, ringDelta } from './backgro
 import { parseExitStatus, renderJobRead, renderPromoted, renderResult } from './render.ts'
 
 export const name = 'tool-bash'
-export const inject = ['tools', 'shell', 'systemPrompt', 'shellEnv']
+export const inject = ['workingDirectory', 'tools', 'shell', 'systemPrompt', 'shellEnv']
 
 /** Configuration for the bash tool. */
 export interface Config {
@@ -145,20 +146,20 @@ function presentBashResult(args: unknown, result: ToolResult): ToolResultView | 
 /**
  * Resolve an explicit workdir first, making a relative one session-workspace-relative;
  * otherwise use the filesystem identity of the session cwd and leave executor
- * defaulting as the fallback. A resolved sandbox-policy root wins so workdir
- * and confinement use the exact same per-call identity.
+ * defaulting as the fallback. Confinement retains the original project root.
  */
-function resolveWorkdir(
-  modelWorkdir: string | undefined,
-  exec: { agent?: Agent },
-  policyWorkspaceRoot?: string,
-): string | undefined {
-  const headerCwd = exec.agent?.session.header.cwd
-  const sessionCwd = policyWorkspaceRoot ?? headerCwd
-  if (modelWorkdir === undefined) return sessionCwd
-  if (sessionCwd !== undefined && !isAbsolute(modelWorkdir)) {
-    return `${sessionCwd}${sep}${modelWorkdir}`
+async function resolveWorkdir(
+  ctx: Context, modelWorkdir: string | undefined, exec: { agent?: Agent; signal: AbortSignal },
+): Promise<string | undefined> {
+  let cwd: string | undefined
+  try {
+    cwd = exec.agent === undefined ? undefined : await ctx.workingDirectory.ensure(exec.agent, exec.signal)
+  } catch (error) {
+    if (exec.signal.aborted) throw toolAborted()
+    throw error
   }
+  if (modelWorkdir === undefined) return cwd
+  if (cwd !== undefined && !isAbsolute(modelWorkdir)) return `${cwd}${sep}${modelWorkdir}`
   return modelWorkdir
 }
 
@@ -488,7 +489,7 @@ export function apply(ctx: Context, config: Config = {}): void {
         const policy = approvedMode === undefined
           ? standingPolicy
           : { ...(standingPolicy as SandboxExecutionPolicy), mode: approvedMode }
-        const workdir = resolveWorkdir(args.workdir, exec, standingPolicy?.workspaceRoot)
+        const workdir = await resolveWorkdir(ctx, args.workdir, exec)
         const dshEnv = ctx.shellEnv.collect(exec)
         const request: ShellExecRequest = {
           command: args.command,

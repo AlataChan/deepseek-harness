@@ -97,7 +97,7 @@ function props(
     useTrajectory: unused,
     inputActions: {
       captureInsertion: unused,
-      insertText: unused,
+      insertText: unused, insertQuote: unused,
       setDraft: unused,
       persistDraft: unused,
       addAttachments: unused,

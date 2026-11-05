@@ -23,6 +23,7 @@ dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 侧边栏是导航外壳：用户看到品牌、启动新会话、折叠轨道并到达 Settings。功能插件填充它的席位——ui-workspace 填充 `sidebar.workspaces`，ui-settings 在 `sidebar.settings` 注册触发行与设置面板。
@@ -41,7 +42,10 @@ dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将
 
 -----
 
+插件入口始终固定。其他已注册面板可通过“更多面板”取消固定；高度不足时入口也会进入该菜单。固定状态在 Client 根上下文的生命周期内保留。`sidebar.panellist.actions` 插槽可提供自定义菜单，并接收当前面板列表及固定、打开操作。
+
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -58,6 +62,7 @@ dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 以下页面覆盖填充外壳席位的各个界面与组合模型。
@@ -71,6 +76,7 @@ dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将
 -----
 
 <a id="model-experience"></a>
+
 ## 模型体验
 
 无。该包是浏览器端 UI 插件层，不注册任何面向模型的内容。
@@ -91,6 +97,7 @@ dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将
 - **「New task completed」未读标记是本地查看状态**：完成时间 > 上次查看时间这一事实永远不会到达宿主。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

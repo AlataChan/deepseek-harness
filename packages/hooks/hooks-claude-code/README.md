@@ -23,6 +23,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Mount this package, point `configPath` at your hook config, and the hooks you already have start firing at the corresponding moments in agent runs. There is nothing else to set up before the first hook works.
@@ -75,6 +76,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -120,6 +122,7 @@ The [hook-bridges Agent Note](../../../.agents/notes/archived/feature/2026-06-30
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the shared protocol to the bridge design and the extension points it programs against.
@@ -132,7 +135,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+Agent-bound hook commands use the validated execution directory while hook payloads retain original Session identity. SubagentStop observes the committed directory even after child disposal. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Hook-provided context
@@ -181,6 +187,7 @@ These limits describe what your Claude Code hooks cannot do through this bridge 
 - **Handler and config support is partial** — only shell-form command handlers run. `http`, `mcp_tool`, `prompt`, and `agent` handlers are skipped; command-handler options such as `args`, `async`, `asyncRewake`, `shell`, `if`, `once`, and `statusMessage` are not honored. Matching handlers run serially and are not deduplicated, whereas Claude Code runs them in parallel and deduplicates identical handlers. One process-level `configPath` is parsed once at load; Claude Code's layered project, user, plugin, and policy discovery and live reload are not implemented.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

@@ -1,0 +1,14 @@
+- name: cordis:prompt
+  config:
+    includeRuntimeContext: false
+- name: cordis:llm
+- name: cordis:sessions
+- name: cordis:tools
+- name: cordis:agents
+- name: cordis:projections
+- name: cordis:files
+- name: cordis:directory
+- name: cordis:directoryTool
+- name: cordis:loop
+  config:
+    agents: []

@@ -1,0 +1,23 @@
+{
+  "M2": "Accepted and committed f10cfa2ca1; internal DMG and copied flows qualified",
+  "selectedUpgradeComplete": true,
+  "shippingAccepted": true,
+  "RC1-05-08": "Scoped Client3948 pass, strict measured coverage100; root built admission/menu/quote pass, mobile Chromium/WebKit3 pass; source build9 passes.",
+  "RC1-09": "Root715 pass4 inherited skips; introduced measured owners100, inherited app-boot302 uncovered retained explicitly; recorded plugin inventory2 pass.",
+  "RC1-F1": "Strict owner281 pass100; root shell70 pass; actual Worktree browser1pass (request/cancel, original cwd, real Git diff).",
+  "RC1-S1": "2059 tests pass,49 measured owners strict100; root actual manual create/edit/run/history/ended cleanup browser passes.",
+  "remainingRootGates": [],
+  "hostCompiler": "Full integrated source build11 passed; standard6144MiB development Host compiler cap; no runtime cap change.",
+  "SDK": "26 strict SDK replay +5 shared headless owners; fresh packaged Python executable all smoke scenarios strict PASS. Historical generations unchanged.",
+  "executionCorrection": "All three quota-blocked Orca workers stopped; no replacement workers. Root direct completion, single build owner.",
+  "native": "Tauri release3 passed; final candidate3 DMG built with122 checks and internal signature verification. Fresh-copy acceptance pending.",
+  "docs": "Full doc-sync:42 passed,0failed; hygiene:16passed,0failed; notices refreshed and strict freshness passes.",
+  "browser": "Current queue/question/Schedule19pass; complete plugin-manager16pass; Worktree1pass; mobile Chromium/WebKit3pass; manual Schedule1pass. Counts belong to separate runs.",
+  "rootFollowup": "No introduced lint diagnostics:564 retained versus566 baseline capture. No whole-repository lint/coverage/unit/style green claim.",
+  "packaging": "Final candidate3:122 installer checks; fresh copied app strict internal signature verified; Worktree/Schedule9, questions/native Team24, team skill12 pass;3236built JS/CSS hashes match.",
+  "unitScope": "Exhaustive diagnostic interrupted after unchanged4800-case matrix. Eight observed failures isolated;5 repaired owners155pass; remaining styles are unchanged baseline with exact source hashes,3introducedCSSfindings fixed. No whole-repo green claim.",
+  "shippingScope": "Internal macOS arm64 DMG and selected source scope; retained baseline/platform limits are explicit. No public notarization.",
+  "releaseOperations": "Commit, fast-forward merge and fork/gitee publication follow this accepted checkpoint; verify live Git refs for publication status.",
+  "artifact": "dependent-final-artifact.json",
+  "rootAcceptance": "root-final-acceptance.md"
+}

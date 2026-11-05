@@ -72,8 +72,8 @@ interface DomainSpec {
    * read documents stamped with a listed version instead of discarding them,
    * and accept a legacy whole-unit file so stamped for the one-time
    * bootstrap. A SQLite row store admits a listed unit stamp on open and does
-   * not rewrite that stamp or the stored rows. JSON `single` reads stay
-   * exact-version. Writes that stamp a version use {@link version}.
+   * not rewrite that stamp or the stored rows. JSON `single` also reads listed versions without an open-time write; its
+   * next mutation stamps the current version. Writes that stamp a version use {@link version}.
    */
   readonly compatibleVersions?: readonly number[]
   /**

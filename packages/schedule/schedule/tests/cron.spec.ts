@@ -7,8 +7,8 @@ import {
   renderRecurringReminderBatchFraming, resolveCronOccurrence, resolveRecurringOccurrence,
   ScheduleId, ScheduleInputError, ScheduleLogError, CRON_SEARCH_HORIZON_YEARS,
 } from '../src/domain.ts'
-import { resolveScheduleUpdate } from '../src/update.ts'
-import type { CronInput, CronScheduleRecord, ScheduleRecord, ScheduleTimingChange } from '../src/types.ts'
+import { editRuleForTest } from './harness.ts'
+import type { CronInput, CronScheduleRecord, ScheduleRecord, ScheduleTiming } from '../src/types.ts'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 
@@ -481,8 +481,8 @@ describe('cron timing edits', () => {
     expression: '0 9 * * 1-5', time_zone: 'US/Eastern',
   }, now, 'Kept name')
 
-  function update(change: ScheduleTimingChange, acceptedAt = now) {
-    return resolveScheduleUpdate(current, current, change, acceptedAt)
+  function update(change: ScheduleTiming, acceptedAt = now) {
+    return editRuleForTest(current, change, acceptedAt)
   }
 
   it('is a no-op for an equivalent normalized cron rule', () => {
@@ -496,7 +496,7 @@ describe('cron timing edits', () => {
 
   it('is a no-op for the stored zone alias as well as the canonical name', () => {
     const aliased: ScheduleRecord = { ...current, timeZone: 'US/Eastern' }
-    expect(resolveScheduleUpdate(aliased, aliased, {
+    expect(editRuleForTest(aliased, {
       kind: 'cron', cron: { expression: '0 9 * * 1-5', time_zone: 'America/New_York' },
     }, now + 86_400_000)).toEqual({ id, updated: false, record: aliased })
   })
@@ -525,7 +525,7 @@ describe('cron timing edits', () => {
         id, 'Keep prompt', { time: '09:00:00.125', time_zone: 'UTC', weekdays: [1] }, now, 'Keep prompt',
       ),
     ] as ScheduleRecord[]) {
-      expect(resolveScheduleUpdate(other, other, { kind: 'cron', cron: input }, now)).toEqual({
+      expect(editRuleForTest(other, { kind: 'cron', cron: input }, now)).toEqual({
         id, updated: true, record: createCronScheduleRecord(id, 'Keep prompt', input, now, 'Keep prompt'),
       })
     }
@@ -537,7 +537,7 @@ describe('cron timing edits', () => {
       { kind: 'daily', daily: { time: '09:00:00', time_zone: 'UTC' } },
       { kind: 'weekly', weekly: { time: '09:00:00', time_zone: 'UTC', weekdays: [1] } },
       { kind: 'at', at: '2026-09-16T10:00:00Z' },
-    ] as ScheduleTimingChange[]) {
+    ] as ScheduleTiming[]) {
       expect(update(change, now)).toMatchObject({
         id, updated: true, record: { id, kind: change.kind, prompt: 'Keep prompt' },
       })
@@ -558,6 +558,6 @@ describe('cron timing edits', () => {
 
   it('rejects a cron change carrying extra selector keys', () => {
     const change: unknown = { kind: 'cron', cron: { expression: '0 0 * * *', time_zone: 'UTC' }, extra: true }
-    expect(update(change as ScheduleTimingChange)).toMatchObject({ code: 'invalid_rule' })
+    expect(update(change as ScheduleTiming)).toMatchObject({ code: 'invalid_rule' })
   })
 })

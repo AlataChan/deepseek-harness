@@ -23,6 +23,7 @@ English | [中文](README.zh.md)
 -----
 
 <a id="use-this-package"></a>
+
 ## Use this package
 
 Load this plugin in any composition where the agent should keep PowerShell state between commands — the persistent counterpart of `dsh-tool-pwsh` for work that needs cross-call state. It registers the `pwsh` tool and requires the `ctx.tools` and `ctx.terminals` services plus an owning agent session at execution time.
@@ -63,6 +64,7 @@ A call without an owning agent session fails with `pwsh requires an owning agent
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## Understand the implementation
 
 <details>
@@ -92,6 +94,7 @@ A first command spawns the shell through `ctx.terminals.spawn`, whose pwsh start
 -----
 
 <a id="further-exploration"></a>
+
 ## Further Exploration
 
 Read these pages when the package-level contract is not enough. They move from the terminal family to the seam, the backends, and the design notes behind the persistent-shell design.
@@ -106,7 +109,10 @@ Read these pages when the package-level contract is not enough. They move from t
 
 -----
 
+New terminal sessions start in the validated Session execution directory. Already-running terminals retain their own directory and are not moved by subsequent directory changes. See [working directories](../../../docs/subsystems/working-directory.md).
+
 <a id="model-experience"></a>
+
 ## Model Experience
 
 ### Tool schema
@@ -154,6 +160,7 @@ These limits define when the tool is a poor fit or needs special care. They are 
 - **The BEL-terminated OSC marker remains a readiness signal only** — a BEL event channel to the model stays deferred, aligned with the current implementation.
 
 <a id="dev-note"></a>
+
 ### Dev Note
 
 <details>

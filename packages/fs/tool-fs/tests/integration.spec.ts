@@ -1,3 +1,4 @@
+import { mountDirectoryFixture, createDirectoryFixtureAgent } from '@deepseek-ai/dsh-working-directory-testkit'
 /**
  * End-to-end tool-registry tests against the real local backend. The policy deployment verifies
  * observed-state and guarded mutation; the bare deployment proves unconditional tools have no
@@ -10,6 +11,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { FsVersion } from '@deepseek-ai/dsh-fs'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
@@ -24,16 +26,25 @@ let dir: string
 let ctx: Context
 let fiber: Awaited<ReturnType<Context['plugin']>>
 // No header cwd: sessionCwd returns undefined and the provider's configured test dir applies.
-const session = { header: {} }
+let owner: ReturnType<typeof createDirectoryFixtureAgent> | undefined
+
+const actors = new WeakMap<object, ReturnType<typeof createDirectoryFixtureAgent>>()
+let actorId = 0
+function sessionActor(context: Context, session: { header: { cwd: string } }): ReturnType<typeof createDirectoryFixtureAgent> {
+  let actor = actors.get(session)
+  if (actor === undefined) { actor = createDirectoryFixtureAgent(context, SessionId(`fs-cwd-${++actorId}`), session.header.cwd); actors.set(session, actor) }
+  return actor
+}
 
 let callCounter = 0
-function call(name: string, args: unknown) {
+async function call(name: string, args: unknown) {
+  owner ??= createDirectoryFixtureAgent(ctx, SessionId('fs-integration'), dir)
   return ctx.tools.execute({
     signal: testToolSignal,
     callId: ToolCallId(`call-${++callCounter}`),
     name,
     arguments: args,
-    agent: { session } as never,
+    agent: await owner,
   })
 }
 
@@ -57,10 +68,12 @@ describe('default deployment (with dsh-fs-observation-policy)', () => {
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'dsh-tool-fs-'))
     ctx = new Context()
+    owner = undefined
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalFileSystem, { cwd: dir })
     await ctx.plugin(FsPolicy)
+    await mountDirectoryFixture(ctx, dir)
     fiber = await ctx.plugin(ToolFs)
   })
 
@@ -269,40 +282,40 @@ describe('default deployment (with dsh-fs-observation-policy)', () => {
   })
 
   describe('stat budget', () => {
-    it('read stats once; write and edit never stat in the tool (the gate stats zero too)', async () => {
+    it('read stats its target once; writes and edits do not manufacture target observations', async () => {
       await writeFile(join(dir, 'a.txt'), 'hello world')
       const statSpy = vi.spyOn(ctx.fs, 'stat')
 
       // read: exactly one stat (type + size routing + observed version).
       await call('read', { file_path: 'a.txt' })
-      expect(statSpy).toHaveBeenCalledTimes(1)
+      expect(statSpy.mock.calls.filter(([target]) => target.displayPath.endsWith('.txt'))).toHaveLength(1)
 
       // edit (guarded, after the read): the gate supplies vObserved; the tool
       // does not stat to manufacture a basis. CAS happens in editText's lock.
       statSpy.mockClear()
       const edited = await call('edit', { file_path: 'a.txt', old_string: 'world', new_string: 'there' })
       expect(edited.isError).toBe(false)
-      expect(statSpy).not.toHaveBeenCalled()
+      expect(statSpy.mock.calls.filter(([target]) => target.displayPath.endsWith('.txt'))).toHaveLength(0)
 
       // write (guarded replace, after the edit refreshed observed state): zero stat.
       statSpy.mockClear()
       const written = await call('write', { file_path: 'a.txt', content: 'fresh' })
       expect(written.isError).toBe(false)
-      expect(statSpy).not.toHaveBeenCalled()
+      expect(statSpy.mock.calls.filter(([target]) => target.displayPath.endsWith('.txt'))).toHaveLength(0)
       statSpy.mockRestore()
     })
 
-    it('a missing read still stats once and its recovery write stats zero times', async () => {
+    it('a missing read stats its target once and its recovery write does not', async () => {
       const statSpy = vi.spyOn(ctx.fs, 'stat')
       const missing = await call('read', { file_path: 'missing.txt' })
       expect(missing.isError).toBe(true)
       expect(missing.error).toMatchObject({ info: { code: 'FS_NOT_FOUND' } })
-      expect(statSpy).toHaveBeenCalledTimes(1)
+      expect(statSpy.mock.calls.filter(([target]) => target.displayPath.endsWith('.txt'))).toHaveLength(1)
 
       statSpy.mockClear()
       const created = await call('write', { file_path: 'missing.txt', content: 'fresh' })
       expect(created.isError).toBe(false)
-      expect(statSpy).not.toHaveBeenCalled()
+      expect(statSpy.mock.calls.filter(([target]) => target.displayPath.endsWith('.txt'))).toHaveLength(0)
       statSpy.mockRestore()
     })
   })
@@ -315,9 +328,11 @@ describe('bare provider (no dsh-fs-observation-policy)', () => {
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'dsh-tool-fs-bare-'))
     ctx = new Context()
+    owner = undefined
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalFileSystem, { cwd: dir })
+    await mountDirectoryFixture(ctx, dir)
     fiber = await ctx.plugin(ToolFs)
   })
 
@@ -369,7 +384,7 @@ describe('bare provider (no dsh-fs-observation-policy)', () => {
     const statSpy = vi.spyOn(ctx.fs, 'stat')
     expect((await call('write', { file_path: 'a.txt', content: 'x y' })).isError).toBe(false)
     expect((await call('edit', { file_path: 'a.txt', old_string: 'y', new_string: 'z' })).isError).toBe(false)
-    expect(statSpy).not.toHaveBeenCalled()
+    expect(statSpy.mock.calls.filter(([target]) => target.displayPath.endsWith('.txt'))).toHaveLength(0)
     statSpy.mockRestore()
   })
 })
@@ -383,21 +398,23 @@ describe('per-session cwd', () => {
     dir = await mkdtemp(join(tmpdir(), 'dsh-tool-fs-cfg-'))
     sessionDir = await mkdtemp(join(tmpdir(), 'dsh-tool-fs-session-'))
     ctx = new Context()
+    owner = undefined
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalFileSystem, { cwd: dir }) // config.cwd = dir, NOT sessionDir
     await ctx.plugin(FsPolicy)
+    await mountDirectoryFixture(ctx, dir)
     fiber = await ctx.plugin(ToolFs)
   })
   afterEach(async () => { await rm(sessionDir, { recursive: true, force: true }) })
 
-  const callIn = (sessionObj: object, name: string, args: unknown) =>
+  const callIn = async (sessionObj: { header: { cwd: string } }, name: string, args: unknown) =>
     ctx.tools.execute({
       signal: testToolSignal,
       callId: ToolCallId(`call-${++callCounter}`),
       name,
       arguments: args,
-      agent: { session: sessionObj } as never,
+      agent: await sessionActor(ctx, sessionObj),
     })
 
   it('writes a relative path into the SESSION cwd, not config.cwd', async () => {
@@ -428,18 +445,20 @@ describe('signal, concurrency, and the fs/observed contract', () => {
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'dsh-tool-fs-'))
     ctx = new Context()
+    owner = undefined
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalFileSystem, { cwd: dir })
     await ctx.plugin(FsPolicy)
+    await mountDirectoryFixture(ctx, dir)
     fiber = await ctx.plugin(ToolFs)
   })
 
-  const session = { header: {} }
-  const callSig = (signal: AbortSignal, name: string, args: unknown) =>
-    ctx.tools.execute({ callId: ToolCallId(`c-${++callCounter}`), name, arguments: args, agent: { session } as never, signal })
-  const callOwned = (name: string, args: unknown) =>
-    ctx.tools.execute({ signal: testToolSignal, callId: ToolCallId(`c-${++callCounter}`), name, arguments: args, agent: { session } as never })
+  const callSig = async (signal: AbortSignal, name: string, args: unknown) => {
+    owner ??= createDirectoryFixtureAgent(ctx, SessionId('fs-cancel'), dir)
+    return ctx.tools.execute({ callId: ToolCallId(`c-${++callCounter}`), name, arguments: args, agent: await owner, signal })
+  }
+  const callOwned = (name: string, args: unknown) => call(name, args)
 
   it('a pre-aborted registry call skips read/write/edit with ABORTED_BEFORE_DISPATCH', async () => {
     await writeFile(join(dir, 'a.txt'), 'hello')
@@ -512,7 +531,7 @@ describe('signal, concurrency, and the fs/observed contract', () => {
     expect((await callOwned('read', { file_path: 'a.txt' })).isError).toBe(false)
 
     // Reproduce an older concurrent read winning the observation race.
-    ctx.emit('fs/observed', target, { kind: 'present', version: firstInfo.version }, { agent: { session } })
+    ctx.emit('fs/observed', target, { kind: 'present', version: firstInfo.version }, { agent: await owner, signal: testToolSignal })
 
     const edit = await callOwned('edit', {
       file_path: 'a.txt',

@@ -1,0 +1,29 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /Users/apple/deepseek-harness/.worktrees/p0-upstream-022-2026-11-04
+
+ ❯ apps/web/tests/worktree-review.e2e.ts (1 test | 1 failed) 34062ms
+     × shows exactly one Chinese tab, reads real local changes, and cancels an unstarted checkout request 30002ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/tests/worktree-review.e2e.ts > local worktree review browser > shows exactly one Chinese tab, reads real local changes, and cancels an unstarted checkout request
+TimeoutError: locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('button', { name: '变更', exact: true })[22m
+
+ ❯ apps/web/tests/worktree-review.e2e.ts:39:65
+     37|   afterAll(async () => { await browser?.close(); await scaffold?.close…
+     38|   it('shows exactly one Chinese tab, reads real local changes, and can…
+     39|     await page.getByRole('button', { name: '变更', exact: true }).click()
+       |                                                                 ^
+     40|     const panel = page.locator('[data-worktree-review]')
+     41|     await panel.waitFor()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 4 passed (5)
+   Start at  15:00:30
+   Duration  49.86s (transform 888ms, setup 0ms, import 2.01s, tests 47.60s, environment 0ms)

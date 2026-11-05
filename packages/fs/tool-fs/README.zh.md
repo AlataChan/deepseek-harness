@@ -23,6 +23,7 @@ kind: "package-reference"
 -----
 
 <a id="use-this-package"></a>
+
 ## 使用本包
 
 在 `ctx.fs` 后端之后挂载工具，并在需要先读后写/编辑行为时挂载策略插件。模型随后获得带行号的读取、原子的写入与编辑，以及——挂载附件存储时——图像读取；每个结果都有上限，失败携带稳定错误码与恢复指令。
@@ -78,6 +79,7 @@ kind: "package-reference"
 -----
 
 <a id="understand-the-implementation"></a>
+
 ## 理解实现
 
 <details>
@@ -117,6 +119,7 @@ kind: "package-reference"
 -----
 
 <a id="further-exploration"></a>
+
 ## 进一步探索
 
 当包级约定不够用时阅读以下页面。它们从工具逐步进入它们所组合的约定、后端与策略。
@@ -130,7 +133,10 @@ kind: "package-reference"
 
 -----
 
+相对路径的读取和修改使用已校验的会话执行目录。文件观察按解析后的文件标识保存；读取原项目中的同名文件不会授权修改另一目录中的文件。取消信号和原始沙箱根目录继续生效。参见[工作目录](../../../docs/subsystems/working-directory.zh.md)。
+
 <a id="model-experience"></a>
+
 ## 模型体验
 
 ### 系统提示词
@@ -259,6 +265,7 @@ Prefer apply_patch over separate edit calls for changes across files or separate
 - **被中止的 `apply_patch` 调用保留已完成的写入**：当 `exec.signal` 中止时，注册表报告 `tool call aborted`，包括同一补丁中更早的操作已经发布之后。这些文件会保留，调用不会重放。
 
 <a id="dev-note"></a>
+
 ### 开发备注
 
 <details>

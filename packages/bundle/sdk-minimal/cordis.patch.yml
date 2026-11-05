@@ -38,6 +38,12 @@
     - id: session-projection
       name: '@deepseek-ai/dsh-session-projection'
 
+    - id: fs
+      name: '@deepseek-ai/dsh-fs-local'
+
+    - id: working-directory
+      name: '@deepseek-ai/dsh-working-directory'
+
     - id: sandbox-policy
       name: '@deepseek-ai/dsh-sandbox-policy'
       config:

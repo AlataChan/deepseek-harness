@@ -38,9 +38,8 @@ export type PendingSubmissionAttachment =
 export type PendingSubmissionPlacement = 'transcript' | 'queued' | 'steering'
 
 /**
- * One local prompt-submission echo: inserted synchronously when a submission
- * begins, so the conversation can show the message before serialization,
- * transport, and durable admission complete. Client-memory only — reload and
+ * One accepted local prompt-submission echo, published after Host acceptance
+ * and retained until the corresponding Host rows become visible. Client-memory only — reload and
  * reconnect rebuild the conversation from durable events alone.
  */
 export interface PendingSubmission {
