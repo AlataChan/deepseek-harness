@@ -4,7 +4,7 @@ These are bounded fork adaptations, not permission to copy complete upstream com
 
 | ID | Item | Classification | Current-API constraint / reason |
 | --- | --- | --- | --- |
-| RC1-01 | Separate instruction-chain budgets | Portable on current API | Adapt existing config/render/discovery; keep current events and model-selection hooks. Source 114da79e42 is provenance, not a whole-commit import |
+| RC1-01 | Separate instruction-chain budgets | Portable on current API | Adapt existing config/render/discovery; keep current events and model-selection hooks. Source 114da79e42 is source identity, not a whole-commit import |
 | RC1-02 | Unreadable skill-root isolation | Portable on current API | Use existing SkillProviderObservation completeness path; preserve catalog/event format rather than importing new upstream persistence fields |
 | RC1-03 | Full-history Markdown copy | Portable by bounded adaptation | Reuse current session-log-export Host/archive access and HeaderAction menu. Adapt formatter to current SessionEvent vocabulary. No new shared context-menu, Session subscriptions or projection API |
 | RC1-04 | apply_patch | Portable by bounded adaptation | Add parser/controller/tool/presentation over current fs/tools services, with existing observation policy and explicit disabled activation. No working-directory or executor API migration in this item |

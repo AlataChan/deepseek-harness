@@ -10,7 +10,7 @@ English | [中文](2026-11-04-upstream-022-rc1-selected-intake.zh.md)
 
 **Tech Stack:** TypeScript, Cordis, React, pnpm, Vitest, recorded Sessions, Playwright and the existing Tauri distribution pipeline.
 
-**Status:** Direction approved with review conditions incorporated. P0 is closed: its reviewable source checkpoint and baseline qualification do not exist yet. This document authorizes no bypass of that gate. Only planning and source inspection have run.
+**Status:** Direction approved with review conditions incorporated. The [P0 qualification record](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/baseline-validation.md) identifies the source checkpoint, baseline results and permission to begin the selected intake. A checkpoint alone does not open P0; its qualification must pass.
 
 ## Contents
 
@@ -26,7 +26,7 @@ English | [中文](2026-11-04-upstream-022-rc1-selected-intake.zh.md)
 <a id="scope"></a>
 ## Scope and prerequisites
 
-Source ceiling: `dsh-v0.2.2-rc.1`, commit `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`. Keep `UPSTREAM_PIN` and every selected backport's `basePin` at `dsh-v0.2.1-alpha.1`. Do not borrow master-only commits or change the product release label to imply a full upstream upgrade.
+Source ceiling: `dsh-v0.2.2-rc.1`. Keep `UPSTREAM_PIN` and every selected backport's `basePin` at `dsh-v0.2.1-alpha.1`. Do not borrow master-only commits or change the product release label to imply a full upstream upgrade.
 
 The [assessment](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/assessment.md), [per-item prerequisites](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/prerequisites.md), [projection callers](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/projection-callers.md) and [request listeners](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/request-listeners.md) own detailed evidence. Regenerate their source inventories before implementation; line numbers and counts identify this inspected checkpoint, not a permanent exemption.
 
@@ -60,19 +60,19 @@ For each item: freeze exact current/tagged files, add a failing behavioral probe
 
 ### RC1-01: separate instruction-chain budgets
 
-**Files:** adapt `packages/context/agent-instructions/src/config.ts`, `render.ts`, `index.ts` and their README pair as required; extend `tests/agent-instructions.spec.ts` and the budget Session fixture. Source provenance includes `114da79e42`; final behavior comes from the fixed tag, not an unchecked whole-commit import.
+**Files:** adapt `packages/context/agent-instructions/src/config.ts`, `render.ts`, `index.ts` and their README pair as required; extend `tests/agent-instructions.spec.ts` and the budget Session fixture. The assessment records this item's source commit; final behavior comes from the fixed tag, not an unchecked whole-commit import.
 
 Probe a large project chain alongside a user-global chain, both initial and dynamic rendering, UTF-8 limits and disabled loading. Confirm each chain has its declared budget and the model-visible/logged result agrees. Run `pnpm exec vitest run packages/context/agent-instructions/tests/agent-instructions.spec.ts` and the named budget replay. Retain the existing selection and prompt APIs; declare any externally visible budget change in the owning documentation.
 
 ### RC1-02: isolate unreadable skill roots
 
-**Files:** adapt `packages/skill/skill-filesystem/src/index.ts`, its README pair and `tests/skill-filesystem.spec.ts`; inspect current `skill` and `tool-skill` consumers before expanding their scope. Source provenance includes `cb046fde2c`.
+**Files:** adapt `packages/skill/skill-filesystem/src/index.ts`, its README pair and `tests/skill-filesystem.spec.ts`; inspect current `skill` and `tool-skill` consumers before expanding their scope. The assessment records this item's source commit.
 
 Probe one unreadable root alongside readable project/home/bundled roots and verify precedence, partial observation and later recovery. Use the current completeness representation; do not import new catalog persistence fields under this item. Run `pnpm exec vitest run packages/skill/skill-filesystem/tests packages/skill/skill/tests packages/skill/tool-skill/tests` and the affected skill-discovery replay. Keep teamwork references and installed skill verification intact.
 
 ### RC1-03: copy complete history as Markdown
 
-**Files:** adapt `packages/session-query/session-log-export/src/index.ts`, `routes.ts`, `client/HeaderAction.tsx`, `client/locales.ts`, README pair and compiler faces; create `src/markdown.ts`, `tests/markdown.host.spec.ts` and `tests/markdown-route.host.spec.ts`. Extend existing header/action/route tests and the owning real-browser export case. Source provenance includes `ae22f461f3` and its tag-level fixes.
+**Files:** adapt `packages/session-query/session-log-export/src/index.ts`, `routes.ts`, `client/HeaderAction.tsx`, `client/locales.ts`, README pair and compiler faces; create `src/markdown.ts`, `tests/markdown.host.spec.ts` and `tests/markdown-route.host.spec.ts`. Extend existing header/action/route tests and the owning real-browser export case. The assessment records this item's source commit and its tag-level fixes.
 
 Use existing Host/archive access to read complete committed history and the current HeaderAction menu. Do not import new shared context-menu bindings, projection handles or Session subscriptions. Test unloaded older history, fork prefixes, failed clipboard access, user/assistant/tool content and current fork events. Exported history must not invent later storage-only question status. Run `pnpm exec vitest run packages/session-query/session-log-export/tests` and the named built-Client export case.
 
@@ -132,11 +132,11 @@ RC1-S1 keeps one Automation Tasks entry and tests persistence, human/event input
 <a id="acceptance"></a>
 ## Registry and acceptance
 
-Each implemented RC1 item and migration/Forge/Schedule sub-item needs its own BackportEntry in `scripts/upstream-intake-registry.ts`: `sourceTag: 'dsh-v0.2.2-rc.1'`, `basePin: 'dsh-v0.2.1-alpha.1'`, exact paths, real prerequisites, source provenance and runnable verification. No directory exemptions, placeholder accepted entries, whole-pin advance or replacement of the existing rc.2 entries.
+Each implemented RC1 item and migration/Forge/Schedule sub-item needs its own BackportEntry in `scripts/upstream-intake-registry.ts`: `sourceTag: 'dsh-v0.2.2-rc.1'`, `basePin: 'dsh-v0.2.1-alpha.1'`, exact paths, real prerequisites, source identity and runnable verification. No directory exemptions, placeholder accepted entries, whole-pin advance or replacement of the existing rc.2 entries.
 
 All pnpm commands use the workspace's verified dependency configuration. Run owner tests and meaningful negative controls first, then changed-surface snapshots/browser/SDK checks. Run full source/native builds and every required installer gate against the integrated checkpoint, with a fresh copied artifact and signature/bundle correspondence. Record paid/platform and repository-wide limits separately. Do not reuse an earlier artifact's pass count as a new result.
 
-Current acceptance: planning/source inventories only. P0, adapter proofs, migration and shipping checks remain unexecuted. This revision changes no runtime, Node floor, plugin default or intake pin.
+Current acceptance: the P0 qualification record owns baseline acceptance. Adapter proofs, migration and selected-upgrade shipping checks remain unexecuted. This checkpoint changes no Node floor, plugin default or intake pin; generated catalogs reflect only the selected baseline source.
 
 <a id="dev-note"></a>
 ## Dev Note

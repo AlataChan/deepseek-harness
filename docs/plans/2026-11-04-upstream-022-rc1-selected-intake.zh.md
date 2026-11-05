@@ -10,7 +10,7 @@
 
 **技术栈：** TypeScript、Cordis、React、pnpm、Vitest、录制会话、Playwright，以及现有 Tauri 分发流水线。
 
-**状态：** 方向已获批准，评审条件已纳入。P0 尚未放行：可评审源码检查点及其基线验证仍不存在。本文不允许绕过该门槛。目前只进行了规划和源码检查。
+**状态：** 总体方向已获认可，评审条件已纳入。[P0 验证记录](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/baseline-validation.md)说明源码检查点、基线结果以及是否允许开始选定回移。仅创建检查点不会开放 P0；其验证必须通过。
 
 ## 目录
 
@@ -26,7 +26,7 @@
 <a id="scope"></a>
 ## 范围与前置条件
 
-源码上限为 `dsh-v0.2.2-rc.1`，提交 `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`。`UPSTREAM_PIN` 和每个选定回移项的 `basePin` 均保留为 `dsh-v0.2.1-alpha.1`。不得借用仅存在于 master 的提交，也不得修改产品版本标签来暗示已经完成整版上游升级。
+源码上限为 `dsh-v0.2.2-rc.1`。`UPSTREAM_PIN` 和每个选定回移项的 `basePin` 均保留为 `dsh-v0.2.1-alpha.1`。不得借用仅存在于 master 的提交，也不得修改产品版本标签来暗示已经完成整版上游升级。
 
 [评估](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/assessment.md)、[逐项前置条件](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/prerequisites.md)、[投影调用方](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/projection-callers.md)和[请求监听器](../../.plans/upstream-0.2.2-rc1-assessment-2026-11-04/request-listeners.md)保存详细证据。实施前重新生成源码清单；行号和数量仅标识本次检查点，不是永久豁免。
 
@@ -60,19 +60,19 @@
 
 ### RC1-01：分开计算指令链预算
 
-**文件：** 按需适配 `packages/context/agent-instructions/src/config.ts`、`render.ts`、`index.ts` 和 README 双语文件；扩展 `tests/agent-instructions.spec.ts` 及预算会话 fixture。源码依据包括 `114da79e42`；最终行为来自固定 tag，不是未经检查的整提交引入。
+**文件：** 按需适配 `packages/context/agent-instructions/src/config.ts`、`render.ts`、`index.ts` 和 README 双语文件；扩展 `tests/agent-instructions.spec.ts` 及预算会话 fixture。该项源码提交记录在评估中；最终行为来自固定 tag，不是未经检查的整提交引入。
 
 对大型项目指令链与用户全局指令链同时存在的场景，检查初始/动态渲染、UTF-8 限制和禁用加载。确认两条链各自遵守声明预算，模型可见内容与日志一致。运行 `pnpm exec vitest run packages/context/agent-instructions/tests/agent-instructions.spec.ts` 和指定预算回放。沿用现有模型选择与提示词 API；在所属文档中声明任何外部可感知的预算变化。
 
 ### RC1-02：隔离不可读技能根目录
 
-**文件：** 适配 `packages/skill/skill-filesystem/src/index.ts`、README 双语文件及 `tests/skill-filesystem.spec.ts`；扩展范围前先检查当前 `skill` 与 `tool-skill` 消费方。源码依据包括 `cb046fde2c`。
+**文件：** 适配 `packages/skill/skill-filesystem/src/index.ts`、README 双语文件及 `tests/skill-filesystem.spec.ts`；扩展范围前先检查当前 `skill` 与 `tool-skill` 消费方。该项源码提交记录在评估中。
 
 在一个根目录不可读、项目/home/内置根目录仍可读时，验证优先级、不完整观测和后续恢复。使用当前的完整性表示，不在该项中引入新的目录持久化字段。运行 `pnpm exec vitest run packages/skill/skill-filesystem/tests packages/skill/skill/tests packages/skill/tool-skill/tests` 及受影响的技能发现回放。保留团队协作引用文件和已安装技能验证。
 
 ### RC1-03：将完整历史复制为 Markdown
 
-**文件：** 适配 `packages/session-query/session-log-export/src/index.ts`、`routes.ts`、`client/HeaderAction.tsx`、`client/locales.ts`、README 双语文件及编译配置；创建 `src/markdown.ts`、`tests/markdown.host.spec.ts` 和 `tests/markdown-route.host.spec.ts`。扩展现有 header/action/route 测试和所属真实浏览器导出案例。源码依据包括 `ae22f461f3` 及 tag 中后续修复。
+**文件：** 适配 `packages/session-query/session-log-export/src/index.ts`、`routes.ts`、`client/HeaderAction.tsx`、`client/locales.ts`、README 双语文件及编译配置；创建 `src/markdown.ts`、`tests/markdown.host.spec.ts` 和 `tests/markdown-route.host.spec.ts`。扩展现有 header/action/route 测试和所属真实浏览器导出案例。该项源码提交记录在评估中 及 tag 中后续修复。
 
 复用现有 Host/archive 访问读取全部已提交历史，并使用当前 HeaderAction 菜单。不得引入新的共享右键菜单绑定、投影句柄或 Session 订阅。测试尚未加载的旧历史、分支前缀、剪贴板失败、用户/助手/工具内容和当前分支事件。导出历史不得虚构后来仅保存在存储中的问题状态。运行 `pnpm exec vitest run packages/session-query/session-log-export/tests` 及指定的已构建 Client 导出案例。
 
@@ -136,7 +136,7 @@ RC1-S1 保留一个「自动化任务」入口，通过真实 Host 控制器测�
 
 所有 pnpm 命令沿用工作区已验证的依赖配置。先运行所属测试及有意义的负向控制，再运行变更界面的快照/浏览器/SDK 检查。对集成检查点执行完整源码/原生构建和所有必需安装包门槛，使用新的产物副本并核对签名/包内容。分别记录付费/平台及全仓限制。不得将旧产物通过数当作新结果。
 
-当前验收仅限规划/源码清单。P0、适配证明、迁移和分发检查均未执行。本次修订不修改运行时、Node 下限、插件默认值或引入 pin。
+当前验收：基线验收以 P0 验证记录为准。适配证明、迁移和选定升级的分发检查仍未执行。本检查点不改变 Node 下限、插件默认值或引入 pin；生成目录仅反映选定的基线源码。
 
 <a id="dev-note"></a>
 ## 开发说明

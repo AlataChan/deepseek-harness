@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/plans/2026-11-04-upstream-022-rc1-selected-intake.md
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan:
-  en: 333e34d44ecdcb6c
-  zh: 7da7b381aaf562c7
+  en: 499289cee34eb4d1
+  zh: 9f9a5d88fea0ea67
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan/contents:
   en: d43de220e48c5d4a
   zh: 3fb83d4a04f58343
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan/scope-and-prerequisites:
-  en: a3563ec1b20dbea0
-  zh: aaead5589c31b0d2
+  en: 62875b2739f5ad26
+  zh: 6b9243d037f964e4
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan/p0-hard-checkpoint:
   en: 4aaf768453cf83c1
   zh: a1bc4c2816b6d3a8
@@ -18,14 +18,14 @@
   en: 852ceead42ede160
   zh: 391b820a089cee81
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan/p1-portable-backports/rc1-01-separate-instruction-chain-budgets:
-  en: ed46010bb13f32c5
-  zh: 6203ec41533717da
+  en: 68709e7db91fced0
+  zh: a88af31ead24cc42
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan/p1-portable-backports/rc1-02-isolate-unreadable-skill-roots:
-  en: 7a320da12866f757
-  zh: a9d4ca249f333520
+  en: f1e1ab792c9a6b52
+  zh: c4a38b5d1dbbb560
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan/p1-portable-backports/rc1-03-copy-complete-history-as-markdown:
-  en: 2c289e8d23f3be6d
-  zh: 6b6db75c52366f41
+  en: 76a0a50700a1cf8f
+  zh: 9be32664ca4da8d4
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan/p1-portable-backports/rc1-04-guarded-apply-patch:
   en: fc222595c7470e52
   zh: af98723a64010777
@@ -48,8 +48,8 @@
   en: 318651593ad57cf8
   zh: 97fdde8d495723fe
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan/registry-and-acceptance:
-  en: ae8c1d4b464b7151
-  zh: 10648849ac706dd8
+  en: 368c7a5cb83ec383
+  zh: 96f215e93987bba2
 /upstream-0-2-2-rc-1-selected-intake-implementation-plan/dev-note:
   en: b75c8458928b72b9
   zh: 45e76642489dcc3c
