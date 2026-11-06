@@ -89,7 +89,7 @@ describe('claimProcessStdio', () => {
     expect(() => claimProcessStdio({ input, output })).toThrow(/already claimed/u)
   })
 
-  it('lets Host apply use the claimed port instead of ProcessIpcPort', async () => {
+  it.each(['standalone', 'waiting', 'ready-before', 'disposed', 'duplicate'] as const)('uses the claimed port with startup state %s', async (startup) => {
     const input = new PassThrough()
     const output = new PassThrough()
     const chunks: string[] = []
@@ -111,13 +111,22 @@ describe('claimProcessStdio', () => {
     })
     ctx.provide('clientModules', {
       graph: () => graph,
+      onGraphChanged: () => () => {},
       clientPath: () => fileURLToPath(import.meta.url),
+    })
+    let commit = (): void => {}
+    if (startup !== 'standalone') ctx.provide('appReady', {
+      onReady: (listener) => {
+        commit = listener
+        return () => { commit = () => {} }
+      },
     })
     apply(ctx, { maxLogicalRpcBytes: 4096, workspaceRoot: '/workspace' }, {
       workspaceRoot: '/workspace',
       runtimeVersion: 'test',
     })
 
+    if (startup === 'ready-before') commit()
     const hello: VsCodeCarrierFrame = {
       type: 'control/hello',
       protocolVersion: VSCODE_CARRIER_PROTOCOL_VERSION,
@@ -127,6 +136,23 @@ describe('claimProcessStdio', () => {
     }
     input.write(`${JSON.stringify({ type: 'wire/message', encoded: JSON.stringify(hello) })}\n`)
 
+    if (startup === 'waiting' || startup === 'disposed' || startup === 'duplicate') {
+      await new Promise(resolve => setTimeout(resolve, 25))
+      expect(chunks).toEqual([])
+      if (startup === 'disposed') {
+        await ctx.fiber.dispose()
+        commit()
+        expect(chunks).toEqual([])
+        return
+      }
+      if (startup === 'duplicate') {
+        input.write(`${JSON.stringify({ type: 'wire/message', encoded: JSON.stringify(hello) })}\n`)
+        await vi.waitFor(() => { expect(getClaimedStdioPort()?.connected).toBe(false) })
+        await ctx.fiber.dispose()
+        return
+      }
+      commit()
+    }
     await vi.waitFor(async () => {
       const decoder = new VsCodeWireDecoder()
       const line = chunks.join('').split('\n').find(value => value.length > 0)
@@ -134,5 +160,6 @@ describe('claimProcessStdio', () => {
       const frame = await decoder.accept(JSON.parse(line as string))
       expect(frame).toMatchObject({ type: 'control/ready', runtimeVersion: 'test' })
     })
+    await ctx.fiber.dispose()
   })
 })

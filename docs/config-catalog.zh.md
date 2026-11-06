@@ -490,7 +490,7 @@ export interface ConnectionRecoveryConfig {
 ## `@deepseek-ai/dsh-client-connection-process`
 
 - `inject`: `connection` · `clientModules` · `typertGateway`
-- `source`: [`packages/client/connection-process/src/index.ts:29`](../packages/client/connection-process/src/index.ts)
+- `source`: [`packages/client/connection-process/src/index.ts:30`](../packages/client/connection-process/src/index.ts)
 
 ```ts config-catalog
 /** Companion carrier configuration. */

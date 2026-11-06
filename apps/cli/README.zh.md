@@ -26,7 +26,7 @@
 
 启动器只解析自身的 flag，并将其后的所有内容交给已启动的 profile；注入该 profile 的任意应用插件都可以解析这份共享的不可变快照（[`dsh-cmdline`](../../packages/boot/cmdline/README.zh.md)）。启动器无法识别的第一个 token 标志着应用参数的开始：
 
-桌面伴随进程对 profile 启动期间及启动完成后的父进程断开使用相同的有界关停流程。正常清理会在进程退出前释放 home 租约；清理无法完成时，仍按原有的五秒上限强制退出。
+桌面伴随进程在 profile 插件挂载前绑定父进程断开监听，并在启动期间及启动完成后使用相同的有界关停流程。正常清理会在进程退出前释放 home 租约；清理无法完成时，仍按原有的五秒上限强制退出。
 
 ```sh
 dsh --profile web --port 8080       # --port belongs to the web app

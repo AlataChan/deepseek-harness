@@ -231,6 +231,8 @@ export interface RunProfileOptions {
   patchFiles: readonly string[]
   /** The invocation's inner arguments, handed to the tree through `ctx.cmdlineArgs`. */
   args: readonly string[]
+  /** Bind application lifecycle observers before profile plugins start mounting. */
+  onContextCreated?: (ctx: Context, shutdown: ProcessShutdown) => void
   /** Application-owned package runtime, scoped to plugin package operations. */
   packageManager?: ProfileContext['packageManager']
 }
@@ -366,6 +368,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     }
     const ctx = await boot(NAME, rootConfig, readProfilePatches(NAME, profileContext, composed.profile), async (hostCtx) => {
       app.current = hostCtx
+      options.onContextCreated?.(hostCtx, shutdown)
       hostCtx.provide('profileContext', profileContext)
       hostCtx.provide('terminalRestore', terminalRestore)
       // Before any config-tree entry mounts, so plugins resolve all launch-time

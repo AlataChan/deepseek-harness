@@ -37,7 +37,7 @@ afterEach(() => {
   children.clear()
 })
 
-function stageFixture(waitForDisconnect = false): CompanionFixture {
+function stageFixture(holdStartup = false): CompanionFixture {
   const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-companion-'))
   const workspaceRoot = mkdtempSync(join(tmpdir(), 'dsh-desktop-workspace-'))
   const profileDir = join(home, 'profiles', 'desktop')
@@ -48,18 +48,20 @@ function stageFixture(waitForDisconnect = false): CompanionFixture {
     'export function apply(ctx) {',
     "  ctx.provide('connection', { createSharedFetchHandler: () => ({ fetch: async () => new Response('{}') }) })",
     "  ctx.provide('typertGateway', { wireStream: { open: async () => (async function * () {})() } })",
-    "  ctx.provide('clientModules', { graph: () => ({ rev: 'fixture', entries: [], batches: [] }), clientPath: () => undefined })",
+    "  ctx.provide('clientModules', { graph: () => ({ rev: 'fixture', entries: [], batches: [] }), clientPath: () => undefined, onGraphChanged: () => () => {} })",
     '}',
     '',
   ].join('\n'))
   const barrier = join(bundleDir, 'startup-barrier.mjs')
-  if (waitForDisconnect) writeFileSync(barrier, [
+  if (holdStartup) writeFileSync(barrier, [
     "import { writeFile } from 'node:fs/promises'",
+    "import { existsSync } from 'node:fs'",
     "import { join } from 'node:path'",
     "export const name = 'startup-barrier'",
     'export async function apply(ctx) {',
     "  ctx.effect(() => async () => { await writeFile(join(process.env.DSH_HOME, 'disposal-complete'), 'done') })",
-    "  await new Promise(resolve => { globalThis.__dshClaimedStdio.on('disconnect', resolve) })",
+    "  await writeFile(join(process.env.DSH_HOME, 'startup-entered'), 'ready')",
+    "  await new Promise(resolve => { const timer = setInterval(() => { if (existsSync(join(process.env.DSH_HOME, 'release-startup'))) { clearInterval(timer); resolve() } }, 10) })",
     '}',
   ].join('\n'))
   writeFileSync(join(bundleDir, 'cordis.patch.yml'), [
@@ -70,7 +72,7 @@ function stageFixture(waitForDisconnect = false): CompanionFixture {
     "      name: '@deepseek-ai/dsh-client-connection-desktop'",
     '      config:',
     '        workspaceRoot: !!js process.env.RAW_WORKSPACE_ROOT',
-    ...(waitForDisconnect ? ['    - id: startup-barrier', `      name: ${pathToFileURL(barrier).href}`] : []),
+    ...(holdStartup ? ['    - id: startup-barrier', `      name: ${pathToFileURL(barrier).href}`] : []),
     '',
   ].join('\n'))
   writeFileSync(join(bundleDir, 'package.json'), JSON.stringify({
@@ -156,7 +158,7 @@ describe('the desktop companion entry', () => {
     child.kill('SIGTERM')
   })
 
-  it('disposes before exit when the parent disconnects during profile boot', { timeout: 30_000 }, async () => {
+  it.each([false, true])('announces readiness after profile boot and disposes before parent-close exit (EOF: %s)', { timeout: 30_000 }, async (closeInput) => {
     const fixture = stageFixture(true)
     const child = spawnDesktop(fixture)
     const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolveExit) => {
@@ -166,16 +168,27 @@ describe('the desktop companion entry', () => {
     try {
       const ready = firstRecord(child.stdout)
       sendHello(child.stdin, fixture.workspaceRoot)
+      let announced = false
+      void ready.then(() => { announced = true }, () => {})
+      const startupDeadline = Date.now() + 15_000
+      while (!existsSync(join(fixture.home, 'startup-entered'))) {
+        if (Date.now() >= startupDeadline) throw new Error('Startup barrier was not entered')
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      await new Promise(resolve => setTimeout(resolve, 100))
+      expect(announced).toBe(false)
+      writeFileSync(join(fixture.home, 'release-startup'), 'go')
       await expect(ready).resolves.toMatchObject({ type: 'control/ready' })
       child.stdout?.resume()
       child.stderr?.resume()
       expect(existsSync(join(fixture.home, 'disposal-complete'))).toBe(false)
-      // Keep the real input pipe open: the protocol close owns process termination.
+      // Exercise both an open pipe and the Rust carrier's immediate EOF.
       child.stdin?.write(`${JSON.stringify({ type: 'wire/message', encoded: JSON.stringify({ type: 'control/shutdown' }) })}\n`)
+      if (closeInput) child.stdin?.end()
       const result = await Promise.race([
         exited,
         new Promise<never>((_resolve, reject) => {
-          timer = setTimeout(() => { reject(new Error('Parent disconnect left the booting companion alive')) }, 10_000)
+          timer = setTimeout(() => { reject(new Error('Parent disconnect left the booting companion alive')) }, 4_500)
         }),
       ])
       expect(result).toEqual({ code: 0, signal: null })

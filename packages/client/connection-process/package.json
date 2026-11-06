@@ -49,6 +49,7 @@
     "@deepseek-ai/dsh-client-modules": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/cosmokit": "workspace:~",
+    "@deepseek-ai/dsh-cmdline": "workspace:*",
     "@deepseek-ai/dsh-util-crypto": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
     "zod": "^4.4.3"

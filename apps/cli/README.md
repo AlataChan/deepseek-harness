@@ -26,7 +26,7 @@ The invoking directory is the default workspace root. The `web`, `headless`, `sd
 
 The launcher parses only its own flags and hands everything after them to the booted profile, where any injected app plugin may parse the shared immutable snapshot ([`dsh-cmdline`](../../packages/boot/cmdline/README.md)). The first token the launcher does not recognize starts the app's arguments:
 
-The desktop companion uses the same bounded shutdown path for parent loss during and after profile boot. Successful teardown releases the home lease before process termination; the existing five-second cap still forces exit when disposal cannot finish.
+The desktop companion binds parent-loss observers before profile plugins mount and uses the same bounded shutdown path during and after boot. Successful teardown releases the home lease before process termination; the existing five-second cap still forces exit when disposal cannot finish.
 
 ```sh
 dsh --profile web --port 8080       # --port belongs to the web app

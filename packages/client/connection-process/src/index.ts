@@ -10,10 +10,11 @@ import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-client-modules'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-api-gateway'
+import type {} from '@deepseek-ai/dsh-cmdline'
 import { CLAIMED_STDIO_GLOBAL } from './claim-process-stdio.ts'
 import { VsCodeHostGateway } from './host-gateway.ts'
 import { ProcessIpcPort, VsCodeIpcChannel, type NodeIpcPort } from './ipc-channel.ts'
-import { DEFAULT_MAX_LOGICAL_RPC_BYTES } from './protocol.ts'
+import { DEFAULT_MAX_LOGICAL_RPC_BYTES, type VsCodeCarrierFrame } from './protocol.ts'
 
 export * from './claim-process-stdio.ts'
 export * from './codec.ts'
@@ -49,7 +50,7 @@ function packageVersion(): string {
 }
 
 /** An immediately-exhausted iterable: the carrier protocol delivers no Client-to-Host stream items. */
-async function* emptyUplink(): AsyncGenerator<unknown> {}
+async function* emptyUplink() {}
 
 /** Injectable process facts used by tests and the published companion entry. */
 export interface CompanionRuntimePorts {
@@ -88,10 +89,25 @@ export function apply(ctx: Context, config: Config, runtime: CompanionRuntimePor
       queueMicrotask(() => { void channelReady.promise.then(channel => channel.dispose()) })
     },
   })
+  const appReady = ctx.appReady
+  let startupReady = appReady === undefined
+  let pendingHello: Extract<VsCodeCarrierFrame, { type: 'control/hello' }> | undefined
+  if (appReady !== undefined) ctx.effect(() => appReady.onReady(() => {
+    startupReady = true
+    if (pendingHello !== undefined) void gateway.accept(pendingHello)
+    pendingHello = undefined
+  }), 'client-connection-process: wait for application startup')
   const channel = new VsCodeIpcChannel({
     port,
     maxLogicalRpcBytes,
-    onFrame: frame => gateway.accept(frame),
+    onFrame: (frame) => {
+      if (!startupReady && frame.type === 'control/hello') {
+        if (pendingHello !== undefined) throw new Error('duplicate handshake during application startup')
+        pendingHello = frame
+        return
+      }
+      return gateway.accept(frame)
+    },
     onFailure: () => { void gateway.dispose() },
     onDisconnect: () => { void gateway.dispose() },
   })

@@ -71,33 +71,31 @@ async function main(): Promise<void> {
     const environment = loadLayeredEnv('dsh', startup.workspaceRoot)
     lease = acquireHomeLease(resolveDshHome(), { surface: 'desktop' })
 
-    const running = await runProfile({
+    await runProfile({
       environment,
       profile: 'desktop',
       patchFiles: [],
       args: ['--workspace-root', startup.workspaceRoot],
+      onContextCreated: (ctx, shutdown) => {
+        const stopFor = (trigger: string): void => {
+          process.stderr.write(`dsh desktop companion: shutting down (${trigger})\n`)
+          shutdown.interrupt(0)
+        }
+        const onDisconnect = (): void => { stopFor('carrier port disconnected') }
+        const onStdinEnded = (): void => { stopFor('stdin ended') }
+        const onStdinClosed = (): void => { stopFor('stdin closed') }
+        port.on('disconnect', onDisconnect)
+        process.stdin.on('end', onStdinEnded)
+        process.stdin.on('close', onStdinClosed)
+        ctx.effect(() => () => {
+          port.off('disconnect', onDisconnect)
+          process.stdin.off('end', onStdinEnded)
+          process.stdin.off('close', onStdinClosed)
+          lease?.release()
+        }, 'desktop companion: release home lease and carrier observers')
+        if (isDisconnected(port)) stopFor('carrier port disconnected during startup')
+      },
     })
-    // Each shutdown trigger names itself before it runs. A clean exit through
-    // any of them is indistinguishable downstream — the window only sees its
-    // next write fail with a broken pipe — so without this line a companion
-    // that goes away leaves no record of which end closed first.
-    const stopFor = (trigger: string): void => {
-      process.stderr.write(`dsh desktop companion: shutting down (${trigger})\n`)
-      running.shutdown.interrupt(0)
-    }
-    const onDisconnect = (): void => { stopFor('carrier port disconnected') }
-    const onStdinEnded = (): void => { stopFor('stdin ended') }
-    const onStdinClosed = (): void => { stopFor('stdin closed') }
-    port.on('disconnect', onDisconnect)
-    process.stdin.on('end', onStdinEnded)
-    process.stdin.on('close', onStdinClosed)
-    running.ctx.effect(() => () => {
-      port.off('disconnect', onDisconnect)
-      process.stdin.off('end', onStdinEnded)
-      process.stdin.off('close', onStdinClosed)
-      lease?.release()
-    }, 'desktop companion: release home lease and carrier observers')
-    if (isDisconnected(port)) stopFor('carrier port disconnected during startup')
   } catch (error) {
     lease?.release()
     await reportStartupFailure(port, error)
