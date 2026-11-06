@@ -23,6 +23,8 @@ kind: "package-reference"
 
 Web 组合在会话视图中挂载 Client 入口。引用共享当前[会话](../../../docs/subsystems/conversation.zh.md)输入框，并使用按键注册的 `conversation.chat.text-interaction` 插槽。此包没有配置字段。
 
+Client 构建同时生成浏览器入口和空的 Node 注册入口。Host 阶段不依赖预先编译的 Client 文件。
+
 <a id="model-experience"></a>
 
 ## 模型体验

@@ -2,10 +2,10 @@
  * Pins shared client-bundle preset rules: module-edge purity, source-map
  * chaining, and physical watch dependencies hidden behind virtual CSS Modules.
  */
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { build, type TsdownBundle, type UserConfig } from 'tsdown'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { clientBundle, requestedExternals, staticLinked } from '../packages/client/tsdown.client.ts'
@@ -45,6 +45,39 @@ function clientConfigs(id = REQUESTING_PACKAGE) {
 }
 
 describe('client bundle build faces', () => {
+  it('runs the quotation Host phase without pre-existing Client output', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-quotation-host-'))
+    onTestFinished(() => { rmSync(root, { recursive: true, force: true }) })
+    const quote = join(root, 'quote')
+    mkdirSync(quote)
+    writeFileSync(join(quote, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh-message-quotes', type: 'module' }))
+    const config = readFileSync(new URL('../packages/session/message-quotes/tsdown.config.ts', import.meta.url), 'utf8')
+      .replace("'../../client/tsdown.client.ts'", JSON.stringify(pathToFileURL(join(import.meta.dirname, '../packages/client/tsdown.client.ts')).href))
+    writeFileSync(join(quote, 'tsdown.config.mjs'), config)
+    const host = join(root, 'host')
+    mkdirSync(join(host, 'lib', 'types'), { recursive: true })
+    writeFileSync(join(host, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh-host-control', type: 'module' }))
+    writeFileSync(join(host, 'lib', 'types', 'index.js'), 'export const marker = "HOST_CONTROL"')
+    const bundles = await build({
+      cwd: root, config: false, configLoader: 'native', workspace: ['quote', 'host'],
+      env: { DSH_BUILD_FACE: 'host' }, entry: ['lib/types/index.js'], tsconfig: false,
+      write: false, clean: false, exports: false, report: false, logLevel: 'silent',
+    })
+    try {
+      expect(bundles).toHaveLength(1)
+      expect(bundles.flatMap(bundle => bundle.chunks).some(chunk => chunk.type === 'chunk' && chunk.code.includes('HOST_CONTROL'))).toBe(true)
+      expect(existsSync(join(quote, 'lib'))).toBe(false)
+    } finally {
+      for (const bundle of bundles) await bundle[Symbol.asyncDispose]()
+    }
+    const loaded = await import(pathToFileURL(join(quote, 'tsdown.config.mjs')).href) as {
+      default: ReturnType<typeof clientBundle>
+    }
+    const client = loaded.default({ env: { DSH_BUILD_FACE: 'client' } })
+    expect(client.find(config => config.platform === 'node')?.entry).toEqual(['lib/types/index.js'])
+    expect(client.find(config => config.platform === 'browser')?.entry).toEqual({ client: 'lib/types/client/index.js' })
+  })
+
   it('watches source in development and consumes emitted JavaScript in the Client build', () => {
     const bundle = clientBundle('@deepseek-ai/dsh-client-test', ['lib/types/index.js'])
     const development = bundle({ env: {} }).find(config => config.platform === 'browser')

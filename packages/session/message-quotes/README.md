@@ -23,6 +23,8 @@ Select transcript text and add it to the current composer as one removable quote
 
 The Web composition mounts the Client entry in its conversation view. Quotes share the current [Conversation](../../../docs/subsystems/conversation.md) input and use the keyed `conversation.chat.text-interaction` slot. There are no package configuration fields.
 
+The Client build emits the browser entry and its empty Node registration entry together. The Host phase does not require previously compiled Client files.
+
 <a id="model-experience"></a>
 
 ## Model Experience
