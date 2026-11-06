@@ -259,6 +259,20 @@ export const NEVER_MERGE: readonly NeverMergeEntry[] = [
 
 /** Upstream files the fork edits. Phase 3 works the `B` rows down to zero. */
 export const PATCHES: readonly PatchEntry[] = [
+  { path: 'packages/experimental/client-ui-agent-team/tests/team-action.client.spec.tsx', klass: 'A', reason: 'Preserves Team dock scrolling across refresh and bounds wrapping assistant starter questions to the composer.' },
+  { path: 'packages/experimental/client-ui-assistants/src/client/AssistantExampleChips.module.css', klass: 'A', reason: 'Preserves Team dock scrolling across refresh and bounds wrapping assistant starter questions to the composer.' },
+  { path: 'packages/experimental/client-ui-assistants/README.md', klass: 'A', reason: 'Preserves Team dock scrolling across refresh and bounds wrapping assistant starter questions to the composer.' },
+  { path: 'packages/experimental/client-ui-assistants/README.zh.md', klass: 'A', reason: 'Preserves Team dock scrolling across refresh and bounds wrapping assistant starter questions to the composer.' },
+  { path: 'packages/experimental/client-ui-assistants/README.i18n.yaml', klass: 'A', reason: 'Preserves Team dock scrolling across refresh and bounds wrapping assistant starter questions to the composer.' },
+  { path: 'packages/experimental/client-ui-agent-team/README.md', klass: 'A', reason: 'Fork Team pod presentation with offline identity-stable portraits, truthful idle states and compact collaboration layout.' },
+  { path: 'packages/experimental/client-ui-agent-team/README.zh.md', klass: 'A', reason: 'Fork Team pod presentation with offline identity-stable portraits, truthful idle states and compact collaboration layout.' },
+  { path: 'packages/experimental/client-ui-agent-team/README.i18n.yaml', klass: 'A', reason: 'Fork Team pod presentation with offline identity-stable portraits, truthful idle states and compact collaboration layout.' },
+  { path: 'packages/experimental/client-ui-agent-team/src/client/TeamAvatar.tsx', klass: 'A', reason: 'Fork Team pod presentation with offline identity-stable portraits, truthful idle states and compact collaboration layout.' },
+  { path: 'packages/experimental/client-ui-agent-team/src/client/TeamTopology.tsx', klass: 'A', reason: 'Fork Team pod presentation with offline identity-stable portraits, truthful idle states and compact collaboration layout.' },
+  { path: 'packages/experimental/client-ui-agent-team/src/client/TeamAction.tsx', klass: 'A', reason: 'Fork Team pod presentation with offline identity-stable portraits, truthful idle states and compact collaboration layout.' },
+  { path: 'packages/experimental/client-ui-agent-team/src/client/TeamAction.module.css', klass: 'A', reason: 'Fork Team pod presentation with offline identity-stable portraits, truthful idle states and compact collaboration layout.' },
+  { path: 'packages/experimental/client-ui-agent-team/src/client/locales.ts', klass: 'A', reason: 'Fork Team pod presentation with offline identity-stable portraits, truthful idle states and compact collaboration layout.' },
+  { path: 'packages/experimental/client-ui-agent-team/tests/team-topology.client.spec.tsx', klass: 'A', reason: 'Fork Team pod presentation with offline identity-stable portraits, truthful idle states and compact collaboration layout.' },
   { 'path': 'scripts/stage-agent-desktop-assets.ts', 'klass': 'A', 'reason': 'Fork-owned pinned Vercel agent-desktop asset staging and its behavior checks.' },
   { 'path': 'scripts/stage-agent-desktop-assets.spec.ts', 'klass': 'A', 'reason': 'Fork-owned pinned Vercel agent-desktop asset staging and its behavior checks.' },
   { 'path': 'scripts/verify-agent-desktop-digest.ts', 'klass': 'A', 'reason': 'Fork-owned pinned Vercel agent-desktop unsigned digest verification and its behavior checks.' },

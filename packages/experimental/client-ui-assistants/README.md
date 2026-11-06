@@ -22,6 +22,8 @@ The directory preserves saved cards when team or model discovery fails, retains 
 
 ## Behavior
 
+Role-specific example questions occupy up to three separate rows aligned with the conversation text. Each capsule fits its text and wraps only at the conversation column width; selecting a question only inserts a draft. Unbound ordinary conversations do not show assistant-specific examples.
+
 The directory loads assistants independently of teams and model discovery. Failed auxiliary loads show an error while preserving saved assistant cards. A failed save keeps the entered draft and displays the error; a pending initial assistant query shows a loading message instead of an empty catalog. Archived entries remain available through the management views. Team details remain editable when the unchanged coordinator is archived or absent from the selectable profiles; selecting a different coordinator requires an available profile.
 
 Assistant and workspace selection converge on one bound Session before navigation. Selecting an assistant first opens a workspace chooser without creating a Session; selecting a workspace first reuses its current unbound blank Session. Existing conversations and Sessions bound to another assistant use a fresh Session in the same workspace. Cancelling the chooser creates no Session, binding failure does not navigate, and a newer navigation suppresses a pending open. The composer displays the avatar and name from the Host-confirmed Session binding before sending; ordinary Sessions show no assistant badge.

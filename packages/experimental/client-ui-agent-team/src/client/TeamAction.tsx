@@ -19,6 +19,7 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { NS, STARTER_TEMPLATES, type StarterTemplateId, type TeamKey } from './locales.ts'
 import { TeamTopology } from './TeamTopology.tsx'
+import { TeamAvatar } from './TeamAvatar.tsx'
 import { ArchifySummary } from './ArchifySummary.tsx'
 import { discoverArchifyPathFromViews } from './discoverArchifyPath.ts'
 import css from './TeamAction.module.css'
@@ -241,6 +242,7 @@ export function TeamAction({
   const openRef = useRef(false)
   const refreshGeneration = useRef(0)
   const topologyAnchorRef = useRef<HTMLDivElement | null>(null)
+  const lastTopologyReveal = useRef(-1)
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const dockWidthRef = useRef(dockWidth)
   sessionRef.current = sessionId
@@ -314,9 +316,10 @@ export function TeamAction({
   }, [open, refresh])
 
   useEffect(() => {
-    if (!open || view === null) return
+    if (!open || view === null || lastTopologyReveal.current === topologyReveal) return
     const node = topologyAnchorRef.current
     if (node === null) return
+    lastTopologyReveal.current = topologyReveal
     node.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [open, view, topologyReveal])
 
@@ -631,25 +634,6 @@ export function TeamAction({
                 />
               ) : (
                 <>
-                  {showArchifyCta && (
-                    <div className={css.archifyCta} data-team-archify-cta>
-                      <strong>{t('archifyCtaTitle')}</strong>
-                      <p>{t('archifyCtaHint')}</p>
-                      <div className={css.archifyCtaActions}>
-                        <button
-                          type="button"
-                          className={css.smallButton}
-                          disabled={inputActions === undefined}
-                          onClick={fillArchify}
-                        >
-                          {t('archifyCtaAction')}
-                        </button>
-                        <button type="button" className={css.smallButton} onClick={dismissArchify}>
-                          {t('archifyCtaDismiss')}
-                        </button>
-                      </div>
-                    </div>
-                  )}
                   <p className={css.hint}>{t('howToUse')}</p>
                   <div className={css.dockMain} ref={topologyAnchorRef}>
                     <TeamTopology
@@ -657,6 +641,8 @@ export function TeamAction({
                       revealKey={topologyReveal}
                       copy={{
                         title: t('topology'),
+                        settledTitle: t('teamCompletedTitle'),
+                        settledHint: t('teamIdleHint'),
                         hint: t('topologyHint'),
                         show: t('topologyShow'),
                         hide: t('topologyHide'),
@@ -695,13 +681,13 @@ export function TeamAction({
                               void openTeammate(sessionId, member).catch((reason: unknown) => { setError(String(reason)) })
                             }}
                           >
-                            <StateDot state={member.status === 'running' ? 'ongoing' : member.status === 'failed' ? 'error' : 'done'} />
+                            <TeamAvatar member={member} />
                             <span className={css.memberText}>
                               <span>
                                 {member.name}
                                 <span className={css.roleBadge}>{t(roleKey(member.role))}</span>
                               </span>
-                              <small>{t(memberStatusKey(member.status))}{member.model === undefined ? '' : ` · ${t('model')}: ${member.model}`}</small>
+                              <small><StateDot state={member.status === 'running' ? 'ongoing' : member.status === 'failed' ? 'error' : member.status === 'provisioning' ? 'warning' : 'idle'} /> {t(memberStatusKey(member.status))}{member.model === undefined ? '' : ` · ${t('model')}: ${member.model}`}</small>
                               {member.result !== undefined && (
                                 <small className={css.result}>
                                   <span className={css.resultBadge}>{t(resultOutcomeKey(member.result.outcome))}</span>
@@ -831,6 +817,25 @@ export function TeamAction({
                       </div>
                     </section>
                   </div>
+                  {showArchifyCta && (
+                    <div className={css.archifyCta} data-team-archify-cta>
+                      <strong>{t('archifyCtaTitle')}</strong>
+                      <p>{t('archifyCtaHint')}</p>
+                      <div className={css.archifyCtaActions}>
+                        <button
+                          type="button"
+                          className={css.smallButton}
+                          disabled={inputActions === undefined}
+                          onClick={fillArchify}
+                        >
+                          {t('archifyCtaAction')}
+                        </button>
+                        <button type="button" className={css.smallButton} onClick={dismissArchify}>
+                          {t('archifyCtaDismiss')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

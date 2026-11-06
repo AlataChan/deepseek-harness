@@ -39,6 +39,10 @@ Hero 行占据 `conversation.hero.agentTeam`，用 `agentTeams/listInstitutionSq
 
 执行现场把主控放在队友上方，展示已记录的模型、运行状态和负责的进行中任务，并显示共享任务的完成数与总数。带方向的消息路径、任务依赖和简短的交接记录均读取现有 TeamView；记录仅包含成员名称与交互类型，不展示消息正文。面板可见时，运行中的成员显示脉冲，新消息光点持续 2.6 秒且不被普通刷新打断。已有历史和空闲成员保持静态。「减弱动态」及系统减少动态效果偏好会抑制运动，同时保留状态。
 
+每位成员都有根据持久 Session ID 确定的离线内联 SVG 头像；改名、排序与冷重启不会改变头像。主控使用固定头像。不依赖图片服务、下载素材或额外浏览器运行时。空闲成员使用中性色标识；仅当所有未删除任务已完成、所有成员均空闲时，才显示完成横幅。总结入口位于任务操作区域之后。
+
+打开或主动展开协作舱时，只定位一次执行现场。轮询与手动刷新保留用户的滚动位置，确保能访问下方的任务操作与总结入口。
+
 ### 管理任务板
 
 任务板展示 task identity、owner、blocker、readiness、提示性 write scope 与重叠 warning。用户可以通过 `agentTeams/createTask` 与 `agentTeams/updateTask` 创建、编辑、分配或取消分配、完成、重开和删除任务。每次 update 都发送当前显示的 revision，create 或 update rejection 都保留为显式 business result。

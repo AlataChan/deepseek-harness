@@ -382,6 +382,29 @@ describe('TeamAction', () => {
     expect(clearIntervalSpy).toHaveBeenCalled()
   })
 
+  it('preserves the dock scroll position across polling and manual refreshes', async () => {
+    const interval = vi.spyOn(window, 'setInterval')
+    const load = vi.fn(async () => ({ ok: true as const, value: { ...view } }))
+    render(<TeamAction {...props(actions({ load }))} />)
+    await waitFor(() => { expect(load).toHaveBeenCalled() })
+    fireEvent.click(screen.getByRole('button', { name: /团队协作/u }))
+    await screen.findByRole('dialog')
+    await waitFor(() => { expect(scrollIntoView).toHaveBeenCalledTimes(1) })
+    const tick = interval.mock.calls.find(call => call[1] === 1500)?.[0]
+    if (typeof tick !== 'function') throw new Error('Missing Team refresh interval')
+    for (let index = 0; index < 3; index++) {
+      const count = load.mock.calls.length
+      tick()
+      await waitFor(() => { expect(load.mock.calls.length).toBeGreaterThan(count) })
+    }
+    fireEvent.click(screen.getByRole('button', { name: zh.refresh }))
+    await waitFor(() => { expect(load.mock.calls.length).toBeGreaterThan(4) })
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: zh.close }))
+    fireEvent.click(screen.getByRole('button', { name: /团队协作/u }))
+    await waitFor(() => { expect(scrollIntoView).toHaveBeenCalledTimes(2) })
+  })
+
   it('toggles the collaboration topology without a second Host load', async () => {
     const load = vi.fn(() => Promise.resolve({
       ok: true as const,

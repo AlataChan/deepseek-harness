@@ -1,14 +1,23 @@
 .container {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  box-sizing: border-box;
+  width: calc(100% - 2 * (var(--dsh-composer-side-clearance, 16px) + 16px));
+  max-width: var(--dsh-chat-content-width, 920px);
+  margin-inline: auto;
+  min-width: 0;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 6px 0;
   background: transparent;
 }
 
 .chip {
-  display: inline-flex;
+  display: flex;
+  box-sizing: border-box;
+  width: fit-content;
+  justify-self: start;
+  min-width: 0;
+  text-align: start;
   align-items: center;
   max-width: 100%;
   padding: 4px 10px;
@@ -19,10 +28,9 @@
   font-size: 12px;
   line-height: 18px;
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: all 0.15s ease-in-out;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
 
 .chip:hover {
