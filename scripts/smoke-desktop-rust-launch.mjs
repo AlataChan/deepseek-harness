@@ -130,6 +130,16 @@ try {
     await request('carrier_close')
     console.log('Rust shell observed companion exit before releasing its workspace')
   })()])
+} catch (error) {
+  console.error(`Rust shell diagnostics:\n${stderr}`)
+  let companionLog
+  try {
+    companionLog = readFileSync(join(home, 'cache', 'companion.log'), 'utf8')
+  } catch (readError) {
+    console.error(`Companion log unavailable: ${String(readError)}`)
+  }
+  if (companionLog !== undefined) console.error(`Companion teardown diagnostics:\n${companionLog}`)
+  throw error
 } finally {
   clearTimeout(timer)
   child.stdin.end()

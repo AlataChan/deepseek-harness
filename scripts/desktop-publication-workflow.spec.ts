@@ -113,3 +113,25 @@ it('runs bundled readiness only during preparation and after signing-key cleanup
   expect(script.match(/bash "\$REPO_ROOT\/scripts\/verify-desktop-bundle\.sh"/g)).toHaveLength(1)
   expect(script.indexOf('verify-desktop-bundle.sh')).toBeLessThan(script.indexOf('desktop-macos-preparation.ts" record'))
 })
+
+
+it('qualifies installed Windows startup before upgrade stress and uploads only after both', () => {
+  const steps = workflow('windows').jobs['build-exe']!.steps
+  const index = (name: string): number => {
+    const value = steps.findIndex(step => step.name === name)
+    expect(value).toBeGreaterThanOrEqual(0)
+    return value
+  }
+  const install = index('Install the EXE silently')
+  const readiness = index('Run the Windows readiness gate')
+  const recovery = index('Verify native Windows installer upgrade recovery')
+  const publication = index('Verify publication refuses unqualified candidates before execution')
+  const upload = index('Upload the installer')
+  expect(readiness).toBeGreaterThan(install)
+  expect(recovery).toBeGreaterThan(readiness)
+  expect(recovery).toBeGreaterThan(index('Verify installed IM settings without platform calls'))
+  expect(recovery).toBeGreaterThan(index('Verify installed Ask Knowledge public flows with a legacy code page'))
+  expect(upload).toBeGreaterThan(recovery)
+  expect(upload).toBeGreaterThan(publication)
+  expect(steps[upload]?.if).toBeUndefined()
+})

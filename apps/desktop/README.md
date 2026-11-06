@@ -29,7 +29,7 @@ The desktop build uses the following toolchain; installer qualification is docum
 
 - A matching installed or source-built `@deepseek-ai/dsh` runtime on the same machine.
 - Development uses Node.js 24.9.0 or newer. Distributable DMG and Windows EXE installers bundle Node.js 24.14.0 and the matching Harness runtime.
-- macOS builds `.app` and `.dmg` through `scripts/build-dmg.sh`; `.github/workflows/desktop-windows.yml` builds the Windows NSIS `.exe` through `scripts/build-exe.mjs`. Both formats use the same desktop plugins. Windows readiness includes installed-runtime resolution and companion handshake through the Rust shell with canonical Windows paths, then waits for companion shutdown before deleting the test workspace. The Windows packaging job allows 90 minutes for cold builds, full NSIS upgrade/recovery controls, and installed-app qualification.
+- macOS builds `.app` and `.dmg` through `scripts/build-dmg.sh`; `.github/workflows/desktop-windows.yml` builds the Windows NSIS `.exe` through `scripts/build-exe.mjs`. Both formats use the same desktop plugins. Windows readiness includes installed-runtime resolution and companion handshake through the Rust shell with canonical Windows paths, then waits for companion shutdown before deleting the test workspace. The Windows packaging job allows 90 minutes for cold builds, full NSIS upgrade/recovery controls, and installed-app qualification. Installed startup, IM settings and knowledge flows are checked before the installer upgrade stress suite. All qualification checks must pass before artifact upload. Failed Rust startup/shutdown smokes retain the shell and companion diagnostics in job output before deleting their private workspace.
 
 ## Build and run
 
