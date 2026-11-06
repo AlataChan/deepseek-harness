@@ -4,7 +4,9 @@ import { type ChildProcess, spawn } from 'node:child_process'
 import {
   mkdirSync,
   mkdtempSync,
+  existsSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -35,7 +37,7 @@ afterEach(() => {
   children.clear()
 })
 
-function stageFixture(): CompanionFixture {
+function stageFixture(waitForDisconnect = false): CompanionFixture {
   const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-companion-'))
   const workspaceRoot = mkdtempSync(join(tmpdir(), 'dsh-desktop-workspace-'))
   const profileDir = join(home, 'profiles', 'desktop')
@@ -50,6 +52,16 @@ function stageFixture(): CompanionFixture {
     '}',
     '',
   ].join('\n'))
+  const barrier = join(bundleDir, 'startup-barrier.mjs')
+  if (waitForDisconnect) writeFileSync(barrier, [
+    "import { writeFile } from 'node:fs/promises'",
+    "import { join } from 'node:path'",
+    "export const name = 'startup-barrier'",
+    'export async function apply(ctx) {',
+    "  ctx.effect(() => async () => { await writeFile(join(process.env.DSH_HOME, 'disposal-complete'), 'done') })",
+    "  await new Promise(resolve => { globalThis.__dshClaimedStdio.on('disconnect', resolve) })",
+    '}',
+  ].join('\n'))
   writeFileSync(join(bundleDir, 'cordis.patch.yml'), [
     '- insert:',
     '    - id: fixture',
@@ -58,6 +70,7 @@ function stageFixture(): CompanionFixture {
     "      name: '@deepseek-ai/dsh-client-connection-desktop'",
     '      config:',
     '        workspaceRoot: !!js process.env.RAW_WORKSPACE_ROOT',
+    ...(waitForDisconnect ? ['    - id: startup-barrier', `      name: ${pathToFileURL(barrier).href}`] : []),
     '',
   ].join('\n'))
   writeFileSync(join(bundleDir, 'package.json'), JSON.stringify({
@@ -141,6 +154,43 @@ describe('the desktop companion entry', () => {
     sendHello(child.stdin, fixture.workspaceRoot)
     await expect(first).resolves.toMatchObject({ type: 'control/ready' })
     child.kill('SIGTERM')
+  })
+
+  it('disposes before exit when the parent disconnects during profile boot', { timeout: 30_000 }, async () => {
+    const fixture = stageFixture(true)
+    const child = spawnDesktop(fixture)
+    const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolveExit) => {
+      child.once('exit', (code, signal) => { resolveExit({ code, signal }) })
+    })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      const ready = firstRecord(child.stdout)
+      sendHello(child.stdin, fixture.workspaceRoot)
+      await expect(ready).resolves.toMatchObject({ type: 'control/ready' })
+      child.stdout?.resume()
+      child.stderr?.resume()
+      expect(existsSync(join(fixture.home, 'disposal-complete'))).toBe(false)
+      // Keep the real input pipe open: the protocol close owns process termination.
+      child.stdin?.write(`${JSON.stringify({ type: 'wire/message', encoded: JSON.stringify({ type: 'control/shutdown' }) })}\n`)
+      const result = await Promise.race([
+        exited,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => { reject(new Error('Parent disconnect left the booting companion alive')) }, 10_000)
+        }),
+      ])
+      expect(result).toEqual({ code: 0, signal: null })
+      expect(readFileSync(join(fixture.home, 'disposal-complete'), 'utf8')).toBe('done')
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+      if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
+      await exited
+      children.delete(child)
+      child.stdin?.destroy()
+      child.stdout?.destroy()
+      child.stderr?.destroy()
+      rmSync(fixture.home, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+      rmSync(fixture.workspaceRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+    }
   })
 
   it('reports home-busy on stdout when the home is already leased', { timeout: 30_000 }, async () => {

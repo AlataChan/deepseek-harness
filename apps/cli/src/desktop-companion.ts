@@ -58,7 +58,7 @@ async function reportStartupFailure(port: NodeIpcPort, error: unknown): Promise<
   process.exitCode = 1
 }
 
-/** Boot and bind one companion to its parent stdio lifecycle. */
+/** Boot and bind one companion; parent loss during boot uses the same bounded exit path as a later disconnect. */
 async function main(): Promise<void> {
   claimProcessStdio()
   const port = getClaimedStdioPort()
@@ -97,7 +97,7 @@ async function main(): Promise<void> {
       process.stdin.off('close', onStdinClosed)
       lease?.release()
     }, 'desktop companion: release home lease and carrier observers')
-    if (isDisconnected(port)) await running.shutdown.shutdown(0)
+    if (isDisconnected(port)) stopFor('carrier port disconnected during startup')
   } catch (error) {
     lease?.release()
     await reportStartupFailure(port, error)
