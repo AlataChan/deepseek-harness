@@ -190,7 +190,8 @@
     "dev:web": "tsx scripts/dev-web.ts --poll",
     "postinstall": "node scripts/install-lefthook.mjs",
     "gen-provider-data": "tsx packages/llm/llm-pi-ai/scripts/gen-provider-data.ts",
-    "verify-provider-data": "tsx packages/llm/llm-pi-ai/scripts/gen-provider-data.ts --check"
+    "verify-provider-data": "tsx packages/llm/llm-pi-ai/scripts/gen-provider-data.ts --check",
+    "test:linux-operations": "node --test scripts/linux-operations/tests/*.test.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-agent": "workspace:*",
