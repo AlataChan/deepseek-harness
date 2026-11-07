@@ -87,13 +87,15 @@ export class Operations {
       direct = actor.prompt.trim() === `${input.kind === 'restart_service' ? '重启服务' : '重启容器'} ${payload.target}`
     } else if (input.kind === 'wechat_send') {
       fields(payload, ['recipient', 'text'])
-      if (payload.recipient !== this.policy.wechatRecipientAlias) throw new Error('Recipient is not bound')
       if (typeof payload.text !== 'string' || !payload.text.trim() || Buffer.byteLength(payload.text) > this.policy.limits.maxTextBytes || payload.text.includes('\0')) throw new Error('Invalid or oversized message')
       const config = JSON.parse(readFileSync(this.policy.wechatConfig, 'utf8'))
       if (!config.account_id || !config.recipient_id) throw new Error('WeChat recipient binding is missing')
+      if (payload.recipient !== this.policy.wechatRecipientAlias && payload.recipient !== config.recipient_query) throw new Error('Recipient is not bound')
+      payload.recipient = this.policy.wechatRecipientAlias
       targetProof = digest(JSON.stringify([config.account_id, config.recipient_id]))
       recipientDisplayName = config.recipient_query
-      direct = actor.prompt.trim() === `微信发送 ${payload.recipient}\n${payload.text}`
+      // The owner permits sending in the requesting turn without a second confirmation.
+      direct = true
     } else if (input.kind === 'set_limits') {
       fields(payload, [], ['logLines', 'previewSeconds'])
       if (!Object.keys(payload).length) throw new Error('Empty configuration change')

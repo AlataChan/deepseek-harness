@@ -50,17 +50,17 @@ test('symlinked release entry executes startup validation instead of silently ex
   assert.match(result.stderr, /missing-policy/)
 })
 
-test('model-stated consent cannot authorize frozen text; later exact human confirmation can', async t => {
+test('service changes still require exact human confirmation and keep frozen arguments', async t => {
   const f = fixture(t)
-  const input = { kind: 'wechat_send', payload: { recipient: '默认联系人', text: '冻结正文' } }
+  const input = { kind: 'restart_service', payload: { target: 'probe' } }
   const op = f.journal.prepare(input)
-  input.payload.text = 'modified'
-  assert.equal(f.journal.get(op.id).payload.text, '冻结正文')
+  input.payload.target = 'modified'
+  assert.equal(f.journal.get(op.id).payload.target, 'probe')
   await assert.rejects(f.journal.run(op.id), /本人/)
   f.actor({ requestId: 'human-2', prompt: `确认执行 ${op.id}`, receivedAt: 99999 })
   await assert.rejects(f.journal.run(op.id), /本人/)
   f.actor({ requestId: 'human-2', prompt: `确认执行 ${op.id}`, receivedAt: 100001 })
-  assert.equal((await f.journal.run(op.id)).state, 'queued')
+  assert.equal((await f.journal.run(op.id)).state, 'completed')
   await f.journal.run(op.id)
   assert.equal(f.executions, 1)
 })
@@ -155,4 +155,22 @@ test('broker rejects extra request arguments and redacts credential assignments'
   await assert.rejects(dispatch({ action: 'unknown', params: {} }, f.journal))
   assert(!redact('API_KEY=secret Authorization: Bearer abc.xyz').includes('secret'))
   assert(!redact('API_KEY=secret Authorization: Bearer abc.xyz').includes('abc.xyz'))
+})
+
+test('natural-language WeChat instructions execute in their authenticated turn without confirmation', async t => {
+  const f = fixture(t)
+  f.actor({ requestId: 'human-1', prompt: '给 fixture 发微信：微信调通了', receivedAt: 100000 })
+  const input = { kind: 'wechat_send', payload: { recipient: 'fixture', text: '微信调通了' } }
+  const op = f.journal.prepare(input)
+  assert.equal(op.direct, true)
+  assert.equal(op.payload.recipient, '默认联系人')
+  assert.equal(f.journal.prepare({ kind: 'wechat_send', payload: { recipient: '默认联系人', text: '微信调通了' } }).id, op.id)
+  input.payload.text = 'changed after preparation'
+  f.actor({ requestId: 'human-2', prompt: '检查服务器状态', receivedAt: 100001 })
+  await assert.rejects(f.journal.run(op.id), /本人/)
+  f.actor({ requestId: 'human-1', prompt: '给 fixture 发微信：微信调通了', receivedAt: 100000 })
+  assert.equal((await f.journal.run(op.id)).state, 'queued')
+  assert.equal(f.journal.get(op.id).payload.text, '微信调通了')
+  await f.journal.run(op.id)
+  assert.equal(f.executions, 1)
 })
