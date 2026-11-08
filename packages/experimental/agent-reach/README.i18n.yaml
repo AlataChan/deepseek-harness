@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/agent-reach/README.md
+/:
+  en: 0c96ae4701247833
+  zh: d729896370eaa47f
+/deepseek-ai-dsh-experimental-agent-reach:
+  en: 0bef7387ff49a269
+  zh: d302aed8457045cc
+/deepseek-ai-dsh-experimental-agent-reach/summary:
+  en: b5ec0f271a8e031a
+  zh: 04e4b42293d554ec
+/deepseek-ai-dsh-experimental-agent-reach/table-of-contents:
+  en: f2ff4a9f7e40f49b
+  zh: ca62448873d45428
+/deepseek-ai-dsh-experimental-agent-reach/use-this-package:
+  en: 109f49541e935983
+  zh: ea725908bc428b22
+/deepseek-ai-dsh-experimental-agent-reach/configuration:
+  en: 9c030051de62d39b
+  zh: 2779590afa2ee43c
+/deepseek-ai-dsh-experimental-agent-reach/runtime-ownership:
+  en: df71d222319f692e
+  zh: 552e9b61db32e0a2
+/deepseek-ai-dsh-experimental-agent-reach/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-agent-reach/model-experience/platform-reading-and-setup:
+  en: 3a3308aa7325d4f2
+  zh: bd40a0281fd9e359
+/deepseek-ai-dsh-experimental-agent-reach/model-experience/platform-reading-and-setup/what-the-model-sees:
+  en: d1638ae2d9a32856
+  zh: 6218860304b64a76
+/deepseek-ai-dsh-experimental-agent-reach/model-experience/platform-reading-and-setup/token-effect:
+  en: 2a12cb8eaf9bb517
+  zh: 0dd2ba537aa317bb
+/deepseek-ai-dsh-experimental-agent-reach/model-experience/platform-reading-and-setup/kv-cache-effect:
+  en: 79e1332eacc45aef
+  zh: 1509054fa6de0c87
+/deepseek-ai-dsh-experimental-agent-reach/known-limitations-and-deferred-work:
+  en: 23fe6307eccf096a
+  zh: 26c4783e441643ea
+/deepseek-ai-dsh-experimental-agent-reach/known-limitations-and-deferred-work/dev-note:
+  en: 7d974cd5ec86992b
+  zh: 3d5a87e3581a04e8

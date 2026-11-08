@@ -30,6 +30,7 @@ const EXTERNAL_KIT_PACKAGES = new Set(['@deepseek-ai/libreoffice-kit'])
  * profile plugin cites them.
  */
 const FORK_BUNDLED_EXPERIMENTAL = new Set([
+  '@deepseek-ai/dsh-experimental-agent-reach',
   '@deepseek-ai/dsh-experimental-agent-team',
   '@deepseek-ai/dsh-experimental-tool-agent-team',
   '@deepseek-ai/dsh-experimental-assistant-registry',

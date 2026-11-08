@@ -1,0 +1,1277 @@
+{
+  "upstream": {
+    "repository": "https://github.com/Panniantong/agent-reach",
+    "reviewedRevision": "c70ae6da5d39bc90e09ad2ae0575ccc89f31e284",
+    "version": "1.6.1",
+    "schemaVersion": 1
+  },
+  "defaultConfiguration": {
+    "enabledChannels": [
+      "bilibili",
+      "youtube",
+      "v2ex"
+    ],
+    "sessionAccessRoutes": [],
+    "allowExperimentalChannels": false,
+    "setupTimeoutMs": 900000,
+    "queryTimeoutMs": 90000,
+    "maxConcurrentQueries": 4,
+    "maxStdoutBytes": 1048576,
+    "maxStderrBytes": 32768,
+    "maxOutputChars": 24000,
+    "maxItems": 20,
+    "terminateGraceMs": 5000
+  },
+  "managementCommands": [
+    "setup",
+    "add",
+    "remove",
+    "update",
+    "doctor",
+    "uninstall",
+    "configure",
+    "version",
+    "login",
+    "logout",
+    "browser",
+    "skill",
+    "check"
+  ],
+  "excludedActions": [
+    "transcribe"
+  ],
+  "channels": [
+    {
+      "name": "github",
+      "description": "GitHub 仓库和代码",
+      "level": "default",
+      "actions": [
+        {
+          "name": "search",
+          "help": "Search repositories",
+          "usage": "agent-reach github search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "what to search for"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "gh",
+              "sideEffects": []
+            },
+            {
+              "name": "github-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "read",
+          "help": "Read a repository (with README) or an issue / PR (with comments)",
+          "usage": "agent-reach github read <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "owner/repo, or a repo / issue / PR link"
+            }
+          ],
+          "backends": [
+            {
+              "name": "gh",
+              "sideEffects": []
+            },
+            {
+              "name": "github-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "twitter",
+      "description": "Twitter/X 推文",
+      "level": "experimental",
+      "actions": [
+        {
+          "name": "search",
+          "help": "Search tweets",
+          "usage": "agent-reach twitter search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "what to search for"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "x.com/",
+            "twitter.com/"
+          ]
+        },
+        {
+          "name": "profile",
+          "help": "A user's profile",
+          "usage": "agent-reach twitter profile <username>",
+          "params": [
+            {
+              "name": "username",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "handle without @"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "tweets",
+          "help": "A user's recent tweets",
+          "usage": "agent-reach twitter tweets <username> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "username",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "handle without @"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max tweets"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "thread",
+          "help": "A tweet with its replies",
+          "usage": "agent-reach twitter thread <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "tweet id or link"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "youtube",
+      "description": "YouTube 视频和字幕",
+      "level": "default",
+      "actions": [
+        {
+          "name": "read",
+          "help": "Video title, channel, date and description",
+          "usage": "agent-reach youtube read <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "video link or id"
+            }
+          ],
+          "backends": [
+            {
+              "name": "yt-dlp",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "search",
+          "help": "Search videos",
+          "usage": "agent-reach youtube search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "what to search for"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "yt-dlp",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "subtitle",
+          "help": "Full subtitle text of a video (manual or auto captions)",
+          "usage": "agent-reach youtube subtitle <target> [--lang LANG]",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "video link or id"
+            },
+            {
+              "name": "lang",
+              "type": "string",
+              "required": false,
+              "default": "zh-Hans,zh,en,en-orig",
+              "help": "preferred languages, comma separated"
+            }
+          ],
+          "backends": [
+            {
+              "name": "yt-dlp",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "transcribe",
+          "help": "Speech-to-text of a video's audio (uses Groq/OpenAI Whisper quota)",
+          "usage": "agent-reach youtube transcribe <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "video link or id"
+            }
+          ],
+          "backends": [
+            {
+              "name": "whisper",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "reddit",
+      "description": "Reddit 帖子和评论",
+      "level": "optional",
+      "actions": [
+        {
+          "name": "search",
+          "help": "Search public posts first; --backend opencli uses site search",
+          "usage": "agent-reach reddit search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "what to search for"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "reddit.com/r/"
+          ]
+        },
+        {
+          "name": "read",
+          "help": "Read public page text first; --backend opencli requests the post and top comments",
+          "usage": "agent-reach reddit read <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "post link or id"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "reddit.com/r/",
+            "redd.it/"
+          ]
+        },
+        {
+          "name": "subreddit",
+          "help": "Latest posts in a subreddit",
+          "usage": "agent-reach reddit subreddit <name> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "subreddit name without r/, e.g. python"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max posts"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "facebook",
+      "description": "Facebook 帖子、主页和群组",
+      "level": "experimental",
+      "actions": [
+        {
+          "name": "search",
+          "help": "Search Facebook",
+          "usage": "agent-reach facebook search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "what to search for"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "facebook.com/"
+          ]
+        },
+        {
+          "name": "profile",
+          "help": "A user's or page's profile",
+          "usage": "agent-reach facebook profile <username>",
+          "params": [
+            {
+              "name": "username",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "username or page name"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "instagram",
+      "description": "Instagram 用户、主页和指定用户帖子",
+      "level": "experimental",
+      "actions": [
+        {
+          "name": "search",
+          "help": "Search users (not posts)",
+          "usage": "agent-reach instagram search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "what to search for"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "profile",
+          "help": "A user's profile",
+          "usage": "agent-reach instagram profile <username>",
+          "params": [
+            {
+              "name": "username",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "Instagram username"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "posts",
+          "help": "A user's recent posts",
+          "usage": "agent-reach instagram posts <username> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "username",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "Instagram username"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 6,
+              "help": "max posts"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "bilibili",
+      "description": "B站视频、字幕和搜索",
+      "level": "default",
+      "actions": [
+        {
+          "name": "search",
+          "help": "Search videos",
+          "usage": "agent-reach bilibili search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "what to search for"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "bili-cli",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "read",
+          "help": "Video title, uploader, description and stats",
+          "usage": "agent-reach bilibili read <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "BV id or video link"
+            }
+          ],
+          "backends": [
+            {
+              "name": "bili-cli",
+              "sideEffects": []
+            },
+            {
+              "name": "bilibili-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "hot",
+          "help": "Trending videos",
+          "usage": "agent-reach bilibili hot [--limit LIMIT]",
+          "params": [
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 10,
+              "help": "max items"
+            }
+          ],
+          "backends": [
+            {
+              "name": "bili-cli",
+              "sideEffects": []
+            },
+            {
+              "name": "bilibili-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "subtitle",
+          "help": "Subtitle text of the first video part, when available (may need a Bilibili login)",
+          "usage": "agent-reach bilibili subtitle <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "BV id or video link"
+            }
+          ],
+          "backends": [
+            {
+              "name": "bili-cli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "native-credential-write"
+              ]
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "xiaohongshu",
+      "description": "小红书笔记",
+      "level": "optional",
+      "actions": [
+        {
+          "name": "search",
+          "help": "Search notes",
+          "usage": "agent-reach xiaohongshu search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "what to search for"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "xiaohongshu.com/explore/",
+            "xiaohongshu.com/search_result/",
+            "xhslink.com/"
+          ]
+        },
+        {
+          "name": "read",
+          "help": "Read a note (full link including xsec_token, as returned by search)",
+          "usage": "agent-reach xiaohongshu read <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "full note link with xsec_token"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "xiaohongshu.com/explore/",
+            "xiaohongshu.com/search_result/",
+            "xhslink.com/"
+          ]
+        },
+        {
+          "name": "comments",
+          "help": "Read loaded comments and replies from a note; not an exhaustive export",
+          "usage": "agent-reach xiaohongshu comments <target> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "full note link with xsec_token"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 20,
+              "help": "max top-level comments (1..50); loaded replies are included"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "linkedin",
+      "description": "LinkedIn 职位搜索与详情",
+      "level": "optional",
+      "actions": [
+        {
+          "name": "jobs",
+          "help": "Search LinkedIn jobs",
+          "usage": "agent-reach linkedin jobs <query> [--location LOCATION] [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "job keywords"
+            },
+            {
+              "name": "location",
+              "type": "string",
+              "required": false,
+              "default": null,
+              "help": "city or country"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "linkedin.com/jobs/view/"
+          ]
+        },
+        {
+          "name": "read",
+          "help": "Read a LinkedIn job description",
+          "usage": "agent-reach linkedin read <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "full job URL"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "linkedin.com/jobs/view/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "boss",
+      "description": "Boss直聘 职位搜索与 JD",
+      "level": "optional",
+      "actions": [
+        {
+          "name": "search",
+          "help": "Search jobs using a configured browser session",
+          "usage": "agent-reach boss search <query> [--city CITY] [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "job keywords"
+            },
+            {
+              "name": "city",
+              "type": "string",
+              "required": false,
+              "default": null,
+              "help": "city, e.g. 深圳"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 10,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            },
+            {
+              "name": "boss-agent-cli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "zhipin.com/job_detail/"
+          ]
+        },
+        {
+          "name": "read",
+          "help": "Read a direct BOSS job URL",
+          "usage": "agent-reach boss read <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "full job URL"
+            }
+          ],
+          "backends": [
+            {
+              "name": "boss-agent-cli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            },
+            {
+              "name": "opencli",
+              "sideEffects": [
+                "connected-browser-discovery",
+                "cookie-import",
+                "browser-launch"
+              ]
+            }
+          ],
+          "publicWeb": [
+            "zhipin.com/job_detail/"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v2ex",
+      "description": "V2EX 节点、主题与回复",
+      "level": "default",
+      "actions": [
+        {
+          "name": "hot",
+          "help": "Today's hot topics",
+          "usage": "agent-reach v2ex hot [--limit LIMIT]",
+          "params": [
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 10,
+              "help": "max items"
+            }
+          ],
+          "backends": [
+            {
+              "name": "v2ex-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "node",
+          "help": "Latest topics in a node",
+          "usage": "agent-reach v2ex node <node_name> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "node_name",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "node name, e.g. python, programmer, jobs"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 10,
+              "help": "max items"
+            }
+          ],
+          "backends": [
+            {
+              "name": "v2ex-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "read",
+          "help": "Read a topic and its replies",
+          "usage": "agent-reach v2ex read <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "topic link or id"
+            }
+          ],
+          "backends": [
+            {
+              "name": "v2ex-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "user",
+          "help": "A member's profile",
+          "usage": "agent-reach v2ex user <username>",
+          "params": [
+            {
+              "name": "username",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "V2EX username"
+            }
+          ],
+          "backends": [
+            {
+              "name": "v2ex-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "xueqiu",
+      "description": "雪球股票行情与社区动态",
+      "level": "optional",
+      "actions": [
+        {
+          "name": "quote",
+          "help": "Real-time stock quote (A-share, HK, US)",
+          "usage": "agent-reach xueqiu quote <symbol>",
+          "params": [
+            {
+              "name": "symbol",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "e.g. SH600519, 600519, 00700, AAPL"
+            }
+          ],
+          "backends": [
+            {
+              "name": "tencent",
+              "sideEffects": []
+            },
+            {
+              "name": "xueqiu-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "search",
+          "help": "Find stocks by name or code",
+          "usage": "agent-reach xueqiu search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "name or code, e.g. 茅台"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "tencent",
+              "sideEffects": []
+            },
+            {
+              "name": "xueqiu-api",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "hot_posts",
+          "help": "Trending Xueqiu community posts (needs a browser session)",
+          "usage": "agent-reach xueqiu hot_posts [--limit LIMIT]",
+          "params": [
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 10,
+              "help": "max items"
+            }
+          ],
+          "backends": [
+            {
+              "name": "xueqiu-api",
+              "sideEffects": [
+                "cookie-import"
+              ]
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "hot_stocks",
+          "help": "Most-watched stocks on Xueqiu (needs a browser session)",
+          "usage": "agent-reach xueqiu hot_stocks [--limit LIMIT]",
+          "params": [
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 10,
+              "help": "max items"
+            }
+          ],
+          "backends": [
+            {
+              "name": "xueqiu-api",
+              "sideEffects": [
+                "cookie-import"
+              ]
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "xiaoyuzhou",
+      "description": "小宇宙播客转文字",
+      "level": "optional",
+      "actions": [
+        {
+          "name": "transcribe",
+          "help": "Full transcript of a podcast episode (uses Groq Whisper quota)",
+          "usage": "agent-reach xiaoyuzhou transcribe <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "episode link"
+            }
+          ],
+          "backends": [
+            {
+              "name": "groq-whisper",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    },
+    {
+      "name": "web",
+      "description": "网页搜索与阅读（Agent 自带工具不可用时的保底）",
+      "level": "default",
+      "actions": [
+        {
+          "name": "search",
+          "help": "Search the web (Exa semantic search)",
+          "usage": "agent-reach web search <query> [--limit LIMIT]",
+          "params": [
+            {
+              "name": "query",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "what to search for"
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "required": false,
+              "default": 5,
+              "help": "max results"
+            }
+          ],
+          "backends": [
+            {
+              "name": "exa",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        },
+        {
+          "name": "read",
+          "help": "Read a web page as clean text",
+          "usage": "agent-reach web read <target>",
+          "params": [
+            {
+              "name": "target",
+              "type": "string",
+              "required": true,
+              "default": null,
+              "help": "page URL"
+            }
+          ],
+          "backends": [
+            {
+              "name": "jina",
+              "sideEffects": []
+            },
+            {
+              "name": "exa",
+              "sideEffects": []
+            }
+          ],
+          "publicWeb": []
+        }
+      ]
+    }
+  ]
+}

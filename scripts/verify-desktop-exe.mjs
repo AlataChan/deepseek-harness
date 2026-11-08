@@ -15,6 +15,7 @@
  * Usage: node scripts/verify-desktop-exe.mjs <install-dir>
  */
 
+import { verifyReachPayload } from './verify-agent-reach-payload.mjs'
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readlinkSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -196,6 +197,13 @@ if (companionOut.includes('ERR_MODULE_NOT_FOUND')) {
 // ── 5. Companion lifecycle with every pinned overlay installed ──────────────
 
 head('Driving a real companion handshake with pinned overlays')
+try {
+  verifyReachPayload(join(RES, 'profile-plugins', '@deepseek-ai/dsh-experimental-agent-reach'))
+  ok('Agent-Reach includes frozen manifests and no eager runtime payload')
+} catch (error) {
+  bad(`Agent-Reach payload validation failed: ${String(error)}`)
+}
+
 const pinPath = join(REPO_ROOT, 'scripts', 'desktop-profile-plugins.json')
 const pinnedNames = JSON.parse(readFileSync(pinPath, 'utf8')).plugins.map(plugin => plugin.name)
 const smokeProfile = join(SMOKE_HOME, '.dsh', 'profiles', 'desktop')

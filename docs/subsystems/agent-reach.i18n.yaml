@@ -1,0 +1,10 @@
+# Bilingual-pair consistency record for agent-reach.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/agent-reach.md
+/platform-reading:
+  en: 55efbfe746327e38
+  zh: b03e5b0b984880db
+/platform-reading/read-service:
+  en: cde5ef74daa79d58
+  zh: 53eeae169b3a80ad

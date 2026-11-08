@@ -53,6 +53,7 @@
     "packages/client/*/tests/**/*.host.spec.ts"
   ],
   "references": [
+    { "path": "./packages/experimental/agent-reach/tsconfig.client.json" },
     { "path": "./packages/fs/fs-local" },
     { "path": "./packages/session/message-quotes" },
     { "path": "./packages/experimental/client-ui-forge/tsconfig.client.json" },

@@ -233,6 +233,7 @@
     "scripts/client-bundle-purity.spec.ts"
   ],
   "references": [
+    { "path": "./packages/experimental/agent-reach/tsconfig.host.json" },
     { "path": "./packages/test-support/working-directory-testkit" },
     { "path": "./packages/session/working-directory" },
     { "path": "./packages/session/tool-working-directory" },

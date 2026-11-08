@@ -453,3 +453,13 @@ describe('default product isolation', () => {
     expect(() => verifyDefaultProductIsolation(root)).toThrow('profile')
   })
 })
+
+it('permits the explicit Agent-Reach carrier while still rejecting an unregistered prototype',()=>{
+  const root=fixture()
+  const reach='@deepseek-ai/dsh-experimental-agent-reach'
+  write(root,'packages/experimental/agent-reach/package.json',{ name:reach })
+  manifest(root,'apps/cli/package.json',{ dependencies:{ [core]:'workspace:*',[reach]:'workspace:*' } })
+  expect(verifyDefaultProductIsolation(root).failures).toEqual([])
+  manifest(root,'apps/cli/package.json',{ dependencies:{ [core]:'workspace:*',[reach]:'workspace:*',[experimental]:'workspace:*' } })
+  expect(verifyDefaultProductIsolation(root).failures.join('\n')).toContain(experimental)
+})

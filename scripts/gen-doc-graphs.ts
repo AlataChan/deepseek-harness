@@ -826,6 +826,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Loads mods that defineMod plugins add, raises their hook chains from harness extension points, and draws the band above the prompt over its Remote.',
   },
   {
+    key: 'agentReach',
+    pkg: 'experimental-agent-reach',
+    title: 'Bounded platform reading',
+    mode: 'service',
+    consumers: ['experimental-agent-reach'],
+    note: 'Owns validated transient queries and local runtime diagnostics; tools share its lifecycle and prerequisite setup requires separate interactive approval.',
+  },
+  {
     key: 'sessionDecisions',
     pkg: 'experimental-session-decisions',
     title: 'Persistent Session questions and answer admission',

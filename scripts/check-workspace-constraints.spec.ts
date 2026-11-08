@@ -462,3 +462,15 @@ it('requires isolated IM and desktop adapter entries and rejects unrelated paylo
   expect(checkWorkspaceManifest({ dir, manifest: { ...manifest, files: [...manifest.files!, 'lib/unrelated.js'] } }))
     .toEqual([expect.stringContaining('package.json files must be')])
 })
+
+it('requires both frozen Agent-Reach manifests and rejects runtime binaries in its publication list',()=>{
+  const dir='packages/experimental/agent-reach'
+  const manifest=JSON.parse(readFileSync(new URL(`../${dir}/package.json`,import.meta.url),'utf8')) as WorkspaceManifest['manifest']
+  expect(checkWorkspaceManifest({ dir,manifest })).toEqual([])
+  for(const missing of ['dependency-lock.json','runtime-contract.json']){
+    expect(checkWorkspaceManifest({ dir,manifest:{ ...manifest,files:manifest.files!.filter(file=>file!==missing) } }).join('\n'))
+      .toContain('package.json files must be')
+  }
+  expect(checkWorkspaceManifest({ dir,manifest:{ ...manifest,files:[...manifest.files!,'runtime.whl'] } }).join('\n'))
+    .toContain('package.json files must be')
+})

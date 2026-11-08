@@ -244,6 +244,12 @@ else
   bad "desktop-profile-plugins.json missing dsh-context"
 fi
 
+if "$RES/node" "$REPO_ROOT/scripts/verify-agent-reach-payload.mjs" "$RES/profile-plugins/@deepseek-ai/dsh-experimental-agent-reach"; then
+  ok "Agent-Reach includes frozen manifests and no eager runtime payload"
+else
+  bad "Agent-Reach payload is missing, incomplete or contains runtime binaries"
+fi
+
 BUNDLED_PLUGINS_JSON="$RES/profile-plugins/plugins.json"
 if [[ -f "$BUNDLED_PLUGINS_JSON" ]]; then
   if grep -q '"schemaVersion": 1' "$BUNDLED_PLUGINS_JSON" && \

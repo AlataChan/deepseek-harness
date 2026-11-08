@@ -846,6 +846,51 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-desktop-app -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-agent-reach -->
+<a id="deepseek-aidsh-experimental-agent-reach"></a>
+
+## `@deepseek-ai/dsh-experimental-agent-reach`
+
+- `inject`: `subprocess` · `tools`
+- `source`: [`packages/experimental/agent-reach/src/index.ts:87`](../packages/experimental/agent-reach/src/index.ts)
+
+```ts config-catalog
+/** Deployment configuration for reading and separately approved setup. */
+export interface Config extends AgentReachConfig {
+  /** Expose the narrow frozen-runtime installer in ordinary sessions. */
+  enableSetupTool?: boolean
+}
+
+/** Deployment choices validated before plugin activation. */
+export interface AgentReachConfig {
+  /** Absolute administrator-qualified CLI launcher; ambient discovery is disabled. */
+  readonly runtimeOverride?: string | undefined
+  /** Platform names exposed to ordinary read queries. */
+  readonly enabledChannels?: readonly string[] | undefined
+  /** Exact channel/action/backend tuples permitted to access account sessions. */
+  readonly sessionAccessRoutes?: readonly string[] | undefined
+  /** Permit explicitly enabled experimental platforms. */
+  readonly allowExperimentalChannels?: boolean | undefined
+  /** Overall prerequisite installation deadline in milliseconds. */
+  readonly setupTimeoutMs?: number | undefined
+  /** Default per-query deadline in milliseconds. */
+  readonly queryTimeoutMs?: number | undefined
+  /** Maximum simultaneously active query process ranges. */
+  readonly maxConcurrentQueries?: number | undefined
+  /** Maximum captured CLI JSON bytes before termination. */
+  readonly maxStdoutBytes?: number | undefined
+  /** Maximum retained diagnostic bytes. */
+  readonly maxStderrBytes?: number | undefined
+  /** Aggregate budget for variable strings exposed in a result. */
+  readonly maxOutputChars?: number | undefined
+  /** Maximum public items retained from a query. */
+  readonly maxItems?: number | undefined
+  /** Grace period before forced process-range termination in milliseconds. */
+  readonly terminateGraceMs?: number | undefined
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-agent-reach -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-agent-team -->
 <a id="deepseek-aidsh-experimental-agent-team"></a>
 

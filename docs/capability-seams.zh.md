@@ -265,6 +265,8 @@ flowchart LR
   svc_assistants["ctx.assistants<br/>Persistent assistant and team catalog and lifecycle"]
   pkg_experimental_claude_code_mods["experimental-claude-code-mods"]
   svc_claudeCodeMods["ctx.claudeCodeMods<br/>Claude Code mods bridge"]
+  pkg_experimental_agent_reach["experimental-agent-reach"]
+  svc_agentReach["ctx.agentReach<br/>Bounded platform reading"]
   pkg_experimental_session_decisions["experimental-session-decisions"]
   svc_sessionDecisions["ctx.sessionDecisions<br/>Persistent Session questions and answer admission"]
   pkg_experimental_desktop_im["experimental-desktop-im"]
@@ -351,6 +353,7 @@ flowchart LR
   pkg_deepseek_account_platform --> svc_deepseekAccount
   pkg_deepseek_llm_api_extensions --> svc_deepseekLlmApiExtensions
   pkg_desktop_app --> svc_desktopStartup
+  pkg_experimental_agent_reach --> svc_agentReach
   pkg_experimental_agent_team --> svc_agentTeams
   pkg_experimental_api_speech_to_text --> svc_speechController
   pkg_experimental_assistant_registry --> svc_assistants
@@ -481,6 +484,7 @@ flowchart LR
   svc_agentDefaultModel --> pkg_headless
   svc_agentLoop --> pkg_base
   svc_agentLoop --> pkg_sdk_minimal
+  svc_agentReach --> pkg_experimental_agent_reach
   svc_agentTeams --> pkg_experimental_tool_agent_team
   svc_agents --> pkg_acp
   svc_agents --> pkg_agent_loop
@@ -728,6 +732,7 @@ flowchart LR
 | `ctx.agentTeams` | `core` | [`experimental-agent-team`](../packages/experimental/agent-team) | - | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | - | 负责隐式 Root roster、持久 peer mailbox、共享任务 DAG 与 continuable child 生命周期；tool-agent-team 提供模型控制工具。 |
 | `ctx.assistants` | `core` | [`experimental-assistant-registry`](../packages/experimental/assistant-registry) | - | - | - | 拥有持久化智能体配置、常驻团队定义、私密会话绑定与模型路由优先级。 |
 | `ctx.claudeCodeMods` | `core` | [`experimental-claude-code-mods`](../packages/experimental/claude-code-mods) | - | - | - | 加载 defineMod 插件添加的模组，从 harness 扩展点触发其钩子链，并通过其 Remote 绘制提示框上方的横幅。 |
+| `ctx.agentReach` | `service` | [`experimental-agent-reach`](../packages/experimental/agent-reach) | - | [`experimental-agent-reach`](../packages/experimental/agent-reach) | - | 管理经过验证的短期查询和本地运行环境诊断；工具共享其生命周期，安装依赖需要单独的交互式确认。 |
 | `ctx.sessionDecisions` | `service` | [`experimental-session-decisions`](../packages/experimental/session-decisions) | - | [`experimental-session-decisions`](../packages/experimental/session-decisions) | - | 管理持久问题与过期状态；会话作用域工具负责提问和读取，Client 与可选飞书适配器共享排队的会话回答受理路径。 |
 | `ctx.desktopIm` | `service` | [`experimental-desktop-im`](../packages/experimental/desktop-im) | - | - | - | 管理桌面本地连接设置和飞书／钉钉生命周期；Client 设置分区调用其 Remote 方法。 |
 | `ctx.imIngress` | `service` | [`experimental-im-feishu`](../packages/experimental/im-feishu) | - | - | - | 在 ACK 前授权传入平台投递并提交至持久存储，跨隔离的租户进程驱动有界分派。 |

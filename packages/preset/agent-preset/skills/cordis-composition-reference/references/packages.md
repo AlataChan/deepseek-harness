@@ -181,6 +181,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 
 | Package | Config | Description |
 |---|---|---|
+| `@deepseek-ai/dsh-experimental-agent-reach` | yes | Agent-Reach lightweight platform reader and lazy dependency setup plugin |
 | `@deepseek-ai/dsh-experimental-agent-team` | yes | Implicit-root Agent Teams roster, durable peer mailbox, and shared task DAG |
 | `@deepseek-ai/dsh-experimental-api-speech-to-text` | yes | Authenticated experimental speech transcription for browser clients |
 | `@deepseek-ai/dsh-experimental-assistant-registry` | yes | Persistent assistant and team catalog, scoped route selection, and lifecycle registry |

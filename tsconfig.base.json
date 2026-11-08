@@ -394,6 +394,8 @@
       "@deepseek-ai/dsh-experimental-desktop-operation": ["./packages/experimental/desktop-operation/src"],
       "@deepseek-ai/dsh-experimental-desktop-operation/*": ["./packages/experimental/desktop-operation/src/*"],
       "@deepseek-ai/dsh-experimental-desktop-operation/client": ["./packages/experimental/desktop-operation/src/client"],
+      "@deepseek-ai/dsh-experimental-agent-reach": ["./packages/experimental/agent-reach/src"],
+      "@deepseek-ai/dsh-experimental-agent-reach/*": ["./packages/experimental/agent-reach/src/*"],
       "@deepseek-ai/dsh-experimental-desktop-media": ["./packages/experimental/desktop-media/src"],
       "@deepseek-ai/dsh-experimental-desktop-media/*": ["./packages/experimental/desktop-media/src/*"],
       "@deepseek-ai/dsh-experimental-assistant-registry": ["./packages/experimental/assistant-registry/src"],

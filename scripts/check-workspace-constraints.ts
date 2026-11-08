@@ -63,6 +63,7 @@ const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
  * profile plugin cites them.
  */
 const FORK_BUNDLED_EXPERIMENTAL = new Set([
+  '@deepseek-ai/dsh-experimental-agent-reach',
   '@deepseek-ai/dsh-experimental-agent-team',
   '@deepseek-ai/dsh-experimental-tool-agent-team',
   '@deepseek-ai/dsh-experimental-assistant-registry',
@@ -189,6 +190,7 @@ export function readWorkspaceManifests(repositoryRoot: string): WorkspaceManifes
 }
 
 const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
+  '@deepseek-ai/dsh-experimental-agent-reach': ['runtime-contract.json','dependency-lock.json'],
   '@deepseek-ai/dsh-tools': ['lib/pipeline.js', 'lib/shared-*.js'],
   '@deepseek-ai/dsh-experimental-desktop-operation': [
     'lib/supervisor.js', 'preset/**', 'native/LICENSE', 'native/PIN.json',

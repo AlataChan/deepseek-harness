@@ -121,6 +121,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   sessionProjections: 'session-projection.md',
   sessionController: 'session.md',
   sessionDecisions: 'session-decisions.md',
+  agentReach: 'agent-reach.md',
   sessionSkillCatalog: 'skills.md',
   sessions: 'session.md',
   settings: 'settings.md',
@@ -293,6 +294,10 @@ export const EVENT_WALK_EXEMPTIONS: Record<string, string> = {
  * appear on more than one page.
  */
 export const LINK_MAP: Readonly<Record<string, string>> = {
+  AgentReachExecutionRequest: 'agent-reach.md',
+  AgentReachResult: 'agent-reach.md',
+  AgentReachError: 'agent-reach.md',
+  ChannelDefinition: 'agent-reach.md',
   CardConsumer: 'im.md',
   CardChannel: 'im.md',
   SessionRequestId: 'session.md',

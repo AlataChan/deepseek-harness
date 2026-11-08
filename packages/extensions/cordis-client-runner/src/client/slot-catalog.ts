@@ -4882,6 +4882,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-tool TodoRow key \'todo_write\'',
       'client-ui-tool WebRow key \'web_search\'',
       'client-ui-tool WebRow key \'web_fetch\'',
+      'experimental-agent-reach ReachCard',
       'experimental-commerce-mode CommerceChangeRow',
       'experimental-desktop-media MediaCard',
       'experimental-session-decisions QuestionToolCard key \'request_persistent_question\'',

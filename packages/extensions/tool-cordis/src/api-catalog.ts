@@ -234,6 +234,31 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'agentReach',
+    summary: 'Shared platform-read service used by the model tools.',
+    description: 'Shared platform-read service used by the model tools.',
+    methods: [
+      {
+        signature: 'query(request: AgentReachExecutionRequest): Promise<AgentReachResult>',
+        description: 'Run one validated read through the owned transient runtime.',
+        parameters: [{ name: 'request', description: 'Exact action, backend, inputs and cancellation.' }],
+        returns: 'Bounded public result or an explicit refusal.',
+      },
+      {
+        signature: 'channels(): Promise<{ ok: boolean; channels: readonly ChannelDefinition[] }>',
+        description: 'Inspect the local static action catalog without spawning.',
+        parameters: [],
+        returns: 'Checked-in channel definitions.',
+      },
+      {
+        signature: 'status(channel?: string): Promise<{ ok: boolean; doctor?: unknown; version?: string | undefined; error?: AgentReachError | undefined }>',
+        description: 'Inspect installed prerequisites without installing or logging in.',
+        parameters: [{ name: 'channel', description: 'Optional known platform filter.' }],
+        returns: 'Bounded cached doctor facts or a setup diagnostic.',
+      },
+    ],
+  },
+  {
     key: 'agents',
     summary: 'Agent service (`ctx.agents`): tracks live agents and carries the initiating Agent through one process-local asynchronous driver chain.',
     description: 'Agent service (`ctx.agents`): tracks live agents and carries the initiating Agent through one process-local asynchronous driver chain. Agent *creation* is provided by whichever plugin implements the AgentFactory (`@deepseek-ai/dsh-agent-loop`), registered via setFactory.\n\nInitiator methods provide same-process causal attribution only. Ambient presence is neither liveness proof nor authorization; subjects and owners remain explicit, as does identity at worker, process, persistence, and wire boundaries. Returned Promise boundaries drain during teardown, except a nested lineage that starts an owning-fiber unload is excluded from its own drain.',
@@ -6493,6 +6518,10 @@ export const EVENT_API: readonly EventApiEntry[] = [
 /** Shapes of every exported type the Service and Event signatures reference (transitively), sorted by name. */
 export const TYPE_API: readonly TypeApiEntry[] = [
   {
+    name: 'AccessScope',
+    declaration: 'export type AccessScope = \'public\' | \'native\' | \'session\';',
+  },
+  {
     name: 'AccountBonusBatch',
     declaration: 'export interface AccountBonusBatch {\n    readonly accountId: AccountUserId;\n    readonly bonuses: readonly AccountBonusNotification[];\n}',
   },
@@ -6535,6 +6564,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'AcquireOwnershipParams',
     declaration: 'export interface AcquireOwnershipParams {\n    readonly roundId: string;\n    readonly slotId: string;\n    readonly attemptId: string;\n    readonly sessionId: SessionId;\n    readonly seatId?: TeamSeatId | undefined;\n    readonly ownerId: string;\n    readonly delegationChain?: readonly string[] | undefined;\n}',
+  },
+  {
+    name: 'ActionDefinition',
+    declaration: 'export interface ActionDefinition {\n    readonly name: string;\n    readonly help: string;\n    readonly usage?: string | undefined;\n    readonly params: readonly ParamDefinition[];\n    readonly backends: readonly BackendDefinition[];\n    readonly publicWeb?: readonly string[] | undefined;\n}',
   },
   {
     name: 'AdapterRegistrationHandle',
@@ -6595,6 +6628,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'AgentPresetRow',
     declaration: 'export interface AgentPresetRow {\n    readonly id: string;\n    readonly isDefault: boolean;\n    readonly name?: string;\n    readonly description?: string;\n    readonly broken?: string;\n}',
+  },
+  {
+    name: 'AgentReachError',
+    declaration: 'export interface AgentReachError {\n    readonly code: string;\n    readonly message: string;\n    readonly hint?: string | undefined;\n}',
+  },
+  {
+    name: 'AgentReachExecutionRequest',
+    declaration: 'export interface AgentReachExecutionRequest {\n    readonly channel: string;\n    readonly action: string;\n    readonly params?: Record<string, unknown> | undefined;\n    readonly backend?: string | undefined;\n    readonly timeoutMs?: number | undefined;\n    readonly signal?: AbortSignal | undefined;\n}',
+  },
+  {
+    name: 'AgentReachItem',
+    declaration: 'export interface AgentReachItem {\n    readonly url?: string | undefined;\n    readonly title?: string | undefined;\n    readonly author?: string | undefined;\n    readonly publishedAt?: string | undefined;\n    readonly text?: string | undefined;\n}',
+  },
+  {
+    name: 'AgentReachMeta',
+    declaration: 'export interface AgentReachMeta {\n    readonly elapsedMs: number;\n    readonly attempts: readonly string[];\n    readonly accessMode?: string | undefined;\n    readonly completenessVerified?: boolean | undefined;\n}',
+  },
+  {
+    name: 'AgentReachResult',
+    declaration: 'export interface AgentReachResult {\n    readonly ok: boolean;\n    readonly channel: string;\n    readonly action: string;\n    readonly backend?: string | undefined;\n    readonly items: readonly AgentReachItem[];\n    readonly meta: AgentReachMeta;\n    readonly error?: AgentReachError | undefined;\n    readonly accessScope: AccessScope;\n    readonly completeness: Completeness;\n    readonly truncated?: boolean | undefined;\n}',
   },
   {
     name: 'AgentResolver',
@@ -6909,6 +6962,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface AuxiliaryUsageRecord {\n    readonly id: string;\n    readonly sessionId: SessionId;\n    readonly seq: number;\n    readonly provider: string;\n    readonly model: string;\n    readonly usage: TokenUsageMetrics;\n    readonly purpose: \'title\' | \'memory_review\' | \'prediction\' | \'summary\' | \'auxiliary\';\n    readonly timestamp: number;\n}',
   },
   {
+    name: 'BackendDefinition',
+    declaration: 'export interface BackendDefinition {\n    readonly name: string;\n    readonly sideEffects: readonly SideEffect[];\n}',
+  },
+  {
     name: 'BackendRegistry',
     declaration: 'export class BackendRegistry {\n    register(name: string, backend: StorageBackend): () => void;\n    get(name: string): StorageBackend;\n    names(): string[];\n}',
   },
@@ -7001,6 +7058,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ChangeResult {\n    changed: boolean;\n    application: \'applied\' | \'restart-required\' | \'overridden\' | \'failed\' | \'cancelled\';\n    stage: \'install\' | \'enable\' | \'remove\';\n    target: string;\n    enabled?: boolean;\n    error?: ManagementError;\n    warnings?: string[];\n    packageResult?: PackageResult;\n    bundle?: string;\n    version?: string;\n    pendingBuilds?: string[];\n    approvedBuilds?: string[];\n    registries?: Registry[];\n    failedAt?: \'registry\' | \'spec-host\';\n}',
   },
   {
+    name: 'ChannelDefinition',
+    declaration: 'export interface ChannelDefinition {\n    readonly name: string;\n    readonly description: string;\n    readonly level: \'default\' | \'optional\' | \'experimental\';\n    readonly actions: readonly ActionDefinition[];\n}',
+  },
+  {
     name: 'ClientArtifactBaseline',
     declaration: 'export interface ClientArtifactBaseline {\n    readonly path: string;\n    readonly mtimeMs: number;\n    readonly ctimeMs: number;\n    readonly size: number;\n}',
   },
@@ -7043,10 +7104,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CommandInvocation',
     declaration: 'export interface CommandInvocation {\n    readonly commandId: CommandId;\n    readonly agent: Agent;\n    readonly rawInput: string;\n    readonly attachments: readonly (ImageBlock | FileBlock)[];\n    readonly signal: AbortSignal;\n}',
-  },
-  {
-    name: 'CommandResult',
-    declaration: 'export type CommandResult = {\n    readonly kind: \'success\';\n    readonly text?: string;\n    readonly sourceEventSeq?: SessionSeq;\n} | {\n    readonly kind: \'error\';\n    readonly text: string;\n};',
   },
   {
     name: 'CommandRunInput',
@@ -7167,6 +7224,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CompactionTrigger',
     declaration: 'export type CompactionTrigger = \'pressure\' | \'context-overflow\';',
+  },
+  {
+    name: 'Completeness',
+    declaration: 'export type Completeness = \'complete\' | \'truncated\' | \'partial\' | \'snippet\' | \'unknown\';',
   },
   {
     name: 'ComposerPredictionContext',
@@ -8739,6 +8800,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PaneOpenResult',
     declaration: 'export interface PaneOpenResult {\n    id: string;\n    isPlaced: boolean;\n    reason?: string;\n}',
+  },
+  {
+    name: 'ParamDefinition',
+    declaration: 'export interface ParamDefinition {\n    readonly name: string;\n    readonly type: \'string\' | \'number\' | \'boolean\';\n    readonly required: boolean;\n    readonly default?: string | number | boolean | undefined;\n    readonly help: string;\n}',
   },
   {
     name: 'PeerAdmission',
@@ -10339,6 +10404,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ShellSandboxInfo',
     declaration: 'export interface ShellSandboxInfo {\n    mode: SandboxMode;\n    denied: boolean;\n    enforcement?: SandboxEnforcement;\n    runnerFailed?: boolean;\n}',
+  },
+  {
+    name: 'SideEffect',
+    declaration: 'export type SideEffect = \'connected-browser-discovery\' | \'cookie-import\' | \'native-credential-write\' | \'browser-launch\';',
   },
   {
     name: 'SignInAttemptId',

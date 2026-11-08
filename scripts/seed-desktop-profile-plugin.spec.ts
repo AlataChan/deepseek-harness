@@ -391,3 +391,16 @@ describe('seed-desktop-profile-plugin', () => {
     expect(onDisk.dependencies['dsh-context']).toBeUndefined()
   })
 })
+
+it('ships Agent-Reach enabled with no installer lifecycle scripts or runtime binaries', () => {
+  const pins = JSON.parse(readFileSync(new URL('./desktop-profile-plugins.json', import.meta.url), 'utf8'))
+  const pin = pins.plugins.find((entry: { name:string }) => entry.name === '@deepseek-ai/dsh-experimental-agent-reach')
+  expect(pin).toMatchObject({ source:'workspace',path:'packages/experimental/agent-reach' })
+  expect(pin.defaultEnabled).not.toBe(false)
+  const manifest = JSON.parse(readFileSync(new URL('../packages/experimental/agent-reach/package.json',import.meta.url),'utf8'))
+  expect(manifest.scripts.preinstall).toBeUndefined()
+  expect(manifest.scripts.install).toBeUndefined()
+  expect(manifest.scripts.postinstall).toBeUndefined()
+  expect(manifest.files).toContain('dependency-lock.json')
+  expect(manifest.files.some((file:string) => /\.(whl|exe|dmg|py|so|dll)$/.test(file))).toBe(false)
+})

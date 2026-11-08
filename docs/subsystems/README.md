@@ -20,6 +20,7 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [commands.md](commands.md) | the human-command registry service: definitions, adapter discovery, direct invocation, results, and parsing views |
 | [session.md](session.md) | the full `SessionEventMap` variant catalog, `TurnEndReason`, `deriveMessages()`, execution enclosure, and standalone events |
 | [session-decisions.md](session-decisions.md) | optional structured Session questions, human answer admission, durable indexing, and recovery |
+| [agent-reach.md](agent-reach.md) | bounded platform reading, exact action permissions, and local runtime diagnostics |
 | [persistence.md](persistence.md) | the durability seam: `SessionPersistence`, the JSONL provider, `session/flush`, crash recovery, `SessionHeader` |
 | [settings.md](settings.md) | the user-settings seam: `SettingsNamespace` registration, layered resolution (defaults → composition `base` → user document), owner scopes, hot commits |
 | [credentials.md](credentials.md) | the credential seam: `CredentialRef` references (never values) in configuration, per-operation resolution, UI-safe `CredentialInfo`, provider source layers |
