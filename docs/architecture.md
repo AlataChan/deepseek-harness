@@ -4,7 +4,7 @@ English | [中文](architecture.zh.md)
 
 Read this before changing anything under `packages/`. It assumes you know Cordis; if you do not, start with the [primer](cordis-primer.md) or the [tutorial](cordis-tutorial/index.md).
 
-We recommend using an agent to explore the codebase and understand its architecture.
+For Octopus's Tauri shell and bundled plugins, see the [desktop overview](../apps/desktop/README.md).
 
 ## Cordis
 

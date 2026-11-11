@@ -2,6 +2,8 @@
 
 [English](development.md) | 中文
 
+本检出目录属于 AlataChan 的 Octopus DSH fork。共用 Harness 的开发遵循本文；本 fork 的 Tauri 外壳、随附桌面插件及安装包准备见[桌面 README](../apps/desktop/README.md)。[贡献指南](../CONTRIBUTING.zh.md)说明本 fork 的支持入口与修改工作流。
+
 搭建教程引导新贡献者从准备前置条件开始，直到检出目录通过检查。后面的贡献者参考介绍仓库布局、日常工作流和 CI 组织方式。设计依据与实现细节属于链接的 Agent Note 和脚本。
 
 <a id="setup-tutorial"></a>

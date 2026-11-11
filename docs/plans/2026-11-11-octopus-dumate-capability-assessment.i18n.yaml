@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for 2026-11-11-octopus-dumate-capability-assessment.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-11-11-octopus-dumate-capability-assessment.md
+/octopus-dumate-and-agentbridge-capability-assessment:
+  en: 123bf9b4e7481590
+  zh: c204e2055d5c4d02
+/octopus-dumate-and-agentbridge-capability-assessment/summary:
+  en: 0db98e2293dafb38
+  zh: daa4a5a1e52132da
+/octopus-dumate-and-agentbridge-capability-assessment/contents:
+  en: 1eafa15cb93837e0
+  zh: 0189e56a19b15c8e
+/octopus-dumate-and-agentbridge-capability-assessment/evidence-and-version-scope:
+  en: 3377e7070d7c430d
+  zh: 6ec720d5608cec35
+/octopus-dumate-and-agentbridge-capability-assessment/what-to-learn-from-the-decks:
+  en: 57cb7890add064c8
+  zh: 2a651f8baf4fef90
+/octopus-dumate-and-agentbridge-capability-assessment/detailed-capability-matrix:
+  en: 647a7b8ecc750452
+  zh: e8cfa756179125ff
+/octopus-dumate-and-agentbridge-capability-assessment/agentbridge-execution-overlap-and-application-operations:
+  en: a8b56188f47ba509
+  zh: 9a1da8a88172c3e9
+/octopus-dumate-and-agentbridge-capability-assessment/distinctive-strengths-to-claim:
+  en: 51cea778e9ee7ea7
+  zh: 507f6acf87f939f7
+/octopus-dumate-and-agentbridge-capability-assessment/material-gaps-and-acceptance-conditions:
+  en: efe9bcf71849c74b
+  zh: 05bb223dda9bf316
+/octopus-dumate-and-agentbridge-capability-assessment/positioning-and-next-steps:
+  en: d39bc20e8585516c
+  zh: 6013b19867df4ce9
+/octopus-dumate-and-agentbridge-capability-assessment/repository-evidence-index:
+  en: bc690966de3a4e70
+  zh: 3725c32cf32bde55
+/octopus-dumate-and-agentbridge-capability-assessment/dev-note:
+  en: 3d7e1a60ef9b606e
+  zh: 495b0f46f85010d1

@@ -1,18 +1,24 @@
-# DeepSeek Harness
+# Octopus DSH — Little Green Whale
 
 English | [中文](README.zh.md)
 
-DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
+Octopus DSH (`octopus_DSH`) is the AlataChan desktop-focused fork of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), the open-source agent harness developed by DeepSeek AI. Little Green Whale is the in-app brand. This fork is maintained independently and is not an official DeepSeek desktop release.
 
-It is built on an **everything-is-a-plugin** architecture and powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512).
+The runtime retains DeepSeek Harness's **everything-is-a-plugin** architecture, powered by [Cordis](https://github.com/cordiverse/cordis). Octopus adds a Tauri 2 desktop shell, packaged runtime, and desktop plugins for everyday document, data, and team work.
 
-Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
+## What you can do
+
+- Chat with configured models and work with files in a selected workspace.
+- Ask data: select or upload Excel/CSV data before starting a conversation.
+- Ask knowledge: import documents into a library, search converted content, and approve model-assisted wiki enrichment separately.
+- Save assistants and standing teams with editable responsibilities, model choices, and memory; follow team activity in the collaboration panel.
+- Use voice transcription and conversation-driven media tools. Media generation requires its provider credentials; video composition requires a separately installed media runtime.
+
+These additions are desktop plugins; the Web profile does not automatically include the desktop feature set. See the [getting-started guide](docs/user/guide/index.md) for the user entry points and the [desktop README](apps/desktop/README.md) for runtime and packaging details.
 
 ## Developer preview
 
-DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
-
-Review the [safety notice](SAFETY.md) before running the project.
+Octopus DSH and its upstream runtime are evolving rapidly. Compatibility-breaking changes remain possible. Read the [safety notice](SAFETY.md) before running agents against local files or commands.
 
 ## Expansion and TUI qualification
 
@@ -27,47 +33,34 @@ The TUI is available through the `tui` CLI profile; it is not a default DMG/EXE 
 
 ## Run
 
-### Run from `npm`
+### Desktop
 
-Install `Node.js`, then run:
-
-```sh
-npx @deepseek-ai/dsh web
-```
-
-The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See [Web UI guide](docs/user/guide/index.md).
+Use the fork's [release page](https://github.com/AlataChan/deepseek-harness/releases) to check available installers and release-specific qualification. The distribution targets macOS arm64 DMG and Windows x64 NSIS EXE. Installers carry Node and the matching Harness runtime; end users configure their model API key in Settings. Signing, platform qualification, and artifact availability depend on the release; no automatic updater is enabled.
 
 ### Run from source
 
-To run from a repository checkout:
+For contributors with Node.js `>=24.9.0` and pnpm:
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
+git clone https://github.com/AlataChan/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build
 pnpm dsh web
 ```
 
-`pnpm run build` prepares the repository artifacts. `pnpm dsh web` uses those built artifacts without rebuilding.
+The Web launcher uses built artifacts. See the [development guide](docs/development.md) for source workflows and the [desktop build instructions](apps/desktop/README.md#build-and-run) for Rust/Tauri prerequisites and installer preparation. Installing the upstream `@deepseek-ai/dsh` package does not install this fork's Octopus desktop application.
 
-## Community and support
+## Local data
 
-- Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
-- Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
-- Join <a href="https://discord.gg/4MrtZUhpxg">DeepSeek Harness Discord community</a>.
+The default Harness home is `~/.dsh`, configurable through `DSH_HOME`. Octopus does not automatically isolate that directory from another DSH installation. Applications using the same home can see the same conversations and settings; a different app name or installation directory does not create a separate history. See [local data and coexistence](docs/user/guide/index.md#local-data-and-coexistence) before using both installations.
 
-## Contributing
+## Documentation and support
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Development
-
-Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
-
-`pnpm run dev:web` builds, serves, and rebuilds client bundles on source edits in one terminal, and `make help` lists the matching Make targets for Web and Desktop; the guide's application commands section owns the full table.
-
-For agents, follow [AGENTS.md](AGENTS.md).
+- Start with the [user guide](docs/user/guide/index.md).
+- Report fork-specific issues in [this repository](https://github.com/AlataChan/deepseek-harness/issues).
+- Use the [upstream documentation](https://deepseek-harness.github.io/deepseek-harness/) for shared Harness concepts; it does not describe all Octopus desktop additions.
+- Read [CONTRIBUTING.md](CONTRIBUTING.md), the [development guide](docs/development.md), and [architecture documentation](docs/architecture.md) for engineering work. Agents follow [AGENTS.md](AGENTS.md).
 
 ## Citation
 

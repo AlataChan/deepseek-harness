@@ -60,3 +60,13 @@ worktrees/
 .typert-*/
 native/system/test/bin/
 .plans/**/source-snapshot/
+
+# Private agent state and local execution evidence (existing tracked evidence stays tracked).
+.ccb/
+.ccb_config/
+.alataflow/
+.memory/
+.serena/
+.sisyphus/
+.cursor/hooks/state/
+/.plans/

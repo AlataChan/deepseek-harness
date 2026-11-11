@@ -93,7 +93,14 @@ class InspectorClientSession {
       this.connectionFailed(new Error(`Inspector bootstrap failed: HTTP ${response.status}`))
       return
     }
-    const value: unknown = await response.json()
+    let value: unknown
+    try {
+      value = await response.json()
+    } catch (error) {
+      // A page origin that is not the Host, such as the desktop dev server, answers 200 with HTML.
+      this.connectionFailed(error)
+      return
+    }
     await this.replace(parseInspectorClientBootstrap(value))
   }
 

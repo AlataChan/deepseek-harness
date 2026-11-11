@@ -112,7 +112,7 @@ function isReusableBlankSession(session: ListedSession | undefined): session is 
 export const inject = ['slots', 'remote', 'remote.session', 'locale']
 
 /**
- * Register the 问数据 chip, brand chrome, headline, and workspace-folder
+ * Register the 问数据 chip, sidebar mark, headline, and workspace-folder
  * settings row. The gate occupant is registered only while open.
  * @param ctx - client root context.
  */
@@ -121,9 +121,9 @@ export function apply(ctx: ClientContext): void {
   ctx.inject(['configForms'], (scope) => {
     const preference = createBrandPreference(scope.configForms.get<BrandSettings>('desktop-ask-data'))
     scope.effect(() => () => { preference.dispose() })
-    for (const name of ['sidebar.brand.mark', 'conversation.hero.brand.mark'] as const) {
-      scope.slots.inject(name, () => scope.slots.register({ name, inject: () => ({ preference }) }, OctopusMark))
-    }
+    scope.slots.inject('sidebar.brand.mark', () => scope.slots.register({
+      name: 'sidebar.brand.mark', inject: () => ({ preference }),
+    }, OctopusMark))
     scope.slots.inject('settings.general.item', () => scope.slots.register({
       name: 'settings.general.item', id: 'desktop-brand-mark', order: 12, locale: NS,
       inject: () => ({ preference }),

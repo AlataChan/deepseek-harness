@@ -2,6 +2,15 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write CONTRIBUTING.md
-/contributing:
-  en: 08d2f421ff3617f4
-  zh: 9d060d70ad186dc5
+/contributing-to-octopus-dsh:
+  en: cfc94558606e2f45
+  zh: ec3f8645f429eed5
+/contributing-to-octopus-dsh/development:
+  en: 6fda732676a0c63e
+  zh: 37505dc8aca7c286
+/contributing-to-octopus-dsh/changes-and-verification:
+  en: d5882222b9f667ea
+  zh: 223c3c45d5611742
+/contributing-to-octopus-dsh/ecosystem:
+  en: 8543d86511501358
+  zh: bf8e82c03a922f7a

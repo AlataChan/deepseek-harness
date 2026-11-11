@@ -12,7 +12,7 @@ octopus_DSH desktop's blank-session Hero is a flat column. A living background h
 
 Official [`ui-conversation`](../../../../packages/client/ui-conversation/README.md) declares `conversation.atmosphere` as a root `single` hole. `ConversationRoot` renders it in an absolute, pointer-transparent seat behind header and body (`hero: true` only while the shell is on the blank-session Hero). Official web leaves the hole empty.
 
-The occupant is the private overlay [`@deepseek-ai/dsh-experimental-desktop-hero-atmosphere`](../../../../packages/experimental/desktop-hero-atmosphere/README.md). Its patch inserts one Host row; `dsh.client` discovers the Client face. The Client injects inlined `data:` URLs for the K0 poster, K1 drift still, and six-second GOP loop (`media/poster.jpg`, `media/k1.jpg`, `media/hero.mp4`). The Client-face tsdown `load` hook matches both `src/media-urls.ts` and `lib/types/media-urls.js`; a source-only match leaves CJS `require("url")` in `lib/client.js`. The Client factory never evaluates Node `import.meta.url`. Playback is muted, looping, and `playsInline`. `prefers-reduced-motion: reduce` keeps K0 only. A rejected or CSP-blocked `play()` unmounts the video and leaves the K0/K1 crossfade. Opacity transitions with `hero`. A 48% `bg-base` veil keeps composer contrast.
+The occupant is the private overlay [`@deepseek-ai/dsh-experimental-desktop-hero-atmosphere`](../../../../packages/experimental/desktop-hero-atmosphere/README.md). Its patch inserts one Host row; `dsh.client` discovers the Client face. The Client injects inlined `data:` URLs for the K0 poster, K1 drift still, and six-second GOP loop (`media/poster.jpg`, `media/k1.jpg`, `media/hero.mp4`). Those packaged files are a pale beige-green grade of the mint source plates. A light-theme sheet in the same package moves the sidebar, conversation, composer, and message bubble onto one warm paper; dark theme keeps the official tokens. The Client-face tsdown `load` hook matches both `src/media-urls.ts` and `lib/types/media-urls.js`; a source-only match leaves CJS `require("url")` in `lib/client.js`. The Client factory never evaluates Node `import.meta.url`. Playback is muted, looping, and `playsInline`. `prefers-reduced-motion: reduce` keeps K0 only. A rejected or CSP-blocked `play()` unmounts the video and leaves the K0/K1 crossfade. Opacity transitions with `hero`. A 48% `bg-base` veil keeps composer contrast.
 
 Seed follows [`scripts/desktop-profile-plugins.json`](../../../../scripts/desktop-profile-plugins.json) (`source: "workspace"`). The overlay is not named by official `desktop-app` or `PROFILE_TEMPLATES.desktop`.
 
@@ -30,7 +30,7 @@ Seed follows [`scripts/desktop-profile-plugins.json`](../../../../scripts/deskto
 
 ## Consequences
 
-A seeded octopus_DSH desktop shows the shallow-water plate on the blank-session Hero and hides it on an active transcript. Official web default composition does not occupy `conversation.atmosphere`. A user who removes the bundle name keeps it removed on later seed refresh. The package publishes no `./invariant`: Host apply is empty and Client occupancy is one disposable registration.
+A seeded octopus_DSH desktop shows the pale beige-green shallow-water plate on the blank-session Hero and hides it on an active transcript. Official web default composition does not occupy `conversation.atmosphere`. A user who removes the bundle name keeps it removed on later seed refresh. The package publishes no `./invariant`: Host apply is empty and Client occupancy is one disposable registration.
 
 ## Testing
 

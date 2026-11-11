@@ -1,20 +1,24 @@
-# DeepSeek Harness
+# Octopus DSH — 小绿鲸
 
 [English](README.md) | 中文
 
-DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
+Octopus DSH（`octopus_DSH`）是 AlataChan 维护的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 桌面优先 fork；上游是 DeepSeek AI 开发的开源 agent harness（智能体框架）。应用内品牌为“小绿鲸”。本 fork 独立维护，并非 DeepSeek 官方桌面发行版。
 
-它构建于**一切皆插件**的架构之上，由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512)。
+运行时保留 DeepSeek Harness 由 [Cordis](https://github.com/cordiverse/cordis) 驱动的**一切皆插件**架构。Octopus 增加 Tauri 2 桌面外壳、随安装包交付的运行时，以及面向日常文档、数据和团队工作的桌面插件。
 
-文档：[https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
+## 你可以做什么
+
+- 使用已配置的模型对话，并处理所选工作区中的文件。
+- 问数据：先选择或上传 Excel/CSV 数据，再开始对话。
+- 问知识：将文档导入知识库、搜索转换后的内容，并单独审批由模型辅助的 wiki 丰富处理。
+- 保存助手与常驻团队，编辑职责、模型选择和记忆，并在协作面板中查看团队活动。
+- 使用语音转写和对话驱动的媒体工具。媒体生成需要相应服务商的凭据；视频合成需要另行安装媒体运行时。
+
+这些能力通过桌面插件提供；Web profile 不会自动包含全部桌面功能。用户入口见[入门指南](docs/user/guide/index.zh.md)，运行时与打包细节见[桌面 README](apps/desktop/README.md)。
 
 ## 开发者预览
 
-DeepSeek Harness 处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**
-
-运行本项目前，请阅读[安全说明](SAFETY.zh.md)。
-
-<a id="run"></a>
+Octopus DSH 及上游运行时持续快速迭代，仍可能出现破坏兼容性的变更。在让 agent 操作本地文件或执行命令前，请阅读[安全说明](SAFETY.zh.md)。
 
 ## 扩展能力与 TUI 验收
 
@@ -31,64 +35,36 @@ TUI 通过 CLI 的 `tui` profile 使用，不是 DMG/EXE 默认插件。桌面 I
 
 ## 运行
 
-### 通过 `npm` 运行
+### 桌面版
 
-安装 `Node.js`，然后运行：
-
-```sh
-npx @deepseek-ai/dsh web
-```
-
-该命令默认会在 `http://127.0.0.1:3080` 启动 Web UI，本机启动时还会用默认浏览器打开页面。通过 SSH 启动时只打印宿主机 URL，因为本地转发地址由 SSH 客户端或编辑器持有。传入 `--no-open` 可仅运行服务器而不打开浏览器。详见 [Web UI 指南](docs/user/guide/index.zh.md)。
+请在本 fork 的[发布页](https://github.com/AlataChan/deepseek-harness/releases)查看可用安装包及对应版本的验证情况。发行目标为 macOS arm64 DMG 和 Windows x64 NSIS EXE。安装包携带 Node 和匹配的 Harness 运行时；普通用户在设置中配置模型 API Key 即可。签名、平台验证及产物是否可用取决于具体版本；当前未启用自动更新。
 
 <a id="run-from-source"></a>
 
 ### 从源码运行
 
-如需从仓库源码运行：
+贡献者需要 Node.js `>=24.9.0` 以及 pnpm：
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
+git clone https://github.com/AlataChan/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build
 pnpm dsh web
 ```
 
-`pnpm run build` 会准备仓库产物。`pnpm dsh web` 会直接使用这些已构建产物，不会重新构建。
+Web 启动器使用已构建的产物。源码工作流见[开发指南](docs/development.zh.md)，Rust/Tauri 前置条件及安装包准备见[桌面构建说明](apps/desktop/README.md#build-and-run)。安装上游 `@deepseek-ai/dsh` 包不会安装本 fork 的 Octopus 桌面应用。
 
-## 社区与支持
+## 本地数据
 
-- 通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。
-- 为你的插件仓库添加 [`dsh-plugin`](https://github.com/topics/dsh-plugin) 话题，便于被发现。
-- 欢迎加入 DeepSeek Harness 企微群！扫描下方二维码填写入群问卷，小助手会定期发送入群邀请。
+Harness 主目录默认为 `~/.dsh`，可通过 `DSH_HOME` 配置。Octopus 不会自动将此目录与其他 DSH 安装隔离。使用同一主目录的应用可以看到相同的对话和设置；不同的应用名称或安装目录不会创建独立历史记录。同时使用两个安装前，请阅读[本地数据与共存](docs/user/guide/index.zh.md#local-data-and-coexistence)。
 
-<table>
-  <thead>
-    <tr>
-      <th align="center">入群问卷</th>
-      <th align="center">微信公众号</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><a href="https://trtgsjkv6r.feishu.cn/share/base/form/shrcnIt5twSVdLGD52KJBckGCgg"><img src="https://cdn.deepseek.com/harness/readme/community-wecom-survey.png" alt="DeepSeek Harness 入群问卷二维码" width="180" height="180"></a></td>
-      <td align="center"><img src="https://cdn.deepseek.com/harness/readme/community-wechat-official-account.png" alt="DeepSeek Harness 团队微信公众号二维码" width="180" height="180"></td>
-    </tr>
-  </tbody>
-</table>
+## 文档与支持
 
-## 参与贡献
-
-参见 [CONTRIBUTING.md](CONTRIBUTING.zh.md)。
-
-## 开发
-
-请先阅读[开发指南](docs/development.zh.md)与[架构文档](docs/architecture.zh.md)。
-
-`pnpm run dev:web` 会在一个终端里完成构建、启动，并在源码修改时重建 client bundle；`make help` 列出 Web 与 Desktop 对应的 Make target。完整表格见开发指南的「应用命令」一节。
-
-面向 agent：请遵循 [AGENTS.md](AGENTS.md)。
+- 从[用户指南](docs/user/guide/index.zh.md)开始。
+- 在[本仓库](https://github.com/AlataChan/deepseek-harness/issues)反馈 fork 特有的问题。
+- 通用 Harness 概念可参考[上游文档](https://deepseek-harness.github.io/deepseek-harness/)；其中不包含全部 Octopus 桌面扩展。
+- 工程开发请阅读 [CONTRIBUTING.md](CONTRIBUTING.zh.md)、[开发指南](docs/development.zh.md)和[架构文档](docs/architecture.zh.md)。Agent 遵循 [AGENTS.md](AGENTS.md)。
 
 ## 引用
 

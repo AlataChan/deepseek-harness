@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-11-11-octopus-capability-investment-decisions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-11-11-octopus-capability-investment-decisions.md
+/octopus-capability-investment-decisions:
+  en: a63cd24ce37b3488
+  zh: e3b7cdc77f8d1597
+/octopus-capability-investment-decisions/summary:
+  en: c0d24af0333e50ba
+  zh: f79be734c9a31eb7
+/octopus-capability-investment-decisions/contents:
+  en: f4196b59905d44e0
+  zh: d99ce2edb049a571
+/octopus-capability-investment-decisions/decision-basis:
+  en: 62854d60cce5d974
+  zh: b1edc42094e08811
+/octopus-capability-investment-decisions/build-reuse-and-defer-decisions:
+  en: 628bf60a5f4c2c23
+  zh: a94bdfb5b7dfd441
+/octopus-capability-investment-decisions/first-pilot-and-acceptance:
+  en: ddf21a26b2f50f78
+  zh: 420c9df906b25648
+/octopus-capability-investment-decisions/how-to-present-our-strengths:
+  en: ebfeb7e246fa41b1
+  zh: b326678347f3f196
+/octopus-capability-investment-decisions/dev-note:
+  en: 8c247b821fa03965
+  zh: 8f1d2f7287850350

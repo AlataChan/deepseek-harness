@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for 2026-10-18-gamma-cloud-plugin.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-10-18-gamma-cloud-plugin.md
+/gamma-cloud-native-plugin-implementation-plan:
+  en: 80f557126b90a4b8
+  zh: 3beda472585bb9f5
+/gamma-cloud-native-plugin-implementation-plan/summary:
+  en: 15fe4787a3eda8a5
+  zh: 1a419f71e6f576c0
+/gamma-cloud-native-plugin-implementation-plan/table-of-contents:
+  en: 9eef0debcec09c3f
+  zh: 5810c77cca2da429
+/gamma-cloud-native-plugin-implementation-plan/ownership-and-dependencies:
+  en: 39a1a0c012f08ca1
+  zh: 608cc6e97d9f8867
+/gamma-cloud-native-plugin-implementation-plan/user-flow-and-safeguards:
+  en: f49de6b5a3eed489
+  zh: e037d6a477a709c0
+/gamma-cloud-native-plugin-implementation-plan/dsh-implementation-tasks:
+  en: 76efbfab3236b38c
+  zh: f1712aebbb450e25
+/gamma-cloud-native-plugin-implementation-plan/dsh-implementation-tasks/d0-freeze-the-handoff-and-create-the-dual-face-package:
+  en: 5b8f5cd9bcfd87ce
+  zh: b24c77a2e9ea4e02
+/gamma-cloud-native-plugin-implementation-plan/dsh-implementation-tasks/d1-implement-browser-authorization-and-durable-credential-ownership:
+  en: f1017316a5c3adeb
+  zh: daadab16ad74ae6a
+/gamma-cloud-native-plugin-implementation-plan/dsh-implementation-tasks/d2-implement-the-read-only-host-api-and-typed-remotes:
+  en: 5e472262c19d5408
+  zh: 3446f31b7199c3c5
+/gamma-cloud-native-plugin-implementation-plan/dsh-implementation-tasks/d3-add-the-native-settings-and-report-panel:
+  en: 93db6b55198c843a
+  zh: 53d225b1c306159d
+/gamma-cloud-native-plugin-implementation-plan/dsh-implementation-tasks/d4-add-bounded-report-tools-and-recorded-session-acceptance:
+  en: 91b8c7b0f7e27008
+  zh: 47f3e053361b9ec6
+/gamma-cloud-native-plugin-implementation-plan/dsh-implementation-tasks/d5-joint-staging-and-packaged-desktop-verification:
+  en: cca21ea2978e6c83
+  zh: b13b2fc7cde1b58b
+/gamma-cloud-native-plugin-implementation-plan/verification-and-delivery:
+  en: 244fb84be886d39b
+  zh: 5f6e10480ba42415
+/gamma-cloud-native-plugin-implementation-plan/dev-note:
+  en: e3d27e04782510cf
+  zh: 12d66146962eb08f

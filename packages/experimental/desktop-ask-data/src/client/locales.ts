@@ -10,7 +10,7 @@ export type AskDataKey = keyof typeof zh
 /** Chinese desktop copy. */
 export const zh = {
   'brand.title': '品牌标识',
-  'brand.description': '切换侧栏与首页标识，不影响智能体头像或系统应用图标',
+  'brand.description': '切换侧栏标识，不影响智能体头像或系统应用图标',
   'brand.original': '原版精修款',
   'brand.abstract': '抽象款',
   'brand.cartoon': '卡通款',
@@ -87,7 +87,7 @@ export const zh = {
 /** English fallback. */
 export const en = {
   'brand.title': 'Brand mark',
-  'brand.description': 'Changes sidebar and home branding without changing assistant avatars or the system app icon',
+  'brand.description': 'Changes the sidebar mark without changing assistant avatars or the system app icon',
   'brand.original': 'Refined original',
   'brand.abstract': 'Abstract',
   'brand.cartoon': 'Character',

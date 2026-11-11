@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-10-14-assistant-character-avatars.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-10-14-assistant-character-avatars.md
+/assistant-character-avatars-implementation-plan:
+  en: 3d8720e114385d9b
+  zh: 9fb6212d8854e325
+/assistant-character-avatars-implementation-plan/approved-design:
+  en: 7ab4803ee6a045f5
+  zh: bfdd5645ab8bac3e
+/assistant-character-avatars-implementation-plan/task-1-selection-and-compatibility:
+  en: 05cf3104df065a04
+  zh: 582507326cb1fb81
+/assistant-character-avatars-implementation-plan/task-2-mounted-forms-and-persistence:
+  en: 716a1583bd62f8dd
+  zh: f23bc5867ed5efa7
+/assistant-character-avatars-implementation-plan/task-3-visual-and-release-verification:
+  en: 04666112dde05f46
+  zh: 88ccd457458377de

@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { HERO_DRIFT_URL, HERO_POSTER_URL, HERO_VIDEO_URL } from '../media-urls.ts'
 import { HeroAtmosphere } from './HeroAtmosphere.tsx'
+import './surfaces.css'
 import type { HeroAtmosphereInjected } from './HeroAtmosphere.tsx'
 import { createReducedMotionSource } from './reduced-motion.ts'
 
