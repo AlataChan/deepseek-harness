@@ -18,6 +18,12 @@
       "path": "../../compaction/compaction"
     },
     {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
       "path": "../../llm/llm"
     },
     {
@@ -28,6 +34,12 @@
     },
     {
       "path": "../../session/session-format-catalog"
+    },
+    {
+      "path": "../../subagent/subagent"
+    },
+    {
+      "path": "../../experimental/agent-team"
     }
   ]
 }

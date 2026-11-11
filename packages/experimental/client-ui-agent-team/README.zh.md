@@ -37,6 +37,8 @@ Hero 行占据 `conversation.hero.agentTeam`，用 `agentTeams/listInstitutionSq
 
 打开 panel 会调用 `agentTeams/view`。Roster row 展示持久 name、运行时 status、model 与 diagnostics。选择健康 teammate 时，系统刷新既有直接 child catalog，并打开普通的 `{ parentSessionId, childSessionId, mode: 'continuable' }` address。History 与后续人类 prompt 继续使用稳定 addressed-subagent 会话路径；本包不会添加 Team 专用 address 字段。
 
+执行现场把主控放在队友上方，展示已记录的模型、运行状态和负责的进行中任务，并显示共享任务的完成数与总数。带方向的消息路径、任务依赖和简短的交接记录均读取现有 TeamView；记录仅包含成员名称与交互类型，不展示消息正文。面板可见时，运行中的成员显示脉冲，新消息光点持续 2.6 秒且不被普通刷新打断。已有历史和空闲成员保持静态。「减弱动态」及系统减少动态效果偏好会抑制运动，同时保留状态。
+
 ### 管理任务板
 
 任务板展示 task identity、owner、blocker、readiness、提示性 write scope 与重叠 warning。用户可以通过 `agentTeams/createTask` 与 `agentTeams/updateTask` 创建、编辑、分配或取消分配、完成、重开和删除任务。每次 update 都发送当前显示的 revision，create 或 update rejection 都保留为显式 business result。

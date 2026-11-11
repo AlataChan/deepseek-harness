@@ -296,35 +296,13 @@ if grep -q 'install_bundled_skills' "$REPO_ROOT/apps/desktop/src-tauri/src/app.r
 else
   bad "app.rs missing install_bundled_skills"
 fi
-if [[ -d "$RES/bundled-skills/wechat-article-extractor" \
-   && -f "$RES/bundled-skills/wechat-article-extractor/SKILL.md" \
-   && -f "$RES/bundled-skills/wechat-article-extractor/scripts/rate-limit.js" \
-   && -d "$RES/bundled-skills/wechat-article-extractor/node_modules" ]]; then
-  ok "bundled-skills/wechat-article-extractor present with deps"
+# One manifest-driven validator owns every per-skill payload rule
+# (team references, WeChat deps, Archify executable, glossary files, media
+# wording); this shell keeps only the common seed-entrypoint checks above.
+if node "$REPO_ROOT/scripts/verify-desktop-bundled-skills.mjs" --root "$RES/bundled-skills"; then
+  ok "bundled skills match desktop-bundled-skills.json requirements"
 else
-  bad "bundled-skills/wechat-article-extractor incomplete — desktop users will not get WeChat extract"
-fi
-if [[ -d "$RES/bundled-skills/archify" \
-   && -f "$RES/bundled-skills/archify/SKILL.md" \
-   && -f "$RES/bundled-skills/archify/bin/archify.mjs" ]]; then
-  ok "bundled-skills/archify present (post-hoc Team diagram skill)"
-else
-  bad "bundled-skills/archify incomplete — desktop users will not get Archify"
-fi
-if [[ -d "$RES/bundled-skills/conversation-media-creation" \
-   && -f "$RES/bundled-skills/conversation-media-creation/SKILL.md" ]] \
-   && grep -q '已请求系统打开文件' "$RES/bundled-skills/conversation-media-creation/SKILL.md"; then
-  ok "bundled-skills/conversation-media-creation present with no-playback wording"
-else
-  bad "bundled-skills/conversation-media-creation incomplete — desktop users will not get the creation skill"
-fi
-if [[ -d "$RES/bundled-skills/term-glossary" \
-   && -f "$RES/bundled-skills/term-glossary/SKILL.md" \
-   && -f "$RES/bundled-skills/term-glossary/data/glossary.json" \
-   && -f "$RES/bundled-skills/term-glossary/scripts/lookup.mjs" ]]; then
-  ok "bundled-skills/term-glossary present (offline term hints)"
-else
-  bad "bundled-skills/term-glossary incomplete — desktop users will not get term hints"
+  bad "bundled-skills payload failed manifest validation — see diagnostics above"
 fi
 
 DIRTY_PROFILE=$(mktemp -d)
@@ -971,6 +949,14 @@ if node "$REPO_ROOT/scripts/verify-composer-predictions-installed-flows.mjs" "$A
   ok "Installed prediction delay, responsive settings, cancellation and cold restart"
 else
   bad "Installed composer prediction acceptance failed"
+fi
+
+# The packaged question service must admit and recover answers through the public controller.
+head_ "Checking installed persistent questions"
+if node "$REPO_ROOT/scripts/verify-session-decisions-installed-flows.mjs" "$APP"; then
+  ok "Installed question production, queued answer and cold dedup"
+else
+  bad "Installed persistent-question acceptance failed"
 fi
 
 # Pinned default-disabled dsh-context operations and toggle lifecycle (G1–G8).

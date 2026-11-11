@@ -36,12 +36,35 @@ describe('desktop IM connection settings', () => {
       expect(f.owner.create).not.toHaveBeenCalled()
     } finally { await f.dispose() }
   })
+  it('retains its authorization generation across cold restore and revokes it before credential replacement', async () => {
+    const f = await fixture()
+    let second: ImConnectionController | undefined
+    try {
+      await f.controller.save(config, 'secret')
+      await f.controller.setEnabled(true)
+      const original = JSON.parse(await readFile(join(f.directory, 'feishu.json'), 'utf8'))
+      expect(original.generation).toEqual(expect.any(String))
+      await f.controller.close()
+      second = new ImConnectionController('feishu', f.directory, f.owner)
+      await second.load()
+      const restored = JSON.parse(await readFile(join(f.directory, 'feishu.json'), 'utf8'))
+      expect(restored.generation).toBe(original.generation)
+      f.owner.setSecret = async () => {
+        const revoked = JSON.parse(await readFile(join(f.directory, 'feishu.json'), 'utf8'))
+        expect(revoked.enabled).toBe(false)
+        expect(revoked.generation).not.toBe(original.generation)
+        throw new Error('credential write failed')
+      }
+      await expect(second.save(config, 'replacement')).rejects.toThrow('credential write failed')
+      expect((await second.snapshot()).enabled).toBe(false)
+    } finally { await second?.close(); await f.dispose() }
+  })
   it('connection testing closes its probe and never enables the saved channel', async () => {
     const f = await fixture()
     try {
       await f.controller.save(config, 'secret')
       expect((await f.controller.test()).phase).toBe('off')
-      expect(f.owner.create).toHaveBeenCalledWith('feishu', config, expect.any(Function), true)
+      expect(f.owner.create).toHaveBeenCalledWith('feishu', config, expect.any(Function), true, expect.any(String))
       expect(f.close).toHaveBeenCalledTimes(1)
       expect((await f.controller.snapshot()).enabled).toBe(false)
     } finally { await f.dispose() }

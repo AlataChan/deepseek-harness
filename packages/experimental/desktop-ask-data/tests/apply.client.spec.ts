@@ -121,7 +121,7 @@ describe('desktop-ask-data apply', () => {
     const b = await bench()
     expect(b.slots.entries('sidebar.brand.mark')).toHaveLength(1)
     expect(b.slots.entries('sidebar.brand.name')).toHaveLength(1)
-    expect(b.slots.entries('conversation.hero.brand.mark')).toHaveLength(1)
+    expect(b.slots.entries('conversation.hero.brand.mark')).toHaveLength(0)
     expect(b.slots.entries('conversation.hero.headline')).toHaveLength(1)
     expect(b.slots.entries('settings.general.item').map(row => row.options.id))
       .toEqual(['desktop-workspace-folder', 'desktop-brand-mark'])

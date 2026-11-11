@@ -1,0 +1,85 @@
+# Bilingual-pair consistency record for 2026-11-11-octopus-enterprise-introduction.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-11-11-octopus-enterprise-introduction.md
+/octopus-dsh-customer-introduction-script:
+  en: f5c520ad5a200459
+  zh: 44aed33ae928398a
+/octopus-dsh-customer-introduction-script/summary:
+  en: 509ae6abd976f8ca
+  zh: eb111887c6e40a49
+/octopus-dsh-customer-introduction-script/contents:
+  en: f0f8e5da90ce2dda
+  zh: 37d5c93eafe8a1f3
+/octopus-dsh-customer-introduction-script/story-and-presentation-approach:
+  en: ce1221291c8a9f70
+  zh: c370565329b05c6a
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy:
+  en: 1116137641a63741
+  zh: e01b9feee5c3e327
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/01-a-workbench-your-team-can-shape:
+  en: b68c2e400a5db79c
+  zh: 97e0a485e25ed5da
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/02-the-goal-is-a-completed-piece-of-work:
+  en: 9e9911509f5b812b
+  zh: 139883c2a8c84934
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/03-four-recurring-obstacles:
+  en: ef3e94cc2a93c213
+  zh: 1bd1266edbfd06f2
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/04-who-this-approach-fits:
+  en: 26379168fddeb4c4
+  zh: e5dc0236d847a320
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/05-product-panorama:
+  en: 3d6c1bb29cfb0e47
+  zh: 1b3cb24968b76002
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/06-personal-assistants-and-role-based-teams:
+  en: 939c3e537f29049a
+  zh: 56aa90fa6d1088ec
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/07-one-task-with-visible-checkpoints:
+  en: dca4276d0aa3fafa
+  zh: 8dd382bfcf88bceb
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/08-an-execution-foundation-engineers-can-inspect:
+  en: ea2893d0291df98e
+  zh: e4113cbd08819b96
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/09-reusable-assets-have-different-jobs:
+  en: 13dc43a036bab529
+  zh: 4b4a0ed8671dda2c
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/10-demonstration-work-from-documents:
+  en: 7cf8c6d764d575d8
+  zh: 2e3ce8716c4eb9f8
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/11-demonstration-tables-before-questions:
+  en: b739abe461eb4d78
+  zh: d62ad08f562166dd
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/12-demonstration-a-visible-team:
+  en: 9ba67a7ab8ecafb7
+  zh: d3440411fe159e43
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/13-human-decisions-from-desktop-or-im:
+  en: 92a735b2824e99ef
+  zh: 8b38a81b34f45ca4
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/14-automation-with-an-evidence-trail:
+  en: 4319180e1cb501f4
+  zh: b483283901779ed6
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/15-map-where-data-and-actions-go:
+  en: 18888c2bcc0f7060
+  zh: 394e21ed154b69a7
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/16-two-deployment-choices:
+  en: 369f7445db52009b
+  zh: e4afbaa3adb9426c
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/17-connect-one-business-system-well:
+  en: 6ad751cf77708a59
+  zh: a5731636ea457036
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/18-show-what-is-real-and-label-the-rest:
+  en: 1a4150a3382b8092
+  zh: 7a38fe57f5e87259
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/19-a-pilot-with-a-clear-finish-line:
+  en: 30e4ede08dca4704
+  zh: 98261de55ccaca37
+/octopus-dsh-customer-introduction-script/slide-by-slide-copy/20-questions-worth-answering-before-a-pilot:
+  en: 55bdbb8e75549ea7
+  zh: d9d2c2ef1c6f7f6c
+/octopus-dsh-customer-introduction-script/evidence-and-production-checklist:
+  en: 04d5e69ac00a1446
+  zh: 400093d3fab0ca6c
+/octopus-dsh-customer-introduction-script/dev-note:
+  en: 0d53fa1af87b48b2
+  zh: b0bde7e90482da37

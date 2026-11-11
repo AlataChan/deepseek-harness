@@ -1,0 +1,12 @@
+/* Light desktop paper. The sidebar and the conversation share one warm sage;
+   the rail is only a small step deeper. Dark theme keeps the official tokens. */
+body:not([data-ds-dark-theme]) {
+  --dsw-alias-bg-base: rgb(244, 246, 237);
+  --dsw-specific-sidebar-fill: rgb(236, 239, 228);
+  --dsw-specific-sidebar-nav-item-hover: rgb(228, 232, 218);
+  --dsw-specific-sidebar-nav-item-active: rgb(221, 226, 210);
+  --dsw-specific-sidebar-nav-item-active-accent: rgb(214, 222, 200);
+  --dsw-specific-input-major: rgb(250, 251, 245);
+  --dsw-specific-bubble: rgb(232, 238, 220);
+  --dsw-specific-bubble-highlight: rgb(220, 229, 204);
+}

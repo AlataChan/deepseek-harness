@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for 2026-11-02-native-team-orchestration.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/plans/2026-11-02-native-team-orchestration.md
+/native-team-orchestration-implementation-plan:
+  en: 38202a7f3a9d5983
+  zh: 9fb031593823af38
+/native-team-orchestration-implementation-plan/summary:
+  en: b22d77c3f4009d5d
+  zh: 8d3bb112e41674e0
+/native-team-orchestration-implementation-plan/contents:
+  en: 18f40cfc86f977ab
+  zh: 6e630e42c9751870
+/native-team-orchestration-implementation-plan/verified-starting-point:
+  en: 4f87514469056971
+  zh: 11750af995996657
+/native-team-orchestration-implementation-plan/product-decisions:
+  en: efb847a78cb2d5ab
+  zh: 4113399d7cef383c
+/native-team-orchestration-implementation-plan/capability-mapping:
+  en: 75308644b77aceb7
+  zh: 7ca2cd9f36af77d3
+/native-team-orchestration-implementation-plan/implementation-tasks:
+  en: 67c926103df5d4b3
+  zh: 7a51756234f0cb08
+/native-team-orchestration-implementation-plan/implementation-tasks/task-1-establish-the-exact-runtime-guarantees:
+  en: 9a8edd5f5bd33da0
+  zh: d94d42f274731cfe
+/native-team-orchestration-implementation-plan/implementation-tasks/task-2-author-the-native-skill-and-focused-references:
+  en: eed5aaa5103ad76d
+  zh: de21143d82e5a973
+/native-team-orchestration-implementation-plan/implementation-tasks/task-3-verify-model-facing-behavior-through-the-real-profile:
+  en: a0ea178df8514acf
+  zh: bf1ae95ac3899fed
+/native-team-orchestration-implementation-plan/implementation-tasks/task-4-pin-and-verify-default-skill-distribution:
+  en: 1c1f6ec62f008c21
+  zh: 24cfc47b51425c5e
+/native-team-orchestration-implementation-plan/implementation-tasks/task-5-document-qualify-and-deliver-the-installable-desktop:
+  en: 715cd356abda14c2
+  zh: b80987d67058f654
+/native-team-orchestration-implementation-plan/acceptance-and-release:
+  en: eb67f558fa94f063
+  zh: 22de786019d3f295
+/native-team-orchestration-implementation-plan/deferred-runtime-work:
+  en: 9ddca9dd879858dc
+  zh: 94685527f90241ff

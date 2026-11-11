@@ -666,6 +666,10 @@ export function TeamAction({
                         motionReduce: t('motionReduce'),
                         motionFull: t('motionFull'),
                         memberStatus: key => t(key),
+                        leadRole: t('topologyLead'),
+                        workerRole: t('topologyWorker'),
+                        activityTitle: t('topologyActivity'),
+                        progress: (done, total) => t('topologyProgress', { done, total }),
                       }}
                     />
                   </div>

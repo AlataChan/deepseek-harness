@@ -37,6 +37,8 @@ The Hero row occupies `conversation.hero.agentTeam`. It lists 文书组 / 案例
 
 Opening the panel calls `agentTeams/view`. Roster rows show durable names, runtime status, model, and diagnostics. Selecting a healthy teammate refreshes the existing direct-child catalog and opens the ordinary `{ parentSessionId, childSessionId, mode: 'continuable' }` address. History and later human prompts continue through the stable addressed-subagent conversation path; this package adds no Team-specific address field.
 
+The execution view places the Lead above its teammates, displays the recorded model, runtime state and assigned in-progress task, and shows completed/total shared tasks. Directed message paths, task dependencies and a compact handoff feed use the existing TeamView; the feed includes names and interaction kinds, without message bodies. Running members pulse while visible; new-message markers last 2.6 seconds across ordinary refreshes. Existing history and idle members remain static. Local and system reduced-motion preferences suppress movement without hiding state.
+
 ### Manage the task board
 
 The task board shows task identity, owner, blockers, readiness, advisory write scopes, and overlap warnings. A user can create, edit, assign or unassign, complete, reopen, and delete tasks through `agentTeams/createTask` and `agentTeams/updateTask`. Every update sends the displayed revision, and create or update rejections remain explicit business results.

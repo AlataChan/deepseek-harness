@@ -393,22 +393,14 @@ describe('Hero chrome', () => {
     const view = render(<HeroShell t={makeTranslate(en, commonEn)} renderSlot={renderSlot} />)
     expect(view.getByText('Into the Unknown')).toBeTruthy()
     expect(view.getByText('Preview')).toBeTruthy()
-    expect(renderSlot).toHaveBeenCalledTimes(2)
-    expect(renderSlot.mock.calls[0]?.[0]).toBe('conversation.hero.brand.mark')
-    const brandMarkOwner = renderSlot.mock.calls[0]?.[1]
-    if (brandMarkOwner === undefined || !('size' in brandMarkOwner) || !('className' in brandMarkOwner)) {
-      throw new Error('hero brand-mark owner must provide size and className')
-    }
-    expect(brandMarkOwner.size).toBe(34)
-    expect(brandMarkOwner.className).toBeTypeOf('string')
-    expect(renderSlot.mock.calls[0]?.[2]?.fallback).toBeTruthy()
-    expect(renderSlot.mock.calls[1]?.[0]).toBe('conversation.hero.headline')
-    const headlineOwner = renderSlot.mock.calls[1]?.[1]
+    expect(renderSlot).toHaveBeenCalledTimes(1)
+    expect(renderSlot.mock.calls[0]?.[0]).toBe('conversation.hero.headline')
+    const headlineOwner = renderSlot.mock.calls[0]?.[1]
     if (headlineOwner === undefined || !('className' in headlineOwner)) {
       throw new Error('hero headline owner must provide className')
     }
     expect(headlineOwner.className).toBeTypeOf('string')
-    expect(renderSlot.mock.calls[1]?.[2]?.fallback).toBeTruthy()
+    expect(renderSlot.mock.calls[0]?.[2]?.fallback).toBeTruthy()
   })
 })
 

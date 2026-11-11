@@ -236,6 +236,10 @@ export const NEVER_MERGE: readonly NeverMergeEntry[] = [
 
 /** Upstream files the fork edits. Phase 3 works the `B` rows down to zero. */
 export const PATCHES: readonly PatchEntry[] = [
+  { path: 'scripts/gen-doc-graphs.ts', klass: 'A', reason: 'Classifies the optional Session question service and its scoped tool, Client, and Feishu consumers.' },
+  { path: 'scripts/gen-cordis-catalog.ts', klass: 'A', reason: 'Maps the optional persistent Session question service to its own generated subsystem reference.' },
+  { path: 'packages/test-support/llm-replay/package.json', klass: 'A', reason: 'Declares type dependencies for the opt-in native Team fixture replay driver.' },
+  { path: 'packages/test-support/llm-replay/src/index.ts', klass: 'A', reason: 'Wires the opt-in native Team fixture causal schedule while retaining strict recorded request and Session comparison.' },
   { path: 'scripts/check-workspace-constraints.ts', klass: 'A', reason: 'Preserves explicit IM entries and the knowledge converter worker while publishing only the empty knowledge type-barrel runtime export.' },
   { path: 'scripts/check-workspace-constraints.spec.ts', klass: 'A', reason: 'Rejects omission of required independently launched entries and unrelated publication payloads.' },
   { path: 'scripts/verify-repository-references.ts', klass: 'A', reason: 'Separates local execution records and binary assets from maintained source and public documentation references.' },

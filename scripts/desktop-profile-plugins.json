@@ -80,6 +80,12 @@
       "version": "0.2.1-alpha.1",
       "source": "workspace",
       "path": "packages/experimental/desktop-im"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-session-decisions",
+      "version": "0.2.1-alpha.1",
+      "source": "workspace",
+      "path": "packages/experimental/session-decisions"
     }
   ]
 }

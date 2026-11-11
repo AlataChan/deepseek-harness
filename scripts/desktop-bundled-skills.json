@@ -2,22 +2,32 @@
   "skills": [
     {
       "name": "wechat-article-extractor",
-      "path": ".agents/skills/wechat-article-extractor"
+      "path": ".agents/skills/wechat-article-extractor",
+      "requiredFiles": ["scripts/rate-limit.js"],
+      "requiredDirectories": ["node_modules"]
     },
     {
       "name": "archify",
       "source": "npm",
       "package": "@tt-a1i/archify-dsh",
       "version": "0.1.0",
-      "skillSubpath": "skills/archify"
+      "skillSubpath": "skills/archify",
+      "requiredFiles": ["bin/archify.mjs"]
     },
     {
       "name": "conversation-media-creation",
-      "path": ".agents/skills/conversation-media-creation"
+      "path": ".agents/skills/conversation-media-creation",
+      "requiredText": [{ "file": "SKILL.md", "text": "已请求系统打开文件" }]
     },
     {
       "name": "term-glossary",
-      "path": ".agents/skills/term-glossary"
+      "path": ".agents/skills/term-glossary",
+      "requiredFiles": ["data/glossary.json", "scripts/lookup.mjs"]
+    },
+    {
+      "name": "team-orchestration",
+      "path": ".agents/skills/team-orchestration",
+      "requiredFiles": ["references/task-spec.md", "references/recovery.md"]
     }
   ]
 }

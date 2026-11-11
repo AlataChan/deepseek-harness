@@ -24,7 +24,7 @@
 // assertConsumed for the teardown fixture-consumption check).
 import { existsSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -455,14 +455,54 @@ export interface LaunchOptions {
   }
   /** Reuse an existing harness home so a second Host can verify user settings across origins. */
   harnessHome?: string
+  /**
+   * Opt-in caller-owned roots replacing the scaffold's disposable temp world:
+   * sessions persist under `persistenceRoot`, non-session storage routes to the
+   * exact `storageRoot` (never a workspace default join), and sessions run in
+   * `workspaceCwd`. None of the three is removed at close or after a failed
+   * setup — cleanup ownership moves to the caller — so a relaunch over the
+   * same roots (or over a checkpoint copy taken while the first scaffold ran)
+   * replays real persistence end to end, and a restored Session header's cwd
+   * stays valid. Omitted, the scaffold owns fresh isolated temp roots and
+   * removes them at close as before.
+   */
+  durableRoots?: {
+    /** Caller-owned session persistence root (`session-persistence-jsonl`). */
+    persistenceRoot: string
+    /** Caller-owned non-session storage root (`storage-json`, routed exactly). */
+    storageRoot: string
+    /** Caller-owned project directory sessions run in (also carries the default harness home). */
+    workspaceCwd: string
+  }
+  /**
+   * Open mode for the shipped full-text search row. The lane default
+   * `first-search` keeps every existing scenario on the assembled opt-in
+   * search path; `never` restores the shipped composition, where search calls
+   * fail with `SESSION_QUERY_SEARCH_DISABLED` while exact reads, titles, and
+   * lineage traces stay available.
+   */
+  sessionSearch?: 'first-search' | 'never'
 }
 
-/** Dispose the booted tree and remove both owned temp roots, reporting every independent cleanup failure. */
-async function cleanupScaffoldWorld(ctx: Context, workspaceCwd: string, persistenceRoot: string): Promise<unknown[]> {
+/**
+ * Dispose the booted tree and remove the scaffold-owned temp roots, reporting
+ * every independent cleanup failure. Caller-owned durable roots are never
+ * removed: with {@link LaunchOptions.durableRoots}, cleanup ownership moves to
+ * the caller for all three paths.
+ */
+async function cleanupScaffoldWorld(
+  ctx: Context,
+  workspaceCwd: string | undefined,
+  persistenceRoot: string | undefined,
+): Promise<unknown[]> {
   const failures: unknown[] = []
   await Promise.resolve(ctx.fiber.dispose()).catch((error: unknown) => failures.push(error))
-  await rm(workspaceCwd, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
-  await rm(persistenceRoot, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
+  if (workspaceCwd !== undefined) {
+    await rm(workspaceCwd, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
+  }
+  if (persistenceRoot !== undefined) {
+    await rm(persistenceRoot, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
+  }
   return failures
 }
 
@@ -515,7 +555,12 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
       process.env.DEEPSEEK_API_KEY = originalDeepSeekCredential
     }
   }
-  const workspaceCwd = await realpath(await mkdtemp(join(tmpdir(), 'dsh-web-e2e-ws-')))
+  const durableRoots = options.durableRoots
+  const workspaceCwd = durableRoots?.workspaceCwd
+    ?? await realpath(await mkdtemp(join(tmpdir(), 'dsh-web-e2e-ws-')))
+  // Cleanup candidates are exactly the roots the scaffold owns: with
+  // caller-owned durable roots both are undefined and nothing is ever removed.
+  const ownedWorkspaceCwd = durableRoots === undefined ? workspaceCwd : undefined
   // Isolated harness home: the settings/credentials rows resolve $DSH_HOME
   // paths at load, and an in-process boot must NEVER touch the developer's
   // real ~/.dsh document or credential file.
@@ -549,15 +594,20 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
   }
   Object.assign(process.env, skillRootEnvironment)
   let persistenceRoot: string
-  try {
-    persistenceRoot = await mkdtemp(join(tmpdir(), 'dsh-web-e2e-sessions-'))
-  } catch (error) {
-    const failures: unknown[] = [error]
-    await rm(workspaceCwd, { recursive: true, force: true }).catch((cleanupError: unknown) => failures.push(cleanupError))
-    restoreSkillRootEnvironment()
-    if (failures.length > 1) throw new AggregateError(failures, 'web scaffold temp-root setup failed')
-    throw error
+  if (durableRoots !== undefined) {
+    persistenceRoot = durableRoots.persistenceRoot
+  } else {
+    try {
+      persistenceRoot = await mkdtemp(join(tmpdir(), 'dsh-web-e2e-sessions-'))
+    } catch (error) {
+      const failures: unknown[] = [error]
+      await rm(workspaceCwd, { recursive: true, force: true }).catch((cleanupError: unknown) => failures.push(cleanupError))
+      restoreSkillRootEnvironment()
+      if (failures.length > 1) throw new AggregateError(failures, 'web scaffold temp-root setup failed')
+      throw error
+    }
   }
+  const ownedPersistenceRoot = durableRoots === undefined ? persistenceRoot : undefined
   if (maskDeepSeekCredential) Reflect.deleteProperty(process.env, 'DEEPSEEK_API_KEY')
 
   // The include patch set — the same layer stack the profile boot composes
@@ -587,15 +637,22 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     ...extraOverlayPatches,
     { id: 'agent-preset-registry', config: { default: 'standard' } },
     { id: 'session-persistence-jsonl', config: { root: persistenceRoot } },
-    // Content search is enabled here although the shipped bundles default it
-    // off (`openAt: never`, pinned by apps/cli/tests/lazy-search-startup):
-    // the seeded-session scenarios navigate by content search, and these e2e
-    // runs are the assembled coverage for the opt-in search path.
-    { id: 'session-query-sqlite', config: { path: ':memory:', openAt: 'first-search' } },
+    // Content search mode: the lane default opts the shipped row in at
+    // first-search (the shipped bundles default it off, `openAt: never`,
+    // pinned by apps/cli/tests/lazy-search-startup) because the seeded-session
+    // scenarios navigate by content search and these e2e runs are the
+    // assembled coverage for the opt-in search path. `sessionSearch: 'never'`
+    // restores the shipped disabled composition for scenarios that must
+    // exercise the search-disabled cold path.
+    { id: 'session-query-sqlite', config: { path: ':memory:', openAt: options.sessionSearch ?? 'first-search' } },
     // storage-json's yml root is anchored to the real $DSH_HOME; pin the row
     // to an absolute temp root (removed with the workspace at close) so tests
-    // never write the user's harness home.
-    { id: 'storage-json', config: { root: join(workspaceCwd, '.dsh-storages') } },
+    // never write the user's harness home. Caller-owned durable roots route
+    // the row to the exact caller storageRoot instead.
+    {
+      id: 'storage-json',
+      config: { root: durableRoots?.storageRoot ?? join(workspaceCwd, '.dsh-storages') },
+    },
     // First-use initialization must create directories only inside this scaffold's temporary world.
     { id: 'workspace-controller', config: { documentsDirectory: join(workspaceCwd, 'Documents') } },
     // Skill discovery is model-visible input. Pin every host-level root inside
@@ -745,7 +802,14 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
       // Reproduce that link so a private bundle can import its own plugin.
       const installedLink = join(profileDir, 'node_modules', manifest.name)
       await mkdir(dirname(installedLink), { recursive: true })
-      await symlink(packageDir, installedLink, 'junction')
+      const installed = await lstat(installedLink).catch((error: unknown) => {
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined
+        throw error
+      })
+      if (installed === undefined) await symlink(packageDir, installedLink, 'junction')
+      else if (!installed.isSymbolicLink() || await realpath(installedLink) !== await realpath(packageDir)) {
+        throw new Error(`web scaffold install anchor conflicts with an existing path: ${installedLink}`)
+      }
       return {
         packageName: manifest.name,
         packageDir,
@@ -921,7 +985,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     }
   } catch (error) {
     if (process.cwd() !== originalCwd) process.chdir(originalCwd)
-    const cleanupFailures = await cleanupScaffoldWorld(ctx, workspaceCwd, persistenceRoot)
+    const cleanupFailures = await cleanupScaffoldWorld(ctx, ownedWorkspaceCwd, ownedPersistenceRoot)
     if (publicProxy !== undefined) {
       await publicProxy.close().catch((closeError: unknown) => cleanupFailures.push(closeError))
     }
@@ -997,7 +1061,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
       }
       try {
         stopObservingSessions()
-        failures.push(...await cleanupScaffoldWorld(ctx, workspaceCwd, persistenceRoot))
+        failures.push(...await cleanupScaffoldWorld(ctx, ownedWorkspaceCwd, ownedPersistenceRoot))
         if (publicProxy !== undefined) {
           try {
             await publicProxy.close()

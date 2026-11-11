@@ -218,6 +218,55 @@ describe('FileSystemSkillProvider', () => {
     expect((await ctx.skills.list({ cwd: noGit })).map(skill => skill.name)).toContain('fallback-root')
   })
 
+  it('shadows seeded bundled and home skill copies with project-local precedence without changing policy', async () => {
+    const home = await tempDir('skill-orchestration-home')
+    const project = await tempDir('skill-orchestration-project')
+    const other = await tempDir('skill-orchestration-other')
+    const bundled = await tempDir('skill-orchestration-bundled')
+    await mkdir(join(project, '.git'), { recursive: true })
+
+    // Home copy simulating the desktop seed of a bundled skill into
+    // ~/.dsh/skills (user-dsh rank 400), including its package manifest.
+    const homeSkill = join(home, '.dsh/skills/team-orchestration')
+    await mkdir(homeSkill, { recursive: true })
+    await writeFile(join(homeSkill, 'SKILL.md'), '---\nname: team-orchestration\ndescription: Seeded 0.1.0\n---\n\nSeeded body.\n')
+    await writeFile(join(homeSkill, 'package.json'), '{"name":"team-orchestration","private":true,"version":"0.1.0"}\n')
+
+    // Packaged bundled root (rank 600) carrying the same skill name.
+    await writeSkill(bundled, 'team-orchestration', 'Bundled 0.1.0', 'Bundled body.')
+
+    // Project-local override with the same name and its own reference files.
+    const projectSkill = join(project, '.agents/skills/team-orchestration')
+    await mkdir(join(projectSkill, 'references'), { recursive: true })
+    await writeFile(join(projectSkill, 'SKILL.md'), '---\nname: team-orchestration\ndescription: Project-local 0.2.0\n---\n\nProject body.\n')
+    await writeFile(join(projectSkill, 'references/task-spec.md'), '# project task template\n')
+    await writeFile(join(projectSkill, 'references/recovery.md'), '# project recovery\n')
+
+    const ctx = await setupLocal(home, { bundledSkillDir: bundled })
+    expect((await ctx.skills.list({ cwd: project })).find(skill => skill.name === 'team-orchestration'))
+      .toMatchObject({ source: 'project-agents', description: 'Project-local 0.2.0' })
+    const loaded = await ctx.skills.get('team-orchestration', { cwd: project })
+    expect(loaded).toMatchObject({ content: 'Project body.', resourceBase: { kind: 'directory', path: projectSkill } })
+    // Explicit reference reads resolve against the winning project copy.
+    if (loaded === undefined) throw new Error('expected team-orchestration')
+    expect(loaded.resourceBase).toEqual({ kind: 'directory', path: projectSkill })
+    if (loaded.resourceBase?.kind !== 'directory') throw new Error('expected directory resourceBase')
+    expect(await readFile(join(loaded.resourceBase.path, 'references/task-spec.md'), 'utf8')).toBe('# project task template\n')
+    expect(await readFile(join(loaded.resourceBase.path, 'references/recovery.md'), 'utf8')).toBe('# project recovery\n')
+
+    // A project without a local copy falls back to the seeded home copy,
+    // which still outranks the packaged bundled root.
+    expect((await ctx.skills.list({ cwd: other })).find(skill => skill.name === 'team-orchestration'))
+      .toMatchObject({ source: 'user-dsh', description: 'Seeded 0.1.0' })
+    expect((await ctx.skills.get('team-orchestration', { cwd: other }))?.content).toBe('Seeded body.')
+
+    // Without any seeded home copy, the packaged bundled root serves the skill.
+    const bareHome = await tempDir('skill-orchestration-bare-home')
+    const bareCtx = await setupLocal(bareHome, { bundledSkillDir: bundled })
+    expect((await bareCtx.skills.list({ cwd: other })).find(skill => skill.name === 'team-orchestration'))
+      .toMatchObject({ source: 'bundled', description: 'Bundled 0.1.0' })
+  })
+
   it('lets project skills override runtime while runtime overrides custom and user skills', async () => {
     const home = await tempDir('skill-runtime-priority')
     const project = await tempDir('skill-runtime-project')

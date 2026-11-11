@@ -1,0 +1,18 @@
+version: 1
+scenario: team-orchestration
+profile: headless
+composition: team-orchestration
+recording: live
+processTimeoutMs: 600000
+header:
+  class: team-orchestration
+  pin: true
+  systemPromptSource: team-targets
+  toolSchemasSource: team-targets
+  childSystemPrompts: [1, 2]
+workspace:
+  final: true
+environment:
+  DSH_SNAPSHOT_CAUSAL_TEAM_SCHEDULE: '1'
+input:
+  task: 请明确使用 Agent Teams 完成下面的任务，组建两名队友：notes-writer 和 summary-writer。要求：1) 先加载 team-orchestration 技能并按它执行；2) 用共享任务板创建两个任务，summary-writer 的任务依赖 notes-writer 的任务；3) notes-writer 在 notes.md 写入恰好三行，每行一个与「快照测试」相关的要点；4) summary-writer 读取 notes.md 后在 summary.md 写一段不超过 60 字的中文总结；5) 你作为 Lead 亲自读取 notes.md 和 summary.md 核对内容后再完成任务收尾；6) 最后逐条报告每个任务的状态和证据，以 DONE 结尾。硬性约束：所有文件操作（你和两名队友）只使用相对路径 notes.md、summary.md，不要使用绝对路径；任何人都不要运行 ls 或列出目录内容的命令。

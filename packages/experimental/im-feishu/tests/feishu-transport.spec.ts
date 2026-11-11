@@ -1353,6 +1353,21 @@ describe('FeishuTransport Inbound ACK and Lifecycle', () => {
     await transport.close()
   })
 
+  it.each([true, false])('returns a verified consumer card update with success=%s', async (success) => {
+    const { factory, mockDispatcher } = createMockFactory()
+    const card = { elements: [{ tag: 'div', text: { tag: 'plain_text', content: 'This question is closed' } }] }
+    const transport = new FeishuTransport(baseConfig, { handleIncomingMessage: vi.fn() },
+      { handleCardAction: async () => ({ success, toast: 'Saved state', card }) }, { clientFactory: factory })
+    try {
+      await transport.start()
+      const result = await mockDispatcher.invoke({ event_type: 'card.action.trigger', open_id: 'ou_approver_1',
+        tenant_key: 'tenant_test_xyz', open_chat_id: 'oc_test_chat_001', open_message_id: 'om_card_msg_001',
+        action: { tag: 'button_submit', value: {} } })
+      expect(result).toEqual({ toast: { type: success ? 'info' : 'warning', content: 'Saved state' },
+        card: { type: 'raw', data: card } })
+    } finally { await transport.close() }
+  })
+
   it('rejects malformed card action with missing identity with a negative static toast', async () => {
     const { factory, mockDispatcher } = createMockFactory()
     const transport = new FeishuTransport(
@@ -1641,5 +1656,91 @@ describe('Real @larksuiteoapi/node-sdk EventDispatcher Integration', () => {
     expect(() => {
       realClient.close({ force: true })
     }).not.toThrow()
+  })
+})
+
+describe('nullable unavailable Feishu sender identities', () => {
+  it.each([
+    { sender_id: { open_id: 'ou_human_operator_1', user_id: null, union_id: null }, expected: 'ou_human_operator_1' },
+    { sender_id: { open_id: null, user_id: 'usr_human_1', union_id: null }, expected: 'usr_human_1' },
+    { sender_id: { open_id: null, user_id: null, union_id: 'on_human_1' }, expected: 'on_human_1' },
+  ])('uses the available authenticated identity: $expected', ({ sender_id, expected }) => {
+    const raw = makeValidRawFeishuEvent({ sender: { sender_id } })
+    expect(normalizeFeishuMessage(raw, { expectedAppId: baseConfig.appId, referenceTimeMs: 1_700_000_000_000 }))
+      .toMatchObject({ senderId: expected })
+  })
+
+  it('accepts unavailable secondary IDs through the real SDK dispatcher', async () => {
+    const accepted = vi.fn(async (data: unknown) => normalizeFeishuMessage(data, {
+      expectedAppId: baseConfig.appId, referenceTimeMs: 1_700_000_000_000,
+    }))
+    const dispatcher = new lark.EventDispatcher({}).register({ 'im.message.receive_v1': accepted })
+    const raw = makeValidRawFeishuEvent({ sender: { sender_id: {
+      open_id: 'ou_human_operator_1', user_id: null, union_id: null,
+    } } })
+    expect(await dispatcher.invoke(raw, { needCheck: false })).toMatchObject({ senderId: 'ou_human_operator_1' })
+    expect(accepted).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses a sender with no available identity', () => {
+    const raw = makeValidRawFeishuEvent({ sender: { sender_id: { open_id: null, user_id: null, union_id: null } } })
+    expect(() => normalizeFeishuMessage(raw, { referenceTimeMs: 1_700_000_000_000 })).toThrow(/MALFORMED_PAYLOAD/)
+  })
+
+  it('still refuses wrongly typed secondary identities', () => {
+    const raw = makeValidRawFeishuEvent({ sender: { sender_id: { open_id: 'ou_human_operator_1', user_id: 42 } } })
+    expect(() => normalizeFeishuMessage(raw, { referenceTimeMs: 1_700_000_000_000 })).toThrow(/MALFORMED_PAYLOAD/)
+  })
+})
+
+describe('message and callback rejection diagnostics', () => {
+  it.each(['not-json', '{}'])('refuses malformed text content: %s', (content) => {
+    const raw = makeValidRawFeishuEvent({ message: { content } })
+    expect(() => normalizeFeishuMessage(raw, { referenceTimeMs: 1_700_000_000_000 })).toThrow(/MALFORMED_PAYLOAD/)
+  })
+  it('wraps a foreign JSON parser failure as a typed diagnostic', () => {
+    const parse = vi.spyOn(JSON, 'parse').mockImplementationOnce(() => { throw 'foreign parser failed' })
+    try {
+      expect(() => normalizeFeishuMessage(makeValidRawFeishuEvent(), { referenceTimeMs: 1_700_000_000_000 }))
+        .toThrow(/MALFORMED_PAYLOAD/)
+    } finally { parse.mockRestore() }
+  })
+  it('bounds character length independently of UTF-8 bytes', () => {
+    expect(() => normalizeFeishuMessage(makeValidRawFeishuEvent(), {
+      referenceTimeMs: 1_700_000_000_000, maxMessageLength: 1, maxMessageBytes: 10000,
+    })).toThrow(/MESSAGE_OVERSIZED/)
+  })
+  it('refuses a nonnumeric event time', () => {
+    expect(() => normalizeFeishuMessage(makeValidRawFeishuEvent({ header: { create_time: 'not-a-time' } })))
+      .toThrow(/MALFORMED_PAYLOAD/)
+  })
+  it('truncates sanitized text at the requested limit', () => {
+    expect(sanitizeOutboundText('  abcdef  ', 3)).toBe('abc')
+  })
+  const callback = { app_id: 'app', tenant_key: 'tenant', open_id: 'operator', open_chat_id: 'chat',
+    open_message_id: 'message', action_name: 'button' }
+  it.each(['app_id','tenant_key','open_id','open_chat_id','open_message_id','action_name'] as const)
+  ('refuses a callback missing %s', (field) => {
+    const input = Object.fromEntries(Object.entries(callback).filter(([key]) => key !== field))
+    expect(() => normalizeFeishuCardAction(input)).toThrow(/MALFORMED_PAYLOAD/)
+  })
+  it('refuses a malformed callback object', () => {
+    expect(() => normalizeFeishuCardAction({ operator: 3 })).toThrow(/MALFORMED_PAYLOAD/)
+  })
+  it.each([
+    { operator_id: { open_id: 'nested-open' } },
+    { user_id: 'user' },
+    { operator_id: { user_id: 'nested-user' } },
+  ])('resolves a supported SDK operator representation: %j', (operator) => {
+    const result = normalizeFeishuCardAction({ ...callback, open_id: undefined, operator })
+    expect(result.operatorId).toMatch(/nested-open|nested-user|user/)
+  })
+  it('uses the authenticated app fallback and explicit action-name representation', () => {
+    expect(normalizeFeishuCardAction({ ...callback, app_id: undefined, action_name: undefined,
+      action: { name: 'button' } }, { expectedAppId: 'app' })).toMatchObject({ appId: 'app', actionTag: 'button' })
+  })
+  it('retains an explicit form and action value in the flat representation', () => {
+    expect(normalizeFeishuCardAction({ ...callback, action_value: { option: 1 }, form_value: { selected: 'a' } }))
+      .toMatchObject({ actionValue: { option: 1 }, formValue: { selected: 'a' } })
   })
 })

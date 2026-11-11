@@ -2,36 +2,36 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
-/deepseek-harness:
-  en: f68c4f080ce55ff2
-  zh: 88a76d7f7f0b260e
-/deepseek-harness/developer-preview:
-  en: 4ef4d8a71ac143f0
-  zh: 1bfc3149ba8e5543
-/deepseek-harness/expansion-and-tui-qualification:
+/octopus-dsh-little-green-whale:
+  en: 6d73817cd7c52de9
+  zh: 1814abbba9f306ae
+/octopus-dsh-little-green-whale/what-you-can-do:
+  en: 6e493ccecd692220
+  zh: 4a7600ba56250fde
+/octopus-dsh-little-green-whale/developer-preview:
+  en: b1cbb6bd8aa9bd18
+  zh: 5d473045a7a15b45
+/octopus-dsh-little-green-whale/expansion-and-tui-qualification:
   en: a6d647937d57de68
   zh: 27bc56c30096c2c4
-/deepseek-harness/run:
+/octopus-dsh-little-green-whale/run:
   en: 4e0248e4c6474fc6
   zh: eb2fb8d78c7d6bc0
-/deepseek-harness/run/run-from-npm:
-  en: e22005cd42e6cbad
-  zh: 0f536f4208df1d60
-/deepseek-harness/run/run-from-source:
-  en: 819e3f7c144d0d64
-  zh: de815f040975dba7
-/deepseek-harness/community-and-support:
-  en: 20acf6451fdc869b
-  zh: d06246dd019ecef7
-/deepseek-harness/contributing:
-  en: cabc2d3e9f8898bd
-  zh: 83b6d238bae29ce3
-/deepseek-harness/development:
-  en: 803ca2b11b497bed
-  zh: 8b4071eb0e7783ef
-/deepseek-harness/citation:
+/octopus-dsh-little-green-whale/run/desktop:
+  en: 8c444e816ea4dded
+  zh: b0295fb9d307780c
+/octopus-dsh-little-green-whale/run/run-from-source:
+  en: 5d4beec2237234f8
+  zh: 27312e14b42bd05f
+/octopus-dsh-little-green-whale/local-data:
+  en: 3042c90964573c77
+  zh: 89fecce63f5f773b
+/octopus-dsh-little-green-whale/documentation-and-support:
+  en: dd9c952ebbae695d
+  zh: 5b2f4ed764d4b0f5
+/octopus-dsh-little-green-whale/citation:
   en: 6704e9e5a8d49a91
   zh: 85c9cdd8d56f8e9d
-/deepseek-harness/license:
+/octopus-dsh-little-green-whale/license:
   en: 926995344fc1c72b
   zh: c92fab5abf85932f

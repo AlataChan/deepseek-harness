@@ -2250,6 +2250,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'channel', description: 'Saved platform connection.' }],
         returns: 'Probe completion; no message admission or model invocation.',
       },
+      {
+        signature: 'registerCardConsumer(kind: string, consumer: CardConsumer): () => void',
+        description: 'Register a generic card kind on the existing Feishu connection.',
+        parameters: [{ name: 'kind', description: 'Explicit card action kind.' }, { name: 'consumer', description: 'Callback receiving normalized SDK identity and the configured binding.' }],
+        returns: 'Registration disposer; the caller owns its effect lifetime.',
+      },
+      {
+        signature: 'cardChannel(): CardChannel | undefined',
+        description: 'Read the already-owned online Feishu card channel.',
+        parameters: [],
+        returns: 'Current channel, or undefined while disabled, offline or closing.',
+      },
     ],
   },
   {
@@ -3708,6 +3720,114 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Stream a complete live-control baseline followed by replacement frames.',
         parameters: [{ name: 'signal', description: 'cancellation owned by the Remote stream carrier.' }],
         returns: 'one complete baseline followed by live replacement frames.',
+      },
+    ],
+  },
+  {
+    key: 'sessionDecisions',
+    summary: 'The session-decisions Host service; Remote namespace `sessionDecisions`.',
+    description: 'The session-decisions Host service; Remote namespace `sessionDecisions`.',
+    methods: [
+      {
+        signature: 'limits(): DecisionLimits',
+        description: 'Validated feature limits, shared with the tools consumer for arg validation.',
+        parameters: [],
+        returns: 'Validated question bounds.',
+      },
+      {
+        signature: 'async create(input: { sessionId: SessionId; question: string; choices: readonly string[]; ttlMs?: number }): Promise<DecisionView>',
+        description: 'Save a new open question. Public admission owner for the question tool (B1.3) and workflow callers (B2): validation, one-unresolved, and capacity policy all enforce here, not in Remote closures.',
+        parameters: [{ name: 'input', description: 'Question creation fields.' }],
+        returns: 'Saved question with its initial revision.',
+      },
+      {
+        signature: '@Remote async submit( decisionId: DecisionId, expectedRevision: number, requestId: SessionRequestId, payload: AnswerSubmitPayload, ): Promise<AnswerSubmitOutcome>',
+        description: 'Answer-admission owner: validate the payload and its request identity, reserve the answer slot, deliver exactly one Session prompt (`queue` mode), flush durability, and leave settlement to durable evidence. Every outcome returns the immutable feature-allocated request id; retries classify per the B0 retry table without a second prompt.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }, { name: 'expectedRevision', description: 'Revision required for this mutation.' }, { name: 'requestId', description: 'Reserved Session prompt identity.' }, { name: 'payload', description: 'Answer fields used for validation and conflict detection.' }],
+        returns: 'Admission outcome; uncertainty never permits another prompt.',
+      },
+      {
+        signature: 'async admitAnswer( decisionId: DecisionId, expectedRevision: number, payload: AnswerSubmitPayload, beforePrompt?: (reserved: { decisionId: DecisionId; sessionId: SessionId; requestId: SessionRequestId }) => Promise<void>, ): Promise<AnswerSubmitOutcome>',
+        description: 'Trusted local admission for B2 workflow callbacks: identical validation, reservation, and one-prompt delivery to submit, without a caller request identity (the feature\'s allocated ID is always used), plus the optional `beforePrompt` hook. The hook runs exactly once, after the reservation commits and before the one queued prompt, and receives only the reserved decision, Session, and request identities. Hook failure leaves the reservation unresolved: never reset, never resent, never prompted — the retry table reports `submitting` until durable evidence settles it.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }, { name: 'expectedRevision', description: 'Revision required for this mutation.' }, { name: 'payload', description: 'Answer fields used for validation and conflict detection.' }, { name: 'beforePrompt', description: 'Trusted local hook invoked after reservation and before the one queued prompt.' }],
+        returns: 'Admission outcome for the shared desktop and verified-channel path.',
+      },
+      {
+        signature: 'notification(decisionId: DecisionId): Promise<JsonValue | undefined>',
+        description: 'Read private notification metadata for the trusted channel adapter.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }],
+        returns: 'JSON-only publication fields, when present.',
+      },
+      {
+        signature: 'writeNotification(decisionId: DecisionId, expected: JsonValue | undefined, next: JsonValue, expectedRevision?: number): Promise<boolean>',
+        description: 'Compare-and-swap publication progress through the aggregate\'s single writer.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }, { name: 'expected', description: 'Previously read metadata; undefined claims an empty slot.' }, { name: 'next', description: 'Validated publication metadata.' }, { name: 'expectedRevision', description: 'Initial question revision, omitted for settlement.' }],
+        returns: 'Whether this call committed the update.',
+      },
+      {
+        signature: 'async notifyQuestion(decisionId: DecisionId): Promise<void>',
+        description: 'Publish one optional notification after the question guard and turn conclusion are armed.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }],
+        returns: 'Completion of the bounded publication attempt; a saved question remains usable on failure.',
+      },
+      {
+        signature: '@Remote catalog(sessionId: SessionId): Promise<DecisionView[]>',
+        description: 'Questions belonging to the asking Session.',
+        parameters: [{ name: 'sessionId', description: 'Asking Session identity.' }],
+        returns: 'Questions belonging to the asking Session.',
+      },
+      {
+        signature: '@Remote get(decisionId: DecisionId): Promise<DecisionView | undefined>',
+        description: 'Question if it exists.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }],
+        returns: 'Question if it exists.',
+      },
+      {
+        signature: '@Remote status(): Promise<{ available: boolean; reason?: string }>',
+        description: 'Feature availability for diagnostics: available state or the named failure.',
+        parameters: [],
+        returns: 'Feature availability and an optional unavailability reason.',
+      },
+      {
+        signature: '@Remote async dismiss(decisionId: DecisionId, expectedRevision: number): Promise<RecordMutationOutcome>',
+        description: 'Tracking-dismissal result; an admitted input is not retracted.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }, { name: 'expectedRevision', description: 'Revision required for this mutation.' }],
+        returns: 'Tracking-dismissal result; an admitted input is not retracted.',
+      },
+      {
+        signature: '@Remote async cancel(decisionId: DecisionId, expectedRevision: number): Promise<RecordMutationOutcome>',
+        description: 'Cancellation result with the current question state.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }, { name: 'expectedRevision', description: 'Revision required for this mutation.' }],
+        returns: 'Cancellation result with the current question state.',
+      },
+      {
+        signature: '@Remote async pause(decisionId: DecisionId, expectedRevision: number, reason: string): Promise<RecordMutationOutcome>',
+        description: 'Suspension result with the current question state.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }, { name: 'expectedRevision', description: 'Revision required for this mutation.' }, { name: 'reason', description: 'User-visible suspension reason.' }],
+        returns: 'Suspension result with the current question state.',
+      },
+      {
+        signature: '@Remote async resume(decisionId: DecisionId, expectedRevision: number): Promise<RecordMutationOutcome>',
+        description: 'Question-resumption result; does not resume Goal.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }, { name: 'expectedRevision', description: 'Revision required for this mutation.' }],
+        returns: 'Question-resumption result; does not resume Goal.',
+      },
+      {
+        signature: 'producingIdentity(sessionId: SessionId, callId: string): ProducingStepIdentity | undefined',
+        description: 'Producing-step identity of one observed tool call, delegated to the observers. `undefined` (feature off, degraded, or call not observed) refuses the question tool without writing.',
+        parameters: [{ name: 'sessionId', description: 'Asking Session identity.' }, { name: 'callId', description: 'Tool call identity in the producing step.' }],
+        returns: 'Identity when the tool call belongs to the observed producing step.',
+      },
+      {
+        signature: 'armProducingGuard(agent: Agent, identity: ProducingStepIdentity): void',
+        description: 'Arm the session\'s deny-all question guard for the producing step, delegated to the observers. A no-op while the feature is degraded or stopping — and then the tool result has already been saved durably.',
+        parameters: [{ name: 'agent', description: 'Agent owning the producing step.' }, { name: 'identity', description: 'Observed producing-step identity.' }],
+      },
+      {
+        signature: 'async applyFacts(decisionId: DecisionId, facts: DecisionFacts): Promise<DecisionView | undefined>',
+        description: 'Apply observed queue facts to one record. B1.3\'s observers call this on Session events; it lives on the service so fact settlement has a single admission owner. Facts accumulate synchronously BEFORE any write is queued, so a competing write already in the chain (a dismissal, a withdrawal) resolves against them inside its durable update, and the settle write below resolves again at its own chain slot — the latest synchronous facts always win inside the actual storage execution.',
+        parameters: [{ name: 'decisionId', description: 'Saved question identity.' }, { name: 'facts', description: 'Observed Session admission evidence.' }],
+        returns: 'Current view after applying evidence, or undefined if the question is absent.',
       },
     ],
   },
@@ -6224,6 +6344,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface AggregateUsageRequest {\n    readonly profileId?: AssistantProfileId | undefined;\n    readonly teamId?: TeamDefinitionId | undefined;\n    readonly conversationId?: AssistantConversationId | undefined;\n    readonly sessionBindings?: readonly {\n        readonly sessionId: SessionId;\n        readonly bindingId: string;\n        readonly startBoundarySeq: number;\n        readonly profileId?: AssistantProfileId | undefined;\n        readonly teamId?: TeamDefinitionId | undefined;\n        readonly seatId?: TeamSeatId | undefined;\n    }[] | undefined;\n    readonly fromTimestamp?: number | undefined;\n    readonly toTimestamp?: number | undefined;\n}',
   },
   {
+    name: 'AnswerSubmitOutcome',
+    declaration: 'export type AnswerSubmitOutcome = {\n    readonly outcome: \'accepted\';\n    readonly revision: number;\n    readonly requestId: SessionRequestId;\n} | {\n    readonly outcome: \'submitting\';\n    readonly requestId: SessionRequestId;\n} | {\n    readonly outcome: \'admitted\';\n    readonly requestId: SessionRequestId;\n} | {\n    readonly outcome: \'withdrawn\';\n    readonly requestId: SessionRequestId;\n} | {\n    readonly outcome: \'tracking_closed\';\n    readonly requestId: SessionRequestId;\n} | {\n    readonly outcome: \'reconciliation_required\';\n    readonly requestId: SessionRequestId;\n} | {\n    readonly outcome: \'rejected\';\n    readonly reason: DecisionErrorCode;\n    readonly message: string;\n    readonly requestId: SessionRequestId;\n};',
+  },
+  {
+    name: 'AnswerSubmitPayload',
+    declaration: 'export interface AnswerSubmitPayload {\n    readonly choiceOrdinal?: number;\n    readonly text?: string;\n}',
+  },
+  {
     name: 'AnyHook',
     declaration: 'export type AnyHook = ModHook<unknown, unknown>;',
   },
@@ -6574,6 +6702,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CapturedRoute',
     declaration: 'export interface CapturedRoute {\n    readonly route: AssistantModelSelection;\n    readonly source: RoutePrecedenceSource;\n    readonly conversationRevision?: number | undefined;\n    readonly profileRevision?: number | undefined;\n    readonly seatRevision?: number | undefined;\n}',
+  },
+  {
+    name: 'CardCallbackResult',
+    declaration: 'export interface CardCallbackResult {\n    readonly success: boolean;\n    readonly toast?: string;\n    readonly card?: Readonly<Record<string, JsonValue>>;\n}',
+  },
+  {
+    name: 'CardChannel',
+    declaration: 'export interface CardChannel {\n    readonly binding: CardChannelBinding;\n    publish(card: Readonly<Record<string, JsonValue>>): Promise<{\n        messageId: string;\n    }>;\n}',
+  },
+  {
+    name: 'CardChannelBinding',
+    declaration: 'export interface CardChannelBinding {\n    readonly appId: string;\n    readonly tenantId: string;\n    readonly chatId: string;\n    readonly operatorId: string;\n    readonly workspace: string;\n    readonly generation: CardGeneration;\n}',
+  },
+  {
+    name: 'CardConsumer',
+    declaration: 'export type CardConsumer = (action: NormalizedFeishuCardAction, binding: CardChannelBinding) => Promise<CardCallbackResult>;',
+  },
+  {
+    name: 'CardGeneration',
+    declaration: 'export type CardGeneration = Branded<\'im-card-generation\'>;',
   },
   {
     name: 'ChangeResult',
@@ -7010,6 +7158,34 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'DailyScheduleRecord',
     declaration: 'export interface DailyScheduleRecord {\n    readonly id: ScheduleId;\n    readonly kind: \'daily\';\n    readonly title: string;\n    readonly prompt: string;\n    readonly time: string;\n    readonly timeZone: string;\n    readonly scheduledAt: string;\n}',
+  },
+  {
+    name: 'DecisionAnswerIndex',
+    declaration: 'export type DecisionAnswerIndex = \'none\' | \'submitting\' | \'admitted\' | \'needs_reconciliation\' | \'withdrawn\' | \'dismissed\';',
+  },
+  {
+    name: 'DecisionErrorCode',
+    declaration: 'export type DecisionErrorCode = \'DECISION_UNAVAILABLE\' | \'DECISION_NOT_FOUND\' | \'DECISION_CONFLICT\' | \'DECISION_EXPIRED\' | \'DECISION_SUSPENDED\' | \'DECISION_TRACKING_CLOSED\' | \'DECISION_ALREADY_ADMITTED\' | \'DECISION_RECONCILIATION_REQUIRED\' | \'DECISION_BUSY_CAPACITY\' | \'DECISION_BUSY_OWNED_WORK\' | \'DECISION_LIMIT_EXCEEDED\' | \'DECISION_INVALID\';',
+  },
+  {
+    name: 'DecisionFacts',
+    declaration: 'export interface DecisionFacts {\n    readonly entered?: boolean;\n    readonly pending?: boolean;\n    readonly claimed?: boolean;\n    readonly turnEnded?: boolean;\n    readonly discarded?: boolean;\n    readonly stopping?: boolean;\n    readonly agentGone?: boolean;\n}',
+  },
+  {
+    name: 'DecisionId',
+    declaration: 'export type DecisionId = Branded<\'decision-id\'>;',
+  },
+  {
+    name: 'DecisionLifecycle',
+    declaration: 'export type DecisionLifecycle = \'open\' | \'answered\' | \'expired\' | \'cancelled\' | \'superseded\';',
+  },
+  {
+    name: 'DecisionLimits',
+    declaration: 'export interface DecisionLimits {\n    readonly maxRecords: number;\n    readonly defaultTtlMs: number;\n    readonly closedRetentionMs: number;\n    readonly maxQuestionBytes: number;\n    readonly maxChoices: number;\n    readonly maxChoiceLabelBytes: number;\n}',
+  },
+  {
+    name: 'DecisionView',
+    declaration: 'export interface DecisionView {\n    readonly decisionId: DecisionId;\n    readonly sessionId: SessionId;\n    readonly question: string;\n    readonly choices: readonly string[];\n    readonly createdAtUtc: string;\n    readonly expiresAtUtc: string;\n    readonly revision: number;\n    readonly lifecycle: DecisionLifecycle;\n    readonly answerIndex: DecisionAnswerIndex;\n    readonly hasAnswer: boolean;\n    readonly requestId: SessionRequestId;\n    readonly closedAtUtc?: string | undefined;\n    readonly resolutionKind?: \'dismissed\' | undefined;\n    readonly suspended: boolean;\n    readonly goalDisarmed?: boolean | undefined;\n    readonly notificationStatus?: \'in_flight\' | \'sent\' | \'failed\' | \'unknown\' | undefined;\n}',
   },
   {
     name: 'DeepSeekLlmApiExtensionMap',
@@ -8128,6 +8304,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface NativeFileApplication {\n    readonly id: string;\n    readonly name: string;\n    readonly default: boolean;\n    readonly icon: string | null;\n}',
   },
   {
+    name: 'NormalizedFeishuCardAction',
+    declaration: 'export interface NormalizedFeishuCardAction {\n    readonly provider: \'feishu\';\n    readonly appId: string;\n    readonly tenantKey: string;\n    readonly chatId: string;\n    readonly operatorId: string;\n    readonly openId: string;\n    readonly openMessageId: string;\n    readonly actionTag: string;\n    readonly actionName?: string | undefined;\n    readonly actionValue: Record<string, unknown>;\n    readonly formValue?: Record<string, unknown> | undefined;\n    readonly token: string;\n}',
+  },
+  {
     name: 'NotFutureError',
     declaration: 'export interface NotFutureError {\n    readonly code: \'not_future\';\n    readonly message: string;\n}',
   },
@@ -8336,6 +8516,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type PreToolDecision = {\n    kind: \'allow\';\n} | {\n    kind: \'deny\';\n    reason: string;\n    info?: ToolErrorInfo;\n} | {\n    kind: \'cancel\';\n} | {\n    kind: \'ask\';\n    reason?: string;\n    displayReason?: {\n        readonly en: string;\n        readonly [locale: string]: string;\n    };\n};',
   },
   {
+    name: 'ProducingStepIdentity',
+    declaration: 'export interface ProducingStepIdentity {\n    readonly turn: number;\n    readonly step: number;\n    readonly callId: string;\n}',
+  },
+  {
     name: 'ProductTelemetryRecord',
     declaration: 'export type ProductTelemetryRecord = OTelEventRecord;',
   },
@@ -8522,6 +8706,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ReasoningEffortId',
     declaration: 'export type ReasoningEffortId = Branded<\'ReasoningEffortId\'>;',
+  },
+  {
+    name: 'RecordMutationOutcome',
+    declaration: 'export type RecordMutationOutcome = {\n    readonly ok: true;\n    readonly record: DecisionView;\n} | {\n    readonly ok: false;\n    readonly reason: DecisionErrorCode;\n    readonly message: string;\n};',
   },
   {
     name: 'RecurringScheduleRecord',

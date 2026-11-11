@@ -1,4 +1,6 @@
 /** Serialized per-channel settings transactions and owned platform lifetimes. */
+import { randomUUID } from 'node:crypto'
+import { parseCardGeneration, type CardChannel, type CardGeneration } from '@deepseek-ai/dsh-experimental-im-feishu/desktop'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
@@ -7,6 +9,8 @@ import { channelSchema, connectionConfigSchema, type ImChannel, type ConnectionC
 
 /** Runtime resources owned by one saved desktop connection. */
 export interface ImConnection {
+  readonly cards?: CardChannel
+
   start(): Promise<void>
   isConnected(): boolean
   hasDeliveryFailure(): boolean
@@ -16,15 +20,19 @@ export interface ImConnection {
 export interface ImControllerOwner {
   hasSecret(this: void, channel: ImChannel): Promise<boolean>
   setSecret(this: void, channel: ImChannel, secret: string): Promise<void>
-  create(this: void, channel: ImChannel, config: ConnectionConfig, onFailure: () => void, test: boolean): Promise<ImConnection>
+  create(this: void, channel: ImChannel, config: ConnectionConfig, onFailure: () => void,
+    test: boolean, generation: CardGeneration): Promise<ImConnection>
   validate(this: void, config: ConnectionConfig): Promise<ConnectionConfig>
 }
-const storedSchema = z.object({ schemaVersion: z.literal(1), config: connectionConfigSchema, enabled: z.boolean() }).strict()
+const storedSchema = z.object({
+  schemaVersion: z.literal(1), config: connectionConfigSchema, enabled: z.boolean(), generation: z.uuid().optional(),
+}).strict()
 
 /** One channel's serialized mutations; secrets never enter its JSON or returned snapshots. */
 export class ImConnectionController {
   private config: ConnectionConfig | null = null
   private enabled = false
+  private generation = parseCardGeneration(randomUUID())
   private phase: ImSnapshot['phase'] = 'off'
   private error: ImSnapshot['error'] = null
   private connection: ImConnection | undefined
@@ -56,6 +64,8 @@ export class ImConnectionController {
     const saved = storedSchema.parse(JSON.parse(text))
     this.config = saved.config
     this.enabled = saved.enabled
+    if (saved.generation !== undefined) this.generation = parseCardGeneration(saved.generation)
+    else await this.persist(this.config, this.enabled)
     if (this.enabled) {
       try { await this.connect(false) } catch (_error) { this.phase = 'error'; this.error = 'startup' }
     }
@@ -140,13 +150,21 @@ export class ImConnectionController {
     await this.stop()
   }
 
+  /** Read cards only while the saved connection is enabled and online.
+   * @returns The current authorized card channel, or undefined while unavailable.
+   */
+  cards(): CardChannel | undefined {
+    return this.enabled && !this.disposed && this.connection?.isConnected() ? this.connection.cards : undefined
+  }
+
   private file(): string { return join(this.directory, `${this.channel}.json`) }
   private async persist(config: ConnectionConfig, enabled: boolean): Promise<void> {
-    await writeFileAtomic(this.file(), JSON.stringify({ schemaVersion: 1, config, enabled }) + '\n',
+    await writeFileAtomic(this.file(), JSON.stringify({ schemaVersion: 1, config, enabled, generation: this.generation }) + '\n',
       { mode: 0o600, dirMode: 0o700 })
   }
   private async disable(): Promise<void> {
     this.enabled = false
+    this.generation = parseCardGeneration(randomUUID())
     // Stopping admission must not depend on a writable settings file.
     const results = await Promise.allSettled([
       this.stop(), this.config ? this.persist(this.config, false) : Promise.resolve(),
@@ -162,7 +180,7 @@ export class ImConnectionController {
     let candidate: ImConnection | undefined
     try {
       const config = await this.owner.validate(this.config)
-      candidate = await this.owner.create(this.channel, config, () => { this.phase = 'error'; this.error = 'delivery' }, test)
+      candidate = await this.owner.create(this.channel, config, () => { this.phase = 'error'; this.error = 'delivery' }, test, this.generation)
       this.connection = candidate
       if (this.disposed) throw new Error('IM settings are closing')
       await candidate.start()

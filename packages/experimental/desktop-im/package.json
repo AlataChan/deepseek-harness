@@ -64,7 +64,9 @@
     "dingtalk-stream": "2.1.6-beta.1",
     "@deepseek-ai/dsh-experimental-im-feishu": "workspace:*",
     "@deepseek-ai/dsh-experimental-im-dingtalk": "workspace:*",
-    "@deepseek-ai/schemastery": "workspace:~"
+    "@deepseek-ai/schemastery": "workspace:~",
+    "@deepseek-ai/dsh-brand": "workspace:*",
+    "@deepseek-ai/dsh-user-questions": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",

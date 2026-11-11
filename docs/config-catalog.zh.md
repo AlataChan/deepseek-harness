@@ -2201,7 +2201,7 @@ export type PiAiThinkingTokenBudgetField = NonNullable<OpenAICompletionsCompat['
 
 - `inject`: `llm`
 - `refs`: [`ModelModality`](../packages/llm/llm/src/index.ts) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts) · [`SystemPromptUpdate`](../packages/llm/llm/src/index.ts) · [`ToolUpdate`](../packages/llm/llm/src/index.ts)
-- `source`: [`packages/test-support/llm-replay/src/index.ts:1129`](../packages/test-support/llm-replay/src/index.ts)
+- `source`: [`packages/test-support/llm-replay/src/index.ts:1171`](../packages/test-support/llm-replay/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the {@link ReplayConfig} inputs, each defaulting to its `DSH_SNAPSHOT_*` env var in `apply`. */
@@ -2220,6 +2220,8 @@ export interface Config {
   providers?: ReplayProviderConfig[]
   /** Optional per-chunk pacing delay in ms (see {@link ReplayConfig.paceMs}); absent keeps burst yield. */
   paceMs?: number
+  /** Install the test-only causal team schedule (see {@link ReplayConfig.causalTeamSchedule}); default false. */
+  causalTeamSchedule?: boolean
 }
 
 /** One provider route exposed by the replay adapter. */
@@ -4900,6 +4902,7 @@ export interface Config {
 | `@deepseek-ai/dsh-experimental-im-feishu` | — | [`packages/experimental/im-feishu/src/index.ts`](../packages/experimental/im-feishu/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-im-service-bundle` | — | [`packages/experimental/im-service-bundle/src/index.ts`](../packages/experimental/im-service-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-inspector-profile` | — | [`packages/experimental/inspector-profile/src/index.ts`](../packages/experimental/inspector-profile/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-session-decisions` | — | [`packages/experimental/session-decisions/src/index.ts`](../packages/experimental/session-decisions/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-voice-input-bundle` | — | [`packages/experimental/voice-input-bundle/src/index.ts`](../packages/experimental/voice-input-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-webworker-packer` | — | [`packages/experimental/webworker-packer/src/index.ts`](../packages/experimental/webworker-packer/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-webworker-runtime` | — | [`packages/experimental/webworker-runtime/src/index.ts`](../packages/experimental/webworker-runtime/src/index.ts) |

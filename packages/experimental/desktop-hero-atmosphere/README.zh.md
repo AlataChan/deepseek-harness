@@ -29,7 +29,7 @@ octopus_DSH 桌面通过 [scripts/desktop-profile-plugins.json](../../../scripts
 
 ### 你会得到什么
 
-空白会话 Hero 上，对话列显示高调沙洲静帧加六秒焦散循环，并加一层纱，保证输入可读。出现 transcript 时 `hero: false`，底板透明度降为零。减少动态效果的用户只看到 K0。`HTMLVideoElement.play()` 失败或被 CSP 拦截时留下 K0/K1 交叉淡化。Client bundle 把这些文件内联成 `data:` URL。
+空白会话 Hero 上，对话列显示调成浅米绿的高调沙洲静帧加六秒焦散循环，并加一层纱，保证输入可读。浅色主题下，侧边栏、对话区、输入框和消息气泡共用这张暖纸，侧栏只深一个台阶。出现 transcript 时 `hero: false`，底板透明度降为零。减少动态效果的用户只看到 K0。`HTMLVideoElement.play()` 失败或被 CSP 拦截时留下 K0/K1 交叉淡化。Client bundle 把这些文件内联成 `data:` URL。
 
 -----
 

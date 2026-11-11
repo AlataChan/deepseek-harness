@@ -31,7 +31,7 @@ Keep the desktop running while connected. Disable closes admission, cancels owne
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
-The patch inserts the `desktop-im` Host service; its Client half contributes a localized settings section and shell-owned toast. `src/controller.ts` serializes settings transactions and connection lifetimes. `im-feishu/desktop` supplies direct single-user composition with SQLite inbox/outbox, receipts, exact operator bindings and existing Session reconciliation. It opens no tenant TCP server and does not claim cross-UID isolation.
+The patch inserts the `desktop-im` Host service; its Client half contributes a localized settings section and shell-owned toast. `src/controller.ts` serializes settings transactions and connection lifetimes. `im-feishu/desktop` supplies direct single-user composition with SQLite inbox/outbox, receipts, exact operator bindings and existing Session reconciliation. It opens no tenant TCP server and does not claim cross-UID isolation. The card channel exposes only bound publication and callback capabilities. It drains admitted operations on close; disabling or replacing credentials persists a fresh authorization generation before replacement. Ordinary shutdown preserves the generation.
 
 Configuration files live under `$DSH_HOME/profiles/desktop/im/`. One desktop Host owns the settings directory; each platform owns a delivery database. Changing the authorized identity or workspace selects separate delivery state. Deployment limits, dispatch interval and shutdown deadline are configurable on the Host row. A corrupt settings file is retained and reported for its channel. The overlay bundles its IM adapters and storage libraries; stable application defaults do not acquire experimental dependencies.
 
@@ -56,7 +56,7 @@ None from settings operations; the IM delivery service and selected Agent preset
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- This is a single-user desktop connection, not the Linux systemd multi-tenant deployment. IDs currently come from the platform developer console. The first desktop integration supports one authorized private-chat/user tuple per channel. It does not install an IM approval/card answerer; existing tool approval policy still applies. Real Feishu/DingTalk app permissions, subscriptions and end-to-end replies require an authorized test application; synthetic transport tests do not establish those results.
+- This is a single-user desktop connection, not the Linux systemd multi-tenant deployment. IDs currently come from the platform developer console. The first desktop integration supports one authorized private-chat/user tuple per channel. The generic card registry uses the same Feishu connection; optional question features register their own consumers without changing free-text routing. Existing tool approval policy still applies. Real Feishu/DingTalk app permissions, subscriptions and end-to-end replies require an authorized test application; synthetic transport tests do not establish those results.
 
 <a id="dev-note"></a>
 ### Dev Note

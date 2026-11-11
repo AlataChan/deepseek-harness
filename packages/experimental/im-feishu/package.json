@@ -28,6 +28,10 @@
     "./desktop": {
       "types": "./lib/types/desktop.d.ts",
       "default": "./lib/desktop.js"
+    },
+    "./card-channel": {
+      "types": "./lib/types/card-channel.d.ts",
+      "default": "./lib/card-channel.js"
     }
   },
   "files": [
@@ -35,7 +39,8 @@
     "lib/runtime-plugin.js",
     "lib/ingress-plugin.js",
     "lib/desktop.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/card-channel.js"
   ],
   "license": "MIT",
   "peerDependencies": {

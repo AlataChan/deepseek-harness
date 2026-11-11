@@ -1,0 +1,11 @@
+{
+  "question": "Which environment should I deploy to?",
+  "answerButtons": [
+    "Staging",
+    "Production",
+    "Send answer",
+    "Pause",
+    "Cancel this question"
+  ],
+  "headerDialogCount": 0
+}

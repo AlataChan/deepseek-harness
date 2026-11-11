@@ -10,6 +10,10 @@
  * Then runs `npm install --omit=dev` when the skill declares dependencies, and
  * writes the result under --out (Resources/resources/bundled-skills/).
  *
+ * Every seeded payload is validated against the manifest-declared requirements
+ * in scripts/bundled-skill-files.mjs — the same rules the assembled-bundle
+ * verifiers enforce. A missing declared reference fails the seed.
+ *
  * Usage:
  *   node scripts/seed-desktop-bundled-skills.mjs --out <dir>
  */
@@ -21,6 +25,7 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { collectSkillViolations, loadSkillPin } from './bundled-skill-files.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '..')
@@ -154,17 +159,18 @@ function seedNpmSkill(entry, dest) {
 
 function main() {
   const { out } = parseArgs(process.argv.slice(2))
-  if (!existsSync(PIN_PATH)) fail(`missing ${PIN_PATH}`)
-  const pin = JSON.parse(readFileSync(PIN_PATH, 'utf8'))
-  if (!Array.isArray(pin.skills) || pin.skills.length === 0) {
-    fail('desktop-bundled-skills.json must list at least one skill')
+  let pin
+  try {
+    pin = loadSkillPin(PIN_PATH)
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error))
   }
 
   rmSync(out, { recursive: true, force: true })
   mkdirSync(out, { recursive: true })
 
   const seeded = []
-  for (const entry of pin.skills) {
+  for (const entry of pin.raw) {
     const name = entry?.name
     if (typeof name !== 'string' || name === '') fail('each skill needs a name')
     const dest = join(out, name)
@@ -179,6 +185,12 @@ function main() {
         fail(`workspace skill ${name} needs path`)
       }
       seedWorkspaceSkill(entry, dest)
+    }
+    const validated = pin.skills.find(skill => skill.name === name)
+    const violations = collectSkillViolations(out, validated)
+    if (violations.length > 0) {
+      for (const violation of violations) console.error(violation)
+      fail(`seeded skill ${name} does not satisfy its declared payload requirements`)
     }
     seeded.push(name)
   }

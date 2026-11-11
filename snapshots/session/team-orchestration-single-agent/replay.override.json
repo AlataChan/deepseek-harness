@@ -1,0 +1,1221 @@
+{
+ "patches": [
+  {
+   "at": 1,
+   "entry": {
+    "kind": "chunks",
+    "chunks": [
+     {
+      "type": "block-start",
+      "index": 0,
+      "blockType": "reasoning"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "按"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "技能"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "目录"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "下的"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "相对"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "路径"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "读取"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": " references"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/t"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "ask"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "-s"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "pec"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": ".md"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": " "
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "和"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": " references"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/re"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "covery"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": ".md"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "。"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "基"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "目录"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "是"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": " /"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "private"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "var"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/f"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "old"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "ers"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/h"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "2"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/b"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "x"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "w"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "gf"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "bt"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "15"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "zg"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "3"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "gz"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "5"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "hf"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "37"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "bh"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "f"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "2"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "w"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "000"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "0"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "gn"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/T"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/d"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "sh"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "-log"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "-s"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "nap"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "-S"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "GH"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "N"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "KS"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/."
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "agents"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/s"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "k"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "ills"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "/"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "team"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "-or"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "che"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "stration"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "。\n\n"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "两个"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "读取"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "可以"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "并行"
+     },
+     {
+      "type": "reasoning-delta",
+      "index": 0,
+      "text": "。"
+     },
+     {
+      "type": "block-end",
+      "index": 0,
+      "block": {
+       "type": "reasoning",
+       "text": "按技能目录下的相对路径读取 references/task-spec.md 和 references/recovery.md。基目录是 {{cwd}}/.agents/skills/team-orchestration。\n\n两个读取可以并行。"
+      }
+     },
+     {
+      "type": "block-start",
+      "index": 1,
+      "blockType": "tool-call"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "name": "read",
+      "argumentsDelta": ""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "{\""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "file"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "_path"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "\""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": ": \""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "private"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "var"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/f"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "old"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "ers"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/h"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "2"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/b"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "x"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "w"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "gf"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "bt"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "15"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "zg"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "3"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "gz"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "5"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "hf"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "37"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "bh"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "f"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "2"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "w"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "000"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "0"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "gn"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/T"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/d"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "sh"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "-log"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "-s"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "nap"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "-S"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "GH"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "N"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "KS"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/."
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "agents"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/s"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "k"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "ills"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "team"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "-or"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "che"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "stration"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/re"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "ferences"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "/t"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "ask"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "-s"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "pec"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": ".md"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "\""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 1,
+      "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+      "argumentsDelta": "}"
+     },
+     {
+      "type": "block-end",
+      "index": 1,
+      "block": {
+       "type": "tool-call",
+       "id": "call_00_ujp5I32ukqV1OdSonOXH8359",
+       "name": "read",
+       "arguments": "{\"file_path\": \"{{fromRequest:Base directory for this skill: (.+)}}/references/task-spec.md\"}"
+      }
+     },
+     {
+      "type": "block-start",
+      "index": 2,
+      "blockType": "tool-call"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "name": "read",
+      "argumentsDelta": ""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "{\""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "file"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "_path"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "\""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": ": \""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "private"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "var"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/f"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "old"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "ers"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/h"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "2"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/b"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "x"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "w"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "gf"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "bt"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "15"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "zg"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "3"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "gz"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "5"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "hf"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "37"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "bh"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "f"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "2"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "w"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "000"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "0"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "gn"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/T"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/d"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "sh"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "-log"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "-s"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "nap"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "-S"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "GH"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "N"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "KS"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/."
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "agents"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/s"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "k"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "ills"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "team"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "-or"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "che"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "stration"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/re"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "ferences"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "/re"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "covery"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": ".md"
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "\""
+     },
+     {
+      "type": "tool-call-delta",
+      "index": 2,
+      "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+      "argumentsDelta": "}"
+     },
+     {
+      "type": "block-end",
+      "index": 2,
+      "block": {
+       "type": "tool-call",
+       "id": "call_01_yCAThTOXA8Yn9FXii6ot8948",
+       "name": "read",
+       "arguments": "{\"file_path\": \"{{fromRequest:Base directory for this skill: (.+)}}/references/recovery.md\"}"
+      }
+     },
+     {
+      "type": "usage",
+      "usage": {
+       "inputTokens": 1609,
+       "outputTokens": 249,
+       "cacheReadTokens": 7040,
+       "cacheWriteTokens": 0,
+       "totalTokens": 8898
+      }
+     },
+     {
+      "type": "finish",
+      "reason": {
+       "kind": "tool-calls"
+      },
+      "replayState": {
+       "response": {
+        "kind": "deepseek-messages",
+        "version": 1,
+        "model": "deepseek-v4-flash"
+       },
+       "blocks": [
+        {
+         "type": "reasoning",
+         "signature": "b5bb0690-f50e-4c9a-a517-86f94ec5b710"
+        },
+        {
+         "type": "tool-call"
+        },
+        {
+         "type": "tool-call"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

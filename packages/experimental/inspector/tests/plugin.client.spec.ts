@@ -489,6 +489,18 @@ describe('experimental Inspector Client plugin', () => {
     } finally { await ctx.fiber.dispose() }
   })
 
+  it('stays active when the page origin returns HTML instead of bootstrap JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<!doctype html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    })))
+    const ctx = new Context()
+    try {
+      await ctx.plugin({ apply }).await()
+      expect(ctx.get('inspector')).toBeUndefined()
+    } finally { await ctx.fiber.dispose() }
+  })
+
   it('retries a missing bootstrap and replaces a source after the Host generation changes', async () => {
     vi.stubGlobal('WebSocket', FakeWebSocket)
     let response = new Response(null, { status: 503 })

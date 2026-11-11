@@ -867,18 +867,25 @@ fn install_one_profile_plugin(
 }
 
 /// Copy each Resources/resources/bundled-skills package into ~/.dsh/skills so
-/// every workspace can load fork-shipped skills (user-dsh, rank 400). A
-/// revision stamp skips the copy while every installed skill keeps its
-/// `SKILL.md`. Preserves local `.rate-limit-state.json` across refreshes.
+/// every workspace can load fork-shipped skills (user-dsh, rank 400).
 fn install_bundled_skills(app: &AppHandle, revision: Option<&str>) -> SeedOutcome {
     let Ok(resource) = app.path().resource_dir() else {
         return SeedOutcome::Absent;
     };
     let src_root = resource.join("resources").join("bundled-skills");
+    install_bundled_skills_in(&dsh_home().join("skills"), &src_root, revision)
+}
+
+/// Seed `src_root` skill directories into `dest_root`. A revision stamp skips
+/// the copy while every installed skill keeps its `SKILL.md`. Each bundled
+/// skill dir is deleted and re-copied on refresh; only the local
+/// `.rate-limit-state.json` is carried over, and directories outside the
+/// payload are never touched.
+fn install_bundled_skills_in(dest_root: &Path, src_root: &Path, revision: Option<&str>) -> SeedOutcome {
     if !src_root.is_dir() {
         return SeedOutcome::Absent;
     }
-    let Ok(entries) = std::fs::read_dir(&src_root) else {
+    let Ok(entries) = std::fs::read_dir(src_root) else {
         return SeedOutcome::Absent;
     };
     let skills = entries
@@ -894,12 +901,11 @@ fn install_bundled_skills(app: &AppHandle, revision: Option<&str>) -> SeedOutcom
                 .map(|name| (name.to_string(), src))
         })
         .collect::<Vec<_>>();
-    let dest_root = dsh_home().join("skills");
     let bundled = skills
         .iter()
         .map(|(name, _)| name.clone())
         .collect::<Vec<_>>();
-    if bundled_skills_seeded(&dest_root, &bundled, revision) {
+    if bundled_skills_seeded(dest_root, &bundled, revision) {
         return SeedOutcome::Skipped;
     }
     let mut failed = false;
@@ -922,7 +928,7 @@ fn install_bundled_skills(app: &AppHandle, revision: Option<&str>) -> SeedOutcom
         return SeedOutcome::Failed;
     }
     if let Some(revision) = revision {
-        let _ = std::fs::create_dir_all(&dest_root);
+        let _ = std::fs::create_dir_all(dest_root);
         let _ = write_stamp(&dest_root.join(SEED_STAMP_FILE), revision);
     }
     SeedOutcome::Reseeded
@@ -1467,5 +1473,137 @@ mod tests {
         .expect("parse manifest");
         let reinstalled_bundles = reinstalled["dsh"]["profile"]["bundles"].as_array().unwrap();
         assert!(reinstalled_bundles.contains(&serde_json::json!("dsh-context")));
+    }
+
+    /**
+     * Write one realistic bundled team skill payload with nested references.
+     *
+     * @param root - bundled-skills source root.
+     * @param marker - version marker baked into every file.
+     */
+    fn write_bundled_team_skill(root: &Path, marker: &str) {
+        let skill = root.join("team-orchestration");
+        std::fs::create_dir_all(skill.join("references")).expect("references dir");
+        std::fs::write(
+            skill.join("SKILL.md"),
+            format!("---\nname: team-orchestration\ndescription: {marker}\n---\n\nBody {marker}.\n"),
+        )
+        .expect("SKILL.md");
+        std::fs::write(
+            skill.join("package.json"),
+            "{\"name\": \"team-orchestration\", \"private\": true, \"version\": \"0.1.0\"}\n",
+        )
+        .expect("package.json");
+        std::fs::write(skill.join("references").join("task-spec.md"), format!("# task spec {marker}\n"))
+            .expect("task-spec.md");
+        std::fs::write(skill.join("references").join("recovery.md"), format!("# recovery {marker}\n"))
+            .expect("recovery.md");
+    }
+
+    /// Write the WeChat payload skill whose rate-limit counter must survive refreshes.
+    fn write_bundled_wechat_skill(root: &Path) {
+        let skill = root.join("wechat-article-extractor");
+        std::fs::create_dir_all(skill.join("scripts")).expect("scripts dir");
+        std::fs::write(skill.join("SKILL.md"), "# wechat\n").expect("SKILL.md");
+        std::fs::write(skill.join("scripts").join("rate-limit.js"), "export const limit = 8\n")
+            .expect("rate-limit.js");
+    }
+
+    #[test]
+    fn bundled_skills_refresh_recopies_recursively_and_preserves_user_skill_and_rate_limit() {
+        let dir = tempdir().expect("tempdir");
+        let src_root = dir.path().join("bundled-skills");
+        let dest_root = dir.path().join("skills");
+        write_bundled_team_skill(&src_root, "0.1.0");
+        write_bundled_wechat_skill(&src_root);
+        // Source directories without SKILL.md are not part of the payload.
+        std::fs::create_dir_all(src_root.join("not-a-skill")).expect("extra dir");
+        std::fs::write(src_root.join("not-a-skill").join("junk.txt"), "ignored\n").expect("junk");
+
+        // A user-installed skill that the payload does not declare.
+        let user_skill = dest_root.join("my-own-skill");
+        std::fs::create_dir_all(&user_skill).expect("user skill dir");
+        std::fs::write(user_skill.join("SKILL.md"), "# my own skill\n").expect("user SKILL.md");
+
+        // A previously seeded stale team skill and the WeChat counter state.
+        let team_dest = dest_root.join("team-orchestration");
+        std::fs::create_dir_all(team_dest.join("references")).expect("stale team dir");
+        std::fs::write(team_dest.join("SKILL.md"), "stale\n").expect("stale SKILL.md");
+        std::fs::write(team_dest.join("references").join("task-spec.md"), "stale spec\n").expect("stale spec");
+        std::fs::write(team_dest.join("stale-note.md"), "local edit lost on refresh\n").expect("stale note");
+        let wechat_dest = dest_root.join("wechat-article-extractor");
+        std::fs::create_dir_all(&wechat_dest).expect("wechat dir");
+        std::fs::write(wechat_dest.join(".rate-limit-state.json"), "{\"count\": 3}\n").expect("rate limit state");
+
+        assert_eq!(
+            install_bundled_skills_in(&dest_root, &src_root, Some(REVISION)),
+            SeedOutcome::Reseeded
+        );
+        // The recursive refresh replaced the stale copy with the payload contents.
+        assert!(
+            std::fs::read_to_string(team_dest.join("SKILL.md"))
+                .unwrap()
+                .contains("description: 0.1.0")
+        );
+        assert!(team_dest.join("package.json").is_file());
+        assert_eq!(
+            std::fs::read_to_string(team_dest.join("references").join("task-spec.md")).unwrap(),
+            "# task spec 0.1.0\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(team_dest.join("references").join("recovery.md")).unwrap(),
+            "# recovery 0.1.0\n"
+        );
+        // Delete-and-recopy drops local files that are not in the payload.
+        assert!(!team_dest.join("stale-note.md").exists());
+        // Entries without SKILL.md are not seeded.
+        assert!(!dest_root.join("not-a-skill").exists());
+        // The WeChat rate-limit counter survives the refresh.
+        assert_eq!(
+            std::fs::read_to_string(wechat_dest.join(".rate-limit-state.json")).unwrap(),
+            "{\"count\": 3}\n"
+        );
+        // The unrelated user skill is never touched.
+        assert_eq!(std::fs::read_to_string(user_skill.join("SKILL.md")).unwrap(), "# my own skill\n");
+        assert!(stamp_matches(&dest_root.join(SEED_STAMP_FILE), REVISION));
+
+        // A matching stamp skips the copy even when the payload changed.
+        write_bundled_team_skill(&src_root, "0.2.0");
+        assert_eq!(
+            install_bundled_skills_in(&dest_root, &src_root, Some(REVISION)),
+            SeedOutcome::Skipped
+        );
+        assert!(
+            std::fs::read_to_string(team_dest.join("SKILL.md"))
+                .unwrap()
+                .contains("0.1.0")
+        );
+
+        // A new revision re-copies the updated payload and again preserves the counter.
+        assert_eq!(
+            install_bundled_skills_in(&dest_root, &src_root, Some(OTHER_REVISION)),
+            SeedOutcome::Reseeded
+        );
+        assert!(
+            std::fs::read_to_string(team_dest.join("SKILL.md"))
+                .unwrap()
+                .contains("0.2.0")
+        );
+        assert_eq!(
+            std::fs::read_to_string(team_dest.join("references").join("task-spec.md")).unwrap(),
+            "# task spec 0.2.0\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(wechat_dest.join(".rate-limit-state.json")).unwrap(),
+            "{\"count\": 3}\n"
+        );
+        assert!(stamp_matches(&dest_root.join(SEED_STAMP_FILE), OTHER_REVISION));
+
+        // An absent payload root reports Absent and mutates nothing.
+        assert_eq!(
+            install_bundled_skills_in(&dest_root, &dir.path().join("missing"), Some(OTHER_REVISION)),
+            SeedOutcome::Absent
+        );
+        assert!(stamp_matches(&dest_root.join(SEED_STAMP_FILE), OTHER_REVISION));
     }
 }

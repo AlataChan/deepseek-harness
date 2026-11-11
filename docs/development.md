@@ -2,6 +2,8 @@
 
 English | [中文](development.zh.md)
 
+This checkout is the AlataChan Octopus DSH fork. Shared Harness development follows this guide; the fork's Tauri shell, bundled desktop plugins, and installer preparation are documented in the [desktop README](../apps/desktop/README.md). The [contribution guide](../CONTRIBUTING.md) identifies the fork's support and change workflow.
+
 The setup tutorial takes a new contributor from prerequisites to a checked checkout. The contributor reference that follows covers repository layout, daily workflow, and CI organization. Design rationale and implementation details belong to the linked Agent Notes and scripts.
 
 ## Setup tutorial

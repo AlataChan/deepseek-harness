@@ -60,6 +60,7 @@ With `providers` configured, the plugin registers a replay-only adapter whose ca
 | `childFiles` | `$DSH_SNAPSHOT_CHILD_FILES` | Recorded subagent child-session logs for a nested scenario |
 | `providers` | — | Optional replay-only provider and model catalog; a model may declare `contextWindow`, text/image modalities, positive `imageRequestTokens` when image-capable, and `systemPromptUpdate: in-history` so a keyless scenario exercises in-history system prompt replacement; invalid values fail at load (`llm-replay: provider "…" model "…" systemPromptUpdate must be "in-history" when present`) and routes never perform provider I/O |
 | `paceMs` | — (burst) | Optional per-chunk delay in ms for genuinely incremental delivery |
+| `causalTeamSchedule` | `false` | Test-only causal driver for the recorded team-orchestration fixture; see [Causal team schedule](#causal-team-schedule) |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-llm-replay) is the exhaustive source for every accepted field and its JSDoc.
 
@@ -70,6 +71,15 @@ The fixture is a projection of one selected persisted Session generation produce
 ### Nested agents
 
 A scenario where a parent agent delegates to in-process subagents records one role per Session: parent `session[.vN].jsonl`, then contiguous children `session.<ordinal>[.vN].jsonl`. The snapshot harness supplies only the highest generation of each role. Live Session ids are freshly random each run, so replay binds each live Session to a recorded script by first-call order: the first live Session to make a model call claims the parent script, the next new Session the next child script, and so on, with each Session advancing its own cursor. More distinct live Sessions than recorded scripts fails loud.
+
+<a id="causal-team-schedule"></a>
+### Causal team schedule
+
+`causalTeamSchedule: true` enables a test-only driver for the recorded team-orchestration fixture, whose subagents interleave with the parent's tool calls. Plain first-call-order binding releases each child script at the child's first model call, which can reorder recorded tool effects such as task claims. The driver holds named teammate tool calls and releases them when witness events recorded alongside the fixture arrive: it installs on the parent's first model call, validates the fixture shape up front (three scripts, fixed call counts per member, fully chunked calls), parks queued teammate tool executions matched by member name and occurrence count (unlisted tools and non-teammate calls run immediately; the Lead's own calls are gated by model-call index, not by tool holds), and releases each hold when the matching team, task, or settlement event commits. Set it through the scenario environment (`causalTeamSchedule: !!js process.env.DSH_SNAPSHOT_CAUSAL_TEAM_SCHEDULE === '1'`) so one shared patch serves the main scenario and the controls that must not load the driver.
+
+Failure modes are loud: an invalid fixture shape throws when the driver installs; a held call that never settles rejects after a bounded watchdog (30s by default, injectable for tests); a hold table miss or an unexpected extra wait fails with a diagnostic. `dispose()` is idempotent, rejects pending holds, and restores the wrapped methods only when it installed them: the replay install registers the disposer on its installing Cordis fiber, and restore re-installs the captured method descriptor on the raw service instance behind the traceable proxy, so a method that a later owner replaced is left in place.
+
+Journal-append waits require the matching persistence-flush witness. Child-settlement waits use a separate queue and cannot fabricate that witness. Disposal rejects both queues and all parked tool holds.
 
 ### Failure modes and overrides
 
@@ -106,6 +116,7 @@ The [committed-corpus test](tests/session-format-corpus.spec.ts) restores each v
 | File | Role |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Types, fixture derivation, override validation, placeholder resolution, session binding, `installLlmReplay`, and the plugin export |
+| [`src/causal-team-schedule.ts`](src/causal-team-schedule.ts) | The `causalTeamSchedule` driver: fixture validation, tool holds, settle witnesses, watchdog, and disposal |
 | [`tests/session-format-corpus.spec.ts`](tests/session-format-corpus.spec.ts) | Committed-generation restoration and exact historical refusal checks |
 
 ### Binding and stream flow
@@ -146,6 +157,7 @@ These limits define when replay cannot stand in for a live model. They are curre
 
 - **First-call-order script binding assumes sequential delegation** — a cut that runs sibling subagents concurrently would bind live sessions to recorded scripts non-deterministically; a stronger keying is deferred until such a scenario exists.
 - **Only ordinary loop chunks and marked local compaction outputs are derivable** — a pure pre-chunk throw, a cancel/hang, or an unmarked external summarizer call needs the `replay.override.json` sidecar; replacement and patch forms affect only the primary session, and child scripts still derive from their logs.
+- **The causal team schedule driver serves one recorded fixture shape** — its hold and settle schedule is keyed to the team-orchestration fixture's call counts and tool names, not a general schedule language; a scenario with a different interleaving needs its own driver.
 
 <a id="dev-note"></a>
 ### Dev Note

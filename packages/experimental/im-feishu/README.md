@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 `@deepseek-ai/dsh-experimental-im-feishu` provides human prompt sources, durable IM delivery storage, ingress admission and tenant runtime services. Authenticated operator messages retain `kind: user` with fresh UUID request IDs; external identities stay in the business database. Service constructors alone start no platform connections or execution processes. Explicit profile composition and deployment qualification are required before use.
 
+Incoming message identity fields unavailable to the application may be `null`. The normalizer selects an available `open_id`, `user_id`, or `union_id`; a sender without any identity, or with a wrongly typed identity field, is rejected. App, tenant, chat and operator authorization checks remain mandatory.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)
@@ -55,6 +57,7 @@ import * as runtimePlugin from '@deepseek-ai/dsh-experimental-im-feishu/runtime'
 
 | File | Role |
 |---|---|
+| [`src/card-channel.ts`](src/card-channel.ts) | Generic bound card registry, size-limited publication and callback drain on the existing desktop connection |
 | [`src/types.ts`](src/types.ts) | Branded Feishu external identifiers and resolved approval context types |
 | [`src/source.ts`](src/source.ts) | Option (c) user prompt source construction and injective JSON-tuple key encoding |
 | [`src/storage.ts`](src/storage.ts) | Single-writer inbox/outbox and receipt domains with crash reconciliation |

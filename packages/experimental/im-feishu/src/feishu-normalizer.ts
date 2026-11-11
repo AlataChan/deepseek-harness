@@ -57,9 +57,10 @@ export interface FeishuNormalizerOptions {
 }
 
 const rawFeishuSenderIdSchema = z.object({
-  open_id: z.string().optional(),
-  user_id: z.string().optional(),
-  union_id: z.string().optional(),
+  // Feishu emits null for identity fields unavailable to the application.
+  open_id: z.string().nullish(),
+  user_id: z.string().nullish(),
+  union_id: z.string().nullish(),
 })
 
 const rawFeishuSenderSchema = z.object({

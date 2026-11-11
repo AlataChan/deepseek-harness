@@ -29,7 +29,7 @@ octopus_DSH desktop seeds this package from [scripts/desktop-profile-plugins.jso
 
 ### What you get
 
-On a blank-session Hero the conversation column shows a high-key sandbar still plus a six-second caustic loop, veiled so input remains readable. An active transcript sets `hero: false` and the plate opacity goes to zero. Reduced-motion users see only K0. A failed or CSP-blocked `HTMLVideoElement.play()` leaves the K0/K1 crossfade. The Client bundle inlines those files as `data:` URLs.
+On a blank-session Hero the conversation column shows a high-key sandbar still plus a six-second caustic loop, graded pale beige-green, veiled so input remains readable. In light theme the sidebar, conversation, composer, and message bubble share that warm paper, with the rail only a small step deeper. An active transcript sets `hero: false` and the plate opacity goes to zero. Reduced-motion users see only K0. A failed or CSP-blocked `HTMLVideoElement.play()` leaves the K0/K1 crossfade. The Client bundle inlines those files as `data:` URLs.
 
 -----
 

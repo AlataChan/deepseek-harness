@@ -1,0 +1,10 @@
+# No-Team-tools composition patch (live recording): the base composition owns
+# the entire live tool set; this patch intentionally adds nothing except the
+# same skill-filesystem watch:false the team-orchestration composition adopts
+# (msg_ea4900a75d9e): the OS watcher's revision bumps race the first catalog
+# collect and nondeterministically suppress the skill-catalog message;
+# discovery stays real, only the watcher is off.
+
+- id: skill-filesystem
+  config:
+    watch: false
